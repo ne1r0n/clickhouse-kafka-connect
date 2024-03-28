@@ -142,12 +142,9 @@ public class Processing {
                         stateProvider.setStateRecord(new StateRecord(topic, partition, rangeContainer.getMaxOffset(), rangeContainer.getMinOffset(), State.AFTER_PROCESSING));
                         break;
                     case CONTAINS: // The state contains the given records
-                        LOGGER.warn(String.format("Records seemingly missing compared to prior batch for topic [%s] partition [%s].", topic, partition));
                         // Do nothing - write to dead letter queue
-                        records.forEach( r ->
-                                Utils.sendTODlq(errorReporter, r, new DuplicateException(String.format(record.getTopicAndPartition())))
-                        );
-                        break;
+                        throw new RuntimeException(String.format("State CONTAINS given [%s] records for topic: [%s], partition: [%s], minOffset: [%s], maxOffset: [%s]",
+                                records.size(), topic, partition, rangeContainer.getMinOffset(), rangeContainer.getMaxOffset()));
                     case OVER_LAPPING:
                         // spit it to 2 inserts
                         List<List<Record>> rightAndLeft = splitRecordsByOffset(trimmedRecords, stateRecord.getMaxOffset(), stateRecord.getMinOffset());
@@ -171,8 +168,8 @@ public class Processing {
                         stateProvider.setStateRecord(new StateRecord(topic, partition, rightRangeContainer.getMaxOffset(), rightRangeContainer.getMinOffset(), State.AFTER_PROCESSING));
                         break;
                     case ERROR:
-                        LOGGER.warn(String.format("State mismatch for topic [%s] partition [%s].", topic, partition));
-                        break;
+                        throw new RuntimeException(String.format("State MISMATCH given [%s] records for topic: [%s], partition: [%s], minOffset: [%s], maxOffset: [%s]",
+                                records.size(), topic, partition, rangeContainer.getMinOffset(), rangeContainer.getMaxOffset()));
                 }
                 break;
             case AFTER_PROCESSING:
@@ -205,7 +202,8 @@ public class Processing {
                         stateProvider.setStateRecord(new StateRecord(topic, partition, rightRangeContainer.getMaxOffset(), rightRangeContainer.getMinOffset(), State.AFTER_PROCESSING));
                         break;
                     case ERROR:
-                        LOGGER.warn(String.format("State mismatch for topic [%s] partition [%s]", topic, partition));
+                        throw new RuntimeException(String.format("State MISMATCH given [%s] records for topic: [%s], partition: [%s], minOffset: [%s], maxOffset: [%s]",
+                                records.size(), topic, partition, rangeContainer.getMinOffset(), rangeContainer.getMaxOffset()));
                 }
         }
     }
