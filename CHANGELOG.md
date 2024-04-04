@@ -1,3 +1,7 @@
+## 1.0.16
+* Removed 1002 from the retriable exceptions list as it's a catch-all for all other exceptions
+* Change Java Client to 0.6.0-patch3 and switch tests to use same Base class
+
 ## 1.0.15
 * Added code 107 to the exception list and added more DLQ logging
 * Added ExtractTopic transform to our source so that it would work on MSK
@@ -14,7 +18,7 @@
 ## 1.0.12
 * Added support for multiple databases in single stream using a virtual topic  #41
 * Add support for configuring JDBC properties in connection URL (i.e. `?auto_discovery=true`)
-* Added minimum version check for ClickHouse
+* Added minimum version check for ClickHouse (currently 23.3)
 * Added support for fixed_string type
 
 ## 1.0.11
