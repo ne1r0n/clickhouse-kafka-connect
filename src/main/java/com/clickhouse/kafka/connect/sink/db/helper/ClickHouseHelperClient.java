@@ -54,6 +54,9 @@ public class ClickHouseHelperClient {
         this.server = create();
     }
 
+    public String getDatabase() {
+        return database;
+    }
     public Map<ClickHouseOption, Serializable> getDefaultClientOptions() {
         Map<ClickHouseOption, Serializable> options = new HashMap<>();
         options.put(ClickHouseClientOption.PRODUCT_NAME, "clickhouse-kafka-connect/"+ClickHouseClientOption.class.getPackage().getImplementationVersion());
@@ -70,12 +73,17 @@ public class ClickHouseHelperClient {
         if (this.sslEnabled)
             protocol += "s";
 
+        String tmpJdbcConnectionProperties = jdbcConnectionProperties;
+        if (tmpJdbcConnectionProperties != null && !tmpJdbcConnectionProperties.startsWith("?")) {
+            tmpJdbcConnectionProperties = "?" + tmpJdbcConnectionProperties;
+        }
+
         String url = String.format("%s://%s:%d/%s%s", 
                 protocol, 
                 hostname, 
                 port, 
                 database,
-                jdbcConnectionProperties
+                tmpJdbcConnectionProperties
         );
 
         LOGGER.info("ClickHouse URL: " + url);

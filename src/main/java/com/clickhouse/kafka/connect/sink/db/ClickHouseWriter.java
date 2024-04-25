@@ -202,6 +202,8 @@ public class ClickHouseWriter implements DBWriter {
                         case "DateTime64":
                         case "UUID":
                         case "FIXED_STRING":
+                        case "Enum8":
+                        case "Enum16":
                             break;//I notice we just break here, rather than actually validate the type
                         default:
                             if (!colTypeName.equals(dataTypeName)) {
@@ -338,7 +340,9 @@ public class ClickHouseWriter implements DBWriter {
             case BOOLEAN:
             case UUID:
             case STRING:
-                doWritePrimitive(columnType, value.getFieldType(), stream, value.getObject());
+            case Enum8:
+            case Enum16:
+                doWritePrimitive(columnType, value.getFieldType(), stream, value.getObject(), col);
                 break;
             case FIXED_STRING:
                 doWriteFixedString(columnType, stream, value.getObject(), col.getPrecision());
@@ -364,7 +368,7 @@ public class ClickHouseWriter implements DBWriter {
                 BinaryStreamUtils.writeVarInt(stream, mapSize);
                 mapTmp.forEach((key, mapValue) -> {
                     try {
-                        doWritePrimitive(col.getMapKeyType(), value.getMapKeySchema().type(), stream, key);
+                        doWritePrimitive(col.getMapKeyType(), value.getMapKeySchema().type(), stream, key, col);
                         doWriteColValue(col.getMapValueType(), stream, new Data(value.getNestedValueSchema(), mapValue), defaultsSupport);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
@@ -417,8 +421,7 @@ public class ClickHouseWriter implements DBWriter {
             }
         }
     }
-
-    private void doWritePrimitive(Type columnType, Schema.Type dataType, ClickHousePipedOutputStream stream, Object value) throws IOException {
+    private void doWritePrimitive(Type columnType, Schema.Type dataType, ClickHousePipedOutputStream stream, Object value, Column col) throws IOException {
         LOGGER.trace("Writing primitive type: {}, value: {}", columnType, value);
 
         if (value == null) {
@@ -481,6 +484,12 @@ public class ClickHouseWriter implements DBWriter {
                 break;
             case UUID:
                 BinaryStreamUtils.writeUuid(stream, UUID.fromString((String) value));
+                break;
+            case Enum8:
+                BinaryStreamUtils.writeEnum8(stream, col.convertEnumValues((String)value).byteValue());
+                break;
+            case Enum16:
+                BinaryStreamUtils.writeEnum16(stream, col.convertEnumValues((String)value).intValue());
                 break;
         }
     }
@@ -553,6 +562,7 @@ public class ClickHouseWriter implements DBWriter {
         long s1 = System.currentTimeMillis();
         long s2 = 0;
         long s3 = 0;
+        long pushStreamTime = 0;
 
         Record first = records.get(0);
         String database = first.getDatabase();
@@ -580,8 +590,11 @@ public class ClickHouseWriter implements DBWriter {
                 // write bytes into the piped stream
                 for (Record record : records) {
                     if (record.getSinkRecord().value() != null) {
-                        for (Column col : table.getColumns())
+                        for (Column col : table.getColumns()) {
+                            long beforePushStream = System.currentTimeMillis();
                             doWriteCol(record, col, stream, supportDefaults);
+                            pushStreamTime += System.currentTimeMillis() - beforePushStream;
+                        }
                     }
                 }
                 // We need to close the stream before getting a response
@@ -594,7 +607,7 @@ public class ClickHouseWriter implements DBWriter {
         }
 
         s3 = System.currentTimeMillis();
-        LOGGER.info("batchSize: {} data ms: {} send ms: {} (QueryId: [{}])", records.size(), s2 - s1, s3 - s2, queryId.getQueryId());
+        LOGGER.info("batchSize: {} push stream ms: {} data ms: {} send ms: {} (QueryId: [{}])", records.size(), pushStreamTime,s2 - s1, s3 - s2, queryId.getQueryId());
     }
 
 
@@ -607,6 +620,7 @@ public class ClickHouseWriter implements DBWriter {
         long s1 = System.currentTimeMillis();
         long s2 = 0;
         long s3 = 0;
+        long dataSerializeTime = 0;
 
 
         Record first = records.get(0);
@@ -641,8 +655,9 @@ public class ClickHouseWriter implements DBWriter {
                                 data = (Map<String, Object>) record.getSinkRecord().value();
                                 break;
                         }
-
+                        long beforeSerialize = System.currentTimeMillis();
                         String gsonString = gson.toJson(data, gsonType);
+                        dataSerializeTime += System.currentTimeMillis() - beforeSerialize;
                         LOGGER.trace("topic {} partition {} offset {} payload {}",
                                 record.getTopic(),
                                 record.getRecordOffsetContainer().getPartition(),
@@ -663,7 +678,7 @@ public class ClickHouseWriter implements DBWriter {
             }
         }
         s3 = System.currentTimeMillis();
-        LOGGER.info("batchSize: {} data ms: {} send ms: {} (QueryId: [{}])", records.size(), s2 - s1, s3 - s2, queryId.getQueryId());
+        LOGGER.info("batchSize: {} serialization ms: {} data ms: {} send ms: {} (QueryId: [{}])", records.size(), dataSerializeTime, s2 - s1, s3 - s2, queryId.getQueryId());
     }
 
     protected void doInsertString(List<Record> records, Table table, QueryIdentifier queryId) throws IOException, ExecutionException, InterruptedException {
@@ -671,6 +686,7 @@ public class ClickHouseWriter implements DBWriter {
         long s1 = System.currentTimeMillis();
         long s2 = 0;
         long s3 = 0;
+        long pushStreamTime = 0;
 
         Record first = records.get(0);
         String database = first.getDatabase();
@@ -705,7 +721,9 @@ public class ClickHouseWriter implements DBWriter {
                         String data = (String)record.getSinkRecord().value();
                         LOGGER.debug(String.format("data: %s", data));
                         byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+                        long beforePushStream = System.currentTimeMillis();
                         BinaryStreamUtils.writeBytes(stream, bytes);
+                        pushStreamTime += System.currentTimeMillis() - beforePushStream;
                         switch (csc.getInsertFormat()) {
                             case CSV:
                             case TSV:
@@ -728,7 +746,7 @@ public class ClickHouseWriter implements DBWriter {
             }
         }
         s3 = System.currentTimeMillis();
-        LOGGER.info("batchSize: {} data ms: {} send ms: {} (QueryId: [{}])", records.size(), s2 - s1, s3 - s2, queryId.getQueryId());
+        LOGGER.info("batchSize: {} push stream ms: {} data ms: {} send ms: {} (QueryId: [{}])", records.size(), pushStreamTime, s2 - s1, s3 - s2, queryId.getQueryId());
     }
 
 
