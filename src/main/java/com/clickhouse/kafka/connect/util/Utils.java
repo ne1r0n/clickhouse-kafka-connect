@@ -1,6 +1,7 @@
 package com.clickhouse.kafka.connect.util;
 
 import com.clickhouse.client.ClickHouseException;
+import com.clickhouse.kafka.connect.sink.data.Data;
 import com.clickhouse.kafka.connect.sink.data.Record;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
 import org.apache.kafka.connect.errors.DataException;
@@ -12,15 +13,23 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Utils {
 
-    public static String escapeTopicName(String topic) {
-        return String.format("`%s`", topic);
+    public static String escapeName(String topic) {
+        String cleanTopic = topic.replace("`", "");
+        return String.format("`%s`", cleanTopic);
+    }
+
+    public static String escapeTableName(String database, String topicName) {
+        return escapeName(database) + "." + escapeName(topicName);
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
@@ -74,6 +83,7 @@ public class Utils {
                 case 203: // NO_FREE_CONNECTION
                 case 209: // SOCKET_TIMEOUT
                 case 210: // NETWORK_ERROR
+                case 241: // MEMORY_LIMIT_EXCEEDED
                 case 242: // TABLE_IS_READ_ONLY
                 case 252: // TOO_MANY_PARTS
                 case 285: // TOO_FEW_LIVE_REPLICAS
@@ -134,14 +144,14 @@ public class Utils {
         }
     }
 
-    public static String getTableName(String topicName, Map<String, String> topicToTableMap) {
+    public static String getTableName(String database, String topicName, Map<String, String> topicToTableMap) {
         String tableName = topicToTableMap.get(topicName);
         LOGGER.debug("Topic name: {}, Table Name: {}", topicName, tableName);
         if (tableName == null) {
             tableName = topicName;
         }
 
-        return escapeTopicName(tableName);
+        return escapeTableName(database, tableName);
     }
 
 
@@ -159,5 +169,30 @@ public class Utils {
         }
 
         return String.format("minOffset: %d, maxOffset: %d", minOffset, maxOffset);
+    }
+
+    public static List<String> splitIgnoringQuotes(String input, char separator) {
+        List<String> result = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        boolean inSingleQuotes = false;
+        boolean inDoubleQuotes = false;
+
+        for (char c : input.toCharArray()) {
+            if (c == '\'' && !inDoubleQuotes) {
+                inSingleQuotes = !inSingleQuotes;
+                sb.append(c);
+            } else if (c == '"' && !inSingleQuotes) {
+                inDoubleQuotes = !inDoubleQuotes;
+                sb.append(c);
+            } else if (c == separator && !inSingleQuotes && !inDoubleQuotes) {
+                result.add(sb.toString().trim());
+                sb.setLength(0);
+            } else {
+                sb.append(c);
+            }
+        }
+        result.add(sb.toString().trim());
+
+        return result;
     }
 }

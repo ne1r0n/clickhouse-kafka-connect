@@ -1,3 +1,46 @@
+# 1.2.3
+* Tweaking schema validation to allow for UINT
+
+# 1.2.2
+* Adding a new property `tolerateStateMismatch` to allow for the connector to continue processing even if the state stored in ClickHouse does not match the current offset in Kafka
+
+# 1.2.1
+* Adding some additional logging details to help debug issues
+
+# 1.2.0
+* Adding a KeyToValue transformation to allow for key to be stored in a separate column in ClickHouse
+
+# 1.1.4
+* Bugfix to address field value to column name mapping for Tuples
+
+# 1.1.3
+* Update to java-client 0.6.3
+* Bugfix to address commas in the column name of enums
+
+## 1.1.2
+* Adding a "dateTimeFormat" configuration option to allow for custom date/time formatting with String schema values
+* Adding ephemeral column support and adding an error message
+
+## 1.1.1
+* Bugfix to address string encoding issue
+* Bugfix to address issue with nested types and flatten_nested setting conflict
+* Bugfix to avoid storing keeper state in same column name if virtual topic is enabled
+* Updated java-client to 0.6.1
+* Bugfix to let create missing KeeperMap entries if there are some records present already
+* Added a flag to allow bypassing RowBinary and RowBinaryWithDefaults format for schema insertions
+* Bugfix to remove erroneous error messages about complex type handling
+
+## 1.1.0
+* Updated java-client to 0.6.0-patch4
+* Added config 'keeperOnCluster' to help self-hosted use exactly-once
+* Added support for Tuple type
+* Added support for Variant type
+* Added support for Nested type
+* Refactored Column class so that we use Builder pattern using Lombok
+* Refactored recursive Map type parsing to iterative approach using describe_include_subcolumns=1
+* Adjusted logging to reduce volume while keeping important information
+* Adjusted tests to be more reliable and self cleaning
+
 ## 1.0.17
 * Added support for ClickHouse Enum type #370
 * Added extra break down of time measurement for insert operations 
@@ -77,9 +120,9 @@
 
 ## 1.0.0
 * Additional tests for ExactlyOnce
-* Allows customized ClickHouse settings using `clickhouse.settings' property
+* Allows customized ClickHouse settings using `clickhouse.settings` property
 * Tweaked deduplication behavior to account for dynamic fields
-* Added support for `errors.tolerance' and the DLQ
+* Added support for `errors.tolerance` and the DLQ
 
 ## 0.0.18
 * Support inline schema with org.apache.kafka.connect.data.Timestamp type 

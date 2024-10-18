@@ -5,18 +5,25 @@ import com.clickhouse.client.ClickHouseException;
 import com.clickhouse.client.ClickHouseProtocol;
 import com.clickhouse.client.ClickHouseResponse;
 import com.clickhouse.client.ClickHouseResponseSummary;
+import com.clickhouse.client.config.ClickHouseClientOption;
+import com.clickhouse.data.ClickHouseRecord;
 import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.clickhouse.ClickHouseContainer;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ClickHouseBase {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBase.class);
     protected static ClickHouseHelperClient chc = null;
     protected static ClickHouseContainer db = null;
     protected static boolean isCloud = ClickHouseTestHelpers.isCloud();
@@ -26,7 +33,8 @@ public class ClickHouseBase {
         if (database == null) {
             database = String.format("kafka_connect_test_%s", System.currentTimeMillis());
         }
-        if (isCloud == true) {
+        if (isCloud) {
+            initialPing();
             return;
         }
         db = new ClickHouseContainer(ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE);
@@ -35,8 +43,29 @@ public class ClickHouseBase {
 
     @AfterAll
     protected static void tearDown() {
+        if (isCloud) {//We need to clean up databases in the cloud, we can ignore the local database
+            if (database != null) {
+                try {
+                    dropDatabase(database);
+                } catch (Exception e) {
+                    LOGGER.error("Error dropping database", e);
+                }
+            }
+        }
         if (db != null)
             db.stop();
+    }
+
+    public String extractClientVersion() {
+        String clientVersion = System.getenv("CLIENT_VERSION");
+        if (clientVersion != null && clientVersion.equals("V1")) {
+            return "V1";
+        } else {
+            return "V2";
+        }
+    }
+    protected ClickHouseSinkConfig createConfig() {
+        return new ClickHouseSinkConfig(createProps());
     }
 
     protected ClickHouseHelperClient createClient(Map<String,String> props) {
@@ -62,20 +91,19 @@ public class ClickHouseBase {
                 .setRetry(csc.getRetry())
                 .build();
 
-
         if (withDatabase) {
-            createDatabase(this.database, tmpChc);
-            props.put(ClickHouseSinkConnector.DATABASE, this.database);
-            ClickHouseHelperClient chc = new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
-                    .setDatabase(this.database)
+            createDatabase(ClickHouseBase.database, tmpChc);
+            props.put(ClickHouseSinkConnector.DATABASE, ClickHouseBase.database);
+            tmpChc = new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+                    .setDatabase(ClickHouseBase.database)
                     .setUsername(username)
                     .setPassword(password)
                     .sslEnable(sslEnabled)
                     .setTimeout(timeout)
                     .setRetry(csc.getRetry())
                     .build();
-                return chc;
             }
+
         chc = tmpChc;
         return chc;
     }
@@ -85,37 +113,81 @@ public class ClickHouseBase {
     }
     protected void createDatabase(String database, ClickHouseHelperClient chc) {
         String createDatabaseQuery = String.format("CREATE DATABASE IF NOT EXISTS `%s`", database);
-        System.out.println(createDatabaseQuery);
-        try (ClickHouseClient client = ClickHouseClient.newInstance(ClickHouseProtocol.HTTP);
-             ClickHouseResponse response = client.read(chc.getServer()) // or client.connect(endpoints)
-                     // you'll have to parse response manually if using a different format
-
-
-                     .query(createDatabaseQuery)
-                     .executeAndWait()) {
-            ClickHouseResponseSummary summary = response.getSummary();
-
-        } catch (ClickHouseException e) {
-            throw new RuntimeException(e);
+        if (chc.isUseClientV2()) {
+            chc.queryV2(createDatabaseQuery);
+        } else {
+            chc.queryV1(createDatabaseQuery);
         }
+    }
 
+    protected static void initialPing() {
+        ClickHouseSinkConfig csc = new ClickHouseSinkConfig(new ClickHouseBase().createProps());
+
+        String hostname = csc.getHostname();
+        int port = csc.getPort();
+        String username = csc.getUsername();
+        String password = csc.getPassword();
+        boolean sslEnabled = csc.isSslEnabled();
+        int timeout = csc.getTimeout();
+
+        ClickHouseHelperClient tmpChc = new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+                .setDatabase("default")
+                .setUsername(username)
+                .setPassword(password)
+                .sslEnable(sslEnabled)
+                .setTimeout(timeout)
+                .setRetry(csc.getRetry())
+                .build();
+
+        boolean ping;
+        int retry = 0;
+        do {
+            LOGGER.info("Pinging ClickHouse server to warm up for tests...");
+            ping = tmpChc.ping();
+            if (!ping) {
+                LOGGER.info("Unable to ping ClickHouse server, retrying... {}", retry);
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        } while (!ping && retry++ < 10);
+
+        if (!ping) {
+            throw new RuntimeException("Unable to ping ClickHouse server...");
+        }
+    }
+
+    protected static void dropDatabase(String database) {
+        ClickHouseSinkConfig csc = new ClickHouseSinkConfig(new ClickHouseBase().createProps());
+
+        String hostname = csc.getHostname();
+        int port = csc.getPort();
+        String username = csc.getUsername();
+        String password = csc.getPassword();
+        boolean sslEnabled = csc.isSslEnabled();
+        int timeout = csc.getTimeout();
+
+        ClickHouseHelperClient tmpChc = new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+                .setDatabase(database)
+                .setUsername(username)
+                .setPassword(password)
+                .sslEnable(sslEnabled)
+                .setTimeout(timeout)
+                .setRetry(csc.getRetry())
+                .build();
+
+        dropDatabase(database, tmpChc);
+    }
+    protected static void dropDatabase(String database, ClickHouseHelperClient chc) {
+        String dropDatabaseQuery = String.format("DROP DATABASE IF EXISTS `%s`", database);
+        chc.queryV2(dropDatabaseQuery);
     }
 
     protected void createTable(ClickHouseHelperClient chc, String topic, String createTableQuery) {
         String createTableQueryTmp = String.format(createTableQuery, topic);
-
-        try (ClickHouseClient client = ClickHouseClient.newInstance(ClickHouseProtocol.HTTP);
-             ClickHouseResponse response = client.read(chc.getServer()) // or client.connect(endpoints)
-                     // you'll have to parse response manually if using a different format
-
-
-                     .query(createTableQueryTmp)
-                     .executeAndWait()) {
-            ClickHouseResponseSummary summary = response.getSummary();
-
-        } catch (ClickHouseException e) {
-            throw new RuntimeException(e);
-        }
+        chc.queryV2(createTableQueryTmp);
 
     }
 
@@ -134,8 +206,11 @@ public class ClickHouseBase {
             throw new RuntimeException(e);
         }
     }
+
     protected Map<String,String> createProps() {
         Map<String, String> props = new HashMap<>();
+        String clientVersion = extractClientVersion();
+        props.put(ClickHouseSinkConnector.CLIENT_VERSION, clientVersion);
         if (isCloud) {
             props.put(ClickHouseSinkConnector.HOSTNAME, System.getenv("CLICKHOUSE_CLOUD_HOST"));
             props.put(ClickHouseSinkConnector.PORT, ClickHouseTestHelpers.HTTPS_PORT);
@@ -143,6 +218,7 @@ public class ClickHouseBase {
             props.put(ClickHouseSinkConnector.USERNAME, ClickHouseTestHelpers.USERNAME_DEFAULT);
             props.put(ClickHouseSinkConnector.PASSWORD, System.getenv("CLICKHOUSE_CLOUD_PASSWORD"));
             props.put(ClickHouseSinkConnector.SSL_ENABLED, "true");
+            props.put(String.valueOf(ClickHouseClientOption.CONNECTION_TIMEOUT), "60000");
             props.put("clickhouseSettings", "insert_quorum=3");
         } else {
             props.put(ClickHouseSinkConnector.HOSTNAME, db.getHost());

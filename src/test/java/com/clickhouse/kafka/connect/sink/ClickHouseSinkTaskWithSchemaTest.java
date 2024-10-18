@@ -1,25 +1,29 @@
 package com.clickhouse.kafka.connect.sink;
 
-import com.clickhouse.client.config.ClickHouseProxyType;
-import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.sink.helper.SchemaTestData;
+import com.clickhouse.kafka.connect.sink.junit.extension.SinceClickHouseVersion;
+import com.clickhouse.kafka.connect.sink.junit.extension.FromVersionConditionExtension;
 import com.clickhouse.kafka.connect.util.Utils;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.json.JSONObject;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.clickhouse.ClickHouseContainer;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils;
 
+import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(FromVersionConditionExtension.class)
 public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseSinkTaskWithSchemaTest.class);
     @Test
@@ -42,6 +46,7 @@ public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
         chst.stop();
 
         assertEquals(sr.size(), ClickHouseTestHelpers.countRows(chc, topic));
+        assertTrue(ClickHouseTestHelpers.validateRows(chc, topic, sr));
     }
 
     @Test
@@ -129,7 +134,8 @@ public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
         ClickHouseTestHelpers.dropTable(chc, topic + "mate");
         ClickHouseTestHelpers.dropTable(chc, topic);
         ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE %s ( `off16` Int16, `arr` Array(String), `arr_empty` Array(String), `arr_int8` Array(Int8), `arr_int16` Array(Int16), `arr_int32` Array(Int32), `arr_int64` Array(Int64), `arr_float32` Array(Float32), `arr_float64` Array(Float64), `arr_bool` Array(Bool)  ) Engine = MergeTree ORDER BY off16");
-        ClickHouseTestHelpers.createTable(chc, topic + "mate", "CREATE MATERIALIZED VIEW %s ( `off16` Int16 ) Engine = MergeTree ORDER BY `off16` POPULATE AS SELECT off16 FROM " + topic);
+        ClickHouseTestHelpers.createTable(chc, topic, "CREATE MATERIALIZED VIEW %s_mv TO " + topic + "_mate AS SELECT off16 FROM " + topic);
+        ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE %s_mate ( `off16` Int16 ) Engine = Null");
         Collection<SinkRecord> sr = SchemaTestData.createArrayType(topic, 1);
 
         ClickHouseSinkTask chst = new ClickHouseSinkTask();
@@ -263,6 +269,39 @@ public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
     }
 
 
+    @Test
+    public void supportFormattedDatesStringTest() {
+        Map<String, String> props = createProps();
+        props.put(ClickHouseSinkConfig.DATE_TIME_FORMAT, "format_date=yyyy-MM-dd HH:mm:ss.SSSSSSSSS");
+        ClickHouseHelperClient chc = createClient(props);
+
+        String topic = createTopicName("support-formatted-dates-string-test");
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE `%s` ( `off16` Int16, format_date DateTime64(9)) Engine = MergeTree ORDER BY off16");
+        Collection<SinkRecord> sr = SchemaTestData.createFormattedTimestampConversions(topic, 1);
+
+        ClickHouseSinkTask chst = new ClickHouseSinkTask();
+        chst.start(props);
+        chst.put(sr);
+        chst.stop();
+
+        assertEquals(sr.size(), ClickHouseTestHelpers.countRows(chc, topic));
+        List<JSONObject> results = ClickHouseTestHelpers.getAllRowsAsJson(chc, topic);
+        AtomicBoolean found = new AtomicBoolean(false);
+        AtomicInteger count = new AtomicInteger(0);
+        sr.forEach(sinkRecord -> {
+            JSONObject row = results.get(0);
+            if (sinkRecord.value().toString().contains(row.get("format_date").toString())) {
+                found.set(true);
+                count.incrementAndGet();
+            }
+        });
+
+        assertTrue(found.get());
+        assertEquals(1, count.get());
+    }
+
+
 
     @Test
     public void withEmptyDataRecordsTest() {
@@ -333,6 +372,26 @@ public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
 
         assertEquals(sr.size(), ClickHouseTestHelpers.countRows(chc, topic));
     }
+
+
+    @Test
+    public void schemaWithEphemeralTest() {
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+
+        String topic = createTopicName("default-value-table-test");
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE `%s` ( `off16` Int16, default_value_data DateTime DEFAULT now(), ephemeral_data String EPHEMERAL ) Engine = MergeTree ORDER BY off16");
+        Collection<SinkRecord> sr = SchemaTestData.createNullValueData(topic, 1);
+
+        ClickHouseSinkTask chst = new ClickHouseSinkTask();
+        chst.start(props);
+        chst.put(sr);
+        chst.stop();
+
+        assertEquals(sr.size(), ClickHouseTestHelpers.countRows(chc, topic));
+    }
+
 
     @Test
     public void schemaWithDefaultsAndNullableTest() {
@@ -462,6 +521,156 @@ public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
         ClickHouseTestHelpers.dropTable(chc, topic);
         ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE `%s` (`off16` Int16, `enum8_type` Enum8('A' = 1, 'B' = 2, 'C' = 3), `enum16_type` Enum16('A' = 1, 'B' = 2, 'C' = 3, 'D' = 4)) Engine = MergeTree ORDER BY off16");
         Collection<SinkRecord> sr = SchemaTestData.createEnumValueData(topic, 1);
+        ClickHouseSinkTask chst = new ClickHouseSinkTask();
+        chst.start(props);
+        chst.put(sr);
+        chst.stop();
+        assertEquals(sr.size(), ClickHouseTestHelpers.countRows(chc, topic));
+    }
+
+    @Test
+    @SinceClickHouseVersion("24.1")
+    public void schemaWithTupleOfMapsWithVariantTest() {
+        Assumptions.assumeFalse(isCloud, "Skip test since experimental is not available in cloud");
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        String topic = "tuple-array-map-variant-table-test";
+        ClickHouseTestHelpers.dropTable(chc, topic);
+
+        String simpleTuple = "Tuple(" +
+                "    `variant_with_string` Variant(Double, String)," +
+                "    `variant_with_double` Variant(Double, String)," +
+                "    `variant_array` Array(Variant(Double, String))," +
+                "    `variant_map` Map(String, Variant(Double, String))" +
+                "  )";
+
+        ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE `%s` (" +
+                "`off16` Int16," +
+                "`tuple` Tuple(" +
+                "  `array` Array(String)," +
+                "  `map` Map(String, String)," +
+                "  `array_array` Array(Array(String))," +
+                "  `map_map` Map(String, Map(String, Int64))," +
+                "  `array_map` Array(Map(String, String))," +
+                "  `map_array` Map(String, Array(String))," +
+                "  `array_array_array` Array(Array(Array(String)))," +
+                "  `map_map_map` Map(String, Map(String, Map(String, String)))," +
+                "  `tuple` " + simpleTuple + "," +
+                "  `array_tuple` Array(" + simpleTuple + ")," +
+                "  `map_tuple` Map(String, " + simpleTuple + ")," +
+                "  `array_array_tuple` Array(Array(" + simpleTuple + "))," +
+                "  `map_map_tuple` Map(String, Map(String, " + simpleTuple + "))," +
+                "  `array_map_tuple` Array(Map(String, " + simpleTuple + "))," +
+                "  `map_array_tuple` Map(String, Array(" + simpleTuple + "))" +
+                ")) Engine = MergeTree ORDER BY `off16`",
+                Map.of(
+                        "allow_experimental_variant_type", 1
+                ));
+        Collection<SinkRecord> sr = SchemaTestData.createTupleType(topic, 1, 5);
+
+        ClickHouseSinkTask chst = new ClickHouseSinkTask();
+        chst.start(props);
+        chst.put(sr);
+        chst.stop();
+
+        assertEquals(sr.size(), ClickHouseTestHelpers.countRows(chc, topic));
+
+        List<JSONObject> allRows = ClickHouseTestHelpers.getAllRowsAsJson(chc, topic);
+        for (int i = 0; i < sr.size(); i++) {
+            JSONObject row = allRows.get(i);
+
+            assertEquals(i, row.getInt("off16"));
+            JSONObject tuple = row.getJSONObject("tuple");
+            JSONObject nestedTuple = tuple.getJSONObject("tuple");
+            assertEquals(1 / (double) 3, nestedTuple.getDouble("variant_with_double"));
+        }
+    }
+
+    @Test
+    @SinceClickHouseVersion("24.1")
+    public void schemaWithNestedTupleMapArrayAndVariant() {
+        Assumptions.assumeFalse(isCloud, "Skip test since experimental is not available in cloud");
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        String topic = "nested-tuple-map-array-and-variant-table-test";
+        ClickHouseTestHelpers.dropTable(chc, topic);
+
+        ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE `%s` (" +
+                "`off16` Int16," +
+                "`nested` Nested(" +
+                "  `string` String," +
+                "  `decimal` Decimal(14, 2)," +
+                "  `tuple` Tuple(" +
+                "    `map` Map(String, String)," +
+                "    `variant` Variant(Boolean, String)" +
+                "))) Engine = MergeTree ORDER BY `off16`",
+                Map.of(
+                        "allow_experimental_variant_type", 1
+                ));
+        Collection<SinkRecord> sr = SchemaTestData.createNestedType(topic, 1);
+
+        ClickHouseSinkTask chst = new ClickHouseSinkTask();
+        chst.start(props);
+        chst.put(sr);
+        chst.stop();
+
+        assertEquals(sr.size(), ClickHouseTestHelpers.countRows(chc, topic));
+
+        List<JSONObject> allRows = ClickHouseTestHelpers.getAllRowsAsJson(chc, topic);
+        for (int i = 0; i < allRows.size(); i++) {
+            JSONObject row = allRows.get(i);
+
+            assertEquals(i, row.getInt("off16"));
+
+            String expectedString = String.format("v%d", i);
+
+            int expectedNestedSize = i % 4;
+            assertEquals(expectedNestedSize, row.getJSONArray("nested.string").length());
+            assertEquals(expectedNestedSize, row.getJSONArray("nested.decimal").length());
+            assertEquals(expectedNestedSize, row.getJSONArray("nested.tuple").length());
+
+            BigDecimal expectedDecimal = new BigDecimal(String.format("%d.%d", i, 2));
+
+            assertEquals(
+                    expectedDecimal.multiply(new BigDecimal(expectedNestedSize)).doubleValue(),
+                    row.getJSONArray("nested.decimal").toList().stream()
+                            .map(object -> (BigDecimal) object)
+                            .reduce(BigDecimal::add)
+                            .orElseGet(() -> new BigDecimal(0)).doubleValue()
+            );
+
+            final int n = i;
+            row.getJSONArray("nested.tuple").toList().forEach(object -> {
+                Map<?, ?> tuple = (Map<?, ?>) object;
+                if (n % 2 == 0) {
+                    assertEquals(n % 8 >= 4, tuple.get("variant"));
+                } else {
+                    assertEquals(expectedString, tuple.get("variant"));
+                }
+            });
+
+            row.getJSONArray("nested.string").toList().forEach(object ->
+                    assertEquals(expectedString, object)
+            );
+        }
+    }
+
+    @Test
+    public void unsignedIntegers() {
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+
+        String topic = createTopicName("unsigned-integers-table-test");
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        ClickHouseTestHelpers.createTable(chc, topic, "CREATE TABLE `%s` (" +
+                "`off16` Int16," +
+                "`uint8` UInt8," +
+                "`uint16` UInt16," +
+                "`uint32` UInt32," +
+                "`uint64` UInt64" +
+                ") Engine = MergeTree ORDER BY `off16`");
+        Collection<SinkRecord> sr = SchemaTestData.createUnsignedIntegers(topic, 1);
+
         ClickHouseSinkTask chst = new ClickHouseSinkTask();
         chst.start(props);
         chst.put(sr);

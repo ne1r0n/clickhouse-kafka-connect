@@ -1,17 +1,22 @@
 package com.clickhouse.kafka.connect.sink;
 
 import com.clickhouse.client.config.ClickHouseProxyType;
+import lombok.Getter;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.clickhouse.kafka.connect.ClickHouseSinkConnector.CLIENT_VERSION;
+
+@Getter
 public class ClickHouseSinkConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseSinkConfig.class);
 
@@ -40,6 +45,10 @@ public class ClickHouseSinkConfig {
     public static final String ZK_DATABASE = "zkDatabase";
     public static final String ENABLE_DB_TOPIC_SPLIT = "enableDbTopicSplit";
     public static final String DB_TOPIC_SPLIT_CHAR = "dbTopicSplitChar";
+    public static final String KEEPER_ON_CLUSTER = "keeperOnCluster";
+    public static final String DATE_TIME_FORMAT = "dateTimeFormats";
+    public static final String TOLERATE_STATE_MISMATCH = "tolerateStateMismatch";
+
     public static final int MILLI_IN_A_SEC = 1000;
     private static final String databaseDefault = "default";
     public static final int portDefault = 8443;
@@ -72,7 +81,6 @@ public class ClickHouseSinkConfig {
     private final long tableRefreshInterval;
     private final boolean suppressTableExistenceException;
     private final boolean errorsTolerance;
-
     private final Map<String, String> clickhouseSettings;
     private final Map<String, String> topicToTableMap;
     private final ClickHouseProxyType proxyType;
@@ -82,6 +90,10 @@ public class ClickHouseSinkConfig {
     private final String zkDatabase;
     private final boolean enableDbTopicSplit;
     private final String dbTopicSplitChar;
+    private final String keeperOnCluster;
+    private final Map<String, DateTimeFormatter> dateTimeFormats;
+    private final String clientVersion;
+    private final boolean tolerateStateMismatch;
 
     public enum InsertFormats {
         NONE,
@@ -89,6 +101,8 @@ public class ClickHouseSinkConfig {
         TSV,
         JSON
     }
+
+    private boolean bypassRowBinary = false;
 
     private InsertFormats insertFormat = InsertFormats.NONE;
     public static class UTF8String implements ConfigDef.Validator {
@@ -237,6 +251,21 @@ public class ClickHouseSinkConfig {
         this.zkDatabase = props.getOrDefault(ZK_DATABASE, "connect_state");
         this.enableDbTopicSplit = Boolean.parseBoolean(props.getOrDefault(ENABLE_DB_TOPIC_SPLIT, "false"));
         this.dbTopicSplitChar = props.getOrDefault(DB_TOPIC_SPLIT_CHAR, "");
+        this.keeperOnCluster = props.getOrDefault(KEEPER_ON_CLUSTER, "");
+        this.bypassRowBinary = Boolean.parseBoolean(props.getOrDefault("bypassRowBinary", "false"));
+        this.dateTimeFormats = new HashMap<>();
+        String dateTimeFormatsString = props.getOrDefault(DATE_TIME_FORMAT, "").trim();
+        if (!dateTimeFormatsString.isBlank()) {
+            String [] stringSplit = dateTimeFormatsString.split(";");
+            for (String topicToDateTimeFormat: stringSplit) {
+                String [] propSplit = topicToDateTimeFormat.trim().split("=");
+                if ( propSplit.length == 2 ) {
+                    dateTimeFormats.put(propSplit[0].trim(), DateTimeFormatter.ofPattern(propSplit[1].trim()));
+                }
+            }
+        }
+        this.clientVersion = props.getOrDefault(CLIENT_VERSION, "V1");
+        this.tolerateStateMismatch = Boolean.parseBoolean(props.getOrDefault(TOLERATE_STATE_MISMATCH, "false"));
 
         LOGGER.debug("ClickHouseSinkConfig: hostname: {}, port: {}, database: {}, username: {}, sslEnabled: {}, timeout: {}, retry: {}, exactlyOnce: {}",
                 hostname, port, database, username, sslEnabled, timeout, retry, exactlyOnce);
@@ -494,65 +523,54 @@ public class ClickHouseSinkConfig {
                 "Database topic split character",
                 new DbTopicSplitCharValidatorAndRecommender()
         );
+        configDef.define(KEEPER_ON_CLUSTER,
+                ConfigDef.Type.STRING,
+                "",
+                ConfigDef.Importance.LOW,
+                "Which cluster keeper is on. Only needed for self-hosted clusters using exactly-once. Default: ''",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.SHORT,
+                "Keeper on cluster"
+        );
+        configDef.define("bypassRowBinary",
+                ConfigDef.Type.BOOLEAN,
+                false,
+                ConfigDef.Importance.LOW,
+                "Bypass RowBinary format, sometimes needed with data gaps. default: false",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.SHORT,
+                "Bypass RowBinary format.");
+        configDef.define(DATE_TIME_FORMAT,
+                ConfigDef.Type.LIST,
+                "",
+                ConfigDef.Importance.LOW,
+                "Date time formats for parsing date time fields (e.g. 'someDateField=yyyy-MM-dd HH:mm:ss.SSSSSSSSS'). default: ''",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.SHORT,
+                "Date time formats.");
+        configDef.define(CLIENT_VERSION,
+                ConfigDef.Type.STRING,
+                "",
+                ConfigDef.Importance.LOW,
+                "Client version",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.SHORT,
+                "Client version"
+        );
+        configDef.define(TOLERATE_STATE_MISMATCH,
+                ConfigDef.Type.BOOLEAN,
+                false,
+                ConfigDef.Importance.LOW,
+                "Tolerate state mismatch. default: false",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.SHORT,
+                "Tolerate state mismatch."
+        );
         return configDef;
     }
-
-    public String getHostname() {
-        return hostname;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public String getDatabase() {
-        return database;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public boolean isSslEnabled() {
-        return sslEnabled;
-    }
-    public String getJdbcConnectionProperties() {
-        return jdbcConnectionProperties;
-    }
-    public int getTimeout() {
-        return timeout;
-    }
-    public int getRetry() { return retry; }
-    public long getTableRefreshInterval() { 
-        return tableRefreshInterval;
-    }
-    public boolean getExactlyOnce() { return exactlyOnce; }
-    public boolean getSuppressTableExistenceException() {
-        return suppressTableExistenceException;
-    }
-    public Map<String, String> getClickhouseSettings() {return clickhouseSettings;}
-    public Map<String, String> getTopicToTableMap() {return topicToTableMap;}
-    public boolean getErrorsTolerance() { return errorsTolerance; }
-    public InsertFormats getInsertFormat() { return insertFormat; }
-    public ClickHouseProxyType getProxyType() {
-        return proxyType;
-    }
-    public String getProxyHost() {
-        return proxyHost;
-    }
-    public int getProxyPort() {
-        return proxyPort;
-    }
-    public String getZkPath() {
-        return zkPath;
-    }
-    public String getZkDatabase() {
-        return zkDatabase;
-    }
-    public boolean getEnableDbTopicSplit() { return enableDbTopicSplit; }
-    public String getDbTopicSplitChar() { return dbTopicSplitChar; }
 }

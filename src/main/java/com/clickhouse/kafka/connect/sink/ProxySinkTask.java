@@ -40,8 +40,8 @@ public class ProxySinkTask {
 
     public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter) {
         this.clickHouseSinkConfig = clickHouseSinkConfig;
-        LOGGER.info("Enable ExactlyOnce? {}", clickHouseSinkConfig.getExactlyOnce());
-        if ( clickHouseSinkConfig.getExactlyOnce() ) {
+        LOGGER.info("Enable ExactlyOnce? {}", clickHouseSinkConfig.isExactlyOnce());
+        if ( clickHouseSinkConfig.isExactlyOnce() ) {
             this.stateProvider = new KeeperStateProvider(clickHouseSinkConfig);
         } else {
             this.stateProvider = new InMemoryState();
@@ -52,7 +52,7 @@ public class ProxySinkTask {
 
         // Add table mapping refresher
         if (clickHouseSinkConfig.getTableRefreshInterval() > 0) {
-            TableMappingRefresher tableMappingRefresher = new TableMappingRefresher(chWriter);
+            TableMappingRefresher tableMappingRefresher = new TableMappingRefresher(clickHouseSinkConfig.getDatabase(), chWriter);
             Timer tableRefreshTimer = new Timer();
             tableRefreshTimer.schedule(tableMappingRefresher, clickHouseSinkConfig.getTableRefreshInterval(), clickHouseSinkConfig.getTableRefreshInterval());
         }
@@ -61,7 +61,7 @@ public class ProxySinkTask {
         boolean isStarted = dbWriter.start(clickHouseSinkConfig);
         if (!isStarted)
             throw new RuntimeException("Connection to ClickHouse is not active.");
-        processing = new Processing(stateProvider, dbWriter, errorReporter);
+        processing = new Processing(stateProvider, dbWriter, errorReporter, clickHouseSinkConfig);
 
         this.statistics = MBeanServerUtils.registerMBean(new SinkTaskStatistics(), getMBeanNAme());
     }
@@ -87,7 +87,7 @@ public class ProxySinkTask {
 
         Map<String, List<Record>> dataRecords = records.stream()
                 .map(v -> Record.convert(v,
-                        clickHouseSinkConfig.getEnableDbTopicSplit(),
+                        clickHouseSinkConfig.isEnableDbTopicSplit(),
                         clickHouseSinkConfig.getDbTopicSplitChar(),
                         clickHouseSinkConfig.getDatabase() ))
                 .collect(Collectors.groupingBy(Record::getTopicAndPartition));
