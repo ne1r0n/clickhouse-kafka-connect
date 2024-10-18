@@ -47,14 +47,16 @@ public class ClickHouseSinkTask extends SinkTask {
     @Override
     public void start(Map<String, String> props) {
         LOGGER.info("Start SinkTask: ");
+        String connectorName;
         try {
             clickHouseSinkConfig = new ClickHouseSinkConfig(props);
             errorReporter = createErrorReporter();
+            connectorName = props.get("name");
         } catch (Exception e) {
             throw new ConnectException("Failed to start new task" , e);
         }
 
-        this.proxySinkTask = new ProxySinkTask(clickHouseSinkConfig, errorReporter);
+        this.proxySinkTask = new ProxySinkTask(clickHouseSinkConfig, errorReporter, connectorName);
     }
 
 

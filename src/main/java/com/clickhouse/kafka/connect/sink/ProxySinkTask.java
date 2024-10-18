@@ -33,12 +33,14 @@ public class ProxySinkTask {
     private StateProvider stateProvider = null;
     private DBWriter dbWriter = null;
     private ClickHouseSinkConfig clickHouseSinkConfig = null;
+    private final String connectorName;
 
 
     private final SinkTaskStatistics statistics;
     private int id = NEXT_ID.getAndAdd(1);
 
-    public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter) {
+    public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final String connectorName) {
+        this.connectorName = connectorName;
         this.clickHouseSinkConfig = clickHouseSinkConfig;
         LOGGER.info("Enable ExactlyOnce? {}", clickHouseSinkConfig.isExactlyOnce());
         if ( clickHouseSinkConfig.isExactlyOnce() ) {
@@ -67,7 +69,7 @@ public class ProxySinkTask {
     }
 
     private String getMBeanNAme() {
-        return "com.clickhouse:type=ClickHouseKafkaConnector,name=SinkTask" + id;
+        return "com.clickhouse:type=ClickHouseKafkaConnector,connector=" + connectorName + ",name=SinkTask" + id;
     }
 
     public void stop() {
