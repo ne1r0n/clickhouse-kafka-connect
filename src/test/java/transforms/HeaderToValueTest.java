@@ -21,20 +21,21 @@ public class HeaderToValueTest {
     public void applySchemalessTest() {
         try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
             Map<String, Object> configs = new HashMap<>();
-            configs.put("field", "_header");
-            configs.put("skip.missing.or.null", false);
-            configs.put("header", "headerKey");
+            configs.put("fields", "field1,field2");
+            configs.put("headers", "headerKey1,headerKey2");
             headerToValue.configure(configs);
 
             ConnectHeaders headers = new ConnectHeaders();
-            headers.add("headerKey", "headerValue", null);
-            headers.add("anotherHeaderKey", "anotherHeaderValue", null);
+            headers.add("headerKey1", "headerValue1", null);
+            headers.add("headerKey2", "headerValue2", null);
 
             SinkRecord record = new SinkRecord(UUID.randomUUID().toString(), 0, null, null, null, new HashMap<>(), 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, headers);
             SinkRecord newRecord = headerToValue.apply(record);
 
-            Assertions.assertTrue(newRecord.value() instanceof Map && ((Map) newRecord.value()).containsKey("_header"));
-            Assertions.assertEquals("headerValue", ((Map) newRecord.value()).get("_header"));
+            Assertions.assertInstanceOf(Map.class, newRecord.value());
+            Map<String, Object> value = (Map<String, Object>) newRecord.value();
+            Assertions.assertEquals("headerValue1", value.get("field1"));
+            Assertions.assertEquals("headerValue2", value.get("field2"));
         }
     }
 
@@ -42,20 +43,21 @@ public class HeaderToValueTest {
     public void applyWithSchemaTest() {
         try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
             Map<String, Object> configs = new HashMap<>();
-            configs.put("field", "_header");
-            configs.put("skip.missing.or.null", false);
-            configs.put("header", "headerKey");
+            configs.put("fields", "field1,field2");
+            configs.put("headers", "headerKey1,headerKey2");
             headerToValue.configure(configs);
 
             ConnectHeaders headers = new ConnectHeaders();
-            headers.add("headerKey", "headerValue", null);
+            headers.add("headerKey1", "headerValue1", null);
+            headers.add("headerKey2", "headerValue2", null);
 
             SinkRecord record = generateSampleRecord(UUID.randomUUID().toString(), 0, 0, headers);
             SinkRecord newRecord = headerToValue.apply(record);
 
             Assertions.assertInstanceOf(Struct.class, newRecord.value());
             Struct newValue = (Struct) newRecord.value();
-            Assertions.assertEquals("headerValue", newValue.get("_header"));
+            Assertions.assertEquals("headerValue1", newValue.get("field1"));
+            Assertions.assertEquals("headerValue2", newValue.get("field2"));
         }
     }
 

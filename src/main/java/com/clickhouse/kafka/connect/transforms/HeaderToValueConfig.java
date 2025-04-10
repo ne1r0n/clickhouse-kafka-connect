@@ -3,17 +3,16 @@ package com.clickhouse.kafka.connect.transforms;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 class HeaderToValueConfig extends AbstractConfig {
-    public static final String FIELD_NAME_CONFIG = "field";
-    private static final String FIELD_NAME_DOC = "Field name on the record value to extract the header into.";
+    public static final String FIELDS_CONFIG = "fields";
+    private static final String FIELDS_DOC = "A comma-separated list of field names that the transform moves or copies to the record value.";
 
-    public static final String SKIP_MISSING_OR_NULL_CONFIG = "skip.missing.or.null";
-    private static final String SKIP_MISSING_OR_NULL_DOC = "In case the header is null or missing, should a record be silently passed without transformation.";
-
-    public static final String HEADER_NAME_CONFIG = "header";
-    private static final String HEADER_NAME_DOC = "Header name to extract value from.";
+    public static final String HEADERS_CONFIG = "headers";
+    private static final String HEADERS_DOC = "A comma-separated list of header names. The number of headers listed must be the same as the number of fields listed. The headers listed must be in the same order as the fields listed.";
 
     HeaderToValueConfig(final Map<?, ?> originals) {
         super(config(), originals);
@@ -21,20 +20,15 @@ class HeaderToValueConfig extends AbstractConfig {
 
     static ConfigDef config() {
         return new ConfigDef()
-                .define(FIELD_NAME_CONFIG, ConfigDef.Type.STRING, "_header", ConfigDef.Importance.LOW, FIELD_NAME_DOC)
-                .define(SKIP_MISSING_OR_NULL_CONFIG, ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.LOW, SKIP_MISSING_OR_NULL_DOC)
-                .define(HEADER_NAME_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, HEADER_NAME_DOC);
+                .define(FIELDS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH, FIELDS_DOC)
+                .define(HEADERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH, HEADERS_DOC);
     }
 
-    String fieldName() {
-        return getString(FIELD_NAME_CONFIG);
+    List<String> fields() {
+        return getList(FIELDS_CONFIG);
     }
 
-    boolean skipMissingOrNull() {
-        return getBoolean(SKIP_MISSING_OR_NULL_CONFIG);
-    }
-
-    String headerName() {
-        return getString(HEADER_NAME_CONFIG);
+    List<String> headers() {
+        return getList(HEADERS_CONFIG);
     }
 }

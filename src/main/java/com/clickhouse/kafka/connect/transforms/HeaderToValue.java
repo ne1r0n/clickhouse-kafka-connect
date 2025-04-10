@@ -11,6 +11,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 
 public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation<R> {
@@ -26,46 +27,50 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
     @Override
     public R apply(R record) {
-        Header header = record.headers().lastWithName(config.headerName());
+        List<String> fields = config.fields();
+        List<String> headers = config.headers();
 
-        if (header == null || header.value() == null) {
-            if (config.skipMissingOrNull()) {
-                return record;
-            } else {
-                throw new IllegalArgumentException("Header value is missing or null and skip.missing.or.null is false.");
-            }
+        if (fields.size() != headers.size()) {
+            throw new IllegalArgumentException("The number of fields must match the number of headers.");
         }
 
-        String headerStringValue = (String) header.value();
-
         if (record.valueSchema() == null) {
-            return applySchemaless(record, headerStringValue);
+            return applySchemaless(record, fields, headers);
         } else {
-            return applyWithSchema(record, headerStringValue);
+            return applyWithSchema(record, fields, headers);
         }
     }
 
-    private R applySchemaless(R record, String headerStringValue) {
+    private R applySchemaless(R record, List<String> fields, List<String> headers) {
         if (!(record.value() instanceof Map)) {
             throw new IllegalArgumentException("Schemaless record value must be a Map - make sure you're using the JSON Converter for value.");
         }
 
         final Map<String, Object> value = (Map<String, Object>) record.value();
-        value.put(config.fieldName(), headerStringValue);
+        for (int i = 0; i < headers.size(); i++) {
+            Header header = record.headers().lastWithName(headers.get(i));
+            if (header != null && header.value() != null) {
+                value.put(fields.get(i), header.value().toString());
+            }
+        }
         return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), value, record.timestamp());
     }
 
-    private R applyWithSchema(R record, String headerStringValue) {
+    private R applyWithSchema(R record, List<String> fields, List<String> headers) {
         final Struct oldValue = (Struct) record.value();
 
         if (valueSchema == null) {
-            valueSchema = buildSchema(oldValue.schema());
+            valueSchema = buildSchema(oldValue.schema(), fields);
         }
 
         Struct newValue = new Struct(valueSchema);
         for (Field field : valueSchema.fields()) {
-            if (field.name().equals(config.fieldName())) {
-                newValue.put(field, headerStringValue);
+            if (fields.contains(field.name())) {
+                int index = fields.indexOf(field.name());
+                Header header = record.headers().lastWithName(headers.get(index));
+                if (header != null && header.value() != null) {
+                    newValue.put(field, header.value().toString());
+                }
             } else {
                 newValue.put(field, oldValue.get(field));
             }
@@ -73,7 +78,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), valueSchema, newValue, record.timestamp());
     }
 
-    private Schema buildSchema(Schema oldSchema) {
+    private Schema buildSchema(Schema oldSchema, List<String> fields) {
         SchemaBuilder builder = SchemaBuilder.struct();
         builder.name(oldSchema.name());
         builder.version(oldSchema.version());
@@ -81,7 +86,9 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         for (Field field : oldSchema.fields()) {
             builder.field(field.name(), field.schema());
         }
-        builder.field(config.fieldName(), Schema.STRING_SCHEMA);
+        for (String field : fields) {
+            builder.field(field, Schema.STRING_SCHEMA);
+        }
         return builder.build();
     }
 
