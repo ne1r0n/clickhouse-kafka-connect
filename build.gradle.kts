@@ -7,9 +7,9 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 val defaultJdkVersion = 17
 java {
@@ -22,6 +22,7 @@ java {
 buildscript {
     repositories {
         mavenCentral()
+        maven{ url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
     }
 }
 
@@ -31,7 +32,7 @@ plugins {
     `maven-publish`
     signing
    // checkstyle
-    id("com.github.gmazzo.buildconfig") version "5.4.0"
+    id("com.github.gmazzo.buildconfig") version "5.5.0"
     id("com.diffplug.spotless") version "6.25.0"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
@@ -47,9 +48,8 @@ repositories {
 }
 
 extra.apply {
-    set("clickHouseDriverVersion", "0.6.3")
+    set("clickHouseDriverVersion", "0.8.0")
     set("kafkaVersion", "2.7.0")
-    set("avroVersion", "1.9.2")
 
     // Testing dependencies
     set("junitJupiterVersion", "5.9.2")
@@ -72,13 +72,9 @@ dependencies {
     implementation("com.clickhouse:clickhouse-http-client:${project.extra["clickHouseDriverVersion"]}")
     implementation("com.clickhouse:clickhouse-data:${project.extra["clickHouseDriverVersion"]}")
     implementation("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
-    implementation("io.lettuce:lettuce-core:6.4.0.RELEASE")
     implementation("com.google.code.gson:gson:2.11.0")
     // https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5
-    implementation("org.apache.httpcomponents.client5:httpclient5:5.3.1")
-    // https://mvnrepository.com/artifact/com.google.guava/guava
-    implementation("com.google.guava:guava:33.3.0-jre")
-
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.4.2")
 
     // Avoid telescoping constructors problem with the builder pattern using Lombok
     compileOnly("org.projectlombok:lombok:1.18.34")
@@ -86,28 +82,27 @@ dependencies {
 
     // To parse JSON response from ClickHouse to parse complex data types correctly
     implementation("com.fasterxml.jackson.core:jackson-core:2.17.2")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
-    implementation("com.fasterxml.jackson.core:jackson-annotations:2.17.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.18.2")
 
 
     // TODO: need to remove ???
     implementation("org.slf4j:slf4j-reload4j:2.0.13")
-    implementation("org.junit.jupiter:junit-jupiter-api:5.11.0")
-    implementation("org.testcontainers:testcontainers:1.20.1")
-    implementation("org.testcontainers:toxiproxy:1.20.1")
+    implementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    implementation("org.testcontainers:testcontainers:1.20.4")
+    implementation("org.testcontainers:toxiproxy:1.20.4")
 
     /*
         Will in side the Confluent Archive
      */
-    clickhouseDependencies("org.apache.httpcomponents.client5:httpclient5:5.3.1")
-    clickhouseDependencies("io.lettuce:lettuce-core:6.4.0.RELEASE")
+    clickhouseDependencies("org.apache.httpcomponents.client5:httpclient5:5.4.2")
     clickhouseDependencies("com.clickhouse:clickhouse-client:${project.extra["clickHouseDriverVersion"]}")
     clickhouseDependencies("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
     clickhouseDependencies("com.clickhouse:clickhouse-http-client:${project.extra["clickHouseDriverVersion"]}")
     clickhouseDependencies("com.google.code.gson:gson:2.11.0")
     clickhouseDependencies("com.fasterxml.jackson.core:jackson-core:2.17.2")
-    clickhouseDependencies("com.fasterxml.jackson.core:jackson-databind:2.17.2")
-    clickhouseDependencies("com.fasterxml.jackson.core:jackson-annotations:2.17.1")
+    clickhouseDependencies("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+    clickhouseDependencies("com.fasterxml.jackson.core:jackson-annotations:2.18.2")
 
     // Unit Tests
     testImplementation(platform("org.junit:junit-bom:${project.extra["junitJupiterVersion"]}"))
@@ -118,12 +113,12 @@ dependencies {
     testImplementation("org.mockito:mockito-junit-jupiter:${project.extra["mockitoVersion"]}")
 
     // IntegrationTests
-    testImplementation("org.testcontainers:clickhouse:1.20.1")
-    testImplementation("org.testcontainers:kafka:1.20.1")
+    testImplementation("org.testcontainers:clickhouse:1.20.3")
+    testImplementation("org.testcontainers:kafka:1.20.4")
     testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("org.json:json:20240303")
-    testImplementation("org.testcontainers:toxiproxy:1.20.1")
-    testImplementation("org.apache.httpcomponents.client5:httpclient5:5.3.1")
+    testImplementation("org.testcontainers:toxiproxy:1.20.4")
+    testImplementation("org.apache.httpcomponents.client5:httpclient5:5.4.2")
     testImplementation("com.clickhouse:clickhouse-jdbc:${project.extra["clickHouseDriverVersion"]}:all")
     testImplementation("com.clickhouse:clickhouse-client:${project.extra["clickHouseDriverVersion"]}")
     testImplementation("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
@@ -148,6 +143,9 @@ tasks.create("integrationTest", Test::class.java) {
     systemProperties = System.getProperties() as Map<String, Any>
 }
 
+tasks.withType<JavaCompile> {
+    options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
+}
 
 tasks.withType<Test> {
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).takeIf { it > 0 } ?: 1

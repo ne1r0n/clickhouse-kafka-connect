@@ -1,7 +1,15 @@
 package com.clickhouse.kafka.connect.sink.db;
 
-import com.clickhouse.client.*;
+import com.clickhouse.client.ClickHouseClient;
+import com.clickhouse.client.ClickHouseConfig;
+import com.clickhouse.client.ClickHouseNode;
+import com.clickhouse.client.ClickHouseNodeSelector;
+import com.clickhouse.client.ClickHouseProtocol;
+import com.clickhouse.client.ClickHouseRequest;
+import com.clickhouse.client.ClickHouseResponse;
+import com.clickhouse.client.ClickHouseResponseSummary;
 import com.clickhouse.client.api.Client;
+import com.clickhouse.client.api.ServerException;
 import com.clickhouse.client.api.insert.InsertResponse;
 import com.clickhouse.client.api.insert.InsertSettings;
 import com.clickhouse.client.config.ClickHouseClientOption;
@@ -18,39 +26,40 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
-
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.Utils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.common.collect.Streams;
-import reactor.util.function.Tuples;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class ClickHouseWriter implements DBWriter {
@@ -149,7 +158,6 @@ public class ClickHouseWriter implements DBWriter {
                 return;
             }
 
-
             // Adding new tables to mapping, or update existing tables
             // TODO: check Kafka Connect's topics name or topics regex config and
             // only add tables to in-memory mapping that matches the topics we consume.
@@ -193,7 +201,7 @@ public class ClickHouseWriter implements DBWriter {
                 if (csc.isBypassRowBinary()) {
                     doInsertJson(records, table, queryId);
                 } else {
-                    doInsertRawBinary(records, table, queryId, table.hasDefaults());
+                    doInsertRawBinary(records, table, queryId, table.hasDefaults(), true);
                 }
                 break;
             case SCHEMA_LESS:
@@ -244,16 +252,10 @@ public class ClickHouseWriter implements DBWriter {
                                 if (colTypeName.equals("TUPLE") && dataTypeName.equals("STRUCT"))
                                     continue;
 
-                                if (colTypeName.equalsIgnoreCase("UINT8") && dataTypeName.equals("INT8"))
-                                    continue;
-
-                                if (colTypeName.equalsIgnoreCase("UINT16") && dataTypeName.equals("INT16"))
-                                    continue;
-
-                                if (colTypeName.equalsIgnoreCase("UINT32") && dataTypeName.equals("INT32"))
-                                    continue;
-
-                                if (colTypeName.equalsIgnoreCase("UINT64") && dataTypeName.equals("INT64"))
+                                if (colTypeName.equalsIgnoreCase("UINT8")
+                                        || colTypeName.equalsIgnoreCase("UINT16")
+                                        || colTypeName.equalsIgnoreCase("UINT32")
+                                        || colTypeName.equalsIgnoreCase("UINT64"))
                                     continue;
 
                                 if (("DECIMAL".equalsIgnoreCase(colTypeName) && objSchema.name().equals("org.apache.kafka.connect.data.Decimal")))
@@ -476,7 +478,8 @@ public class ClickHouseWriter implements DBWriter {
                     String fieldName = colNameSplit.length > 0 ? colNameSplit[colNameSplit.length - 1] : column.getName();
                     Data innerData = (Data) jsonMapValues.get(fieldName);
                     try {
-                        doWriteColValue(column, stream, innerData, defaultsSupport);
+                        // we need to apply here the default and nullable logic
+                        doWriteCol(innerData, jsonMapValues.containsKey(fieldName), column, stream, false);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -618,15 +621,24 @@ public class ClickHouseWriter implements DBWriter {
         }
     }
 
-
-    protected void doWriteCol(Record record, Column col, OutputStream stream, boolean defaultsSupport) throws IOException {
+    /**
+     * Write records to ClickHouse using RowBinary/RowBinaryWithDefaults format.
+     *
+     * Note: RowBinaryWithDefaults writes an extra byte 01 to indicate default, and 00
+     * to indicate actual value. But that only applies to top level columns.
+     * @param value The data to write
+     * @param fieldExists Indecate if the field exists
+     * @param col Internal Column object (represent type and name of the column)
+     * @param stream Stream to write the data
+     * @param defaultsSupport Indicate if the defaults values in fields at the level
+     * @throws IOException
+     */
+    protected void doWriteCol(Data value, boolean fieldExists, Column col, OutputStream stream, boolean defaultsSupport) throws IOException {
         LOGGER.trace("Writing column {} to stream", col.getName());
         LOGGER.trace("Column type is {}", col.getType());
         String name = col.getName();
         Type colType = col.getType();
-        boolean filedExists = record.getJsonMap().containsKey(name);
-        if (filedExists) {
-            Data value = record.getJsonMap().get(name);
+        if (fieldExists) {
             LOGGER.trace("Column value is {}", value);
             // TODO: the mapping need to be more efficient
             if (defaultsSupport) {
@@ -681,11 +693,34 @@ public class ClickHouseWriter implements DBWriter {
         }
     }
 
-    protected void doInsertRawBinary(List<Record> records, Table table, QueryIdentifier queryId, boolean supportDefaults) throws IOException, ExecutionException, InterruptedException {
-        if (chc.isUseClientV2()) {
-            doInsertRawBinaryV2(records, table, queryId, supportDefaults);
-        } else {
-            doInsertRawBinaryV1(records, table, queryId, supportDefaults);
+    protected void doInsertRawBinary(List<Record> records, Table table, QueryIdentifier queryId, boolean supportDefaults, boolean retry) throws IOException, ExecutionException, InterruptedException {
+        try {
+            if (chc.isUseClientV2()) {
+                doInsertRawBinaryV2(records, table, queryId, supportDefaults);
+            } else {
+                doInsertRawBinaryV1(records, table, queryId, supportDefaults);
+            }
+        } catch (ServerException e) {
+            LOGGER.error("Error inserting records can cause by schema changes", e);
+            if (e.getCode() == 33 && retry == true) {
+                LOGGER.error("Error code 33: ClickHouse server error. Trying to update table mapping.");
+                updateMapping(table.getDatabase());
+                Table tableTmp = getTable(table.getDatabase(), table.getName());
+                doInsertRawBinary(records, tableTmp, queryId, tableTmp.hasDefaults(), false);
+            } else {
+                throw e;
+            }
+        } catch (Exception e) {
+            // Note: this part will be removed once V1 is deprecated
+            LOGGER.error("Error inserting records", e);
+            if (e.getMessage().indexOf("ClickHouseException: Code: 33") != -1 && retry == true) {
+                LOGGER.error("Error code 33: ClickHouse server error. Trying to update table mapping.");
+                updateMapping(table.getDatabase());
+                Table tableTmp = getTable(table.getDatabase(), table.getName());
+                doInsertRawBinary(records, tableTmp, queryId, tableTmp.hasDefaults(), false);
+            } else {
+                throw e;
+            }
         }
     }
     protected void doInsertRawBinaryV2(List<Record> records, Table table, QueryIdentifier queryId, boolean supportDefaults) throws IOException, ExecutionException, InterruptedException {
@@ -697,7 +732,7 @@ public class ClickHouseWriter implements DBWriter {
         Record first = records.get(0);
         String database = first.getDatabase();
 
-        if (!validateDataSchema(table, first, false))
+        if (!csc.isBypassSchemaValidation() && !validateDataSchema(table, first, false))
             throw new RuntimeException("Data schema validation failed.");
         // Let's test first record
         // Do we have all elements from the table inside the record
@@ -709,11 +744,15 @@ public class ClickHouseWriter implements DBWriter {
 
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
-        insertSettings.setDeduplicationToken(queryId.getDeduplicationToken());
+
+        String deduplicationToken = queryId.getDeduplicationToken();
+        if (deduplicationToken != null) {
+            insertSettings.setDeduplicationToken(deduplicationToken);
+        }
         insertSettings.setQueryId(queryId.getQueryId());
 
         for (String clickhouseSetting : csc.getClickhouseSettings().keySet()) {//THIS ASSUMES YOU DON'T ADD insert_deduplication_token
-            insertSettings.setOption(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));
+            insertSettings.serverSetting(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));
         }
 //        insertSettings.setOption(ClickHouseClientOption.WRITE_BUFFER_SIZE.name(), 8192);
 
@@ -721,9 +760,12 @@ public class ClickHouseWriter implements DBWriter {
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
                 for (Column col : table.getRootColumnsList()) {
-                    System.out.println("Writing column: " + col.getName());
+                    LOGGER.debug("Writing column: {}", col.getName());
                     long beforePushStream = System.currentTimeMillis();
-                    doWriteCol(record, col, stream, supportDefaults);
+                    String name = col.getName();
+                    boolean filedExists = record.getJsonMap().containsKey(name);
+                    Data value = record.getJsonMap().get(name);
+                    doWriteCol(value, filedExists, col, stream, supportDefaults);
                     pushStreamTime += System.currentTimeMillis() - beforePushStream;
                 }
             }
@@ -751,7 +793,7 @@ public class ClickHouseWriter implements DBWriter {
         Record first = records.get(0);
         String database = first.getDatabase();
 
-        if (!validateDataSchema(table, first, false))
+        if (!csc.isBypassSchemaValidation() && !validateDataSchema(table, first, false))
             throw new RuntimeException("Data schema validation failed.");
         // Let's test first record
         // Do we have all elements from the table inside the record
@@ -776,7 +818,10 @@ public class ClickHouseWriter implements DBWriter {
                     if (record.getSinkRecord().value() != null) {
                         for (Column col : table.getRootColumnsList()) {
                             long beforePushStream = System.currentTimeMillis();
-                            doWriteCol(record, col, stream, supportDefaults);
+                            String name = col.getName();
+                            boolean filedExists = record.getJsonMap().containsKey(name);
+                            Data value = record.getJsonMap().get(name);
+                            doWriteCol(value, filedExists, col, stream, supportDefaults);
                             pushStreamTime += System.currentTimeMillis() - beforePushStream;
                         }
                     }
@@ -832,6 +877,8 @@ public class ClickHouseWriter implements DBWriter {
                 java.lang.reflect.Type gsonType = new TypeToken<HashMap>() {}.getType();
                 for (Record record : records) {
                     if (record.getSinkRecord().value() != null) {
+                        LOGGER.trace("Record: {}", record.getTopicAndPartition());
+
                         Map<String, Object> data;
                         switch (record.getSchemaType()) {
                             case SCHEMA:
@@ -846,7 +893,7 @@ public class ClickHouseWriter implements DBWriter {
                                 break;
                         }
                         long beforeSerialize = System.currentTimeMillis();
-                        String gsonString = gson.toJson(data, gsonType);
+                        String gsonString = gson.toJson(cleanupExtraFields(data, table), gsonType);
                         dataSerializeTime += System.currentTimeMillis() - beforeSerialize;
                         LOGGER.trace("topic {} partition {} offset {} payload {}",
                                 record.getTopic(),
@@ -893,11 +940,14 @@ public class ClickHouseWriter implements DBWriter {
 
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
-        insertSettings.setDeduplicationToken(queryId.getDeduplicationToken());
+        String deduplicationToken = queryId.getDeduplicationToken();
+        if (deduplicationToken != null) {
+            insertSettings.setDeduplicationToken(deduplicationToken);
+        }
         insertSettings.setQueryId(queryId.getQueryId());
 
         for (String clickhouseSetting : csc.getClickhouseSettings().keySet()) {//THIS ASSUMES YOU DON'T ADD insert_deduplication_token
-            insertSettings.setOption(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));
+            insertSettings.serverSetting(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));
         }
         //insertSettings.setOption(ClickHouseClientOption.WRITE_BUFFER_SIZE.name(), 8192);
 
@@ -919,7 +969,7 @@ public class ClickHouseWriter implements DBWriter {
                         break;
                 }
                 long beforeSerialize = System.currentTimeMillis();
-                String gsonString = gson.toJson(data, gsonType);
+                String gsonString = gson.toJson(cleanupExtraFields(data, table), gsonType);
                 dataSerializeTime += System.currentTimeMillis() - beforeSerialize;
                 LOGGER.trace("topic {} partition {} offset {} payload {}",
                         record.getTopic(),
@@ -940,6 +990,21 @@ public class ClickHouseWriter implements DBWriter {
         s3 = System.currentTimeMillis();
         LOGGER.info("batchSize: {} serialization ms: {} data ms: {} send ms: {} (QueryId: [{}])", records.size(), dataSerializeTime, s2 - s1, s3 - s2, queryId.getQueryId());
     }
+
+    protected Map<String, Object> cleanupExtraFields(Map<String, Object> m, Table t) {
+        if (csc.isBypassFieldCleanup()) {
+            return m;
+        }
+
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Column c : t.getRootColumnsList()) {
+            if (m.containsKey(c.getName())) {
+                cleaned.put(c.getName(), m.get(c.getName()));
+            }
+        }
+        return cleaned;
+    }
+
     protected void doInsertString(List<Record> records, Table table, QueryIdentifier queryId) throws IOException, ExecutionException, InterruptedException {
         if(chc.isUseClientV2()) {
             doInsertStringV2(records, table, queryId);
@@ -1028,11 +1093,14 @@ public class ClickHouseWriter implements DBWriter {
 
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
-        insertSettings.setDeduplicationToken(queryId.getDeduplicationToken());
+        String deduplicationToken = queryId.getDeduplicationToken();
+        if (deduplicationToken != null) {
+            insertSettings.setDeduplicationToken(deduplicationToken);
+        }
         insertSettings.setQueryId(queryId.getQueryId());
 
         for (String clickhouseSetting : csc.getClickhouseSettings().keySet()) {//THIS ASSUMES YOU DON'T ADD insert_deduplication_token
-            insertSettings.setOption(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));
+            insertSettings.serverSetting(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));
         }
 //        insertSettings.setOption(ClickHouseClientOption.WRITE_BUFFER_SIZE.name(), 8192);
 
@@ -1106,8 +1174,12 @@ public class ClickHouseWriter implements DBWriter {
         ClickHouseRequest.Mutation request = client.read(server)
                 .write()
                 .table(tableName, queryId.getQueryId())
-                .format(format)
-                .set("insert_deduplication_token", queryId.getDeduplicationToken());
+                .format(format);
+
+        String deduplicationToken = queryId.getDeduplicationToken();
+        if (deduplicationToken != null) {
+            request.set("insert_deduplication_token", deduplicationToken);
+        }
 
         for (String clickhouseSetting : csc.getClickhouseSettings().keySet()) {//THIS ASSUMES YOU DON'T ADD insert_deduplication_token
             request.set(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));

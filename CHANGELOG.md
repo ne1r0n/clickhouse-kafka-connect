@@ -1,3 +1,29 @@
+# 1.2.9
+* Add `ignorePartitionsWhenBatching` flag to adjust batching when not using exactlyOnce
+* Add version information to MBean
+
+# 1.2.8
+* Reduce archive size by removing unnecessary dependencies from the jar
+* Fix NPE on V1 client when Clickhouse has table with Array(Nested...) field
+
+# 1.2.7
+* Bump clickhouse-java to 0.8.0
+* Fix for handling of nullable fields in tuples ClickHouse data type
+
+# 1.2.6
+* Detect if table schema has changed and refresh the schema
+* Allow bypassing field cleanup
+
+# 1.2.5
+* Remove redis state provide since we are using KeeperMap for state storage
+* Remove unused avro property from `build.gradle.kts`
+* Trim schemaless data to only pass the fields that are in the table
+* Allow bypassing the schema validation
+
+# 1.2.4
+* Adjusting underlying client version to 0.7.0
+* Bugfix for UINT handling
+
 # 1.2.3
 * Tweaking schema validation to allow for UINT
 
