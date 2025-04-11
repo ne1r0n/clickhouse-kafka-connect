@@ -71,7 +71,9 @@ public class Table {
     public void addColumn(Column column) {
         registerValidColumn(column);
 
-        if (column.isSubColumn()) handleNonRoot(column);
+        if (column.isSubColumn()) {
+            if (!column.getName().endsWith(".null")) handleNonRoot(column);
+        }
         else {
             rootColumnsList.add(column);
             rootColumnsMap.put(column.getName(), column);

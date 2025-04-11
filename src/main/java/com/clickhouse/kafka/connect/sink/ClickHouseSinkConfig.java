@@ -94,6 +94,7 @@ public class ClickHouseSinkConfig {
     private final boolean bypassSchemaValidation;
     private final boolean bypassFieldCleanup;
     private final boolean ignorePartitionsWhenBatching;
+    private final String targetTableFilter;
 
     public enum InsertFormats {
         NONE,
@@ -103,6 +104,8 @@ public class ClickHouseSinkConfig {
     }
 
     private boolean bypassRowBinary = false;
+
+    public static final String TARGET_TABLE_FILTER = "targetTableFilter";
 
     private InsertFormats insertFormat = InsertFormats.NONE;
     public static class UTF8String implements ConfigDef.Validator {
@@ -269,6 +272,8 @@ public class ClickHouseSinkConfig {
         this.bypassSchemaValidation = Boolean.parseBoolean(props.getOrDefault(BYPASS_SCHEMA_VALIDATION, "false"));
         this.bypassFieldCleanup = Boolean.parseBoolean(props.getOrDefault(BYPASS_FIELD_CLEANUP, "false"));
         this.ignorePartitionsWhenBatching = Boolean.parseBoolean(props.getOrDefault(IGNORE_PARTITIONS_WHEN_BATCHING, "false"));
+
+        this.targetTableFilter = props.getOrDefault(TARGET_TABLE_FILTER, "").trim();
 
         LOGGER.debug("ClickHouseSinkConfig: hostname: {}, port: {}, database: {}, username: {}, sslEnabled: {}, timeout: {}, retry: {}, exactlyOnce: {}",
                 hostname, port, database, username, sslEnabled, timeout, retry, exactlyOnce);
@@ -605,6 +610,15 @@ public class ClickHouseSinkConfig {
                 ConfigDef.Width.SHORT,
                 "Ignore partitions when batching."
         );
+        configDef.define(TARGET_TABLE_FILTER,
+                ConfigDef.Type.STRING,
+                "",
+                ConfigDef.Importance.LOW,
+                "Optional filter for destination table names using a LIKE clause.",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.MEDIUM,
+                "Target Table Filter (LIKE clause).");
         return configDef;
     }
 }

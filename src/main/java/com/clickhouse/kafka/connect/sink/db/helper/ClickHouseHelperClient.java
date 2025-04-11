@@ -60,6 +60,7 @@ public class ClickHouseHelperClient {
     private int proxyPort = -1;
     @Getter
     private boolean useClientV2 = false;
+    private final String targetTableFilter;
 
     public ClickHouseHelperClient(ClickHouseClientBuilder builder) {
         this.hostname = builder.hostname;
@@ -78,6 +79,7 @@ public class ClickHouseHelperClient {
         // We are creating two clients, one for V1 and one for V2
         this.client = createClientV2();
         this.server = createClientV1();
+        this.targetTableFilter = builder.targetTableFilter;
     }
 
     public Map<ClickHouseOption, Serializable> getDefaultClientOptions() {
@@ -295,20 +297,26 @@ public class ClickHouseHelperClient {
     }
 
     public List<Table> showTables(String database) {
+        String filterClause = targetTableFilter.isEmpty() ? "" : String.format(" AND table LIKE '%s'", targetTableFilter);
+        String query = String.format(
+                "SELECT database, table, count() FROM system.columns WHERE database = '%s'%s GROUP BY database, table",
+                database, filterClause
+        );
         if (useClientV2) {
-            return showTablesV2(database);
+            return showTablesV2(query);
         } else {
-            return showTablesV1(database);
+            return showTablesV1(query);
         }
     }
-    public List<Table> showTablesV1(String database) {
+    public List<Table> showTablesV1(String query) {
         List<Table> tables = new ArrayList<>();
+
         try (ClickHouseClient client = ClickHouseClient.builder()
                 .options(getDefaultClientOptions())
                 .nodeSelector(ClickHouseNodeSelector.of(ClickHouseProtocol.HTTP))
                 .build();
              ClickHouseResponse response = client.read(server)
-                     .query(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database))
+                     .query(query)
                      .format(ClickHouseFormat.RowBinaryWithNamesAndTypes)
                      .executeAndWait()) {
             for (ClickHouseRecord r : response.records()) {
@@ -323,9 +331,10 @@ public class ClickHouseHelperClient {
         return tables;
     }
 
-    public List<Table> showTablesV2(String database) {
+    public List<Table> showTablesV2(String query) {
         List<Table> tablesList = new ArrayList<>();
-        Records records = queryV2(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database));
+
+        Records records = queryV2(query);
         for (GenericRecord record : records) {
             String databaseName = record.getString(1);
             String tableName = record.getString(2);
@@ -353,36 +362,39 @@ public class ClickHouseHelperClient {
                 .options(getDefaultClientOptions())
                 .nodeSelector(ClickHouseNodeSelector.of(ClickHouseProtocol.HTTP))
                 .build();
-             ClickHouseResponse response = client.read(server)
+             ClickHouseResponse queryResponse = client.read(server)
                      .set("describe_include_subcolumns", true)
                      .format(ClickHouseFormat.JSONEachRow)
                      .query(describeQuery)
                      .executeAndWait()) {
 
             Table table = new Table(database, tableName);
-            for (ClickHouseRecord r : response.records()) {
-                ClickHouseValue v = r.getValue(0);
 
-                ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(v.asString());
-                if (fieldDescriptor.isAlias() || fieldDescriptor.isMaterialized() || fieldDescriptor.isEphemeral()) {
-                    LOGGER.debug("Skipping column {} as it is an alias or materialized view or ephemeral", fieldDescriptor.getName());
-                    continue;
-                }
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(line);
+                    if (fieldDescriptor.isAlias() || fieldDescriptor.isMaterialized() || fieldDescriptor.isEphemeral()) {
+                        LOGGER.debug("Skipping column {} as it is an alias or materialized view or ephemeral", fieldDescriptor.getName());
+                        continue;
+                    }
 
-                if (fieldDescriptor.hasDefault()) {
-                    table.hasDefaults(true);
-                }
+                    if (fieldDescriptor.hasDefault()) {
+                        table.hasDefaults(true);
+                    }
 
-                Column column = Column.extractColumn(fieldDescriptor);
-                //If we run into a rare column we can't handle, just ignore the table and warn the user
-                if (column == null) {
-                    LOGGER.warn("Unable to handle column: {}", fieldDescriptor.getName());
-                    return null;
+                    Column column = Column.extractColumn(fieldDescriptor);
+                    //If we run into a rare column we can't handle, just ignore the table and warn the user
+                    if (column == null) {
+                        LOGGER.warn("Unable to handle column: {}", fieldDescriptor.getName());
+                        return null;
+                    }
+                    table.addColumn(column);
                 }
-                table.addColumn(column);
             }
+
             return table;
-        } catch (ClickHouseException | JsonProcessingException e) {
+        } catch (Exception e) {
             LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
             return null;
         }
@@ -469,6 +481,7 @@ public class ClickHouseHelperClient {
         private String proxyHost = null;
         private int proxyPort = -1;
         private boolean useClientV2 = true;
+        private String targetTableFilter = "";
 
         public ClickHouseClientBuilder(String hostname, int port, ClickHouseProxyType proxyType, String proxyHost, int proxyPort) {
             this.hostname = hostname;
@@ -519,6 +532,10 @@ public class ClickHouseHelperClient {
         }
         public ClickHouseHelperClient build(){
             return new ClickHouseHelperClient(this);
+        }
+        public ClickHouseClientBuilder setTargetTableFilter(String targetTableFilter) {
+            this.targetTableFilter = targetTableFilter;
+            return this;
         }
 
     }
