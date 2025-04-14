@@ -48,7 +48,7 @@ repositories {
 }
 
 extra.apply {
-    set("clickHouseDriverVersion", "0.8.0")
+    set("clickHouseDriverVersion", "0.8.3")
     set("kafkaVersion", "2.7.0")
 
     // Testing dependencies
@@ -254,4 +254,19 @@ tasks.register<Zip>("createConfluentArchive") {
     archiveAppendix.set(archiveFilename)
     archiveVersion.set(project.version.toString())
     destinationDirectory.set(file("$buildDir/confluent"))
+}
+
+spotless {
+    java {
+        importOrder()
+        removeUnusedImports()
+        // Preserve the rest of formatting
+        googleJavaFormat()
+    }
+}
+
+tasks.register("removeUnusedImports") {
+    group = "formatting"
+    description = "Removes unused imports from all Java files in the project"
+    dependsOn("spotlessApply")
 }

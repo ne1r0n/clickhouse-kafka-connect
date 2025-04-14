@@ -937,6 +937,7 @@ public class ClickHouseWriter implements DBWriter {
         // We don't validate the schema for JSON inserts.  ClickHouse will ignore unknown fields based on the
         // input_format_skip_unknown_fields setting, and missing fields will use ClickHouse defaults
 
+        s2 = System.currentTimeMillis();
         Client client = chc.getClient();
 
         InsertSettings insertSettings = new InsertSettings();

@@ -614,11 +614,11 @@ public class ClickHouseSinkConfig {
                 ConfigDef.Type.STRING,
                 "",
                 ConfigDef.Importance.LOW,
-                "Optional filter for destination table names using a LIKE clause.",
+                "Optional filter for destination table names using a regex pattern.",
                 group,
                 ++orderInGroup,
                 ConfigDef.Width.MEDIUM,
-                "Target Table Filter (LIKE clause).");
+                "Target Table Filter (regex pattern).");
         return configDef;
     }
 }

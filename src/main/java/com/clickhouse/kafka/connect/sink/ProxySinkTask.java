@@ -17,6 +17,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.management.ObjectName;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -70,7 +71,8 @@ public class ProxySinkTask {
     }
 
     private String getMBeanNAme() {
-        return String.format("com.clickhouse:type=ClickHouseKafkaConnector,connector=%s,name=SinkTask%d,version=%s", connectorName, id, ClickHouseClientOption.class.getPackage().getImplementationVersion());
+        String version = ObjectName.quote(ClickHouseClientOption.class.getPackage().getImplementationVersion());
+        return String.format("com.clickhouse:type=ClickHouseKafkaConnector,connector=%s,name=SinkTask%d,version=%s", connectorName, id, version);
     }
 
     public void stop() {

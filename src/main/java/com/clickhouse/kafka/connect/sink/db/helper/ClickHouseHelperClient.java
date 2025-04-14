@@ -297,7 +297,7 @@ public class ClickHouseHelperClient {
     }
 
     public List<Table> showTables(String database) {
-        String filterClause = targetTableFilter.isEmpty() ? "" : String.format(" AND table LIKE '%s'", targetTableFilter);
+        String filterClause = targetTableFilter.isEmpty() ? "" : String.format(" AND match(table, '%s')", targetTableFilter.replace("'", "''"));
         String query = String.format(
                 "SELECT database, table, count() FROM system.columns WHERE database = '%s'%s GROUP BY database, table",
                 database, filterClause

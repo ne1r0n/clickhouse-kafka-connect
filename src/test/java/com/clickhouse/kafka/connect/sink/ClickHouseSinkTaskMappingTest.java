@@ -240,4 +240,41 @@ public class ClickHouseSinkTaskMappingTest extends ClickHouseBase{
         assertEquals(sr2.size(), ClickHouseTestHelpers.countRows(chc, tableName2));
         assertEquals(sr3.size(), ClickHouseTestHelpers.countRows(chc, topic3));
     }
+
+    @Test
+    public void tableFilterTest() {
+        Map<String, String> props = createProps();
+        // Set filter to only allow tables starting with "filtered_"
+        props.put(ClickHouseSinkConfig.SUPPRESS_TABLE_EXISTENCE_EXCEPTION, "true");
+        props.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, "^filtered_.*");
+        props.put(ClickHouseSinkConfig.TABLE_MAPPING, "topic1=filtered_table1, topic2=unfiltered_table2");
+        ClickHouseHelperClient chc = createClient(props);
+
+        String topic1 = "topic1";
+        String topic2 = "topic2";
+        String filteredTable = "filtered_table1";
+        String unfilteredTable = "unfiltered_table2";
+
+        ClickHouseTestHelpers.dropTable(chc, filteredTable);
+        ClickHouseTestHelpers.dropTable(chc, unfilteredTable);
+
+        // Create both tables with same schema
+        String tableSchema = "CREATE TABLE %s ( `off16` Int16, `str` String, `p_int8` Int8, `p_int16` Int16, `p_int32` Int32, " +
+                "`p_int64` Int64, `p_float32` Float32, `p_float64` Float64, `p_bool` Bool) Engine = MergeTree ORDER BY off16";
+        ClickHouseTestHelpers.createTable(chc, filteredTable, tableSchema);
+        ClickHouseTestHelpers.createTable(chc, unfilteredTable, tableSchema);
+
+        Collection<SinkRecord> sr1 = SchemalessTestData.createPrimitiveTypes(topic1, 1);
+        Collection<SinkRecord> sr2 = SchemalessTestData.createPrimitiveTypes(topic2, 1);
+
+        ClickHouseSinkTask chst = new ClickHouseSinkTask();
+        chst.start(props);
+        chst.put(sr1);
+        chst.put(sr2);
+        chst.stop();
+
+        // Verify that only the filtered table received records
+        assertEquals(sr1.size(), ClickHouseTestHelpers.countRows(chc, filteredTable));
+        assertEquals(0, ClickHouseTestHelpers.countRows(chc, unfilteredTable));
+    }
 }
