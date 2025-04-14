@@ -1,9 +1,8 @@
 package com.clickhouse.kafka.connect.sink.data;
 
+import java.util.List;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-
-import java.util.List;
 
 public class Data {
     private Schema schema;

@@ -1,14 +1,5 @@
 package com.clickhouse.kafka.connect.sink.helper;
 
-import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Time;
-import org.apache.kafka.connect.data.Timestamp;
-import org.apache.kafka.connect.sink.SinkRecord;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.LongStream;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Time;
+import org.apache.kafka.connect.data.Timestamp;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 public class SchemaTestData {
     public static final int DEFAULT_TOTAL_RECORDS = 1000;

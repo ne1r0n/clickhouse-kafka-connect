@@ -1,15 +1,14 @@
 package com.clickhouse.kafka.connect.sink.util;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.clickhouse.client.ClickHouseException;
 import com.clickhouse.kafka.connect.util.Utils;
+import java.io.IOException;
+import java.util.ArrayList;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.util.ArrayList;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 public class UtilsTest {
 

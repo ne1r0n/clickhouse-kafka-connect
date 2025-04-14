@@ -5,10 +5,9 @@ import com.clickhouse.kafka.connect.sink.data.Record;
 import com.clickhouse.kafka.connect.sink.data.SchemaType;
 import com.clickhouse.kafka.connect.sink.data.StructToJsonMap;
 import com.clickhouse.kafka.connect.sink.kafka.OffsetContainer;
+import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
-
-import java.util.Map;
 
 public class SchemaRecordConvertor extends RecordConvertor{
 

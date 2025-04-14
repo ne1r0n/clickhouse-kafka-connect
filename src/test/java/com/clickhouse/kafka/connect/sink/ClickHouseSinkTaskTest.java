@@ -1,5 +1,7 @@
 package com.clickhouse.kafka.connect.sink;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.clickhouse.client.ClickHouseClient;
 import com.clickhouse.client.ClickHouseException;
 import com.clickhouse.client.ClickHouseNodeSelector;
@@ -11,10 +13,6 @@ import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.sink.helper.SchemalessTestData;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.jupiter.api.Test;
-
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -23,8 +21,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.LongStream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.junit.jupiter.api.Test;
 
 public class ClickHouseSinkTaskTest extends ClickHouseBase {
 

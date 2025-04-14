@@ -1,20 +1,19 @@
 package com.clickhouse.kafka.connect.sink;
 
-import com.clickhouse.client.config.ClickHouseProxyType;
-import lombok.Getter;
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.clickhouse.kafka.connect.ClickHouseSinkConnector.CLIENT_VERSION;
 
+import com.clickhouse.client.config.ClickHouseProxyType;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.clickhouse.kafka.connect.ClickHouseSinkConnector.CLIENT_VERSION;
+import lombok.Getter;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Getter
 public class ClickHouseSinkConfig {

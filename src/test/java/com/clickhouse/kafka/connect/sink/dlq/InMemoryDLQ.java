@@ -1,9 +1,8 @@
 package com.clickhouse.kafka.connect.sink.dlq;
 
-import org.apache.kafka.connect.sink.SinkRecord;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 public class InMemoryDLQ implements ErrorReporter {
 

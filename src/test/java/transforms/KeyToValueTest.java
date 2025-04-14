@@ -1,6 +1,10 @@
 package transforms;
 
 import com.clickhouse.kafka.connect.transforms.KeyToValue;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Random;
+import java.util.UUID;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -9,11 +13,6 @@ import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Random;
-import java.util.UUID;
 
 public class KeyToValueTest {
     @Test

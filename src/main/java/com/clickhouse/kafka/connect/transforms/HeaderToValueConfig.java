@@ -1,11 +1,9 @@
 package com.clickhouse.kafka.connect.transforms;
 
-import org.apache.kafka.common.config.AbstractConfig;
-import org.apache.kafka.common.config.ConfigDef;
-
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.apache.kafka.common.config.AbstractConfig;
+import org.apache.kafka.common.config.ConfigDef;
 
 class HeaderToValueConfig extends AbstractConfig {
     public static final String FIELDS_CONFIG = "fields";

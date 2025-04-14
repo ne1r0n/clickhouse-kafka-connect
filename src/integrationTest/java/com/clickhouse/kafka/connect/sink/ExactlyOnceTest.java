@@ -1,19 +1,15 @@
 package com.clickhouse.kafka.connect.sink;
 
+import static com.clickhouse.kafka.connect.sink.helper.ClickHouseAPI.createReplicatedMergeTreeTable;
+import static com.clickhouse.kafka.connect.sink.helper.ClickHouseAPI.dropTable;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.clickhouse.client.ClickHouseProtocol;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.client.config.ClickHouseProxyType;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseAPI;
 import com.clickhouse.kafka.connect.sink.helper.ConfluentPlatform;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.Network;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -22,10 +18,13 @@ import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
-
-import static com.clickhouse.kafka.connect.sink.helper.ClickHouseAPI.createReplicatedMergeTreeTable;
-import static com.clickhouse.kafka.connect.sink.helper.ClickHouseAPI.dropTable;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.Network;
 
 
 public class ExactlyOnceTest {

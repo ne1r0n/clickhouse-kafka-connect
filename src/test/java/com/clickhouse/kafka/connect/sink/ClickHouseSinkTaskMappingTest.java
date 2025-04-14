@@ -1,16 +1,15 @@
 package com.clickhouse.kafka.connect.sink;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.sink.helper.SchemaTestData;
 import com.clickhouse.kafka.connect.sink.helper.SchemalessTestData;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.jupiter.api.Test;
-
 import java.util.Collection;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.junit.jupiter.api.Test;
 
 public class ClickHouseSinkTaskMappingTest extends ClickHouseBase{
     @Test

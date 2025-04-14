@@ -1,16 +1,15 @@
 package com.clickhouse.kafka.connect.sink.db.mapping;
 
+import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.clickhouse.kafka.connect.sink.ClickHouseBase;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class TableTest extends ClickHouseBase {
 

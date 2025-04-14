@@ -1,11 +1,10 @@
 package com.clickhouse.kafka.connect.sink.junit.extension;
 
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.platform.commons.util.AnnotationUtils;
-
-import java.util.List;
-import java.util.Optional;
 
 public class FromVersionConditionExtension implements BeforeTestExecutionCallback {
 

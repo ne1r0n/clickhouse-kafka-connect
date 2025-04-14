@@ -1,5 +1,7 @@
 package com.clickhouse.kafka.connect.sink.helper;
 
+import static org.junit.jupiter.api.Assertions.fail;
+
 import com.clickhouse.client.ClickHouseClient;
 import com.clickhouse.client.ClickHouseException;
 import com.clickhouse.client.ClickHouseNodeSelector;
@@ -7,10 +9,6 @@ import com.clickhouse.client.ClickHouseProtocol;
 import com.clickhouse.client.ClickHouseResponse;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.IOException;
 import java.net.ProxySelector;
 import java.net.URI;
@@ -26,8 +24,9 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static org.junit.jupiter.api.Assertions.fail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ClickHouseAPI {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseAPI.class);

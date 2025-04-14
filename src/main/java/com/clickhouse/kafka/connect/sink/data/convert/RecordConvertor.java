@@ -1,9 +1,8 @@
 package com.clickhouse.kafka.connect.sink.data.convert;
 
 import com.clickhouse.kafka.connect.sink.data.Record;
-import org.apache.kafka.connect.sink.SinkRecord;
-
 import java.util.regex.Pattern;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 public abstract class RecordConvertor {
     public Record convert(SinkRecord sinkRecord, boolean splitDBTopic, String dbTopicSeparatorChar, String configurationDatabase) {

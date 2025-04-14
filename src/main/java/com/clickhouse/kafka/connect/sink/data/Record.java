@@ -6,15 +6,14 @@ import com.clickhouse.kafka.connect.sink.data.convert.SchemaRecordConvertor;
 import com.clickhouse.kafka.connect.sink.data.convert.SchemalessRecordConvertor;
 import com.clickhouse.kafka.connect.sink.data.convert.StringRecordConvertor;
 import com.clickhouse.kafka.connect.sink.kafka.OffsetContainer;
+import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
-
-import java.util.List;
-import java.util.Map;
 
 public class Record {
     @Getter

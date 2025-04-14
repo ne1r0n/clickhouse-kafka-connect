@@ -260,8 +260,7 @@ spotless {
     java {
         importOrder()
         removeUnusedImports()
-        // Preserve the rest of formatting
-        googleJavaFormat()
+        // googleJavaFormat()
     }
 }
 

@@ -1,8 +1,5 @@
 package com.clickhouse.kafka.connect.sink.helper;
 
-import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.connect.sink.SinkRecord;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.LongStream;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 public class SchemalessTestData {
     public static final int DEFAULT_TOTAL_RECORDS = 1000;

@@ -1,12 +1,11 @@
 package com.clickhouse.kafka.connect.sink.db.mapping;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.col;
 import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
 import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class ColumnTest {
 
@@ -166,4 +165,3 @@ class ColumnTest {
         assertTrue(col.getEnumValues().containsKey("b"));
     }
 }
-

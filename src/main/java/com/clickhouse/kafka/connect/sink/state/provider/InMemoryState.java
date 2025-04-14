@@ -3,7 +3,6 @@ package com.clickhouse.kafka.connect.sink.state.provider;
 import com.clickhouse.kafka.connect.sink.state.State;
 import com.clickhouse.kafka.connect.sink.state.StateProvider;
 import com.clickhouse.kafka.connect.sink.state.StateRecord;
-
 import java.util.HashMap;
 import java.util.Map;
 

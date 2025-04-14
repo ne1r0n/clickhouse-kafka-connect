@@ -13,11 +13,6 @@ import com.clickhouse.kafka.connect.sink.state.provider.KeeperStateProvider;
 import com.clickhouse.kafka.connect.util.jmx.ExecutionTimer;
 import com.clickhouse.kafka.connect.util.jmx.MBeanServerUtils;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.management.ObjectName;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -26,6 +21,10 @@ import java.util.Timer;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import javax.management.ObjectName;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProxySinkTask {
 

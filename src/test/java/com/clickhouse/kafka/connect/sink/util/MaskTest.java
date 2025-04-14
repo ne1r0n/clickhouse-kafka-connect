@@ -1,10 +1,10 @@
 package com.clickhouse.kafka.connect.sink.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.clickhouse.kafka.connect.util.Mask;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MaskTest {
 
