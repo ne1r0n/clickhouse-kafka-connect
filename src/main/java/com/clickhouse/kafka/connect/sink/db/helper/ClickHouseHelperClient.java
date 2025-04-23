@@ -275,7 +275,7 @@ public class ClickHouseHelperClient {
         if (clickHouseFormat != null)
             settings.setFormat(clickHouseFormat);
         while (retryCount < retry) {
-            System.out.println("query " + query + " retry " + retryCount + " out of " + retry);
+            LOGGER.debug("query " + query + " retry " + retryCount + " out of " + retry);
             CompletableFuture<Records> futureRecords = client.queryRecords(query, settings);
             try {
                 Records records = futureRecords.get();
@@ -431,7 +431,7 @@ public class ClickHouseHelperClient {
                     table.addColumn(column);                }
             }
         } catch (Exception e) {
-            System.out.println(e);
+            LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
             return null;
         }
         return table;

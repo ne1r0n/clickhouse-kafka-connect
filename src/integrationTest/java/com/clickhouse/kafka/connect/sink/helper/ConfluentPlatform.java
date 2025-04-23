@@ -206,13 +206,13 @@ public class ConfluentPlatform {
         rest_proxy.start();
 
 
-        System.out.println("Done....");
+        LOGGER.debug("Done....");
         this.controlCenterEndpoint = extractControlCenterURL(cp_control_center);
         this.restProxyEndpoint = extractRestProxyURL(rest_proxy);
         this.connectRestEndPoint = extractConnectURL(cp_data_gen);
         this.ksqlRestEndPoint = extractKsqlURL(cp_ksqldb_server);
 
-        System.out.println(getKsqlRestEndPoint());
+        LOGGER.debug(getKsqlRestEndPoint());
         this.clusterId = extractClusterId();
     }
 

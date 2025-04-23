@@ -74,7 +74,7 @@ public class ExactlyOnceTest {
         Thread.sleep(5 * 1000);
     }
     private static void setupConnector(String fileName, String topicName, int taskCount) throws IOException {
-        System.out.println("Setting up connector...");
+        LOGGER.debug("Setting up connector...");
         dropTable(chcNoProxy, topicName);
         createReplicatedMergeTreeTable(chcNoProxy, topicName);
 

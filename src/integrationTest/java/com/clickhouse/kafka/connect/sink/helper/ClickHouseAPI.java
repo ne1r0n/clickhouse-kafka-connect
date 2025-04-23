@@ -58,7 +58,7 @@ public class ClickHouseAPI {
 
     public static int countRows(ClickHouseHelperClient chc, String tableName) {
         int[] counts = getCounts(chc, tableName);
-        System.out.println("Total: " + counts[0] + " Unique: " + counts[1] + " Difference: " + counts[2]);
+        LOGGER.debug("Total: " + counts[0] + " Unique: " + counts[1] + " Difference: " + counts[2]);
         return counts[0];
     }
 

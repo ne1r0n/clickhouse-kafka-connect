@@ -87,10 +87,10 @@ dependencies {
 
 
     // TODO: need to remove ???
-    implementation("org.slf4j:slf4j-reload4j:2.0.13")
-    implementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
-    implementation("org.testcontainers:testcontainers:1.20.4")
-    implementation("org.testcontainers:toxiproxy:1.20.4")
+    // implementation("org.slf4j:slf4j-reload4j:2.0.13")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    testImplementation("org.testcontainers:testcontainers:1.20.4")
+    testImplementation("org.testcontainers:toxiproxy:1.20.4")
 
     /*
         Will in side the Confluent Archive
