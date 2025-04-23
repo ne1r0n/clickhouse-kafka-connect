@@ -48,7 +48,7 @@ repositories {
 }
 
 extra.apply {
-    set("clickHouseDriverVersion", "0.8.3")
+    set("clickHouseDriverVersion", "0.8.4")
     set("kafkaVersion", "2.7.0")
 
     // Testing dependencies
@@ -87,7 +87,7 @@ dependencies {
 
 
     // TODO: need to remove ???
-    // implementation("org.slf4j:slf4j-reload4j:2.0.13")
+    implementation("org.slf4j:slf4j-reload4j:2.0.17")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
     testImplementation("org.testcontainers:testcontainers:1.20.4")
     testImplementation("org.testcontainers:toxiproxy:1.20.4")

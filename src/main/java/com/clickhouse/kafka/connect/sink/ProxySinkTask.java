@@ -65,15 +65,21 @@ public class ProxySinkTask {
             throw new RuntimeException("Connection to ClickHouse is not active.");
         processing = new Processing(stateProvider, dbWriter, errorReporter, clickHouseSinkConfig);
 
-        this.statistics = MBeanServerUtils.registerMBean(new SinkTaskStatistics(), getMBeanNAme());
+        this.statistics = MBeanServerUtils.registerMBean(new SinkTaskStatistics(), getMBeanName());
     }
 
-    private String getMBeanNAme() {
-        return String.format("com.clickhouse:type=ClickHouseKafkaConnector,name=SinkTask%d,version=%s", id, ClickHouseClientOption.class.getPackage().getImplementationVersion());
+    private String getMBeanName() {
+        String version = ClickHouseClientOption.class.getPackage().getImplementationVersion();
+        if (version != null) {
+            version = version.replace(':', '_');
+        } else {
+            version = "unknown";
+        }
+        return String.format("com.clickhouse:type=ClickHouseKafkaConnector,connector=%s,name=SinkTask%d,version=%s", connectorName, id, version);
     }
 
     public void stop() {
-        MBeanServerUtils.unregisterMBean(getMBeanNAme());
+        MBeanServerUtils.unregisterMBean(getMBeanName());
     }
 
     public void put(final Collection<SinkRecord> records) throws IOException, ExecutionException, InterruptedException {
