@@ -71,7 +71,7 @@ public class Table {
         registerValidColumn(column);
 
         if (column.isSubColumn()) {
-            if (!column.getName().endsWith(".null")) handleNonRoot(column);
+            handleNonRoot(column);
         }
         else {
             rootColumnsList.add(column);

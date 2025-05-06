@@ -33,3 +33,5 @@ build
 
 # Mac Folder Details
 .DS_Store
+
+/bin/

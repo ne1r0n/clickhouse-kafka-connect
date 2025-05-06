@@ -2,3 +2,6 @@ com.clickhouse.kafka.connect.transforms.ExtractTopic$Value
 com.clickhouse.kafka.connect.transforms.ExtractTopic$Key
 com.clickhouse.kafka.connect.transforms.KeyToValue
 com.clickhouse.kafka.connect.transforms.HeaderToValue
+com.clickhouse.kafka.connect.transforms.StripConfluentPrefix
+com.clickhouse.kafka.connect.transforms.StructToMap
+com.clickhouse.kafka.connect.transforms.DropValueSchema

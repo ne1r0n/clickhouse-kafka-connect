@@ -139,6 +139,9 @@ public class Column {
             case "DateTime":
                 type = Type.DateTime;
                 break;
+            case "JSON":
+                type = Type.JSON;
+                break;
             default:
                 if (valueType.startsWith("DateTime64")) {
                     // Need to understand why DateTime64(3)

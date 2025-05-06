@@ -418,6 +418,11 @@ public class ClickHouseHelperClient {
                         continue;
                     }
 
+                    if (fieldDescriptor.isSubcolumn() && (fieldDescriptor.getName().endsWith(".null") || fieldDescriptor.getName().endsWith(".size0")) || fieldDescriptor.getName().contains(".object_shared_data.")) {
+                        LOGGER.debug("Skipping column {} as it is a system sub-column", fieldDescriptor.getName());
+                        continue;
+                    }
+
                     if (fieldDescriptor.hasDefault()) {
                         table.hasDefaults(true);
                     }
