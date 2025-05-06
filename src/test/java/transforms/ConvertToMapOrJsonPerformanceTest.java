@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class ConvertToMapOrJsonPerformanceTest {
@@ -71,6 +72,7 @@ public class ConvertToMapOrJsonPerformanceTest {
         return new PerformanceResult(avgTime, minTimeMs, maxTimeMs);
     }
 
+    @Disabled("Disabled because it not suitable for unit tests")
     @Test
     public void testDeepNestedStructPerformance() {
         // Create deeply nested structure
@@ -128,6 +130,7 @@ public class ConvertToMapOrJsonPerformanceTest {
         }
     }
 
+    @Disabled("Disabled because it not suitable for unit tests")
     @Test
     public void testWideStructPerformance() {
         // Create structure with a large number of fields at one level
