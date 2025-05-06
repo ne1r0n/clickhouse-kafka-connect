@@ -194,7 +194,7 @@ public class ClickHouseWriter implements DBWriter {
         String database = first.getDatabase();
         Table table = getTable(database, topic);
         if (table == null) { return; }//We checked the error flag in getTable, so we don't need to check it again here
-        LOGGER.debug("Trying to insert [{}] records to table name [{}] (QueryId: [{}])", records.size(), table.getName(), queryId.getQueryId());
+        LOGGER.debug("Trying to insert [{}] records with schema type [{}] to table name [{}] (QueryId: [{}])", records.size(), first.getSchemaType(), table.getName(), queryId.getQueryId());
 
         switch (first.getSchemaType()) {
             case SCHEMA:
@@ -982,6 +982,7 @@ public class ClickHouseWriter implements DBWriter {
                 LOGGER.warn(String.format("Getting empty record skip the insert topic[%s] offset[%d]", record.getTopic(), record.getSinkRecord().kafkaOffset()));
             }
         }
+        s2 = System.currentTimeMillis();
 
         InputStream data = new ByteArrayInputStream(stream.toByteArray());
 
@@ -1051,7 +1052,7 @@ public class ClickHouseWriter implements DBWriter {
                 for (Record record : records) {
                     if (record.getSinkRecord().value() != null) {
                         String data = (String)record.getSinkRecord().value();
-                        LOGGER.debug(String.format("data: %s", data));
+                        LOGGER.trace(String.format("data: %s", data));
                         byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
                         long beforePushStream = System.currentTimeMillis();
                         BinaryStreamUtils.writeBytes(stream, bytes);
@@ -1144,7 +1145,11 @@ public class ClickHouseWriter implements DBWriter {
             }
         }
 
-        try (InsertResponse insertResponse = client.insert(table.getName(), new ByteArrayInputStream(stream.toByteArray()), clickHouseFormat, insertSettings).get()) {
+        s2 = System.currentTimeMillis();
+
+        InputStream data = new ByteArrayInputStream(stream.toByteArray());
+
+        try (InsertResponse insertResponse = client.insert(table.getName(), data, clickHouseFormat, insertSettings).get()) {
             LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", insertResponse.getWrittenBytes(), insertResponse.getWrittenRows(), queryId.getQueryId());
         }
         s3 = System.currentTimeMillis();
