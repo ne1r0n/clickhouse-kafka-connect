@@ -2,16 +2,19 @@ package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.sink.junit.extension.FromVersionConditionExtension;
+import com.clickhouse.kafka.connect.sink.junit.extension.SinceClickHouseVersion;
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
 import java.util.*;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(FromVersionConditionExtension.class)
 public class JsonColumnTest extends ClickHouseBase {
     private static final int RECORDS = 10000;
     private static final int BYTE_ARRAY_SIZE = 128;
@@ -47,7 +50,7 @@ public class JsonColumnTest extends ClickHouseBase {
     }
 
     private void runJsonTest(Map<String, String> props, Map<String, Object> transformConfig, String testLabel) {
-        props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V2");
+        // props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V2");
         ClickHouseHelperClient chc = createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
         ClickHouseTestHelpers.createTable(chc, tableName,
@@ -63,8 +66,6 @@ public class JsonColumnTest extends ClickHouseBase {
                 .map(transform::apply)
                 .toList();
 
-            long startTime = System.nanoTime();
-
             // Insert records
             ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
             sinkTask.start(props);
@@ -74,29 +75,11 @@ public class JsonColumnTest extends ClickHouseBase {
             // Verify results and data points
             assertEquals(RECORDS, ClickHouseTestHelpers.countRows(chc, tableName));
 
-            // // Verify some data points
-            // List<Map<String, Object>> rows = ClickHouseTestHelpers.getAllRowsAsMap(chc, tableName);
-            // for (int i = 0; i < Math.min(10, rows.size()); i++) {
-            //     Map<String, Object> row = rows.get(i);
-            //     assertEquals(i, ((Number) row.get("id")).intValue());
-                
-            //     Object jsonData = row.get("json_data");
-            //     if (transformConfig.getOrDefault("output.json.enabled", false).equals(true)) {
-            //         assertTrue(jsonData instanceof String);
-            //         String json = (String) jsonData;
-            //         assertTrue(json.contains("\"nested_str\":\"test" + i + "\""));
-            //         assertTrue(json.contains("\"nested_int\":" + i));
-            //     } else {
-            //         assertTrue(jsonData instanceof Map);
-            //         Map<?, ?> jsonMap = (Map<?, ?>) jsonData;
-            //         assertEquals("test" + i, jsonMap.get("nested_str"));
-            //         assertEquals(i, ((Number) jsonMap.get("nested_int")).intValue());
-            //     }
-            // }
         }
     }
 
     @Test
+    @SinceClickHouseVersion("25.3")
     public void testBytesNoBase64NoJson() {
         Map<String, String> props = createProps();
         Map<String, Object> transformConfig = Map.of(
@@ -107,6 +90,7 @@ public class JsonColumnTest extends ClickHouseBase {
     }
 
     @Test
+    @SinceClickHouseVersion("25.3")
     public void testBytesBase64NoJson() {
         Map<String, String> props = createProps();
         Map<String, Object> transformConfig = Map.of(
@@ -117,6 +101,7 @@ public class JsonColumnTest extends ClickHouseBase {
     }
 
     @Test
+    @SinceClickHouseVersion("25.3")
     public void testBytesNoBase64JsonWithJackson() {
         Map<String, String> props = createProps();
         Map<String, Object> transformConfig = Map.of(
@@ -128,6 +113,7 @@ public class JsonColumnTest extends ClickHouseBase {
     }
 
     @Test
+    @SinceClickHouseVersion("25.3")
     public void testBytesNoBase64JsonWithGson() {
         Map<String, String> props = createProps();
         Map<String, Object> transformConfig = Map.of(
@@ -139,6 +125,7 @@ public class JsonColumnTest extends ClickHouseBase {
     }
 
     @Test
+    @SinceClickHouseVersion("25.3")
     public void testBytesBase64JsonWithJackson() {
         Map<String, String> props = createProps();
         Map<String, Object> transformConfig = Map.of(
@@ -150,6 +137,7 @@ public class JsonColumnTest extends ClickHouseBase {
     }
 
     @Test
+    @SinceClickHouseVersion("25.3")
     public void testBytesBase64JsonWithGson() {
         Map<String, String> props = createProps();
         Map<String, Object> transformConfig = Map.of(
@@ -162,6 +150,7 @@ public class JsonColumnTest extends ClickHouseBase {
 
     @Disabled("Disabled because it not suitable for unit tests")
     @Test
+    @SinceClickHouseVersion("25.3")
     public void compareAllConfigurations() {
         List<Map<String, Object>> configs = List.of(
             Map.of("bytes.to.base64", false, "output.json.enabled", false),

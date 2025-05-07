@@ -2,7 +2,6 @@ package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
@@ -49,7 +48,7 @@ public class InsertFormatPerformanceTest extends ClickHouseBase {
         String topic = createTopicName("insert_format_perf_test");
         Map<String, String> props = createProps();
 
-        props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V2");
+        // props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V2");
 
         // Prepare JSON transformer
         ConvertToMapOrJson<SinkRecord> jsonTransform = new ConvertToMapOrJson<>();

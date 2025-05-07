@@ -2,7 +2,6 @@ package com.clickhouse.kafka.connect.transforms;
 
 import java.util.List;
 import java.util.Map;
-
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 

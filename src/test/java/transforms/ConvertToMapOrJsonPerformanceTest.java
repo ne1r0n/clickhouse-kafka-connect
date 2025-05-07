@@ -2,8 +2,8 @@ package transforms;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.clickhouse.kafka.connect.transforms.RecursiveStructToMap;
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
+import com.clickhouse.kafka.connect.transforms.RecursiveStructToMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;

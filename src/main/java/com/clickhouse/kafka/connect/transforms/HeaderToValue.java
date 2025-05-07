@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -101,7 +100,8 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             return result;
         } catch (Exception e) {
             errorCount.incrementAndGet();
-            LOGGER.error("Error transforming record: {}", e.getMessage(), e);
+            LOGGER.error("Error transforming record: topic={}, partition={}, error={}", 
+                         record.topic(), record.kafkaPartition(), e.getMessage(), e);
             throw new DataException("Failed to transform record", e);
         }
     }
