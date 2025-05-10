@@ -1,11 +1,8 @@
 package com.clickhouse.kafka.connect.transforms;
 
-import com.clickhouse.kafka.connect.util.jmx.MBeanServerUtils;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -27,29 +24,8 @@ import org.slf4j.LoggerFactory;
  *
  * @param <R> The type of ConnectRecord
  */
-public class TableOperationFilter<R extends ConnectRecord<R>> implements Transformation<R>, TableOperationFilterMBean {
+public class TableOperationFilter<R extends ConnectRecord<R>> implements Transformation<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(TableOperationFilter.class);
-    private static final AtomicLong NEXT_ID = new AtomicLong();
-    
-    // Metrics for monitoring
-    private final AtomicLong filteredRecords = new AtomicLong(0);
-    private final AtomicLong processedRecords = new AtomicLong(0);
-    private final long id;
-    private String connectorName;
-
-    public TableOperationFilter() {
-        this.id = NEXT_ID.getAndIncrement();
-    }
-
-    @Override
-    public long getProcessedRecords() {
-        return processedRecords.get();
-    }
-
-    @Override
-    public long getFilteredRecords() {
-        return filteredRecords.get();
-    }
     
     // Configuration constants
     public static final String TABLES_CONFIG = "tables";
@@ -74,29 +50,15 @@ public class TableOperationFilter<R extends ConnectRecord<R>> implements Transfo
     // Configuration state
     private Set<String> targetTables = new HashSet<>();
     private Set<String> skippedOperations = new HashSet<>();
-    
-    private String getMBeanName() {
-        return String.format(
-            "com.clickhouse.kafka.connect.transforms:type=TableOperationFilter,connector=%s,task=%d",
-            connectorName, id
-        );
-    }
 
     @Override
     public void configure(Map<String, ?> configs) {
         final AbstractConfig config = new AbstractConfig(CONFIG_DEF, configs);
-        
+
         // Extract configuration values
         String tablesStr = config.getString(TABLES_CONFIG);
         String operationsStr = config.getString(SKIPPED_OPERATIONS_CONFIG);
-        
-        // Get connector name from configs
-        Object nameConfig = configs.get("name");
-        this.connectorName = nameConfig != null ? nameConfig.toString() : "unknown";
-        
-        // Register MBean
-        MBeanServerUtils.registerMBean(this, getMBeanName());
-        
+
         // Parse and store the list of tables
         if (!tablesStr.isEmpty()) {
             String[] tables = tablesStr.split(",");
@@ -104,7 +66,7 @@ public class TableOperationFilter<R extends ConnectRecord<R>> implements Transfo
                 targetTables.add(table.trim());
             }
         }
-        
+
         // Parse and store the operations to skip
         if (!operationsStr.isEmpty()) {
             String[] operations = operationsStr.split(",");
@@ -118,7 +80,7 @@ public class TableOperationFilter<R extends ConnectRecord<R>> implements Transfo
                 }
             }
         }
-        
+
         LOGGER.debug("Configured TableOperationFilter with targetTables={}, skippedOperations={}",
                 targetTables, skippedOperations);
     }
@@ -129,55 +91,42 @@ public class TableOperationFilter<R extends ConnectRecord<R>> implements Transfo
             return record;
         }
         
-        processedRecords.incrementAndGet();
         
         try {
             // Check if this is a Debezium change event with proper structure
             if (!(record.value() instanceof Struct)) {
                 return record;
             }
-            
             Struct value = (Struct) record.value();
-            
             // Check if this record has the expected Debezium format with 'op' field
             if (!hasField(value, "op")) {
                 return record;
             }
-            
             String op = value.getString("op");
-            
             // If operation is not in our list of operations to check, pass through
             if (!skippedOperations.contains(op)) {
                 return record;
             }
-            
             // For skipped operations, check if we should filter based on table name
             if (!hasField(value, "source")) {
                 return record;
             }
-            
             Struct source = value.getStruct("source");
             if (!hasField(source, "db") || !hasField(source, "table")) {
                 return record;
             }
-            
             // Extract the full table name (db.table)
             String db = source.getString("db");
             String table = source.getString("table");
             String fullTableName = db + "." + table;
-            
             // Check if this operation should be filtered for this table
             boolean shouldFilter = targetTables.contains(fullTableName);
-            
             if (shouldFilter) {
                 String operationName = getOperationName(op);
                 LOGGER.trace("Filtering {} operation for table: {}", operationName, fullTableName);
-                filteredRecords.incrementAndGet();
                 return null; // Return null to remove the record from the stream
             }
-            
             return record;
-            
         } catch (Exception e) {
             LOGGER.error("Error processing record in TableOperationFilter: {}", e.getMessage(), e);
             throw new DataException("Failed to process record in TableOperationFilter", e);
@@ -218,20 +167,7 @@ public class TableOperationFilter<R extends ConnectRecord<R>> implements Transfo
 
     @Override
     public void close() {
-        MBeanServerUtils.unregisterMBean(getMBeanName());
-        LOGGER.debug("Closing TableOperationFilter: processed {} records, filtered {} operations", 
-                processedRecords.get(), filteredRecords.get());
+        LOGGER.debug("Closing TableOperationFilter");
     }
     
-    /**
-     * Returns metrics about the filtering operations.
-     *
-     * @return Map containing metric values
-     */
-    public Map<String, Object> metrics() {
-        Map<String, Object> metrics = new LinkedHashMap<>();
-        metrics.put("processed_records", processedRecords.get());
-        metrics.put("filtered_records", filteredRecords.get());
-        return metrics;
-    }
 }

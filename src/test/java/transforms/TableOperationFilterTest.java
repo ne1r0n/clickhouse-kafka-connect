@@ -173,39 +173,5 @@ public class TableOperationFilterTest {
         assertNull(testFilter.apply(record), "Record should be filtered with new configuration");
     }
 
-    @Test
-    public void testMetrics() {
-        // Process a record that should pass through
-        Schema recordSchema = SchemaBuilder.struct()
-                .field("op", Schema.STRING_SCHEMA)
-                .build();
-        Struct value = new Struct(recordSchema)
-                .put("op", "c"); // Create operation, not in skipped.operations
-        SinkRecord record = new SinkRecord("topic", 0, null, null, recordSchema, value, 0L);
-        filter.apply(record);
-
-        // Process a record that should be filtered
-        Schema sourceSchema = SchemaBuilder.struct()
-                .field("db", Schema.STRING_SCHEMA)
-                .field("table", Schema.STRING_SCHEMA)
-                .build();
-        Struct source = new Struct(sourceSchema)
-                .put("db", "mydb")
-                .put("table", "mytable");
-
-        Schema filteredRecordSchema = SchemaBuilder.struct()
-                .field("op", Schema.STRING_SCHEMA)
-                .field("source", sourceSchema)
-                .build();
-        Struct filteredValue = new Struct(filteredRecordSchema)
-                .put("op", "d")  // Delete operation should be filtered
-                .put("source", source);
-
-        SinkRecord filteredRecord = new SinkRecord("topic", 0, null, null, filteredRecordSchema, filteredValue, 0L);
-        filter.apply(filteredRecord);
-
-        Map<String, Object> metrics = filter.metrics();
-        assertEquals(2L, metrics.get("processed_records"), "Should have processed 2 records");
-        assertEquals(1L, metrics.get("filtered_records"), "Should have filtered 1 record");
-    }
+    
 }

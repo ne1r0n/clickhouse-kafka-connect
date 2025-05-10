@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -32,10 +31,6 @@ import org.slf4j.LoggerFactory;
  */
 public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(HeaderToValue.class);
-    
-    // Metrics for monitoring
-    private final AtomicLong transformedRecords = new AtomicLong(0);
-    private final AtomicLong errorCount = new AtomicLong(0);
     
     // Configuration constants
     public static final String FIELDS_CONFIG = "fields";
@@ -88,18 +83,14 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             if (record.value() == null) {
                 return record;
             }
-            
             R result;
             if (record.valueSchema() == null) {
                 result = applySchemaless(record);
             } else {
                 result = applyWithSchema(record);
             }
-            
-            transformedRecords.incrementAndGet();
             return result;
         } catch (Exception e) {
-            errorCount.incrementAndGet();
             LOGGER.error("Error transforming record: topic={}, partition={}, error={}", 
                          record.topic(), record.kafkaPartition(), e.getMessage(), e);
             throw new DataException("Failed to transform record", e);
@@ -232,21 +223,10 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
     @Override
     public void close() {
-        LOGGER.debug("Closing HeaderToValue: processed {} records with {} errors", 
-                transformedRecords.get(), errorCount.get());
+        LOGGER.debug("Closing HeaderToValue");
         valueSchema = null;
         fieldToHeaderIdx = null;
     }
     
-    /**
-     * Returns metrics about the transformation operations.
-     *
-     * @return Map containing metric values
-     */
-    public Map<String, Object> metrics() {
-        Map<String, Object> metrics = new HashMap<>();
-        metrics.put("transformed_records", transformedRecords.get());
-        metrics.put("error_count", errorCount.get());
-        return metrics;
-    }
+    
 }

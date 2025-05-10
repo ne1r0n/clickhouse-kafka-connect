@@ -8,7 +8,6 @@ import com.google.gson.GsonBuilder;
 import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -36,9 +35,6 @@ import org.slf4j.LoggerFactory;
 public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transformation<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConvertToMapOrJson.class);
     
-    // Metrics for monitoring
-    private final AtomicLong transformedRecords = new AtomicLong(0);
-    private final AtomicLong errorCount = new AtomicLong(0);
     
     // Configuration constants
     public static final String BYTES_TO_BASE64_CONFIG = "bytes.to.base64";
@@ -118,7 +114,6 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
         if (!outputJson) {
             return;
         }
-        
         switch (selectedLibrary) {
             case JACKSON -> {
                 ObjectWriter writer = createJacksonWriter();
@@ -126,7 +121,6 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
                     try {
                         return writer.writeValueAsString(map);
                     } catch (Exception e) {
-                        errorCount.incrementAndGet();
                         throw new DataException("Jackson JSON serialization failed", e);
                     }
                 };
@@ -137,7 +131,6 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
                     try {
                         return gson.toJson(map);
                     } catch (Exception e) {
-                        errorCount.incrementAndGet();
                         throw new DataException("Gson JSON serialization failed", e);
                     }
                 };
@@ -159,6 +152,13 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
         if (preserveNullValues) {
             builder.serializeNulls();
         }
+        // Custom adapters for Date, Timestamp to serialize as epoch millis
+        builder.registerTypeAdapter(java.util.Date.class, (com.google.gson.JsonSerializer<java.util.Date>) (src, typeOfSrc, context) ->
+            src == null ? null : new com.google.gson.JsonPrimitive(src.getTime())
+        );
+        builder.registerTypeAdapter(java.sql.Timestamp.class, (com.google.gson.JsonSerializer<java.sql.Timestamp>) (src, typeOfSrc, context) ->
+            src == null ? null : new com.google.gson.JsonPrimitive(src.getTime())
+        );
         return builder.create();
     }
 
@@ -184,9 +184,6 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
                 // No transformation needed
                 return record;
             }
-            
-            transformedRecords.incrementAndGet();
-            
             return record.newRecord(
                     record.topic(),
                     record.kafkaPartition(),
@@ -198,7 +195,6 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
                     record.headers()
             );
         } catch (Exception e) {
-            errorCount.incrementAndGet();
             LOGGER.error("Error transforming record: {}", e.getMessage(), e);
             throw new DataException("Failed to transform record", e);
         }
@@ -296,20 +292,9 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
 
     @Override
     public void close() {
-        LOGGER.debug("Closing ConvertToMapOrJson: processed {} records with {} errors", 
-                transformedRecords.get(), errorCount.get());
+        LOGGER.debug("Closing ConvertToMapOrJson");
         ENCODER.remove();
     }
     
-    /**
-     * Returns metrics about the transformation operations.
-     *
-     * @return Map containing metric values
-     */
-    public Map<String, Object> metrics() {
-        Map<String, Object> metrics = new LinkedHashMap<>();
-        metrics.put("transformed_records", transformedRecords.get());
-        metrics.put("error_count", errorCount.get());
-        return metrics;
-    }
+    
 }

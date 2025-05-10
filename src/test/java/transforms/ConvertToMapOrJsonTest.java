@@ -13,6 +13,55 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Test;
 
 public class ConvertToMapOrJsonTest {
+
+    @Test
+    public void testDateTypesJsonJacksonVsGson() {
+        java.util.Date date = new java.util.Date(1715376000000L); // 2024-05-11T00:00:00Z
+        java.sql.Timestamp timestamp = new java.sql.Timestamp(1715376000123L); // 2024-05-11T00:00:00.123Z
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("date", date);
+        map.put("timestamp", timestamp);
+        SinkRecord record = new SinkRecord("topic", 0, null, null, null, map, 0L);
+
+        // Jackson
+        ConvertToMapOrJson<SinkRecord> xformJackson = new ConvertToMapOrJson<>();
+        Map<String, Object> configJackson = new HashMap<>();
+        configJackson.put("output.json.enabled", true);
+        configJackson.put("output.json.library", "jackson");
+        xformJackson.configure(configJackson);
+        SinkRecord resultJackson = xformJackson.apply(record);
+        assertTrue(resultJackson.value() instanceof String);
+        String jsonJackson = (String) resultJackson.value();
+
+        // Gson
+        ConvertToMapOrJson<SinkRecord> xformGson = new ConvertToMapOrJson<>();
+        Map<String, Object> configGson = new HashMap<>();
+        configGson.put("output.json.enabled", true);
+        configGson.put("output.json.library", "gson");
+        xformGson.configure(configGson);
+        SinkRecord resultGson = xformGson.apply(record);
+        assertTrue(resultGson.value() instanceof String);
+        String jsonGson = (String) resultGson.value();
+
+        // Both must contain the same numeric values for date fields
+
+        assertTrue(jsonJackson.contains("\"date\":" + date.getTime()));
+        assertTrue(jsonJackson.contains("\"timestamp\":" + timestamp.getTime()));
+
+        assertTrue(jsonGson.contains("\"date\":" + date.getTime()));
+        assertTrue(jsonGson.contains("\"timestamp\":" + timestamp.getTime()));
+
+        // The JSONs should be structurally equal (ignoring field order)
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        try {
+            Map<String, Object> mapJackson = mapper.readValue(jsonJackson, Map.class);
+            Map<String, Object> mapGson = mapper.readValue(jsonGson, Map.class);
+            assertEquals(mapJackson, mapGson);
+        } catch (Exception e) {
+            fail("Failed to parse JSON: " + e.getMessage());
+        }
+    }
     @Test
     public void testStructToMapSimple() {
         Schema schema = SchemaBuilder.struct()
