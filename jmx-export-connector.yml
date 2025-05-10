@@ -2,6 +2,15 @@
 lowercaseOutputName: true
 lowercaseOutputLabelNames: true
 rules:
+  # Custom metrics for TableOperationFilter
+  - pattern: "com.clickhouse.kafka.connect.transforms<type=TableOperationFilter, connector=(.*), task=(.*)><>(.+-records)"
+    name: clickhouse_table_operation_filter_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    help: "TableOperationFilter metrics for processed and filtered records"
+    type: COUNTER
+
   - pattern: "com.clickhouse<type=ClickHouseKafkaConnector, connector=(.*), name=SinkTask(.*), version=(.*)><>(.*): (.*)"
     name: clickhouse_kafka_connect
     labels:

@@ -5,3 +5,4 @@ com.clickhouse.kafka.connect.transforms.HeaderToValue
 com.clickhouse.kafka.connect.transforms.StripConfluentPrefix
 com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson
 com.clickhouse.kafka.connect.transforms.DropValueSchema
+com.clickhouse.kafka.connect.transforms.TableOperationFilter
