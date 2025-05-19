@@ -32,10 +32,22 @@ plugins {
     `maven-publish`
     signing
    // checkstyle
-    id("com.github.gmazzo.buildconfig") version "5.6.4"
+    id("com.github.gmazzo.buildconfig") version "5.6.5"
     id("com.diffplug.spotless") version "7.0.3"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("com.github.ben-manes.versions") version "0.52.0"
+}
+
+// Configure Gradle Versions Plugin to reject non-stable versions in dependencyUpdates
+tasks.named<com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask>("dependencyUpdates").configure {
+    // Reject all non-stable versions
+    rejectVersionIf {
+        val candidate = candidate.version
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { candidate.uppercase().contains(it) }
+        val regex = "^[0-9,.v-]+(-r)?$".toRegex()
+        val isStable = stableKeyword || regex.matches(candidate)
+        !isStable
+    }
 }
 
 group = "com.clickhouse.kafka"
@@ -49,11 +61,11 @@ repositories {
 }
 
 extra.apply {
-    set("clickHouseDriverVersion", "0.8.5")
-    set("kafkaVersion", "7.9.0-ce")
+    set("clickHouseDriverVersion", "0.8.6")
+    set("kafkaVersion", "4.0.0")
 
     // Testing dependencies
-    set("junitJupiterVersion", "5.9.2")
+    set("junitJupiterVersion", "5.12.2")
     set("junitPlatformVersion", "1.8.1")
     set("hamcrestVersion", "3.0")
     set("mockitoVersion", "5.17.0")
@@ -75,7 +87,7 @@ dependencies {
     implementation("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
     implementation("com.google.code.gson:gson:2.13.1")
     // https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5
-    implementation("org.apache.httpcomponents.client5:httpclient5:5.4.2")
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.4.4")
 
     // Avoid telescoping constructors problem with the builder pattern using Lombok
     compileOnly("org.projectlombok:lombok:1.18.38")
@@ -90,13 +102,13 @@ dependencies {
     // TODO: need to remove ???
     implementation("org.slf4j:slf4j-reload4j:2.0.17")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
-    testImplementation("org.testcontainers:testcontainers:1.20.4")
-    testImplementation("org.testcontainers:toxiproxy:1.20.4")
+    testImplementation("org.testcontainers:testcontainers:1.21.0")
+    // testImplementation("org.testcontainers:toxiproxy:1.21.0")
 
     /*
         Will in side the Confluent Archive
      */
-    clickhouseDependencies("org.apache.httpcomponents.client5:httpclient5:5.4.2")
+    clickhouseDependencies("org.apache.httpcomponents.client5:httpclient5:5.4.4")
     clickhouseDependencies("com.clickhouse:clickhouse-client:${project.extra["clickHouseDriverVersion"]}")
     clickhouseDependencies("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
     clickhouseDependencies("com.clickhouse:clickhouse-http-client:${project.extra["clickHouseDriverVersion"]}")
@@ -108,7 +120,7 @@ dependencies {
     // Unit Tests
     testImplementation(platform("org.junit:junit-bom:${project.extra["junitJupiterVersion"]}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.junit.platform:junit-platform-runner")
+    testImplementation("org.junit.platform:junit-platform-runner:1.12.2")
     testImplementation("org.apiguardian:apiguardian-api:1.1.2") // https://github.com/gradle/gradle/issues/18627
     testImplementation("org.hamcrest:hamcrest:${project.extra["hamcrestVersion"]}")
     testImplementation("org.mockito:mockito-junit-jupiter:${project.extra["mockitoVersion"]}")
@@ -117,9 +129,9 @@ dependencies {
     testImplementation("org.testcontainers:clickhouse:1.21.0")
     testImplementation("org.testcontainers:kafka:1.21.0")
     testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
-    testImplementation("org.json:json:20250107")
+    testImplementation("org.json:json:20250517")
     testImplementation("org.testcontainers:toxiproxy:1.21.0")
-    testImplementation("org.apache.httpcomponents.client5:httpclient5:5.4.2")
+    testImplementation("org.apache.httpcomponents.client5:httpclient5:5.4.4")
     testImplementation("com.clickhouse:clickhouse-jdbc:${project.extra["clickHouseDriverVersion"]}:all")
     testImplementation("com.clickhouse:clickhouse-client:${project.extra["clickHouseDriverVersion"]}")
     testImplementation("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
