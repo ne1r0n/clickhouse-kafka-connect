@@ -32,10 +32,10 @@ plugins {
     `maven-publish`
     signing
    // checkstyle
-    id("com.github.gmazzo.buildconfig") version "5.6.5"
-    id("com.diffplug.spotless") version "7.0.3"
+    id("com.github.gmazzo.buildconfig") version "6.0.7"
+    id("com.diffplug.spotless") version "8.1.0"
     id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("com.github.ben-manes.versions") version "0.52.0"
+    id("com.github.ben-manes.versions") version "0.53.0"
 }
 
 // Configure Gradle Versions Plugin to reject non-stable versions in dependencyUpdates
@@ -61,14 +61,14 @@ repositories {
 }
 
 extra.apply {
-    set("clickHouseDriverVersion", "0.8.6")
-    set("kafkaVersion", "4.0.0")
+    set("clickHouseDriverVersion", "0.9.6")
+    set("kafkaVersion", "4.1.1")
 
     // Testing dependencies
-    set("junitJupiterVersion", "5.12.2")
+    set("junitJupiterVersion", "6.0.2")
     set("junitPlatformVersion", "1.8.1")
     set("hamcrestVersion", "3.0")
-    set("mockitoVersion", "5.17.0")
+    set("mockitoVersion", "5.21.0")
 
     // Integration test dependencies
     set("confluentVersion", "6.0.1")
@@ -85,58 +85,66 @@ dependencies {
     implementation("com.clickhouse:clickhouse-http-client:${project.extra["clickHouseDriverVersion"]}")
     implementation("com.clickhouse:clickhouse-data:${project.extra["clickHouseDriverVersion"]}")
     implementation("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
-    implementation("com.google.code.gson:gson:2.13.1")
+    implementation("com.google.code.gson:gson:2.13.2")
     // https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5
-    implementation("org.apache.httpcomponents.client5:httpclient5:5.4.4")
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.6")
 
     // Avoid telescoping constructors problem with the builder pattern using Lombok
-    compileOnly("org.projectlombok:lombok:1.18.38")
-    annotationProcessor("org.projectlombok:lombok:1.18.38")
+    compileOnly("org.projectlombok:lombok:1.18.42")
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
 
     // To parse JSON response from ClickHouse to parse complex data types correctly
-    implementation("com.fasterxml.jackson.core:jackson-core:2.19.0")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.19.0")
-    implementation("com.fasterxml.jackson.core:jackson-annotations:2.19.0")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.21.0")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.0")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.21")
 
 
     // TODO: need to remove ???
     implementation("org.slf4j:slf4j-reload4j:2.0.17")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
-    testImplementation("org.testcontainers:testcontainers:1.21.0")
-    // testImplementation("org.testcontainers:toxiproxy:1.21.0")
+    testImplementation("org.testcontainers:testcontainers:1.21.4")
+    // testImplementation("org.testcontainers:toxiproxy:1.21.4")
 
     /*
         Will in side the Confluent Archive
      */
-    clickhouseDependencies("org.apache.httpcomponents.client5:httpclient5:5.4.4")
+    clickhouseDependencies("org.apache.httpcomponents.client5:httpclient5:5.6")
     clickhouseDependencies("com.clickhouse:clickhouse-client:${project.extra["clickHouseDriverVersion"]}")
     clickhouseDependencies("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
     clickhouseDependencies("com.clickhouse:clickhouse-http-client:${project.extra["clickHouseDriverVersion"]}")
-    clickhouseDependencies("com.google.code.gson:gson:2.13.1")
-    clickhouseDependencies("com.fasterxml.jackson.core:jackson-core:2.19.0")
-    clickhouseDependencies("com.fasterxml.jackson.core:jackson-databind:2.19.0")
-    clickhouseDependencies("com.fasterxml.jackson.core:jackson-annotations:2.19.0")
+    clickhouseDependencies("com.google.code.gson:gson:2.13.2")
+    clickhouseDependencies("com.fasterxml.jackson.core:jackson-core:2.21.0")
+    clickhouseDependencies("com.fasterxml.jackson.core:jackson-databind:2.21.0")
+    clickhouseDependencies("com.fasterxml.jackson.core:jackson-annotations:2.21")
 
     // Unit Tests
     testImplementation(platform("org.junit:junit-bom:${project.extra["junitJupiterVersion"]}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.junit.platform:junit-platform-runner:1.12.2")
+    testImplementation("org.junit.platform:junit-platform-runner:1.14.2")
     testImplementation("org.apiguardian:apiguardian-api:1.1.2") // https://github.com/gradle/gradle/issues/18627
     testImplementation("org.hamcrest:hamcrest:${project.extra["hamcrestVersion"]}")
     testImplementation("org.mockito:mockito-junit-jupiter:${project.extra["mockitoVersion"]}")
 
     // IntegrationTests
-    testImplementation("org.testcontainers:clickhouse:1.21.0")
-    testImplementation("org.testcontainers:kafka:1.21.0")
-    testImplementation("com.squareup.okhttp3:okhttp:4.12.0")
-    testImplementation("org.json:json:20250517")
-    testImplementation("org.testcontainers:toxiproxy:1.21.0")
-    testImplementation("org.apache.httpcomponents.client5:httpclient5:5.4.4")
+    testImplementation("org.testcontainers:clickhouse:1.21.4")
+    testImplementation("org.testcontainers:kafka:1.21.4")
+    testImplementation("com.squareup.okhttp3:okhttp:5.3.2")
+    testImplementation("org.json:json:20251224")
+    testImplementation("org.testcontainers:toxiproxy:1.21.4")
+    testImplementation("org.apache.httpcomponents.client5:httpclient5:5.6")
     testImplementation("com.clickhouse:clickhouse-jdbc:${project.extra["clickHouseDriverVersion"]}:all")
     testImplementation("com.clickhouse:clickhouse-client:${project.extra["clickHouseDriverVersion"]}")
     testImplementation("com.clickhouse:client-v2:${project.extra["clickHouseDriverVersion"]}")
     testImplementation("com.clickhouse:clickhouse-http-client:${project.extra["clickHouseDriverVersion"]}")
 
+}
+
+// Temporary fix to resolve capability conflict
+configurations.configureEach {
+    resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
+        select("at.yawk.lz4:lz4-java:1.10.2")
+        because("Resolve capability conflict between org.lz4 and at.yawk.lz4 providers.")
+    }
 }
 
 
