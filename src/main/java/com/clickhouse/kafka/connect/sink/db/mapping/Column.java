@@ -139,9 +139,6 @@ public class Column {
             case "DateTime":
                 type = Type.DateTime;
                 break;
-            case "JSON":
-                type = Type.JSON;
-                break;
             default:
                 if (valueType.startsWith("DateTime64")) {
                     // Need to understand why DateTime64(3)
@@ -152,6 +149,10 @@ public class Column {
                     type = Type.Decimal;
                 } else if (valueType.startsWith("FixedString")) {
                     type = Type.FIXED_STRING;
+                } else if (valueType.startsWith("JSON")) {
+                    type = Type.JSON;
+                } else if (valueType.startsWith("Dynamic")) {
+                    type = Type.DYNAMIC;
                 }
 
                 break;
