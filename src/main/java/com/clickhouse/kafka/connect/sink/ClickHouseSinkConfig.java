@@ -94,6 +94,7 @@ public class ClickHouseSinkConfig {
     private final boolean bypassFieldCleanup;
     private final boolean ignorePartitionsWhenBatching;
     private final String targetTableFilter;
+    private final boolean jsonInsertFormatExplicit;
 
     public enum InsertFormats {
         NONE,
@@ -232,6 +233,8 @@ public class ClickHouseSinkConfig {
             default:
                 this.insertFormat = InsertFormats.JSON;
         }
+        String insertFormatRaw = props.get(INSERT_FORMAT);
+        this.jsonInsertFormatExplicit = insertFormatRaw != null && insertFormatRaw.trim().equalsIgnoreCase("json");
 
         String proxyTypeTmp = props.getOrDefault(PROXY_TYPE, "none").toLowerCase();
         switch (proxyTypeTmp) {

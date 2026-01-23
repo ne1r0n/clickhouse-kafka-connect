@@ -133,6 +133,11 @@ public class ClickHouseWriter implements DBWriter {
 
         LOGGER.debug("Ping was successful.");
 
+        if (shouldSkipTableMetadata()) {
+            LOGGER.info("Skipping table mapping and validation because insertFormat is explicitly set to JSON.");
+            return true;
+        }
+
         this.updateMapping(csc.getDatabase());
         if (mapping.isEmpty()) {
             LOGGER.error("Did not find any tables in destination Please create before running.");
@@ -145,6 +150,10 @@ public class ClickHouseWriter implements DBWriter {
     public void updateMapping(String database) {
         // Do not start a new update cycle if one is already in progress
         if (this.isUpdateMappingRunning.get()) {
+            return;
+        }
+        if (shouldSkipTableMetadata()) {
+            LOGGER.debug("Skipping table mapping update because insertFormat is explicitly set to JSON.");
             return;
         }
         this.isUpdateMappingRunning.set(true);
@@ -994,7 +1003,7 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     protected Map<String, Object> cleanupExtraFields(Map<String, Object> m, Table t) {
-        if (csc.isBypassFieldCleanup()) {
+        if (csc.isBypassFieldCleanup() || shouldSkipTableMetadata()) {
             return m;
         }
 
@@ -1196,6 +1205,10 @@ public class ClickHouseWriter implements DBWriter {
         return request;
     }
     protected Table getTable(String database, String topic) {
+        if (shouldSkipTableMetadata()) {
+            String tableName = csc.getTopicToTableMap().getOrDefault(topic, topic);
+            return new Table(database, tableName);
+        }
         String tableName = Utils.getTableName(database, topic, csc.getTopicToTableMap());
         Table table = this.mapping.get(tableName);
         if (table == null) {
@@ -1216,6 +1229,10 @@ public class ClickHouseWriter implements DBWriter {
         }
 
         return table;//It'll only be null if we suppressed the error
+    }
+
+    private boolean shouldSkipTableMetadata() {
+        return csc != null && csc.isJsonInsertFormatExplicit();
     }
 
 
