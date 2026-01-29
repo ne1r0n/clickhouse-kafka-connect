@@ -995,7 +995,8 @@ public class ClickHouseWriter implements DBWriter {
 
         InputStream data = new ByteArrayInputStream(stream.toByteArray());
 
-        try (InsertResponse insertResponse = client.insert(table.getName(), data, ClickHouseFormat.JSONEachRow, insertSettings).get()) {
+        List<String> jsonInsertColumns = csc.getJsonInsertColumns();
+        try (InsertResponse insertResponse = client.insert(table.getName(), jsonInsertColumns, data, ClickHouseFormat.JSONEachRow, insertSettings).get()) {
             LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", insertResponse.getWrittenBytes(), insertResponse.getWrittenRows(), queryId.getQueryId());
         }
         s3 = System.currentTimeMillis();
