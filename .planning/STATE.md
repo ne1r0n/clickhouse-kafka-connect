@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Test Infrastructure & Green Baseline
-status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-09-15T22:05:14.916Z"
+status: verifying
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-09-15T22:18:27.944Z"
 last_activity: 2026-09-16
 last_activity_desc: Phase 01 execution started
-state_head: 1adf5f6bb5c3f2a1cc84dc1160501ef79a22e202
+state_head: 0a2d7c0ef01d373adf61d7766c7ae344b58850e0
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 
 Phase: 01 (Test Infrastructure & Green Baseline) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-16 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 01 P01 | 40 min | 2 tasks | 2 files |
 | Phase 01 P02 | 55min | 2 tasks | 5 files |
+| Phase 01 P03 | 20 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-02: Container-per-fork singleton (PullPolicy.alwaysPull, if (db==null)) plus per-class database replaced the per-class container; @AfterEach MBean sweep and opt-in uniqueConnectorName added as a base-class safety net rather than retrofitting existing test files
 - [Phase 01]: 01-02: Ryuk reliably reaps the shared container within ~15-20s of Gradle exit in this environment; no JVM shutdown hook was added
 - [Phase 01]: 01-02: D-11 UTF-8 fix proven RED (windows-1252 mojibake) then GREEN via ClickHouseTestHarnessTest#helpersDecodeResponsesAsUtf8; no maxParallelForks change needed (0 flakes observed)
+- [Phase 01]: 01-03: forkChangedClasses lists exact <path>/X.class + <path>/X$*.class per D-13 class (30 entries), not a bare prefix glob, to avoid HeaderToValue* also matching HeaderToValueConfig.class
+- [Phase 01]: 01-03: check-loop guard scoped to exactly testUnit by name (if (name != "testUnit")), leaving test/integrationTest's existing check dependency untouched
+- [Phase 01]: 01-03: full covered run was green on first attempt with JaCoCo agent attached (194 tests, 0 failed, 7 skipped, matches 01-02 baseline) - no test-code fix needed
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-15T22:05:14.902Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-09-15T22:18:27.928Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None

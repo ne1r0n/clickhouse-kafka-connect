@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Sink-task tests stop their task in `finally`/`@AfterEach` and use unique connector names, so a deliberately failing test does not cause an MBean-already-registered failure in later tests. Test helpers decode ClickHouse responses as explicit UTF-8.
   5. After `./gradlew test`, JaCoCo HTML and XML reports exist, Lombok-generated methods of `Column` are excluded, and fork-changed classes can be reviewed on their own. `integrationTest` and `check` do not run JaCoCo.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -49,7 +49,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Build script: JaCoCo `0.8.15` on `test` only (full + fork-changed reports, `lombok.config`), `testUnit` kept out of `check`, full covered run on the new harness (wave 3: needs 01-02's tag and harness)
+- [x] 01-03-PLAN.md — Build script: JaCoCo `0.8.15` on `test` only (full + fork-changed reports, `lombok.config`), `testUnit` kept out of `check`, full covered run on the new harness (wave 3: needs 01-02's tag and harness)
 
 ### Phase 2: Fork SMT Coverage
 
@@ -183,7 +183,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Test Infrastructure & Green Baseline | 2/3 | In Progress|  |
+| 1. Test Infrastructure & Green Baseline | 3/3 | In Progress|  |
 | 2. Fork SMT Coverage | 0/3 | Not started | - |
 | 3. Table Metadata & JSON/Dynamic Types | 0/3 | Not started | - |
 | 4. JSON Insert Path & Connector Plumbing | 0/3 | Not started | - |

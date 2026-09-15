@@ -119,8 +119,8 @@
 
 ### Coverage
 
-- [ ] **COV-01**: JaCoCo `0.8.15` is attached to the `test` task only (not `integrationTest`/`check`) and produces HTML and XML reports
-- [ ] **COV-02**: The coverage report excludes Lombok-generated code (verified by inspecting `Column`) and includes a focused view of fork-changed classes
+- [x] **COV-01**: JaCoCo `0.8.15` is attached to the `test` task only (not `integrationTest`/`check`) and produces HTML and XML reports
+- [x] **COV-02**: The coverage report excludes Lombok-generated code (verified by inspecting `Column`) and includes a focused view of fork-changed classes
 
 ### CI
 
@@ -171,8 +171,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-04 | Phase 1 | Complete |
 | INFRA-05 | Phase 1 | Complete |
 | INFRA-06 | Phase 1 | Complete |
-| COV-01 | Phase 1 | Pending |
-| COV-02 | Phase 1 | Pending |
+| COV-01 | Phase 1 | Complete |
+| COV-02 | Phase 1 | Complete |
 | TOF-01 | Phase 2 | Pending |
 | TOF-02 | Phase 2 | Pending |
 | TOF-03 | Phase 2 | Pending |
