@@ -9,14 +9,21 @@ import com.clickhouse.client.config.ClickHouseClientOption;
 import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.util.jmx.MBeanServerUtils;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.clickhouse.ClickHouseContainer;
@@ -27,6 +34,7 @@ public class ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBase.class);
     private static final AtomicLong DATABASE_COUNTER = new AtomicLong();
     private static final AtomicInteger SHARED_CONTAINER_STARTS = new AtomicInteger();
+    private static final AtomicLong CONNECTOR_NAME_COUNTER = new AtomicLong();
     protected static ClickHouseHelperClient chc = null;
     protected static ClickHouseContainer db = null;
     protected static boolean isCloud = ClickHouseTestHelpers.isCloud();
@@ -67,6 +75,34 @@ public class ClickHouseBase {
                 LOGGER.error("Error dropping database", e);
             }
         }
+    }
+
+    /**
+     * Safety net for D-09: unregisters any {@code com.clickhouse:type=ClickHouseKafkaConnector}
+     * MBean left registered by a test that failed between {@code start()} and {@code stop()},
+     * so a leak never crosses into a later test.
+     */
+    @AfterEach
+    protected void cleanupLeakedMBeans() {
+        try {
+            Set<ObjectName> leaked = ManagementFactory.getPlatformMBeanServer()
+                    .queryNames(new ObjectName("com.clickhouse:type=ClickHouseKafkaConnector,*"), null);
+            for (ObjectName name : leaked) {
+                LOGGER.warn("Unregistering leaked MBean left by a test: {}", name);
+                MBeanServerUtils.unregisterMBean(name.toString());
+            }
+        } catch (MalformedObjectNameException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Opt-in unique connector name for new/touched tests (D-10). {@code createProps()} stays
+     * unchanged, so existing tests keep their current {@code connector=null} MBean names.
+     */
+    protected String uniqueConnectorName(TestInfo testInfo) {
+        String methodName = testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("unknown");
+        return getClass().getSimpleName() + "-" + methodName + "-" + CONNECTOR_NAME_COUNTER.incrementAndGet();
     }
 
     public String extractClientVersion() {
