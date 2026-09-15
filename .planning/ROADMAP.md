@@ -15,7 +15,7 @@ Local note: every ClickHouse-backed test (anything extending `ClickHouseBase`) n
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Test Infrastructure & Green Baseline** - Green `latest` × V2 baseline, container singleton, `testUnit` task, leak-safe/UTF-8 test hygiene, JaCoCo wired to `test`
+- [x] **Phase 1: Test Infrastructure & Green Baseline** - Green `latest` × V2 baseline, container singleton, `testUnit` task, leak-safe/UTF-8 test hygiene, JaCoCo wired to `test` (completed 2026-09-16)
 - [ ] **Phase 2: Fork SMT Coverage** - Edge cases, config contracts, and sink-level ClickHouse landing tests for all four fork SMTs
 - [ ] **Phase 3: Table Metadata & JSON/Dynamic Types** - `targetTableFilter`, `describeTable` sub-column skipping, JSON/Dynamic mapping and round-trips, RowBinary fail-fast, non-ASCII
 - [ ] **Phase 4: JSON Insert Path & Connector Plumbing** - Explicit `insertFormat=json`, `jsonInsertColumns`, MBean naming, `async_insert` not forced
@@ -183,7 +183,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Test Infrastructure & Green Baseline | 3/3 | In Progress|  |
+| 1. Test Infrastructure & Green Baseline | 3/3 | Complete    | 2026-09-16 |
 | 2. Fork SMT Coverage | 0/3 | Not started | - |
 | 3. Table Metadata & JSON/Dynamic Types | 0/3 | Not started | - |
 | 4. JSON Insert Path & Connector Plumbing | 0/3 | Not started | - |
