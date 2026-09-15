@@ -8,6 +8,8 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+import org.gradle.testing.jacoco.tasks.JacocoReport
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -32,6 +34,7 @@ plugins {
     `maven-publish`
     signing
    // checkstyle
+    jacoco
     id("com.github.gmazzo.buildconfig") version "6.0.7"
     id("com.diffplug.spotless") version "8.1.0"
     id("com.github.johnrengelman.shadow") version "8.1.1"
@@ -213,6 +216,81 @@ tasks.withType<Test> {
             }
         }
     })
+}
+
+jacoco {
+    toolVersion = "0.8.15"
+}
+
+// D-13: hand-picked, named include list of the fork-changed classes (COV-02).
+// Exact class names, not bare prefix globs, so neighbours such as
+// TableMappingRefresher, KeyToValue, ExtractTopic, or ClickHouseFieldDescriptor
+// can never be pulled in.
+val forkChangedClasses = listOf(
+    "com/clickhouse/kafka/connect/transforms/TableOperationFilter.class",
+    "com/clickhouse/kafka/connect/transforms/TableOperationFilter\$*.class",
+    "com/clickhouse/kafka/connect/transforms/HeadersToValue.class",
+    "com/clickhouse/kafka/connect/transforms/HeadersToValue\$*.class",
+    "com/clickhouse/kafka/connect/transforms/HeaderToValue.class",
+    "com/clickhouse/kafka/connect/transforms/HeaderToValue\$*.class",
+    "com/clickhouse/kafka/connect/transforms/HeaderToValueConfig.class",
+    "com/clickhouse/kafka/connect/transforms/HeaderToValueConfig\$*.class",
+    "com/clickhouse/kafka/connect/transforms/ConvertToMapOrJson.class",
+    "com/clickhouse/kafka/connect/transforms/ConvertToMapOrJson\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/Column.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/Column\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/Type.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/Type\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/Table.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/Table\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class",
+    "com/clickhouse/kafka/connect/sink/db/ClickHouseWriter\$*.class",
+    "com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.class",
+    "com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig\$*.class",
+    "com/clickhouse/kafka/connect/sink/ProxySinkTask.class",
+    "com/clickhouse/kafka/connect/sink/ProxySinkTask\$*.class",
+    "com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.class",
+    "com/clickhouse/kafka/connect/sink/ClickHouseSinkTask\$*.class",
+    "com/clickhouse/kafka/connect/ClickHouseSinkConnector.class",
+    "com/clickhouse/kafka/connect/ClickHouseSinkConnector\$*.class",
+    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils.class",
+    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils\$*.class"
+)
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("test"))
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+// D-14: fork-changed-class-only coverage view, reading the same test exec data.
+tasks.register<JacocoReport>("jacocoForkReport") {
+    group = "verification"
+    description = "Generates a JaCoCo coverage report scoped to the fork-changed classes (D-13)"
+    dependsOn(tasks.named("test"))
+    executionData(tasks.named<Test>("test").get())
+    sourceDirectories.setFrom(sourceSets.main.get().allJava.srcDirs)
+    classDirectories.setFrom(files(sourceSets.main.get().output.classesDirs.map { fileTree(it) { include(forkChangedClasses) } }))
+    reports {
+        xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/fork/jacocoForkReport.xml"))
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/fork/html"))
+    }
+}
+
+// D-16: both reports hang off test only; never wired to check or a coverage-verification rule.
+tasks.named<Test>("test") {
+    finalizedBy(tasks.named("jacocoTestReport"), tasks.named("jacocoForkReport"))
+}
+
+// D-16: JaCoCo agent runs on test only.
+tasks.named<Test>("integrationTest") {
+    extensions.configure<JacocoTaskExtension> { isEnabled = false }
 }
 
 /*
