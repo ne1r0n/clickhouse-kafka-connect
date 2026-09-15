@@ -4,6 +4,7 @@
 **Core Value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
 **Conventions used below:**
+
 - "Pinned" = the test asserts the current behavior as-is; no behavior change is intended.
 - "Fixed if broken" = write the test first to establish ground truth; if it exposes a bug, fix it in the same phase (small, targeted, rebase-friendly change).
 - "Sink-level" = ClickHouse-backed test through `ClickHouseSinkTask` (extends `ClickHouseBase`).
@@ -13,8 +14,8 @@
 
 ### Test Infrastructure
 
-- [ ] **INFRA-01**: Baseline `./gradlew test` against ClickHouse `latest` with client V2 is run and its result recorded before new tests are added; pre-existing failures are fixed
-- [ ] **INFRA-02**: ClickHouse-backed tests run against `latest` by default (not the `25.3` fallback in `ClickHouseTestHelpers`), and a smoke test asserts the running server version matches the requested image
+- [x] **INFRA-01**: Baseline `./gradlew test` against ClickHouse `latest` with client V2 is run and its result recorded before new tests are added; pre-existing failures are fixed
+- [x] **INFRA-02**: ClickHouse-backed tests run against `latest` by default (not the `25.3` fallback in `ClickHouseTestHelpers`), and a smoke test asserts the running server version matches the requested image
 - [ ] **INFRA-03**: `ClickHouseBase` reuses a single ClickHouse container per test JVM fork instead of starting one per test class
 - [ ] **INFRA-04**: ClickHouse-backed test classes carry a JUnit tag, and a `testUnit` Gradle task runs every other test without Docker
 - [ ] **INFRA-05**: New and touched tests that start a sink task always stop it (try/finally or `@AfterEach`) and use a unique connector name, so a failing test cannot leak an MBean into later tests
@@ -164,8 +165,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Pending |
 | INFRA-04 | Phase 1 | Pending |
 | INFRA-05 | Phase 1 | Pending |
@@ -241,6 +242,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-04 | Phase 5 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 75 total
 - Mapped to phases: 75
 - Unmapped: 0 ✓

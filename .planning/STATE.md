@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Test Infrastructure & Green Baseline
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-09-15T21:20:19.254Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-09-15T21:41:59.192Z"
 last_activity: 2026-09-16
 last_activity_desc: Phase 01 execution started
-state_head: 43c79f8c255a77d5b47c04e07b27eb81f03ac705
+state_head: 632688ae1085d70c16e3f9498aeaed9a9419732a
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-09-15)
 ## Current Position
 
 Phase: 01 (Test Infrastructure & Green Baseline) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 01
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-09-16 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 40 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -65,6 +70,8 @@ Recent decisions affecting current work:
 - [Roadmap]: Bug fixes live in the phase whose tests expose them. There is no separate bug-fix phase.
 - [Roadmap]: JaCoCo is wired in Phase 1 so all later tests appear in coverage. CI changes and final verification come last (Phase 5).
 - [Roadmap]: Phases 2, 3, and 4 are independent test tracks that depend only on Phase 1.
+- [Phase 01]: 01-01: untouched suite is already green on ClickHouse latest x client V2 (0 failures); no D-01/D-02/D-04 fixes needed — Baseline capture revealed 14 apparent failures were a sandbox TESTCONTAINERS_HOST_OVERRIDE=null artifact, not real test/code issues; corrected re-run showed 187 tests, 0 failed, 7 skipped
+- [Phase 01]: 01-01: D-06 smoke test checks image reference + well-formed version instead of image-label equality for latest — No ClickHouse image carries a usable version label (ClickHouse issue #54224); this is the closest observable equivalent, as D-06 itself anticipated
 
 ### Pending Todos
 
@@ -87,6 +94,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-15T19:43:51.816Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-test-infrastructure-green-baseline/01-CONTEXT.md
+Last session: 2026-09-15T21:41:59.179Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None
