@@ -3,13 +3,16 @@ package com.clickhouse.kafka.connect.sink;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import java.lang.management.ManagementFactory;
+import java.util.List;
 import java.util.Map;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -20,10 +23,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
 
 /**
- * Proves the {@link ClickHouseBase} test harness contract (INFRA-03, INFRA-04, INFRA-05, D-05,
- * D-08, D-09, D-10): a single shared {@code latest} container per test JVM fork, a fresh,
- * isolated database per test class, MBean leak cleanup after a deliberate mid-test failure, and
- * a safe unique connector-name helper.
+ * Proves the {@link ClickHouseBase} test harness contract (INFRA-03..06, D-05, D-08, D-09,
+ * D-10, D-11): a single shared {@code latest} container per test JVM fork, a fresh, isolated
+ * database per test class, MBean leak cleanup after a deliberate mid-test failure, a safe
+ * unique connector-name helper, and UTF-8 helper decoding.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ClickHouseTestHarnessTest extends ClickHouseBase {
@@ -157,5 +160,34 @@ public class ClickHouseTestHarnessTest extends ClickHouseBase {
             chst.stop();
         }
         assertEquals(0, mbeanCountForConnector(name1));
+    }
+
+    /**
+     * D-11 proof: {@code ClickHouseTestHelpers} decodes ClickHouse HTTP responses as UTF-8, so
+     * non-ASCII strings survive the round trip even when the test JVM runs under
+     * {@code file.encoding=windows-1252}. The insert itself uses ASCII-only SQL ({@code unhex})
+     * so the insert path's own encoding never taints this result — only the read path (the
+     * subject of D-11) is exercised.
+     */
+    @Test
+    @Order(5)
+    public void helpersDecodeResponsesAsUtf8() {
+        ClickHouseHelperClient chc = createClient(createProps());
+        String table = createTopicName("utf8_helper_test");
+
+        ClickHouseTestHelpers.dropTable(chc, table);
+        ClickHouseTestHelpers.createTable(chc, table, "CREATE TABLE %s (id UInt8, s String) ENGINE = MergeTree ORDER BY id");
+        ClickHouseTestHelpers.query(
+                chc,
+                String.format(
+                        "INSERT INTO `%s` VALUES (1, unhex('D09FD180D0B8D0B2D0B5D18220E4B8ADE69687'))", table));
+
+        List<JSONObject> rows = ClickHouseTestHelpers.getAllRowsAsJson(chc, table);
+        if (rows.isEmpty()) {
+            fail("Expected exactly one row from " + table);
+        }
+        // Expected value: Привет 中文 -- the Java string literal below spells this out in escaped
+        // unicode code points only, so this source file's own encoding is never the thing under test.
+        assertEquals("\u041f\u0440\u0438\u0432\u0435\u0442 \u4e2d\u6587", rows.get(0).getString("s"));
     }
 }
