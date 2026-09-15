@@ -12,44 +12,61 @@ import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.clickhouse.ClickHouseContainer;
+import org.testcontainers.images.PullPolicy;
 
+@Tag("clickhouse")
 public class ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBase.class);
+    private static final AtomicLong DATABASE_COUNTER = new AtomicLong();
+    private static final AtomicInteger SHARED_CONTAINER_STARTS = new AtomicInteger();
     protected static ClickHouseHelperClient chc = null;
     protected static ClickHouseContainer db = null;
     protected static boolean isCloud = ClickHouseTestHelpers.isCloud();
     protected static String database = null;
+
+    protected static String newTestDatabaseName() {
+        return "kafka_connect_test_" + System.currentTimeMillis() + "_" + DATABASE_COUNTER.incrementAndGet();
+    }
+
+    protected static int sharedContainerStarts() {
+        return SHARED_CONTAINER_STARTS.get();
+    }
+
     @BeforeAll
     public static void setup() throws IOException  {
-        if (database == null) {
-            database = String.format("kafka_connect_test_%s", System.currentTimeMillis());
-        }
+        database = newTestDatabaseName();
         if (isCloud) {
             initialPing();
             return;
         }
-        db = new ClickHouseContainer(ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE).withPassword("test_password").withEnv("CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT", "1");
-        db.start();
+        if (db == null) {
+            db = new ClickHouseContainer(ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE)
+                    .withImagePullPolicy(PullPolicy.alwaysPull())
+                    .withPassword("test_password")
+                    .withEnv("CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT", "1");
+            LOGGER.info("Starting shared ClickHouse container {} for this test JVM", ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE);
+            db.start();
+            SHARED_CONTAINER_STARTS.incrementAndGet();
+        }
     }
 
     @AfterAll
     protected static void tearDown() {
-        if (isCloud) {//We need to clean up databases in the cloud, we can ignore the local database
-            if (database != null) {
-                try {
-                    dropDatabase(database);
-                } catch (Exception e) {
-                    LOGGER.error("Error dropping database", e);
-                }
+        if (database != null && (isCloud || db != null)) {
+            try {
+                dropDatabase(database);
+            } catch (Exception e) {
+                LOGGER.error("Error dropping database", e);
             }
         }
-        if (db != null)
-            db.stop();
     }
 
     public String extractClientVersion() {
