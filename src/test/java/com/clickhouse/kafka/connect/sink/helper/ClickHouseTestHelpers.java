@@ -22,6 +22,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -155,7 +156,8 @@ public class ClickHouseTestHelpers {
         try {
             QueryResponse queryResponse = chc.getClient().query(query, querySettings).get();
             List<JSONObject> jsonObjects = new ArrayList<>();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()));
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(queryResponse.getInputStream(), StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
                 JSONObject jsonObject = new JSONObject(line);
@@ -249,7 +251,8 @@ public class ClickHouseTestHelpers {
             }
             List<String> results = new ArrayList<>();
             LOGGER.info("read rows [%d]", queryResponse.getReadRows());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()));
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(queryResponse.getInputStream(), StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
                 String gsonString = line.replace("'","").replace(" ","").replace("\\u003d",":");
