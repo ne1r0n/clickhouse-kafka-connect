@@ -9,6 +9,7 @@ Local note: every ClickHouse-backed test (anything extending `ClickHouseBase`) n
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -23,27 +24,40 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Test Infrastructure & Green Baseline
+
 **Goal**: The existing suite passes against ClickHouse `latest` with client V2 on a harness that is fast (one container per JVM fork), can run unit tests without Docker, cannot leak MBeans between tests, decodes responses as UTF-8, and already produces a JaCoCo report so every later test shows up in coverage
 **Depends on**: Nothing (first phase)
 **Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06, COV-01, COV-02
 **Success Criteria** (what must be TRUE):
+
   1. With colima running and no `CLICKHOUSE_VERSION` override, `./gradlew test` runs against ClickHouse `latest` with client V2 and passes in full. The first baseline result, including any pre-existing failures and how they were fixed, is recorded in the phase summary.
   2. A smoke test fails if the running ClickHouse server version does not match the requested image. A full ClickHouse-backed run starts one ClickHouse container per test JVM fork, not one per test class.
   3. With Docker stopped, `./gradlew testUnit` passes and runs every test not tagged as ClickHouse-backed, including the existing SMT tests.
   4. Sink-task tests stop their task in `finally`/`@AfterEach` and use unique connector names, so a deliberately failing test does not cause an MBean-already-registered failure in later tests. Test helpers decode ClickHouse responses as explicit UTF-8.
   5. After `./gradlew test`, JaCoCo HTML and XML reports exist, Lombok-generated methods of `Column` are excluded, and fork-changed classes can be reviewed on their own. `integrationTest` and `check` do not run JaCoCo.
+
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 01-01-PLAN.md — Baseline run on `latest` × V2 (untouched harness), `latest` as default image, server-version smoke test, fix pre-existing failures (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-02-PLAN.md — Test-source harness: `ClickHouseBase` container singleton with `alwaysPull`, per-class database, proxy container isolation, `@Tag("clickhouse")`, MBean sweep + unique connector names, UTF-8 helpers (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-03-PLAN.md — Build script: JaCoCo `0.8.15` on `test` only (full + fork-changed reports, `lombok.config`), `testUnit` kept out of `check`, full covered run on the new harness (wave 3: needs 01-02's tag and harness)
 
 ### Phase 2: Fork SMT Coverage
+
 **Goal**: Every behavior of `TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, and `ConvertToMapOrJson` is pinned: edge cases, config validation, record metadata preservation, and records reaching ClickHouse through the sink after transformation
 **Depends on**: Phase 1
 **Requirements**: TOF-01, TOF-02, TOF-03, TOF-04, TOF-05, TOF-06, HDRS-01, HDRS-02, HDRS-03, HDRS-04, HDRS-05, HDRS-06, HDRS-07, HDRS-08, HDRS-09, HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, CONV-01, CONV-02, CONV-03, CONV-04, CONV-05, CONV-06, CONV-07, CONV-08
 **Success Criteria** (what must be TRUE):
+
   1. `./gradlew testUnit` passes with `TableOperationFilter` tests for:
      - truncate drops
      - multi-table filtering
@@ -70,21 +84,27 @@ Plans:
      - a header-derived field lands in its column
      - JSON-string output lands in a String/JSON column with correct content
   5. Any bug these tests expose (for example nested Struct conversion) is fixed in this phase with a small targeted change, and `./gradlew test` stays green.
+
 **Plans**: 3 plans
 
 Plans:
+
 - [ ] 02-01: `TableOperationFilter` + `HeaderToValue` unit tests and any fixes in those transforms (wave 1)
 - [ ] 02-02: `HeadersToValue` + `ConvertToMapOrJson` unit tests and any fixes in those transforms (wave 1)
 - [ ] 02-03: Sink-level SMT tests in a new ClickHouse-backed test class (TOF-06, HDRS-09, HDR-07, CONV-08) (wave 1)
 
 ### Phase 3: Table Metadata & JSON/Dynamic Types
+
 **Goal**: Table discovery and column typing added by the fork work correctly on ClickHouse `latest`. `targetTableFilter` selects the intended tables, `describeTable` never drops tables because of sub-columns, `JSON`/`Dynamic` columns round-trip real data, and the RowBinary path fails clearly instead of silently for those types.
 **Depends on**: Phase 1
 **Requirements**: FILT-01, FILT-02, FILT-03, FILT-04, DESC-01, DESC-02, DESC-03, DESC-04, TYPE-01, TYPE-02, TYPE-03, TYPE-04, TYPE-05, TYPE-06, TYPE-07
 **Research flags**:
+
 - Before writing DESC-03, capture raw `DESCRIBE TABLE ... SETTINGS describe_include_subcolumns=1` output on `latest` for `Nullable`, `Array`, `JSON`, and `Dynamic` columns and compare it with the skip list.
 - Before choosing the TYPE-06 fix, run a ground-truth test of what currently happens when `JSON`/`Dynamic` columns go through RowBinary (crash, silent drop, or wrong data).
+
 **Success Criteria** (what must be TRUE):
+
   1. `targetTableFilter` tests pass:
      - an empty filter adds no `match()` clause and maps all tables
      - a filter matching nothing yields an empty mapping, and the connector follows `suppressTableExistenceException`
@@ -94,20 +114,26 @@ Plans:
   3. `JSON`, parameterized `JSON(...)`, and `Dynamic` type strings map to `Type.JSON`/`Type.DYNAMIC`. Records inserted through the JSON insert path read back correctly: nested values and types in `JSON` columns, `Dynamic` columns, and mixed tables with ordinary columns.
   4. A schema record targeting a `JSON` or `Dynamic` column through RowBinary fails fast with an error saying `insertFormat=json` is required, with no silent data loss.
   5. Cyrillic and CJK values round-trip through String, `JSON`, and `Dynamic` columns and through SMT header values under the `windows-1252` test JVM.
+
 **Plans**: 3 plans
 
 Plans:
+
 - [ ] 03-01: `targetTableFilter` clause extraction + unit/live tests, `describeTable` sub-column audit, tests, and fixes (`ClickHouseHelperClient`) (wave 1)
 - [ ] 03-02: `JSON`/`Dynamic` type-mapping tests, JSON-path insert round-trips, mixed table, non-ASCII round-trips (TYPE-01..05, TYPE-07) (wave 1)
 - [ ] 03-03: RowBinary ground truth for `JSON`/`Dynamic` and fail-fast error in `ClickHouseWriter` (TYPE-06) (wave 1)
 
 ### Phase 4: JSON Insert Path & Connector Plumbing
+
 **Goal**: The work-in-progress metadata-free JSON insert path and `jsonInsertColumns` are pinned as they are today, and connector-level changes are covered: MBean naming, per-task registration, and `async_insert` left to the user
 **Depends on**: Phase 1
 **Requirements**: JSON-01, JSON-02, JSON-03, JSON-04, JSON-05, COLS-01, COLS-02, COLS-03, COLS-04, COLS-05, COLS-06, JMX-01, JMX-02, JMX-03, JMX-04, ASYNC-01, ASYNC-02, ASYNC-03
 **Research flags**:
+
 - Before writing COLS-02, check how client-v2 `0.9.6` handles an empty column list: omitted column clause, malformed INSERT, or something else.
+
 **Success Criteria** (what must be TRUE):
+
   1. `insertFormat=json` in any letter case enables metadata-free mode, and leaving it unset does not. With topic name different from table name, the connector starts and inserts without fetched table metadata: unknown fields are sent unmodified, known fields land with correct values, and tombstones are skipped. Existing explicit-JSON tests now assert column values.
   2. `jsonInsertColumns` tests pass:
      - parsing: blank means an empty list; whitespace and empty entries are dropped; order is preserved
@@ -122,25 +148,31 @@ Plans:
      - `version=unknown` for a null version, and `:` rendered as `_`
      - multiple tasks and connectors register distinct MBeans, and each `stop()` unregisters only its own
   5. With default config the connector sends no `async_insert` setting. A user-supplied `async_insert` in `clickhouseSettings` is passed through unchanged. A sink insert with `async_insert=1` completes and its data is present in ClickHouse `latest`.
+
 **Plans**: 3 plans
 
 Plans:
+
 - [ ] 04-01: Explicit `insertFormat=json` path tests + value assertions in existing JSON insert tests (JSON-01..05) (wave 1)
 - [ ] 04-02: `jsonInsertColumns` parsing unit tests and ClickHouse-backed insert tests in a new test class (COLS-01..06) (wave 1)
 - [ ] 04-03: MBean name and registration tests + `async_insert` negative/pass-through/live tests (JMX-01..04, ASYNC-01..03) (wave 1)
 
 ### Phase 5: CI & Final Verification
+
 **Goal**: The fork's CI runs the full test suite on every push against ClickHouse `latest` × client V2 using current actions and publishes coverage, and the whole suite is confirmed green both locally and in CI
 **Depends on**: Phase 2, Phase 3, Phase 4
 **Requirements**: CI-01, CI-02, CI-03, CI-04
 **Success Criteria** (what must be TRUE):
+
   1. `.github/workflows/tests.yaml` uses `actions/checkout@v4`, `actions/setup-java@v6` (temurin 17), and `gradle/actions/setup-gradle@v6`, with no deprecated actions left.
   2. A push to `custom_build` triggers exactly one test job, using `CLICKHOUSE_VERSION=latest` and client V2, with no V1, 23.7, 24.3, or Cloud legs.
   3. That CI run is green, uploads the JaCoCo report as an artifact, and writes a coverage summary to the job summary. No coverage threshold can fail the build.
   4. With colima running, `./gradlew test` passes in full locally (fork and upstream tests) against `latest` × V2, and the final report shows coverage for the fork-changed classes.
+
 **Plans**: 2 plans
 
 Plans:
+
 - [ ] 05-01: Update the workflow: current actions, single `latest` × V2 job, JaCoCo artifact upload + job-summary coverage (wave 1)
 - [ ] 05-02: Final full-suite run locally, coverage report review, confirm the green CI run on push (`gh` not installed; check via GitHub web/API) (wave 2)
 
