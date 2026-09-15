@@ -164,12 +164,87 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| INFRA-06 | Phase 1 | Pending |
+| COV-01 | Phase 1 | Pending |
+| COV-02 | Phase 1 | Pending |
+| TOF-01 | Phase 2 | Pending |
+| TOF-02 | Phase 2 | Pending |
+| TOF-03 | Phase 2 | Pending |
+| TOF-04 | Phase 2 | Pending |
+| TOF-05 | Phase 2 | Pending |
+| TOF-06 | Phase 2 | Pending |
+| HDRS-01 | Phase 2 | Pending |
+| HDRS-02 | Phase 2 | Pending |
+| HDRS-03 | Phase 2 | Pending |
+| HDRS-04 | Phase 2 | Pending |
+| HDRS-05 | Phase 2 | Pending |
+| HDRS-06 | Phase 2 | Pending |
+| HDRS-07 | Phase 2 | Pending |
+| HDRS-08 | Phase 2 | Pending |
+| HDRS-09 | Phase 2 | Pending |
+| HDR-01 | Phase 2 | Pending |
+| HDR-02 | Phase 2 | Pending |
+| HDR-03 | Phase 2 | Pending |
+| HDR-04 | Phase 2 | Pending |
+| HDR-05 | Phase 2 | Pending |
+| HDR-06 | Phase 2 | Pending |
+| HDR-07 | Phase 2 | Pending |
+| CONV-01 | Phase 2 | Pending |
+| CONV-02 | Phase 2 | Pending |
+| CONV-03 | Phase 2 | Pending |
+| CONV-04 | Phase 2 | Pending |
+| CONV-05 | Phase 2 | Pending |
+| CONV-06 | Phase 2 | Pending |
+| CONV-07 | Phase 2 | Pending |
+| CONV-08 | Phase 2 | Pending |
+| FILT-01 | Phase 3 | Pending |
+| FILT-02 | Phase 3 | Pending |
+| FILT-03 | Phase 3 | Pending |
+| FILT-04 | Phase 3 | Pending |
+| DESC-01 | Phase 3 | Pending |
+| DESC-02 | Phase 3 | Pending |
+| DESC-03 | Phase 3 | Pending |
+| DESC-04 | Phase 3 | Pending |
+| TYPE-01 | Phase 3 | Pending |
+| TYPE-02 | Phase 3 | Pending |
+| TYPE-03 | Phase 3 | Pending |
+| TYPE-04 | Phase 3 | Pending |
+| TYPE-05 | Phase 3 | Pending |
+| TYPE-06 | Phase 3 | Pending |
+| TYPE-07 | Phase 3 | Pending |
+| JSON-01 | Phase 4 | Pending |
+| JSON-02 | Phase 4 | Pending |
+| JSON-03 | Phase 4 | Pending |
+| JSON-04 | Phase 4 | Pending |
+| JSON-05 | Phase 4 | Pending |
+| COLS-01 | Phase 4 | Pending |
+| COLS-02 | Phase 4 | Pending |
+| COLS-03 | Phase 4 | Pending |
+| COLS-04 | Phase 4 | Pending |
+| COLS-05 | Phase 4 | Pending |
+| COLS-06 | Phase 4 | Pending |
+| JMX-01 | Phase 4 | Pending |
+| JMX-02 | Phase 4 | Pending |
+| JMX-03 | Phase 4 | Pending |
+| JMX-04 | Phase 4 | Pending |
+| ASYNC-01 | Phase 4 | Pending |
+| ASYNC-02 | Phase 4 | Pending |
+| ASYNC-03 | Phase 4 | Pending |
+| CI-01 | Phase 5 | Pending |
+| CI-02 | Phase 5 | Pending |
+| CI-03 | Phase 5 | Pending |
+| CI-04 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 75 total
-- Mapped to phases: 0
-- Unmapped: 75 ⚠️
+- Mapped to phases: 75
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-15*
-*Last updated: 2026-09-15 after initial definition*
+*Last updated: 2026-09-15 after roadmap creation*
