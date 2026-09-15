@@ -35,9 +35,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Baseline run on `latest` × V2, `latest` as default image, server-version smoke test, fix pre-existing failures (wave 1)
-- [ ] 01-02: Test-source harness: `ClickHouseBase` container singleton, ClickHouse JUnit tag on backed classes, try/finally + unique connector names, UTF-8 helpers (wave 2)
-- [ ] 01-03: Build script: `testUnit` task, JaCoCo `0.8.15` on `test` only with HTML/XML, Lombok exclusion, fork-changed-class view (wave 2)
+- [ ] 01-01-PLAN.md — Baseline run on `latest` × V2 (untouched harness), `latest` as default image, server-version smoke test, fix pre-existing failures (wave 1)
+- [ ] 01-02-PLAN.md — Test-source harness: `ClickHouseBase` container singleton with `alwaysPull`, per-class database, proxy container isolation, `@Tag("clickhouse")`, MBean sweep + unique connector names, UTF-8 helpers (wave 2)
+- [ ] 01-03-PLAN.md — Build script: JaCoCo `0.8.15` on `test` only (full + fork-changed reports, `lombok.config`), `testUnit` kept out of `check`, full covered run on the new harness (wave 3: needs 01-02's tag and harness)
 
 ### Phase 2: Fork SMT Coverage
 **Goal**: Every behavior of `TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, and `ConvertToMapOrJson` is pinned: edge cases, config validation, record metadata preservation, and records reaching ClickHouse through the sink after transformation
