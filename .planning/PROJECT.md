@@ -36,6 +36,11 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 - ✓ JMX MBean name includes `connector=<name>` (from connector `name` prop), with version sanitized (`:` → `_`, `null` → `unknown`) — existing (fork)
 - ✓ Connector no longer forces `async_insert=0`; async insert is controlled by server profile / `clickhouseSettings` — existing (fork, intentional)
 
+**Delivered by this project:**
+
+- ✓ Green baseline: `./gradlew test` passes in full against ClickHouse `latest` × client V2 (194 tests, 0 failed, 7 skipped) on a harness with one ClickHouse container per test JVM fork, per-class databases, an MBean leak sweep, UTF-8 test helpers, a server-version smoke test, and a Docker-free `testUnit` task — Phase 1
+- ✓ JaCoCo coverage report generated for the test run (HTML + XML), with a focused report on the fork-changed classes and Lombok-generated code excluded — Phase 1
+
 ### Active
 
 <!-- Current scope: tests for fork additions, bug fixes they surface, green suite, coverage, CI. -->
@@ -67,8 +72,7 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 **Quality gates:**
 
 - [ ] Bugs surfaced by the new tests are fixed in the same phase that finds them
-- [ ] `./gradlew test` passes in full (fork and upstream tests) against ClickHouse `latest` with client V2
-- [ ] JaCoCo coverage report generated for the test run, showing coverage of fork-changed classes
+- [ ] `./gradlew test` passes in full (fork and upstream tests) against ClickHouse `latest` with client V2 — baseline green since Phase 1; must still hold after all new tests land
 - [ ] Fork CI (GitHub Actions) runs the test suite on push against ClickHouse `latest` × client V2 and publishes the coverage report
 
 ### Out of Scope
@@ -130,12 +134,16 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 | Fix bugs found by tests in the same phase | User wants working features, not just documented failures | — Pending |
 | Test WIP JSON-path features as-is | Pin current behavior; no feature expansion in this project | — Pending |
 | `async_insert=0` intentionally not forced | Async insert is controlled via server profile / `clickhouseSettings` | — Pending |
-| Test matrix: ClickHouse `latest` × client V2 only | Production uses V2; only latest ClickHouse matters | — Pending |
+| Test matrix: ClickHouse `latest` × client V2 only | Production uses V2; only latest ClickHouse matters | ◐ Local default test image is `latest` (Phase 1); CI matrix pending (Phase 5) |
 | Done = per-feature tests + fully green `./gradlew test` + JaCoCo report + CI | User's definition of done | — Pending |
 | All research differentiators included in v1 (sink-level SMT tests, SMT contracts, RE2 live tests, non-ASCII, container singleton, `testUnit` task, etc.) | User selected every optional test group during scoping | — Pending |
 | `JSON`/`Dynamic` via RowBinary, if broken → explicit clear error (not serialization, not auto-routing) | Smallest rebase-friendly fix; serialization would be new capability | — Pending |
 | `TableOperationFilter` invalid `skipped.operations` (incl. `r`) → pin warn-and-ignore | Avoid breaking existing production connector configs | — Pending |
-| Coverage: report only, no CI threshold | Visibility wanted, not a gate | — Pending |
+| Coverage: report only, no CI threshold | Visibility wanted, not a gate | ✓ JaCoCo is report-only on `test`, no coverage-verification rule (Phase 1) |
+| Server-version smoke test asserts the container image reference plus a well-formed reported version, not an image version label | ClickHouse `latest` images carry no usable version label (ClickHouse issue #54224), so label equality is unsatisfiable | ✓ Phase 1 |
+| One shared ClickHouse container per test JVM fork (`alwaysPull`), a fresh database per test class, cleanup left to Ryuk (no JVM shutdown hook), default `maxParallelForks` kept | Fast runs with class isolation and no change to test semantics; 0 flakes observed at 6 forks | ✓ Phase 1 |
+| Fork coverage view is an explicit list of the 15 fork-changed classes (`X.class` + `X$*.class`) in a separate `jacocoForkReport` | Prefix globs over-match (e.g. `HeaderToValue*` would pull in `HeaderToValueConfig`) | ✓ Phase 1 |
+| `testUnit` selects tests via `excludeTags("clickhouse")` and stays out of `check` | Docker-free unit loop without a new source set or changing `check` | ✓ Phase 1 |
 
 ## Evolution
 
@@ -155,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-15 after initialization*
+*Last updated: 2026-09-16 after Phase 1*

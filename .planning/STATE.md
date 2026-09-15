@@ -20,10 +20,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-15)
+See: .planning/PROJECT.md (updated 2026-09-16)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 01 — Test Infrastructure & Green Baseline
+**Current focus:** Phase 2 — Fork SMT Coverage
 
 ## Current Position
 
@@ -70,16 +70,11 @@ Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
 - [Roadmap]: Bug fixes live in the phase whose tests expose them. There is no separate bug-fix phase.
-- [Roadmap]: JaCoCo is wired in Phase 1 so all later tests appear in coverage. CI changes and final verification come last (Phase 5).
+- [Roadmap]: CI changes and final verification come last (Phase 5).
 - [Roadmap]: Phases 2, 3, and 4 are independent test tracks that depend only on Phase 1.
-- [Phase 01]: 01-01: untouched suite is already green on ClickHouse latest x client V2 (0 failures); no D-01/D-02/D-04 fixes needed — Baseline capture revealed 14 apparent failures were a sandbox TESTCONTAINERS_HOST_OVERRIDE=null artifact, not real test/code issues; corrected re-run showed 187 tests, 0 failed, 7 skipped
-- [Phase 01]: 01-01: D-06 smoke test checks image reference + well-formed version instead of image-label equality for latest — No ClickHouse image carries a usable version label (ClickHouse issue #54224); this is the closest observable equivalent, as D-06 itself anticipated
-- [Phase 01]: 01-02: Container-per-fork singleton (PullPolicy.alwaysPull, if (db==null)) plus per-class database replaced the per-class container; @AfterEach MBean sweep and opt-in uniqueConnectorName added as a base-class safety net rather than retrofitting existing test files
-- [Phase 01]: 01-02: Ryuk reliably reaps the shared container within ~15-20s of Gradle exit in this environment; no JVM shutdown hook was added
-- [Phase 01]: 01-02: D-11 UTF-8 fix proven RED (windows-1252 mojibake) then GREEN via ClickHouseTestHarnessTest#helpersDecodeResponsesAsUtf8; no maxParallelForks change needed (0 flakes observed)
-- [Phase 01]: 01-03: forkChangedClasses lists exact <path>/X.class + <path>/X$*.class per D-13 class (30 entries), not a bare prefix glob, to avoid HeaderToValue* also matching HeaderToValueConfig.class
-- [Phase 01]: 01-03: check-loop guard scoped to exactly testUnit by name (if (name != "testUnit")), leaving test/integrationTest's existing check dependency untouched
-- [Phase 01]: 01-03: full covered run was green on first attempt with JaCoCo agent attached (194 tests, 0 failed, 7 skipped, matches 01-02 baseline) - no test-code fix needed
+- [Phase 01]: The suite was already green on ClickHouse `latest` × client V2 with no fixes (baseline 187 tests / 0 failed / 7 skipped; 194 / 0 / 7 after the harness work). The smoke test checks the image reference and version format, because `latest` images carry no version label.
+- [Phase 01]: `ClickHouseBase` gives one shared ClickHouse container per test JVM fork, a fresh empty database per test class, an inherited `@Tag("clickhouse")`, an `@AfterEach` MBean leak sweep, and opt-in `uniqueConnectorName(TestInfo)`. Proxy tests keep their own 23.8 container. New sink-task tests must create their table(s) before `start()`, because `ClickHouseWriter.start()` fails against an empty database.
+- [Phase 01]: JaCoCo is report-only and attached to `test` (`jacocoTestReport` plus `jacocoForkReport` over 15 explicit fork-changed classes). `testUnit` runs everything not tagged `clickhouse`, needs no Docker, and is not part of `check`.
 
 ### Pending Todos
 
@@ -87,7 +82,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1]: Colima was not running at initialization, and every ClickHouse-backed test needs Docker. Whether the baseline on `latest` × V2 is green is still unknown.
+- [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper and makes ClickHouse-backed tests fail spuriously. Run Gradle tests as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`. Docker runs on colima profile `vz`; profile `default` is stopped.
+- [GSD]: `workflow.test_command` and `workflow.build_command` are unset, and execute-phase's post-merge gate does not detect Gradle, so that gate currently runs nothing on this project. Executors ran `./gradlew test` themselves in Phase 1.
 - [Phase 3]: Research flag: audit `DESCRIBE ... describe_include_subcolumns=1` output on `latest`, and establish RowBinary ground truth for `JSON`/`Dynamic`, before writing DESC-03 and TYPE-06.
 - [Phase 4]: Research flag: check how client-v2 `0.9.6` handles an empty `jsonInsertColumns` list before writing COLS-02.
 - [Phase 5]: The `gh` CLI is not installed locally, so CI runs must be checked through the GitHub web UI or API.
@@ -102,6 +98,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-15T22:18:27.928Z
-Stopped at: Phase 01 complete, ready to plan Phase 2
+Last session: 2026-09-16
+Stopped at: Phase 1 complete, ready to plan Phase 2
 Resume file: None
