@@ -16,10 +16,10 @@
 
 - [x] **INFRA-01**: Baseline `./gradlew test` against ClickHouse `latest` with client V2 is run and its result recorded before new tests are added; pre-existing failures are fixed
 - [x] **INFRA-02**: ClickHouse-backed tests run against `latest` by default (not the `25.3` fallback in `ClickHouseTestHelpers`), and a smoke test asserts the running server version matches the requested image
-- [ ] **INFRA-03**: `ClickHouseBase` reuses a single ClickHouse container per test JVM fork instead of starting one per test class
-- [ ] **INFRA-04**: ClickHouse-backed test classes carry a JUnit tag, and a `testUnit` Gradle task runs every other test without Docker
-- [ ] **INFRA-05**: New and touched tests that start a sink task always stop it (try/finally or `@AfterEach`) and use a unique connector name, so a failing test cannot leak an MBean into later tests
-- [ ] **INFRA-06**: Test helpers that read ClickHouse responses decode with explicit UTF-8 rather than the `windows-1252` test JVM default
+- [x] **INFRA-03**: `ClickHouseBase` reuses a single ClickHouse container per test JVM fork instead of starting one per test class
+- [x] **INFRA-04**: ClickHouse-backed test classes carry a JUnit tag, and a `testUnit` Gradle task runs every other test without Docker
+- [x] **INFRA-05**: New and touched tests that start a sink task always stop it (try/finally or `@AfterEach`) and use a unique connector name, so a failing test cannot leak an MBean into later tests
+- [x] **INFRA-06**: Test helpers that read ClickHouse responses decode with explicit UTF-8 rather than the `windows-1252` test JVM default
 
 ### Transforms — TableOperationFilter
 
@@ -167,10 +167,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | INFRA-01 | Phase 1 | Complete |
 | INFRA-02 | Phase 1 | Complete |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
-| INFRA-06 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
+| INFRA-05 | Phase 1 | Complete |
+| INFRA-06 | Phase 1 | Complete |
 | COV-01 | Phase 1 | Pending |
 | COV-02 | Phase 1 | Pending |
 | TOF-01 | Phase 2 | Pending |
