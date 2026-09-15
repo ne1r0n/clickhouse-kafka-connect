@@ -173,7 +173,9 @@ tasks.withType<JavaCompile> {
 
 tasks.withType<Test> {
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).takeIf { it > 0 } ?: 1
-    tasks.getByName("check").dependsOn(this)
+    if (name != "testUnit") {
+        tasks.getByName("check").dependsOn(this)
+    }
     systemProperty("file.encoding", "windows-1252") // run tests with different encoding
     useJUnitPlatform()
     testLogging {
@@ -216,6 +218,20 @@ tasks.withType<Test> {
             }
         }
     })
+}
+
+// INFRA-04, D-12: runs every test not tagged @Tag("clickhouse"); no Docker required.
+// Inherits maxParallelForks, windows-1252 file.encoding, test logging, the Java 17
+// launcher, and the summary listener from the withType<Test> block above.
+tasks.register<Test>("testUnit") {
+    group = "verification"
+    description = "Runs every test not tagged clickhouse; no Docker required"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        excludeTags("clickhouse")
+    }
+    extensions.configure<JacocoTaskExtension> { isEnabled = false }
 }
 
 jacoco {
