@@ -1,0 +1,38 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Test Infrastructure & Green Baseline",
+      "status": "pending"
+    },
+    {
+      "number": "2",
+      "name": "Fork SMT Coverage",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Table Metadata & JSON/Dynamic Types",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "JSON Insert Path & Connector Plumbing",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "CI & Final Verification",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 01 of 5 · 0% · executing"
+  },
+  "updated_at": "2026-09-15T21:20:19.272Z"
+}
