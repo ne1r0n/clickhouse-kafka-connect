@@ -3,7 +3,9 @@ package transforms;
 import com.clickhouse.kafka.connect.transforms.HeaderToValue;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Assertions;
@@ -116,5 +118,172 @@ public class HeaderToValueTest {
 
             TransformTestHelpers.assertMetadataPreserved(record, newRecord);
         }
+    }
+
+    @Test
+    @DisplayName("HDR-01: configure() throws ConfigException when the fields key is absent")
+    public void testConfigureThrowsConfigExceptionWhenFieldsAbsent() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("headers", "headerKey1");
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Assertions.assertThrows(ConfigException.class, () -> headerToValue.configure(configs));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-01: configure() throws ConfigException when the headers key is absent")
+    public void testConfigureThrowsConfigExceptionWhenHeadersAbsent() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("fields", "field1");
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Assertions.assertThrows(ConfigException.class, () -> headerToValue.configure(configs));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-01: configure() throws DataException when fields outnumber headers")
+    public void testConfigureThrowsDataExceptionWhenFieldsOutnumberHeaders() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("fields", "a,b");
+        configs.put("headers", "h1");
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            DataException ex =
+                    Assertions.assertThrows(DataException.class, () -> headerToValue.configure(configs));
+            Assertions.assertTrue(ex.getMessage().contains("must match the number of headers"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-01: configure() throws DataException when headers outnumber fields")
+    public void testConfigureThrowsDataExceptionWhenHeadersOutnumberFields() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("fields", "a");
+        configs.put("headers", "h1,h2");
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            DataException ex =
+                    Assertions.assertThrows(DataException.class, () -> headerToValue.configure(configs));
+            Assertions.assertTrue(ex.getMessage().contains("must match the number of headers"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-06: non-string header values are coerced via toString() on the schema path")
+    public void testNonStringHeaderValuesCoercedSchemaPath() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "n_int,n_bool");
+            configs.put("headers", "h-int,h-bool");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addInt("h-int", 123);
+            headers.addBoolean("h-bool", true);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertEquals("123", newValue.get("n_int"));
+            Assertions.assertEquals("true", newValue.get("n_bool"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-06: non-string header values are coerced via toString() on the schemaless path")
+    public void testNonStringHeaderValuesCoercedSchemalessPath() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "n_int,n_bool");
+            configs.put("headers", "h-int,h-bool");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addInt("h-int", 123);
+            headers.addBoolean("h-bool", true);
+
+            SinkRecord record = TransformTestHelpers.schemalessRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Map<String, Object> value = (Map<String, Object>) newRecord.value();
+
+            Assertions.assertEquals("123", value.get("n_int"));
+            Assertions.assertEquals("true", value.get("n_bool"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-06: empty-string and zero-valued headers are copied, not treated as missing")
+    public void testEmptyStringAndZeroValuedHeadersAreCopied() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "empty_field,zero_field");
+            configs.put("headers", "h-empty,h-zero");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("h-empty", "");
+            headers.addInt("h-zero", 0);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertEquals("", newValue.get("empty_field"));
+            Assertions.assertEquals("0", newValue.get("zero_field"));
+        }
+    }
+
+    // Escaped-unicode literal for the Cyrillic-plus-CJK test value, built from int[] code points
+    // at runtime rather than backslash-u escape text in source, because the editing tool chain
+    // used to author this file silently decodes literal backslash-u escape sequences into real
+    // non-ASCII bytes.
+    private static final String CYRILLIC_CJK_LITERAL =
+            new String(
+                    new int[] {0x041f, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442, 0x0020, 0x4e2d, 0x6587},
+                    0,
+                    9);
+
+    @Test
+    @DisplayName("HDR-06: an escaped-unicode header value is copied byte-identically via toString()")
+    public void testEscapedUnicodeHeaderValueCopiedUnchanged() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("trace-id", CYRILLIC_CJK_LITERAL);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertEquals(CYRILLIC_CJK_LITERAL, newValue.get("trace_id"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-06: config() returns the shared CONFIG_DEF instance")
+    public void testConfigReturnsSharedConfigDefInstance() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Assertions.assertSame(HeaderToValue.CONFIG_DEF, headerToValue.config());
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-06: close() can be called repeatedly without throwing")
+    public void testCloseCanBeCalledRepeatedly() {
+        HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>();
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("fields", "field1");
+        configs.put("headers", "headerKey1");
+        headerToValue.configure(configs);
+
+        Assertions.assertDoesNotThrow(
+                () -> {
+                    headerToValue.close();
+                    headerToValue.close();
+                    headerToValue.close();
+                });
     }
 }
