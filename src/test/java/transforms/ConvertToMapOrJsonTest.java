@@ -3,13 +3,18 @@ package transforms;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class ConvertToMapOrJsonTest {
@@ -317,6 +322,183 @@ public class ConvertToMapOrJsonTest {
         // Gson serializes byte[] as array of numbers
         assertTrue(json.contains("\"foo\":[4,3,2,1]"));
         assertTrue(json.contains("\"bar\":\"xyz\""));
+    }
+
+    @Test
+    @DisplayName("CONV-02: Struct elements inside an ARRAY field convert to Maps, preserving order")
+    public void testArrayOfStructsConvertedToListOfMaps() {
+        Schema nestedSchema = SchemaBuilder.struct()
+                .field("x", Schema.STRING_SCHEMA)
+                .field("n", Schema.INT32_SCHEMA)
+                .build();
+        Schema schema = SchemaBuilder.struct()
+                .field("items", SchemaBuilder.array(nestedSchema).build())
+                .build();
+        Struct s1 = new Struct(nestedSchema).put("x", "a").put("n", 1);
+        Struct s2 = new Struct(nestedSchema).put("x", "b").put("n", 2);
+        Struct s3 = new Struct(nestedSchema).put("x", "c").put("n", 3);
+        List<Struct> items = List.of(s1, s2, s3);
+        Struct struct = new Struct(schema).put("items", items);
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        SinkRecord result = xform.apply(record);
+        assertTrue(result.value() instanceof Map);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        Object itemsOut = map.get("items");
+        assertTrue(itemsOut instanceof List);
+        List<?> list = (List<?>) itemsOut;
+        assertEquals(3, list.size());
+        String[] expectedX = {"a", "b", "c"};
+        Integer[] expectedN = {1, 2, 3};
+        for (int i = 0; i < list.size(); i++) {
+            Object elem = list.get(i);
+            assertFalse(elem instanceof Struct);
+            assertTrue(elem instanceof Map);
+            Map<?, ?> elemMap = (Map<?, ?>) elem;
+            assertEquals(expectedX[i], elemMap.get("x"));
+            assertEquals(expectedN[i], elemMap.get("n"));
+        }
+    }
+
+    @Test
+    @DisplayName("CONV-02: Struct values inside a MAP field convert to Maps, preserving key order")
+    public void testMapOfStructsConvertedToMapOfMaps() {
+        Schema nestedSchema = SchemaBuilder.struct()
+                .field("x", Schema.STRING_SCHEMA)
+                .field("n", Schema.INT32_SCHEMA)
+                .build();
+        Schema schema = SchemaBuilder.struct()
+                .field("byKey", SchemaBuilder.map(Schema.STRING_SCHEMA, nestedSchema).build())
+                .build();
+        Struct sA = new Struct(nestedSchema).put("x", "alpha").put("n", 10);
+        Struct sB = new Struct(nestedSchema).put("x", "beta").put("n", 20);
+        Map<String, Struct> byKey = new LinkedHashMap<>();
+        byKey.put("keyB", sB);
+        byKey.put("keyA", sA);
+        Struct struct = new Struct(schema).put("byKey", byKey);
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        SinkRecord result = xform.apply(record);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        Object byKeyOut = map.get("byKey");
+        assertTrue(byKeyOut instanceof Map);
+        Map<?, ?> byKeyMap = (Map<?, ?>) byKeyOut;
+        List<Object> outKeys = new ArrayList<>(byKeyMap.keySet());
+        assertEquals(List.of("keyB", "keyA"), outKeys, "MAP entry-insertion order must be preserved");
+        for (Map.Entry<?, ?> e : byKeyMap.entrySet()) {
+            assertFalse(e.getValue() instanceof Struct);
+            assertTrue(e.getValue() instanceof Map);
+        }
+        Map<?, ?> aMap = (Map<?, ?>) byKeyMap.get("keyA");
+        assertEquals("alpha", aMap.get("x"));
+        assertEquals(10, aMap.get("n"));
+        Map<?, ?> bMap = (Map<?, ?>) byKeyMap.get("keyB");
+        assertEquals("beta", bMap.get("x"));
+        assertEquals(20, bMap.get("n"));
+    }
+
+    @Test
+    @DisplayName("CONV-02: byte[] nested inside an ARRAY field and a MAP value both base64-encode correctly")
+    public void testNestedBytesInArrayAndMapBase64Encoded() {
+        byte[] arrayBytes = new byte[] {1, 2, 3};
+        byte[] mapBytes = new byte[] {4, 5, 6};
+        Schema schema = SchemaBuilder.struct()
+                .field("byteList", SchemaBuilder.array(Schema.BYTES_SCHEMA).build())
+                .field("byteMap", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.BYTES_SCHEMA).build())
+                .build();
+        List<byte[]> byteList = List.of(arrayBytes);
+        Map<String, byte[]> byteMap = new LinkedHashMap<>();
+        byteMap.put("k", mapBytes);
+        Struct struct = new Struct(schema).put("byteList", byteList).put("byteMap", byteMap);
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("bytes.to.base64", true);
+        xform.configure(config);
+        SinkRecord result = xform.apply(record);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        List<?> listOut = (List<?>) map.get("byteList");
+        assertEquals(Base64.getEncoder().encodeToString(arrayBytes), listOut.get(0));
+        Map<?, ?> mapOut = (Map<?, ?>) map.get("byteMap");
+        assertEquals(Base64.getEncoder().encodeToString(mapBytes), mapOut.get("k"));
+    }
+
+    @Test
+    @DisplayName("CONV-02: empty ARRAY and MAP fields convert to empty collections, not null")
+    public void testEmptyArrayAndMapFieldsConvertToEmptyCollections() {
+        Schema nestedSchema = SchemaBuilder.struct().field("x", Schema.STRING_SCHEMA).build();
+        Schema schema = SchemaBuilder.struct()
+                .field("items", SchemaBuilder.array(nestedSchema).build())
+                .field("byKey", SchemaBuilder.map(Schema.STRING_SCHEMA, nestedSchema).build())
+                .build();
+        Struct struct = new Struct(schema)
+                .put("items", new ArrayList<Struct>())
+                .put("byKey", new LinkedHashMap<String, Struct>());
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        SinkRecord result = xform.apply(record);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        Object itemsOut = map.get("items");
+        assertNotNull(itemsOut);
+        assertTrue(itemsOut instanceof List);
+        assertEquals(0, ((List<?>) itemsOut).size());
+        Object byKeyOut = map.get("byKey");
+        assertNotNull(byKeyOut);
+        assertTrue(byKeyOut instanceof Map);
+        assertEquals(0, ((Map<?, ?>) byKeyOut).size());
+    }
+
+    @Test
+    @DisplayName("CONV-02: adjacent structurally equal Structs in an ARRAY stay two distinct, equal maps")
+    public void testAdjacentEqualStructsInArrayStayDistinct() {
+        Schema nestedSchema = SchemaBuilder.struct().field("x", Schema.STRING_SCHEMA).build();
+        Schema schema = SchemaBuilder.struct()
+                .field("items", SchemaBuilder.array(nestedSchema).build())
+                .build();
+        Struct s1 = new Struct(nestedSchema).put("x", "same");
+        Struct s2 = new Struct(nestedSchema).put("x", "same");
+        assertEquals(s1, s2);
+        assertNotSame(s1, s2);
+        List<Struct> items = List.of(s1, s2);
+        Struct struct = new Struct(schema).put("items", items);
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        SinkRecord result = xform.apply(record);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        List<?> listOut = (List<?>) map.get("items");
+        assertEquals(2, listOut.size());
+        assertEquals(listOut.get(0), listOut.get(1));
+        assertNotSame(listOut.get(0), listOut.get(1));
+    }
+
+    @Test
+    @DisplayName("CONV-04: metadata is preserved for the map-output configuration")
+    public void testMetadataPreservedMapOutput() {
+        ConnectHeaders headers = new ConnectHeaders();
+        headers.addString("h1", "v1");
+        SinkRecord input = TransformTestHelpers.schemaRecord("topic", 5L, headers);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        SinkRecord output = xform.apply(input);
+        TransformTestHelpers.assertMetadataPreserved(input, output);
+    }
+
+    @Test
+    @DisplayName("CONV-04: metadata is preserved for the JSON-output configuration")
+    public void testMetadataPreservedJsonOutput() {
+        ConnectHeaders headers = new ConnectHeaders();
+        headers.addString("h1", "v1");
+        SinkRecord input = TransformTestHelpers.schemaRecord("topic", 6L, headers);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.enabled", true);
+        xform.configure(config);
+        SinkRecord output = xform.apply(input);
+        TransformTestHelpers.assertMetadataPreserved(input, output);
     }
 
 }

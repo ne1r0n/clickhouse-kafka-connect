@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -239,7 +241,23 @@ public class ConvertToMapOrJson<R extends ConnectRecord<R>> implements Transform
         if (value instanceof Struct nestedStruct) {
             return structToMap(nestedStruct);
         }
-        
+
+        if (value instanceof List<?> list) {
+            List<Object> convertedList = new ArrayList<>(list.size());
+            for (Object element : list) {
+                convertedList.add(convertFieldValue(element));
+            }
+            return convertedList;
+        }
+
+        if (value instanceof Map<?, ?> map) {
+            Map<Object, Object> convertedMap = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                convertedMap.put(entry.getKey(), convertFieldValue(entry.getValue()));
+            }
+            return convertedMap;
+        }
+
         if (bytesToBase64) {
             if (value instanceof byte[] bytes) {
                 return ENCODER.get().encodeToString(bytes);
