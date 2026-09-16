@@ -3,12 +3,15 @@ package transforms;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -634,6 +637,156 @@ public class ConvertToMapOrJsonTest {
         SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
         SinkRecord result = xform.apply(record);
         assertTrue(result.value() instanceof Map);
+    }
+
+    @Test
+    @DisplayName("CONV-05: an unknown output.json.library value throws ConfigException, not DataException")
+    public void testUnknownJsonLibraryThrowsConfigException() {
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.library", "fastjson");
+        assertThrows(ConfigException.class, () -> xform.configure(config));
+    }
+
+    @Test
+    // Pinned as-is (D-13): ConfigDef.ValidString.in("jackson","gson") validates inside
+    // new AbstractConfig(...) before configure()'s .toLowerCase() call ever runs, and the
+    // validator is case-sensitive. Widening it to accept mixed case is out of scope for this phase.
+    @DisplayName("CONV-05: output.json.library=JACKSON in upper case is rejected with ConfigException")
+    public void testUpperCaseJsonLibraryIsRejected() {
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.library", "JACKSON");
+        assertThrows(ConfigException.class, () -> xform.configure(config));
+    }
+
+    @Test
+    @DisplayName("CONV-05: lower-case jackson and gson both configure without throwing")
+    public void testLowerCaseLibrariesConfigureWithoutThrowing() {
+        ConvertToMapOrJson<SinkRecord> jackson = new ConvertToMapOrJson<>();
+        Map<String, Object> jacksonConfig = new HashMap<>();
+        jacksonConfig.put("output.json.library", "jackson");
+        assertDoesNotThrow(() -> jackson.configure(jacksonConfig));
+
+        ConvertToMapOrJson<SinkRecord> gson = new ConvertToMapOrJson<>();
+        Map<String, Object> gsonConfig = new HashMap<>();
+        gsonConfig.put("output.json.library", "gson");
+        assertDoesNotThrow(() -> gson.configure(gsonConfig));
+    }
+
+    @Test
+    @DisplayName("CONV-06: array-backed, direct, and sliced ByteBuffers over the same bytes all encode identically")
+    public void testArrayDirectAndSlicedByteBuffersEncodeIdentically() {
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) i;
+        }
+        String expected = Base64.getEncoder().encodeToString(bytes);
+
+        Schema schema = SchemaBuilder.struct().field("foo", Schema.BYTES_SCHEMA).build();
+        Map<String, Object> config = new HashMap<>();
+        config.put("bytes.to.base64", true);
+
+        // Array-backed - hits the fast path (hasArray() && arrayOffset()==0 && limit()==array().length)
+        ByteBuffer arrayBacked = ByteBuffer.wrap(bytes);
+        assertEquals(expected, encodeViaTransform(schema, config, arrayBacked));
+
+        // Direct - hasArray() is false, so the duplicate-and-copy fallback runs
+        ByteBuffer direct = ByteBuffer.allocateDirect(bytes.length);
+        direct.put(bytes);
+        direct.flip();
+        assertEquals(expected, encodeViaTransform(schema, config, direct));
+
+        // Sliced - arrayOffset() is non-zero, so the fallback runs
+        byte[] backing = new byte[bytes.length + 8];
+        System.arraycopy(bytes, 0, backing, 4, bytes.length);
+        ByteBuffer larger = ByteBuffer.wrap(backing);
+        larger.position(4);
+        larger.limit(4 + bytes.length);
+        ByteBuffer sliced = larger.slice();
+        assertEquals(expected, encodeViaTransform(schema, config, sliced));
+    }
+
+    @Test
+    @DisplayName("CONV-06: zero-length array-backed, direct, and sliced ByteBuffers all encode to the empty string")
+    public void testEmptyByteBuffersEncodeToEmptyString() {
+        Schema schema = SchemaBuilder.struct().field("foo", Schema.BYTES_SCHEMA).build();
+        Map<String, Object> config = new HashMap<>();
+        config.put("bytes.to.base64", true);
+
+        ByteBuffer emptyArrayBacked = ByteBuffer.wrap(new byte[0]);
+        assertEquals("", encodeViaTransform(schema, config, emptyArrayBacked));
+
+        ByteBuffer emptyDirect = ByteBuffer.allocateDirect(0);
+        assertEquals("", encodeViaTransform(schema, config, emptyDirect));
+
+        byte[] backing = new byte[4];
+        ByteBuffer larger = ByteBuffer.wrap(backing);
+        larger.position(4); // at the end - zero remaining bytes
+        ByteBuffer emptySlice = larger.slice();
+        assertEquals("", encodeViaTransform(schema, config, emptySlice));
+    }
+
+    @Test
+    @DisplayName("CONV-06: a middle sub-range slice base64-encodes to exactly that sub-range, in order")
+    public void testMiddleSliceEncodesExactSubRangeInOrder() {
+        byte[] backing = new byte[20];
+        for (int i = 0; i < backing.length; i++) {
+            backing[i] = (byte) i;
+        }
+        Schema schema = SchemaBuilder.struct().field("foo", Schema.BYTES_SCHEMA).build();
+        Map<String, Object> config = new HashMap<>();
+        config.put("bytes.to.base64", true);
+
+        ByteBuffer buf = ByteBuffer.wrap(backing);
+        buf.position(5);
+        buf.limit(15);
+        ByteBuffer slice = buf.slice();
+
+        byte[] subRange = Arrays.copyOfRange(backing, 5, 15);
+        String expected = Base64.getEncoder().encodeToString(subRange);
+        assertEquals(expected, encodeViaTransform(schema, config, slice));
+    }
+
+    @Test
+    @DisplayName("CONV-06: slices touching the start and end of the backing array match array-backed encoding at the boundaries")
+    public void testBoundarySlicesMatchArrayBackedEncoding() {
+        byte[] bytes = new byte[10];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (i + 1);
+        }
+        String expected = Base64.getEncoder().encodeToString(bytes);
+        Schema schema = SchemaBuilder.struct().field("foo", Schema.BYTES_SCHEMA).build();
+        Map<String, Object> config = new HashMap<>();
+        config.put("bytes.to.base64", true);
+
+        // Slice range begins exactly at the backing array's first byte.
+        byte[] backingStart = new byte[bytes.length + 5];
+        System.arraycopy(bytes, 0, backingStart, 0, bytes.length);
+        ByteBuffer startBuf = ByteBuffer.wrap(backingStart);
+        startBuf.position(0);
+        startBuf.limit(bytes.length);
+        ByteBuffer startSlice = startBuf.slice();
+        assertEquals(expected, encodeViaTransform(schema, config, startSlice));
+
+        // Slice range ends exactly at the backing array's last byte.
+        byte[] backingEnd = new byte[bytes.length + 5];
+        System.arraycopy(bytes, 0, backingEnd, 5, bytes.length);
+        ByteBuffer endBuf = ByteBuffer.wrap(backingEnd);
+        endBuf.position(5);
+        endBuf.limit(backingEnd.length);
+        ByteBuffer endSlice = endBuf.slice();
+        assertEquals(expected, encodeViaTransform(schema, config, endSlice));
+    }
+
+    private String encodeViaTransform(Schema schema, Map<String, Object> config, ByteBuffer buffer) {
+        Struct struct = new Struct(schema).put("foo", buffer);
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(config);
+        SinkRecord result = xform.apply(record);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        return (String) map.get("foo");
     }
 
 }
