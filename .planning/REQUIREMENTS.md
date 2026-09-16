@@ -28,7 +28,7 @@
 - [x] **TOF-03**: Invalid, empty, or whitespace-only `skipped.operations` tokens (including `r`) are ignored without failing configuration, and `op=r` records always pass (pinned)
 - [x] **TOF-04**: Schemaless (Map-valued) Debezium envelopes pass through unfiltered (pinned)
 - [x] **TOF-05**: `config()` returns the transform's definition and `close()` is safe to call repeatedly
-- [ ] **TOF-06**: Sink-level: a Debezium record whose operation is filtered never reaches ClickHouse while unfiltered records do
+- [x] **TOF-06**: Sink-level: a Debezium record whose operation is filtered never reaches ClickHouse while unfiltered records do
 
 ### Transforms — HeadersToValue
 
@@ -40,7 +40,7 @@
 - [ ] **HDRS-06**: The output record preserves topic, partition, key, timestamp, and the original headers
 - [ ] **HDRS-07**: Duplicate header keys resolve last-wins and non-string header values are stored via `toString()` (pinned)
 - [ ] **HDRS-08**: `close()` resets the cached schema so a reconfigured transform rebuilds it, and `config()` returns the transform's definition
-- [ ] **HDRS-09**: Sink-level: headers land in a ClickHouse `Map(String, Nullable(String))` column with correct values
+- [x] **HDRS-09**: Sink-level: headers land in a ClickHouse `Map(String, Nullable(String))` column with correct values
 
 ### Transforms — HeaderToValue
 
@@ -50,7 +50,7 @@
 - [ ] **HDR-04**: A configured field absent from the original schema is added as an optional string field
 - [ ] **HDR-05**: The output record preserves topic, partition, key, timestamp, and headers
 - [ ] **HDR-06**: Non-string header values are stored via `toString()` (pinned), `config()` returns the definition, and `close()` is safe to call repeatedly
-- [ ] **HDR-07**: Sink-level: a header-derived field lands in its ClickHouse column with the correct value
+- [x] **HDR-07**: Sink-level: a header-derived field lands in its ClickHouse column with the correct value
 
 ### Transforms — ConvertToMapOrJson
 
@@ -61,7 +61,7 @@
 - [ ] **CONV-05**: An invalid `output.json.library` value is rejected with `ConfigException`
 - [ ] **CONV-06**: Direct and sliced `ByteBuffer` values encode to the same base64 as array-backed buffers
 - [ ] **CONV-07**: `config()` returns the transform's definition and `close()` is safe to call repeatedly
-- [ ] **CONV-08**: Sink-level: JSON-string output lands in a String/JSON ClickHouse column with correct content
+- [x] **CONV-08**: Sink-level: JSON-string output lands in a String/JSON ClickHouse column with correct content
 
 ### Table Metadata — targetTableFilter
 
@@ -178,7 +178,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOF-03 | Phase 2 | Complete |
 | TOF-04 | Phase 2 | Complete |
 | TOF-05 | Phase 2 | Complete |
-| TOF-06 | Phase 2 | Pending |
+| TOF-06 | Phase 2 | Complete |
 | HDRS-01 | Phase 2 | Pending |
 | HDRS-02 | Phase 2 | Pending |
 | HDRS-03 | Phase 2 | Pending |
@@ -187,14 +187,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HDRS-06 | Phase 2 | Pending |
 | HDRS-07 | Phase 2 | Pending |
 | HDRS-08 | Phase 2 | Pending |
-| HDRS-09 | Phase 2 | Pending |
+| HDRS-09 | Phase 2 | Complete |
 | HDR-01 | Phase 2 | Pending |
 | HDR-02 | Phase 2 | Pending |
 | HDR-03 | Phase 2 | Pending |
 | HDR-04 | Phase 2 | Pending |
 | HDR-05 | Phase 2 | Pending |
 | HDR-06 | Phase 2 | Pending |
-| HDR-07 | Phase 2 | Pending |
+| HDR-07 | Phase 2 | Complete |
 | CONV-01 | Phase 2 | Pending |
 | CONV-02 | Phase 2 | Pending |
 | CONV-03 | Phase 2 | Pending |
@@ -202,7 +202,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-05 | Phase 2 | Pending |
 | CONV-06 | Phase 2 | Pending |
 | CONV-07 | Phase 2 | Pending |
-| CONV-08 | Phase 2 | Pending |
+| CONV-08 | Phase 2 | Complete |
 | FILT-01 | Phase 3 | Pending |
 | FILT-02 | Phase 3 | Pending |
 | FILT-03 | Phase 3 | Pending |

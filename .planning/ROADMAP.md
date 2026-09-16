@@ -85,13 +85,13 @@ Plans:
      - JSON-string output lands in a String/JSON column with correct content
   5. Any bug these tests expose (for example nested Struct conversion) is fixed in this phase with a small targeted change, and `./gradlew test` stays green.
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 02-01-PLAN.md — Shared `TransformTestHelpers` builders + `TableOperationFilter` unit coverage (TOF-01..05) and the D-03 `configure()` clear (wave 1)
-- [ ] 02-05-PLAN.md — Sink-level SMT landing tests in a new ClickHouse-backed `SmtSinkLandingTest` (TOF-06, HDRS-09, HDR-07, CONV-08) (wave 1: builds its own fixtures, depends on nothing)
+- [x] 02-05-PLAN.md — Sink-level SMT landing tests in a new ClickHouse-backed `SmtSinkLandingTest` (TOF-06, HDRS-09, HDR-07, CONV-08) (wave 1: builds its own fixtures, depends on nothing)
 
 **Wave 2** *(blocked on 02-01's shared test helper)*
 
@@ -192,7 +192,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Test Infrastructure & Green Baseline | 3/3 | Complete    | 2026-09-16 |
-| 2. Fork SMT Coverage | 1/5 | In Progress|  |
+| 2. Fork SMT Coverage | 2/5 | In Progress|  |
 | 3. Table Metadata & JSON/Dynamic Types | 0/3 | Not started | - |
 | 4. JSON Insert Path & Connector Plumbing | 0/3 | Not started | - |
 | 5. CI & Final Verification | 0/2 | Not started | - |
