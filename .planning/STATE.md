@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
 current_phase: 02
-current_phase_name: fork-smt-coverage
+current_phase_name: Fork SMT Coverage
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-09-16T17:16:20.260Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-09-16T17:30:42.435Z"
 last_activity: 2026-09-16
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
-state_head: f7b380d5504b6ac8c3cd82cdabe4ff23f75a90d0
+last_activity_desc: Phase 02 execution started
+state_head: 018fe97b2425ee1edc941ee0f9bc0e4377222936
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 8
-  completed_plans: 3
+  completed_plans: 4
   percent: 20
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-16)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 2 — Fork SMT Coverage
+**Current focus:** Phase 02 — Fork SMT Coverage
 
 ## Current Position
 
-Phase: 02 (fork-smt-coverage) — READY TO EXECUTE
-Plan: Not started
+Phase: 02 (Fork SMT Coverage) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-09-16 — Phase 01 complete, transitioned to Phase 2
+Last activity: 2026-09-16 — Phase 02 execution started
 
 Progress: [██░░░░░░░░] 20%
 
@@ -61,6 +61,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 01 P01 | 40 min | 2 tasks | 2 files |
 | Phase 01 P02 | 55min | 2 tasks | 5 files |
 | Phase 01 P03 | 20 min | 2 tasks | 2 files |
+| Phase 02 P01 | 10 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Recent decisions affecting current work:
 - [Phase 01]: The suite was already green on ClickHouse `latest` × client V2 with no fixes (baseline 187 tests / 0 failed / 7 skipped; 194 / 0 / 7 after the harness work). The smoke test checks the image reference and version format, because `latest` images carry no version label.
 - [Phase 01]: `ClickHouseBase` gives one shared ClickHouse container per test JVM fork, a fresh empty database per test class, an inherited `@Tag("clickhouse")`, an `@AfterEach` MBean leak sweep, and opt-in `uniqueConnectorName(TestInfo)`. Proxy tests keep their own 23.8 container. New sink-task tests must create their table(s) before `start()`, because `ClickHouseWriter.start()` fails against an empty database.
 - [Phase 01]: JaCoCo is report-only and attached to `test` (`jacocoTestReport` plus `jacocoForkReport` over 15 explicit fork-changed classes). `testUnit` runs everything not tagged `clickhouse`, needs no Docker, and is not part of `check`.
+- [Phase 02]: Non-ASCII TOF-01 test data built from int[] Unicode code points at runtime instead of \u escape literals in source, because the editing tool chain silently decoded literal backslash-u escape text into real non-ASCII bytes.
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-16T14:50:56.092Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-fork-smt-coverage/02-CONTEXT.md
+Last session: 2026-09-16T17:30:42.391Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None

@@ -23,11 +23,11 @@
 
 ### Transforms — TableOperationFilter
 
-- [ ] **TOF-01**: Truncate (`t`) events for a listed table are dropped while other operations for that table pass
-- [ ] **TOF-02**: With multiple tables in `tables`, only listed tables are filtered and unlisted tables pass through
-- [ ] **TOF-03**: Invalid, empty, or whitespace-only `skipped.operations` tokens (including `r`) are ignored without failing configuration, and `op=r` records always pass (pinned)
-- [ ] **TOF-04**: Schemaless (Map-valued) Debezium envelopes pass through unfiltered (pinned)
-- [ ] **TOF-05**: `config()` returns the transform's definition and `close()` is safe to call repeatedly
+- [x] **TOF-01**: Truncate (`t`) events for a listed table are dropped while other operations for that table pass
+- [x] **TOF-02**: With multiple tables in `tables`, only listed tables are filtered and unlisted tables pass through
+- [x] **TOF-03**: Invalid, empty, or whitespace-only `skipped.operations` tokens (including `r`) are ignored without failing configuration, and `op=r` records always pass (pinned)
+- [x] **TOF-04**: Schemaless (Map-valued) Debezium envelopes pass through unfiltered (pinned)
+- [x] **TOF-05**: `config()` returns the transform's definition and `close()` is safe to call repeatedly
 - [ ] **TOF-06**: Sink-level: a Debezium record whose operation is filtered never reaches ClickHouse while unfiltered records do
 
 ### Transforms — HeadersToValue
@@ -173,11 +173,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-06 | Phase 1 | Complete |
 | COV-01 | Phase 1 | Complete |
 | COV-02 | Phase 1 | Complete |
-| TOF-01 | Phase 2 | Pending |
-| TOF-02 | Phase 2 | Pending |
-| TOF-03 | Phase 2 | Pending |
-| TOF-04 | Phase 2 | Pending |
-| TOF-05 | Phase 2 | Pending |
+| TOF-01 | Phase 2 | Complete |
+| TOF-02 | Phase 2 | Complete |
+| TOF-03 | Phase 2 | Complete |
+| TOF-04 | Phase 2 | Complete |
+| TOF-05 | Phase 2 | Complete |
 | TOF-06 | Phase 2 | Pending |
 | HDRS-01 | Phase 2 | Pending |
 | HDRS-02 | Phase 2 | Pending |
