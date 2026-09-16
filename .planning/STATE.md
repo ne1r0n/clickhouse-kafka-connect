@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 02
 current_phase_name: Fork SMT Coverage
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-09-16T18:14:45.589Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-09-16T18:24:13.945Z"
 last_activity: 2026-09-16
 last_activity_desc: Phase 02 execution started
-state_head: af57220d57039a2ef038856cbc36445e788c0375
+state_head: 3fa3ac6cc5eb4e68d05c98294d34ac549ce1bca7
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 20
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-16)
 ## Current Position
 
 Phase: 02 (Fork SMT Coverage) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-09-16 — Phase 02 execution started
 
@@ -64,6 +64,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 02 P01 | 10 min | 3 tasks | 3 files |
 | Phase 02 P05 | 24min | 3 tasks | 2 files |
 | Phase 02 P02 | 20min | 3 tasks | 2 files |
+| Phase 02-fork-smt-coverage P03 | 8min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Approved out-of-scope ClickHouseWriter MAP-branch fix (RowBinary null marker for Nullable map values) at the 02-05 Task 2 blocking-human checkpoint after independent diagnosis verification.
 - [Phase 02]: HDRS-09 fixture keeps Map(String, Nullable(String)) DDL as locked (D-08); rejected weakening to Map(String, String).
 - [Phase 02]: [Phase 02]: HeaderToValue D-02 stale-schema-cache guard (sourceSchema field, reference comparison) is a verbatim template for the identical bug in HeadersToValue if a future plan touches it.
+- [Phase 02]: HeadersToValue D-02 stale-schema-cache guard mirrors the 02-02 HeaderToValue fix exactly (sourceSchema field, reference comparison). — Both fork SMTs had the identical lazily-cached valueSchema bug; the fix shape is now consistent across both classes.
+- [Phase 02]: Corrected a stale per-plan commit ledger (.git/gsd-plan-head-before-02-03) left over from a superseded milestone's differently-scoped phase 02-03. — The stale baseline (2026-09-13, pre-restructuring) would have inflated actuals.commits to 48 unrelated commits instead of this plan's real 3.
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-16T18:14:45.452Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-09-16T18:24:13.919Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None

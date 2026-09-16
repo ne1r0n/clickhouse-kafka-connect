@@ -32,14 +32,14 @@
 
 ### Transforms — HeadersToValue
 
-- [ ] **HDRS-01**: Tombstone (null value) records pass through unchanged
-- [ ] **HDRS-02**: A record with no headers gets an empty map in the configured field (schema and schemaless)
-- [ ] **HDRS-03**: A header with a null value is stored as a null map entry
-- [ ] **HDRS-04**: An absent `field` key throws `ConfigException` from `AbstractConfig` construction; a present but blank or whitespace-only `field` value throws `DataException` at `configure()`
-- [ ] **HDRS-05**: Field-name collision is pinned: the schema path throws `DataException` for a non-map field, the schemaless path overwrites the existing value
-- [ ] **HDRS-06**: The output record preserves topic, partition, key, timestamp, and the original headers
-- [ ] **HDRS-07**: Duplicate header keys resolve last-wins and non-string header values are stored via `toString()` (pinned)
-- [ ] **HDRS-08**: `close()` resets the cached schema so a reconfigured transform rebuilds it, and `config()` returns the transform's definition
+- [x] **HDRS-01**: Tombstone (null value) records pass through unchanged
+- [x] **HDRS-02**: A record with no headers gets an empty map in the configured field (schema and schemaless)
+- [x] **HDRS-03**: A header with a null value is stored as a null map entry
+- [x] **HDRS-04**: An absent `field` key throws `ConfigException` from `AbstractConfig` construction; a present but blank or whitespace-only `field` value throws `DataException` at `configure()`
+- [x] **HDRS-05**: Field-name collision is pinned: the schema path throws `DataException` for a non-map field, the schemaless path overwrites the existing value
+- [x] **HDRS-06**: The output record preserves topic, partition, key, timestamp, and the original headers
+- [x] **HDRS-07**: Duplicate header keys resolve last-wins and non-string header values are stored via `toString()` (pinned)
+- [x] **HDRS-08**: `close()` resets the cached schema so a reconfigured transform rebuilds it, and `config()` returns the transform's definition
 - [x] **HDRS-09**: Sink-level: headers land in a ClickHouse `Map(String, Nullable(String))` column with correct values
 
 ### Transforms — HeaderToValue
@@ -179,14 +179,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOF-04 | Phase 2 | Complete |
 | TOF-05 | Phase 2 | Complete |
 | TOF-06 | Phase 2 | Complete |
-| HDRS-01 | Phase 2 | Pending |
-| HDRS-02 | Phase 2 | Pending |
-| HDRS-03 | Phase 2 | Pending |
-| HDRS-04 | Phase 2 | Pending |
-| HDRS-05 | Phase 2 | Pending |
-| HDRS-06 | Phase 2 | Pending |
-| HDRS-07 | Phase 2 | Pending |
-| HDRS-08 | Phase 2 | Pending |
+| HDRS-01 | Phase 2 | Complete |
+| HDRS-02 | Phase 2 | Complete |
+| HDRS-03 | Phase 2 | Complete |
+| HDRS-04 | Phase 2 | Complete |
+| HDRS-05 | Phase 2 | Complete |
+| HDRS-06 | Phase 2 | Complete |
+| HDRS-07 | Phase 2 | Complete |
+| HDRS-08 | Phase 2 | Complete |
 | HDRS-09 | Phase 2 | Complete |
 | HDR-01 | Phase 2 | Complete |
 | HDR-02 | Phase 2 | Complete |
