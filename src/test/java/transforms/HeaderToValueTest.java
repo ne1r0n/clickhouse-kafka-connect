@@ -1,18 +1,13 @@
 package transforms;
 
 import com.clickhouse.kafka.connect.transforms.HeaderToValue;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class HeaderToValueTest {
@@ -28,7 +23,7 @@ public class HeaderToValueTest {
             headers.add("headerKey1", "headerValue1", null);
             headers.add("headerKey2", "headerValue2", null);
 
-            SinkRecord record = new SinkRecord(UUID.randomUUID().toString(), 0, null, null, null, new HashMap<>(), 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, headers);
+            SinkRecord record = TransformTestHelpers.schemalessRecord("topic1", 0, headers);
             SinkRecord newRecord = headerToValue.apply(record);
 
             Assertions.assertInstanceOf(Map.class, newRecord.value());
@@ -50,7 +45,7 @@ public class HeaderToValueTest {
             headers.add("headerKey1", "headerValue1", null);
             headers.add("headerKey2", "headerValue2", null);
 
-            SinkRecord record = generateSampleRecord(UUID.randomUUID().toString(), 0, 0, headers);
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
             SinkRecord newRecord = headerToValue.apply(record);
 
             Assertions.assertInstanceOf(Struct.class, newRecord.value());
@@ -60,16 +55,66 @@ public class HeaderToValueTest {
         }
     }
 
-    private SinkRecord generateSampleRecord(String topic, int partition, long offset, ConnectHeaders headers) {
-        Schema schema = SchemaBuilder.struct()
-                .field("off16", Schema.INT16_SCHEMA)
-                .field("timestamp_int64", Schema.INT64_SCHEMA)
-                .field("date_date", Schema.INT32_SCHEMA)
-                .build();
-        Struct valueStruct = new Struct(schema)
-                .put("off16", (short) new Random().nextInt(Short.MAX_VALUE + 1))
-                .put("timestamp_int64", new Date().getTime())
-                .put("date_date", (int) (new Date().getTime() / 1000));
-        return new SinkRecord(topic, partition, null, null, schema, valueStruct, offset, 0L, TimestampType.NO_TIMESTAMP_TYPE, headers);
+    @Test
+    @DisplayName("HDR-06: stale valueSchema cache is rebuilt when the incoming record's schema changes")
+    public void testStaleSchemaCacheRebuildsOnSchemaChange() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.add("trace-id", "trace-value", null);
+
+            SinkRecord first = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            headerToValue.apply(first);
+
+            SinkRecord second = TransformTestHelpers.schemaRecordAlternateSchema("topic1", 1, headers);
+            SinkRecord newSecond = headerToValue.apply(second);
+            Struct newValue = (Struct) newSecond.value();
+
+            Assertions.assertEquals("extra-1", newValue.get("extra_str"));
+            Assertions.assertEquals("trace-value", newValue.get("trace_id"));
+            Assertions.assertNull(newValue.schema().field("date_date"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-05: record metadata survives apply() on the schema path")
+    public void testMetadataPreservedSchemaPath() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.add("trace-id", "trace-value", null);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+
+            TransformTestHelpers.assertMetadataPreserved(record, newRecord);
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-05: record metadata survives apply() on the schemaless path")
+    public void testMetadataPreservedSchemalessPath() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.add("trace-id", "trace-value", null);
+
+            SinkRecord record = TransformTestHelpers.schemalessRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+
+            TransformTestHelpers.assertMetadataPreserved(record, newRecord);
+        }
     }
 }

@@ -41,6 +41,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     private List<String> headers;
     private Map<String, Integer> fieldToHeaderIdx;
     private Schema valueSchema;
+    private Schema sourceSchema;
     
     // Configuration definition
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
@@ -136,12 +137,14 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
      */
     private R applyWithSchema(R record) {
         final Struct oldValue = (Struct) record.value();
-        
-        // Lazily initialize the schema
-        if (valueSchema == null) {
-            valueSchema = buildSchema(oldValue.schema());
+
+        // Lazily initialize the schema, or rebuild it if the incoming record's schema has
+        // changed since the cache was built (D-02: stale schema cache guard).
+        if (valueSchema == null || oldValue.schema() != sourceSchema) {
+            sourceSchema = oldValue.schema();
+            valueSchema = buildSchema(sourceSchema);
         }
-        
+
         Struct newValue = new Struct(valueSchema);
         
         // Copy all existing fields
@@ -225,6 +228,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     public void close() {
         LOGGER.debug("Closing HeaderToValue");
         valueSchema = null;
+        sourceSchema = null;
         fieldToHeaderIdx = null;
     }
     
