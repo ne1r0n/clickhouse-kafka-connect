@@ -15,6 +15,8 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class TableOperationFilterTest {
 
@@ -318,5 +320,78 @@ public class TableOperationFilterTest {
 
         SinkRecord r1 = TransformTestHelpers.debeziumRecord("topic", 0L, "d", "db1", "t1");
         assertNull(f.apply(r1), "Whitespace-padded table entries should still match after trim");
+    }
+
+    @ParameterizedTest(name = "TOF-03: token ''{0}'' is ignored")
+    @ValueSource(strings = {"x", "r", "", "   ", "cu"})
+    @DisplayName("TOF-03: invalid, empty and whitespace tokens are ignored")
+    public void testInvalidSkippedOperationsTokenIsIgnored(String token) {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "mydb.mytable");
+        cfg.put("skipped.operations", token);
+        assertDoesNotThrow(() -> f.configure(cfg));
+
+        // The empty and whitespace-only tokens are not meaningful Debezium operations, so use "d"
+        // for those cases; otherwise use the token itself, trimmed and lowercased.
+        String trimmed = token.trim();
+        String op = trimmed.isEmpty() ? "d" : trimmed.toLowerCase();
+        SinkRecord record = TransformTestHelpers.debeziumRecord("topic", 0L, op, "mydb", "mytable");
+        assertSame(
+                record,
+                f.apply(record),
+                "Record with op '" + op + "' should pass through unchanged since '" + token
+                        + "' is not a valid skipped.operations token");
+    }
+
+    @Test
+    @DisplayName("TOF-03: a mixed skipped.operations list keeps only its valid token")
+    public void testMixedSkippedOperationsListKeepsOnlyValidToken() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "mydb.mytable");
+        cfg.put("skipped.operations", "d,x, ,r");
+        f.configure(cfg);
+
+        SinkRecord deleteRecord = TransformTestHelpers.debeziumRecord("topic", 0L, "d", "mydb", "mytable");
+        assertNull(f.apply(deleteRecord), "The valid 'd' token should still filter delete records");
+
+        SinkRecord replicateRecord = TransformTestHelpers.debeziumRecord("topic", 1L, "r", "mydb", "mytable");
+        assertSame(
+                replicateRecord,
+                f.apply(replicateRecord),
+                "'r' is never a valid skipped.operations token, so it must pass through");
+    }
+
+    @Test
+    @DisplayName("TOF-04: schemaless Debezium envelopes pass through unfiltered")
+    public void testSchemalessDebeziumEnvelopePassesThroughUnfiltered() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "mydb.mytable");
+        cfg.put("skipped.operations", "d");
+        f.configure(cfg);
+
+        SinkRecord record = TransformTestHelpers.schemalessDebeziumRecord("topic", 0L, "d", "mydb", "mytable");
+        assertSame(
+                record,
+                f.apply(record),
+                "Schemaless (Map-valued) records are not Structs, so apply() must pass them through unfiltered");
+    }
+
+    @Test
+    @DisplayName("TOF-04: schemaless Debezium envelopes with a nested source map pass through unfiltered")
+    public void testSchemalessDebeziumEnvelopeWithNestedSourcePassesThroughUnfiltered() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "mydb.mytable");
+        cfg.put("skipped.operations", "d");
+        f.configure(cfg);
+
+        SinkRecord record = TransformTestHelpers.schemalessDebeziumRecord("topic", 1L, "d", "mydb", "mytable");
+        assertSame(
+                record,
+                f.apply(record),
+                "The nested-Map source shape must also pass through unfiltered");
     }
 }
