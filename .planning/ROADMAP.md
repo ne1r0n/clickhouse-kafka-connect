@@ -85,13 +85,21 @@ Plans:
      - JSON-string output lands in a String/JSON column with correct content
   5. Any bug these tests expose (for example nested Struct conversion) is fixed in this phase with a small targeted change, and `./gradlew test` stays green.
 
-**Plans**: 3 plans
+**Plans**: 5 plans
 
 Plans:
+**Wave 1**
 
-- [ ] 02-01: `TableOperationFilter` + `HeaderToValue` unit tests and any fixes in those transforms (wave 1)
-- [ ] 02-02: `HeadersToValue` + `ConvertToMapOrJson` unit tests and any fixes in those transforms (wave 1)
-- [ ] 02-03: Sink-level SMT tests in a new ClickHouse-backed test class (TOF-06, HDRS-09, HDR-07, CONV-08) (wave 1)
+- [ ] 02-01-PLAN.md — Shared `TransformTestHelpers` builders + `TableOperationFilter` unit coverage (TOF-01..05) and the D-03 `configure()` clear (wave 1)
+- [ ] 02-05-PLAN.md — Sink-level SMT landing tests in a new ClickHouse-backed `SmtSinkLandingTest` (TOF-06, HDRS-09, HDR-07, CONV-08) (wave 1: builds its own fixtures, depends on nothing)
+
+**Wave 2** *(blocked on 02-01's shared test helper)*
+
+- [ ] 02-02-PLAN.md — `HeaderToValue` unit coverage (HDR-01..06) + the D-02 stale-schema guard (wave 2)
+- [ ] 02-03-PLAN.md — `HeadersToValue` unit coverage (HDRS-01..08) + the D-02 stale-schema guard + the D-14 HDRS-04 wording correction (wave 2)
+- [ ] 02-04-PLAN.md — `ConvertToMapOrJson` unit coverage (CONV-01..07) + the D-01 nested-collection recursion fix (wave 2)
+
+*Split note: the roadmap's original 3-plan sketch put all five SMT concerns in three wave-1 plans. Planning split them five ways because (a) D-12's shared `TransformTestHelpers` is created once in 02-01 and consumed by 02-02/02-03/02-04, which is a real ordering dependency, and (b) one plan per SMT keeps each executor inside its context budget. Wave 1 still runs two plans in parallel and wave 2 runs three.*
 
 ### Phase 3: Table Metadata & JSON/Dynamic Types
 
@@ -184,7 +192,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Test Infrastructure & Green Baseline | 3/3 | Complete    | 2026-09-16 |
-| 2. Fork SMT Coverage | 0/3 | Not started | - |
+| 2. Fork SMT Coverage | 0/5 | Not started | - |
 | 3. Table Metadata & JSON/Dynamic Types | 0/3 | Not started | - |
 | 4. JSON Insert Path & Connector Plumbing | 0/3 | Not started | - |
 | 5. CI & Final Verification | 0/2 | Not started | - |
