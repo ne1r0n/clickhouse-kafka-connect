@@ -54,6 +54,8 @@ public class TableOperationFilter<R extends ConnectRecord<R>> implements Transfo
     @Override
     public void configure(Map<String, ?> configs) {
         final AbstractConfig config = new AbstractConfig(CONFIG_DEF, configs);
+        targetTables.clear();
+        skippedOperations.clear();
 
         // Extract configuration values
         String tablesStr = config.getString(TABLES_CONFIG);

@@ -1,7 +1,9 @@
 package transforms;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.clickhouse.kafka.connect.transforms.TableOperationFilter;
 import java.util.HashMap;
@@ -11,6 +13,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class TableOperationFilterTest {
@@ -173,5 +176,43 @@ public class TableOperationFilterTest {
         assertNull(testFilter.apply(record), "Record should be filtered with new configuration");
     }
 
-    
+    @Test
+    @DisplayName("TOF-05: config() returns the shared CONFIG_DEF instance")
+    public void testConfigReturnsSharedConfigDefInstance() {
+        assertSame(TableOperationFilter.CONFIG_DEF, filter.config());
+    }
+
+    @Test
+    @DisplayName("TOF-05: close() can be called repeatedly without throwing")
+    public void testCloseCanBeCalledRepeatedly() {
+        assertDoesNotThrow(
+                () -> {
+                    filter.close();
+                    filter.close();
+                    filter.close();
+                });
+    }
+
+    @Test
+    @DisplayName("TOF-05: reconfiguring an instance replaces the prior configuration (D-03)")
+    public void testReconfigureReplacesPriorConfiguration() {
+        TableOperationFilter<SinkRecord> reconfigurable = new TableOperationFilter<>();
+        Map<String, String> firstConfig = new HashMap<>();
+        firstConfig.put("tables", "mydb.mytable");
+        firstConfig.put("skipped.operations", "d");
+        reconfigurable.configure(firstConfig);
+
+        SinkRecord record = TransformTestHelpers.debeziumRecord("topic", 0L, "d", "mydb", "mytable");
+        assertNull(reconfigurable.apply(record), "Record should be dropped under the first configuration");
+
+        Map<String, String> secondConfig = new HashMap<>();
+        secondConfig.put("tables", "otherdb.othertable");
+        secondConfig.put("skipped.operations", "c");
+        reconfigurable.configure(secondConfig);
+
+        assertSame(
+                record,
+                reconfigurable.apply(record),
+                "Record should pass through after reconfiguration replaces the prior filter set");
+    }
 }
