@@ -35,7 +35,7 @@
 - [ ] **HDRS-01**: Tombstone (null value) records pass through unchanged
 - [ ] **HDRS-02**: A record with no headers gets an empty map in the configured field (schema and schemaless)
 - [ ] **HDRS-03**: A header with a null value is stored as a null map entry
-- [ ] **HDRS-04**: Missing or blank `field` configuration is rejected with `DataException` at `configure()`
+- [ ] **HDRS-04**: An absent `field` key throws `ConfigException` from `AbstractConfig` construction; a present but blank or whitespace-only `field` value throws `DataException` at `configure()`
 - [ ] **HDRS-05**: Field-name collision is pinned: the schema path throws `DataException` for a non-map field, the schemaless path overwrites the existing value
 - [ ] **HDRS-06**: The output record preserves topic, partition, key, timestamp, and the original headers
 - [ ] **HDRS-07**: Duplicate header keys resolve last-wins and non-string header values are stored via `toString()` (pinned)

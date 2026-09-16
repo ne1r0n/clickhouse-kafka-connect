@@ -2,10 +2,14 @@ package transforms;
 
 import com.clickhouse.kafka.connect.transforms.HeadersToValue;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Assertions;
@@ -345,6 +349,219 @@ public class HeadersToValueTest {
             Struct newValue = (Struct) newRecord.value();
             Map<?, ?> headersMap = (Map<?, ?>) newValue.get("headers_map");
             Assertions.assertEquals(cyrillicAndCjk, headersMap.get("unicodeHeader"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-04: an absent field key throws ConfigException")
+    public void testAbsentFieldThrowsConfigException() {
+        Map<String, Object> configs = new HashMap<>();
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            Assertions.assertThrows(ConfigException.class, () -> headersToValue.configure(configs));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-04: a whitespace-only field value throws DataException")
+    public void testBlankFieldThrowsDataException() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("field", "   ");
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            DataException ex =
+                    Assertions.assertThrows(DataException.class, () -> headersToValue.configure(configs));
+            Assertions.assertTrue(ex.getMessage().contains("must be specified and non-empty"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-05: a schema-path field-name collision throws DataException naming the field")
+    public void testSchemaPathFieldCollisionThrows() {
+        Schema schema =
+                SchemaBuilder.struct()
+                        .field("off16", Schema.INT16_SCHEMA)
+                        .field("headers_map", Schema.STRING_SCHEMA)
+                        .build();
+        Struct value = new Struct(schema).put("off16", (short) 1).put("headers_map", "pre-existing");
+        SinkRecord record =
+                new SinkRecord(
+                        "test-topic",
+                        0,
+                        Schema.STRING_SCHEMA,
+                        "key-1",
+                        schema,
+                        value,
+                        1L,
+                        1715376000123L,
+                        TimestampType.CREATE_TIME,
+                        new ConnectHeaders());
+
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("field", "headers_map");
+            headersToValue.configure(configs);
+
+            DataException ex =
+                    Assertions.assertThrows(DataException.class, () -> headersToValue.apply(record));
+            Assertions.assertEquals("Failed to transform record", ex.getMessage());
+            Assertions.assertInstanceOf(DataException.class, ex.getCause());
+            Assertions.assertTrue(ex.getCause().getMessage().contains("headers_map"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-05: a schemaless-path field-name collision is overwritten, no exception")
+    public void testSchemalessPathFieldCollisionOverwritten() {
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("field", "headers_map");
+            headersToValue.configure(configs);
+
+            Map<String, Object> originalValue = new LinkedHashMap<>();
+            originalValue.put("headers_map", "pre-existing");
+            SinkRecord record =
+                    new SinkRecord(
+                            "test-topic",
+                            0,
+                            Schema.STRING_SCHEMA,
+                            "key-1",
+                            null,
+                            originalValue,
+                            1L,
+                            1715376000123L,
+                            TimestampType.CREATE_TIME,
+                            new ConnectHeaders());
+
+            SinkRecord newRecord = headersToValue.apply(record);
+            Map<?, ?> value = (Map<?, ?>) newRecord.value();
+            Assertions.assertInstanceOf(Map.class, value.get("headers_map"));
+            Assertions.assertNotEquals("pre-existing", value.get("headers_map"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-05: an empty schemaless value map receives exactly one key after apply()")
+    public void testSchemalessEmptyValueMapGetsOneKey() {
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("field", "headers_map");
+            headersToValue.configure(configs);
+
+            Map<String, Object> originalValue = new LinkedHashMap<>();
+            SinkRecord record =
+                    new SinkRecord(
+                            "test-topic",
+                            0,
+                            Schema.STRING_SCHEMA,
+                            "key-1",
+                            null,
+                            originalValue,
+                            1L,
+                            1715376000123L,
+                            TimestampType.CREATE_TIME,
+                            new ConnectHeaders());
+
+            SinkRecord newRecord = headersToValue.apply(record);
+            Map<?, ?> value = (Map<?, ?>) newRecord.value();
+            Assertions.assertEquals(1, value.size());
+            Assertions.assertTrue(value.containsKey("headers_map"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-05: a schemaless headers_map key holding null is overwritten by the headers map")
+    public void testSchemalessNullValueOverwritten() {
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("field", "headers_map");
+            headersToValue.configure(configs);
+
+            Map<String, Object> originalValue = new LinkedHashMap<>();
+            originalValue.put("headers_map", null);
+            SinkRecord record =
+                    new SinkRecord(
+                            "test-topic",
+                            0,
+                            Schema.STRING_SCHEMA,
+                            "key-1",
+                            null,
+                            originalValue,
+                            1L,
+                            1715376000123L,
+                            TimestampType.CREATE_TIME,
+                            new ConnectHeaders());
+
+            SinkRecord newRecord = headersToValue.apply(record);
+            Map<?, ?> value = (Map<?, ?>) newRecord.value();
+            Assertions.assertInstanceOf(Map.class, value.get("headers_map"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-05: field-name collision is exact-case String equality, no collision across case")
+    public void testFieldCollisionIsCaseSensitive() {
+        Schema schema =
+                SchemaBuilder.struct()
+                        .field("off16", Schema.INT16_SCHEMA)
+                        .field("Headers_Map", Schema.STRING_SCHEMA)
+                        .build();
+        Struct value = new Struct(schema).put("off16", (short) 1).put("Headers_Map", "pre-existing");
+        SinkRecord record =
+                new SinkRecord(
+                        "test-topic",
+                        0,
+                        Schema.STRING_SCHEMA,
+                        "key-1",
+                        schema,
+                        value,
+                        1L,
+                        1715376000123L,
+                        TimestampType.CREATE_TIME,
+                        new ConnectHeaders());
+
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("field", "headers_map");
+            headersToValue.configure(configs);
+
+            SinkRecord newRecord = Assertions.assertDoesNotThrow(() -> headersToValue.apply(record));
+            Struct newValue = (Struct) newRecord.value();
+            Assertions.assertNotNull(newValue.schema().field("Headers_Map"));
+            Assertions.assertNotNull(newValue.schema().field("headers_map"));
+            Assertions.assertInstanceOf(Map.class, newValue.get("headers_map"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-08: close() then configure() again rebuilds the cached schema for the next record")
+    public void testCloseThenReconfigureRebuildsSchema() {
+        HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>();
+        try {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("field", "headers_map");
+            headersToValue.configure(configs);
+
+            SinkRecord first = TransformTestHelpers.schemaRecord("test-topic", 0, new ConnectHeaders());
+            headersToValue.apply(first);
+            headersToValue.close();
+
+            headersToValue.configure(configs);
+            SinkRecord second =
+                    TransformTestHelpers.schemaRecordAlternateSchema("test-topic", 1, new ConnectHeaders());
+            SinkRecord newRecord = headersToValue.apply(second);
+
+            Struct newValue = (Struct) newRecord.value();
+            Assertions.assertEquals("extra-1", newValue.get("extra_str"));
+            Assertions.assertNull(newValue.schema().field("date_date"));
+        } finally {
+            headersToValue.close();
+        }
+    }
+
+    @Test
+    @DisplayName("HDRS-08: config() returns the shared CONFIG_DEF instance")
+    public void testConfigReturnsSharedConfigDefInstance() {
+        try (HeadersToValue<SinkRecord> headersToValue = new HeadersToValue<>()) {
+            Assertions.assertSame(HeadersToValue.CONFIG_DEF, headersToValue.config());
         }
     }
 
