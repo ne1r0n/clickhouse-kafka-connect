@@ -16,6 +16,8 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class ConvertToMapOrJsonTest {
 
@@ -499,6 +501,139 @@ public class ConvertToMapOrJsonTest {
         xform.configure(config);
         SinkRecord output = xform.apply(input);
         TransformTestHelpers.assertMetadataPreserved(input, output);
+    }
+
+    @Test
+    @DisplayName("CONV-01: preserve.null.values=false omits the null field from the output map")
+    public void testPreserveNullValuesFalseOmitsNullFieldFromMap() {
+        Schema schema = SchemaBuilder.struct()
+                .field("nullable", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("present", Schema.STRING_SCHEMA)
+                .build();
+        Struct struct = new Struct(schema).put("present", "abc");
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("preserve.null.values", false);
+        config.put("output.json.enabled", false);
+        xform.configure(config);
+        SinkRecord result = xform.apply(record);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        assertFalse(map.containsKey("nullable"));
+        assertTrue(map.containsKey("present"));
+        assertEquals("abc", map.get("present"));
+    }
+
+    @ParameterizedTest(name = "CONV-01: {0} omits the null field key from JSON when preserve.null.values=false")
+    @ValueSource(strings = {"jackson", "gson"})
+    @DisplayName("CONV-01: preserve.null.values=false omits the null field key from JSON, both libraries")
+    public void testPreserveNullValuesFalseOmitsNullFieldFromJson(String library) {
+        Schema schema = SchemaBuilder.struct()
+                .field("nullable", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("present", Schema.STRING_SCHEMA)
+                .build();
+        Struct struct = new Struct(schema).put("present", "abc");
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.enabled", true);
+        config.put("output.json.library", library);
+        config.put("preserve.null.values", false);
+        xform.configure(config);
+        SinkRecord result = xform.apply(record);
+        String json = (String) result.value();
+        assertFalse(json.contains("\"nullable\""), "library=" + library + " json=" + json);
+        assertTrue(json.contains("\"present\":\"abc\""), "library=" + library + " json=" + json);
+    }
+
+    @Test
+    @DisplayName("CONV-01: default preserve.null.values keeps the null field present in the map")
+    public void testDefaultPreserveNullValuesKeepsNullFieldInMap() {
+        Schema schema = SchemaBuilder.struct()
+                .field("nullable", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("present", Schema.STRING_SCHEMA)
+                .build();
+        Struct struct = new Struct(schema).put("present", "abc");
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        SinkRecord result = xform.apply(record);
+        Map<?, ?> map = (Map<?, ?>) result.value();
+        assertTrue(map.containsKey("nullable"));
+        assertNull(map.get("nullable"));
+        assertTrue(map.containsKey("present"));
+    }
+
+    @Test
+    @DisplayName("CONV-03: a bare Long value passes through unchanged when JSON output is disabled")
+    public void testLongValuePassthroughWhenJsonDisabled() {
+        SinkRecord record = new SinkRecord("topic", 0, null, null, null, 42L, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.enabled", false);
+        xform.configure(config);
+        SinkRecord result = xform.apply(record);
+        assertSame(record, result);
+    }
+
+    @Test
+    @DisplayName("CONV-03: a String value passes through unchanged when JSON output is disabled")
+    public void testStringValuePassthroughWhenJsonDisabled() {
+        SinkRecord record = new SinkRecord("topic", 0, null, null, null, "just-a-string", 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.enabled", false);
+        xform.configure(config);
+        SinkRecord result = xform.apply(record);
+        assertSame(record, result);
+    }
+
+    @Test
+    @DisplayName("CONV-03: a Map value passes through unchanged when JSON output is disabled")
+    public void testMapValuePassthroughWhenJsonDisabled() {
+        Map<String, Object> value = new HashMap<>();
+        value.put("k", "v");
+        SinkRecord record = new SinkRecord("topic", 0, null, null, null, value, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.enabled", false);
+        xform.configure(config);
+        SinkRecord result = xform.apply(record);
+        assertSame(record, result);
+    }
+
+    @Test
+    @DisplayName("CONV-03: a null value passes through unchanged")
+    public void testNullValuePassthrough() {
+        SinkRecord record = new SinkRecord("topic", 0, null, null, null, null, 0L);
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        SinkRecord result = xform.apply(record);
+        assertSame(record, result);
+    }
+
+    @Test
+    @DisplayName("CONV-07: config() returns the shared CONFIG_DEF instance")
+    public void testConfigReturnsSharedConfigDefInstance() {
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        assertSame(ConvertToMapOrJson.CONFIG_DEF, xform.config());
+    }
+
+    @Test
+    @DisplayName("CONV-07: close() is repeatable and non-destructive")
+    public void testCloseIsRepeatableAndNonDestructive() {
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        xform.configure(new HashMap<>());
+        assertDoesNotThrow(() -> {
+            xform.close();
+            xform.close();
+            xform.close();
+        });
+        Schema schema = SchemaBuilder.struct().field("foo", Schema.STRING_SCHEMA).build();
+        Struct struct = new Struct(schema).put("foo", "abc");
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0L);
+        SinkRecord result = xform.apply(record);
+        assertTrue(result.value() instanceof Map);
     }
 
 }
