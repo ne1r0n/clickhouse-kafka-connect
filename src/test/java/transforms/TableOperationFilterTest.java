@@ -215,4 +215,108 @@ public class TableOperationFilterTest {
                 reconfigurable.apply(record),
                 "Record should pass through after reconfiguration replaces the prior filter set");
     }
+
+    @Test
+    @DisplayName("TOF-01: truncate operations are dropped while other operations pass through")
+    public void testTruncateDroppedOtherOperationsPassThrough() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "mydb.mytable");
+        cfg.put("skipped.operations", "t");
+        f.configure(cfg);
+
+        SinkRecord truncate = TransformTestHelpers.debeziumRecord("topic", 0L, "t", "mydb", "mytable");
+        assertNull(f.apply(truncate), "Truncate record for a listed table should be dropped");
+
+        SinkRecord create = TransformTestHelpers.debeziumRecord("topic", 1L, "c", "mydb", "mytable");
+        assertSame(create, f.apply(create), "Create record should pass through unchanged");
+
+        SinkRecord update = TransformTestHelpers.debeziumRecord("topic", 2L, "u", "mydb", "mytable");
+        assertSame(update, f.apply(update), "Update record should pass through unchanged");
+
+        SinkRecord delete = TransformTestHelpers.debeziumRecord("topic", 3L, "d", "mydb", "mytable");
+        assertSame(delete, f.apply(delete), "Delete record should pass through unchanged");
+
+        // "r" can never enter skippedOperations (configure() accepts only single characters from
+        // "cudt"), so a record with op=r must always pass through regardless of table.
+        SinkRecord replicate = TransformTestHelpers.debeziumRecord("topic", 4L, "r", "mydb", "mytable");
+        assertSame(replicate, f.apply(replicate), "Record with op=r should always pass through unchanged");
+    }
+
+    @Test
+    @DisplayName("TOF-01: an empty tables list means nothing is filtered")
+    public void testEmptyTablesListMeansNoFiltering() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "");
+        cfg.put("skipped.operations", "t");
+        f.configure(cfg);
+
+        SinkRecord record = TransformTestHelpers.debeziumRecord("topic", 0L, "t", "mydb", "mytable");
+        assertSame(record, f.apply(record), "With no configured tables, records pass through unfiltered");
+    }
+
+    @Test
+    @DisplayName("TOF-01: table matching handles non-ASCII names by exact string equality")
+    public void testNonAsciiTableNameMatchesByExactEquality() {
+        // Built from raw Unicode code points, never a literal non-ASCII byte, since
+        // compileTestJava does not pin a source encoding. Code points: db is Cyrillic
+        // U+0431 U+0430 U+0437 U+0430; table is Cyrillic U+0442 U+0430 U+0431 U+043B U+0438 U+0446 U+0430.
+        String db = new String(new int[] {0x0431, 0x0430, 0x0437, 0x0430}, 0, 4);
+        String table = new String(new int[] {0x0442, 0x0430, 0x0431, 0x043B, 0x0438, 0x0446, 0x0430}, 0, 7);
+
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", db + "." + table);
+        cfg.put("skipped.operations", "t");
+        f.configure(cfg);
+
+        SinkRecord record = TransformTestHelpers.debeziumRecord("topic", 0L, "t", db, table);
+        assertNull(f.apply(record), "Non-ASCII table name matching the config exactly should be dropped");
+    }
+
+    @Test
+    @DisplayName("TOF-01: table matching is case-sensitive")
+    public void testTableMatchingIsCaseSensitive() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "mydb.mytable");
+        cfg.put("skipped.operations", "t");
+        f.configure(cfg);
+
+        SinkRecord record = TransformTestHelpers.debeziumRecord("topic", 0L, "t", "MyDb", "MyTable");
+        assertSame(record, f.apply(record), "Case-different table name should not match a lowercase config entry");
+    }
+
+    @Test
+    @DisplayName("TOF-02: multiple configured tables filter independently")
+    public void testMultipleTablesFilterIndependently() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", "db1.t1,db2.t2");
+        cfg.put("skipped.operations", "d");
+        f.configure(cfg);
+
+        SinkRecord r1 = TransformTestHelpers.debeziumRecord("topic", 0L, "d", "db1", "t1");
+        assertNull(f.apply(r1), "db1.t1 delete should be dropped");
+
+        SinkRecord r2 = TransformTestHelpers.debeziumRecord("topic", 1L, "d", "db2", "t2");
+        assertNull(f.apply(r2), "db2.t2 delete should be dropped");
+
+        SinkRecord r3 = TransformTestHelpers.debeziumRecord("topic", 2L, "d", "db3", "t3");
+        assertSame(r3, f.apply(r3), "db3.t3 delete should pass through unchanged");
+    }
+
+    @Test
+    @DisplayName("TOF-02: surrounding whitespace in the tables config is trimmed")
+    public void testTablesConfigWhitespaceIsTrimmed() {
+        TableOperationFilter<SinkRecord> f = new TableOperationFilter<>();
+        Map<String, String> cfg = new HashMap<>();
+        cfg.put("tables", " db1.t1 , db2.t2 ");
+        cfg.put("skipped.operations", "d");
+        f.configure(cfg);
+
+        SinkRecord r1 = TransformTestHelpers.debeziumRecord("topic", 0L, "d", "db1", "t1");
+        assertNull(f.apply(r1), "Whitespace-padded table entries should still match after trim");
+    }
 }

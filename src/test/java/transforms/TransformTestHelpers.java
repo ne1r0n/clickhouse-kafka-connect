@@ -56,7 +56,7 @@ final class TransformTestHelpers {
                 headers);
     }
 
-    /** Same metadata as {@link #schemaRecord}, but a deliberately different value schema — proves the D-02 stale-schema guard. */
+    /** Same metadata as {@link #schemaRecord}, but a deliberately different value schema - proves the D-02 stale-schema guard. */
     static SinkRecord schemaRecordAlternateSchema(String topic, long offset, ConnectHeaders headers) {
         Schema schema =
                 SchemaBuilder.struct()
