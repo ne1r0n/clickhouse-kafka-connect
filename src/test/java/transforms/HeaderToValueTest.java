@@ -4,6 +4,7 @@ import com.clickhouse.kafka.connect.transforms.HeaderToValue;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.ConnectHeaders;
@@ -285,5 +286,193 @@ public class HeaderToValueTest {
                     headerToValue.close();
                     headerToValue.close();
                 });
+    }
+
+    @Test
+    @DisplayName("HDR-02: a header added three times copies its last value on the schema path")
+    public void testMultiValuedHeaderLastWinsSchemaPath() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("trace-id", "first");
+            headers.addString("trace-id", "second");
+            headers.addString("trace-id", "third");
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertEquals("third", newValue.get("trace_id"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-02: a header added three times copies its last value on the schemaless path")
+    public void testMultiValuedHeaderLastWinsSchemalessPath() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("trace-id", "first");
+            headers.addString("trace-id", "second");
+            headers.addString("trace-id", "third");
+
+            SinkRecord record = TransformTestHelpers.schemalessRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Map<String, Object> value = (Map<String, Object>) newRecord.value();
+
+            Assertions.assertEquals("third", value.get("trace_id"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-03: a missing header leaves a newly added field present and null on the schema path")
+    public void testMissingHeaderLeavesNewFieldPresentAndNull() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, new ConnectHeaders());
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertNotNull(newValue.schema().field("trace_id"));
+            Assertions.assertNull(newValue.get("trace_id"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-03: a missing header leaves a pre-existing field with its original value on the schema path")
+    public void testMissingHeaderLeavesExistingFieldUnchanged() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "str");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, new ConnectHeaders());
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertEquals("row-0", newValue.get("str"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-03: a null-valued header leaves the target field untouched on the schema path")
+    public void testNullValuedHeaderLeavesFieldUntouched() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "str");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.add("trace-id", null, null);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertEquals("row-0", newValue.get("str"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-03: a missing or null-valued header leaves the target key absent on the schemaless path")
+    public void testMissingOrNullHeaderLeavesKeyAbsentSchemalessPath() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            SinkRecord missingHeaderRecord =
+                    TransformTestHelpers.schemalessRecord("topic1", 0, new ConnectHeaders());
+            SinkRecord missingResult = headerToValue.apply(missingHeaderRecord);
+            Map<String, Object> missingValue = (Map<String, Object>) missingResult.value();
+            Assertions.assertFalse(missingValue.containsKey("trace_id"));
+
+            ConnectHeaders nullHeaders = new ConnectHeaders();
+            nullHeaders.add("trace-id", null, null);
+            SinkRecord nullHeaderRecord = TransformTestHelpers.schemalessRecord("topic1", 1, nullHeaders);
+            SinkRecord nullResult = headerToValue.apply(nullHeaderRecord);
+            Map<String, Object> nullValue = (Map<String, Object>) nullResult.value();
+            Assertions.assertFalse(nullValue.containsKey("trace_id"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-04: a configured field absent from the original schema is added as an optional string")
+    public void testAddedFieldIsOptionalString() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("trace-id", "trace-value");
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Schema newSchema = newRecord.valueSchema();
+
+            Assertions.assertNotNull(newSchema.field("trace_id"));
+            Assertions.assertEquals(Schema.Type.STRING, newSchema.field("trace_id").schema().type());
+            Assertions.assertTrue(newSchema.field("trace_id").schema().isOptional());
+            Assertions.assertEquals(Schema.Type.INT16, newSchema.field("off16").schema().type());
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-04: the added field stays present and null when the header is missing")
+    public void testAddedFieldPresentAndNullWhenHeaderMissing() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id");
+            configs.put("headers", "trace-id");
+            headerToValue.configure(configs);
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, new ConnectHeaders());
+            SinkRecord newRecord = headerToValue.apply(record);
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertNotNull(newValue.schema().field("trace_id"));
+            Assertions.assertNull(newValue.get("trace_id"));
+        }
+    }
+
+    @Test
+    @DisplayName("HDR-04: field-name matching against the original schema is exact case-sensitive equality")
+    public void testFieldNameMatchingIsCaseSensitive() {
+        try (HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>()) {
+            Map<String, Object> configs = new HashMap<>();
+            configs.put("fields", "trace_id,Trace_Id");
+            configs.put("headers", "trace-id,Trace-Id");
+            headerToValue.configure(configs);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("trace-id", "lower-value");
+            headers.addString("Trace-Id", "upper-value");
+
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+            Schema newSchema = newRecord.valueSchema();
+
+            Assertions.assertNotNull(newSchema.field("trace_id"));
+            Assertions.assertNotNull(newSchema.field("Trace_Id"));
+            Assertions.assertEquals(Schema.OPTIONAL_STRING_SCHEMA, newSchema.field("trace_id").schema());
+            Assertions.assertEquals(Schema.OPTIONAL_STRING_SCHEMA, newSchema.field("Trace_Id").schema());
+        }
     }
 }
