@@ -44,12 +44,12 @@
 
 ### Transforms — HeaderToValue
 
-- [ ] **HDR-01**: Mismatched `fields`/`headers` counts are rejected with `DataException` at `configure()` (both directions)
-- [ ] **HDR-02**: A multi-valued header copies its last value into the target field
-- [ ] **HDR-03**: A missing header or a header with a null value leaves the target field untouched (schema and schemaless)
-- [ ] **HDR-04**: A configured field absent from the original schema is added as an optional string field
-- [ ] **HDR-05**: The output record preserves topic, partition, key, timestamp, and headers
-- [ ] **HDR-06**: Non-string header values are stored via `toString()` (pinned), `config()` returns the definition, and `close()` is safe to call repeatedly
+- [x] **HDR-01**: Mismatched `fields`/`headers` counts are rejected with `DataException` at `configure()` (both directions)
+- [x] **HDR-02**: A multi-valued header copies its last value into the target field
+- [x] **HDR-03**: A missing header or a header with a null value leaves the target field untouched (schema and schemaless)
+- [x] **HDR-04**: A configured field absent from the original schema is added as an optional string field
+- [x] **HDR-05**: The output record preserves topic, partition, key, timestamp, and headers
+- [x] **HDR-06**: Non-string header values are stored via `toString()` (pinned), `config()` returns the definition, and `close()` is safe to call repeatedly
 - [x] **HDR-07**: Sink-level: a header-derived field lands in its ClickHouse column with the correct value
 
 ### Transforms — ConvertToMapOrJson
@@ -188,12 +188,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HDRS-07 | Phase 2 | Pending |
 | HDRS-08 | Phase 2 | Pending |
 | HDRS-09 | Phase 2 | Complete |
-| HDR-01 | Phase 2 | Pending |
-| HDR-02 | Phase 2 | Pending |
-| HDR-03 | Phase 2 | Pending |
-| HDR-04 | Phase 2 | Pending |
-| HDR-05 | Phase 2 | Pending |
-| HDR-06 | Phase 2 | Pending |
+| HDR-01 | Phase 2 | Complete |
+| HDR-02 | Phase 2 | Complete |
+| HDR-03 | Phase 2 | Complete |
+| HDR-04 | Phase 2 | Complete |
+| HDR-05 | Phase 2 | Complete |
+| HDR-06 | Phase 2 | Complete |
 | HDR-07 | Phase 2 | Complete |
 | CONV-01 | Phase 2 | Pending |
 | CONV-02 | Phase 2 | Pending |

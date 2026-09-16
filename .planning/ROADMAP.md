@@ -85,7 +85,7 @@ Plans:
      - JSON-string output lands in a String/JSON column with correct content
   5. Any bug these tests expose (for example nested Struct conversion) is fixed in this phase with a small targeted change, and `./gradlew test` stays green.
 
-**Plans**: 2/5 plans executed
+**Plans**: 3/5 plans executed
 
 Plans:
 **Wave 1**
@@ -95,7 +95,7 @@ Plans:
 
 **Wave 2** *(blocked on 02-01's shared test helper)*
 
-- [ ] 02-02-PLAN.md — `HeaderToValue` unit coverage (HDR-01..06) + the D-02 stale-schema guard (wave 2)
+- [x] 02-02-PLAN.md — `HeaderToValue` unit coverage (HDR-01..06) + the D-02 stale-schema guard (wave 2)
 - [ ] 02-03-PLAN.md — `HeadersToValue` unit coverage (HDRS-01..08) + the D-02 stale-schema guard + the D-14 HDRS-04 wording correction (wave 2)
 - [ ] 02-04-PLAN.md — `ConvertToMapOrJson` unit coverage (CONV-01..07) + the D-01 nested-collection recursion fix (wave 2)
 
@@ -192,7 +192,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Test Infrastructure & Green Baseline | 3/3 | Complete    | 2026-09-16 |
-| 2. Fork SMT Coverage | 2/5 | In Progress|  |
+| 2. Fork SMT Coverage | 3/5 | In Progress|  |
 | 3. Table Metadata & JSON/Dynamic Types | 0/3 | Not started | - |
 | 4. JSON Insert Path & Connector Plumbing | 0/3 | Not started | - |
 | 5. CI & Final Verification | 0/2 | Not started | - |
