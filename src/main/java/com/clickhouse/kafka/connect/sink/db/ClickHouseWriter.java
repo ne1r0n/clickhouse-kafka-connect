@@ -443,6 +443,9 @@ public class ClickHouseWriter implements DBWriter {
                 mapTmp.forEach((key, mapValue) -> {
                     try {
                         doWritePrimitive(col.getMapKeyType(), value.getMapKeySchema().type(), stream, key, col);
+                        if (col.getMapValueType().isNullable() && mapValue != null) {
+                            BinaryStreamUtils.writeNonNull(stream);
+                        }
                         doWriteColValue(col.getMapValueType(), stream, new Data(value.getNestedValueSchema(), mapValue), defaultsSupport);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
