@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
 import com.clickhouse.kafka.connect.transforms.HeaderToValue;
 import com.clickhouse.kafka.connect.transforms.HeadersToValue;
 import com.clickhouse.kafka.connect.transforms.TableOperationFilter;
@@ -136,6 +137,56 @@ public class SmtSinkLandingTest extends ClickHouseBase {
             byOffset.put(row.getInt("off16"), row);
         }
         return byOffset;
+    }
+
+    /**
+     * A four-field Struct fixture (off16, str, p_int32, nested) for CONV-08, where {@code nested}
+     * is itself a Struct with optional {@code n_str}/{@code n_int} fields. Passing {@code null} for
+     * both nested values models the empty-edge row (all-null nested fields, dropped by {@code
+     * preserve.null.values=false} into an empty JSON object rather than a missing nested value).
+     */
+    private SinkRecord jsonFixtureRecord(
+            String topic, long offset, String strVal, int pInt32, String nStr, Integer nInt) {
+        Schema nestedSchema = SchemaBuilder.struct()
+                .field("n_str", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("n_int", Schema.OPTIONAL_INT32_SCHEMA)
+                .optional()
+                .build();
+        Schema schema = SchemaBuilder.struct()
+                .field("off16", Schema.INT16_SCHEMA)
+                .field("str", Schema.STRING_SCHEMA)
+                .field("p_int32", Schema.INT32_SCHEMA)
+                .field("nested", nestedSchema)
+                .build();
+        Struct nested = new Struct(nestedSchema).put("n_str", nStr).put("n_int", nInt);
+        Struct value = new Struct(schema)
+                .put("off16", (short) offset)
+                .put("str", strVal)
+                .put("p_int32", pInt32)
+                .put("nested", nested);
+
+        return new SinkRecord(
+                topic,
+                PARTITION,
+                Schema.STRING_SCHEMA,
+                "key-" + offset,
+                schema,
+                value,
+                offset,
+                TIMESTAMP,
+                TimestampType.CREATE_TIME,
+                new ConnectHeaders());
+    }
+
+    /** Builds a configured {@link ConvertToMapOrJson} for CONV-08: JSON output via Jackson, nulls dropped. */
+    private ConvertToMapOrJson<SinkRecord> newConvertToJsonTransform() {
+        ConvertToMapOrJson<SinkRecord> xform = new ConvertToMapOrJson<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put("output.json.enabled", true);
+        config.put("output.json.library", "jackson");
+        config.put("preserve.null.values", false);
+        xform.configure(config);
+        return xform;
     }
 
     @Test
@@ -283,5 +334,78 @@ public class SmtSinkLandingTest extends ClickHouseBase {
                 .get(0)
                 .getLong("c");
         assertEquals(3L, sourceDbCount);
+    }
+
+    @Test
+    @DisplayName("CONV-08: JSON-string output lands across typed columns and a JSON column")
+    void conv08JsonStringOutputLandsAcrossColumns(TestInfo testInfo) {
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        String table = createTopicName("conv08_landing");
+
+        ClickHouseTestHelpers.dropTable(chc, table);
+        ClickHouseTestHelpers.createTable(
+                chc,
+                table,
+                "CREATE TABLE %s (`off16` Int16, `str` String, `p_int32` Int32, `nested` JSON) ENGINE = MergeTree ORDER BY off16");
+
+        List<SinkRecord> records = new ArrayList<>();
+        records.add(jsonFixtureRecord(table, 1L, "row-1", 100, "nested-1", 7));
+        // Empty edge: preserve.null.values=false + an all-null nested Struct must land `{}`, not
+        // NULL and not a missing row.
+        records.add(jsonFixtureRecord(table, 2L, "row-2", 200, null, null));
+        // Encoding edge: escaped-unicode content in both a top-level and a nested field.
+        records.add(jsonFixtureRecord(table, 3L, NON_ASCII_SAMPLE, 300, NON_ASCII_SAMPLE, 9));
+
+        Collection<SinkRecord> transformed;
+        try (ConvertToMapOrJson<SinkRecord> xform = newConvertToJsonTransform()) {
+            transformed = transform(xform, records);
+        }
+
+        runSink(props, transformed, testInfo);
+
+        assertEquals(3, ClickHouseTestHelpers.countRows(chc, table));
+
+        Map<Integer, JSONObject> byOffset = indexByOff16(ClickHouseTestHelpers.getAllRowsAsJson(chc, table));
+
+        JSONObject row1 = byOffset.get(1);
+        assertEquals("row-1", row1.getString("str"));
+        assertEquals(100, row1.getInt("p_int32"));
+        JSONObject nested1 = row1.getJSONObject("nested");
+        assertEquals("nested-1", nested1.getString("n_str"));
+        assertEquals(7, nested1.getInt("n_int"));
+
+        JSONObject row2 = byOffset.get(2);
+        assertEquals(0, row2.getJSONObject("nested").length());
+
+        JSONObject row3 = byOffset.get(3);
+        assertEquals(NON_ASCII_SAMPLE, row3.getString("str"));
+        assertEquals(NON_ASCII_SAMPLE, row3.getJSONObject("nested").getString("n_str"));
+    }
+
+    @Test
+    @DisplayName("CONV-08: a single-record batch lands exactly one row")
+    void conv08SingleRecordBatchLandsOneRow(TestInfo testInfo) {
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        String table = createTopicName("conv08_single");
+
+        ClickHouseTestHelpers.dropTable(chc, table);
+        ClickHouseTestHelpers.createTable(
+                chc,
+                table,
+                "CREATE TABLE %s (`off16` Int16, `str` String, `p_int32` Int32, `nested` JSON) ENGINE = MergeTree ORDER BY off16");
+
+        List<SinkRecord> records = new ArrayList<>();
+        records.add(jsonFixtureRecord(table, 1L, "solo", 42, "solo-nested", 1));
+
+        Collection<SinkRecord> transformed;
+        try (ConvertToMapOrJson<SinkRecord> xform = newConvertToJsonTransform()) {
+            transformed = transform(xform, records);
+        }
+
+        runSink(props, transformed, testInfo);
+
+        assertEquals(1, ClickHouseTestHelpers.countRows(chc, table));
     }
 }
