@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.transforms.HeaderToValue;
+import com.clickhouse.kafka.connect.transforms.HeadersToValue;
 import com.clickhouse.kafka.connect.transforms.TableOperationFilter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,6 +37,14 @@ public class SmtSinkLandingTest extends ClickHouseBase {
 
     private static final int PARTITION = 0;
     private static final long TIMESTAMP = 1715376000123L;
+
+    /**
+     * Cyrillic + CJK content built only from escaped-unicode literals (D-14/Pitfall 2, so this
+     * file's own encoding is never the thing under test): spells "Privet Zhongwen" (Russian
+     * greeting, space, "Chinese language" in Chinese). Read back only through {@link
+     * ClickHouseTestHelpers#getAllRowsAsJson}, which decodes explicit UTF-8.
+     */
+    private static final String NON_ASCII_SAMPLE = "\u041f\u0440\u0438\u0432\u0435\u0442 \u4e2d\u6587";
 
     /**
      * Mirrors what the Kafka Connect worker does with a configured transform: apply it to every
@@ -96,6 +106,135 @@ public class SmtSinkLandingTest extends ClickHouseBase {
                 TIMESTAMP,
                 TimestampType.CREATE_TIME,
                 new ConnectHeaders());
+    }
+
+    /** A simple two-field Struct fixture (off16, str) carrying the given headers. */
+    private SinkRecord headerFixtureRecord(String topic, long offset, ConnectHeaders headers) {
+        Schema schema = SchemaBuilder.struct()
+                .field("off16", Schema.INT16_SCHEMA)
+                .field("str", Schema.STRING_SCHEMA)
+                .build();
+        Struct value = new Struct(schema).put("off16", (short) offset).put("str", "row-" + offset);
+
+        return new SinkRecord(
+                topic,
+                PARTITION,
+                Schema.STRING_SCHEMA,
+                "key-" + offset,
+                schema,
+                value,
+                offset,
+                TIMESTAMP,
+                TimestampType.CREATE_TIME,
+                headers);
+    }
+
+    /** Indexes rows returned by {@link ClickHouseTestHelpers#getAllRowsAsJson} by their off16 value. */
+    private Map<Integer, JSONObject> indexByOff16(List<JSONObject> rows) {
+        Map<Integer, JSONObject> byOffset = new HashMap<>();
+        for (JSONObject row : rows) {
+            byOffset.put(row.getInt("off16"), row);
+        }
+        return byOffset;
+    }
+
+    @Test
+    @DisplayName("HDRS-09: headers land in a Map(String, Nullable(String)) column, including the empty and non-ASCII header edges")
+    void hdrs09HeadersLandInMapColumn(TestInfo testInfo) {
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        String table = createTopicName("hdrs09_landing");
+
+        ClickHouseTestHelpers.dropTable(chc, table);
+        ClickHouseTestHelpers.createTable(
+                chc,
+                table,
+                "CREATE TABLE %s (`off16` Int16, `str` String, `headers_map` Map(String, Nullable(String))) ENGINE = MergeTree ORDER BY off16");
+
+        ConnectHeaders headers1 = new ConnectHeaders();
+        headers1.addString("h_a", "alpha");
+        headers1.addString("h_b", "beta");
+
+        ConnectHeaders headers2 = new ConnectHeaders(); // empty edge: zero headers
+
+        // No header with a null value in this fixture: writing a NULL into a
+        // Map(String, Nullable(String)) exercises ClickHouseWriter's MAP branch, which is
+        // outside transforms/ and therefore outside this phase's inline-fix scope; the
+        // null-map-entry contract is already pinned at unit level by HDRS-03.
+        ConnectHeaders headers3 = new ConnectHeaders();
+        headers3.addString("h_empty", "");
+        headers3.addString("h_uni", NON_ASCII_SAMPLE);
+
+        List<SinkRecord> records = new ArrayList<>();
+        records.add(headerFixtureRecord(table, 1L, headers1));
+        records.add(headerFixtureRecord(table, 2L, headers2));
+        records.add(headerFixtureRecord(table, 3L, headers3));
+
+        Collection<SinkRecord> transformed;
+        try (HeadersToValue<SinkRecord> xform = new HeadersToValue<>()) {
+            Map<String, Object> config = new HashMap<>();
+            config.put("field", "headers_map");
+            xform.configure(config);
+            transformed = transform(xform, records);
+        }
+
+        runSink(props, transformed, testInfo);
+
+        assertEquals(3, ClickHouseTestHelpers.countRows(chc, table));
+
+        Map<Integer, JSONObject> byOffset = indexByOff16(ClickHouseTestHelpers.getAllRowsAsJson(chc, table));
+
+        JSONObject map1 = byOffset.get(1).getJSONObject("headers_map");
+        assertEquals("alpha", map1.getString("h_a"));
+        assertEquals("beta", map1.getString("h_b"));
+
+        assertEquals(0, byOffset.get(2).getJSONObject("headers_map").length());
+
+        JSONObject map3 = byOffset.get(3).getJSONObject("headers_map");
+        assertEquals("", map3.getString("h_empty"));
+        assertEquals(NON_ASCII_SAMPLE, map3.getString("h_uni"));
+    }
+
+    @Test
+    @DisplayName("HDR-07: a header-derived field lands in its String column")
+    void hdr07HeaderDerivedFieldLandsInColumn(TestInfo testInfo) {
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        String table = createTopicName("hdr07_landing");
+
+        ClickHouseTestHelpers.dropTable(chc, table);
+        ClickHouseTestHelpers.createTable(
+                chc,
+                table,
+                "CREATE TABLE %s (`off16` Int16, `str` String, `trace_id` String) ENGINE = MergeTree ORDER BY off16");
+
+        ConnectHeaders headers1 = new ConnectHeaders();
+        headers1.addString("trace-id", "trace-aaa");
+        ConnectHeaders headers2 = new ConnectHeaders();
+        headers2.addString("trace-id", "trace-bbb");
+
+        List<SinkRecord> records = new ArrayList<>();
+        records.add(headerFixtureRecord(table, 1L, headers1));
+        records.add(headerFixtureRecord(table, 2L, headers2));
+
+        Collection<SinkRecord> transformed;
+        try (HeaderToValue<SinkRecord> xform = new HeaderToValue<>()) {
+            Map<String, Object> config = new HashMap<>();
+            config.put("fields", "trace_id");
+            config.put("headers", "trace-id");
+            xform.configure(config);
+            transformed = transform(xform, records);
+        }
+
+        runSink(props, transformed, testInfo);
+
+        assertEquals(2, ClickHouseTestHelpers.countRows(chc, table));
+
+        Map<Integer, JSONObject> byOffset = indexByOff16(ClickHouseTestHelpers.getAllRowsAsJson(chc, table));
+        assertEquals("trace-aaa", byOffset.get(1).getString("trace_id"));
+        assertEquals("row-1", byOffset.get(1).getString("str"));
+        assertEquals("trace-bbb", byOffset.get(2).getString("trace_id"));
+        assertEquals("row-2", byOffset.get(2).getString("str"));
     }
 
     @Test
