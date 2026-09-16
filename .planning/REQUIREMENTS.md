@@ -54,13 +54,13 @@
 
 ### Transforms — ConvertToMapOrJson
 
-- [ ] **CONV-01**: `preserve.null.values=false` omits null fields in map output and in JSON output with both Jackson and Gson
-- [ ] **CONV-02**: Structs nested inside Array and Map fields are converted like top-level Structs (fixed if broken)
-- [ ] **CONV-03**: Values that are not Structs (primitives, strings with JSON output disabled) pass through unchanged
-- [ ] **CONV-04**: The output record preserves key, key schema, timestamp, and headers
-- [ ] **CONV-05**: An invalid `output.json.library` value is rejected with `ConfigException`
-- [ ] **CONV-06**: Direct and sliced `ByteBuffer` values encode to the same base64 as array-backed buffers
-- [ ] **CONV-07**: `config()` returns the transform's definition and `close()` is safe to call repeatedly
+- [x] **CONV-01**: `preserve.null.values=false` omits null fields in map output and in JSON output with both Jackson and Gson
+- [x] **CONV-02**: Structs nested inside Array and Map fields are converted like top-level Structs (fixed if broken)
+- [x] **CONV-03**: Values that are not Structs (primitives, strings with JSON output disabled) pass through unchanged
+- [x] **CONV-04**: The output record preserves key, key schema, timestamp, and headers
+- [x] **CONV-05**: An invalid `output.json.library` value is rejected with `ConfigException`
+- [x] **CONV-06**: Direct and sliced `ByteBuffer` values encode to the same base64 as array-backed buffers
+- [x] **CONV-07**: `config()` returns the transform's definition and `close()` is safe to call repeatedly
 - [x] **CONV-08**: Sink-level: JSON-string output lands in a String/JSON ClickHouse column with correct content
 
 ### Table Metadata — targetTableFilter
@@ -195,13 +195,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HDR-05 | Phase 2 | Complete |
 | HDR-06 | Phase 2 | Complete |
 | HDR-07 | Phase 2 | Complete |
-| CONV-01 | Phase 2 | Pending |
-| CONV-02 | Phase 2 | Pending |
-| CONV-03 | Phase 2 | Pending |
-| CONV-04 | Phase 2 | Pending |
-| CONV-05 | Phase 2 | Pending |
-| CONV-06 | Phase 2 | Pending |
-| CONV-07 | Phase 2 | Pending |
+| CONV-01 | Phase 2 | Complete |
+| CONV-02 | Phase 2 | Complete |
+| CONV-03 | Phase 2 | Complete |
+| CONV-04 | Phase 2 | Complete |
+| CONV-05 | Phase 2 | Complete |
+| CONV-06 | Phase 2 | Complete |
+| CONV-07 | Phase 2 | Complete |
 | CONV-08 | Phase 2 | Complete |
 | FILT-01 | Phase 3 | Pending |
 | FILT-02 | Phase 3 | Pending |

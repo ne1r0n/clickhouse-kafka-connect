@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 02
 current_phase_name: Fork SMT Coverage
-status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-09-16T18:24:13.945Z"
+status: verifying
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-09-16T18:32:55.326Z"
 last_activity: 2026-09-16
 last_activity_desc: Phase 02 execution started
-state_head: 3fa3ac6cc5eb4e68d05c98294d34ac549ce1bca7
+state_head: 3d8e6bfb19eb96ed8f17e81aa888898adfbbff2a
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-16)
 
 Phase: 02 (Fork SMT Coverage) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-16 — Phase 02 execution started
 
 Progress: [██░░░░░░░░] 20%
@@ -65,6 +65,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 02 P05 | 24min | 3 tasks | 2 files |
 | Phase 02 P02 | 20min | 3 tasks | 2 files |
 | Phase 02-fork-smt-coverage P03 | 8min | 3 tasks | 3 files |
+| Phase 02 P04 | 16min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02]: HeaderToValue D-02 stale-schema-cache guard (sourceSchema field, reference comparison) is a verbatim template for the identical bug in HeadersToValue if a future plan touches it.
 - [Phase 02]: HeadersToValue D-02 stale-schema-cache guard mirrors the 02-02 HeaderToValue fix exactly (sourceSchema field, reference comparison). — Both fork SMTs had the identical lazily-cached valueSchema bug; the fix shape is now consistent across both classes.
 - [Phase 02]: Corrected a stale per-plan commit ledger (.git/gsd-plan-head-before-02-03) left over from a superseded milestone's differently-scoped phase 02-03. — The stale baseline (2026-09-13, pre-restructuring) would have inflated actuals.commits to 48 unrelated commits instead of this plan's real 3.
+- [Phase 02]: Phase 02 Plan 04: Applied D-01 fix exactly as locked in CONTEXT.md - List/Map recursion branches in ConvertToMapOrJson.convertFieldValue(), fixing nested Struct-in-collection reflection bug. — Only the two required imports and two branches were added; no other production change.
+- [Phase 02]: Phase 02 Plan 04: CONV-05 pins the ConfigException case-sensitivity quirk (output.json.library=JACKSON rejected) as-is per D-13, with an inline comment recording it is intentional, not a regression.
 
 ### Pending Todos
 
@@ -108,6 +111,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-16T18:24:13.919Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-09-16T18:32:48.600Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
