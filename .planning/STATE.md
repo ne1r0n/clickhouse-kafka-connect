@@ -23,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-16)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 02 — Fork SMT Coverage
+**Current focus:** Phase 3 — Table Metadata & JSON/Dynamic Types
 
 ## Current Position
 
@@ -84,11 +84,12 @@ Recent decisions affecting current work:
 - [Phase 02]: Non-ASCII TOF-01 test data built from int[] Unicode code points at runtime instead of \u escape literals in source, because the editing tool chain silently decoded literal backslash-u escape text into real non-ASCII bytes.
 - [Phase 02]: Approved out-of-scope ClickHouseWriter MAP-branch fix (RowBinary null marker for Nullable map values) at the 02-05 Task 2 blocking-human checkpoint after independent diagnosis verification.
 - [Phase 02]: HDRS-09 fixture keeps Map(String, Nullable(String)) DDL as locked (D-08); rejected weakening to Map(String, String).
-- [Phase 02]: [Phase 02]: HeaderToValue D-02 stale-schema-cache guard (sourceSchema field, reference comparison) is a verbatim template for the identical bug in HeadersToValue if a future plan touches it.
+- [Phase 02]: HeaderToValue D-02 stale-schema-cache guard (sourceSchema field, reference comparison) is a verbatim template for the identical bug in HeadersToValue if a future plan touches it.
 - [Phase 02]: HeadersToValue D-02 stale-schema-cache guard mirrors the 02-02 HeaderToValue fix exactly (sourceSchema field, reference comparison). — Both fork SMTs had the identical lazily-cached valueSchema bug; the fix shape is now consistent across both classes.
 - [Phase 02]: Corrected a stale per-plan commit ledger (.git/gsd-plan-head-before-02-03) left over from a superseded milestone's differently-scoped phase 02-03. — The stale baseline (2026-09-13, pre-restructuring) would have inflated actuals.commits to 48 unrelated commits instead of this plan's real 3.
 - [Phase 02]: Phase 02 Plan 04: Applied D-01 fix exactly as locked in CONTEXT.md - List/Map recursion branches in ConvertToMapOrJson.convertFieldValue(), fixing nested Struct-in-collection reflection bug. — Only the two required imports and two branches were added; no other production change.
 - [Phase 02]: Phase 02 Plan 04: CONV-05 pins the ConfigException case-sensitivity quirk (output.json.library=JACKSON rejected) as-is per D-13, with an inline comment recording it is intentional, not a regression.
+- [Phase 02]: Code review (0 critical / 3 warning / 2 info) surfaced three follow-ups now tracked in PROJECT.md Active: end-to-end coverage for an actual null entry in a Nullable map column (WR-01), fail-loud on a null in a non-nullable MAP/ARRAY element slot (WR-02), and a pinned contract for HeaderToValue's non-STRING column collision (WR-03). None block Phase 2; all are unscheduled.
 
 ### Pending Todos
 
