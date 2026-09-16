@@ -38,6 +38,7 @@ public class HeadersToValue<R extends ConnectRecord<R>> implements Transformatio
 
     // Configuration state
     private String fieldName;
+    private Schema sourceSchema;
     private Schema valueSchema;
     private Schema headersSchema;
 
@@ -109,8 +110,9 @@ public class HeadersToValue<R extends ConnectRecord<R>> implements Transformatio
     private R applyWithSchema(R record) {
         final Struct oldValue = (Struct) record.value();
 
-        if (valueSchema == null) {
-            valueSchema = buildSchema(oldValue.schema());
+        if (valueSchema == null || oldValue.schema() != sourceSchema) {
+            sourceSchema = oldValue.schema();
+            valueSchema = buildSchema(sourceSchema);
         }
 
         Struct newValue = new Struct(valueSchema);
@@ -190,6 +192,7 @@ public class HeadersToValue<R extends ConnectRecord<R>> implements Transformatio
     @Override
     public void close() {
         LOGGER.debug("Closing HeadersToValue");
+        sourceSchema = null;
         valueSchema = null;
         headersSchema = null;
     }
