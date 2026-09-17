@@ -161,14 +161,14 @@ Plans:
      - multiple tasks and connectors register distinct MBeans, and each `stop()` unregisters only its own
   5. With default config the connector sends no `async_insert` setting. A user-supplied `async_insert` in `clickhouseSettings` is passed through unchanged. A sink insert with `async_insert=1` completes and its data is present in ClickHouse `latest`.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1** *(all three run in parallel: 04-03 is the only plan touching main code and owns `ProxySinkTask.java`; the other two touch no main code, and no test file is written by two plans — CONTEXT.md D-16)*
 
 - [x] 04-01-PLAN.md — Explicit `insertFormat=json` path: a new live class (JSON-01 differential, JSON-02, JSON-03 live half, JSON-04 tombstones), a Docker-free `cleanupExtraFields`/letter-case class, typed value assertions added to the existing explicit-JSON tests (JSON-05), and a blocking-human checkpoint on R-01's silent data loss (wave 1, not autonomous)
 - [x] 04-02-PLAN.md — `jsonInsertColumns`: a Docker-free parsing class (COLS-01) and a new live class covering the default empty list, an explicit subset against non-trivial `DEFAULT`s, extra payload keys, the nonexistent-column error plus its retriable/non-retriable classification, and the non-explicit path's `cleanupExtraFields` interaction (COLS-02..06) (wave 1)
-- [ ] 04-03-PLAN.md — Connector plumbing: the pre-approved `ProxySinkTask.buildMBeanName` extraction plus a Docker-free name class (JMX-01..03) and a live four-task registration class (JMX-04), and `async_insert` config pins plus a live `wait_for_async_insert=1` insert (ASYNC-01..03) (wave 1)
+- [x] 04-03-PLAN.md — Connector plumbing: the pre-approved `ProxySinkTask.buildMBeanName` extraction plus a Docker-free name class (JMX-01..03) and a live four-task registration class (JMX-04), and `async_insert` config pins plus a live `wait_for_async_insert=1` insert (ASYNC-01..03) (wave 1)
 
 *Scope note: the plan split matches the roadmap's original 3-plan sketch. `ASYNC-01..03` stays inside 04-03 rather than becoming a fourth plan because its two new test classes are small and a fourth plan would cost an extra executor cold start — worktree isolation is currently degraded to sequential execution while `custom_build` has unpushed commits (STATE.md).*
 
@@ -201,5 +201,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 | 1. Test Infrastructure & Green Baseline | 3/3 | Complete    | 2026-09-16 |
 | 2. Fork SMT Coverage | 5/5 | Complete    | 2026-09-16 |
 | 3. Table Metadata & JSON/Dynamic Types | 3/3 | Complete    | 2026-09-17 |
-| 4. JSON Insert Path & Connector Plumbing | 2/3 | In Progress|  |
+| 4. JSON Insert Path & Connector Plumbing | 3/3 | In Progress|  |
 | 5. CI & Final Verification | 0/2 | Not started | - |

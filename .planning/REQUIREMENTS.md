@@ -106,16 +106,16 @@
 
 ### Connector Plumbing — JMX
 
-- [ ] **JMX-01**: A task's MBean name includes `connector=<name>` when the connector `name` prop is set
-- [ ] **JMX-02**: Without a connector `name` prop the MBean name contains `connector=null` (pinned)
-- [ ] **JMX-03**: A null implementation version renders as `version=unknown`, and `:` in a version renders as `_`
-- [ ] **JMX-04**: Multiple tasks and connectors register distinct MBeans, and each task's `stop()` unregisters exactly its own
+- [x] **JMX-01**: A task's MBean name includes `connector=<name>` when the connector `name` prop is set
+- [x] **JMX-02**: Without a connector `name` prop the MBean name contains `connector=null` (pinned)
+- [x] **JMX-03**: A null implementation version renders as `version=unknown`, and `:` in a version renders as `_`
+- [x] **JMX-04**: Multiple tasks and connectors register distinct MBeans, and each task's `stop()` unregisters exactly its own
 
 ### Connector Plumbing — async_insert
 
-- [ ] **ASYNC-01**: The default configuration does not add `async_insert` to the ClickHouse settings the connector sends
-- [ ] **ASYNC-02**: A user-supplied `async_insert` in `clickhouseSettings` is passed through unchanged
-- [ ] **ASYNC-03**: A sink insert with `async_insert=1` completes and the data is present in ClickHouse
+- [x] **ASYNC-01**: The default configuration does not add `async_insert` to the ClickHouse settings the connector sends
+- [x] **ASYNC-02**: A user-supplied `async_insert` in `clickhouseSettings` is passed through unchanged
+- [x] **ASYNC-03**: A sink insert with `async_insert=1` completes and the data is present in ClickHouse
 
 ### Coverage
 
@@ -229,13 +229,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COLS-04 | Phase 4 | Complete |
 | COLS-05 | Phase 4 | Complete |
 | COLS-06 | Phase 4 | Complete |
-| JMX-01 | Phase 4 | Pending |
-| JMX-02 | Phase 4 | Pending |
-| JMX-03 | Phase 4 | Pending |
-| JMX-04 | Phase 4 | Pending |
-| ASYNC-01 | Phase 4 | Pending |
-| ASYNC-02 | Phase 4 | Pending |
-| ASYNC-03 | Phase 4 | Pending |
+| JMX-01 | Phase 4 | Complete |
+| JMX-02 | Phase 4 | Complete |
+| JMX-03 | Phase 4 | Complete |
+| JMX-04 | Phase 4 | Complete |
+| ASYNC-01 | Phase 4 | Complete |
+| ASYNC-02 | Phase 4 | Complete |
+| ASYNC-03 | Phase 4 | Complete |
 | CI-01 | Phase 5 | Pending |
 | CI-02 | Phase 5 | Pending |
 | CI-03 | Phase 5 | Pending |

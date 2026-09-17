@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: JSON Insert Path & Connector Plumbing
-status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-09-17T20:32:41.675Z"
+status: verifying
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-09-17T20:49:17.381Z"
 last_activity: 2026-09-17
 last_activity_desc: Phase 04 execution started
-state_head: a5ff5b633f397d73e249fb11db1a386f4699a6fd
+state_head: 721682c377bda2d0e5737a4b92049f088b603ef6
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
   percent: 60
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-17)
 
 Phase: 04 (JSON Insert Path & Connector Plumbing) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-17 — Phase 04 execution started
 
 Progress: [██████░░░░] 60%
@@ -73,6 +73,7 @@ Progress: [██████░░░░] 60%
 | Phase 03 P03 | 22min | 3 tasks | 3 files |
 | Phase 04 P01 | ~25min (continuation session) | 4 tasks | 3 files |
 | Phase 04 P02 | ~55min | 3 tasks | 2 files |
+| Phase 04 P03 | ~45 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [Phase 04]: [Phase 4] JSON-04's all-tombstone batch through doInsertJsonV2 empirically confirmed: an empty JSONEachRow body is accepted by ClickHouse latest as a clean zero-row insert with no throw, matching the research session's inference.
 - [Phase 04]: [Phase 04] COLS-05's non-retriable classification is correct but for a different structural reason than assumed: Utils.handleException's ClickHouseException-typed switch never matches com.clickhouse.client.api.ServerException (the client-V2 exception type), so the classification comes from the unconditional fallback path, not from the switch's case list excluding error code 16 (NO_SUCH_COLUMN_IN_TABLE).
 - [Phase 04]: [Phase 04] COLS-02 confirmed as a plain confirmatory pin per D-11 - Phase 3's JsonDynamicRoundTripTest already exercised doInsertJsonV2 with the default empty jsonInsertColumns list.
+- [Phase 04]: [Phase 04] buildMBeanName extracted byte-for-byte per D-02 (the phase's only pre-approved main-code change); ProxySinkTask.java is the only src/main file touched anywhere in Phase 4, verified by blob-hash pins on MBeanServerUtils.java, ClickHouseSinkConfig.java, ClickHouseWriter.java and build.gradle.kts at every task's verify gate.
+- [Phase 04]: [Phase 04] JMX-04's four-task live test identifies MBean identity via before/after Set<ObjectName> difference rather than any absolute SinkTask<id> name, because ProxySinkTask.id comes from a static AtomicInteger that never resets inside a test JVM fork.
+- [Phase 04]: [Phase 04] Phase 4 complete: all three plans (04-01 JSON insert path, 04-02 jsonInsertColumns, 04-03 JMX + async_insert) done; full ./gradlew test is green (371 tests, 0 failed, 7 pre-existing skips).
 
 ### Pending Todos
 
@@ -131,6 +135,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-17T20:32:41.584Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-09-17T20:49:17.344Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
