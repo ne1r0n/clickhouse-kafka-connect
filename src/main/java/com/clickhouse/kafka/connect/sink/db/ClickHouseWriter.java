@@ -222,6 +222,19 @@ public class ClickHouseWriter implements DBWriter {
         }
     }
 
+    /**
+     * Builds the D-05-worded, actionable message shared by the {@code doWriteColValue} default
+     * branch and the {@code validateDataSchema} JSON/DYNAMIC/UNKNOWN case (TYPE-06), so the two
+     * gates cannot drift apart in wording. Names only the column, its type, and the two escape
+     * hatches - never any part of the record payload (T-03-21).
+     */
+    private String buildRowBinaryUnsupportedTypeMessage(String columnName, Type columnType) {
+        return String.format(
+                "Column [%s] has unsupported type [%s] for RowBinary serialization. "
+                        + "Use insertFormat=json or bypassRowBinary=true instead.",
+                columnName, columnType);
+    }
+
     protected boolean validateDataSchema(Table table, Record record, boolean onlyFieldsName) {
         boolean validSchema = true;
         for (Column col : table.getRootColumnsList()) {
@@ -251,6 +264,21 @@ public class ClickHouseWriter implements DBWriter {
                         case "Enum8":
                         case "Enum16":
                             break;//I notice we just break here, rather than actually validate the type
+                        case "JSON":
+                        case "DYNAMIC":
+                        case "UNKNOWN":
+                            // Live probing (R-02, 03-RESEARCH.md Pitfall 4) confirmed this gate fires FIRST
+                            // under default config for a JSON/Dynamic column, before doWriteColValue is ever
+                            // reached, and today throws a bare, unactionable failure:
+                            //   RuntimeException: Number of records: 1
+                            //     caused by RuntimeException: Topic: [...], Partition: [0], MinOffset: [0],
+                            //       MaxOffset: [0], (QueryId: [...])
+                            //     caused by RuntimeException: Data schema validation failed.
+                            // Speak the same actionable message doWriteColValue's default branch throws
+                            // (D-04), rather than just flipping validSchema to false.
+                            String unsupportedTypeMsg = buildRowBinaryUnsupportedTypeMessage(colName, type);
+                            LOGGER.error(unsupportedTypeMsg);
+                            throw new DataException(unsupportedTypeMsg);
                         default:
                             if (!colTypeName.equals(dataTypeName)) {
                                 LOGGER.debug("Data schema name: {}", objSchema.name());
@@ -535,10 +563,7 @@ public class ClickHouseWriter implements DBWriter {
             default:
                 // If you wonder, how NESTED works in JDBC:
                 // https://github.com/ClickHouse/clickhouse-java/blob/6cbbd8fe3f86ac26d12a95e0c2b964f3a3755fc9/clickhouse-data/src/main/java/com/clickhouse/data/format/ClickHouseRowBinaryProcessor.java#L159
-                String msg = String.format(
-                        "Column [%s] has unsupported type [%s] for RowBinary serialization. "
-                                + "Use insertFormat=json or bypassRowBinary=true instead.",
-                        col.getName(), columnType);
+                String msg = buildRowBinaryUnsupportedTypeMessage(col.getName(), columnType);
                 LOGGER.error(msg);
                 throw new DataException(msg);
         }
