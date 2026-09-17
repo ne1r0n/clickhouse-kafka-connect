@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Table Metadata & JSON/Dynamic Types
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-09-17T08:50:14.623Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-09-17T09:17:43.778Z"
 last_activity: 2026-09-17
 last_activity_desc: Phase 03 execution started
-state_head: aa6e08bb453867c6ff860340d87ae08779b64375
+state_head: 82777e2c0aeb7ac26861fb66ab56e0794e2421ac
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 40
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-16)
 ## Current Position
 
 Phase: 03 (Table Metadata & JSON/Dynamic Types) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-17 — Phase 03 execution started
 
@@ -68,6 +68,7 @@ Progress: [████░░░░░░] 40%
 | Phase 02-fork-smt-coverage P03 | 8min | 3 tasks | 3 files |
 | Phase 02 P04 | 16min | 3 tasks | 2 files |
 | Phase 03 P01 | 24min | 3 tasks | 5 files |
+| Phase 03 P02 | 26min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Code review (0 critical / 3 warning / 2 info) surfaced three follow-ups now tracked in PROJECT.md Active: end-to-end coverage for an actual null entry in a Nullable map column (WR-01), fail-loud on a null in a non-nullable MAP/ARRAY element slot (WR-02), and a pinned contract for HeaderToValue's non-STRING column collision (WR-03). None block Phase 2; all are unscheduled.
 - [Phase 03]: Phase 03 Plan 01: TYPE-07 identifier test reproduced the deferred Phase 1 D-11 reader bug; shipped conditional StandardCharsets.UTF_8 fix on both describeTable readers.
 - [Phase 03]: Phase 03 Plan 01: Fixed ClickHouseBase.createClient() test-harness gap (missing targetTableFilter wiring) as a Rule 3 blocking-issue deviation, mirroring the existing ClickHouseWriter.start() production idiom.
+- [Phase 03]: Phase 03 Plan 02: Used HeaderToValue (singular) instead of HeadersToValue for the TYPE-07 SMT header case, matching the String-column requirement exactly. — HeadersToValue always produces a Map<String,String> of all headers; HeaderToValue maps one header directly to a named String field.
+- [Phase 03]: Phase 03 Plan 02: ClickHouse JSON-type columns reject a bare scalar at the root (Code 117, JSON object should start with '{') - TYPE-07 non-empty json_col fixtures wrap the value under a synthetic key. — Live-verified this session; the empty-object edge stays a true root {}.
+- [Phase 03]: Phase 03 Plan 02: client-v2 GenericRecord returned by Records' iterator is a mutable, reused row view - test helpers must snapshot row values into a Map during iteration, never collect GenericRecord references into a list. — Live-verified this session via a full false-positive test-pass/failure cycle; documented inline as a Javadoc on the allRows helper for future test authors.
 
 ### Pending Todos
 
@@ -116,6 +120,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-17T08:50:14.556Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-09-17T09:17:43.744Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None

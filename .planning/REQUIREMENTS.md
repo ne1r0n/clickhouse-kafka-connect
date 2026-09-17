@@ -79,11 +79,11 @@
 
 ### Column Types — JSON and Dynamic
 
-- [ ] **TYPE-01**: `JSON` and parameterized `JSON(...)` type strings map to `Type.JSON`
-- [ ] **TYPE-02**: The `Dynamic` type string maps to `Type.DYNAMIC`
-- [ ] **TYPE-03**: Records inserted into a `JSON` column via the JSON insert path read back with correct nested values
-- [ ] **TYPE-04**: Records inserted into a `Dynamic` column via the JSON insert path read back with correct values and types
-- [ ] **TYPE-05**: A table mixing several `JSON`/`Dynamic` columns with ordinary columns round-trips correct values
+- [x] **TYPE-01**: `JSON` and parameterized `JSON(...)` type strings map to `Type.JSON`
+- [x] **TYPE-02**: The `Dynamic` type string maps to `Type.DYNAMIC`
+- [x] **TYPE-03**: Records inserted into a `JSON` column via the JSON insert path read back with correct nested values
+- [x] **TYPE-04**: Records inserted into a `Dynamic` column via the JSON insert path read back with correct values and types
+- [x] **TYPE-05**: A table mixing several `JSON`/`Dynamic` columns with ordinary columns round-trips correct values
 - [ ] **TYPE-06**: Schema records targeting `JSON`/`Dynamic` columns via the RowBinary path fail fast with a clear error stating `insertFormat=json` is required (fixed if broken)
 - [x] **TYPE-07**: Non-ASCII values (Cyrillic, CJK) round-trip through String, `JSON`, and `Dynamic` columns and through SMT header values under the `windows-1252` test JVM
 
@@ -211,11 +211,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DESC-02 | Phase 3 | Complete |
 | DESC-03 | Phase 3 | Complete |
 | DESC-04 | Phase 3 | Complete |
-| TYPE-01 | Phase 3 | Pending |
-| TYPE-02 | Phase 3 | Pending |
-| TYPE-03 | Phase 3 | Pending |
-| TYPE-04 | Phase 3 | Pending |
-| TYPE-05 | Phase 3 | Pending |
+| TYPE-01 | Phase 3 | Complete |
+| TYPE-02 | Phase 3 | Complete |
+| TYPE-03 | Phase 3 | Complete |
+| TYPE-04 | Phase 3 | Complete |
+| TYPE-05 | Phase 3 | Complete |
 | TYPE-06 | Phase 3 | Pending |
 | TYPE-07 | Phase 3 | Complete |
 | JSON-01 | Phase 4 | Pending |
