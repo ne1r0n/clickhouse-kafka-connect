@@ -63,12 +63,13 @@ last_mapped_at: 2026-09-15
 - Workaround: Manually verify DB topic split feature by testing in integration environment
 - Impact: Core feature (database.topic.split) may have undetected bugs; no regression prevention
 
-**Incomplete Dynamic Type Support:**
+**Incomplete Dynamic Type Support (RESOLVED — Phase 3 Plan 03):**
 
 - Symptoms: Dynamic type added at `Type.DYNAMIC` in Column.java but no serialization logic in ClickHouseWriter
 - Files: `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java` (line 154-155)
-- Trigger: Try to write a Dynamic column via JSON insert or binary format
-- Impact: Likely runtime error when serializing Dynamic type data; no clear error message
+- Trigger: Try to write a Dynamic column via the RowBinary path (JSON insert already worked)
+- Resolution: RowBinary serialization for `JSON`/`Dynamic` remains locked Out of Scope, but the previously silent zero-byte write (stream desync) is now a fast, actionable `DataException` thrown from `ClickHouseWriter.doWriteColValue`'s default branch and `validateDataSchema`, naming the column, its type, and the `insertFormat=json` / `bypassRowBinary=true` escape hatches. Pinned by `RowBinaryUnsupportedTypeGateTest` (Docker-free) and `RowBinaryFailFastLiveTest` (live, proves `countRows == 0` and the escape hatch works). See TYPE-06 in REQUIREMENTS.md and `03-03-SUMMARY.md`.
+- Impact: No more silent stream corruption or cryptic server-side `ATTEMPT_TO_READ_AFTER_EOF` errors; operators get a clear message and two working workarounds.
 
 ---
 
