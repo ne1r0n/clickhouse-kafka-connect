@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Table Metadata & JSON/Dynamic Types
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-09-17T06:56:10.749Z"
-last_activity: 2026-09-16
-last_activity_desc: Phase 02 complete, transitioned to Phase 3
-state_head: eb22729c689025c000cc94e2924af122d351049c
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-09-17T08:50:14.623Z"
+last_activity: 2026-09-17
+last_activity_desc: Phase 03 execution started
+state_head: aa6e08bb453867c6ff860340d87ae08779b64375
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 40
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-16)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 3 — Table Metadata & JSON/Dynamic Types
+**Current focus:** Phase 03 — Table Metadata & JSON/Dynamic Types
 
 ## Current Position
 
-Phase: 03 (Table Metadata & JSON/Dynamic Types) — READY TO EXECUTE
-Plan: Not started
+Phase: 03 (Table Metadata & JSON/Dynamic Types) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-16 — Phase 02 complete, transitioned to Phase 3
+Last activity: 2026-09-17 — Phase 03 execution started
 
 Progress: [████░░░░░░] 40%
 
@@ -67,6 +67,7 @@ Progress: [████░░░░░░] 40%
 | Phase 02 P02 | 20min | 3 tasks | 2 files |
 | Phase 02-fork-smt-coverage P03 | 8min | 3 tasks | 3 files |
 | Phase 02 P04 | 16min | 3 tasks | 2 files |
+| Phase 03 P01 | 24min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Phase 02 Plan 04: Applied D-01 fix exactly as locked in CONTEXT.md - List/Map recursion branches in ConvertToMapOrJson.convertFieldValue(), fixing nested Struct-in-collection reflection bug. — Only the two required imports and two branches were added; no other production change.
 - [Phase 02]: Phase 02 Plan 04: CONV-05 pins the ConfigException case-sensitivity quirk (output.json.library=JACKSON rejected) as-is per D-13, with an inline comment recording it is intentional, not a regression.
 - [Phase 02]: Code review (0 critical / 3 warning / 2 info) surfaced three follow-ups now tracked in PROJECT.md Active: end-to-end coverage for an actual null entry in a Nullable map column (WR-01), fail-loud on a null in a non-nullable MAP/ARRAY element slot (WR-02), and a pinned contract for HeaderToValue's non-STRING column collision (WR-03). None block Phase 2; all are unscheduled.
+- [Phase 03]: Phase 03 Plan 01: TYPE-07 identifier test reproduced the deferred Phase 1 D-11 reader bug; shipped conditional StandardCharsets.UTF_8 fix on both describeTable readers.
+- [Phase 03]: Phase 03 Plan 01: Fixed ClickHouseBase.createClient() test-harness gap (missing targetTableFilter wiring) as a Rule 3 blocking-issue deviation, mirroring the existing ClickHouseWriter.start() production idiom.
 
 ### Pending Todos
 
@@ -113,6 +116,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-16T21:35:29.360Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-table-metadata-json-dynamic-types/03-CONTEXT.md
+Last session: 2026-09-17T08:50:14.556Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None

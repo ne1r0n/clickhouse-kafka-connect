@@ -65,17 +65,17 @@
 
 ### Table Metadata — targetTableFilter
 
-- [ ] **FILT-01**: An empty `targetTableFilter` adds no `match()` clause and all tables in the database are mapped
-- [ ] **FILT-02**: A filter matching no tables leaves an empty mapping so task start fails regardless of `suppressTableExistenceException`; a filter matching some tables but not the target is where `suppressTableExistenceException` governs silent-drop versus throw
-- [ ] **FILT-03**: Single quotes in the filter are escaped so the generated query is valid (built clause asserted in a unit test, plus a live query)
-- [ ] **FILT-04**: RE2 patterns with backslash classes (e.g. `\d`) and anchors select the intended tables against the live `match()` query (fixed if broken)
+- [x] **FILT-01**: An empty `targetTableFilter` adds no `match()` clause and all tables in the database are mapped
+- [x] **FILT-02**: A filter matching no tables leaves an empty mapping so task start fails regardless of `suppressTableExistenceException`; a filter matching some tables but not the target is where `suppressTableExistenceException` governs silent-drop versus throw
+- [x] **FILT-03**: Single quotes in the filter are escaped so the generated query is valid (built clause asserted in a unit test, plus a live query)
+- [x] **FILT-04**: RE2 patterns with backslash classes (e.g. `\d`) and anchors select the intended tables against the live `match()` query (fixed if broken)
 
 ### Table Metadata — describeTable
 
-- [ ] **DESC-01**: `describeTable` on ClickHouse `latest` skips `.null` subcolumns of `Nullable` columns
-- [ ] **DESC-02**: `describeTable` skips `.size0` subcolumns of `Array` columns
-- [ ] **DESC-03**: `describeTable` skips JSON internal subcolumns; raw `DESCRIBE ... describe_include_subcolumns` output on `latest` is compared with the skip list and unhandled suffixes are fixed
-- [ ] **DESC-04**: A column that cannot be mapped drops the whole table from mapping (pinned by test) and is logged at ERROR instead of WARN
+- [x] **DESC-01**: `describeTable` on ClickHouse `latest` skips `.null` subcolumns of `Nullable` columns
+- [x] **DESC-02**: `describeTable` skips `.size0` subcolumns of `Array` columns
+- [x] **DESC-03**: `describeTable` skips JSON internal subcolumns; raw `DESCRIBE ... describe_include_subcolumns` output on `latest` is compared with the skip list and unhandled suffixes are fixed
+- [x] **DESC-04**: A column that cannot be mapped drops the whole table from mapping (pinned by test) and is logged at ERROR instead of WARN
 
 ### Column Types — JSON and Dynamic
 
@@ -85,7 +85,7 @@
 - [ ] **TYPE-04**: Records inserted into a `Dynamic` column via the JSON insert path read back with correct values and types
 - [ ] **TYPE-05**: A table mixing several `JSON`/`Dynamic` columns with ordinary columns round-trips correct values
 - [ ] **TYPE-06**: Schema records targeting `JSON`/`Dynamic` columns via the RowBinary path fail fast with a clear error stating `insertFormat=json` is required (fixed if broken)
-- [ ] **TYPE-07**: Non-ASCII values (Cyrillic, CJK) round-trip through String, `JSON`, and `Dynamic` columns and through SMT header values under the `windows-1252` test JVM
+- [x] **TYPE-07**: Non-ASCII values (Cyrillic, CJK) round-trip through String, `JSON`, and `Dynamic` columns and through SMT header values under the `windows-1252` test JVM
 
 ### Explicit JSON Insert Path
 
@@ -203,21 +203,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-06 | Phase 2 | Complete |
 | CONV-07 | Phase 2 | Complete |
 | CONV-08 | Phase 2 | Complete |
-| FILT-01 | Phase 3 | Pending |
-| FILT-02 | Phase 3 | Pending |
-| FILT-03 | Phase 3 | Pending |
-| FILT-04 | Phase 3 | Pending |
-| DESC-01 | Phase 3 | Pending |
-| DESC-02 | Phase 3 | Pending |
-| DESC-03 | Phase 3 | Pending |
-| DESC-04 | Phase 3 | Pending |
+| FILT-01 | Phase 3 | Complete |
+| FILT-02 | Phase 3 | Complete |
+| FILT-03 | Phase 3 | Complete |
+| FILT-04 | Phase 3 | Complete |
+| DESC-01 | Phase 3 | Complete |
+| DESC-02 | Phase 3 | Complete |
+| DESC-03 | Phase 3 | Complete |
+| DESC-04 | Phase 3 | Complete |
 | TYPE-01 | Phase 3 | Pending |
 | TYPE-02 | Phase 3 | Pending |
 | TYPE-03 | Phase 3 | Pending |
 | TYPE-04 | Phase 3 | Pending |
 | TYPE-05 | Phase 3 | Pending |
 | TYPE-06 | Phase 3 | Pending |
-| TYPE-07 | Phase 3 | Pending |
+| TYPE-07 | Phase 3 | Complete |
 | JSON-01 | Phase 4 | Pending |
 | JSON-02 | Phase 4 | Pending |
 | JSON-03 | Phase 4 | Pending |
