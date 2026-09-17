@@ -140,6 +140,7 @@ public class ClickHouseBase {
                 .setTimeout(timeout)
                 .setRetry(csc.getRetry())
                 .useClientV2(useClientV2)
+                .setTargetTableFilter(csc.getTargetTableFilter())
                 .build();
 
         if (withDatabase) {
@@ -153,6 +154,7 @@ public class ClickHouseBase {
                     .setTimeout(timeout)
                     .setRetry(csc.getRetry())
                     .useClientV2(useClientV2)
+                    .setTargetTableFilter(csc.getTargetTableFilter())
                     .build();
             }
 

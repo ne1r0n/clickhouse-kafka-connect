@@ -27,6 +27,36 @@ class ClickHouseHelperClientForkUnitTest {
     }
 
     @Test
+    @DisplayName("FILT-01: a single-space filter is not treated as empty (exact equality, not a trim)")
+    void singleSpaceFilterProducesNonEmptyClause() {
+        assertFalse(ClickHouseHelperClient.buildTableFilterClause(" ").isEmpty());
+    }
+
+    @Test
+    @DisplayName("FILT-03: a single quote in the filter is escaped by doubling")
+    void singleQuoteFilterIsEscapedExactly() {
+        assertEquals(
+                " AND match(table, 'o''brien')",
+                ClickHouseHelperClient.buildTableFilterClause("o'brien"));
+    }
+
+    @Test
+    @DisplayName("FILT-03: multiple single quotes in the filter are each escaped by doubling")
+    void multipleSingleQuotesAreEachEscaped() {
+        assertEquals(
+                " AND match(table, 'a''b''c')",
+                ClickHouseHelperClient.buildTableFilterClause("a'b'c"));
+    }
+
+    @Test
+    @DisplayName("FILT-04: a backslash character class passes through unchanged (D-19, no doubling)")
+    void backslashClassPassesThroughUnchanged() {
+        assertEquals(
+                " AND match(table, 'tbl_\\d+')",
+                ClickHouseHelperClient.buildTableFilterClause("tbl_\\d+"));
+    }
+
+    @Test
     @DisplayName("DESC-03: subcolumn of a registered JSON parent is skipped")
     void jsonParentSubcolumnIsSkipped() {
         Table table = new Table("db", "t1");

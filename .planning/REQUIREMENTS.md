@@ -66,7 +66,7 @@
 ### Table Metadata — targetTableFilter
 
 - [ ] **FILT-01**: An empty `targetTableFilter` adds no `match()` clause and all tables in the database are mapped
-- [ ] **FILT-02**: A filter matching no tables yields an empty mapping and the connector behaves per `suppressTableExistenceException`
+- [ ] **FILT-02**: A filter matching no tables leaves an empty mapping so task start fails regardless of `suppressTableExistenceException`; a filter matching some tables but not the target is where `suppressTableExistenceException` governs silent-drop versus throw
 - [ ] **FILT-03**: Single quotes in the filter are escaped so the generated query is valid (built clause asserted in a unit test, plus a live query)
 - [ ] **FILT-04**: RE2 patterns with backslash classes (e.g. `\d`) and anchors select the intended tables against the live `match()` query (fixed if broken)
 
