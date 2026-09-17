@@ -3,6 +3,7 @@ package com.clickhouse.kafka.connect.sink.db.helper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -214,6 +215,91 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
             ClickHouseTestHelpers.dropTable(chc, tbl22);
             ClickHouseTestHelpers.dropTable(chc, tblx);
             ClickHouseTestHelpers.dropTable(chc, xtbl1y);
+        }
+    }
+
+    @Test
+    @DisplayName("DESC-02: bare .size subcolumns no longer leak into the root column set")
+    void bareSizeSubcolumnsDoNotLeakIntoRootColumns() {
+        String topic = createTopicName("desc02_bare_size_test");
+        ClickHouseTestHelpers.createTable(chc, topic,
+                "CREATE TABLE %s ( `id` UInt32, `plain_str` String, `nullable_str` Nullable(String), "
+                        + "`array_str` Array(String), `array_array_str` Array(Array(String))) "
+                        + "Engine = MergeTree ORDER BY id");
+        try {
+            Table table = chc.describeTable(chc.getDatabase(), topic);
+            assertNotNull(table);
+
+            Set<String> expected = Set.of("id", "plain_str", "nullable_str", "array_str", "array_array_str");
+            Set<String> actual = table.getRootColumnsList().stream()
+                    .map(Column::getName)
+                    .collect(Collectors.toSet());
+
+            assertEquals(expected, actual);
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
+    @DisplayName("DESC-04: a table with Array(Nested(...)) makes describeTable return null")
+    void arrayOfNestedTableIsUnmappable() {
+        String topic = createTopicName("desc04_nested_table_test");
+        ClickHouseTestHelpers.createTable(chc, topic,
+                "CREATE TABLE %s ( `num` String, "
+                        + "`nested` Array(Nested (innerInt Int32, innerString String))) "
+                        + "Engine = MergeTree ORDER BY num");
+        try {
+            Table table = chc.describeTable(chc.getDatabase(), topic);
+            assertNull(table);
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
+    @DisplayName("TYPE-07: non-ASCII column name and Enum member names round-trip through describeTable")
+    void nonAsciiIdentifiersRoundTripThroughDescribeTable() {
+        // Cyrillic identifier (3 letters), built from raw Unicode code points at runtime per D-18 -
+        // never a backslash-u escape literal or a raw non-ASCII byte in this source file.
+        String cyrillicCol = new String(new int[] {0x0438, 0x043C, 0x044F}, 0, 3);
+        // Two single-code-point CJK Enum member names, likewise built from code points (D-18).
+        String enumMemberOne = new String(new int[] {0x7EA2}, 0, 1);
+        String enumMemberTwo = new String(new int[] {0x84DD}, 0, 1);
+
+        String topic = createTopicName("type07_identifiers_test");
+        String ddl = "CREATE TABLE %s ( `id` UInt32, `" + cyrillicCol + "` String, "
+                + "`status` Enum8('" + enumMemberOne + "' = 1, '" + enumMemberTwo + "' = 2), "
+                + "`count` UInt32 DEFAULT 42) Engine = MergeTree ORDER BY id";
+        ClickHouseTestHelpers.createTable(chc, topic, ddl);
+        try {
+            Table table = chc.describeTable(chc.getDatabase(), topic);
+            assertNotNull(table);
+
+            String actualCyrillicKey = table.getRootColumnsMap().keySet().stream()
+                    .filter(cyrillicCol::equals)
+                    .findFirst()
+                    .orElse(null);
+            assertEquals(cyrillicCol, actualCyrillicKey);
+            assertEquals(
+                    cyrillicCol.codePointCount(0, cyrillicCol.length()),
+                    actualCyrillicKey.codePointCount(0, actualCyrillicKey.length()));
+
+            Column statusColumn = table.getRootColumnsMap().get("status");
+            assertNotNull(statusColumn);
+            Set<String> enumMembers = statusColumn.getEnumValues().keySet();
+            String actualMemberOne = enumMembers.stream().filter(enumMemberOne::equals).findFirst().orElse(null);
+            String actualMemberTwo = enumMembers.stream().filter(enumMemberTwo::equals).findFirst().orElse(null);
+            assertEquals(enumMemberOne, actualMemberOne);
+            assertEquals(enumMemberTwo, actualMemberTwo);
+            assertEquals(
+                    enumMemberOne.codePointCount(0, enumMemberOne.length()),
+                    actualMemberOne.codePointCount(0, actualMemberOne.length()));
+            assertEquals(
+                    enumMemberTwo.codePointCount(0, enumMemberTwo.length()),
+                    actualMemberTwo.codePointCount(0, actualMemberTwo.length()));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
         }
     }
 

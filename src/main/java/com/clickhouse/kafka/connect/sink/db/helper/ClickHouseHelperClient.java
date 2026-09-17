@@ -25,6 +25,7 @@ import com.clickhouse.kafka.connect.util.Utils;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -407,7 +408,7 @@ public class ClickHouseHelperClient {
 
             Table table = new Table(database, tableName);
 
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()))) {
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(queryResponse.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = br.readLine()) != null) {
                     ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(line);
@@ -454,7 +455,7 @@ public class ClickHouseHelperClient {
             settings.serverSetting("describe_include_subcolumns", "1");
             settings.setDatabase(database);
             QueryResponse queryResponse = client.query(describeQuery, settings).get();
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()))) {
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(queryResponse.getInputStream(), StandardCharsets.UTF_8))) {
                 String line = null;
                 while ((line = br.readLine()) != null) {
                     ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(line);
