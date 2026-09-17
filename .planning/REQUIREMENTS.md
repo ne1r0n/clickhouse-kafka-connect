@@ -84,7 +84,7 @@
 - [x] **TYPE-03**: Records inserted into a `JSON` column via the JSON insert path read back with correct nested values
 - [x] **TYPE-04**: Records inserted into a `Dynamic` column via the JSON insert path read back with correct values and types
 - [x] **TYPE-05**: A table mixing several `JSON`/`Dynamic` columns with ordinary columns round-trips correct values
-- [ ] **TYPE-06**: Schema records targeting `JSON`/`Dynamic` columns via the RowBinary path fail fast with a clear error stating `insertFormat=json` is required (fixed if broken)
+- [x] **TYPE-06**: Schema records targeting `JSON`/`Dynamic` columns via the RowBinary path fail fast with a clear error stating `insertFormat=json` is required (fixed if broken)
 - [x] **TYPE-07**: Non-ASCII values (Cyrillic, CJK) round-trip through String, `JSON`, and `Dynamic` columns and through SMT header values under the `windows-1252` test JVM
 
 ### Explicit JSON Insert Path
@@ -216,7 +216,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-03 | Phase 3 | Complete |
 | TYPE-04 | Phase 3 | Complete |
 | TYPE-05 | Phase 3 | Complete |
-| TYPE-06 | Phase 3 | Pending |
+| TYPE-06 | Phase 3 | Complete |
 | TYPE-07 | Phase 3 | Complete |
 | JSON-01 | Phase 4 | Pending |
 | JSON-02 | Phase 4 | Pending |

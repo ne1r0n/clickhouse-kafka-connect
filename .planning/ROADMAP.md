@@ -123,14 +123,14 @@ Plans:
   4. A schema record targeting a `JSON` or `Dynamic` column through RowBinary fails fast with an error saying `insertFormat=json` is required, with no silent data loss.
   5. Cyrillic and CJK values round-trip through String, `JSON`, and `Dynamic` columns and through SMT header values under the `windows-1252` test JVM.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1** *(all three run in parallel: 03-01 owns `ClickHouseHelperClient`, 03-03 owns `ClickHouseWriter`, 03-02 touches no main code)*
 
 - [x] 03-01-PLAN.md — `buildTableFilterClause` + `shouldSkipDescribeRow` extraction, warn→error, the conditional UTF-8 reader fix, and unit + live coverage for FILT-01..04, DESC-01..04 and the TYPE-07 identifier half (wave 1)
 - [x] 03-02-PLAN.md — `JSON`/`Dynamic` type-string pins and typed round-trips on both D-13 insert routes, mixed table, and the TYPE-07 values half (TYPE-01..05, TYPE-07) (wave 1)
-- [ ] 03-03-PLAN.md — RowBinary fail-fast in `ClickHouseWriter`: the `doWriteColValue` throw, the `validateDataSchema` gate, and unit + live proof of the actionable message (TYPE-06) (wave 1)
+- [x] 03-03-PLAN.md — RowBinary fail-fast in `ClickHouseWriter`: the `doWriteColValue` throw, the `validateDataSchema` gate, and unit + live proof of the actionable message (TYPE-06) (wave 1)
 
 *Scope note: TYPE-07 is split across two plans. Its identifier half (non-ASCII column names and `Enum` members) lands in 03-01 because those bytes only ever pass through the two `describeTable` readers that plan already owns; its values half (Cyrillic and CJK through String/`JSON`/`Dynamic` columns and SMT header values) lands in 03-02. That split is what keeps `ClickHouseHelperClient.java` exclusive to one plan so all three stay in wave 1.*
 
@@ -196,6 +196,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 |-------|----------------|--------|-----------|
 | 1. Test Infrastructure & Green Baseline | 3/3 | Complete    | 2026-09-16 |
 | 2. Fork SMT Coverage | 5/5 | Complete    | 2026-09-16 |
-| 3. Table Metadata & JSON/Dynamic Types | 2/3 | In Progress|  |
+| 3. Table Metadata & JSON/Dynamic Types | 3/3 | In Progress|  |
 | 4. JSON Insert Path & Connector Plumbing | 0/3 | Not started | - |
 | 5. CI & Final Verification | 0/2 | Not started | - |

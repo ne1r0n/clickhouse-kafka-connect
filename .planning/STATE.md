@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Table Metadata & JSON/Dynamic Types
-status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-09-17T09:17:43.778Z"
+status: verifying
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-09-17T09:29:18.001Z"
 last_activity: 2026-09-17
 last_activity_desc: Phase 03 execution started
-state_head: 82777e2c0aeb7ac26861fb66ab56e0794e2421ac
+state_head: c27307d5c91c3ea2c712e75aa25ca21e6842d567
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 40
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-16)
 
 Phase: 03 (Table Metadata & JSON/Dynamic Types) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-17 — Phase 03 execution started
 
 Progress: [████░░░░░░] 40%
@@ -69,6 +69,7 @@ Progress: [████░░░░░░] 40%
 | Phase 02 P04 | 16min | 3 tasks | 2 files |
 | Phase 03 P01 | 24min | 3 tasks | 5 files |
 | Phase 03 P02 | 26min | 3 tasks | 2 files |
+| Phase 03 P03 | 22min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Phase 03 Plan 02: Used HeaderToValue (singular) instead of HeadersToValue for the TYPE-07 SMT header case, matching the String-column requirement exactly. — HeadersToValue always produces a Map<String,String> of all headers; HeaderToValue maps one header directly to a named String field.
 - [Phase 03]: Phase 03 Plan 02: ClickHouse JSON-type columns reject a bare scalar at the root (Code 117, JSON object should start with '{') - TYPE-07 non-empty json_col fixtures wrap the value under a synthetic key. — Live-verified this session; the empty-object edge stays a true root {}.
 - [Phase 03]: Phase 03 Plan 02: client-v2 GenericRecord returned by Records' iterator is a mutable, reused row view - test helpers must snapshot row values into a Map during iteration, never collect GenericRecord references into a list. — Live-verified this session via a full false-positive test-pass/failure cycle; documented inline as a Javadoc on the allRows helper for future test authors.
+- [Phase 03]: Phase 03 Plan 03: doWriteColValue default branch and validateDataSchema now share one private message-builder helper so the D-05 actionable message (naming column, type, insertFormat=json, bypassRowBinary=true) cannot drift between the two RowBinary fail-fast gates.
+- [Phase 03]: Phase 03 Plan 03: Fixed a self-introduced bug in the new live test's own Struct fixture (raw String json_col value rejected by ClickHouse's JSON type) before any commit existed - not a production bug, no Rule 1-4 classification needed.
 
 ### Pending Todos
 
@@ -120,6 +123,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-17T09:17:43.744Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-09-17T09:29:17.961Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
