@@ -20,10 +20,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-17)
+See: .planning/PROJECT.md (updated 2026-09-18)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 04 — JSON Insert Path & Connector Plumbing
+**Current focus:** Phase 05 — CI & Final Verification
 
 ## Current Position
 
@@ -123,7 +123,9 @@ None yet.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper and makes ClickHouse-backed tests fail spuriously. Run Gradle tests as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`. Docker runs on colima profile `vz`; profile `default` is stopped.
 - [GSD]: ~~`workflow.test_command`/`workflow.build_command` unset~~ — RESOLVED in Phase 3. Both are now set in `.planning/config.json` to `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test` / `... assemble`, with `workflow.test_gate_timeout=2400` (the full suite takes ~4.5 min and the 600s default was too tight). The post-merge and regression gates now run the real suite instead of `true`.
 - [GSD]: Worktree isolation auto-degrades to sequential execution (#683) while `custom_build` has unpushed commits, because the harness forks worktrees off `origin/HEAD`. Expect one-plan-at-a-time waves until the branch is pushed. Also: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel as a side effect, so the degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Phase 4]: Research flag: check how client-v2 `0.9.6` handles an empty `jsonInsertColumns` list before writing COLS-02.
+- [Phase 4]: ~~Research flag: check how client-v2 `0.9.6` handles an empty `jsonInsertColumns` list before writing COLS-02.~~ — RESOLVED. Withdrawn by D-11 and confirmed in Phase 4: the default empty list inserts correct values (COLS-02 is a plain confirmatory pin).
+- [Phase 4]: ⚠ **Unfixed production bug, pinned only.** `insertFormat=json` + a `Struct` record + `bypassRowBinary` at its default `false` silently discards every row (no throw, `Written Rows: [0]`). Pinned by a labelled test at the user's direction; the fail-fast fix is not pre-approved (D-01/D-07) and needs its own plan.
+- [Phase 4]: ⚠ **Retriable ClickHouse errors are likely not retried.** `Utils.handleException`'s `instanceof ClickHouseException` switch never matches under client V2 — the real type is `com.clickhouse.client.api.ServerException` — so the whole retriable/non-retriable error-code table is unreachable and every error falls through to the unconditional fallback. Surfaced while pinning COLS-05; not a Phase 4 regression, and out of this project's declared scope.
 - [Phase 5]: The `gh` CLI is not installed locally, so CI runs must be checked through the GitHub web UI or API.
 
 ## Deferred Items

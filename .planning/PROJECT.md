@@ -55,6 +55,12 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 - ✓ At least one sink-level test per fork SMT showing transformed records land correctly in ClickHouse — Phase 2
 - ✓ Three stale-state SMT bugs fixed and pinned: `TableOperationFilter.configure()` unioning across repeated calls (D-03), `HeaderToValue`/`HeadersToValue` serving a stale cached `valueSchema` after a source-schema change (D-02), `ConvertToMapOrJson.convertFieldValue()` not recursing into List/Map values (D-01) — Phase 2
 - ✓ `ClickHouseWriter` MAP-branch RowBinary null-marker bug fixed: `Map(K, Nullable(V))` columns were silently unwritable on the client-V2 path — Phase 2 (approved out-of-scope fix)
+- ✓ Metadata-free JSON insert path pinned: the `insertFormat=json` gate in any letter case (including the upstream `getOrDefault(INSERT_FORMAT, "node")` typo), table resolution via `topic2TableMap` without fetched metadata, the `cleanupExtraFields` bypass, and tombstone handling — Phase 4 (JSON-01..04)
+- ✓ Both pre-existing explicit-JSON tests upgraded from row counts to typed column-value read-back — Phase 4 (JSON-05)
+- ✓ `jsonInsertColumns` pinned end to end: parsing contract (blank ⇒ empty list, whitespace and empty entries dropped, order preserved), the default empty list, an explicit subset against non-trivial `DEFAULT`s, extra payload keys, a nonexistent column with its error classification, and the non-explicit path's `cleanupExtraFields` interaction — Phase 4 (COLS-01..06)
+- ✓ JMX MBean naming and per-task registration pinned: `connector=<name>` present/absent, `version=unknown` for a null version, `:` → `_`, and four tasks across two connectors registering distinct MBeans with `stop()` unregistering only its own — Phase 4 (JMX-01..04)
+- ✓ `ProxySinkTask.buildMBeanName(String, int, String)` extracted, behavior-preserving, so the null-version and colon-in-version branches are reachable from a test at all — Phase 4 (the phase's only production change, pre-approved by D-02)
+- ✓ `async_insert` left to the user pinned: default config sends no `async_insert` setting, a user-supplied value in `clickhouseSettings` passes through unchanged, and a live insert with `async_insert=1` lands its data — Phase 4 (ASYNC-01..03)
 
 ### Active
 
@@ -72,15 +78,12 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 - [ ] `validateDataSchema`'s fail-fast gate enumerates only `JSON`/`DYNAMIC`/`UNKNOWN`, while `doWriteColValue`'s throw is a true `default:` catch-all — so `INT128`/`INT256`/`UINT128`/`UINT256` still surface the old bare "Data schema validation failed" message. Unchanged from pre-Phase-3 behavior, so not a regression (P3-WR-03)
 - [ ] `describeTableV2` builds its DESCRIBE query from `this.database` instead of the passed-in `database` parameter, unlike `describeTableV1`. Pre-existing and currently dormant — every caller passes the same value (P3-WR-02)
 
-**Explicit JSON insert path (tested as-is):**
+**JSON insert path & connector follow-ups (emerged in Phase 4, not yet scheduled):**
 
-- [ ] Explicit `insertFormat=json` covered: startup without target table, `getTable` bypass using topic-to-table mapping, `cleanupExtraFields` bypass, `targetTableFilter` ignored
-- [ ] `jsonInsertColumns` covered: parsing (empty, whitespace, empty entries), insert of a column subset into a table with extra/default columns
-
-**Connector plumbing:**
-
-- [ ] MBean name format covered, including connector `name` present/absent and null implementation version
-- [ ] Test asserts the connector does not inject `async_insert`, and user-supplied `clickhouseSettings` for it are honored
+- [ ] **R-01 — silent data loss.** `insertFormat=json` + a `Struct` (schema'd) record + `bypassRowBinary` at its default `false` writes **zero rows and throws nothing**: metadata-free mode builds a column-less synthetic `Table`, so `validateDataSchema`'s loop is vacuous and `doInsertRawBinaryV2`'s per-column write loop emits no bytes. Confirmed live against server `26.8.6.5` (`Written Rows: [0]`, 0 of 5 records landed). Pinned by a labelled test in Phase 4 at the user's direction; the fail-fast fix is **not** pre-approved (D-01/D-07) and needs its own plan — it would break any pipeline running explicit JSON behind a Struct converter
+- [ ] **Error classification is dead code on the V2 path.** `Utils.handleException`'s `instanceof ClickHouseException` switch never matches under client V2 — the real root-cause type is `com.clickhouse.client.api.ServerException` (e.g. code 16, `NO_SUCH_COLUMN_IN_TABLE`). Non-retriable outcomes still hold via the unconditional fallback, but the retriable/non-retriable error-code table is unreachable, so genuinely retriable ClickHouse errors are likely not retried — surfaced while pinning COLS-05 in Phase 4
+- [ ] `ClickHouseSinkTaskJsonInsertFormatTest`'s two tests skip the `try/finally` task-lifecycle pattern every sibling live test uses; an unexpected `put()` failure leaves an MBean registered until the class's `@AfterEach` sweep catches it — Phase 4 code review (P4-WR-01, mitigated)
+- [ ] `AsyncInsertLiveTest`'s class Javadoc reads as if it pins the bare `async_insert=1` race, but no test exercises that combination — Phase 4 code review (P4-IN-01, doc clarity)
 
 **Quality gates:**
 
@@ -118,12 +121,12 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
   | `HeadersToValue` | 25 unit + 1 sink-level — Phase 2 (was 2) |
   | `HeaderToValue` | 24 unit + 1 sink-level — Phase 2 (was 2) |
   | `targetTableFilter` | 1 ClickHouse-backed (`ClickHouseSinkTaskMappingTest.tableFilterTest`) + 1 in JSON insert test |
-  | Explicit JSON insert path | 2 ClickHouse-backed (`ClickHouseSinkTaskJsonInsertFormatTest`) |
-  | `jsonInsertColumns` | none |
+  | Explicit JSON insert path | 2 ClickHouse-backed (`ClickHouseSinkTaskJsonInsertFormatTest`, now typed read-back) + `ExplicitJsonInsertPathLiveTest` + `MetadataFreeJsonInsertUnitTest` — Phase 4 |
+  | `jsonInsertColumns` | `JsonInsertColumnsUnitTest` (9 Docker-free) + `JsonInsertColumnsLiveTest` (5 live) — Phase 4 (was none) |
   | `JSON(...)` / `Dynamic` types | none (`JsonColumnTest` has a `@Disabled` case) |
   | `describeTable` sub-column skip | none |
-  | MBean `connector=` name | none |
-  | `async_insert` not forced | none |
+  | MBean `connector=` name | `MBeanNameUnitTest` (Docker-free) + `MBeanRegistrationLiveTest` — Phase 4 (was none) |
+  | `async_insert` not forced | `AsyncInsertSettingsUnitTest` (Docker-free) + `AsyncInsertLiveTest` — Phase 4 (was none) |
 
 - **CI today:** `.github/workflows/tests.yaml` runs `gradle test` on every push with matrix client V1/V2 × ClickHouse `23.7`, `24.3`, `latest`, `cloud` (cloud skipped without secrets), using deprecated `gradle/gradle-build-action@v2` and `actions/setup-java@v3`. GitHub Actions **is enabled** on the fork (verified 2026-09-15 via the public GitHub API): 5 runs on `custom_build`, the last 4 green — most recent `22f055c` on 2026-01-29; `b7ffde4` failed. No JaCoCo configured. `gh` CLI is not installed locally.
 - **Local environment:** Docker via colima is installed but was not running at initialization — required for all `ClickHouseBase` tests. JDK 21 on PATH; Gradle toolchain targets 17.
@@ -145,8 +148,8 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 |----------|-----------|---------|
 | Unit + integration tests (Testcontainers ClickHouse) | Unit tests alone can't verify real inserts for JSON/Dynamic, `jsonInsertColumns`, server-side `targetTableFilter` | — Pending |
 | Fix bugs found by tests in the same phase | User wants working features, not just documented failures | ✓ Phase 2 fixed 4 bugs inline (D-01, D-02 ×2, D-03) plus one approved out-of-scope writer fix |
-| Test WIP JSON-path features as-is | Pin current behavior; no feature expansion in this project | — Pending |
-| `async_insert=0` intentionally not forced | Async insert is controlled via server profile / `clickhouseSettings` | — Pending |
+| Test WIP JSON-path features as-is | Pin current behavior; no feature expansion in this project | ✓ Phase 4 — JSON-01..05 and COLS-01..06 pinned as-is; `src/main/` untouched by plans 04-01 and 04-02 |
+| `async_insert=0` intentionally not forced | Async insert is controlled via server profile / `clickhouseSettings` | ✓ Phase 4 (ASYNC-01..03) — default config sends no setting, user value passes through, live `async_insert=1` insert lands |
 | Test matrix: ClickHouse `latest` × client V2 only | Production uses V2; only latest ClickHouse matters | ◐ Local default test image is `latest` (Phase 1); CI matrix pending (Phase 5) |
 | Done = per-feature tests + fully green `./gradlew test` + JaCoCo report + CI | User's definition of done | — Pending |
 | All research differentiators included in v1 (sink-level SMT tests, SMT contracts, RE2 live tests, non-ASCII, container singleton, `testUnit` task, etc.) | User selected every optional test group during scoping | — Pending |
@@ -162,6 +165,8 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 | One shared ClickHouse container per test JVM fork (`alwaysPull`), a fresh database per test class, cleanup left to Ryuk (no JVM shutdown hook), default `maxParallelForks` kept | Fast runs with class isolation and no change to test semantics; 0 flakes observed at 6 forks | ✓ Phase 1 |
 | Fork coverage view is an explicit list of the 15 fork-changed classes (`X.class` + `X$*.class`) in a separate `jacocoForkReport` | Prefix globs over-match (e.g. `HeaderToValue*` would pull in `HeaderToValueConfig`) | ✓ Phase 1 |
 | `testUnit` selects tests via `excludeTags("clickhouse")` and stays out of `check` | Docker-free unit loop without a new source set or changing `check` | ✓ Phase 1 |
+| R-01's silent data loss is **pinned, not fixed** — a labelled test asserts the current outcome (no throw, 0 rows) | A fail-fast throw is rated costly and not pre-approved (D-01/D-07): it would break, loudly, any pipeline running `insertFormat=json` behind a Struct converter. Pinning makes the loss suite-detectable so a future rebase cannot change it unnoticed, without touching production behavior | ✓ Phase 4 — escalated at a `blocking-human` checkpoint in plan 04-01; user chose `pin-current-behavior`. Fix tracked as an Active follow-up needing its own plan |
+| `buildMBeanName` extracted from `ProxySinkTask.getMBeanName()` as the phase's only production change | `getMBeanName()` is private, reads the client jar's implementation version inline, and is reachable only through a constructor requiring a live ClickHouse — the real jar reports a plain `0.9.6`, so the null-version and colon-version branches could never execute in a test | ✓ Phase 4 (D-02) — +12/−2, 8 of them Javadoc; rendered name byte-for-byte unchanged, independently diff-verified by both the code reviewer and the verifier |
 
 ## Evolution
 
@@ -181,4 +186,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-17 after Phase 3*
+*Last updated: 2026-09-18 after Phase 4*
