@@ -126,10 +126,13 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
+**Wave 1** *(all three run in parallel: 03-01 owns `ClickHouseHelperClient`, 03-03 owns `ClickHouseWriter`, 03-02 touches no main code)*
 
-- [ ] 03-01: `targetTableFilter` clause extraction + unit/live tests, `describeTable` sub-column audit, tests, and fixes (`ClickHouseHelperClient`) (wave 1)
-- [ ] 03-02: `JSON`/`Dynamic` type-mapping tests, JSON-path insert round-trips, mixed table, non-ASCII round-trips (TYPE-01..05, TYPE-07) (wave 1)
-- [ ] 03-03: RowBinary ground truth for `JSON`/`Dynamic` and fail-fast error in `ClickHouseWriter` (TYPE-06) (wave 1)
+- [ ] 03-01-PLAN.md — `buildTableFilterClause` + `shouldSkipDescribeRow` extraction, warn→error, the conditional UTF-8 reader fix, and unit + live coverage for FILT-01..04, DESC-01..04 and the TYPE-07 identifier half (wave 1)
+- [ ] 03-02-PLAN.md — `JSON`/`Dynamic` type-string pins and typed round-trips on both D-13 insert routes, mixed table, and the TYPE-07 values half (TYPE-01..05, TYPE-07) (wave 1)
+- [ ] 03-03-PLAN.md — RowBinary fail-fast in `ClickHouseWriter`: the `doWriteColValue` throw, the `validateDataSchema` gate, and unit + live proof of the actionable message (TYPE-06) (wave 1)
+
+*Scope note: TYPE-07 is split across two plans. Its identifier half (non-ASCII column names and `Enum` members) lands in 03-01 because those bytes only ever pass through the two `describeTable` readers that plan already owns; its values half (Cyrillic and CJK through String/`JSON`/`Dynamic` columns and SMT header values) lands in 03-02. That split is what keeps `ClickHouseHelperClient.java` exclusive to one plan so all three stay in wave 1.*
 
 ### Phase 4: JSON Insert Path & Connector Plumbing
 
