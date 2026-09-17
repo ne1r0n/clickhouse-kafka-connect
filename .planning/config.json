@@ -48,7 +48,10 @@
     "security_enforcement": true,
     "security_asvs_level": 1,
     "security_block_on": "high",
-    "_auto_chain_active": false
+    "_auto_chain_active": false,
+    "build_command": "env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew assemble",
+    "test_command": "env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test",
+    "test_gate_timeout": 2400
   },
   "ship": {
     "pr_body_sections": [

@@ -20,10 +20,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-16)
+See: .planning/PROJECT.md (updated 2026-09-17)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 03 — Table Metadata & JSON/Dynamic Types
+**Current focus:** Phase 4 — JSON Insert Path & Connector Plumbing
 
 ## Current Position
 
@@ -101,6 +101,7 @@ Recent decisions affecting current work:
 - [Phase 03]: Phase 03 Plan 02: client-v2 GenericRecord returned by Records' iterator is a mutable, reused row view - test helpers must snapshot row values into a Map during iteration, never collect GenericRecord references into a list. — Live-verified this session via a full false-positive test-pass/failure cycle; documented inline as a Javadoc on the allRows helper for future test authors.
 - [Phase 03]: Phase 03 Plan 03: doWriteColValue default branch and validateDataSchema now share one private message-builder helper so the D-05 actionable message (naming column, type, insertFormat=json, bypassRowBinary=true) cannot drift between the two RowBinary fail-fast gates.
 - [Phase 03]: Phase 03 Plan 03: Fixed a self-introduced bug in the new live test's own Struct fixture (raw String json_col value rejected by ClickHouse's JSON type) before any commit existed - not a production bug, no Rule 1-4 classification needed.
+- [Phase 03]: Code review (0 critical / 3 warning / 1 info) surfaced three follow-ups now tracked in PROJECT.md Active: `shouldSkipDescribeRow` only walks the immediate parent so a multi-level JSON/Dynamic subcolumn path leaks as log noise (P3-WR-01); `describeTableV2` uses `this.database` instead of its `database` parameter, dormant because every caller passes the same value (P3-WR-02); and `validateDataSchema`'s gate is narrower than `doWriteColValue`'s catch-all, leaving INT128/INT256/UINT128/UINT256 on the old bare message (P3-WR-03). The verifier independently re-confirmed all three against source and ruled none of them blocking — P3-WR-03 in particular is unchanged from pre-Phase-3 behavior, so it is not a regression. None block Phase 4; all are unscheduled.
 
 ### Pending Todos
 
@@ -109,8 +110,8 @@ None yet.
 ### Blockers/Concerns
 
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper and makes ClickHouse-backed tests fail spuriously. Run Gradle tests as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`. Docker runs on colima profile `vz`; profile `default` is stopped.
-- [GSD]: `workflow.test_command` and `workflow.build_command` are unset, and execute-phase's post-merge gate does not detect Gradle, so that gate currently runs nothing on this project. Executors ran `./gradlew test` themselves in Phase 1.
-- [Phase 3]: Research flag: audit `DESCRIBE ... describe_include_subcolumns=1` output on `latest`, and establish RowBinary ground truth for `JSON`/`Dynamic`, before writing DESC-03 and TYPE-06.
+- [GSD]: ~~`workflow.test_command`/`workflow.build_command` unset~~ — RESOLVED in Phase 3. Both are now set in `.planning/config.json` to `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test` / `... assemble`, with `workflow.test_gate_timeout=2400` (the full suite takes ~4.5 min and the 600s default was too tight). The post-merge and regression gates now run the real suite instead of `true`.
+- [GSD]: Worktree isolation auto-degrades to sequential execution (#683) while `custom_build` has unpushed commits, because the harness forks worktrees off `origin/HEAD`. Expect one-plan-at-a-time waves until the branch is pushed. Also: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel as a side effect, so the degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
 - [Phase 4]: Research flag: check how client-v2 `0.9.6` handles an empty `jsonInsertColumns` list before writing COLS-02.
 - [Phase 5]: The `gh` CLI is not installed locally, so CI runs must be checked through the GitHub web UI or API.
 
