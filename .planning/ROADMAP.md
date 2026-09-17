@@ -187,9 +187,15 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
 
-- [ ] 05-01: Update the workflow: current actions, single `latest` × V2 job, JaCoCo artifact upload + job-summary coverage (wave 1)
-- [ ] 05-02: Final full-suite run locally, coverage report review, confirm the green CI run on push (`gh` not installed; check via GitHub web/API) (wave 2)
+- [ ] 05-01-PLAN.md — New `.github/scripts/jacoco_summary.py` (JaCoCo XML → job-summary markdown, both destinations) and the in-place `tests.yaml` rewrite: single `latest` × V2 job, `checkout@v4` / `setup-java@v6` temurin / `setup-gradle@v6` / `upload-artifact@v4`, concurrency + timeout, both report uploads on `if: always()` (CI-01, CI-02, CI-03) (wave 1)
+
+**Wave 2** *(blocked on 05-01: 05-02 runs the workflow's own summary command and asserts on its step names, and may amend both files under the red-CI-run policy)*
+
+- [ ] 05-02-PLAN.md — Fresh green full-suite local run with a coverage report proven to reflect it, a `blocking-human` decision checkpoint on the one-way public push, then the push and an unauthenticated REST-API verification of the run, its single job, the `Run tests` / `Generate coverage summary` step conclusions, and the coverage artifact (CI-03, CI-04) (wave 2, not autonomous)
+
+*Planning notes: (a) the roadmap's original 05-01 / 05-02 split is kept unchanged — 05-02 needs 05-01's workflow to exist and carries the D-10 blocking checkpoint, so it cannot be autonomous. (b) The phase adds a second file beyond `tests.yaml`, `.github/scripts/jacoco_summary.py`, so the coverage parser can be run and asserted verbatim before it ships and so it lands on a path upstream has no file at — see 05-01-PLAN.md § DEC-A. (c) RESEARCH.md's two open questions are resolved in the plans: CI-03's job-summary sub-claim is verified by a local content proof plus the run's per-step `conclusion` (newly live-verified as fetchable unauthenticated), never by a log download — 05-02 § DEC-D; `upload-artifact` is pinned at `@v4` — 05-01 § DEC-C.*
 
 ## Progress
 
