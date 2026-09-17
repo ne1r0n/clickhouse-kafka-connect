@@ -535,7 +535,12 @@ public class ClickHouseWriter implements DBWriter {
             default:
                 // If you wonder, how NESTED works in JDBC:
                 // https://github.com/ClickHouse/clickhouse-java/blob/6cbbd8fe3f86ac26d12a95e0c2b964f3a3755fc9/clickhouse-data/src/main/java/com/clickhouse/data/format/ClickHouseRowBinaryProcessor.java#L159
-                LOGGER.error("Cannot serialize unsupported type {}", columnType);
+                String msg = String.format(
+                        "Column [%s] has unsupported type [%s] for RowBinary serialization. "
+                                + "Use insertFormat=json or bypassRowBinary=true instead.",
+                        col.getName(), columnType);
+                LOGGER.error(msg);
+                throw new DataException(msg);
         }
     }
 
