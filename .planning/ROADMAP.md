@@ -141,7 +141,8 @@ Plans:
 **Requirements**: JSON-01, JSON-02, JSON-03, JSON-04, JSON-05, COLS-01, COLS-02, COLS-03, COLS-04, COLS-05, COLS-06, JMX-01, JMX-02, JMX-03, JMX-04, ASYNC-01, ASYNC-02, ASYNC-03
 **Research flags**:
 
-- Before writing COLS-02, check how client-v2 `0.9.6` handles an empty column list: omitted column clause, malformed INSERT, or something else.
+- ~~Before writing COLS-02, check how client-v2 `0.9.6` handles an empty column list: omitted column clause, malformed INSERT, or something else.~~ **Withdrawn** by CONTEXT.md D-11 — Phase 3's `JsonDynamicRoundTripTest` round-trips already drove `doInsertJsonV2` with the default empty list and are green. COLS-02 is a plain confirmatory live test.
+- R-01 (what `insertFormat=json` + a Struct record + `bypassRowBinary` unset actually does) was **resolved empirically** during research: silent data loss, `Written Rows: [0]`, no exception. Per D-01/D-07 the fail-fast fix is not pre-approved; plan 04-01 surfaces it at a blocking-human decision checkpoint.
 
 **Success Criteria** (what must be TRUE):
 
@@ -163,10 +164,13 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
+**Wave 1** *(all three run in parallel: 04-03 is the only plan touching main code and owns `ProxySinkTask.java`; the other two touch no main code, and no test file is written by two plans — CONTEXT.md D-16)*
 
-- [ ] 04-01: Explicit `insertFormat=json` path tests + value assertions in existing JSON insert tests (JSON-01..05) (wave 1)
-- [ ] 04-02: `jsonInsertColumns` parsing unit tests and ClickHouse-backed insert tests in a new test class (COLS-01..06) (wave 1)
-- [ ] 04-03: MBean name and registration tests + `async_insert` negative/pass-through/live tests (JMX-01..04, ASYNC-01..03) (wave 1)
+- [ ] 04-01-PLAN.md — Explicit `insertFormat=json` path: a new live class (JSON-01 differential, JSON-02, JSON-03 live half, JSON-04 tombstones), a Docker-free `cleanupExtraFields`/letter-case class, typed value assertions added to the existing explicit-JSON tests (JSON-05), and a blocking-human checkpoint on R-01's silent data loss (wave 1, not autonomous)
+- [ ] 04-02-PLAN.md — `jsonInsertColumns`: a Docker-free parsing class (COLS-01) and a new live class covering the default empty list, an explicit subset against non-trivial `DEFAULT`s, extra payload keys, the nonexistent-column error plus its retriable/non-retriable classification, and the non-explicit path's `cleanupExtraFields` interaction (COLS-02..06) (wave 1)
+- [ ] 04-03-PLAN.md — Connector plumbing: the pre-approved `ProxySinkTask.buildMBeanName` extraction plus a Docker-free name class (JMX-01..03) and a live four-task registration class (JMX-04), and `async_insert` config pins plus a live `wait_for_async_insert=1` insert (ASYNC-01..03) (wave 1)
+
+*Scope note: the plan split matches the roadmap's original 3-plan sketch. `ASYNC-01..03` stays inside 04-03 rather than becoming a fourth plan because its two new test classes are small and a fourth plan would cost an extra executor cold start — worktree isolation is currently degraded to sequential execution while `custom_build` has unpushed commits (STATE.md).*
 
 ### Phase 5: CI & Final Verification
 
