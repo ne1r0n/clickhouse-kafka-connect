@@ -7,26 +7,31 @@ import com.clickhouse.client.api.query.GenericRecord;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.transforms.HeaderToValue;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.json.JSONObject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
 /**
- * ClickHouse-backed round-trips for TYPE-03/04/05: {@code JSON}, parameterized {@code JSON(...)}
- * and {@code Dynamic} columns through both D-13 insert routes - schemaless {@code JSONEachRow}
- * and {@code bypassRowBinary=true} Struct records - with typed SQL read-back (D-14) rather than a
- * row count. New fork-only class (D-16): it does not extend or modify any upstream test class.
+ * ClickHouse-backed round-trips for TYPE-03/04/05/07: {@code JSON}, parameterized
+ * {@code JSON(...)} and {@code Dynamic} columns through both D-13 insert routes - schemaless
+ * {@code JSONEachRow} and {@code bypassRowBinary=true} Struct records - with typed SQL read-back
+ * (D-14) rather than a row count, plus non-ASCII values under the {@code windows-1252} test JVM
+ * (D-15/D-18). New fork-only class (D-16): it does not extend or modify any upstream test class.
  */
 public class JsonDynamicRoundTripTest extends ClickHouseBase {
 
@@ -399,6 +404,164 @@ public class JsonDynamicRoundTripTest extends ClickHouseBase {
         }
     }
 
+    @Test
+    @DisplayName("TYPE-07: Cyrillic, CJK, non-BMP and empty values round-trip byte-identically through String, JSON and Dynamic columns")
+    void nonAsciiAndBoundaryValuesRoundTripThroughAllColumnKinds(TestInfo testInfo) throws Exception {
+        String tableName = createTopicName("type07_values");
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseTestHelpers.createTable(chc, tableName,
+                "CREATE TABLE %s (id UInt32, str_col String, json_col JSON, dynamic_col Dynamic) ENGINE = MergeTree ORDER BY id");
+        props.put("name", uniqueConnectorName(testInfo));
+
+        // Every non-ASCII fixture is built at runtime from raw Unicode code points (D-18) - never
+        // a Unicode escape literal and never a raw non-ASCII byte in this source file.
+        String cyrillic = new String(new int[] {0x043F, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442}, 0, 6); // "privet" (Cyrillic)
+        String cjk = new String(new int[] {0x4F60, 0x597D}, 0, 2); // "nihao" (CJK)
+        String nonBmp = new String(new int[] {0x1F600}, 0, 1); // single non-BMP code point - a Java surrogate pair
+        String quoteAndBackslash = "a\"b\\c"; // ASCII only - T-03-10's JSON-escaping mitigation
+        String empty = "";
+
+        try {
+            // ClickHouse's JSON type requires an object at the root (a bare scalar is rejected with
+            // "JSON object should start with '{'"), so every non-empty json_col fixture below wraps
+            // its value under a "value" key; the empty-object edge (row 4) stays a true root `{}`.
+            Map<String, Object> value1 = new LinkedHashMap<>();
+            value1.put("id", 1);
+            value1.put("str_col", cyrillic);
+            value1.put("json_col", Map.of("value", cyrillic));
+            value1.put("dynamic_col", cyrillic);
+
+            Map<String, Object> value2 = new LinkedHashMap<>();
+            value2.put("id", 2);
+            value2.put("str_col", cjk);
+            value2.put("json_col", Map.of("value", cjk));
+            value2.put("dynamic_col", cjk);
+
+            Map<String, Object> value3 = new LinkedHashMap<>();
+            value3.put("id", 3);
+            value3.put("str_col", nonBmp);
+            value3.put("json_col", Map.of("value", nonBmp));
+            value3.put("dynamic_col", nonBmp);
+
+            Map<String, Object> value4 = new LinkedHashMap<>();
+            value4.put("id", 4);
+            value4.put("str_col", empty);
+            value4.put("json_col", new LinkedHashMap<>()); // JSON object with no keys - TYPE-07 empty edge
+            value4.put("dynamic_col", empty);
+
+            Map<String, Object> value5 = new LinkedHashMap<>();
+            value5.put("id", 5);
+            value5.put("str_col", quoteAndBackslash);
+            value5.put("json_col", Map.of("value", quoteAndBackslash));
+            value5.put("dynamic_col", quoteAndBackslash);
+
+            List<SinkRecord> records = List.of(
+                    new SinkRecord(tableName, 0, null, null, null, value1, 1),
+                    new SinkRecord(tableName, 0, null, null, null, value2, 2),
+                    new SinkRecord(tableName, 0, null, null, null, value3, 3),
+                    new SinkRecord(tableName, 0, null, null, null, value4, 4),
+                    new SinkRecord(tableName, 0, null, null, null, value5, 5));
+
+            ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
+            sinkTask.start(props);
+            sinkTask.put(records);
+            sinkTask.stop();
+
+            assertEquals(5, ClickHouseTestHelpers.countRows(chc, tableName));
+
+            // Whole-row read-back through the UTF-8-safe helper (Phase 1 D-11).
+            List<JSONObject> rows = ClickHouseTestHelpers.getAllRowsAsJson(chc, tableName);
+            Map<Integer, JSONObject> byId = new LinkedHashMap<>();
+            for (JSONObject row : rows) {
+                byId.put(row.getInt("id"), row);
+            }
+            assertEquals(5, byId.size());
+
+            assertExactRoundTrip(cyrillic, byId.get(1).getString("str_col"));
+            assertExactRoundTrip(cyrillic, byId.get(1).getJSONObject("json_col").getString("value"));
+            assertExactRoundTrip(cyrillic, byId.get(1).getString("dynamic_col"));
+
+            assertExactRoundTrip(cjk, byId.get(2).getString("str_col"));
+            assertExactRoundTrip(cjk, byId.get(2).getJSONObject("json_col").getString("value"));
+            assertExactRoundTrip(cjk, byId.get(2).getString("dynamic_col"));
+
+            assertExactRoundTrip(nonBmp, byId.get(3).getString("str_col"));
+            assertExactRoundTrip(nonBmp, byId.get(3).getJSONObject("json_col").getString("value"));
+            assertExactRoundTrip(nonBmp, byId.get(3).getString("dynamic_col"));
+
+            assertExactRoundTrip(empty, byId.get(4).getString("str_col"));
+            assertEquals(0, byId.get(4).getJSONObject("json_col").length());
+            assertExactRoundTrip(empty, byId.get(4).getString("dynamic_col"));
+
+            assertExactRoundTrip(quoteAndBackslash, byId.get(5).getString("str_col"));
+            assertExactRoundTrip(quoteAndBackslash, byId.get(5).getJSONObject("json_col").getString("value"));
+            assertExactRoundTrip(quoteAndBackslash, byId.get(5).getString("dynamic_col"));
+
+            // Independent typed-SELECT confirmation for the plain-String columns (D-14 typed read-back,
+            // not just the JSONEachRow-format helper above).
+            List<Map<String, String>> typedRows = allRows(chc, String.format(
+                    "SELECT id, str_col, dynamic_col FROM `%s` ORDER BY id", tableName),
+                    "id", "str_col", "dynamic_col");
+            assertEquals(5, typedRows.size());
+            assertExactRoundTrip(cyrillic, typedRows.get(0).get("str_col"));
+            assertExactRoundTrip(cyrillic, typedRows.get(0).get("dynamic_col"));
+            assertExactRoundTrip(cjk, typedRows.get(1).get("str_col"));
+            assertExactRoundTrip(nonBmp, typedRows.get(2).get("str_col"));
+            assertExactRoundTrip(empty, typedRows.get(3).get("str_col"));
+            assertExactRoundTrip(quoteAndBackslash, typedRows.get(4).get("str_col"));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, tableName);
+        }
+    }
+
+    @Test
+    @DisplayName("TYPE-07: a Cyrillic SMT header value round-trips byte-identically through HeaderToValue into a String column")
+    void nonAsciiHeaderValueRoundTripsThroughHeaderToValueSmt() throws Exception {
+        String tableName = createTopicName("type07_header");
+        Map<String, String> props = createProps();
+        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseTestHelpers.createTable(chc, tableName,
+                "CREATE TABLE %s (id UInt32, header_value String) ENGINE = MergeTree ORDER BY id");
+
+        // Cyrillic code points U+0437 U+0430 U+0433 U+043E U+043B U+043E U+0432 U+043E U+043A spell
+        // the word for "header" ("zagolovok"), built at runtime per D-18.
+        String cyrillicHeaderValue = new String(
+                new int[] {0x0437, 0x0430, 0x0433, 0x043E, 0x043B, 0x043E, 0x0432, 0x043E, 0x043A}, 0, 9);
+
+        try (HeaderToValue<SinkRecord> transform = new HeaderToValue<>()) {
+            Map<String, Object> transformConfig = new HashMap<>();
+            transformConfig.put(HeaderToValue.FIELDS_CONFIG, "header_value");
+            transformConfig.put(HeaderToValue.HEADERS_CONFIG, "x-source");
+            transform.configure(transformConfig);
+
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("x-source", cyrillicHeaderValue);
+
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("id", 1);
+
+            SinkRecord record = new SinkRecord(
+                    tableName, 0, null, null, null, value, 1,
+                    System.currentTimeMillis(), TimestampType.CREATE_TIME, headers);
+
+            SinkRecord transformed = transform.apply(record);
+
+            ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
+            sinkTask.start(props);
+            sinkTask.put(List.of(transformed));
+            sinkTask.stop();
+
+            assertEquals(1, ClickHouseTestHelpers.countRows(chc, tableName));
+
+            List<JSONObject> rows = ClickHouseTestHelpers.getAllRowsAsJson(chc, tableName);
+            assertEquals(1, rows.size());
+            assertExactRoundTrip(cyrillicHeaderValue, rows.get(0).getString("header_value"));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, tableName);
+        }
+    }
+
     /**
      * Snapshots each row's requested columns into a plain {@code Map<String, String>} while the
      * row is still the iterator's current element. The client-v2 {@link GenericRecord} returned
@@ -420,5 +583,10 @@ public class JsonDynamicRoundTripTest extends ClickHouseBase {
             }
         }
         return rows;
+    }
+
+    private static void assertExactRoundTrip(String expected, String actual) {
+        assertEquals(expected, actual);
+        assertEquals(expected.codePointCount(0, expected.length()), actual.codePointCount(0, actual.length()));
     }
 }
