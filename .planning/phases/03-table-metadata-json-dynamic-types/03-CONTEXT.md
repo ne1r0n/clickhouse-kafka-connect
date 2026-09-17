@@ -101,6 +101,37 @@ Out of this phase:
   Rejected: extending the literal suffix list (goes stale the next time ClickHouse changes JSON's internal
   layout, and the failure is silent).
 
+- **D-20 (extends D-07, user-confirmed at plan-phase after R-01):** **Also skip a bare `.size` sub-column.**
+  R-01's live audit found a sub-column shape D-07 did not anticipate, and found that the shape D-07 *was*
+  written for does not exist on `latest`. Both halves change DESC-03's scope:
+
+  - **No JSON/Dynamic internal sub-columns are emitted at all** on `latest` (26.8.6.5). Even after inserting
+    nested paths and `OPTIMIZE TABLE ... FINAL`, `DESCRIBE ... describe_include_subcolumns=1` returns
+    `json_col`/`json_param_col`/`dynamic_col` as root rows only. The existing `.object_shared_data.` clause
+    targets behavior that is not reachable on the test target. D-07's structural rule is still the right
+    forward-compatible design and still ships, but it **can only be pinned by a unit test** against a
+    synthesized `ClickHouseFieldDescriptor` — a live test asserting a skipped-sub-column count would pass
+    trivially at zero and prove nothing.
+  - **A bare `.size` sub-column (distinct from the handled `.size0`) is emitted for plain `String`,
+    `Nullable(String)`, `Array` at every depth, `Tuple` `String` fields, and `Map` `String` keys** — i.e. on
+    essentially every production table. It is unmatched by the current skip list, so it reaches
+    `Table.updateParent` and logs `WARN "Unsupported complex parent type"` (`Table.java:175-181`) or
+    `ERROR "Unhandled complex type ... as a child of an array"` (`Table.java:117-119`) on every
+    `describeTable()` call. The table is **not** dropped and `.size` is correctly excluded as a column — the
+    outcome is right, the logging is noise.
+
+  Therefore `shouldSkipDescribeRow` also matches a bare `.size` suffix, alongside `.null` and `.size0`, with
+  a unit test per shape. This lands inside D-01's pre-approved item 3 ("apply the structural skip rule"); the
+  helper is being written this phase regardless, so the marginal diff is a suffix and its tests.
+
+  Also fix while in there (already noted in D-07): the `.object_shared_data.` clause is not guarded by
+  `isSubcolumn()` and requires a trailing dot, so a row named exactly `json_col.object_shared_data` slips
+  through.
+
+  Rejected: pinning the noise without fixing it (leaves WARN/ERROR on every describeTable call in production
+  CDC pipelines when the fix is one suffix in a helper this phase already writes); deferring to a later phase
+  (DESC-03's audit obligation is exactly what surfaced it).
+
 - **D-08:** **One private helper, called from both `describeTableV1` and `describeTableV2`.** The block is
   duplicated verbatim today (`ClickHouseHelperClient.java:379` and `:426`) and the structural rule is several
   lines, so two copies would drift. A static/package-private
@@ -138,6 +169,24 @@ Out of this phase:
   config needs one edit after this ships. **Confirm with R-03 before applying.**
   — **Reversibility:** costly — reverting after release would re-break any connector config edited to the
   plain-pattern form, in a fork that runs production CDC pipelines.
+
+- **D-19 (supersedes D-11, user-confirmed at plan-phase after R-03):** **Do not escape backslashes. FILT-04
+  collapses to a pin.** R-03 falsified D-11's premise on live ClickHouse 26.8.6.5: `match(table, 'tbl_\d+')`
+  matched `tbl_1`/`tbl_22`/`xtbl_1y` and `match(table, '^tbl_\d+$')` matched `tbl_1`/`tbl_22` only — so the
+  SQL single-quoted literal parser does **not** strip the backslash, and `\d` reaches `match()` intact. See
+  `03-RESEARCH.md` Pitfall 3 for the raw rows.
+
+  Therefore: `buildTableFilterClause` is still extracted per D-10, but its escaping logic stays exactly as
+  today (`'` → `''` only). No main-code escaping change ships. **D-01's pre-approved item 4 shrinks to
+  "extract the `match()` clause builder" — the "and escape backslashes" half is withdrawn.**
+
+  FILT-04 becomes a pin: a live test asserting `\d` patterns select the intended tables, contrasting
+  unanchored (`tbl_\d+` → also matches `xtbl_1y` as a substring) against anchored (`^tbl_\d+$` → excludes it),
+  by exact table identity rather than a non-empty-match count.
+
+  Rejected: applying D-11 anyway (untested risk that doubling the backslash itself breaks `\d`, plus a silent
+  semantic change to any existing operator `targetTableFilter` config); deferring the question (leaves a
+  costly-reversibility change hanging over a production fork with no open evidence question).
 
 - **D-12:** **FILT-02 is split in two, and its wording is corrected.** The requirement's premise cannot
   happen as written: a filter matching nothing leaves `mapping` empty, so `ClickHouseWriter.start()` returns
@@ -199,7 +248,15 @@ Out of this phase:
   literals in source.** Phase 2 hit this directly: the editing tool chain silently decoded literal
   backslash-u escape text into real non-ASCII bytes. Applies to every TYPE-07 fixture.
 
-### Research flags (resolve before the plan locks the affected test)
+### Research flags — ALL RESOLVED (live probes, `03-RESEARCH.md`, ClickHouse 26.8.6.5)
+
+| Flag | Outcome | Lands in |
+|------|---------|----------|
+| R-01 | No JSON/Dynamic internal sub-columns exist on `latest`; a bare `.size` sub-column is unhandled on nearly every table | **D-20** |
+| R-02 | `validateDataSchema()` fires first, throwing `RuntimeException("Data schema validation failed.")`; forcing past it reaches a server-side `Code: 32 ATTEMPT_TO_READ_AFTER_EOF`. Not silent — misleading. Confirms D-02..D-05 | D-04, D-06 |
+| R-03 | Backslashes survive the SQL literal intact; D-11's premise is false | **D-19** |
+
+Original flag text, kept for provenance:
 
 - **R-01 (D-07):** Capture raw `DESCRIBE TABLE ... SETTINGS describe_include_subcolumns=1` output on `latest`
   for `Nullable`, `Array`, `JSON`, `JSON(...)`, and `Dynamic` columns, and record it in the plan. It
