@@ -89,11 +89,11 @@
 
 ### Explicit JSON Insert Path
 
-- [ ] **JSON-01**: `insertFormat=json` in any letter case enables metadata-free mode, while leaving `insertFormat` unset does not
-- [ ] **JSON-02**: In metadata-free mode, the target table is resolved from topic-to-table mapping (topic name ≠ table name) without any fetched table metadata
-- [ ] **JSON-03**: In metadata-free mode, fields absent from the table are sent unmodified and known fields land with correct values
-- [ ] **JSON-04**: Tombstone records in metadata-free mode are skipped without error
-- [ ] **JSON-05**: Existing explicit-JSON tests assert inserted column values, not only row counts
+- [x] **JSON-01**: `insertFormat=json` in any letter case enables metadata-free mode, while leaving `insertFormat` unset does not
+- [x] **JSON-02**: In metadata-free mode, the target table is resolved from topic-to-table mapping (topic name ≠ table name) without any fetched table metadata
+- [x] **JSON-03**: In metadata-free mode, fields absent from the table are sent unmodified and known fields land with correct values
+- [x] **JSON-04**: Tombstone records in metadata-free mode are skipped without error
+- [x] **JSON-05**: Existing explicit-JSON tests assert inserted column values, not only row counts
 
 ### jsonInsertColumns
 
@@ -218,11 +218,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-05 | Phase 3 | Complete |
 | TYPE-06 | Phase 3 | Complete |
 | TYPE-07 | Phase 3 | Complete |
-| JSON-01 | Phase 4 | Pending |
-| JSON-02 | Phase 4 | Pending |
-| JSON-03 | Phase 4 | Pending |
-| JSON-04 | Phase 4 | Pending |
-| JSON-05 | Phase 4 | Pending |
+| JSON-01 | Phase 4 | Complete |
+| JSON-02 | Phase 4 | Complete |
+| JSON-03 | Phase 4 | Complete |
+| JSON-04 | Phase 4 | Complete |
+| JSON-05 | Phase 4 | Complete |
 | COLS-01 | Phase 4 | Pending |
 | COLS-02 | Phase 4 | Pending |
 | COLS-03 | Phase 4 | Pending |

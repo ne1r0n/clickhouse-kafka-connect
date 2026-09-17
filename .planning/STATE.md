@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
 current_phase: 04
-current_phase_name: json-insert-path-connector-plumbing
+current_phase_name: JSON Insert Path & Connector Plumbing
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-09-17T19:57:16.844Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-09-17T20:22:27.524Z"
 last_activity: 2026-09-17
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: b0d6bf25a5e981b960d42bc8e5c0eba5b48f5112
+last_activity_desc: Phase 04 execution started
+state_head: 9a415419c4e1c5690714dddc289b23e344b2bcc5
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 60
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-17)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 4 — JSON Insert Path & Connector Plumbing
+**Current focus:** Phase 04 — JSON Insert Path & Connector Plumbing
 
 ## Current Position
 
-Phase: 04 (json-insert-path-connector-plumbing) — READY TO EXECUTE
-Plan: Not started
+Phase: 04 (JSON Insert Path & Connector Plumbing) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-17 — Phase 03 complete, transitioned to Phase 4
+Last activity: 2026-09-17 — Phase 04 execution started
 
 Progress: [██████░░░░] 60%
 
@@ -71,6 +71,7 @@ Progress: [██████░░░░] 60%
 | Phase 03 P01 | 24min | 3 tasks | 5 files |
 | Phase 03 P02 | 26min | 3 tasks | 2 files |
 | Phase 03 P03 | 22min | 3 tasks | 3 files |
+| Phase 04 P01 | ~25min (continuation session) | 4 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Phase 03 Plan 03: doWriteColValue default branch and validateDataSchema now share one private message-builder helper so the D-05 actionable message (naming column, type, insertFormat=json, bypassRowBinary=true) cannot drift between the two RowBinary fail-fast gates.
 - [Phase 03]: Phase 03 Plan 03: Fixed a self-introduced bug in the new live test's own Struct fixture (raw String json_col value rejected by ClickHouse's JSON type) before any commit existed - not a production bug, no Rule 1-4 classification needed.
 - [Phase 03]: Code review (0 critical / 3 warning / 1 info) surfaced three follow-ups now tracked in PROJECT.md Active: `shouldSkipDescribeRow` only walks the immediate parent so a multi-level JSON/Dynamic subcolumn path leaks as log noise (P3-WR-01); `describeTableV2` uses `this.database` instead of its `database` parameter, dormant because every caller passes the same value (P3-WR-02); and `validateDataSchema`'s gate is narrower than `doWriteColValue`'s catch-all, leaving INT128/INT256/UINT128/UINT256 on the old bare message (P3-WR-03). The verifier independently re-confirmed all three against source and ruled none of them blocking — P3-WR-03 in particular is unchanged from pre-Phase-3 behavior, so it is not a regression. None block Phase 4; all are unscheduled.
+- [Phase 04]: [Phase 4] R-01 escalation resolved at the 04-01 Task 4 blocking-human checkpoint as pin-current-behavior: insertFormat=json + Struct record + bypassRowBinary unset silently drops all rows (put() returns without throwing, 0 rows land); pinned by one loudly-commented live test, no production fix made (D-01/D-07).
+- [Phase 04]: [Phase 4] JSON-04's all-tombstone batch through doInsertJsonV2 empirically confirmed: an empty JSONEachRow body is accepted by ClickHouse latest as a clean zero-row insert with no throw, matching the research session's inference.
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-17T19:08:38.653Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-json-insert-path-connector-plumbing/04-CONTEXT.md
+Last session: 2026-09-17T20:22:27.476Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
