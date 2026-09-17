@@ -20,6 +20,7 @@ import com.clickhouse.data.ClickHouseRecord;
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
+import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.util.Utils;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -293,8 +294,47 @@ public class ClickHouseHelperClient {
         throw new RuntimeException(ce);
     }
 
+    /**
+     * Builds the {@code match(table, '...')} clause appended to the {@code system.columns} query
+     * that backs {@link #showTables(String)}. Returns the empty string when {@code targetTableFilter}
+     * is exactly the empty string (the connector default); otherwise doubles any single quote in the
+     * filter before embedding it in the SQL literal. No backslash handling, no trim: this is a
+     * byte-for-byte extraction of the previous inline ternary (D-19/FILT-01/FILT-03/FILT-04).
+     */
+    static String buildTableFilterClause(String targetTableFilter) {
+        return targetTableFilter.isEmpty()
+                ? ""
+                : String.format(" AND match(table, '%s')", targetTableFilter.replace("'", "''"));
+    }
+
+    /**
+     * Decides whether a DESCRIBE TABLE row should be skipped before it reaches {@link Column#extractColumn}.
+     * Root (non-subcolumn) rows are never skipped. A subcolumn is skipped when its name ends with
+     * {@code .null}, {@code .size0} or the bare {@code .size} suffix (D-20), or when it is a child of a
+     * column whose resolved type is {@link Type#JSON} or {@link Type#DYNAMIC} (D-07's structural rule,
+     * which replaces the previous {@code .object_shared_data.} literal clause). Map and Tuple subcolumns
+     * are intentionally left un-skipped so {@link Table#addColumn} keeps routing them to
+     * {@code updateParent} (DESC-01..03).
+     */
+    static boolean shouldSkipDescribeRow(ClickHouseFieldDescriptor fieldDescriptor, Table table) {
+        if (!fieldDescriptor.isSubcolumn()) {
+            return false;
+        }
+        String name = fieldDescriptor.getName();
+        if (name.endsWith(".null") || name.endsWith(".size0") || name.endsWith(".size")) {
+            return true;
+        }
+        int lastDot = name.lastIndexOf('.');
+        if (lastDot < 0) {
+            return false;
+        }
+        String parentName = name.substring(0, lastDot);
+        Column parent = table.getAllColumnsMap().get(parentName);
+        return parent != null && (parent.getType() == Type.JSON || parent.getType() == Type.DYNAMIC);
+    }
+
     public List<Table> showTables(String database) {
-        String filterClause = targetTableFilter.isEmpty() ? "" : String.format(" AND match(table, '%s')", targetTableFilter.replace("'", "''"));
+        String filterClause = buildTableFilterClause(targetTableFilter);
         String query = String.format(
                 "SELECT database, table, count() FROM system.columns WHERE database = '%s'%s GROUP BY database, table",
                 database, filterClause
@@ -376,7 +416,7 @@ public class ClickHouseHelperClient {
                         continue;
                     }
 
-                    if (fieldDescriptor.isSubcolumn() && (fieldDescriptor.getName().endsWith(".null") || fieldDescriptor.getName().endsWith(".size0")) || fieldDescriptor.getName().contains(".object_shared_data.")) {
+                    if (shouldSkipDescribeRow(fieldDescriptor, table)) {
                         LOGGER.debug("Skipping column {} as it is a system sub-column", fieldDescriptor.getName());
                         continue;
                     }
@@ -388,7 +428,7 @@ public class ClickHouseHelperClient {
                     Column column = Column.extractColumn(fieldDescriptor);
                     //If we run into a rare column we can't handle, just ignore the table and warn the user
                     if (column == null) {
-                        LOGGER.warn("Unable to handle column: {}", fieldDescriptor.getName());
+                        LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
                         return null;
                     }
                     table.addColumn(column);
@@ -423,7 +463,7 @@ public class ClickHouseHelperClient {
                         continue;
                     }
 
-                    if (fieldDescriptor.isSubcolumn() && (fieldDescriptor.getName().endsWith(".null") || fieldDescriptor.getName().endsWith(".size0")) || fieldDescriptor.getName().contains(".object_shared_data.")) {
+                    if (shouldSkipDescribeRow(fieldDescriptor, table)) {
                         LOGGER.debug("Skipping column {} as it is a system sub-column", fieldDescriptor.getName());
                         continue;
                     }
@@ -435,7 +475,7 @@ public class ClickHouseHelperClient {
                     Column column = Column.extractColumn(fieldDescriptor);
                     //If we run into a rare column we can't handle, just ignore the table and warn the user
                     if (column == null) {
-                        LOGGER.warn("Unable to handle column: {}", fieldDescriptor.getName());
+                        LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
                         return null;
                     }
                     table.addColumn(column);                }
