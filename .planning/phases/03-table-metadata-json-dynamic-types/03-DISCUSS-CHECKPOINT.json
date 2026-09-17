@@ -1,0 +1,47 @@
+{
+  "phase": "3",
+  "phase_name": "Table Metadata & JSON/Dynamic Types",
+  "timestamp": "2026-09-16T21:17:25Z",
+  "areas_completed": ["RowBinary fail-fast (TYPE-06)"],
+  "areas_remaining": [
+    "describeTable audit + DESC-04 (DESC-01..04)",
+    "targetTableFilter test surface (FILT-01..04)",
+    "JSON/Dynamic round-trips + non-ASCII (TYPE-03..05, 07)"
+  ],
+  "decisions": {
+    "RowBinary fail-fast (TYPE-06)": [
+      {
+        "question": "Where should the TYPE-06 fail-fast live?",
+        "answer": "Throw in the default branch of ClickHouseWriter.doWriteColValue() (~2 lines, one method, replaces the LOGGER.error that writes zero bytes and desyncs the RowBinary stream)",
+        "options_presented": ["Throw in the default branch (Recommended)", "Pre-check before streaming", "Both"]
+      },
+      {
+        "question": "How broad should that throw be? (default branch catches JSON, DYNAMIC and UNKNOWN)",
+        "answer": "Throw for everything reaching the default branch, one message naming column + type + insertFormat=json. No type list to keep in sync; a desynced stream is never the better outcome.",
+        "options_presented": ["Throw for everything, one message (Recommended)", "Throw only for JSON/DYNAMIC", "Throw for all, branch the message"]
+      },
+      {
+        "question": "Does the validation gate get the same clear error, or is TYPE-06 satisfied by the writer gate alone?",
+        "answer": "Both gates speak it — add a JSON/DYNAMIC/UNKNOWN check in validateDataSchema so the default-config path throws the same insertFormat=json message instead of 'Data schema validation failed.'; default-branch throw stays as backstop.",
+        "options_presented": ["Both gates speak it (Recommended)", "Writer gate only", "Writer gate now, decide validation after ground truth"]
+      },
+      {
+        "question": "At what level does TYPE-06 get pinned?",
+        "answer": "Unit tests on both protected gates (exact message contract, substring match per P2 D-16) + one ClickHouse-backed sink test proving the insert fails and countRows == 0 ('no silent data loss')",
+        "options_presented": ["Unit + one sink-level test (Recommended)", "Sink-level only", "Unit only"]
+      }
+    ]
+  },
+  "deferred_ideas": [],
+  "canonical_refs": [
+    ".planning/ROADMAP.md",
+    ".planning/REQUIREMENTS.md",
+    ".planning/PROJECT.md",
+    ".planning/phases/01-test-infrastructure-green-baseline/01-CONTEXT.md",
+    ".planning/phases/02-fork-smt-coverage/02-CONTEXT.md",
+    "src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java",
+    "src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java",
+    "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java",
+    "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Type.java"
+  ]
+}
