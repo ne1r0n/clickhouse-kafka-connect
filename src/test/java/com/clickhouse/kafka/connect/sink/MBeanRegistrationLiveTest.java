@@ -2,11 +2,13 @@ package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import java.lang.management.ManagementFactory;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -22,7 +24,7 @@ import org.junit.jupiter.api.TestInfo;
  * {@code ClickHouseBase} because registration only happens through a live {@code ProxySinkTask}
  * constructor. {@code ProxySinkTask.id} comes from a static {@code NEXT_ID} counter that never
  * resets inside a test JVM fork, so this class never asserts an absolute name such as
- * {@code SinkTask0} (D-04) - only relative claims (distinctness, "this one disappeared after
+ * {@code SinkTask<N>} (D-04) - only relative claims (distinctness, "this one disappeared after
  * stop()") are valid.
  */
 public class MBeanRegistrationLiveTest extends ClickHouseBase {
@@ -44,6 +46,18 @@ public class MBeanRegistrationLiveTest extends ClickHouseBase {
             }
         }
         return filtered;
+    }
+
+    /**
+     * Returns the single element that is present in {@code after} but not in {@code before}.
+     * Used to identify the exact ObjectName a task just registered, without ever reading the
+     * task's private {@code id} or asserting an absolute name (D-04).
+     */
+    private static ObjectName newlyAdded(Set<ObjectName> before, Set<ObjectName> after) {
+        Set<ObjectName> diff = new HashSet<>(after);
+        diff.removeAll(before);
+        assertEquals(1, diff.size(), "expected exactly one newly registered MBean, saw: " + diff);
+        return diff.iterator().next();
     }
 
     @Test
@@ -76,6 +90,87 @@ public class MBeanRegistrationLiveTest extends ClickHouseBase {
                 assertDoesNotThrow(task::stop);
             }
         } finally {
+            ClickHouseTestHelpers.dropTable(chc, tableName);
+        }
+    }
+
+    @Test
+    @DisplayName("JMX-04: four tasks across two connector names register four distinct MBeans and stopping one unregisters exactly that one")
+    void fourTasksAcrossTwoConnectorsRegisterDistinctMBeansAndSelectiveStopUnregistersOne(TestInfo testInfo)
+            throws Exception {
+        String base = uniqueConnectorName(testInfo);
+        String nameA = base + "-A";
+        String nameB = base + "-B";
+        Set<String> both = Set.of(nameA, nameB);
+
+        // createProps() alone always points at the "default" database; only createClient()
+        // mutates its argument map's DATABASE entry to the per-class test database that actually
+        // holds the fixture table. Every per-task props map below is therefore a copy of this
+        // already-mutated base map (not a fresh createProps() call), or ClickHouseWriter.start()
+        // finds no tables in "default" and returns false.
+        Map<String, String> baseProps = createProps();
+        ClickHouseHelperClient chc = createClient(baseProps);
+        String tableName = createTopicName("jmx04_multi");
+        ClickHouseTestHelpers.createTable(chc, tableName, "CREATE TABLE %s (id UInt32) ENGINE = MergeTree ORDER BY id");
+
+        ClickHouseSinkTask taskA1 = new ClickHouseSinkTask();
+        ClickHouseSinkTask taskA2 = new ClickHouseSinkTask();
+        ClickHouseSinkTask taskB1 = new ClickHouseSinkTask();
+        ClickHouseSinkTask taskB2 = new ClickHouseSinkTask();
+        try {
+            Set<ObjectName> beforeAny = registeredFor(both);
+
+            Map<String, String> propsA1 = new HashMap<>(baseProps);
+            propsA1.put("name", nameA);
+            taskA1.start(propsA1);
+            Set<ObjectName> afterA1Set = registeredFor(both);
+            ObjectName a1Name = newlyAdded(beforeAny, afterA1Set);
+
+            Map<String, String> propsA2 = new HashMap<>(baseProps);
+            propsA2.put("name", nameA);
+            taskA2.start(propsA2);
+            Set<ObjectName> afterA2Set = registeredFor(both);
+            ObjectName a2Name = newlyAdded(afterA1Set, afterA2Set);
+
+            Map<String, String> propsB1 = new HashMap<>(baseProps);
+            propsB1.put("name", nameB);
+            taskB1.start(propsB1);
+            Set<ObjectName> afterB1Set = registeredFor(both);
+            ObjectName b1Name = newlyAdded(afterA2Set, afterB1Set);
+
+            Map<String, String> propsB2 = new HashMap<>(baseProps);
+            propsB2.put("name", nameB);
+            taskB2.start(propsB2);
+            Set<ObjectName> afterB2Set = registeredFor(both);
+            ObjectName b2Name = newlyAdded(afterB1Set, afterB2Set);
+
+            // Distinctness across all four, and the shared-connector / distinct-name relationship
+            // (the "just touching versus equal" case for MBean identity, E-28/E-34).
+            assertEquals(4, afterB2Set.size(), "exactly four MBeans should be registered after all four starts");
+            assertNotEquals(a1Name, a2Name);
+            assertNotEquals(b1Name, b2Name);
+            assertEquals(nameA, a1Name.getKeyProperty("connector"));
+            assertEquals(nameA, a2Name.getKeyProperty("connector"));
+            assertNotEquals(a1Name.getKeyProperty("name"), a2Name.getKeyProperty("name"));
+            assertEquals(nameB, b1Name.getKeyProperty("connector"));
+            assertEquals(nameB, b2Name.getKeyProperty("connector"));
+            assertNotEquals(b1Name.getKeyProperty("name"), b2Name.getKeyProperty("name"));
+
+            taskA2.stop();
+            // queryNames returns an unordered Set - assert set membership/difference only, never
+            // iteration order (E-35).
+            Set<ObjectName> afterStopA2 = registeredFor(both);
+            assertEquals(3, afterStopA2.size());
+            assertTrue(!afterStopA2.contains(a2Name), "A2's MBean should be gone after its stop()");
+            assertTrue(afterStopA2.contains(a1Name), "A1's MBean should still be registered");
+            assertTrue(afterStopA2.contains(b1Name), "B1's MBean should still be registered");
+            assertTrue(afterStopA2.contains(b2Name), "B2's MBean should still be registered");
+        } finally {
+            taskA1.stop();
+            // A2 was already stopped mid-test; a second stop() must not throw (idempotency guard).
+            assertDoesNotThrow(taskA2::stop);
+            taskB1.stop();
+            taskB2.stop();
             ClickHouseTestHelpers.dropTable(chc, tableName);
         }
     }
