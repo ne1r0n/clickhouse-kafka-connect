@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -254,6 +257,73 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
             List<Map<String, String>> rows = allRows(chc,
                     String.format("SELECT id, str FROM `%s`", topic), "id", "str");
             assertEquals(0, rows.size());
+        } finally {
+            sinkTask.stop();
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    /**
+     * R-01 PIN - NOT AN ENDORSEMENT.
+     *
+     * <p>This test records CONFIRMED SILENT DATA LOSS for {@code insertFormat=json}
+     * (metadata-free mode) combined with a {@code Struct} (schema'd) record and {@code
+     * bypassRowBinary} left at its default ({@code false}). {@code doInsert} routes {@code
+     * SCHEMA} records to {@code doInsertRawBinaryV2}, whose per-column write loop iterates
+     * {@code table.getRootColumnsList()} - which is empty for the synthetic, column-less {@code
+     * Table} that metadata-free mode builds - so every record silently serializes to zero bytes.
+     * {@code put()} returns normally, no exception is thrown anywhere in the call chain, and 0 of
+     * the batch's records land. This was empirically confirmed both in 04-RESEARCH.md's session
+     * (client's own {@code InsertResponse} reported {@code Written Rows: [0]} for a 5-record
+     * batch, server {@code 26.8.6.5}) and re-confirmed by this test.
+     *
+     * <p>This test was added at the 04-01 Task 4 blocking-human checkpoint (the R-01 escalation)
+     * at the user's EXPLICIT direction (the answer was {@code pin-current-behavior}), specifically
+     * so a future change to this behavior does not go unnoticed by the suite. A fail-fast throw
+     * for this combination is deliberately NOT in scope here: 04-CONTEXT.md D-01 and D-07 do not
+     * pre-approve it, because it would break - loudly, at startup of the next batch - any
+     * production pipeline currently running {@code insertFormat=json} with a Struct converter.
+     * That pipeline is losing data today but is not failing today; turning this into a loud error
+     * is a separate decision that needs its own plan, not something this test or this plan
+     * performs.
+     */
+    @Test
+    @DisplayName(
+            "JSON-01: [R-01 pin] insertFormat=json + a Struct record + bypassRowBinary left unset silently drops the whole batch - confirmed data loss, not fixed in this phase (see checkpoint)")
+    void explicitJsonStructRecordWithDefaultBypassRowBinarySilentlyDropsBatch(TestInfo testInfo) throws Exception {
+        Map<String, String> props = createProps();
+        String topic = createTopicName("json01_r01_struct_pin");
+        props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
+        // bypassRowBinary is intentionally left UNSET (defaults to false) - this is exactly the
+        // combination R-01 probed and the user directed be pinned at the Task 4 checkpoint.
+        props.put("name", uniqueConnectorName(testInfo));
+
+        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        ClickHouseTestHelpers.createTable(chc, topic,
+                "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id");
+
+        ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
+        try {
+            sinkTask.start(props);
+
+            Schema schema = SchemaBuilder.struct()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("str", Schema.STRING_SCHEMA)
+                    .build();
+            List<SinkRecord> records = new ArrayList<>();
+            for (int i = 1; i <= 5; i++) {
+                Struct value = new Struct(schema).put("id", i).put("str", "row" + i);
+                records.add(new SinkRecord(topic, 0, null, null, schema, value, i));
+            }
+
+            // Observed outcome (live run against ClickHouse latest, this session, matching
+            // 04-RESEARCH.md's R-01 finding against server 26.8.6.5): put() does not throw and
+            // every one of the 5 records is silently discarded - 0 rows land. This is ground
+            // truth for the current fork behavior, recorded here exactly as observed, not as
+            // predicted.
+            assertDoesNotThrow(() -> sinkTask.put(records));
+            assertEquals(0, ClickHouseTestHelpers.countRows(chc, topic));
         } finally {
             sinkTask.stop();
             ClickHouseTestHelpers.dropTable(chc, topic);
