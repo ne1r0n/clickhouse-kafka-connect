@@ -68,14 +68,24 @@ public class ProxySinkTask {
         this.statistics = MBeanServerUtils.registerMBean(new SinkTaskStatistics(), getMBeanName());
     }
 
-    private String getMBeanName() {
-        String version = ClickHouseClientOption.class.getPackage().getImplementationVersion();
+    /**
+     * Byte-for-byte extraction of the previous inline logic in {@code getMBeanName()} (D-02,
+     * JMX-01/JMX-02/JMX-03). The rendered MBean name is unchanged; this extraction exists solely
+     * so the null-version and colon-version branches are reachable from a test at all - the real
+     * client jar reports a plain version like {@code 0.9.6}, so neither branch could ever execute
+     * through {@code getMBeanName()} itself (which requires a live ClickHouse to construct).
+     */
+    static String buildMBeanName(String connectorName, int id, String version) {
         if (version != null) {
             version = version.replace(':', '_');
         } else {
             version = "unknown";
         }
         return String.format("com.clickhouse:type=ClickHouseKafkaConnector,connector=%s,name=SinkTask%d,version=%s", connectorName, id, version);
+    }
+
+    private String getMBeanName() {
+        return buildMBeanName(connectorName, id, ClickHouseClientOption.class.getPackage().getImplementationVersion());
     }
 
     public void stop() {
