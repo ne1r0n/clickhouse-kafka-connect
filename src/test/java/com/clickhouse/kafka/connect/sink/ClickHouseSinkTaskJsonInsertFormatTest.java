@@ -3,6 +3,8 @@ package com.clickhouse.kafka.connect.sink;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.clickhouse.client.api.query.GenericRecord;
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.google.gson.Gson;
@@ -10,11 +12,13 @@ import com.google.gson.reflect.TypeToken;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.LongStream;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
@@ -57,7 +61,8 @@ public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
     }
 
     @Test
-    public void explicitJsonInsertSkipsTableCheckOnStart() {
+    @DisplayName("JSON-05: explicitJsonInsertSkipsTableCheckOnStart asserts typed column values, not just a row count")
+    public void explicitJsonInsertSkipsTableCheckOnStart() throws Exception {
         Map<String, String> props = createJsonInsertProps();
         ClickHouseHelperClient chc = createClient(props);
 
@@ -75,10 +80,19 @@ public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
         chst.stop();
 
         assertEquals(records.size(), ClickHouseTestHelpers.countRows(chc, tableName));
+
+        List<Map<String, String>> rows = allRows(chc,
+                String.format("SELECT off16, str FROM `%s` ORDER BY off16", tableName), "off16", "str");
+        assertEquals(RECORD_COUNT, rows.size());
+        for (int i = 0; i < RECORD_COUNT; i++) {
+            assertEquals(String.valueOf(i), rows.get(i).get("off16"));
+            assertEquals("num" + i, rows.get(i).get("str"));
+        }
     }
 
     @Test
-    public void explicitJsonInsertIgnoresTargetTableFilter() {
+    @DisplayName("JSON-05: explicitJsonInsertIgnoresTargetTableFilter asserts typed column values, not just a row count")
+    public void explicitJsonInsertIgnoresTargetTableFilter() throws Exception {
         Map<String, String> props = createJsonInsertProps();
         props.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, "^filtered_.*");
         props.put(ClickHouseSinkConfig.TABLE_MAPPING, "json_topic=unfiltered_table");
@@ -97,5 +111,36 @@ public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
         chst.stop();
 
         assertEquals(records.size(), ClickHouseTestHelpers.countRows(chc, tableName));
+
+        List<Map<String, String>> rows = allRows(chc,
+                String.format("SELECT off16, str FROM `%s` ORDER BY off16", tableName), "off16", "str");
+        assertEquals(RECORD_COUNT, rows.size());
+        for (int i = 0; i < RECORD_COUNT; i++) {
+            assertEquals(String.valueOf(i), rows.get(i).get("off16"));
+            assertEquals("num" + i, rows.get(i).get("str"));
+        }
+    }
+
+    /**
+     * Snapshots each row's requested columns into a plain {@code Map<String, String>} while the
+     * row is still the iterator's current element. The client-v2 {@link GenericRecord} returned
+     * by {@link Records}'s iterator is a mutable, reused view over the underlying binary reader
+     * buffer - collecting the {@code GenericRecord} references themselves (rather than reading
+     * their values immediately) leaves every collected reference pointing at whatever row the
+     * iterator most recently advanced to, silently aliasing every "row" to the last one read.
+     */
+    private static List<Map<String, String>> allRows(ClickHouseHelperClient chc, String sql, String... columns)
+            throws Exception {
+        List<Map<String, String>> rows = new ArrayList<>();
+        try (Records records = chc.getClient().queryRecords(sql).get()) {
+            for (GenericRecord r : records) {
+                Map<String, String> row = new LinkedHashMap<>();
+                for (String column : columns) {
+                    row.put(column, r.getString(column));
+                }
+                rows.add(row);
+            }
+        }
+        return rows;
     }
 }
