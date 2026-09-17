@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: JSON Insert Path & Connector Plumbing
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-09-17T20:22:27.524Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-09-17T20:32:41.675Z"
 last_activity: 2026-09-17
 last_activity_desc: Phase 04 execution started
-state_head: 9a415419c4e1c5690714dddc289b23e344b2bcc5
+state_head: a5ff5b633f397d73e249fb11db1a386f4699a6fd
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 60
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-17)
 ## Current Position
 
 Phase: 04 (JSON Insert Path & Connector Plumbing) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-17 — Phase 04 execution started
 
@@ -72,6 +72,7 @@ Progress: [██████░░░░] 60%
 | Phase 03 P02 | 26min | 3 tasks | 2 files |
 | Phase 03 P03 | 22min | 3 tasks | 3 files |
 | Phase 04 P01 | ~25min (continuation session) | 4 tasks | 3 files |
+| Phase 04 P02 | ~55min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Code review (0 critical / 3 warning / 1 info) surfaced three follow-ups now tracked in PROJECT.md Active: `shouldSkipDescribeRow` only walks the immediate parent so a multi-level JSON/Dynamic subcolumn path leaks as log noise (P3-WR-01); `describeTableV2` uses `this.database` instead of its `database` parameter, dormant because every caller passes the same value (P3-WR-02); and `validateDataSchema`'s gate is narrower than `doWriteColValue`'s catch-all, leaving INT128/INT256/UINT128/UINT256 on the old bare message (P3-WR-03). The verifier independently re-confirmed all three against source and ruled none of them blocking — P3-WR-03 in particular is unchanged from pre-Phase-3 behavior, so it is not a regression. None block Phase 4; all are unscheduled.
 - [Phase 04]: [Phase 4] R-01 escalation resolved at the 04-01 Task 4 blocking-human checkpoint as pin-current-behavior: insertFormat=json + Struct record + bypassRowBinary unset silently drops all rows (put() returns without throwing, 0 rows land); pinned by one loudly-commented live test, no production fix made (D-01/D-07).
 - [Phase 04]: [Phase 4] JSON-04's all-tombstone batch through doInsertJsonV2 empirically confirmed: an empty JSONEachRow body is accepted by ClickHouse latest as a clean zero-row insert with no throw, matching the research session's inference.
+- [Phase 04]: [Phase 04] COLS-05's non-retriable classification is correct but for a different structural reason than assumed: Utils.handleException's ClickHouseException-typed switch never matches com.clickhouse.client.api.ServerException (the client-V2 exception type), so the classification comes from the unconditional fallback path, not from the switch's case list excluding error code 16 (NO_SUCH_COLUMN_IN_TABLE).
+- [Phase 04]: [Phase 04] COLS-02 confirmed as a plain confirmatory pin per D-11 - Phase 3's JsonDynamicRoundTripTest already exercised doInsertJsonV2 with the default empty jsonInsertColumns list.
 
 ### Pending Todos
 
@@ -128,6 +131,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-17T20:22:27.476Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-09-17T20:32:41.584Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

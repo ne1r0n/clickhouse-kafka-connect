@@ -97,12 +97,12 @@
 
 ### jsonInsertColumns
 
-- [ ] **COLS-01**: Unset or blank `jsonInsertColumns` parses to an empty list; whitespace and empty entries are dropped; order is preserved
-- [ ] **COLS-02**: With the default empty list, inserts produce correct column values (client-v2 empty-list behavior verified; fixed if broken)
-- [ ] **COLS-03**: With an explicit subset, only listed columns are populated from the payload and unlisted columns receive their `DEFAULT`
-- [ ] **COLS-04**: JSON keys outside the configured list do not break the insert (pinned)
-- [ ] **COLS-05**: A column in the list that does not exist in the table produces a clear error with no partial insert and no NPE
-- [ ] **COLS-06**: `jsonInsertColumns` also applies in the non-explicit JSON insert path (pinned)
+- [x] **COLS-01**: Unset or blank `jsonInsertColumns` parses to an empty list; whitespace and empty entries are dropped; order is preserved
+- [x] **COLS-02**: With the default empty list, inserts produce correct column values (client-v2 empty-list behavior verified; fixed if broken)
+- [x] **COLS-03**: With an explicit subset, only listed columns are populated from the payload and unlisted columns receive their `DEFAULT`
+- [x] **COLS-04**: JSON keys outside the configured list do not break the insert (pinned)
+- [x] **COLS-05**: A column in the list that does not exist in the table produces a clear error with no partial insert and no NPE
+- [x] **COLS-06**: `jsonInsertColumns` also applies in the non-explicit JSON insert path (pinned)
 
 ### Connector Plumbing — JMX
 
@@ -223,12 +223,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JSON-03 | Phase 4 | Complete |
 | JSON-04 | Phase 4 | Complete |
 | JSON-05 | Phase 4 | Complete |
-| COLS-01 | Phase 4 | Pending |
-| COLS-02 | Phase 4 | Pending |
-| COLS-03 | Phase 4 | Pending |
-| COLS-04 | Phase 4 | Pending |
-| COLS-05 | Phase 4 | Pending |
-| COLS-06 | Phase 4 | Pending |
+| COLS-01 | Phase 4 | Complete |
+| COLS-02 | Phase 4 | Complete |
+| COLS-03 | Phase 4 | Complete |
+| COLS-04 | Phase 4 | Complete |
+| COLS-05 | Phase 4 | Complete |
+| COLS-06 | Phase 4 | Complete |
 | JMX-01 | Phase 4 | Pending |
 | JMX-02 | Phase 4 | Pending |
 | JMX-03 | Phase 4 | Pending |
