@@ -20,7 +20,7 @@ affects: [ci, coverage-reporting, release-readiness]
 actuals:
   tokens: 9000
   tasks: 3
-  commits: 3
+  commits: 4
   plan_head_before: a295af8aacef6c5c3ad0b49abe89a3a85ca4efa2
 
 # Tech tracking
@@ -143,6 +143,12 @@ None - no external service configuration required.
 - This is the last plan of the milestone (per the plan's own objective). `custom_build` is now public at `origin`, with a machine-verified green CI run on the pushed SHA.
 - **Outstanding for end-of-phase UAT (workflow.human_verify_mode=end-of-phase):** one human-check remains — open `https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/35317272594` and visually confirm the rendered "Coverage Summary" markdown (heading, two headline rows, 15-row fork-class table) appears on the run's Summary tab. This is the one CI-03 sub-claim no unauthenticated API call can return (see D5 in the coverage block above).
 - No new bugs surfaced; no follow-up plan required. The pre-existing `PROJECT.md` "Active" follow-up items (R-01 silent data loss, retriable-error classification dead code, and the three earlier-phase code-review items) remain open and unaffected by this plan's scope.
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/05-ci-final-verification/05-02-SUMMARY.md`
+- FOUND commits: `86484c2`, `2fdef07`, `424906d` (all in `git log --oneline --all --grep="05-02"`)
+- FOUND: `CI-03` and `CI-04` both `[x]` / `Complete` in `.planning/REQUIREMENTS.md`
 
 ---
 *Phase: 05-ci-final-verification*
