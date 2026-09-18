@@ -146,7 +146,10 @@ public class ClickHouseSinkTask extends SinkTask {
         }
     }
 
-    @Override
+    // connect-api 4.1.1 removed SinkTask.onPartitionsRevoked (Kafka 3.0); upstream still
+    // declares it under its own connect-api 2.7.0 catalog pin. connect-api is declared
+    // api(...), so this still binds as a bridge method if a pre-3.0 Connect worker loads
+    // the connector, and costs nothing under 4.1.1 — keep the method, drop only @Override.
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         close(partitions); // call newer method in case we are running in older runtime
     }
