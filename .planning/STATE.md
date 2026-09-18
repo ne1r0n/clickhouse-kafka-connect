@@ -4,12 +4,12 @@ milestone: v1.6.0_gg1-sync
 milestone_name: Upstream v1.6.0 Sync
 current_phase: 06
 current_phase_name: Merge Groundwork & Build Migration
-status: planning
+status: executing
 stopped_at: Phase 6 context gathered
-last_updated: "2026-09-18T17:05:35.801Z"
+last_updated: "2026-09-18T17:53:25.660Z"
 last_activity: 2026-09-18
-last_activity_desc: ROADMAP.md created for `v1.6.0_gg1-sync` (Phases 6-11, 53/53 requirements mapped)
-state_head: f1b7d1d598b7ad71cb32574f0fabe06fd488cb90
+last_activity_desc: Phase 06 execution started
+state_head: c746420ac6da876056ffa5b7d7ed8e58120cf968
 progress:
   total_phases: 6
   completed_phases: 0
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-18)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** `v1.6.0_gg1-sync` — merge 581 upstream commits (`v1.2.9` → `v1.6.0`) into `custom_build` on a scratch branch, with the fork's 371-test suite as the acceptance gate.
+**Current focus:** Phase 06 — Merge Groundwork & Build Migration
 
 ## Current Position
 
-Phase: 06 (Merge Groundwork & Build Migration) — READY TO EXECUTE
-Plan: —
-Status: Roadmap created — ready for `/gsd-plan-phase 6`
-Last activity: 2026-09-18 — ROADMAP.md created for `v1.6.0_gg1-sync` (Phases 6-11, 53/53 requirements mapped)
+Phase: 06 (Merge Groundwork & Build Migration) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 06
+Last activity: 2026-09-18 — Phase 06 execution started
 
 ## Performance Metrics
 
