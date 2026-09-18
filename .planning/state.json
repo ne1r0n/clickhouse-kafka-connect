@@ -6,7 +6,7 @@
     {
       "number": "6",
       "name": "Merge Groundwork & Build Migration",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "7",
@@ -39,5 +39,5 @@
     "label": "Advance to the next step",
     "reason": "Phase 06 of 6 · 0% · executing"
   },
-  "updated_at": "2026-09-18T18:31:17.916Z"
+  "updated_at": "2026-09-18T18:43:42.161Z"
 }
