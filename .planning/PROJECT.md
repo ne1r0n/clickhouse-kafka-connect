@@ -87,6 +87,10 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ Topic-to-table mapping, error tolerance with DLQ routing — existing
 - ✓ Upstream SMTs `KeyToValue`, `ExtractTopic` — existing
 
+**v1.6.0_gg1-sync milestone:**
+
+- ✓ `build.gradle.kts` on upstream's version-catalog structure with the fork's JaCoCo / `testUnit` / JDK 17 additions re-applied — Phase 6 (all six fork additions re-applied; `help` + `dependencies` both green; all four D-12 resolved-version facts proved against the live graph)
+
 **Fork additions (the subject of this project):**
 
 - ✓ `TableOperationFilter` SMT: drops chosen Debezium operations (`c`/`u`/`d`/`t`) for listed `database.table`s — existing (fork)
@@ -141,7 +145,6 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 - [ ] Upstream `v1.6.0` merged into `custom_build` with every fork feature preserved or consciously retired in favour of an upstream equivalent
 - [ ] `./gradlew test` green on ClickHouse `latest` × client V2 — fork tests plus upstream's v1.6.0 tests
-- [ ] `build.gradle.kts` on upstream's version-catalog structure with the fork's JaCoCo / `testUnit` / JDK 17 additions re-applied
 - [ ] `tests.yaml` green on the pushed SHA, `VERSION` at `v1.6.0_gg1`, `custom_build` published to the public fork
 - [ ] A written record of which fork changes were dropped in favour of upstream, and why — the fork delta over upstream is smaller after this milestone than before it
 
@@ -234,6 +237,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| Land the v1.6.0 merge as two commits — one purely mechanical (every conflicted path resolves to upstream's exact file), one re-applying the fork's build additions | A mechanical commit 1 carries a script-verifiable byte-identity invariant, so each fork behaviour Phases 7–10 re-apply shows up as its own reviewable diff against upstream instead of a judgement call buried in a 500-file merge | ✓ Phase 6 (D-01/D-02) — merge `673d29c3`; 0 of 40 conflicted paths differ from `v1.6.0`; 592-commit range marker-free |
 | Unit + integration tests (Testcontainers ClickHouse) | Unit tests alone can't verify real inserts for JSON/Dynamic, `jsonInsertColumns`, server-side `targetTableFilter` | ✓ Phases 1–4 — both tiers shipped; live ClickHouse-backed tests carry the claims unit tests cannot |
 | Fix bugs found by tests in the same phase | User wants working features, not just documented failures | ✓ Phase 2 fixed 4 bugs inline (D-01, D-02 ×2, D-03) plus one approved out-of-scope writer fix |
 | Test WIP JSON-path features as-is | Pin current behavior; no feature expansion in this project | ✓ Phase 4 — JSON-01..05 and COLS-01..06 pinned as-is; `src/main/` untouched by plans 04-01 and 04-02 |
@@ -277,4 +281,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-18 at the start of the v1.6.0_gg1-sync milestone*
+*Last updated: 2026-09-18 after Phase 6*

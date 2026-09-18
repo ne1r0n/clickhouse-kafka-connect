@@ -1,13 +1,14 @@
 ---
 phase: 06-merge-groundwork-build-migration
 verified: 2026-09-18T00:00:00Z
-status: human_needed
+status: passed
 score: 18/18 must-haves verified
 covered_files: [".github/workflows/tests.yaml", ".gitignore", ".planning/MERGE-CHECKLIST.md", ".planning/REQUIREMENTS.md", ".planning/ROADMAP.md", ".planning/phases/06-merge-groundwork-build-migration/06-01-PLAN.md", ".planning/phases/06-merge-groundwork-build-migration/06-01-SUMMARY.md", ".planning/phases/06-merge-groundwork-build-migration/06-02-PLAN.md", ".planning/phases/06-merge-groundwork-build-migration/06-02-SUMMARY.md", ".planning/phases/06-merge-groundwork-build-migration/06-03-PLAN.md", ".planning/phases/06-merge-groundwork-build-migration/06-03-SUMMARY.md", ".planning/phases/06-merge-groundwork-build-migration/06-REVIEW.md", ".planning/scripts/conflicted-paths.txt", ".planning/scripts/verify-merge-invariants.sh", "VERSION", "build.gradle.kts", "gradle/libs.versions.toml", "gradle/wrapper/gradle-wrapper.properties"]
 covered_digest: "v1:sha256:4f1386eeba078c127503063fc095114316ff38d42ba2b5a51a164e7e1ea5d289"
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Read `.planning/MERGE-CHECKLIST.md` Section 1's `owning phase`, `fork behaviour at risk`, and `adjudicating test` columns end-to-end for all 35 still-`pending` rows (plus Section 2's 8 rows) and confirm each is assigned to the phase that will genuinely resolve it, and that each of the five silently-vanishing fork behaviours (JMX connector-name segment, un-forcing of `async_insert`, UTF-8 describe-table readers, target-table filter + describe sub-column skip, and the test base class's tag/shared-container/MBean-sweep contract) appears against at least one row with a named adjudicating test."
     expected: "No row is mis-assigned to a phase that will not actually resolve it; no fork behaviour is orphaned between two phases; every named fork behaviour has a real adjudicating test/requirement ID attached."
     why_human: "This is a judgment call about future work distribution and behavioural completeness that requires domain knowledge of what each of Phases 7-10 will actually touch — no automated check can verify that an owning-phase assignment is *correct* (only that the column is *non-empty*), and 06-03-PLAN.md's own task 3 verify block flags this exact check as `<human-check>`, deferred to end-of-phase per the project's human-verify-mode convention."

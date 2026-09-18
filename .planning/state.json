@@ -6,7 +6,7 @@
     {
       "number": "6",
       "name": "Merge Groundwork & Build Migration",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "7",
@@ -36,8 +36,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step (verify)",
-    "reason": "Phase 06 of 6 · 0% · ready to verify"
+    "label": "Advance to the next step (plan phase 7)",
+    "reason": "Phase 7 of 6 — needs a plan"
   },
-  "updated_at": "2026-09-18T19:00:11.619Z"
+  "updated_at": "2026-09-18T20:23:08.956Z"
 }

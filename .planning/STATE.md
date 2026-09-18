@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.6.0_gg1-sync
 milestone_name: Upstream v1.6.0 Sync
-current_phase: 06
-current_phase_name: Merge Groundwork & Build Migration
-status: verifying
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-09-18T19:00:34.293Z"
+current_phase: 7
+current_phase_name: Type Mapping, Writer, Helper Client & Config
+status: planning
+stopped_at: Phase 06 complete, ready to plan Phase 7
+last_updated: "2026-09-18T20:23:08.884Z"
 last_activity: 2026-09-18
-last_activity_desc: Phase 06 execution started
-state_head: ae86b60307ff413c7c3bc0dbc66883b32d921e4b
+last_activity_desc: Phase 06 complete, transitioned to Phase 7
+state_head: 2c4885088062d07b0bad73209a1a1c5df2008c17
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 0
+  percent: 17
 ---
 
 # Project State
@@ -25,20 +25,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-18)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 06 — Merge Groundwork & Build Migration
+**Current focus:** Phase 7 — Type Mapping, Writer, Helper Client & Config
 
 ## Current Position
 
-Phase: 06 (Merge Groundwork & Build Migration) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-09-18 — Phase 06 execution started
+Phase: 7 — Type Mapping, Writer, Helper Client & Config
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-18 — Phase 06 complete, transitioned to Phase 7
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 16 (all from `v1.2.9_gg4-tests`)
+- Total plans completed: 3 (all from `v1.2.9_gg4-tests`)
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -46,7 +46,7 @@ Last activity: 2026-09-18 — Phase 06 execution started
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 06 | 0 | - | - |
+| 06 | 3 | - | - |
 | 07 | 0 | - | - |
 | 08 | 0 | - | - |
 | 09 | 0 | - | - |
@@ -98,6 +98,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Merge]: `ClickHouseTestHelpers.java` is a modify/delete that git resolves by orphaning the fork's copy — post-merge the tree can hold two compiling copies with divergent defaults. Grep for exactly one canonical file (HARN-04, Phase 10).
 - [Tooling]: The `gh` CLI is not installed locally (deliberately — D-11), so CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel, so any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
+- [Phase 06]: ⚠ **CR-01, latent — safety-net script fails open.** `.planning/scripts/verify-merge-invariants.sh:44` treats a `git grep` error (exit ≥2) identically to "no match" (exit 1), with stderr suppressed, so Invariant 2 reports clean on a broken pathspec or unreadable commit. The property itself currently holds — re-derived at the Phase 6 security audit with corrected exit-code branching (592 commits, 0 markers, 0 git errors) — but **fix before Phase 11**, which gates publication on this script running unattended. Recorded in `06-SECURITY.md` → Carried Defects.
 
 ## Deferred Items
 
@@ -111,10 +112,10 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-18T19:00:34.265Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-09-18T20:23:08Z
+Stopped at: Phase 06 complete (UAT passed, security verified), ready to plan Phase 7
 Resume file: None
 
 ## Operator Next Steps
 
-- Plan the first phase with `/gsd-plan-phase 6`
+- Plan the next phase with `/gsd-plan-phase 7`

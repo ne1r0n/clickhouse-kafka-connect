@@ -24,7 +24,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 
 ### v1.6.0_gg1-sync — Upstream v1.6.0 Sync
 
-- [ ] **Phase 6: Merge Groundwork & Build Migration** - Rollback point, conflict inventory, open decisions, then upstream's version-catalog build with all five fork additions re-applied
+- [x] **Phase 6: Merge Groundwork & Build Migration** - Rollback point, conflict inventory, open decisions, then upstream's version-catalog build with all five fork additions re-applied (completed 2026-09-18)
 - [ ] **Phase 7: Type Mapping, Writer, Helper Client & Config** - The leaf mapping layer and the two hardest files re-expressed against upstream's rewritten APIs
 - [ ] **Phase 8: Orchestration & JMX Re-plumbing** - `connector=<name>` restored where upstream now owns MBean naming — a re-plumb, not a patch re-apply
 - [ ] **Phase 9: Metadata-free JSON Path — Keep or Drop** - The R-01 keep/drop decision made at a blocking-human checkpoint, then the code and tests made to say the same thing
@@ -172,7 +172,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 6. Merge Groundwork & Build Migration | 3/3 | In Progress|  |
+| 6. Merge Groundwork & Build Migration | 3/3 | Complete    | 2026-09-18 |
 | 7. Type Mapping, Writer, Helper Client & Config | 0/? | Not started | - |
 | 8. Orchestration & JMX Re-plumbing | 0/? | Not started | - |
 | 9. Metadata-free JSON Path — Keep or Drop | 0/? | Not started | - |
