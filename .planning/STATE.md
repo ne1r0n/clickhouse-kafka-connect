@@ -5,16 +5,16 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 07
 current_phase_name: Type Mapping, Writer, Helper Client & Config
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-09-18T22:15:29.132Z"
-last_activity: 2026-09-18
-last_activity_desc: Phase 06 complete, transitioned to Phase 7
-state_head: 9749d1a00bd3039055a1b0222fa24e72e8d60081
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-09-18T22:43:39.992Z"
+last_activity: 2026-09-19
+last_activity_desc: Phase 07 execution started
+state_head: d45a46550be039027599ee3586a0311790fad6c7
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
   percent: 17
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-18)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 7 — Type Mapping, Writer, Helper Client & Config
+**Current focus:** Phase 07 — Type Mapping, Writer, Helper Client & Config
 
 ## Current Position
 
-Phase: 07 (Type Mapping, Writer, Helper Client & Config) — READY TO EXECUTE
-Plan: Not started
+Phase: 07 (Type Mapping, Writer, Helper Client & Config) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-18 — Phase 06 complete, transitioned to Phase 7
+Last activity: 2026-09-19 — Phase 07 execution started
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Last activity: 2026-09-18 — Phase 06 complete, transitioned to Phase 7
 | Phase 06 P01 | 20 min | 2 tasks | 222 files |
 | Phase 06 P02 | 9 min | 3 tasks | 5 files |
 | Phase 06 P03 | ~15min | 3 tasks | 1 files |
+| Phase 07 P01 | 4 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 06]: Landed the 581-commit v1.6.0 merge as one mechanical commit (673d29c3) on scratch branch sync/v1.6.0, tagged from pre-v1.6.0-sync; all 40 conflicted paths verified byte-identical to upstream via a committed invariant script. — D-01/D-02: keeps every fork re-application in Phases 7-10 a reviewable diff against upstream instead of a judgement call inside a 500-file merge.
 - [Phase 06]: Phase 06 Plan 02: Re-applied all six fork build.gradle.kts additions (JaCoCo report-only, testUnit + check-exclusion guard, JDK-17 test-JVM launcher + windows-1252 encoding, LZ4 capability resolution, ben-manes dependencyUpdates, Spotless config) onto upstream v1.6.0's version-catalog build file; landed VERSION=v1.6.0_gg1 and the .gitignore/tests.yaml settlement; proved all four D-12 resolved-version facts against the live dependency graph. — Keeps every fork re-application a reviewable diff against upstream, per D-01/D-02; the gate (help+dependencies) is the only pass/fail signal for Phase 6.
 - [Phase 06]: [Phase 06]: Phase 06 Plan 03: Generated .planning/MERGE-CHECKLIST.md (40-row Section 1 from conflicted-paths.txt, 8-row Section 2, Recorded Facts closing SYNC-04/SYNC-05); flipped Phase 6's 5 build/infra rows to done; re-proved D-02/SYNC-06 invariants across the full 588-commit range. Corrected a research-prose error about Processing.java's merge status and a plan verify-block premise about merge-commit counts (both documented as deviations, no repo state altered). — Turns the merge's conflict surface into a per-path gate Phases 7-11 flip inside their own commits, with Phase 11 asserting zero pending rows before publication; closes SYNC-03/04/05/06, completing Phase 6's 14 requirements.
+- [Phase 07]: Phase 07 Plan 01: Skipped tree-wide spotlessApply (unrelated 52-file reformat since Phase 6 merge); verified the 4 edited files independently pass spotlessCheck instead. — Running spotlessApply would violate the plan's own scope boundary (MUST NOT touch other lines of ClickHouseSinkTask.java) and break its single-hunk-diff acceptance criterion.
 
 ### Pending Todos
 
@@ -112,9 +114,9 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-18T20:56:55.624Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-type-mapping-writer-helper-client-config/07-CONTEXT.md
+Last session: 2026-09-18T22:43:39.969Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

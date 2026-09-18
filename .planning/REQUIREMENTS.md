@@ -49,14 +49,14 @@
 
 ### Type & Mapping Layer (MAP)
 
-- [ ] **MAP-01**: `Type.DYNAMIC` exists alongside upstream's native `Type.JSON`, and `Column` dispatches `Dynamic` type strings to it — a `Dynamic` column must not silently become `Type.UNKNOWN`
-- [ ] **MAP-02**: Upstream's rewritten `Column.java` is adopted for everything else, including its `SimpleAggregateFunction` unwrapping and Avro/Protobuf union handling, with `TYPE-01..05`'s JSON assertions passing against it
+- [x] **MAP-01**: `Type.DYNAMIC` exists alongside upstream's native `Type.JSON`, and `Column` dispatches `Dynamic` type strings to it — a `Dynamic` column must not silently become `Type.UNKNOWN`
+- [x] **MAP-02**: Upstream's rewritten `Column.java` is adopted for everything else, including its `SimpleAggregateFunction` unwrapping and Avro/Protobuf union handling, with `TYPE-01..05`'s JSON assertions passing against it
 - [ ] **MAP-03**: Upstream's immutable `Table` is adopted as-is (`addColumn()` private, columns supplied to the constructor), with every fork call site rewritten against the new shape rather than the constructor being re-opened
 
 ### Writer (WRT)
 
-- [ ] **WRT-01**: `doWriteColValue`'s `default:` branch throws the fork's actionable `DataException` instead of upstream's silent `LOGGER.error`, so an unsupported RowBinary type cannot desync the stream
-- [ ] **WRT-02**: `validateDataSchema`'s fail-fast gate covers `DYNAMIC` and `UNKNOWN`; `JSON` is removed from the gate in favour of upstream's native `case JSON:` path
+- [x] **WRT-01**: `doWriteColValue`'s `default:` branch throws the fork's actionable `DataException` instead of upstream's silent `LOGGER.error`, so an unsupported RowBinary type cannot desync the stream
+- [x] **WRT-02**: `validateDataSchema`'s fail-fast gate covers `DYNAMIC` and `UNKNOWN`; `JSON` is removed from the gate in favour of upstream's native `case JSON:` path
 - [ ] **WRT-03**: Upstream's flag-gated JSON-as-string RowBinary write is available, and `TYPE-06`'s JSON assertions are rewritten to match its exception type and message rather than the fork's
 - [ ] **WRT-04**: The fork's duplicate `Map(K, Nullable(V))` null-marker patch is dropped in favour of upstream's version, which carries an extra `getMapValueType() != null` guard — the fork's pinning test stays and still passes
 - [ ] **WRT-05**: `setTargetTableFilter(...)` still reaches the helper-client builder from `ClickHouseWriter.start()`
@@ -178,11 +178,11 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | BLD-06 | Phase 6 | Complete |
 | BLD-07 | Phase 6 | Complete |
 | BLD-08 | Phase 6 | Complete |
-| MAP-01 | Phase 7 | Pending |
-| MAP-02 | Phase 7 | Pending |
+| MAP-01 | Phase 7 | Complete |
+| MAP-02 | Phase 7 | Complete |
 | MAP-03 | Phase 7 | Pending |
-| WRT-01 | Phase 7 | Pending |
-| WRT-02 | Phase 7 | Pending |
+| WRT-01 | Phase 7 | Complete |
+| WRT-02 | Phase 7 | Complete |
 | WRT-03 | Phase 7 | Pending |
 | WRT-04 | Phase 7 | Pending |
 | WRT-05 | Phase 7 | Pending |

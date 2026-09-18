@@ -80,11 +80,11 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   4. Table discovery is still filtered server-side by `match(table, '<regex>')` re-expressed over upstream's `List<Table.TableDesc>` signatures; `shouldSkipDescribeRow` still skips `.null`, `.size0`, bare `.size` and JSON/Dynamic children over upstream's local-`List<Column>` loop with `numColumns` incremented before any skip; and every `InputStreamReader(` in the resolved `ClickHouseHelperClient` specifies `StandardCharsets.UTF_8` — grep-verified across the whole file, not just the two call sites the fork originally patched. (Live `FILT-01..04` / `DESC-01..04` / `TYPE-07` confirmation lands in Phase 11's full suite; the Docker-free half of each passes here.)
   5. Two free wins are recorded either way rather than assumed: upstream's `Map(K, Nullable(V))` null-marker fix is confirmed present with the fork's duplicate patch dropped and WR-01's status stated, and whether upstream issue #580 subsumes the dormant P3-WR-02 follow-up is checked and written down.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Unblock `compileJava`, `Type.DYNAMIC` + `Column` dispatch, and the RowBinary fail-fast for `DYNAMIC`/`UNKNOWN` (wave 1)
+- [x] 07-01-PLAN.md — Unblock `compileJava`, `Type.DYNAMIC` + `Column` dispatch, and the RowBinary fail-fast for `DYNAMIC`/`UNKNOWN` (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -191,7 +191,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. Merge Groundwork & Build Migration | 3/3 | Complete    | 2026-09-18 |
-| 7. Type Mapping, Writer, Helper Client & Config | 0/4 | Planned     | - |
+| 7. Type Mapping, Writer, Helper Client & Config | 1/4 | In Progress|  |
 | 8. Orchestration & JMX Re-plumbing | 0/? | Not started | - |
 | 9. Metadata-free JSON Path — Keep or Drop | 0/? | Not started | - |
 | 10. Test Harness Reconciliation | 0/? | Not started | - |
