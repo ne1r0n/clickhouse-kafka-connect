@@ -217,7 +217,7 @@ public class ClickHouseWriter implements DBWriter {
 
     private void doInsertBatch(List<Record> records, Table table, QueryIdentifier queryId) throws IOException, ExecutionException, InterruptedException {
         Record first = records.get(0);
-        LOGGER.debug("Trying to insert [{}] records to table name [{}] (QueryId: [{}])", records.size(), table.getName(), queryId.getQueryId());
+        LOGGER.debug("Trying to insert [{}] records to table name [{}] (QueryId: [{}]) schema type [{}]", records.size(), table.getName(), queryId.getQueryId(), first.getSchemaType());
         switch (first.getSchemaType()) {
             case SCHEMA:
             case DEBEZIUM_CDC:
@@ -314,6 +314,12 @@ public class ClickHouseWriter implements DBWriter {
                                 }
                             }
                             break;
+                        }
+                        case "DYNAMIC":
+                        case "UNKNOWN": {
+                            String unsupportedTypeMsg = buildRowBinaryUnsupportedTypeMessage(colName, type);
+                            LOGGER.error(unsupportedTypeMsg);
+                            throw new DataException(unsupportedTypeMsg);
                         }
                         default:
                             if (!colTypeName.equals(dataTypeName)) {
@@ -507,6 +513,19 @@ public class ClickHouseWriter implements DBWriter {
         BinaryStreamUtils.writeInt64(stream, ts);
     }
 
+    /**
+     * Builds the message shared by the {@code doWriteColValue} default branch and the
+     * {@code validateDataSchema} DYNAMIC/UNKNOWN case, so the two gates cannot drift apart
+     * in wording. Names only the column, its type, and the two escape hatches - never any
+     * part of the record payload.
+     */
+    private String buildRowBinaryUnsupportedTypeMessage(String columnName, Type columnType) {
+        return String.format(
+                "Column [%s] has unsupported type [%s] for RowBinary serialization. "
+                        + "Use insertFormat=json or bypassRowBinary=true instead.",
+                columnName, columnType);
+    }
+
     protected void doWriteColValue(Column col, OutputStream stream, Data value, boolean defaultsSupport) throws IOException {
         Type columnType = col.getType();
 
@@ -669,7 +688,9 @@ public class ClickHouseWriter implements DBWriter {
                 default:
                     // If you wonder, how NESTED works in JDBC:
                     // https://github.com/ClickHouse/clickhouse-java/blob/6cbbd8fe3f86ac26d12a95e0c2b964f3a3755fc9/clickhouse-data/src/main/java/com/clickhouse/data/format/ClickHouseRowBinaryProcessor.java#L159
-                    LOGGER.error("Cannot serialize unsupported type {}", columnType);
+                    String msg = buildRowBinaryUnsupportedTypeMessage(col.getName(), columnType);
+                    LOGGER.error(msg);
+                    throw new DataException(msg);
             }
         } catch (ClassCastException e) {
             // A type mismatch (e.g. a java.util.Date reaching the UInt64 cast) otherwise throws a bare
@@ -1352,7 +1373,7 @@ public class ClickHouseWriter implements DBWriter {
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
                 String data = (String) record.getSinkRecord().value();
-                LOGGER.debug(String.format("data: %s", data));
+                LOGGER.trace(String.format("data: %s", data));
                 byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
                 statistics.bytesInserted(bytes.length);
                 long beforePushStream = System.currentTimeMillis();
