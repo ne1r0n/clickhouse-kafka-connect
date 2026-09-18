@@ -5,16 +5,16 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 06
 current_phase_name: Merge Groundwork & Build Migration
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-09-18T18:31:55.730Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-09-18T18:43:56.355Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 06 execution started
-state_head: 4f3ff2a924374e2b01008f0f0fa4051fd9da6714
+state_head: b582a44bb62d3d99495276ede287cd55e88a73cc
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 ## Current Position
 
 Phase: 06 (Merge Groundwork & Build Migration) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-18 — Phase 06 execution started
 
@@ -64,6 +64,7 @@ Last activity: 2026-09-18 — Phase 06 execution started
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 06 P01 | 20 min | 2 tasks | 222 files |
+| Phase 06 P02 | 9 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - client-v2 `GenericRecord` from a `Records` iterator is a mutable, reused row view — snapshot into a `Map` during iteration.
 - New sink-task tests must create their tables before `start()` — `ClickHouseWriter.start()` fails against an empty database.
 - [Phase 06]: Landed the 581-commit v1.6.0 merge as one mechanical commit (673d29c3) on scratch branch sync/v1.6.0, tagged from pre-v1.6.0-sync; all 40 conflicted paths verified byte-identical to upstream via a committed invariant script. — D-01/D-02: keeps every fork re-application in Phases 7-10 a reviewable diff against upstream instead of a judgement call inside a 500-file merge.
+- [Phase 06]: Phase 06 Plan 02: Re-applied all six fork build.gradle.kts additions (JaCoCo report-only, testUnit + check-exclusion guard, JDK-17 test-JVM launcher + windows-1252 encoding, LZ4 capability resolution, ben-manes dependencyUpdates, Spotless config) onto upstream v1.6.0's version-catalog build file; landed VERSION=v1.6.0_gg1 and the .gitignore/tests.yaml settlement; proved all four D-12 resolved-version facts against the live dependency graph. — Keeps every fork re-application a reviewable diff against upstream, per D-01/D-02; the gate (help+dependencies) is the only pass/fail signal for Phase 6.
 
 ### Pending Todos
 
@@ -107,8 +109,8 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-18T18:31:55.713Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-09-18T18:43:56.326Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

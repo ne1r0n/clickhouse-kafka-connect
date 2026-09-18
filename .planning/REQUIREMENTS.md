@@ -38,14 +38,14 @@
 
 ### Build Migration (BLD)
 
-- [ ] **BLD-01**: `build.gradle.kts` and `gradle/libs.versions.toml` come from upstream `v1.6.0` (version catalog, `jvm-test-suite`, `java-test-fixtures`, `protobuf`, `com.gradleup.shadow`), with the dead `signing` and `buildconfig` plugins dropped
-- [ ] **BLD-02**: The Gradle wrapper is at `9.6.1`, matching the version upstream authored and tested the new build file against
-- [ ] **BLD-03**: JaCoCo is re-applied — `jacocoTestReport` plus the 15-class `jacocoForkReport`, report-only with no failing threshold, and `.github/scripts/jacoco_summary.py` still renders both XML reports without edits
-- [ ] **BLD-04**: `testUnit` is re-applied — `excludeTags("clickhouse")`, JaCoCo disabled on it, and kept out of `check` via the `if (name != "testUnit")` guard
-- [ ] **BLD-05**: The test JVM is pinned to JDK 17 by an explicit `javaLauncher`/toolchain mechanism — not merely by `options.release` — and runs with `file.encoding=windows-1252`, so a machine invoking Gradle on a different JDK cannot silently change what the suite exercises
-- [ ] **BLD-06**: The fork's two undocumented build additions survive: the LZ4 `withCapability("org.lz4:lz4-java")` resolution and the `com.github.ben-manes.versions` plugin with its `dependencyUpdates` configuration
-- [ ] **BLD-07**: `VERSION` reads `v1.6.0_gg1`
-- [ ] **BLD-08**: Dependency versions are reconciled deliberately — upstream's for Jackson, HttpClient5, Lombok, Mockito, OkHttp, `org.json`, slf4j and JUnit Jupiter; the fork's for the ClickHouse client (`0.9.6`) and Kafka Connect API (`4.1.1`); `slf4j-reload4j` kept as a literal coordinate since upstream's catalog has no entry for it
+- [x] **BLD-01**: `build.gradle.kts` and `gradle/libs.versions.toml` come from upstream `v1.6.0` (version catalog, `jvm-test-suite`, `java-test-fixtures`, `protobuf`, `com.gradleup.shadow`), with the dead `signing` and `buildconfig` plugins dropped
+- [x] **BLD-02**: The Gradle wrapper is at `9.6.1`, matching the version upstream authored and tested the new build file against
+- [x] **BLD-03**: JaCoCo is re-applied — `jacocoTestReport` plus the 15-class `jacocoForkReport`, report-only with no failing threshold, and `.github/scripts/jacoco_summary.py` still renders both XML reports without edits
+- [x] **BLD-04**: `testUnit` is re-applied — `excludeTags("clickhouse")`, JaCoCo disabled on it, and kept out of `check` via the `if (name != "testUnit")` guard
+- [x] **BLD-05**: The test JVM is pinned to JDK 17 by an explicit `javaLauncher`/toolchain mechanism — not merely by `options.release` — and runs with `file.encoding=windows-1252`, so a machine invoking Gradle on a different JDK cannot silently change what the suite exercises
+- [x] **BLD-06**: The fork's two undocumented build additions survive: the LZ4 `withCapability("org.lz4:lz4-java")` resolution and the `com.github.ben-manes.versions` plugin with its `dependencyUpdates` configuration
+- [x] **BLD-07**: `VERSION` reads `v1.6.0_gg1`
+- [x] **BLD-08**: Dependency versions are reconciled deliberately — upstream's for Jackson, HttpClient5, Lombok, Mockito, OkHttp, `org.json`, slf4j and JUnit Jupiter; the fork's for the ClickHouse client (`0.9.6`) and Kafka Connect API (`4.1.1`); `slf4j-reload4j` kept as a literal coordinate since upstream's catalog has no entry for it
 
 ### Type & Mapping Layer (MAP)
 
@@ -170,14 +170,14 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | SYNC-04 | Phase 6 | Pending |
 | SYNC-05 | Phase 6 | Pending |
 | SYNC-06 | Phase 6 | Pending |
-| BLD-01 | Phase 6 | Pending |
-| BLD-02 | Phase 6 | Pending |
-| BLD-03 | Phase 6 | Pending |
-| BLD-04 | Phase 6 | Pending |
-| BLD-05 | Phase 6 | Pending |
-| BLD-06 | Phase 6 | Pending |
-| BLD-07 | Phase 6 | Pending |
-| BLD-08 | Phase 6 | Pending |
+| BLD-01 | Phase 6 | Complete |
+| BLD-02 | Phase 6 | Complete |
+| BLD-03 | Phase 6 | Complete |
+| BLD-04 | Phase 6 | Complete |
+| BLD-05 | Phase 6 | Complete |
+| BLD-06 | Phase 6 | Complete |
+| BLD-07 | Phase 6 | Complete |
+| BLD-08 | Phase 6 | Complete |
 | MAP-01 | Phase 7 | Pending |
 | MAP-02 | Phase 7 | Pending |
 | MAP-03 | Phase 7 | Pending |
