@@ -80,7 +80,25 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   4. Table discovery is still filtered server-side by `match(table, '<regex>')` re-expressed over upstream's `List<Table.TableDesc>` signatures; `shouldSkipDescribeRow` still skips `.null`, `.size0`, bare `.size` and JSON/Dynamic children over upstream's local-`List<Column>` loop with `numColumns` incremented before any skip; and every `InputStreamReader(` in the resolved `ClickHouseHelperClient` specifies `StandardCharsets.UTF_8` — grep-verified across the whole file, not just the two call sites the fork originally patched. (Live `FILT-01..04` / `DESC-01..04` / `TYPE-07` confirmation lands in Phase 11's full suite; the Docker-free half of each passes here.)
   5. Two free wins are recorded either way rather than assumed: upstream's `Map(K, Nullable(V))` null-marker fix is confirmed present with the fork's duplicate patch dropped and WR-01's status stated, and whether upstream issue #580 subsumes the dormant P3-WR-02 follow-up is checked and written down.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Unblock `compileJava`, `Type.DYNAMIC` + `Column` dispatch, and the RowBinary fail-fast for `DYNAMIC`/`UNKNOWN` (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 07-02-PLAN.md — The `targetTableFilter` chain (config → writer → helper client → `showTables*`), the DESCRIBE sub-column skip over a loop-local column map, and UTF-8 describe readers (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 07-03-PLAN.md — `jsonInsertColumns` + the explicit-JSON flag, `async_insert` un-forced, and the Phase 10 carve-out that makes `compileTestJava` green (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 07-04-PLAN.md — The thirteen-defaults pin, the Docker-free `testUnit` acceptance gate, twelve checklist row flips and the FREE-02/FREE-03 recorded facts (wave 4)
+
+**Note on the wave shape:** all four waves are sequential, and that is structural rather than conservative. `compileTestJava` is all-or-nothing — Gradle compiles the whole test source set before running any test — so no fork test can execute until every missing API (`Type.DYNAMIC`, `shouldSkipDescribeRow`, `buildTableFilterClause`, both config keys) is present. The three production plans therefore gate on `compileJava` plus source assertions, and every behavioural criterion in the phase resolves in plan 07-04's single `testUnit` run. The three production files also overlap across behaviours (`ClickHouseWriter.java` in plans 01 and 02, `ClickHouseSinkConfig.java` in plans 02 and 03), which independently forbids same-wave parallelism.
 
 ### Phase 8: Orchestration & JMX Re-plumbing
 
@@ -173,7 +191,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. Merge Groundwork & Build Migration | 3/3 | Complete    | 2026-09-18 |
-| 7. Type Mapping, Writer, Helper Client & Config | 0/? | Not started | - |
+| 7. Type Mapping, Writer, Helper Client & Config | 0/4 | Planned     | - |
 | 8. Orchestration & JMX Re-plumbing | 0/? | Not started | - |
 | 9. Metadata-free JSON Path — Keep or Drop | 0/? | Not started | - |
 | 10. Test Harness Reconciliation | 0/? | Not started | - |
