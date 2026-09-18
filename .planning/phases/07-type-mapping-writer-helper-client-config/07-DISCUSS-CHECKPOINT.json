@@ -1,0 +1,42 @@
+{
+  "phase": "7",
+  "phase_name": "Type Mapping, Writer, Helper Client & Config",
+  "timestamp": "2026-09-18T00:00:00Z",
+  "areas_completed": ["Phase 7's real test gate"],
+  "areas_remaining": ["The one compile blocker", "Phase 9's inherited default", "Delta-shrink vs re-apply"],
+  "decisions": {
+    "Phase 7's real test gate": [
+      {
+        "question": "Phase 7's ROADMAP criterion #2 demands `./gradlew testUnit` green. Reaching it requires a small, mechanical slice of Phase 10's harness work. How should that boundary be drawn?",
+        "answer": "Mechanical carve-out — Phase 7 pulls forward ONLY the mechanical harness fixes testUnit needs (@Tag(\"clickhouse\") + uniqueConnectorName on ClickHouseBase, the 1 stale extension import, re-expressing the 4 fork test files against the immutable Table). Phase 10 keeps all judgement work. Gate stays compileJava + testUnit green.",
+        "options_presented": ["Mechanical carve-out (Recommended)", "Full test-tree compile in P7", "Downgrade the gate"]
+      },
+      {
+        "question": "Which members of the fork's `ClickHouseBase` does Phase 7 restore, given upstream rewrote it to `@TestInstance(PER_CLASS)` with instance methods?",
+        "answer": "Tag + uniqueConnectorName only — @Tag(\"clickhouse\") (1 line) and uniqueConnectorName(TestInfo) + its counter (~5 lines). MBean sweep, shared-container strategy, newTestDatabaseName and helpers stay Phase 10.",
+        "options_presented": ["Tag + uniqueConnectorName only (Recommended)", "Tag + name + MBean sweep", "Whatever the compiler demands"]
+      },
+      {
+        "question": "`MERGE-CHECKLIST.md`'s `ClickHouseBase.java` row is owned by Phase 10 and currently `pending`. Phase 7 will now touch that file. How should the record handle it?",
+        "answer": "Leave pending, add a note — Phase 7 does not flip the row; it appends a note to the row recording that the @Tag + uniqueConnectorName sliver landed early and in which commit.",
+        "options_presented": ["Leave pending, add a note (Recommended)", "Split the row", "Record it only in the SUMMARY"]
+      },
+      {
+        "question": "Upstream's describe loop builds a local `List<Column>` and constructs the immutable `Table` only at the end, so `shouldSkipDescribeRow(fd, table)` can no longer use `table.getAllColumnsMap()`. What shape should the re-expressed helper take?",
+        "answer": "Pass an incremental name→Column map — shouldSkipDescribeRow(ClickHouseFieldDescriptor, Map<String, Column>); the loop maintains the map as it appends to columns; helper stays a pure static function with O(1) parent lookup; the unit test builds the map directly.",
+        "options_presented": ["Pass an incremental name→Column map (Recommended)", "Pass the accumulating List<Column>", "Keep the Table signature"]
+      }
+    ]
+  },
+  "deferred_ideas": [],
+  "canonical_refs": [
+    ".planning/ROADMAP.md",
+    ".planning/REQUIREMENTS.md",
+    ".planning/MERGE-CHECKLIST.md",
+    ".planning/phases/06-merge-groundwork-build-migration/06-CONTEXT.md",
+    ".planning/research/ARCHITECTURE.md",
+    ".planning/research/FEATURES.md",
+    ".planning/research/PITFALLS.md",
+    ".planning/research/SUMMARY.md"
+  ]
+}
