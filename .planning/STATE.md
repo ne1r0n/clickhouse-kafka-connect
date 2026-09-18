@@ -5,16 +5,16 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 07
 current_phase_name: Type Mapping, Writer, Helper Client & Config
 status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-09-18T22:53:59.546Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-09-18T23:35:17.730Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 07 execution started
-state_head: 5a4a12cdc83c486276eeb79bf1c9bc05dc90b857
+state_head: e1a90309778036478c78d25fdff850a342d93062
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
   percent: 17
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 ## Current Position
 
 Phase: 07 (Type Mapping, Writer, Helper Client & Config) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-19 — Phase 07 execution started
 
@@ -68,6 +68,7 @@ Last activity: 2026-09-19 — Phase 07 execution started
 | Phase 06 P03 | ~15min | 3 tasks | 1 files |
 | Phase 07 P01 | 4 min | 2 tasks | 4 files |
 | Phase 07 P02 | 8 min | 2 tasks | 3 files |
+| Phase 07 P03 | 55min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 06]: [Phase 06]: Phase 06 Plan 03: Generated .planning/MERGE-CHECKLIST.md (40-row Section 1 from conflicted-paths.txt, 8-row Section 2, Recorded Facts closing SYNC-04/SYNC-05); flipped Phase 6's 5 build/infra rows to done; re-proved D-02/SYNC-06 invariants across the full 588-commit range. Corrected a research-prose error about Processing.java's merge status and a plan verify-block premise about merge-commit counts (both documented as deviations, no repo state altered). — Turns the merge's conflict surface into a per-path gate Phases 7-11 flip inside their own commits, with Phase 11 asserting zero pending rows before publication; closes SYNC-03/04/05/06, completing Phase 6's 14 requirements.
 - [Phase 07]: Phase 07 Plan 01: Skipped tree-wide spotlessApply (unrelated 52-file reformat since Phase 6 merge); verified the 4 edited files independently pass spotlessCheck instead. — Running spotlessApply would violate the plan's own scope boundary (MUST NOT touch other lines of ClickHouseSinkTask.java) and break its single-hunk-diff acceptance criterion.
 - [Phase 07]: Phase 07 Plan 02: Re-threaded targetTableFilter server-side table filtering (config key + buildTableFilterClause + builder wiring) and re-expressed shouldSkipDescribeRow over a loop-local Map<String, Column> since upstream's Table is now immutable; pinned describeTableV2's reader to UTF-8. — D-08/D-16/D-19: keeps every fork re-application a reviewable diff against upstream, matches the locked map-based signature, and closes two of the five silently-vanishing fork behaviours before Phase 11's live audit.
+- [Phase 07]: Phase 07 Plan 03: Landed the remaining fork config settings (jsonInsertColumns key, explicit-format flag, async_insert un-forcing) and the planned four-item Phase 10 test carve-out, then discovered and Rule-3-fixed a much larger compile gap: twelve additional fork test files depended on pre-merge ClickHouseBase/ClickHouseTestHelpers methods (createProps/createClient/createTable) the mechanical merge silently dropped, undetected by planning's D-05 blast-radius measurement. — Every redirect targets an already-existing equivalent (getBaseProps, ClickHouseTestHelpers.createClient, a local queryV2-based createTable helper) so D-06 and D-09's locked restrictions on ClickHouseBase/ClickHouseTestHelpers hold exactly as decided; two files (MBeanNameUnitTest.java needs Phase 8's buildMBeanName, ClickHouseTestHarnessTest.java needs Phase 10's shared-container strategy) remain deliberately uncompiled and are flagged as a CRITICAL blocker for plan 07-04's testUnit gate.
 
 ### Pending Todos
 
@@ -101,8 +103,9 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Prod]: ⚠ **Unfixed production bug, pinned only.** R-01: `insertFormat=json` + a `Struct` record + default `bypassRowBinary` silently discards every row. Its keep/drop disposition is Phase 9's blocking-human checkpoint — it must not be decided by accident.
 - [Merge]: `ClickHouseTestHelpers.java` is a modify/delete that git resolves by orphaning the fork's copy — post-merge the tree can hold two compiling copies with divergent defaults. Grep for exactly one canonical file (HARN-04, Phase 10).
 - [Tooling]: The `gh` CLI is not installed locally (deliberately — D-11), so CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
-- [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel, so any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
+- [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel, so any deliberate degrade must be re-forced with `--force-isolation ` immediately before each dispatch.
 - [Phase 06]: ⚠ **CR-01, latent — safety-net script fails open.** `.planning/scripts/verify-merge-invariants.sh:44` treats a `git grep` error (exit ≥2) identically to "no match" (exit 1), with stderr suppressed, so Invariant 2 reports clean on a broken pathspec or unreadable commit. The property itself currently holds — re-derived at the Phase 6 security audit with corrected exit-code branching (592 commits, 0 markers, 0 git errors) — but **fix before Phase 11**, which gates publication on this script running unattended. Recorded in `06-SECURITY.md` → Carried Defects.
+- [Phase 07 Plan 03]: CRITICAL — compileTestJava still fails on 2 files after this plan: MBeanNameUnitTest.java (needs ProxySinkTask.buildMBeanName, Phase 8) and ClickHouseTestHarnessTest.java (needs ClickHouseBase.sharedContainerStarts()/ClickHouseTestHelpers.query, Phase 10). MBeanNameUnitTest.java does NOT extend ClickHouseBase, so it is not excluded from testUnit by the clickhouse tag — plan 07-04's stated testUnit-green acceptance gate will fail on this exact compile error unless resolved first. Neither fix is authorized within Phase 7's locked D-06 scope boundary; needs an explicit decision before 07-04 runs testUnit.
 
 ## Deferred Items
 
@@ -116,8 +119,8 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-18T22:53:59.508Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-09-18T23:35:05.807Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
