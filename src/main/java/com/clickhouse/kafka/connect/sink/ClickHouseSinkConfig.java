@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +41,7 @@ public class ClickHouseSinkConfig {
     public static final String TABLE_REFRESH_INTERVAL = "tableRefreshInterval";
     public static final String CUSTOM_INSERT_FORMAT_ENABLE = "customInsertFormat";
     public static final String INSERT_FORMAT = "insertFormat";
+    public static final String JSON_INSERT_COLUMNS = "jsonInsertColumns";
     public static final String PROXY_TYPE = "proxyType";
     public static final String PROXY_HOST = "proxyHost";
     public static final String PROXY_PORT = "proxyPort";
@@ -132,6 +134,8 @@ public class ClickHouseSinkConfig {
     private final String clusterName;
     private final boolean enableReplicaPinning;
     private final String targetTableFilter;
+    private final List<String> jsonInsertColumns;
+    private final boolean jsonInsertFormatExplicit;
 
     public enum InsertFormats {
         NONE,
@@ -269,6 +273,21 @@ public class ClickHouseSinkConfig {
             default:
                 this.insertFormat = InsertFormats.JSON;
         }
+
+        String insertFormatRaw = props.get(INSERT_FORMAT);
+        this.jsonInsertFormatExplicit = insertFormatRaw != null && insertFormatRaw.trim().equalsIgnoreCase("json");
+        String jsonInsertColumnsRaw = props.getOrDefault(JSON_INSERT_COLUMNS, "").trim();
+        List<String> jsonInsertColumnsTmp = new ArrayList<>();
+        if (!jsonInsertColumnsRaw.isBlank()) {
+            String[] stringSplit = jsonInsertColumnsRaw.split(",");
+            for (String s : stringSplit) {
+                String trimmed = s.trim();
+                if (!trimmed.isEmpty()) {
+                    jsonInsertColumnsTmp.add(trimmed);
+                }
+            }
+        }
+        this.jsonInsertColumns = jsonInsertColumnsTmp;
 
         String proxyTypeTmp = props.getOrDefault(PROXY_TYPE, "none").toLowerCase();
         switch (proxyTypeTmp) {
@@ -551,6 +570,16 @@ public class ClickHouseSinkConfig {
                 "Insert format.",
                 new InsertFormatValidatorAndRecommender()
                 );
+        configDef.define(JSON_INSERT_COLUMNS,
+                ConfigDef.Type.STRING,
+                "",
+                ConfigDef.Importance.LOW,
+                "Comma-separated list of column names to use for JSON inserts. Whitespace is ignored.",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.LONG,
+                "JSON insert columns."
+        );
         configDef.define(PROXY_TYPE,
                 ConfigDef.Type.STRING,
                 "",
