@@ -33,8 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -401,6 +403,36 @@ public class ClickHouseHelperClient implements AutoCloseable {
         }
     }
 
+    /**
+     * Returns true when {@code fieldDescriptor} is a structural DESCRIBE sub-column row that
+     * should not become its own {@link Column}: a {@code .null}/{@code .size0}/bare {@code .size}
+     * suffix (present on every {@code Nullable}/{@code Array} column, regardless of parent type),
+     * or any sub-column of a {@code JSON}/{@code Dynamic} parent (whose sub-paths are dynamic and
+     * not meaningful as standalone {@link Column}s). Map and Tuple sub-columns are deliberately
+     * left un-skipped so {@link Table}'s own parent-routing keeps working.
+     *
+     * <p>{@code columnsSoFar} is the loop-local map of top-level columns extracted so far in the
+     * current DESCRIBE pass, keyed by column name - {@link Table} is immutable and is only
+     * constructed once, after the loop, so there is no {@code Table} to query mid-loop. A parent
+     * absent from the map (never added, or not yet seen) returns false rather than throwing.
+     */
+    static boolean shouldSkipDescribeRow(ClickHouseFieldDescriptor fieldDescriptor, Map<String, Column> columnsSoFar) {
+        if (!fieldDescriptor.isSubcolumn()) {
+            return false;
+        }
+        String name = fieldDescriptor.getName();
+        if (name.endsWith(".null") || name.endsWith(".size0") || name.endsWith(".size")) {
+            return true;
+        }
+        int lastDot = name.lastIndexOf('.');
+        if (lastDot < 0) {
+            return false;
+        }
+        String parentName = name.substring(0, lastDot);
+        Column parent = columnsSoFar.get(parentName);
+        return parent != null && (parent.getType() == Type.JSON || parent.getType() == Type.DYNAMIC);
+    }
+
     public Table describeTableV1(String database, String tableName) {
         if (tableName.startsWith(".inner"))
             return null;
@@ -421,6 +453,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
             boolean hasDefaults = false;
             int numColumns = 0;
             List<Column> columns = new ArrayList<>();
+            Map<String, Column> columnsByName = new HashMap<>();
             for (ClickHouseRecord r : response.records()) {
                 ClickHouseValue v = r.getValue(0);
 
@@ -444,6 +477,12 @@ public class ClickHouseHelperClient implements AutoCloseable {
                     }
                 }
 
+                if (shouldSkipDescribeRow(fieldDescriptor, columnsByName)) {
+                    LOGGER.debug("Skipping structural sub-column {}", fieldDescriptor.getName());
+                    skippedCols.add(fieldDescriptor.getName());
+                    continue;
+                }
+
                 if (fieldDescriptor.hasDefault()) {
                     hasDefaults = true;
                 }
@@ -451,10 +490,11 @@ public class ClickHouseHelperClient implements AutoCloseable {
                 Column column = Column.extractColumn(fieldDescriptor);
                 //If we run into a rare column we can't handle, just ignore the table and warn the user
                 if (column == null) {
-                    LOGGER.warn("Unable to handle column: {}", fieldDescriptor.getName());
+                    LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
                     return null;
                 }
                 columns.add(column);
+                columnsByName.put(column.getName(), column);
             }
 
             return new Table(database, tableName, hasDefaults, columns, numColumns);
@@ -479,8 +519,10 @@ public class ClickHouseHelperClient implements AutoCloseable {
             boolean hasDefaults = false;
             int numColumns = 0;
             List<Column> columns = new ArrayList<>();
+            Map<String, Column> columnsByName = new HashMap<>();
             try (QueryResponse queryResponse = client.query(describeQuery, settings).get();
-                 BufferedReader br = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()))) {
+                 InputStream describeStream = queryResponse.getInputStream();
+                 BufferedReader br = new BufferedReader(new InputStreamReader(describeStream, StandardCharsets.UTF_8))) {
                 String line = null;
                 Set<String> skippedCols = new HashSet<>();
                 while ((line = br.readLine()) != null) {
@@ -504,6 +546,12 @@ public class ClickHouseHelperClient implements AutoCloseable {
                         }
                     }
 
+                    if (shouldSkipDescribeRow(fieldDescriptor, columnsByName)) {
+                        LOGGER.debug("Skipping structural sub-column {}", fieldDescriptor.getName());
+                        skippedCols.add(fieldDescriptor.getName());
+                        continue;
+                    }
+
                     if (fieldDescriptor.hasDefault()) {
                         hasDefaults = true;
                     }
@@ -511,10 +559,11 @@ public class ClickHouseHelperClient implements AutoCloseable {
                     Column column = Column.extractColumn(fieldDescriptor);
                     //If we run into a rare column we can't handle, just ignore the table and warn the user
                     if (column == null) {
-                        LOGGER.warn("Unable to handle column: {}", fieldDescriptor.getName());
+                        LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
                         return null;
                     }
                     columns.add(column);
+                    columnsByName.put(column.getName(), column);
                 }
             }
             return new Table(database, tableName, hasDefaults, columns, numColumns);
