@@ -184,7 +184,7 @@ Plans:
   3. That CI run is green, uploads the JaCoCo report as an artifact, and writes a coverage summary to the job summary. No coverage threshold can fail the build.
   4. With colima running, `./gradlew test` passes in full locally (fork and upstream tests) against `latest` × V2, and the final report shows coverage for the fork-changed classes.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans executed
 
 Plans:
 **Wave 1**
@@ -193,7 +193,7 @@ Plans:
 
 **Wave 2** *(blocked on 05-01: 05-02 runs the workflow's own summary command and asserts on its step names, and may amend both files under the red-CI-run policy)*
 
-- [ ] 05-02-PLAN.md — Fresh green full-suite local run with a coverage report proven to reflect it, a `blocking-human` decision checkpoint on the one-way public push, then the push and an unauthenticated REST-API verification of the run, its single job, the `Run tests` / `Generate coverage summary` step conclusions, and the coverage artifact (CI-03, CI-04) (wave 2, not autonomous)
+- [x] 05-02-PLAN.md — Fresh green full-suite local run with a coverage report proven to reflect it, a `blocking-human` decision checkpoint on the one-way public push, then the push and an unauthenticated REST-API verification of the run, its single job, the `Run tests` / `Generate coverage summary` step conclusions, and the coverage artifact (CI-03, CI-04) (wave 2, not autonomous)
 
 *Planning notes: (a) the roadmap's original 05-01 / 05-02 split is kept unchanged — 05-02 needs 05-01's workflow to exist and carries the D-10 blocking checkpoint, so it cannot be autonomous. (b) The phase adds a second file beyond `tests.yaml`, `.github/scripts/jacoco_summary.py`, so the coverage parser can be run and asserted verbatim before it ships and so it lands on a path upstream has no file at — see 05-01-PLAN.md § DEC-A. (c) RESEARCH.md's two open questions are resolved in the plans: CI-03's job-summary sub-claim is verified by a local content proof plus the run's per-step `conclusion` (newly live-verified as fetchable unauthenticated), never by a log download — 05-02 § DEC-D; `upload-artifact` is pinned at `@v4` — 05-01 § DEC-C.*
 
@@ -208,4 +208,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 | 2. Fork SMT Coverage | 5/5 | Complete    | 2026-09-16 |
 | 3. Table Metadata & JSON/Dynamic Types | 3/3 | Complete    | 2026-09-17 |
 | 4. JSON Insert Path & Connector Plumbing | 3/3 | Complete    | 2026-09-18 |
-| 5. CI & Final Verification | 1/2 | In Progress|  |
+| 5. CI & Final Verification | 2/2 | In Progress|  |

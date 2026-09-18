@@ -126,8 +126,8 @@
 
 - [x] **CI-01**: The CI workflow uses current actions: `actions/checkout@v4`, `actions/setup-java@v6` (temurin 17), `gradle/actions/setup-gradle@v6`
 - [x] **CI-02**: CI runs a single job on push against ClickHouse `latest` × client V2 (V1, 23.7, 24.3, and Cloud legs removed)
-- [ ] **CI-03**: CI uploads the JaCoCo report as an artifact and writes a coverage summary to the job summary, without a coverage threshold
-- [ ] **CI-04**: `./gradlew test` passes in full locally and in CI against ClickHouse `latest` × client V2
+- [x] **CI-03**: CI uploads the JaCoCo report as an artifact and writes a coverage summary to the job summary, without a coverage threshold
+- [x] **CI-04**: `./gradlew test` passes in full locally and in CI against ClickHouse `latest` × client V2
 
 ## v2 Requirements
 
@@ -238,8 +238,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASYNC-03 | Phase 4 | Complete |
 | CI-01 | Phase 5 | Complete |
 | CI-02 | Phase 5 | Complete |
-| CI-03 | Phase 5 | Pending |
-| CI-04 | Phase 5 | Pending |
+| CI-03 | Phase 5 | Complete |
+| CI-04 | Phase 5 | Complete |
 
 **Coverage:**
 

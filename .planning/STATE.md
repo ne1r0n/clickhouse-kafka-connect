@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: CI & Final Verification
-status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-09-18T06:28:42.040Z"
+status: verifying
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-09-18T07:08:10.739Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 05 execution started
-state_head: 73b2c7153671fa1108db9f99b1424cde1b15522d
+state_head: 86484c2d3e4fea7ce8644c717cfeef99cd8d0eff
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 80
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 
 Phase: 05 (CI & Final Verification) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-18 — Phase 05 execution started
 
 Progress: [████████░░] 80%
@@ -76,6 +76,7 @@ Progress: [████████░░] 80%
 | Phase 04 P02 | ~55min | 3 tasks | 2 files |
 | Phase 04 P03 | ~45 min | 3 tasks | 5 files |
 | Phase 05 P01 | 10 min | 2 tasks | 2 files |
+| Phase 05 P02 | ~20 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,7 @@ Recent decisions affecting current work:
 - [Phase 04]: [Phase 04] JMX-04's four-task live test identifies MBean identity via before/after Set<ObjectName> difference rather than any absolute SinkTask<id> name, because ProxySinkTask.id comes from a static AtomicInteger that never resets inside a test JVM fork.
 - [Phase 04]: [Phase 04] Phase 4 complete: all three plans (04-01 JSON insert path, 04-02 jsonInsertColumns, 04-03 JMX + async_insert) done; full ./gradlew test is green (371 tests, 0 failed, 7 pre-existing skips).
 - [Phase 05]: Phase 05 Plan 01: Coverage parser is a separate checked-in file (.github/scripts/jacoco_summary.py), not an inline heredoc; script writes both GITHUB_STEP_SUMMARY and stdout itself (no shell tee, avoids bash -e no-pipefail false-success); actions/upload-artifact@v4 selected over newer majors to match verified research evidence
+- [Phase 05]: [Phase 05]: Human approved push of custom_build (106 commits, tracked .planning/ files included) to the public fork at the Task 2 blocking-human checkpoint; Task 3 pushed and machine-verified a green tests.yaml run (35317272594) via the unauthenticated GitHub REST API on the first attempt. — Clears the worktree-isolation degrade blocker (origin was 100+ commits stale) and satisfies CI-02/CI-03/CI-04's CI-observed halves; DEC-D/E/F followed exactly as authored, DEC-E's red-run path was not exercised since the run went green immediately.
 
 ### Pending Todos
 
@@ -140,6 +142,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-18T06:28:41.990Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-09-18T07:08:10.657Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
