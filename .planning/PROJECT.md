@@ -2,11 +2,44 @@
 
 ## What This Is
 
-The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.2.9_gg4`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, JSON/Dynamic column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. This project audits the existing tests for everything the fork added on top of upstream, writes the missing unit and integration tests, and fixes any bugs those tests uncover — ending with a fully green suite, a coverage report, and CI running it.
+The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.2.9_gg4`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, JSON/Dynamic column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. This project audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
+
+Every fork addition now has a named test behind it. The fork can be rebased onto upstream and the suite will say whether anything broke.
 
 ## Core Value
 
 Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
+
+## Current State
+
+**Shipped:** `v1.2.9_gg4-tests` (2026-09-18) — 5 phases, 16 plans, 75/75 requirements.
+
+The suite runs 371 tests against ClickHouse `latest` × client V2: 0 failures, 0 errors, 7 pre-existing skips. Verified green both locally (`./gradlew test`, colima) and in CI — run [`35317272594`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/35317272594) on `a295af8`, one job, both key steps `success`, both artifacts present. `custom_build` is pushed to the public fork.
+
+Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `src/integrationTest`; `src/main` is 6,850 LOC and was touched only by targeted bug fixes.
+
+**Seven production bugs found and fixed**, each in the phase whose tests exposed it:
+
+| Bug | Fix | Phase |
+|---|---|---|
+| `TableOperationFilter.configure()` unioned skipped ops across repeated calls | Clear before parse (D-03) | 2 |
+| `HeaderToValue` served a stale cached `valueSchema` after a source-schema change | `sourceSchema` reference-comparison guard (D-02) | 2 |
+| `HeadersToValue` — same stale-schema-cache bug | Same guard shape | 2 |
+| `ConvertToMapOrJson.convertFieldValue()` did not recurse into List/Map values | Added both recursion branches (D-01) | 2 |
+| `ClickHouseWriter` MAP branch omitted the RowBinary null marker, making `Map(K, Nullable(V))` columns unwritable | 3-line fix mirroring the ARRAY branch (approved out-of-scope) | 2 |
+| `describeTable` readers used the platform default charset, mangling non-ASCII column names and `Enum` members under the `windows-1252` test JVM | Pinned both readers to UTF-8 (D-15) | 3 |
+| `JSON`/`Dynamic` through RowBinary silently corrupted the stream | Fail-fast `DataException` naming `insertFormat=json` / `bypassRowBinary=true` (TYPE-06) | 3 |
+
+**One bug found and deliberately not fixed:** R-01 — `insertFormat=json` + a `Struct` record + default `bypassRowBinary` writes zero rows and throws nothing. Escalated at a blocking-human checkpoint; you chose `pin-current-behavior`, because a fail-fast throw would break, loudly, any pipeline already running explicit JSON behind a Struct converter. A labelled test now asserts the loss, so a rebase cannot change it unnoticed. The fix needs its own plan.
+
+## Next Milestone Goals
+
+Nothing is scheduled. The Active list below holds nine follow-ups surfaced by phase code reviews, none of them blocking. The two worth a milestone of their own:
+
+1. **R-01 fail-fast** — the only known silent-data-loss path left in the fork. Needs a migration story for existing Struct-converter pipelines, which is why it was not taken inline.
+2. **Error classification is dead code on client V2** — `Utils.handleException`'s `instanceof ClickHouseException` switch never matches, because client V2 raises `com.clickhouse.client.api.ServerException`. Non-retriable outcomes still hold via the fallback, but genuinely retriable ClickHouse errors are likely never retried. This one affects production behavior today.
+
+The remaining seven are small hardening and doc-clarity items.
 
 ## Requirements
 
@@ -70,7 +103,7 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 
 ### Active
 
-<!-- Current scope: tests for fork additions, bug fixes they surface, green suite, coverage, CI. -->
+<!-- v1.2.9_gg4-tests shipped everything originally scoped here. What remains are follow-ups surfaced by phase code reviews, carried forward unscheduled into the next milestone. -->
 
 **Transform follow-ups (emerged in Phase 2 code review, not yet scheduled):**
 
@@ -93,6 +126,8 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 
 **Quality gates:** all three met — moved to Validated at the Phase 5 transition.
 
+**Milestone-close note (v1.2.9_gg4-tests):** every item above is a *review finding*, not an unmet v1 requirement — all 75 v1 requirements shipped. None is a regression; each is either pre-existing fork behavior now documented, or a hardening opportunity the coverage work made visible for the first time.
+
 ### Out of Scope
 
 - New connector features — the goal is coverage of existing fork behavior, not new capability
@@ -102,7 +137,12 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 - Test matrix for ClickHouse 23.7 / 24.3 and client V1 — production connectors use V2; only `latest` matters (older versions also lack JSON/Dynamic)
 - ClickHouse Cloud test matrix — fork has no cloud credentials and does not use Cloud
 - Upstream's disabled `testDBTopicSplit` — upstream feature, not a fork addition
-- Upstream hardening items from `.planning/codebase/CONCERNS.md` (SQL interpolation in `KeeperStateProvider`, reload4j replacement, error categorization) — not fork additions
+- Upstream hardening items from `.planning/codebase/CONCERNS.md` (SQL interpolation in `KeeperStateProvider`, reload4j replacement) — not fork additions
+
+**Out-of-Scope audit at v1.2.9_gg4-tests close** — every exclusion above still holds, with two adjustments:
+
+- **`error categorization` removed from the upstream-hardening exclusion.** It was excluded as an upstream concern, but Phase 4 found the fork's own client-V2 migration is what makes `Utils.handleException`'s error-code table unreachable. That is a fork-facing defect, so it moved to Active rather than staying excluded.
+- **"Completing WIP features beyond bug fixes" narrowed in practice.** The exclusion held — the WIP JSON path and `jsonInsertColumns` were pinned as-is, `src/main/` untouched by plans 04-01 and 04-02. R-01's fix stays out of scope for the same reason the exclusion exists, but is now tracked in Active with a known cost rather than merely excluded.
 
 ## Context
 
@@ -112,7 +152,10 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
   - `src/test/java` — unit tests plus ClickHouse-backed tests extending `ClickHouseBase` (starts a Testcontainers ClickHouse per class); run by `./gradlew test`.
   - `src/test/java/transforms/` — SMT tests (outside the `com.clickhouse...` package).
   - `src/integrationTest/java` — Confluent-platform / Cloud tests, `integrationTest` task, only `workflow_dispatch` in CI.
-  - ClickHouse image chosen by `CLICKHOUSE_VERSION` env (default `25.3`, `ClickHouseTestHelpers`); client by `CLIENT_VERSION` env (default V2). Tests run with `file.encoding=windows-1252`.
+  - ClickHouse image chosen by `CLICKHOUSE_VERSION` env (default `latest` since Phase 1, was `25.3`, `ClickHouseTestHelpers`); client by `CLIENT_VERSION` env (default V2). Tests run with `file.encoding=windows-1252` — deliberately, so non-ASCII handling is exercised rather than masked by a UTF-8 default.
+  - `ClickHouseBase` gives one shared container per test JVM fork, a fresh empty database per test class, an inherited `@Tag("clickhouse")`, an `@AfterEach` MBean leak sweep, and opt-in `uniqueConnectorName(TestInfo)`. New sink-task tests must create their tables before `start()` — `ClickHouseWriter.start()` fails against an empty database.
+  - `./gradlew testUnit` runs everything not tagged `clickhouse`, needs no Docker, and is deliberately not part of `check`.
+  - JaCoCo is report-only on `test`: `jacocoTestReport` plus `jacocoForkReport` over 15 explicitly listed fork-changed classes. No coverage threshold can fail the build.
   - Version gating helper exists: `src/test/java/.../extension/FromVersionConditionExtension.java`.
 - **Fork test inventory (2026-09-15):**
 
@@ -131,10 +174,11 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
   | `async_insert` not forced | `AsyncInsertSettingsUnitTest` (Docker-free) + `AsyncInsertLiveTest` — Phase 4 (was none) |
 
 - **CI today (as of Phase 5):** `.github/workflows/tests.yaml` runs one job — `ClickHouse latest Client version V2 tests` — on every push: `./gradlew test`, then `python3 .github/scripts/jacoco_summary.py` to render coverage into the job summary, then two `if: always()` artifact uploads (`jacoco-coverage-reports`, `gradle-test-reports`, 14-day retention). Trigger is bare `on: [push]`; the job reads no secrets. Upstream's V1/23.7/24.3/cloud matrix and the deprecated `gradle-build-action@v2`/`setup-java@v3` actions are gone. Last verified run: `35317272594` on `a295af8`, green. `gh` CLI is still not installed locally — CI is checked via the unauthenticated GitHub REST API or the web UI.
-- **Local environment:** Docker via colima is installed but was not running at initialization — required for all `ClickHouseBase` tests. JDK 21 on PATH; Gradle toolchain targets 17.
-- **Known risk:** `.planning/codebase/CONCERNS.md` notes `Type.DYNAMIC` has no RowBinary serialization in `ClickHouseWriter`. With explicit JSON insert, ClickHouse parses `JSONEachRow` server-side, but Dynamic via the RowBinary path may fail — if tests confirm, this is a bug to fix (or turn into an explicit, clear error) under the "fix immediately" rule.
-- **Baseline:** CI was green at `22f055c` (2026-01-29) on the full matrix, but the `latest` image has moved since and local tests default to `25.3` — whether `./gradlew test` is green today on `latest`/V2 has not been checked; the first phase should establish it.
+- **Local environment:** Docker via colima must be running for every `ClickHouseBase` test. JDK 21 on PATH; Gradle toolchain targets 17.
+- **Known risk — resolved.** `.planning/codebase/CONCERNS.md` flagged that `Type.DYNAMIC` has no RowBinary serialization in `ClickHouseWriter`. Phase 3 confirmed it and closed it the way the constraint required: `doWriteColValue` now throws an actionable `DataException` naming the column, its type, and the `insertFormat=json` / `bypassRowBinary=true` escape hatches, before any byte is written (TYPE-06). Explicit JSON insert continues to work — ClickHouse parses `JSONEachRow` server-side.
+- **Baseline — established.** Phase 1 found the untouched suite already green on `latest` × V2 once a sandbox environment artifact was neutralized: 187 tests / 0 failed / 7 skipped, rising to 194 / 0 / 7 after the harness work. The final milestone run is 371 / 0 failures / 0 errors / 7 skipped.
 - **Research:** `.planning/research/` (STACK, FEATURES, ARCHITECTURE, PITFALLS, SUMMARY) holds per-feature test-case inventories and 10 pitfalls grounded in fork source.
+- **Open follow-ups:** nine, listed under Requirements → Active. None blocking; two (R-01 fail-fast, client-V2 error classification) affect production behavior.
 
 ## Constraints
 
@@ -143,6 +187,8 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 - **Behavior preservation**: Tests pin current fork behavior (including WIP JSON path and not forcing `async_insert`); code changes are limited to genuine bug fixes — the fork runs in production.
 - **Environment**: Docker (colima) must be running for ClickHouse-backed tests locally and available on CI runners.
 - **Rebasability**: Keep changes additive (new test files/cases, small targeted fixes) to minimize conflicts with future upstream syncs.
+
+**Constraints check at v1.2.9_gg4-tests close** — all five held and all five still apply. Evidence: the JaCoCo plugin was the only build dependency added; `src/main/` changes across the whole milestone total 38 files/+5,742/−117 including tests, with production edits confined to seven targeted bug fixes plus one behavior-preserving `buildMBeanName` extraction; CI now runs `latest` × V2 exclusively. The rebasability constraint is the one to watch — `.planning/` is tracked in this repo (`commit_docs: true`), so an upstream sync will carry 80+ planning files through the merge.
 
 ## Key Decisions
 
@@ -191,4 +237,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-18 after Phase 5 — all 5 phases complete*
+*Last updated: 2026-09-18 after the v1.2.9_gg4-tests milestone*
