@@ -59,14 +59,14 @@
 - [x] **WRT-02**: `validateDataSchema`'s fail-fast gate covers `DYNAMIC` and `UNKNOWN`; `JSON` is removed from the gate in favour of upstream's native `case JSON:` path
 - [ ] **WRT-03**: Upstream's flag-gated JSON-as-string RowBinary write is available, and `TYPE-06`'s JSON assertions are rewritten to match its exception type and message rather than the fork's
 - [ ] **WRT-04**: The fork's duplicate `Map(K, Nullable(V))` null-marker patch is dropped in favour of upstream's version, which carries an extra `getMapValueType() != null` guard — the fork's pinning test stays and still passes
-- [ ] **WRT-05**: `setTargetTableFilter(...)` still reaches the helper-client builder from `ClickHouseWriter.start()`
+- [x] **WRT-05**: `setTargetTableFilter(...)` still reaches the helper-client builder from `ClickHouseWriter.start()`
 
 ### Helper Client (HLP)
 
-- [ ] **HLP-01**: `targetTableFilter` still restricts table discovery server-side via `match(table, '<regex>')`, re-expressed against upstream's `showTables*` methods that return `List<Table.TableDesc>` — `FILT-01..04` green
-- [ ] **HLP-02**: `shouldSkipDescribeRow`'s structural rule (`.null`, `.size0`, `.size`, and children of `JSON`/`Dynamic` columns) is re-expressed against upstream's local-`List<Column>` describe loop — `DESC-01..04` green, and the bare `.size` case that upstream's `.size[0-9]+` regex misses is covered
-- [ ] **HLP-03**: `numColumns` is incremented before any skip decision, matching upstream's treatment of alias/materialized/ephemeral columns, so `extractTablesMapping`'s cache-staleness comparison stays correct
-- [ ] **HLP-04**: Every `InputStreamReader` in the resolved `ClickHouseHelperClient` specifies `StandardCharsets.UTF_8` — verified by grepping the whole resolved file, not just the two call sites the fork originally patched — with `TYPE-07` green under the suite's `windows-1252` JVM
+- [x] **HLP-01**: `targetTableFilter` still restricts table discovery server-side via `match(table, '<regex>')`, re-expressed against upstream's `showTables*` methods that return `List<Table.TableDesc>` — `FILT-01..04` green
+- [x] **HLP-02**: `shouldSkipDescribeRow`'s structural rule (`.null`, `.size0`, `.size`, and children of `JSON`/`Dynamic` columns) is re-expressed against upstream's local-`List<Column>` describe loop — `DESC-01..04` green, and the bare `.size` case that upstream's `.size[0-9]+` regex misses is covered
+- [x] **HLP-03**: `numColumns` is incremented before any skip decision, matching upstream's treatment of alias/materialized/ephemeral columns, so `extractTablesMapping`'s cache-staleness comparison stays correct
+- [x] **HLP-04**: Every `InputStreamReader` in the resolved `ClickHouseHelperClient` specifies `StandardCharsets.UTF_8` — verified by grepping the whole resolved file, not just the two call sites the fork originally patched — with `TYPE-07` green under the suite's `windows-1252` JVM
 
 ### Configuration (CFG)
 
@@ -185,11 +185,11 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | WRT-02 | Phase 7 | Complete |
 | WRT-03 | Phase 7 | Pending |
 | WRT-04 | Phase 7 | Pending |
-| WRT-05 | Phase 7 | Pending |
-| HLP-01 | Phase 7 | Pending |
-| HLP-02 | Phase 7 | Pending |
-| HLP-03 | Phase 7 | Pending |
-| HLP-04 | Phase 7 | Pending |
+| WRT-05 | Phase 7 | Complete |
+| HLP-01 | Phase 7 | Complete |
+| HLP-02 | Phase 7 | Complete |
+| HLP-03 | Phase 7 | Complete |
+| HLP-04 | Phase 7 | Complete |
 | CFG-01 | Phase 7 | Pending |
 | CFG-02 | Phase 7 | Pending |
 | CFG-03 | Phase 7 | Pending |
