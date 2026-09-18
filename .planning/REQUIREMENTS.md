@@ -160,17 +160,81 @@ Deferred — tracked, not in this roadmap.
 
 ## Traceability
 
-Populated during roadmap creation.
+Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Phase numbering continues from the shipped `v1.2.9_gg4-tests` milestone, which ended at Phase 5.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| *(pending roadmap)* | | |
+| SYNC-01 | Phase 6 | Pending |
+| SYNC-02 | Phase 6 | Pending |
+| SYNC-03 | Phase 6 | Pending |
+| SYNC-04 | Phase 6 | Pending |
+| SYNC-05 | Phase 6 | Pending |
+| SYNC-06 | Phase 6 | Pending |
+| BLD-01 | Phase 6 | Pending |
+| BLD-02 | Phase 6 | Pending |
+| BLD-03 | Phase 6 | Pending |
+| BLD-04 | Phase 6 | Pending |
+| BLD-05 | Phase 6 | Pending |
+| BLD-06 | Phase 6 | Pending |
+| BLD-07 | Phase 6 | Pending |
+| BLD-08 | Phase 6 | Pending |
+| MAP-01 | Phase 7 | Pending |
+| MAP-02 | Phase 7 | Pending |
+| MAP-03 | Phase 7 | Pending |
+| WRT-01 | Phase 7 | Pending |
+| WRT-02 | Phase 7 | Pending |
+| WRT-03 | Phase 7 | Pending |
+| WRT-04 | Phase 7 | Pending |
+| WRT-05 | Phase 7 | Pending |
+| HLP-01 | Phase 7 | Pending |
+| HLP-02 | Phase 7 | Pending |
+| HLP-03 | Phase 7 | Pending |
+| HLP-04 | Phase 7 | Pending |
+| CFG-01 | Phase 7 | Pending |
+| CFG-02 | Phase 7 | Pending |
+| CFG-03 | Phase 7 | Pending |
+| FREE-02 | Phase 7 | Pending |
+| FREE-03 | Phase 7 | Pending |
+| ORCH-01 | Phase 8 | Pending |
+| ORCH-02 | Phase 8 | Pending |
+| ORCH-03 | Phase 8 | Pending |
+| ORCH-04 | Phase 8 | Pending |
+| FREE-01 | Phase 8 | Pending |
+| JSONP-01 | Phase 9 | Pending |
+| JSONP-02 | Phase 9 | Pending |
+| JSONP-03 | Phase 9 | Pending |
+| JSONP-04 | Phase 9 | Pending |
+| HARN-01 | Phase 10 | Pending |
+| HARN-02 | Phase 10 | Pending |
+| HARN-03 | Phase 10 | Pending |
+| HARN-04 | Phase 10 | Pending |
+| HARN-05 | Phase 10 | Pending |
+| HARN-06 | Phase 10 | Pending |
+| HARN-07 | Phase 10 | Pending |
+| SUITE-01 | Phase 11 | Pending |
+| SUITE-02 | Phase 11 | Pending |
+| SUITE-03 | Phase 11 | Pending |
+| CI-05 | Phase 11 | Pending |
+| CI-06 | Phase 11 | Pending |
+| CI-07 | Phase 11 | Pending |
+
+**Phase map:**
+
+- **Phase 6 — Merge Groundwork & Build Migration**: 14 requirements
+- **Phase 7 — Type Mapping, Writer, Helper Client & Config**: 17 requirements
+- **Phase 8 — Orchestration & JMX Re-plumbing**: 5 requirements
+- **Phase 9 — Metadata-free JSON Path — Keep or Drop**: 4 requirements
+- **Phase 10 — Test Harness Reconciliation**: 7 requirements
+- **Phase 11 — Full Suite, CI & Publication**: 6 requirements
 
 **Coverage:**
-- v1 requirements: 46 total
-- Mapped to phases: 0
-- Unmapped: 46 ⚠️
+- v1 requirements: 53 total
+- Mapped to phases: 53 ✓
+- Unmapped: 0
+- Duplicates (a requirement in more than one phase): 0
+
+> **Count correction.** This block previously read "46 total". The document has always listed **53** v1 requirements (`grep -c '^- \[ \] \*\*'` = 53); the earlier summary figure was a miscount, not a lost set of requirements. No requirement was added or removed at roadmap creation.
 
 ---
 *Requirements defined: 2026-09-18*
-*Last updated: 2026-09-18 after initial definition*
+*Last updated: 2026-09-18 — traceability populated at roadmap creation (Phases 6-11)*
