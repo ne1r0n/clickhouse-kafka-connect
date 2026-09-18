@@ -36,3 +36,9 @@ build
 
 # AI
 memory
+
+/bin/
+
+.vscode
+
+.gsd
