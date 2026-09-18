@@ -1,19 +1,18 @@
 ---
 gsd_state_version: "1.0"
 current_phase: 05
-current_phase_name: CI & Final Verification
-status: verifying
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-09-18T07:08:10.739Z"
+status: completed
+stopped_at: Phase 05 complete — all phases complete
+last_updated: "2026-09-18T08:31:21.802Z"
 last_activity: 2026-09-18
-last_activity_desc: Phase 05 execution started
-state_head: 86484c2d3e4fea7ce8644c717cfeef99cd8d0eff
+last_activity_desc: Phase 05 complete
+state_head: a06b8e0fd8964d684025826cc850ab4d48ae3a4e
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 16
   completed_plans: 16
-  percent: 80
+  percent: 100
 ---
 
 # Project State
@@ -23,22 +22,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-18)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 05 — CI & Final Verification
+**Current focus:** Milestone complete — all 5 phases done, ready to archive via `/gsd-complete-milestone`
 
 ## Current Position
 
-Phase: 05 (CI & Final Verification) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-09-18 — Phase 05 execution started
+Phase: 05
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-09-18 — Phase 05 complete
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 14
+- Total plans completed: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -50,6 +49,7 @@ Progress: [████████░░] 80%
 | 02 | 5 | - | - |
 | 03 | 3 | - | - |
 | 04 | 3 | - | - |
+| 05 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -126,11 +126,11 @@ None yet.
 
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper and makes ClickHouse-backed tests fail spuriously. Run Gradle tests as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`. Docker runs on colima profile `vz`; profile `default` is stopped.
 - [GSD]: ~~`workflow.test_command`/`workflow.build_command` unset~~ — RESOLVED in Phase 3. Both are now set in `.planning/config.json` to `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test` / `... assemble`, with `workflow.test_gate_timeout=2400` (the full suite takes ~4.5 min and the 600s default was too tight). The post-merge and regression gates now run the real suite instead of `true`.
-- [GSD]: Worktree isolation auto-degrades to sequential execution (#683) while `custom_build` has unpushed commits, because the harness forks worktrees off `origin/HEAD`. Expect one-plan-at-a-time waves until the branch is pushed. Also: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel as a side effect, so the degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
+- [GSD]: ~~Worktree isolation auto-degrades to sequential execution (#683) while `custom_build` has unpushed commits~~ — RESOLVED in Phase 5: `custom_build` was pushed (`22f055c..a295af8`), so `origin/HEAD` is current and worktree forks are viable again. The side-effect quirk still stands if it recurs: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel, so any degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
 - [Phase 4]: ~~Research flag: check how client-v2 `0.9.6` handles an empty `jsonInsertColumns` list before writing COLS-02.~~ — RESOLVED. Withdrawn by D-11 and confirmed in Phase 4: the default empty list inserts correct values (COLS-02 is a plain confirmatory pin).
 - [Phase 4]: ⚠ **Unfixed production bug, pinned only.** `insertFormat=json` + a `Struct` record + `bypassRowBinary` at its default `false` silently discards every row (no throw, `Written Rows: [0]`). Pinned by a labelled test at the user's direction; the fail-fast fix is not pre-approved (D-01/D-07) and needs its own plan.
 - [Phase 4]: ⚠ **Retriable ClickHouse errors are likely not retried.** `Utils.handleException`'s `instanceof ClickHouseException` switch never matches under client V2 — the real type is `com.clickhouse.client.api.ServerException` — so the whole retriable/non-retriable error-code table is unreachable and every error falls through to the unconditional fallback. Surfaced while pinning COLS-05; not a Phase 4 regression, and out of this project's declared scope.
-- [Phase 5]: The `gh` CLI is not installed locally, so CI runs must be checked through the GitHub web UI or API.
+- [Phase 5]: The `gh` CLI is not installed locally (deliberately — D-11), so CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr budget) or the web UI. A rendered job summary has no unauthenticated endpoint — that one check is a human glance at the run's Summary tab.
 
 ## Deferred Items
 
@@ -142,6 +142,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-18T07:08:10.657Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-09-18
+Stopped at: Phase 05 verified (UAT 2/2 passed, security threats_open: 0) — all phases complete, milestone ready to close
 Resume file: None

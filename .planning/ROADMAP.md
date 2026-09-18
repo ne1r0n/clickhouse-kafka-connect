@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Fork SMT Coverage** - Edge cases, config contracts, and sink-level ClickHouse landing tests for all four fork SMTs (completed 2026-09-16)
 - [x] **Phase 3: Table Metadata & JSON/Dynamic Types** - `targetTableFilter`, `describeTable` sub-column skipping, JSON/Dynamic mapping and round-trips, RowBinary fail-fast, non-ASCII (completed 2026-09-17)
 - [x] **Phase 4: JSON Insert Path & Connector Plumbing** - Explicit `insertFormat=json`, `jsonInsertColumns`, MBean naming, `async_insert` not forced (completed 2026-09-18)
-- [ ] **Phase 5: CI & Final Verification** - Modernized single-job CI on `latest` × V2 publishing coverage, full suite green locally and in CI
+- [x] **Phase 5: CI & Final Verification** - Modernized single-job CI on `latest` × V2 publishing coverage, full suite green locally and in CI (completed 2026-09-18)
 
 ## Phase Details
 
@@ -208,4 +208,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 | 2. Fork SMT Coverage | 5/5 | Complete    | 2026-09-16 |
 | 3. Table Metadata & JSON/Dynamic Types | 3/3 | Complete    | 2026-09-17 |
 | 4. JSON Insert Path & Connector Plumbing | 3/3 | Complete    | 2026-09-18 |
-| 5. CI & Final Verification | 2/2 | In Progress|  |
+| 5. CI & Final Verification | 2/2 | Complete    | 2026-09-18 |
