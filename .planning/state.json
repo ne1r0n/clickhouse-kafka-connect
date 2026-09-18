@@ -1,38 +1,12 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": null,
-  "phases": [
-    {
-      "number": "1",
-      "name": "Test Infrastructure & Green Baseline",
-      "status": "complete"
-    },
-    {
-      "number": "2",
-      "name": "Fork SMT Coverage",
-      "status": "complete"
-    },
-    {
-      "number": "3",
-      "name": "Table Metadata & JSON/Dynamic Types",
-      "status": "complete"
-    },
-    {
-      "number": "4",
-      "name": "JSON Insert Path & Connector Plumbing",
-      "status": "complete"
-    },
-    {
-      "number": "5",
-      "name": "CI & Final Verification",
-      "status": "complete"
-    }
-  ],
+  "milestone": "v1.6.0_gg1-sync",
+  "phases": [],
   "next": {
-    "command": "/gsd:progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd:discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-09-18T08:46:19.033Z"
+  "updated_at": "2026-09-18T10:34:54.931Z"
 }
