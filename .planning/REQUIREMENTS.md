@@ -31,10 +31,10 @@
 
 - [x] **SYNC-01**: Upstream `ClickHouse/clickhouse-kafka-connect` is configured as a named git remote in this repo, so future syncs do not depend on ad-hoc `git fetch <url>` invocations
 - [x] **SYNC-02**: The pre-merge tip of `custom_build` is tagged (e.g. `pre-v1.6.0-sync`) as an unambiguous rollback point, and the merge is performed on a scratch branch so the already-published `custom_build` never requires a force-push
-- [ ] **SYNC-03**: The `git merge-tree --write-tree custom_build v1.6.0` conflict inventory is captured as a checked-in, per-file resolution checklist — 40 conflict messages (35 `content` + 5 `modify/delete`) across 39 unique paths, each marked with its resolution shape: survives as-is / re-express / redundant
-- [ ] **SYNC-04**: The resolved ClickHouse Java client version from upstream's `gradle/libs.versions.toml` is recorded explicitly and compared against what the fork runs in production, so a wholesale build adoption cannot silently bump it
-- [ ] **SYNC-05**: A production-config audit is recorded answering whether any live connector combines `enableDbTopicSplit=true`+`exactlyOnce=true` (upstream documents a one-time dedup gap on upgrade) or `bufferCount>0`+`exactlyOnce=true` (now rejected at startup unless `bufferFlushTime=0` and `ignorePartitionsWhenBatching=false`)
-- [ ] **SYNC-06**: The merge lands as a single identifiable merge commit with no `.planning/` churn interleaved into conflict resolution — no committed revision in the merge range contains a literal `<<<<<<<` conflict marker in tracked source
+- [x] **SYNC-03**: The `git merge-tree --write-tree custom_build v1.6.0` conflict inventory is captured as a checked-in, per-file resolution checklist — 40 conflict messages (35 `content` + 5 `modify/delete`) across 39 unique paths, each marked with its resolution shape: survives as-is / re-express / redundant
+- [x] **SYNC-04**: The resolved ClickHouse Java client version from upstream's `gradle/libs.versions.toml` is recorded explicitly and compared against what the fork runs in production, so a wholesale build adoption cannot silently bump it
+- [x] **SYNC-05**: A production-config audit is recorded answering whether any live connector combines `enableDbTopicSplit=true`+`exactlyOnce=true` (upstream documents a one-time dedup gap on upgrade) or `bufferCount>0`+`exactlyOnce=true` (now rejected at startup unless `bufferFlushTime=0` and `ignorePartitionsWhenBatching=false`)
+- [x] **SYNC-06**: The merge lands as a single identifiable merge commit with no `.planning/` churn interleaved into conflict resolution — no committed revision in the merge range contains a literal `<<<<<<<` conflict marker in tracked source
 
 ### Build Migration (BLD)
 
@@ -166,10 +166,10 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 |-------------|-------|--------|
 | SYNC-01 | Phase 6 | Complete |
 | SYNC-02 | Phase 6 | Complete |
-| SYNC-03 | Phase 6 | Pending |
-| SYNC-04 | Phase 6 | Pending |
-| SYNC-05 | Phase 6 | Pending |
-| SYNC-06 | Phase 6 | Pending |
+| SYNC-03 | Phase 6 | Complete |
+| SYNC-04 | Phase 6 | Complete |
+| SYNC-05 | Phase 6 | Complete |
+| SYNC-06 | Phase 6 | Complete |
 | BLD-01 | Phase 6 | Complete |
 | BLD-02 | Phase 6 | Complete |
 | BLD-03 | Phase 6 | Complete |

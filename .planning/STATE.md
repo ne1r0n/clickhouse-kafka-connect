@@ -4,17 +4,17 @@ milestone: v1.6.0_gg1-sync
 milestone_name: Upstream v1.6.0 Sync
 current_phase: 06
 current_phase_name: Merge Groundwork & Build Migration
-status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-09-18T18:43:56.355Z"
+status: verifying
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-09-18T19:00:34.293Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 06 execution started
-state_head: b582a44bb62d3d99495276ede287cd55e88a73cc
+state_head: ae86b60307ff413c7c3bc0dbc66883b32d921e4b
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 
 Phase: 06 (Merge Groundwork & Build Migration) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-18 — Phase 06 execution started
 
 ## Performance Metrics
@@ -65,6 +65,7 @@ Last activity: 2026-09-18 — Phase 06 execution started
 |------|----------|-------|-------|
 | Phase 06 P01 | 20 min | 2 tasks | 222 files |
 | Phase 06 P02 | 9 min | 3 tasks | 5 files |
+| Phase 06 P03 | ~15min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - New sink-task tests must create their tables before `start()` — `ClickHouseWriter.start()` fails against an empty database.
 - [Phase 06]: Landed the 581-commit v1.6.0 merge as one mechanical commit (673d29c3) on scratch branch sync/v1.6.0, tagged from pre-v1.6.0-sync; all 40 conflicted paths verified byte-identical to upstream via a committed invariant script. — D-01/D-02: keeps every fork re-application in Phases 7-10 a reviewable diff against upstream instead of a judgement call inside a 500-file merge.
 - [Phase 06]: Phase 06 Plan 02: Re-applied all six fork build.gradle.kts additions (JaCoCo report-only, testUnit + check-exclusion guard, JDK-17 test-JVM launcher + windows-1252 encoding, LZ4 capability resolution, ben-manes dependencyUpdates, Spotless config) onto upstream v1.6.0's version-catalog build file; landed VERSION=v1.6.0_gg1 and the .gitignore/tests.yaml settlement; proved all four D-12 resolved-version facts against the live dependency graph. — Keeps every fork re-application a reviewable diff against upstream, per D-01/D-02; the gate (help+dependencies) is the only pass/fail signal for Phase 6.
+- [Phase 06]: [Phase 06]: Phase 06 Plan 03: Generated .planning/MERGE-CHECKLIST.md (40-row Section 1 from conflicted-paths.txt, 8-row Section 2, Recorded Facts closing SYNC-04/SYNC-05); flipped Phase 6's 5 build/infra rows to done; re-proved D-02/SYNC-06 invariants across the full 588-commit range. Corrected a research-prose error about Processing.java's merge status and a plan verify-block premise about merge-commit counts (both documented as deviations, no repo state altered). — Turns the merge's conflict surface into a per-path gate Phases 7-11 flip inside their own commits, with Phase 11 asserting zero pending rows before publication; closes SYNC-03/04/05/06, completing Phase 6's 14 requirements.
 
 ### Pending Todos
 
@@ -109,8 +111,8 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-18T18:43:56.326Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-09-18T19:00:34.265Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
