@@ -1,20 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 06-merge-groundwork-build-migration
 source: [06-VERIFICATION.md]
 started: 2026-09-18T19:20:17Z
-updated: 2026-09-18T19:20:17Z
+updated: 2026-09-18T20:18:02Z
 ---
 
 ## Current Test
 
-number: 1
-name: MERGE-CHECKLIST Section 1 owning-phase and adjudicating-test assignments are correct, not merely non-empty
-expected: |
-  No row is mis-assigned to a phase that will not actually resolve it; no fork behaviour is
-  orphaned between two phases; every named fork behaviour has a real adjudicating
-  test/requirement ID attached.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -33,16 +27,30 @@ silently-vanishing fork behaviours appears against at least one row with a named
 
 expected: No row is mis-assigned to a phase that will not actually resolve it; no fork behaviour is orphaned between two phases; every named fork behaviour has a real adjudicating test/requirement ID attached.
 why_human: This is a judgment call about future work distribution and behavioural completeness requiring domain knowledge of what each of Phases 7-10 will actually touch. No automated check can verify that an owning-phase assignment is *correct* — only that the column is *non-empty*. `06-03-PLAN.md`'s task 3 verify block flags this exact check as `<human-check>`, deferred to end-of-phase per the project's `human_verify_mode: end-of-phase` convention.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 1
-passed: 0
+passed: 1
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
+
+## Gate Overrides
+
+- gate: api-coverage (verify:pre, blocking)
+  result: block=true — "external-API integration detected without a coverage matrix"
+  signals: ["connect+api", "(surface)+api"]
+  decision: overridden for this phase by user on 2026-09-18
+  rationale: >
+    False positive. Phase 6's boundary is a git merge plus a Gradle version-catalog build
+    migration; it explicitly excludes semantic re-application of fork behaviour, test
+    execution, and publication, and does not compile `src/main`. The detector matched domain
+    vocabulary in a repository whose subject is the Kafka Connect API connector, not an
+    external-API integration introduced by this phase. `workflow.api_coverage_gate` stays
+    enabled for Phases 7-10.
 
 ## Gaps
 
