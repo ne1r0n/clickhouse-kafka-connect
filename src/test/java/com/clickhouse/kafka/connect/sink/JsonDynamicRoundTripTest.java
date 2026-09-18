@@ -35,13 +35,21 @@ import org.junit.jupiter.api.TestInfo;
  */
 public class JsonDynamicRoundTripTest extends ClickHouseBase {
 
+    private static void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     @DisplayName("TYPE-03: JSON and Dynamic columns round-trip through the schemaless JSONEachRow route with typed read-back")
     void jsonAndDynamicRoundTripThroughSchemalessRoute(TestInfo testInfo) throws Exception {
         String tableName = createTopicName("json_dynamic_schemaless");
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
-        ClickHouseTestHelpers.createTable(chc, tableName,
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        createTable(chc, tableName,
                 "CREATE TABLE %s (id UInt32, json_col JSON, dynamic_col Dynamic) ENGINE = MergeTree ORDER BY id");
         props.put("name", uniqueConnectorName(testInfo));
 
@@ -103,10 +111,10 @@ public class JsonDynamicRoundTripTest extends ClickHouseBase {
     @DisplayName("TYPE-03: JSON and Dynamic columns round-trip through the bypassRowBinary Struct record route (D-05 escape hatch proof)")
     void jsonAndDynamicRoundTripThroughStructRoute(TestInfo testInfo) throws Exception {
         String tableName = createTopicName("json_dynamic_struct");
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         props.put("bypassRowBinary", "true");
-        ClickHouseHelperClient chc = createClient(props);
-        ClickHouseTestHelpers.createTable(chc, tableName,
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        createTable(chc, tableName,
                 "CREATE TABLE %s (id UInt32, json_col JSON, dynamic_col Dynamic) ENGINE = MergeTree ORDER BY id");
         props.put("name", uniqueConnectorName(testInfo));
 
@@ -171,9 +179,9 @@ public class JsonDynamicRoundTripTest extends ClickHouseBase {
     @DisplayName("TYPE-04: dynamicType(dynamic_col) is stable across repeated reads and does not depend on read order")
     void dynamicColumnTypeIsStableAcrossRepeatedReads(TestInfo testInfo) throws Exception {
         String tableName = createTopicName("dynamic_idempotency");
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
-        ClickHouseTestHelpers.createTable(chc, tableName,
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        createTable(chc, tableName,
                 "CREATE TABLE %s (id UInt32, dynamic_col Dynamic) ENGINE = MergeTree ORDER BY id");
         props.put("name", uniqueConnectorName(testInfo));
 
@@ -222,9 +230,9 @@ public class JsonDynamicRoundTripTest extends ClickHouseBase {
     @DisplayName("TYPE-05: a mixed table with Dynamic, String, UInt32, JSON, Float64 and Decimal columns round-trips through both insert routes regardless of column position")
     void mixedTableRoundTripsThroughBothInsertRoutes(TestInfo testInfo) throws Exception {
         String tableName = createTopicName("json_dynamic_mixed");
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
-        ClickHouseTestHelpers.createTable(chc, tableName,
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        createTable(chc, tableName,
                 "CREATE TABLE %s ("
                         + "id UInt32, "
                         + "dyn_first Dynamic, "
@@ -408,9 +416,9 @@ public class JsonDynamicRoundTripTest extends ClickHouseBase {
     @DisplayName("TYPE-07: Cyrillic, CJK, non-BMP and empty values round-trip byte-identically through String, JSON and Dynamic columns")
     void nonAsciiAndBoundaryValuesRoundTripThroughAllColumnKinds(TestInfo testInfo) throws Exception {
         String tableName = createTopicName("type07_values");
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
-        ClickHouseTestHelpers.createTable(chc, tableName,
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        createTable(chc, tableName,
                 "CREATE TABLE %s (id UInt32, str_col String, json_col JSON, dynamic_col Dynamic) ENGINE = MergeTree ORDER BY id");
         props.put("name", uniqueConnectorName(testInfo));
 
@@ -519,9 +527,9 @@ public class JsonDynamicRoundTripTest extends ClickHouseBase {
     @DisplayName("TYPE-07: a Cyrillic SMT header value round-trips byte-identically through HeaderToValue into a String column")
     void nonAsciiHeaderValueRoundTripsThroughHeaderToValueSmt() throws Exception {
         String tableName = createTopicName("type07_header");
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
-        ClickHouseTestHelpers.createTable(chc, tableName,
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        createTable(chc, tableName,
                 "CREATE TABLE %s (id UInt32, header_value String) ENGINE = MergeTree ORDER BY id");
 
         // Cyrillic code points U+0437 U+0430 U+0433 U+043E U+043B U+043E U+0432 U+043E U+043A spell

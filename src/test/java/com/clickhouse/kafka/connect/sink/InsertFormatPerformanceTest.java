@@ -2,6 +2,7 @@ package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
@@ -46,7 +47,7 @@ public class InsertFormatPerformanceTest extends ClickHouseBase {
     @Test
     public void compareInsertPerformance() {
         String topic = createTopicName("insert_format_perf_test");
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
 
         // props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V2");
 
@@ -86,16 +87,20 @@ public class InsertFormatPerformanceTest extends ClickHouseBase {
             Map<String, String> props, ConvertToMapOrJson<SinkRecord> transform, 
             String label, List<PerformanceResult> results) {
         
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, topic);
-        ClickHouseTestHelpers.createTable(chc, topic,
-            "CREATE TABLE %s (" +
+        String createTableQuery = "CREATE TABLE %s (" +
             "id Int32, " +
             "timestamp Int64, " +
             "name String, " +
             "value Float64, " +
             "active Bool" +
-            ") ENGINE = MergeTree ORDER BY id");
+            ") ENGINE = MergeTree ORDER BY id";
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, topic))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         List<SinkRecord> transformedRecords = sourceRecords.stream()
             .map(transform::apply)

@@ -2,6 +2,7 @@ package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.sink.helper.CreateTableStatement;
@@ -237,12 +238,12 @@ public class ClickHouseSinkTaskMappingTest extends ClickHouseBase{
 
     @Test
     public void tableFilterTest() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         // Set filter to only allow tables starting with "filtered_"
         props.put(ClickHouseSinkConfig.SUPPRESS_TABLE_EXISTENCE_EXCEPTION, "true");
         props.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, "^filtered_.*");
         props.put(ClickHouseSinkConfig.TABLE_MAPPING, "topic1=filtered_table1, topic2=unfiltered_table2");
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
 
         String topic1 = "topic1";
         String topic2 = "topic2";
@@ -255,8 +256,16 @@ public class ClickHouseSinkTaskMappingTest extends ClickHouseBase{
         // Create both tables with same schema
         String tableSchema = "CREATE TABLE %s ( `off16` Int16, `str` String, `p_int8` Int8, `p_int16` Int16, `p_int32` Int32, " +
                 "`p_int64` Int64, `p_float32` Float32, `p_float64` Float64, `p_bool` Bool) Engine = MergeTree ORDER BY off16";
-        ClickHouseTestHelpers.createTable(chc, filteredTable, tableSchema);
-        ClickHouseTestHelpers.createTable(chc, unfilteredTable, tableSchema);
+        try (Records ignored = chc.queryV2(String.format(tableSchema, filteredTable))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        try (Records ignored = chc.queryV2(String.format(tableSchema, unfilteredTable))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         Collection<SinkRecord> sr1 = SchemalessTestData.createPrimitiveTypes(topic1, 1);
         Collection<SinkRecord> sr2 = SchemalessTestData.createPrimitiveTypes(topic2, 1);

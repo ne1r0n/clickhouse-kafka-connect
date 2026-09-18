@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -31,22 +32,36 @@ import org.junit.jupiter.api.TestInfo;
  * csc.getJsonInsertColumns()} to {@code client.insert(...)} - the String route ({@code
  * doInsertStringV2}) uses the 4-arg overload with no column list at all, so {@code
  * jsonInsertColumns} is unreachable from a String-record test.
+ *
+ * <p>Disabled pending the JSONP-01 keep/drop decision (Phase 9, D-11): {@code jsonInsertColumns}'
+ * insert-time consumer this class pins was dropped by the mechanical v1.6.0 merge and has not
+ * been re-applied to {@code src/main} in this phase. Every assertion below is left intact so
+ * Phase 9 can re-enable this class unchanged if the decision is keep.
  */
+@Disabled("Pending JSONP-01 keep/drop decision — Phase 9")
 public class JsonInsertColumnsLiveTest extends ClickHouseBase {
 
     private static final String FOUR_COLUMN_DDL =
             "CREATE TABLE %s (id UInt32, listed Int32, extra Int32 DEFAULT 42, tag String DEFAULT 'unset') ENGINE = MergeTree ORDER BY id";
 
+    private void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     @DisplayName(
             "COLS-03: an explicit jsonInsertColumns subset fills the listed columns and leaves every unlisted column at its DEFAULT")
     void explicitSubsetFillsListedColumnsAndLeavesUnlistedAtDefault(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String tableName = createTopicName("cols03_subset");
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        ClickHouseTestHelpers.createTable(chc, tableName, FOUR_COLUMN_DDL);
+        createTable(chc, tableName, FOUR_COLUMN_DDL);
 
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         // Deliberately padded: the parser's trim (COLS-01) must survive all the way to the
@@ -97,12 +112,12 @@ public class JsonInsertColumnsLiveTest extends ClickHouseBase {
         // jsonInsertColumns list and was green, so the roadmap's empty-list research flag was
         // withdrawn - COLS-02 simply asserts the already-established behavior again, explicitly,
         // as its own pin.
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String tableName = createTopicName("cols02_default_list");
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        ClickHouseTestHelpers.createTable(chc, tableName, FOUR_COLUMN_DDL);
+        createTable(chc, tableName, FOUR_COLUMN_DDL);
 
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         // JSON_INSERT_COLUMNS deliberately NOT SET.
@@ -140,12 +155,12 @@ public class JsonInsertColumnsLiveTest extends ClickHouseBase {
     @DisplayName(
             "COLS-04: a payload key that is a real column outside the configured list, and a payload key that is not a column at all, both leave the insert successful and the unlisted real column at its DEFAULT")
     void extraPayloadKeysOutsideListDoNotBreakInsertAndStayAtDefault(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String tableName = createTopicName("cols04_extra_keys");
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        ClickHouseTestHelpers.createTable(chc, tableName, FOUR_COLUMN_DDL);
+        createTable(chc, tableName, FOUR_COLUMN_DDL);
 
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         props.put(ClickHouseSinkConfig.JSON_INSERT_COLUMNS, "id,listed");
@@ -188,12 +203,12 @@ public class JsonInsertColumnsLiveTest extends ClickHouseBase {
     @DisplayName(
             "COLS-05: a jsonInsertColumns entry naming a nonexistent column makes put() throw a non-retriable RuntimeException with no partial insert and no NullPointerException")
     void nonexistentColumnThrowsNonRetriableWithNoPartialInsert(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String tableName = createTopicName("cols05_bad_column");
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        ClickHouseTestHelpers.createTable(chc, tableName, FOUR_COLUMN_DDL);
+        createTable(chc, tableName, FOUR_COLUMN_DDL);
 
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         props.put(ClickHouseSinkConfig.JSON_INSERT_COLUMNS, "id,no_such_column");
@@ -247,12 +262,12 @@ public class JsonInsertColumnsLiveTest extends ClickHouseBase {
     @DisplayName(
             "COLS-06: on the non-explicit JSON path, jsonInsertColumns still fills the listed columns, a real-but-unlisted column keeps its DEFAULT despite cleanupExtraFields keeping its payload key, and a non-column key is stripped")
     void nonExplicitPathHonoursColumnListAndCleanupExtraFieldsInteraction(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String tableName = createTopicName("cols06_non_explicit");
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        ClickHouseTestHelpers.createTable(chc, tableName, FOUR_COLUMN_DDL);
+        createTable(chc, tableName, FOUR_COLUMN_DDL);
 
         // INSERT_FORMAT deliberately NOT SET: jsonInsertFormatExplicit stays false,
         // cleanupExtraFields runs, and the table mapping is fetched normally.

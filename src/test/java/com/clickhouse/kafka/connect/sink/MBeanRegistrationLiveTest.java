@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import java.lang.management.ManagementFactory;
@@ -28,6 +29,14 @@ import org.junit.jupiter.api.TestInfo;
  * stop()") are valid.
  */
 public class MBeanRegistrationLiveTest extends ClickHouseBase {
+
+    private static void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /**
      * Queries the platform MBean server for every registered
@@ -64,11 +73,11 @@ public class MBeanRegistrationLiveTest extends ClickHouseBase {
     @DisplayName("JMX-04: a started task registers its MBean on the platform server and stop() unregisters exactly that one")
     void startedTaskRegistersAndStopUnregistersExactlyOne(TestInfo testInfo) throws Exception {
         String connectorName = uniqueConnectorName(testInfo);
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
 
         String tableName = createTopicName("jmx04_fixture");
-        ClickHouseTestHelpers.createTable(chc, tableName, "CREATE TABLE %s (id UInt32) ENGINE = MergeTree ORDER BY id");
+        createTable(chc, tableName, "CREATE TABLE %s (id UInt32) ENGINE = MergeTree ORDER BY id");
         props.put("name", connectorName);
 
         Set<String> mine = Set.of(connectorName);
@@ -103,15 +112,14 @@ public class MBeanRegistrationLiveTest extends ClickHouseBase {
         String nameB = base + "-B";
         Set<String> both = Set.of(nameA, nameB);
 
-        // createProps() alone always points at the "default" database; only createClient()
-        // mutates its argument map's DATABASE entry to the per-class test database that actually
-        // holds the fixture table. Every per-task props map below is therefore a copy of this
-        // already-mutated base map (not a fresh createProps() call), or ClickHouseWriter.start()
-        // finds no tables in "default" and returns false.
-        Map<String, String> baseProps = createProps();
-        ClickHouseHelperClient chc = createClient(baseProps);
+        // getBaseProps() already points at this class's per-class test database (the instance
+        // `database` field, set in @BeforeAll setup()), so every per-task props map below is a
+        // copy of this one already-correct base map, ensuring ClickHouseWriter.start() finds the
+        // fixture table created below rather than an empty "default" database.
+        Map<String, String> baseProps = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(baseProps);
         String tableName = createTopicName("jmx04_multi");
-        ClickHouseTestHelpers.createTable(chc, tableName, "CREATE TABLE %s (id UInt32) ENGINE = MergeTree ORDER BY id");
+        createTable(chc, tableName, "CREATE TABLE %s (id UInt32) ENGINE = MergeTree ORDER BY id");
 
         ClickHouseSinkTask taskA1 = new ClickHouseSinkTask();
         ClickHouseSinkTask taskA2 = new ClickHouseSinkTask();

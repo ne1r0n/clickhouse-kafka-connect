@@ -2,10 +2,11 @@ package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
-import com.clickhouse.kafka.connect.sink.junit.extension.FromVersionConditionExtension;
-import com.clickhouse.kafka.connect.sink.junit.extension.SinceClickHouseVersion;
+import com.clickhouse.kafka.connect.test.junit.extension.FromVersionConditionExtension;
+import com.clickhouse.kafka.connect.test.junit.extension.SinceClickHouseVersion;
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
 import java.util.*;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -51,10 +52,14 @@ public class JsonColumnTest extends ClickHouseBase {
 
     private void runJsonTest(Map<String, String> props, Map<String, Object> transformConfig, String testLabel) {
         // props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V2");
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        ClickHouseTestHelpers.createTable(chc, tableName,
-            "CREATE TABLE %s (id UInt32, json_data JSON) ENGINE = MergeTree ORDER BY id");
+        try (Records ignored = chc.queryV2(
+                String.format("CREATE TABLE %s (id UInt32, json_data JSON) ENGINE = MergeTree ORDER BY id", tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         List<SinkRecord> sourceRecords = createTestRecords(tableName);
         
@@ -81,7 +86,7 @@ public class JsonColumnTest extends ClickHouseBase {
     @Test
     @SinceClickHouseVersion("25.3")
     public void testBytesNoBase64NoJson() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", false,
             "output.json.enabled", false
@@ -92,7 +97,7 @@ public class JsonColumnTest extends ClickHouseBase {
     @Test
     @SinceClickHouseVersion("25.3")
     public void testBytesBase64NoJson() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", true,
             "output.json.enabled", false
@@ -103,7 +108,7 @@ public class JsonColumnTest extends ClickHouseBase {
     @Test
     @SinceClickHouseVersion("25.3")
     public void testBytesNoBase64JsonWithJackson() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", false,
             "output.json.enabled", true,
@@ -115,7 +120,7 @@ public class JsonColumnTest extends ClickHouseBase {
     @Test
     @SinceClickHouseVersion("25.3")
     public void testBytesNoBase64JsonWithGson() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", false,
             "output.json.enabled", true,
@@ -127,7 +132,7 @@ public class JsonColumnTest extends ClickHouseBase {
     @Test
     @SinceClickHouseVersion("25.3")
     public void testBytesBase64JsonWithJackson() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", true,
             "output.json.enabled", true,
@@ -139,7 +144,7 @@ public class JsonColumnTest extends ClickHouseBase {
     @Test
     @SinceClickHouseVersion("25.3")
     public void testBytesBase64JsonWithGson() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", true,
             "output.json.enabled", true,
@@ -164,7 +169,7 @@ public class JsonColumnTest extends ClickHouseBase {
         List<PerformanceResult> results = new ArrayList<>();
 
         for (Map<String, Object> config : configs) {
-            Map<String, String> props = createProps();
+            Map<String, String> props = getBaseProps();
 
             String label = String.format("base64=%s, json=%s%s",
                 config.get("bytes.to.base64"),

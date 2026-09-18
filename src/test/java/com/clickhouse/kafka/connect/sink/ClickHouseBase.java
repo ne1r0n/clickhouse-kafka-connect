@@ -8,6 +8,8 @@ import com.google.crypto.tink.internal.Random;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +20,13 @@ import org.testcontainers.utility.MountableFile;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
+@Tag("clickhouse")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBase.class);
+    private static final AtomicLong CONNECTOR_NAME_COUNTER = new AtomicLong();
     protected ClickHouseContainer db;
     protected ClickHouseCluster cluster;
     protected static boolean isCloud = ClickHouseTestHelpers.isCloud();
@@ -125,5 +130,14 @@ public class ClickHouseBase {
 
     protected String createTestUsername(String baseName) {
         return String.format("%s_%d", baseName, System.currentTimeMillis());
+    }
+
+    /**
+     * Opt-in unique connector name for new/touched tests (D-10). {@code createProps()} stays
+     * unchanged, so existing tests keep their current {@code connector=null} MBean names.
+     */
+    protected String uniqueConnectorName(TestInfo testInfo) {
+        String methodName = testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("unknown");
+        return getClass().getSimpleName() + "-" + methodName + "-" + CONNECTOR_NAME_COUNTER.incrementAndGet();
     }
 }

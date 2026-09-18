@@ -2,6 +2,7 @@ package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
@@ -35,6 +36,14 @@ import org.junit.jupiter.api.TestInfo;
  * keeps this class out of the Docker-free {@code testUnit} task.
  */
 public class SmtSinkLandingTest extends ClickHouseBase {
+
+    private static void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     private static final int PARTITION = 0;
     private static final long TIMESTAMP = 1715376000123L;
@@ -192,12 +201,12 @@ public class SmtSinkLandingTest extends ClickHouseBase {
     @Test
     @DisplayName("HDRS-09: headers land in a Map(String, Nullable(String)) column, including the empty and non-ASCII header edges")
     void hdrs09HeadersLandInMapColumn(TestInfo testInfo) {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String table = createTopicName("hdrs09_landing");
 
         ClickHouseTestHelpers.dropTable(chc, table);
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc,
                 table,
                 "CREATE TABLE %s (`off16` Int16, `str` String, `headers_map` Map(String, Nullable(String))) ENGINE = MergeTree ORDER BY off16");
@@ -249,12 +258,12 @@ public class SmtSinkLandingTest extends ClickHouseBase {
     @Test
     @DisplayName("HDR-07: a header-derived field lands in its String column")
     void hdr07HeaderDerivedFieldLandsInColumn(TestInfo testInfo) {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String table = createTopicName("hdr07_landing");
 
         ClickHouseTestHelpers.dropTable(chc, table);
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc,
                 table,
                 "CREATE TABLE %s (`off16` Int16, `str` String, `trace_id` String) ENGINE = MergeTree ORDER BY off16");
@@ -291,12 +300,12 @@ public class SmtSinkLandingTest extends ClickHouseBase {
     @Test
     @DisplayName("TOF-06: filtered Debezium operations never reach ClickHouse; unfiltered ones land, including the nested Tuple column")
     void tof06FilteredOperationsNeverLandUnfilteredDo(TestInfo testInfo) {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String table = createTopicName("tof06_landing");
 
         ClickHouseTestHelpers.dropTable(chc, table);
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc,
                 table,
                 "CREATE TABLE %s (`id` Int32, `op` String, `source` Tuple(db String, `table` String)) ENGINE = MergeTree ORDER BY id");
@@ -339,12 +348,12 @@ public class SmtSinkLandingTest extends ClickHouseBase {
     @Test
     @DisplayName("CONV-08: JSON-string output lands across typed columns and a JSON column")
     void conv08JsonStringOutputLandsAcrossColumns(TestInfo testInfo) {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String table = createTopicName("conv08_landing");
 
         ClickHouseTestHelpers.dropTable(chc, table);
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc,
                 table,
                 "CREATE TABLE %s (`off16` Int16, `str` String, `p_int32` Int32, `nested` JSON) ENGINE = MergeTree ORDER BY off16");
@@ -386,12 +395,12 @@ public class SmtSinkLandingTest extends ClickHouseBase {
     @Test
     @DisplayName("CONV-08: a single-record batch lands exactly one row")
     void conv08SingleRecordBatchLandsOneRow(TestInfo testInfo) {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String table = createTopicName("conv08_single");
 
         ClickHouseTestHelpers.dropTable(chc, table);
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc,
                 table,
                 "CREATE TABLE %s (`off16` Int16, `str` String, `p_int32` Int32, `nested` JSON) ENGINE = MergeTree ORDER BY off16");
