@@ -184,12 +184,12 @@ Plans:
   3. That CI run is green, uploads the JaCoCo report as an artifact, and writes a coverage summary to the job summary. No coverage threshold can fail the build.
   4. With colima running, `./gradlew test` passes in full locally (fork and upstream tests) against `latest` × V2, and the final report shows coverage for the fork-changed classes.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — New `.github/scripts/jacoco_summary.py` (JaCoCo XML → job-summary markdown, both destinations) and the in-place `tests.yaml` rewrite: single `latest` × V2 job, `checkout@v4` / `setup-java@v6` temurin / `setup-gradle@v6` / `upload-artifact@v4`, concurrency + timeout, both report uploads on `if: always()` (CI-01, CI-02, CI-03) (wave 1)
+- [x] 05-01-PLAN.md — New `.github/scripts/jacoco_summary.py` (JaCoCo XML → job-summary markdown, both destinations) and the in-place `tests.yaml` rewrite: single `latest` × V2 job, `checkout@v4` / `setup-java@v6` temurin / `setup-gradle@v6` / `upload-artifact@v4`, concurrency + timeout, both report uploads on `if: always()` (CI-01, CI-02, CI-03) (wave 1)
 
 **Wave 2** *(blocked on 05-01: 05-02 runs the workflow's own summary command and asserts on its step names, and may amend both files under the red-CI-run policy)*
 
@@ -208,4 +208,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5. Phases 2, 3, and 4 d
 | 2. Fork SMT Coverage | 5/5 | Complete    | 2026-09-16 |
 | 3. Table Metadata & JSON/Dynamic Types | 3/3 | Complete    | 2026-09-17 |
 | 4. JSON Insert Path & Connector Plumbing | 3/3 | Complete    | 2026-09-18 |
-| 5. CI & Final Verification | 0/2 | Not started | - |
+| 5. CI & Final Verification | 1/2 | In Progress|  |
