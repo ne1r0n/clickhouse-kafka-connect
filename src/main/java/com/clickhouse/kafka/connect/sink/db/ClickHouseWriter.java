@@ -93,6 +93,7 @@ public class ClickHouseWriter implements DBWriter {
                 .setSslSocketSni(csc.getSslSocketSni())
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
+                .setTargetTableFilter(csc.getTargetTableFilter())
                 .build();
 
         if (!chc.ping()) {

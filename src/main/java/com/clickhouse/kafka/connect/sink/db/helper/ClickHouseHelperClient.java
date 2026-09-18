@@ -26,6 +26,7 @@ import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.Version;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
+import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -69,6 +70,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
     private final String clusterClause;
     @Getter
     private final boolean enableReplicaPinning;
+    private final String targetTableFilter;
 
     // Part of HTTP protocol header
     public static final String REPLICA_TAG_HEADER = "X-ClickHouse-Replica-Tag";
@@ -90,6 +92,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         this.sslSocketSni = builder.sslSocketSni;
         this.clusterClause = builder.clusterClause;
         this.enableReplicaPinning = builder.enableReplicaPinning;
+        this.targetTableFilter = builder.targetTableFilter;
         // We are creating two clients, one for V1 and one for V2
         this.client = createClientV2();
         this.server = createClientV1();
@@ -312,7 +315,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         int retryCount = 0;
         Exception ce = null;
         while (retryCount < retry) {
-            System.out.println("query " + query + " retry " + retryCount + " out of " + retry);
+            LOGGER.debug("query {} retry {} out of {}", query, retryCount, retry);
             CompletableFuture<Records> futureRecords = client.queryRecords(query, settings);
             try {
                 Records records = futureRecords.get();
@@ -330,6 +333,18 @@ public class ClickHouseHelperClient implements AutoCloseable {
         throw new RuntimeException(ce);
     }
 
+    /**
+     * Builds the {@code match(table, '...')} clause appended to the {@code system.columns} query
+     * that backs {@link #showTables(String)}. Returns the empty string when {@code targetTableFilter}
+     * is exactly the empty string (the connector default); otherwise doubles any single quote in the
+     * filter before embedding it in the SQL literal. No backslash handling, no trim.
+     */
+    static String buildTableFilterClause(String targetTableFilter) {
+        return targetTableFilter.isEmpty()
+                ? ""
+                : String.format(" AND match(table, '%s')", targetTableFilter.replace("'", "''"));
+    }
+
     public List<Table.TableDesc> showTables(String database) {
         if (useClientV2) {
             return showTablesV2(database);
@@ -345,7 +360,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
                 .nodeSelector(ClickHouseNodeSelector.of(ClickHouseProtocol.HTTP))
                 .build();
              ClickHouseResponse response = client.read(server)
-                     .query(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database))
+                     .query(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database)
+                             + buildTableFilterClause(targetTableFilter))
                      .format(ClickHouseFormat.RowBinaryWithNamesAndTypes)
                      .executeAndWait()) {
             for (ClickHouseRecord r : response.records()) {
@@ -362,7 +378,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
     public List<Table.TableDesc> showTablesV2(String database) {
         List<Table.TableDesc> tablesList = new ArrayList<>();
-        try (Records records = queryV2(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database))) {
+        try (Records records = queryV2(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database)
+                + buildTableFilterClause(targetTableFilter))) {
             for (GenericRecord record : records) {
                 String databaseName = record.getString(1);
                 String tableName = record.getString(2);
@@ -679,6 +696,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         private String sslSocketSni = "";
         private String clusterClause = "";
         private boolean enableReplicaPinning = false;
+        private String targetTableFilter = "";
 
         public ClickHouseClientBuilder(String hostname, int port, ClickHouseProxyType proxyType, String proxyHost, int proxyPort) {
             this.hostname = hostname;
@@ -741,6 +759,11 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
         public ClickHouseClientBuilder enableReplicaPinning(boolean enableReplicaPinning) {
             this.enableReplicaPinning = enableReplicaPinning;
+            return this;
+        }
+
+        public ClickHouseClientBuilder setTargetTableFilter(String targetTableFilter) {
+            this.targetTableFilter = targetTableFilter;
             return this;
         }
 

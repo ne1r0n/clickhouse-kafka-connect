@@ -66,6 +66,7 @@ public class ClickHouseSinkConfig {
     public static final String CONNECTOR_RETRY_TIMEOUT = "errors.retry.timeout";
     public static final String CLUSTER_NAME = "clusterName";
     public static final String ENABLE_REPLICA_PINNING = "enableReplicaPinning";
+    public static final String TARGET_TABLE_FILTER = "targetTableFilter";
 
     public static final long MINIMAL_RETRY_TIMEOUT_THR_WARN = TimeUnit.SECONDS.toMillis(10);
     public static final String SSL_SOCKET_SNI = "ssl_socket_sni";
@@ -130,6 +131,7 @@ public class ClickHouseSinkConfig {
     private final String sslSocketSni;
     private final String clusterName;
     private final boolean enableReplicaPinning;
+    private final String targetTableFilter;
 
     public enum InsertFormats {
         NONE,
@@ -314,6 +316,7 @@ public class ClickHouseSinkConfig {
         this.sslSocketSni = props.getOrDefault(SSL_SOCKET_SNI, "");
         this.clusterName = props.getOrDefault(CLUSTER_NAME, "");
         this.enableReplicaPinning = Boolean.parseBoolean(props.getOrDefault(ENABLE_REPLICA_PINNING, enableReplicaPinningDefault.toString()));
+        this.targetTableFilter = props.getOrDefault(TARGET_TABLE_FILTER, "").trim();
 
         if (this.bufferCount > 0) {
             LOGGER.info("Internal buffering enabled: bufferCount={}, bufferFlushTime={}ms", this.bufferCount, this.bufferFlushTime);
@@ -784,6 +787,15 @@ public class ClickHouseSinkConfig {
                 ConfigDef.Width.SHORT,
                 "Enable replica pinning."
         );
+        configDef.define(TARGET_TABLE_FILTER,
+                ConfigDef.Type.STRING,
+                "",
+                ConfigDef.Importance.LOW,
+                "Optional filter for destination table names using a regex pattern.",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.MEDIUM,
+                "Target Table Filter (regex pattern).");
 
         String ddlGroup = "DDL";
         int ddlOrderInGroup = 0;
