@@ -1,43 +1,55 @@
+# FORK MODIFICATION: this workflow was rewritten to drop the upstream client-by-ClickHouse
+# matrix (V1/V2 x 23.7/24.3/latest/cloud). This fork tests only ClickHouse `latest` with
+# client V2, matching production usage; the removed legs (V1, 23.7, 24.3, and the Cloud leg
+# with its credentials guard) are out of scope here.
+# See .planning/REQUIREMENTS.md CI-01..04 for the reasoning behind this reduction.
 name: ClickHouse Kafka Connect Tests CI
 
 on: [push]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        client: ["V1", "V2"]
-        clickhouse: ["23.7", "24.3", "latest", "cloud"]
-    name: ClickHouse ${{ matrix.clickhouse }} Client version ${{ matrix.client }} tests
+    timeout-minutes: 45
+    name: ClickHouse latest Client version V2 tests
     steps:
-      - name: Check for Cloud Credentials
-        id: check-cloud-credentials
-        run: |
-          if [[ "${{ matrix.clickhouse }}" == "cloud" && (-z "${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT }}" || -z "${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}") ]]; then
-            echo "SKIP_STEP=true" >> $GITHUB_ENV
-          else
-            echo "SKIP_STEP=false" >> $GITHUB_ENV
-          fi
-        shell: bash
+      - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v3
-        if: env.SKIP_STEP != 'true'
       - name: Set up JDK 17
-        if: env.SKIP_STEP != 'true'
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
-          distribution: 'adopt'
-          architecture: x64
-      - name: Setup and execute Gradle 'test' task
-        if: env.SKIP_STEP != 'true'
-        uses: gradle/gradle-build-action@v2
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run tests
         env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT }}
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
-          CLIENT_VERSION: ${{ matrix.client }}
+          CLICKHOUSE_VERSION: latest
+          CLIENT_VERSION: V2
+        run: ./gradlew test
+
+      - name: Generate coverage summary
+        if: always()
+        run: python3 .github/scripts/jacoco_summary.py
+
+      - name: Upload JaCoCo coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          arguments: test
+          name: jacoco-coverage-reports
+          path: build/reports/jacoco/
+          retention-days: 14
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-test-reports
+          path: build/reports/tests/
+          retention-days: 14
