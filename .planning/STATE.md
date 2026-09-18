@@ -1,18 +1,16 @@
 ---
 gsd_state_version: "1.0"
-status: Awaiting next milestone
-stopped_at: Phase 05 complete — all phases complete
-last_updated: "2026-09-18T08:46:19.004Z"
+milestone: v1.6.0_gg1-sync
+milestone_name: Upstream v1.6.0 Sync
+status: planning
+last_updated: "2026-09-18T10:34:54.928Z"
 last_activity: 2026-09-18
-last_activity_desc: Milestone v1.2.9_gg4-tests completed and archived
-state_head: a351121fdf12f45da5b409bd058377a06d01ec43
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
-current_phase: 05
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -26,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 
 ## Current Position
 
-Phase: Milestone v1.2.9_gg4-tests complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-18 — Milestone v1.2.9_gg4-tests completed and archived
+Status: Defining requirements
+Last activity: 2026-09-18 — Milestone v1.6.0_gg1-sync started
 
 ## Performance Metrics
 

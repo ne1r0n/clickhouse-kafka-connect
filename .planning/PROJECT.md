@@ -4,7 +4,7 @@
 
 The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.2.9_gg4`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, JSON/Dynamic column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. This project audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
 
-Every fork addition now has a named test behind it. The fork can be rebased onto upstream and the suite will say whether anything broke.
+Every fork addition now has a named test behind it. The fork can be rebased onto upstream and the suite will say whether anything broke — and `v1.6.0_gg1-sync` is the milestone that cashes that in, merging 581 commits of upstream (`v1.2.9` → `v1.6.0`) into `custom_build` with the suite as the acceptance gate.
 
 ## Core Value
 
@@ -32,14 +32,46 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 **One bug found and deliberately not fixed:** R-01 — `insertFormat=json` + a `Struct` record + default `bypassRowBinary` writes zero rows and throws nothing. Escalated at a blocking-human checkpoint; you chose `pin-current-behavior`, because a fail-fast throw would break, loudly, any pipeline already running explicit JSON behind a Struct converter. A labelled test now asserts the loss, so a rebase cannot change it unnoticed. The fix needs its own plan.
 
-## Next Milestone Goals
+## Current Milestone: v1.6.0_gg1-sync Upstream v1.6.0 Sync
 
-Nothing is scheduled. The Active list below holds nine follow-ups surfaced by phase code reviews, none of them blocking. The two worth a milestone of their own:
+**Goal:** Merge upstream `v1.6.0` into `custom_build`, preserving every fork feature, with the fork's test suite green against ClickHouse `latest` × client V2 and CI green on the pushed SHA.
 
-1. **R-01 fail-fast** — the only known silent-data-loss path left in the fork. Needs a migration story for existing Struct-converter pipelines, which is why it was not taken inline.
-2. **Error classification is dead code on client V2** — `Utils.handleException`'s `instanceof ClickHouseException` switch never matches, because client V2 raises `com.clickhouse.client.api.ServerException`. Non-retriable outcomes still hold via the fallback, but genuinely retriable ClickHouse errors are likely never retried. This one affects production behavior today.
+**Target features:**
 
-The remaining seven are small hardening and doc-clarity items.
+- Upstream inventory and rollback point — upstream wired as a permanent remote, scratch refs, a map of every file both sides touched, and a per-fork-feature verdict on whether upstream now covers it natively
+- Big-bang merge of `v1.6.0` into `custom_build` with per-file conflict resolution; `build.gradle.kts` taken from upstream wholesale (version catalog + `testFixtures`), with JaCoCo reports, `testUnit`, and the JDK 17 / encoding settings re-applied on top
+- Fork suite restored to green — 371 fork tests adapted to upstream's rewritten test infrastructure (`ClickHouseBase`, `ClickHouseTestHelpers`, `SchemaTestData`); upstream's 56 test files accepted whole and run on `latest` × V2, cloud-dependent ones left skipped
+- CI and publication — `tests.yaml` updated for the new build, a green run verified on the pushed SHA, `VERSION` → `v1.6.0_gg1`, `custom_build` pushed to the public fork
+
+**Baseline measured at milestone start (2026-09-18):**
+
+Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789a57c` — **581 commits** ahead.
+
+| Side | `src/main` + build delta |
+|---|---|
+| Fork over v1.2.9 | 36 files, +1,643 / −203 (of which ~880 lines are 4 net-new SMT files — no conflict surface) |
+| Upstream v1.2.9 → v1.6.0 | 35 files, +3,603 / −865, plus 56 test files at +9,726 / −4,609 |
+
+**Collision points — files both sides changed:**
+
+| File | Fork | Upstream v1.6.0 |
+|---|---|---|
+| `ClickHouseWriter.java` | +85 (JSON/Dynamic fail-fast, MAP null marker) | ±1,289 — effectively rewritten |
+| `ClickHouseHelperClient.java` | +133 (`targetTableFilter`, sub-column skip, UTF-8) | +359 |
+| `ClickHouseSinkConfig.java` | +59 (`jsonInsertColumns`, `targetTableFilter`) | +227 |
+| `Column.java` / `Table.java` / `Type.java` | `JSON(...)` / `Dynamic` mapping | +188 / +88 / +1 |
+| `ProxySinkTask.java` | +35 (JMX `connector=`) | +105 |
+| `Utils.java` | +11 | +135 |
+| `ClickHouseSinkTask.java` | +9 | +139 |
+| `build.gradle.kts` | +195 (JaCoCo, `testUnit`) | ±368 — moved to a version catalog (`libs.*`) + `testFixtures` |
+
+**Conflict policy:** prefer upstream wherever its implementation passes the fork's tests — shrinking the fork delta is what makes the *next* sync cheap. The previous milestone's suite is the acceptance gate here; it was written for exactly this moment.
+
+**Candidates for removal from the fork** (to be verified, not pre-decided): upstream's native `Type.JSON`, its new `DebeziumRecordConvertor` (+289), its rewritten `KeyToValue` (+90), and its new `Utils.handleException` (+135). Upstream still has no `Type.DYNAMIC`, so that part of the fork stays.
+
+**Named risk:** upstream effectively rewrote `ClickHouseWriter.java`. The fork's edits there must be carried over by intent, not by diff.
+
+**Out of this milestone:** the nine follow-ups in Active below, and production rollout. If the sync closes one of them for free, record the fact — do not fix it here.
 
 ## Requirements
 
@@ -103,7 +135,15 @@ The remaining seven are small hardening and doc-clarity items.
 
 ### Active
 
-<!-- v1.2.9_gg4-tests shipped everything originally scoped here. What remains are follow-ups surfaced by phase code reviews, carried forward unscheduled into the next milestone. -->
+<!-- Scoped for v1.6.0_gg1-sync, followed by the nine unscheduled follow-ups carried forward from v1.2.9_gg4-tests. -->
+
+**v1.6.0_gg1-sync (this milestone) — scoped, REQ-IDs assigned in REQUIREMENTS.md:**
+
+- [ ] Upstream `v1.6.0` merged into `custom_build` with every fork feature preserved or consciously retired in favour of an upstream equivalent
+- [ ] `./gradlew test` green on ClickHouse `latest` × client V2 — fork tests plus upstream's v1.6.0 tests
+- [ ] `build.gradle.kts` on upstream's version-catalog structure with the fork's JaCoCo / `testUnit` / JDK 17 additions re-applied
+- [ ] `tests.yaml` green on the pushed SHA, `VERSION` at `v1.6.0_gg1`, `custom_build` published to the public fork
+- [ ] A written record of which fork changes were dropped in favour of upstream, and why — the fork delta over upstream is smaller after this milestone than before it
 
 **Transform follow-ups (emerged in Phase 2 code review, not yet scheduled):**
 
@@ -133,7 +173,7 @@ The remaining seven are small hardening and doc-clarity items.
 - New connector features — the goal is coverage of existing fork behavior, not new capability
 - Completing WIP features beyond bug fixes (e.g., validating `jsonInsertColumns` against the table schema, new config semantics) — user chose to test WIP behavior as-is
 - Refactoring `ClickHouseWriter`, `Processing`, or `ClickHouseSinkConfig` — not required for coverage; high churn on a fork that must stay rebasable
-- Syncing `custom_build` with upstream `ClickHouse/clickhouse-kafka-connect` — separate effort
+- ~~Syncing `custom_build` with upstream `ClickHouse/clickhouse-kafka-connect`~~ — **no longer excluded.** This is the whole of `v1.6.0_gg1-sync`; the test suite shipped by `v1.2.9_gg4-tests` was built to make exactly this safe
 - Test matrix for ClickHouse 23.7 / 24.3 and client V1 — production connectors use V2; only `latest` matters (older versions also lack JSON/Dynamic)
 - ClickHouse Cloud test matrix — fork has no cloud credentials and does not use Cloud
 - Upstream's disabled `testDBTopicSplit` — upstream feature, not a fork addition
@@ -237,4 +277,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-18 after the v1.2.9_gg4-tests milestone*
+*Last updated: 2026-09-18 at the start of the v1.6.0_gg1-sync milestone*
