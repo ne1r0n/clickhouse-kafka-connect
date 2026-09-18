@@ -31,5 +31,6 @@ public enum Type {
     FIXED_STRING,
     Enum8,
     Enum16,
-    JSON
+    JSON,
+    DYNAMIC
 }

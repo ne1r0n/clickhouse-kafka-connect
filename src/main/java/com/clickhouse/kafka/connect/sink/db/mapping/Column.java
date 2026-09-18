@@ -173,6 +173,8 @@ public class Column {
                 } else if (valueType.startsWith("JSON")) {
                     // There are some parameters that we ignore because server will handle them for us
                     type = Type.JSON;
+                } else if (valueType.startsWith("Dynamic")) {
+                    type = Type.DYNAMIC;
                 }
 
                 break;
