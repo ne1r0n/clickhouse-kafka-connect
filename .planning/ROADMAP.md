@@ -42,6 +42,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 **Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05, SYNC-06, BLD-01, BLD-02, BLD-03, BLD-04, BLD-05, BLD-06, BLD-07, BLD-08
 
 **Success Criteria** (what must be TRUE):
+
   1. A `pre-v1.6.0-sync` tag names the pre-merge tip of `custom_build`, and the merge is being carried out on the scratch branch `sync/v1.6.0` — the already-published `custom_build` is untouched and never needs a force-push.
   2. A checked-in per-file resolution checklist covers all 40 `git merge-tree` conflict messages across 39 paths, each marked survives-as-is / re-express / redundant; upstream is reachable as a named git remote; the catalog's resolved ClickHouse client version and the production-config audit (`enableDbTopicSplit`+`exactlyOnce`, `bufferCount`+`exactlyOnce`) are recorded as named facts.
   3. `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew help` and `./gradlew dependencies` both succeed on the merged build — version catalog, `jvm-test-suite`, `java-test-fixtures`, wrapper `9.6.1`, `signing`/`buildconfig` dropped — and `VERSION` reads `v1.6.0_gg1`.
@@ -49,9 +50,16 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   5. No committed revision on the scratch branch contains a literal `<<<<<<<` marker in tracked source, and no `.planning/` commit is interleaved with in-progress conflict resolution.
 
 **Plans**: 3 plans
+**Wave 1**
 
 - [ ] 06-01-PLAN.md — Upstream remote, `pre-v1.6.0-sync` tag, `sync/v1.6.0` scratch branch, the 100%-mechanical merge commit, and the committed D-02/D-09 invariant script (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 06-02-PLAN.md — Commit 2: catalog overrides, `VERSION` = `v1.6.0_gg1`, `.gitignore` union, the fork's `tests.yaml`, the fork build additions re-applied onto upstream's file, and the `help` + `dependencies` gate (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 06-03-PLAN.md — `.planning/MERGE-CHECKLIST.md` with the generated per-path Section 1, Section 2, and `## Recorded Facts`, plus the full-range invariant re-run (wave 3)
 
 **Note on the conflict count:** re-measured at planning time, `git merge-tree --write-tree custom_build v1.6.0` produces 40 conflict messages across **40** unique paths — one message per path. The "39 unique paths" figure above and in `REQUIREMENTS.md` § SYNC-03 is a summary miscount; no path was lost and no path carries two messages. Section 1 of the checklist is generated from the command rather than transcribed, so the correct count is self-evident.
@@ -65,6 +73,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 **Requirements**: MAP-01, MAP-02, MAP-03, WRT-01, WRT-02, WRT-03, WRT-04, WRT-05, HLP-01, HLP-02, HLP-03, HLP-04, CFG-01, CFG-02, CFG-03, FREE-02, FREE-03
 
 **Success Criteria** (what must be TRUE):
+
   1. `./gradlew compileJava` succeeds over the whole of `src/main`: `Type.DYNAMIC` exists alongside upstream's native `Type.JSON`, upstream's rewritten `Column` is adopted with the Dynamic branch ported in, and upstream's immutable `Table` is used as-is with every fork call site rewritten to the new constructor rather than the constructor being re-opened.
   2. `./gradlew testUnit` (Docker-free) is green over the mapping, writer-gate and config-parsing tests: a `Dynamic` type string resolves to `Type.DYNAMIC` and never silently to `UNKNOWN`, the RowBinary gate throws the fork's actionable `DataException` for `DYNAMIC`/`UNKNOWN` while `JSON` follows upstream's flag-gated write-as-string with `TYPE-06`'s JSON assertions rewritten to upstream's exception type and message, and `targetTableFilter` / `jsonInsertColumns` still parse to their pinned contracts.
   3. A connector started from a default config sends no `async_insert` setting, and all thirteen new upstream config options are present and reach their consumers at upstream defaults.
@@ -82,6 +91,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 **Requirements**: ORCH-01, ORCH-02, ORCH-03, ORCH-04, FREE-01
 
 **Success Criteria** (what must be TRUE):
+
   1. `MBeanNameUnitTest`'s literal `connector=` substring assertion is green against the new home: the sink-task ObjectName renders `connector=<name>` sourced from `ClickHouseSinkTask.start()`, with colon sanitization retained — and `JMX-01..04` pass re-targeted at `SinkTaskStatistics` rather than the deleted `ProxySinkTask.buildMBeanName`.
   2. Upstream's new per-topic MBean carries the same `connector=<name>` segment, so per-topic metrics are attributable to a connector in a multi-connector worker.
   3. `./gradlew testUnit` is green with the new layering in place — `DeliveryStrategy`/`ChunkFlusher` above `ProxySinkTask`, upstream's 5-arg `Processing` construction below, and no stale 4-arg `Processing` call site anywhere in the tree.
@@ -98,6 +108,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 **Requirements**: JSONP-01, JSONP-02, JSONP-03, JSONP-04
 
 **Success Criteria** (what must be TRUE):
+
   1. A recorded keep-or-drop decision with its rationale exists, made at a blocking-human checkpoint on evidence from the merged code — and made *before* the dependent implementation work, not discovered afterwards in a test result nobody looked at.
   2. The JSON-path tests reflect that decision: if kept, the metadata-free bypass works and R-01's labelled loss test still passes; if dropped, R-01's test failing is recorded as the wanted signal that the loss is gone.
   3. `jsonInsertColumns` works again, redesigned as a field filter inside upstream's `writeRecordsJson` — the `client.insert(table, columns, data, ...)` overload it attached to no longer exists at that call site — with the Docker-free `JsonInsertColumnsUnitTest` green here and `COLS-01..06`'s live half re-run in Phase 11.
@@ -114,6 +125,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 **Requirements**: HARN-01, HARN-02, HARN-03, HARN-04, HARN-05, HARN-06, HARN-07
 
 **Success Criteria** (what must be TRUE):
+
   1. `./gradlew testUnit` completes with Docker stopped — the loudest, fastest proof that `@Tag("clickhouse")` is back on `ClickHouseBase` and that the Docker-free gate still means what it says.
   2. Testcontainers `2.0.5` is verified to start a ClickHouse container through `ClickHouseBase` **before** any of the 371 fork tests are adapted to the new harness.
   3. Exactly one `ClickHouseTestHelpers.java` exists in the tree — under `src/testFixtures`, carrying the fork's helpers, every fork import updated — and `SchemaTestData`/`SchemalessTestData` exist only there, verified by grep rather than by "it compiles".
@@ -131,6 +143,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 **Requirements**: SUITE-01, SUITE-02, SUITE-03, CI-05, CI-06, CI-07
 
 **Success Criteria** (what must be TRUE):
+
   1. `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test` is green against ClickHouse `latest` × client V2 over the fork's tests plus upstream's 56 test files, with every skip accounted for and explained and zero `InstanceAlreadyExistsException` in a full-suite run.
   2. The four fork SMTs (`TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, `ConvertToMapOrJson`) and their sink-landing tests pass untouched — upstream touches nothing in that package, so any failure there is investigated as a genuine defect rather than absorbed as merge fallout.
   3. `tests.yaml` runs the merged suite on push and publishes coverage, its wall-clock measured against the job's `timeout-minutes: 45`, and a run is machine-verified green on the pushed SHA — located by `head_sha` plus workflow `path`, asserting exactly one match.

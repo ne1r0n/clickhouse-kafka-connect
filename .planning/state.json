@@ -1,12 +1,43 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.6.0_gg1-sync",
-  "phases": [],
+  "milestone": "v1.6.0_gg1-sync — Upstream v1.6.0 Sync",
+  "phases": [
+    {
+      "number": "6",
+      "name": "Merge Groundwork & Build Migration",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Type Mapping, Writer, Helper Client & Config",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Orchestration & JMX Re-plumbing",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Metadata-free JSON Path — Keep or Drop",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "Test Harness Reconciliation",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Full Suite, CI & Publication",
+      "status": "pending"
+    }
+  ],
   "next": {
-    "command": "/gsd:discuss-phase",
-    "label": "Discuss the first phase",
-    "reason": "Project initialized — plan your first phase"
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step (plan phase 06)",
+    "reason": "Phase 06 of 6 — needs a plan"
   },
-  "updated_at": "2026-09-18T10:34:54.931Z"
+  "updated_at": "2026-09-18T17:05:35.836Z"
 }
