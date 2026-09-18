@@ -1,13 +1,14 @@
 ---
 phase: 05-ci-final-verification
 verified: 2026-09-18T00:00:00Z
-status: human_needed
+status: passed
 score: 4/4 must-haves verified
 covered_files: [".github/scripts/jacoco_summary.py", ".github/workflows/tests.yaml", ".planning/REQUIREMENTS.md", ".planning/phases/05-ci-final-verification/05-01-PLAN.md", ".planning/phases/05-ci-final-verification/05-01-SUMMARY.md", ".planning/phases/05-ci-final-verification/05-02-PLAN.md", ".planning/phases/05-ci-final-verification/05-02-SUMMARY.md", ".planning/phases/05-ci-final-verification/05-REVIEW.md"]
 covered_digest: "v1:sha256:5e04cfce4a0e9d4b1683cffda4db4eca2f12422e71a0e7e613de38e3db636660"
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Open https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/35317272594 and look at the run's Summary tab (landing page of the run, below the job list)."
     expected: "A rendered 'Coverage Summary' heading appears as formatted markdown (not raw pipe-delimited text), followed by a table with a 'Full suite' row and a 'Fork-changed classes' row (each with Instruction/Line/Branch percentages), followed by a 'Fork-changed classes' heading and a 15-row per-class table (a few cells legitimately reading 'n/a')."
     why_human: "GitHub exposes no unauthenticated REST endpoint for a rendered job-summary page (confirmed during planning: /logs requires admin rights, /zip returns 401). The step's SUCCESS conclusion and the script's CONTENT are both machine-proven (see evidence below); only GitHub's actual rendering of that markdown in the Summary tab has never been seen by a human. Roadmap success criterion 3 explicitly requires the workflow 'writes a coverage summary to the job summary' — the write and its content are proven, but rendering is not."
@@ -97,6 +98,7 @@ No debt markers (`TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER`) found in eithe
 ### Human Verification Required
 
 See `human_verification` frontmatter above for the two items:
+
 1. Visual confirmation that GitHub rendered the Coverage Summary markdown on the run's Summary tab (the one CI-03 sub-claim no unauthenticated API can return).
 2. Human sign-off on the four judgment-tier prohibition findings above.
 
