@@ -29,8 +29,8 @@
 
 ### Inventory & Rollback (SYNC)
 
-- [ ] **SYNC-01**: Upstream `ClickHouse/clickhouse-kafka-connect` is configured as a named git remote in this repo, so future syncs do not depend on ad-hoc `git fetch <url>` invocations
-- [ ] **SYNC-02**: The pre-merge tip of `custom_build` is tagged (e.g. `pre-v1.6.0-sync`) as an unambiguous rollback point, and the merge is performed on a scratch branch so the already-published `custom_build` never requires a force-push
+- [x] **SYNC-01**: Upstream `ClickHouse/clickhouse-kafka-connect` is configured as a named git remote in this repo, so future syncs do not depend on ad-hoc `git fetch <url>` invocations
+- [x] **SYNC-02**: The pre-merge tip of `custom_build` is tagged (e.g. `pre-v1.6.0-sync`) as an unambiguous rollback point, and the merge is performed on a scratch branch so the already-published `custom_build` never requires a force-push
 - [ ] **SYNC-03**: The `git merge-tree --write-tree custom_build v1.6.0` conflict inventory is captured as a checked-in, per-file resolution checklist — 40 conflict messages (35 `content` + 5 `modify/delete`) across 39 unique paths, each marked with its resolution shape: survives as-is / re-express / redundant
 - [ ] **SYNC-04**: The resolved ClickHouse Java client version from upstream's `gradle/libs.versions.toml` is recorded explicitly and compared against what the fork runs in production, so a wholesale build adoption cannot silently bump it
 - [ ] **SYNC-05**: A production-config audit is recorded answering whether any live connector combines `enableDbTopicSplit=true`+`exactlyOnce=true` (upstream documents a one-time dedup gap on upgrade) or `bufferCount>0`+`exactlyOnce=true` (now rejected at startup unless `bufferFlushTime=0` and `ignorePartitionsWhenBatching=false`)
@@ -164,8 +164,8 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SYNC-01 | Phase 6 | Pending |
-| SYNC-02 | Phase 6 | Pending |
+| SYNC-01 | Phase 6 | Complete |
+| SYNC-02 | Phase 6 | Complete |
 | SYNC-03 | Phase 6 | Pending |
 | SYNC-04 | Phase 6 | Pending |
 | SYNC-05 | Phase 6 | Pending |
@@ -228,6 +228,7 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 - **Phase 11 — Full Suite, CI & Publication**: 6 requirements
 
 **Coverage:**
+
 - v1 requirements: 53 total
 - Mapped to phases: 53 ✓
 - Unmapped: 0

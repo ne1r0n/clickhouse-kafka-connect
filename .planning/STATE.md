@@ -5,16 +5,16 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 06
 current_phase_name: Merge Groundwork & Build Migration
 status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-09-18T17:53:25.660Z"
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-09-18T18:31:55.730Z"
 last_activity: 2026-09-18
 last_activity_desc: Phase 06 execution started
-state_head: c746420ac6da876056ffa5b7d7ed8e58120cf968
+state_head: 4f3ff2a924374e2b01008f0f0fa4051fd9da6714
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-09-18)
 ## Current Position
 
 Phase: 06 (Merge Groundwork & Build Migration) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 06
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-09-18 — Phase 06 execution started
 
 ## Performance Metrics
@@ -59,6 +59,11 @@ Last activity: 2026-09-18 — Phase 06 execution started
 - Trend: -
 
 *Updated after each plan completion. Per-plan metrics for Phases 1-5 are archived with the `v1.2.9_gg4-tests` milestone.*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 06 P01 | 20 min | 2 tasks | 222 files |
 
 ## Accumulated Context
 
@@ -75,6 +80,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - The test JVM runs `file.encoding=windows-1252` on purpose. Any new reader of ClickHouse output must specify UTF-8 explicitly.
 - client-v2 `GenericRecord` from a `Records` iterator is a mutable, reused row view — snapshot into a `Map` during iteration.
 - New sink-task tests must create their tables before `start()` — `ClickHouseWriter.start()` fails against an empty database.
+- [Phase 06]: Landed the 581-commit v1.6.0 merge as one mechanical commit (673d29c3) on scratch branch sync/v1.6.0, tagged from pre-v1.6.0-sync; all 40 conflicted paths verified byte-identical to upstream via a committed invariant script. — D-01/D-02: keeps every fork re-application in Phases 7-10 a reviewable diff against upstream instead of a judgement call inside a 500-file merge.
 
 ### Pending Todos
 
@@ -101,9 +107,9 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-18T16:10:07.563Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-merge-groundwork-build-migration/06-CONTEXT.md
+Last session: 2026-09-18T18:31:55.713Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

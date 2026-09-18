@@ -49,10 +49,10 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   4. All five fork build additions are provably present, not just intended: `jacocoTestReport` + the 15-class `jacocoForkReport` exist report-only, `testUnit` exists and is excluded from `check`, the *test* JVM is pinned to JDK 17 by an explicit `javaLauncher` and runs `file.encoding=windows-1252`, and the LZ4 capability resolution plus the ben-manes `dependencyUpdates` config still resolve.
   5. No committed revision on the scratch branch contains a literal `<<<<<<<` marker in tracked source, and no `.planning/` commit is interleaved with in-progress conflict resolution.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 **Wave 1**
 
-- [ ] 06-01-PLAN.md — Upstream remote, `pre-v1.6.0-sync` tag, `sync/v1.6.0` scratch branch, the 100%-mechanical merge commit, and the committed D-02/D-09 invariant script (wave 1)
+- [x] 06-01-PLAN.md — Upstream remote, `pre-v1.6.0-sync` tag, `sync/v1.6.0` scratch branch, the 100%-mechanical merge commit, and the committed D-02/D-09 invariant script (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -172,7 +172,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 6. Merge Groundwork & Build Migration | 0/3 | Planned | - |
+| 6. Merge Groundwork & Build Migration | 1/3 | In Progress|  |
 | 7. Type Mapping, Writer, Helper Client & Config | 0/? | Not started | - |
 | 8. Orchestration & JMX Re-plumbing | 0/? | Not started | - |
 | 9. Metadata-free JSON Path — Keep or Drop | 0/? | Not started | - |
