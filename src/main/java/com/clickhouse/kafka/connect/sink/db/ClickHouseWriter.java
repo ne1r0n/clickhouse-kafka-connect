@@ -527,6 +527,23 @@ public class ClickHouseWriter implements DBWriter {
                 columnName, columnType);
     }
 
+    /**
+     * Builds the message thrown by {@code doInsertRawBinaryV1}/{@code V2} when {@code
+     * validateDataSchema} reports an invalid schema (TYPE-06). A JSON column is the one case where
+     * that generic failure has an actionable, known cause under RowBinary's default (flag-off)
+     * configuration - see the {@code case JSON:} write path's own {@code RuntimeException} in
+     * {@link #doWriteColValue}, which this reuses the same escape-hatch wording for - so name it
+     * with {@link #buildRowBinaryUnsupportedTypeMessage(String, Type)} instead of the generic
+     * message. Any other validation failure keeps the generic message unchanged.
+     */
+    private String buildSchemaValidationFailureMessage(Table table) {
+        return table.getRootColumnsList().stream()
+                .filter(col -> col.getType() == Type.JSON)
+                .findFirst()
+                .map(col -> buildRowBinaryUnsupportedTypeMessage(col.getName(), Type.JSON))
+                .orElse("Data schema validation failed.");
+    }
+
     protected void doWriteColValue(Column col, OutputStream stream, Data value, boolean defaultsSupport) throws IOException {
         Type columnType = col.getType();
 
@@ -1077,7 +1094,7 @@ public class ClickHouseWriter implements DBWriter {
         if (!csc.isBypassSchemaValidation()
                 && first.getSchemaType() != SchemaType.DEBEZIUM_CDC
                 && !validateDataSchema(table, first, false))
-            throw new RuntimeException("Data schema validation failed.");
+            throw new RuntimeException(buildSchemaValidationFailureMessage(table));
         // Let's test first record
         // Do we have all elements from the table inside the record
 
@@ -1154,7 +1171,7 @@ public class ClickHouseWriter implements DBWriter {
         if (!csc.isBypassSchemaValidation()
                 && first.getSchemaType() != SchemaType.DEBEZIUM_CDC
                 && !validateDataSchema(table, first, false))
-            throw new RuntimeException("Data schema validation failed.");
+            throw new RuntimeException(buildSchemaValidationFailureMessage(table));
         // Let's test first record
         // Do we have all elements from the table inside the record
 
