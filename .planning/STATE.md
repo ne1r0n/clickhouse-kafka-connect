@@ -5,11 +5,11 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 8
 current_phase_name: Orchestration & JMX Re-plumbing
 status: planning
-stopped_at: Phase 07 complete, ready to plan Phase 8
-last_updated: "2026-09-19T09:00:11.276Z"
+stopped_at: Phase 8 context gathered
+last_updated: "2026-09-19T11:04:40.161Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 07 complete, transitioned to Phase 8
-state_head: 95e4996476d69c7467f213bff29ac4324c3b74c1
+state_head: "0befe10291cfdc678f5f9ef8d0018350b3948679"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -126,9 +126,9 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-19T00:16:29.509Z
-Stopped at: Phase 07 complete, ready to plan Phase 8
-Resume file: None
+Last session: 2026-09-19T11:04:40.094Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-orchestration-jmx-re-plumbing/08-CONTEXT.md
 
 ## Operator Next Steps
 
