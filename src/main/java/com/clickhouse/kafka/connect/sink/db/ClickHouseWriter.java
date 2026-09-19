@@ -590,6 +590,16 @@ public class ClickHouseWriter implements DBWriter {
                     }
                     break;
                 case MAP:
+                    if (value.getObject() == null) {
+                        // Reached when this MAP is a Nullable child of an Array/Map and the
+                        // actual entry is null - the parent's own null check (ARRAY's arrObject
+                        // == null, MAP's "mapValue != null" guard before recursing) only decides
+                        // whether to write the Nullable wrapper's NonNull marker, never whether
+                        // to call back into doWriteColValue at all. Mirror doWritePrimitive/
+                        // doWriteDates/Decimal's own null handling instead of dereferencing null.
+                        BinaryStreamUtils.writeNull(stream);
+                        break;
+                    }
                     Map<?, ?> mapTmp = (Map<?, ?>) value.getObject();
                     int mapSize = mapTmp.size();
                     BinaryStreamUtils.writeVarInt(stream, mapSize);
@@ -628,6 +638,13 @@ public class ClickHouseWriter implements DBWriter {
                     }
                     break;
                 case TUPLE:
+                    if (value.getObject() == null) {
+                        // See the MAP case above: a Nullable(Tuple(...)) reached as an
+                        // Array/Map child with a genuine null entry must write the null marker,
+                        // not dereference value.getObject() below.
+                        BinaryStreamUtils.writeNull(stream);
+                        break;
+                    }
                     Map<?, ?> jsonMapValues;
 
                     Object underlyingObject = value.getObject();
@@ -653,14 +670,22 @@ public class ClickHouseWriter implements DBWriter {
                 case VARIANT:
                     // https://github.com/ClickHouse/ClickHouse/pull/58047/files#diff-f56b7f61d5a82c440bb1a078ea8e5dcf2679dc92adbbc28bd89638cbe499363dR368-R384
                     // https://github.com/ClickHouse/ClickHouse/blob/658a8e9a9b1658cd12c78365f9829b35d016f1b2/src/Columns/ColumnVariant.h#L10-L56
+                    // Null Discriminator (https://github.com/ClickHouse/ClickHouse/blob/658a8e9a9b1658cd12c78365f9829b35d016f1b2/src/Columns/ColumnVariant.h#L65)
+                    int nullDiscriminator = 255;
+                    if (value.getObject() == null) {
+                        // A Nullable(Variant(...)) child reached with a genuine null entry (see
+                        // the MAP case above) has no map of candidate values to inspect at all -
+                        // write the same null discriminator used below when every candidate is
+                        // itself null, rather than dereferencing value.getObject().
+                        BinaryStreamUtils.writeUnsignedInt8(stream, nullDiscriminator);
+                        break;
+                    }
                     mapTmp = (Map<?, ?>) value.getObject();
                     Optional<Data> variantValueOption = mapTmp.values().stream()
                             .map(o -> (Data) o)
                             .filter(data -> data.getObject() != null)
                             .findFirst();
 
-                    // Null Discriminator (https://github.com/ClickHouse/ClickHouse/blob/658a8e9a9b1658cd12c78365f9829b35d016f1b2/src/Columns/ColumnVariant.h#L65)
-                    int nullDiscriminator = 255;
                     if (variantValueOption.isEmpty()) {
                         BinaryStreamUtils.writeUnsignedInt8(stream, nullDiscriminator);
                     } else {
