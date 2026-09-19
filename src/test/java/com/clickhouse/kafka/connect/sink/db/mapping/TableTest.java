@@ -48,7 +48,9 @@ class TableTest extends ClickHouseBase {
         Table table = chc.describeTable(chc.getDatabase(), tableName);
         assertNotNull(table);
         assertEquals(2, table.getRootColumnsList().size());
-        assertEquals(3, table.getAllColumnsList().size());
+        // 2, not 3: shouldSkipDescribeRow (HLP-02/DESC-01) drops the structural date_number.null
+        // subcolumn before it reaches Table's constructor - see MERGE-CHECKLIST.md Recorded Fact 13
+        assertEquals(2, table.getAllColumnsList().size());
         ClickHouseTestHelpers.dropTable(chc, tableName);
     }
 
