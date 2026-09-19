@@ -1,9 +1,10 @@
 ---
 phase: 08-orchestration-jmx-re-plumbing
-verified: 2026-09-19T18:30:00Z
-status: human_needed
+verified: 2026-09-19T19:15:00Z
+status: passed
 score: 3/4 must-haves fully verified (1 verified with a disclosed caveat)
 covered_files:
+
   - .planning/MERGE-CHECKLIST.md
   - .planning/REQUIREMENTS.md
   - .planning/phases/08-orchestration-jmx-re-plumbing/08-01-PLAN.md
@@ -28,10 +29,12 @@ covered_files:
   - src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java
   - src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java
-covered_digest: "v1:sha256:f36de70cc9909724df29d866f65bf187166f5d8f365a831ad6040b363aa96fbb"
+
+covered_digest: "v1:sha256:3c048d96624ee035ded5715e7976d345cd766566ab5901568737e160271ca5c2"
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Decide whether ProcessingTest.java's one substantive, non-import diff line against v1.6.0 (`new SinkTaskStatistics(0)` -> `new SinkTaskStatistics(null, 0)`, a forced adaptation to Phase 8's own SinkTaskStatistics constructor change) still satisfies ROADMAP criterion 4 / ORCH-04's wording that 'ProcessingTest take[s] upstream's versions', and whether plan 08-03's own must_haves.truths #4 ('a diff that is... non-empty where byte-identity was expected[] is a failure signal and not a pass') should be honored literally."
     expected: "Either (a) accept the forced one-line adaptation as satisfying ORCH-04 in substance (all test assertions/scenarios are unchanged from upstream, only the constructor call site changed) and record that acceptance explicitly, or (b) treat it as an open gap against the plan's own stricter self-imposed bar."
     why_human: "This is a judgment call the executing plan itself flagged (08-03-SUMMARY.md coverage item D2 marks it `human_judgment: true`) — grep/diff can show the fact (60-line raw diff, 1 substantive line) but cannot decide which reading of the requirement's wording governs."
@@ -138,5 +141,26 @@ No functional or structural gap was found: the JMX `connector=<name>` re-plumb i
 
 ---
 
+## Human Verification Resolution (2026-09-19T19:15:00Z)
+
+Both human-verification items above were resolved during `/gsd-verify-work 08` (UAT tests 1 and
+2, both `pass`) and the decisions were applied:
+
+1. **ProcessingTest.java row** — option (a): the single forced `new SinkTaskStatistics(null, 0)`
+   call-site adaptation is accepted as satisfying ORCH-04 in substance. The
+   `.planning/MERGE-CHECKLIST.md` row wording was corrected from "takes upstream's version
+   wholesale" to name the adaptation explicitly.
+2. **REQUIREMENTS.md** — flipped ORCH-01, ORCH-04 and FREE-01 to `[x]`/`Complete` in both the
+   checklist and the status table, matching the ORCH-02/ORCH-03 precedent.
+
+`status` was advanced `human_needed` → `passed` and `covered_digest` recomputed, because applying
+these two decisions edited `.planning/MERGE-CHECKLIST.md` and `.planning/REQUIREMENTS.md` — both
+covered files — which invalidated the prior fingerprint. Confirmed before recomputing that
+`git diff 911a3160..HEAD` touched planning documents only: no file under `src/`, no build script,
+and no `VERSION` change. The verified behaviour is therefore unchanged.
+
+---
+
 *Verified: 2026-09-19T18:30:00Z*
 *Verifier: Claude (gsd-verifier)*
+*Human items resolved + re-fingerprinted: 2026-09-19T19:15:00Z (gsd-verify-work)*
