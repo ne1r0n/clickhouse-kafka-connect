@@ -76,10 +76,10 @@
 
 ### Orchestration & JMX (ORCH)
 
-- [ ] **ORCH-01**: `ProxySinkTask` and `ClickHouseSinkTask` are resolved against upstream's new layering — `DeliveryStrategy`/`ChunkFlusher` above, the 5-arg `Processing` construction below — with no stale 4-arg call site anywhere
+- [x] **ORCH-01**: `ProxySinkTask` and `ClickHouseSinkTask` are resolved against upstream's new layering — `DeliveryStrategy`/`ChunkFlusher` above, the 5-arg `Processing` construction below — with no stale 4-arg call site anywhere
 - [x] **ORCH-02**: The JMX MBean ObjectName carries `connector=<name>` again, re-plumbed from `ClickHouseSinkTask.start()` into `SinkTaskStatistics` where upstream now owns naming, with colon sanitization retained — `JMX-01..04` green against the new home
 - [x] **ORCH-03**: Upstream's new per-topic MBean gets the same `connector=<name>` treatment, so per-topic metrics are attributable to a connector in a multi-connector worker
-- [ ] **ORCH-04**: `Utils.java` and `Processing.java` — which merge with no conflict marker despite both sides touching them — are explicitly reviewed rather than skipped, and their conflicting test files (`UtilsTest`, `ProcessingTest`) take upstream's versions
+- [x] **ORCH-04**: `Utils.java` and `Processing.java` — which merge with no conflict marker despite both sides touching them — are explicitly reviewed rather than skipped, and their conflicting test files (`UtilsTest`, `ProcessingTest`) take upstream's versions
 
 ### Metadata-free JSON Path (JSONP)
 
@@ -111,7 +111,7 @@
 
 <!-- These are OUT of scope as work. The requirement is to confirm and record, never to fix. -->
 
-- [ ] **FREE-01**: Upstream's `Utils.handleException` is confirmed to classify `com.clickhouse.client.api.ServerException` alongside `ClickHouseException`, and the fork's "error classification is dead code on client V2" follow-up is closed citing upstream issue #818 as the mechanism
+- [x] **FREE-01**: Upstream's `Utils.handleException` is confirmed to classify `com.clickhouse.client.api.ServerException` alongside `ClickHouseException`, and the fork's "error classification is dead code on client V2" follow-up is closed citing upstream issue #818 as the mechanism
 - [x] **FREE-02**: Upstream's `Map(K, Nullable(V))` RowBinary fix is confirmed in the merged code, the fork's duplicate patch is confirmed dropped, and whether it also closes WR-01 is recorded either way
 - [x] **FREE-03**: Whether upstream issue #580's `DESCRIBE TABLE`-database fix subsumes the fork's dormant P3-WR-02 follow-up is checked and recorded
 
@@ -195,11 +195,11 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | CFG-03 | Phase 7 | Complete |
 | FREE-02 | Phase 7 | Complete |
 | FREE-03 | Phase 7 | Complete |
-| ORCH-01 | Phase 8 | Pending |
+| ORCH-01 | Phase 8 | Complete |
 | ORCH-02 | Phase 8 | Complete |
 | ORCH-03 | Phase 8 | Complete |
-| ORCH-04 | Phase 8 | Pending |
-| FREE-01 | Phase 8 | Pending |
+| ORCH-04 | Phase 8 | Complete |
+| FREE-01 | Phase 8 | Complete |
 | JSONP-01 | Phase 9 | Pending |
 | JSONP-02 | Phase 9 | Pending |
 | JSONP-03 | Phase 9 | Pending |
