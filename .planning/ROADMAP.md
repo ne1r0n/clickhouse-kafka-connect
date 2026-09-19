@@ -146,12 +146,12 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   3. `jsonInsertColumns` works again, redesigned as a field filter inside upstream's `writeRecordsJson` — the `client.insert(table, columns, data, ...)` overload it attached to no longer exists at that call site — with the Docker-free `JsonInsertColumnsUnitTest` green here and `COLS-01..06`'s live half re-run in Phase 11.
   4. Reading the resolved diff (not merely a green test) shows no fork-only JSON-path code left standing against a `Table` shape upstream no longer produces.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 09-01-PLAN.md — Re-apply the four bypass guards behind one predicate, rebuild the synthetic `Table` on upstream's 5-arg constructor, re-attach `jsonInsertColumns` server-side, and un-park the Docker-free canary (wave 1)
+- [x] 09-01-PLAN.md — Re-apply the four bypass guards behind one predicate, rebuild the synthetic `Table` on upstream's 5-arg constructor, re-attach `jsonInsertColumns` server-side, and un-park the Docker-free canary (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -220,7 +220,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 6. Merge Groundwork & Build Migration | 3/3 | Complete    | 2026-09-18 |
 | 7. Type Mapping, Writer, Helper Client & Config | 4/4 | Complete    | 2026-09-19 |
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
-| 9. Metadata-free JSON Path — Keep or Drop | 0/? | Not started | - |
+| 9. Metadata-free JSON Path — Keep or Drop | 1/3 | In Progress|  |
 | 10. Test Harness Reconciliation | 0/? | Not started | - |
 | 11. Full Suite, CI & Publication | 0/? | Not started | - |
 
