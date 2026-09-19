@@ -2,10 +2,6 @@ package com.clickhouse.kafka.connect.util.jmx;
 
 import com.clickhouse.kafka.connect.sink.ProxySinkTask;
 import com.clickhouse.kafka.connect.sink.Version;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Collection;
 import java.util.Deque;
 import java.util.Map;
@@ -13,6 +9,9 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SinkTaskStatistics implements SinkTaskStatisticsMBean {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProxySinkTask.class);
@@ -26,12 +25,14 @@ public class SinkTaskStatistics implements SinkTaskStatisticsMBean {
     private final AtomicLong insertedBytes;
     private final AtomicLong sentToDLQ;
     private final SimpleMovingAverage receiveLag;
+    private final String connectorName;
     private final int taskId;
     private final Map<String, TopicStatistics> topicStatistics;
     private final Deque<String> topicMBeans;
 
 
-    public SinkTaskStatistics(int taskId) {
+    public SinkTaskStatistics(String connectorName, int taskId) {
+        this.connectorName = connectorName;
         this.taskId = taskId;
         this.topicMBeans = new ConcurrentLinkedDeque<>();
         this.topicStatistics = new ConcurrentHashMap<>();
@@ -48,15 +49,15 @@ public class SinkTaskStatistics implements SinkTaskStatisticsMBean {
     }
 
     public void registerMBean() {
-        String name = getMBeanName(taskId);
+        String name = getMBeanName();
         LOGGER.info("Register MBean [{}]", name);
         MBeanServerUtils.registerMBean(this, name);
     }
 
     public void unregisterMBean() {
-        String name = getMBeanName(taskId);
+        String name = getMBeanName();
         LOGGER.info("Unregister MBean [{}]", name);
-        MBeanServerUtils.unregisterMBean(getMBeanName(taskId));
+        MBeanServerUtils.unregisterMBean(name);
         for (String topicMBean : topicMBeans) {
             LOGGER.info("Unregister topic MBean [{}]", topicMBean);
             MBeanServerUtils.unregisterMBean(topicMBean);
@@ -153,18 +154,39 @@ public class SinkTaskStatistics implements SinkTaskStatisticsMBean {
 
     private TopicStatistics createTopicStatistics(String topic) {
         TopicStatistics topicStatistics = new TopicStatistics();
-        String topicMBeanName = getTopicMBeanName(taskId, topic);
+        String topicMBeanName = getTopicMBeanName(topic);
         LOGGER.info("Register topic MBean [{}]", topicMBeanName);
         topicMBeans.add(topicMBeanName);
         return MBeanServerUtils.registerMBean(topicStatistics, topicMBeanName);
     }
 
-    public static String getMBeanName(int taskId) {
-        return String.format("com.clickhouse:type=ClickHouseKafkaConnector,name=SinkTask%d,version=%s", taskId, Version.ARTIFACT_VERSION);
+    /**
+     * Byte-for-byte restoration of the pre-merge {@code ProxySinkTask.buildMBeanName} carrier
+     * (D-01/D-06), relocated here now that {@code SinkTaskStatistics} owns MBean naming. Pure
+     * function - reads no field - so it can be pinned by {@code MBeanNameUnitTest} without
+     * constructing an instance. The null-version and colon-sanitization branches are unreachable
+     * from production (Version.ARTIFACT_VERSION is a non-null compile-time literal with no colon)
+     * but are retained on purpose: buildMBeanName is a general formatter and the sanitization
+     * contract stays pinned regardless of what the build currently feeds it (D-06, RESEARCH
+     * Pitfall 4).
+     */
+    public static String buildMBeanName(String connectorName, int taskId, String version) {
+        String safeVersion = version != null ? version.replace(':', '_') : "unknown";
+        return String.format(
+                "com.clickhouse:type=ClickHouseKafkaConnector,connector=%s,name=SinkTask%d,version=%s",
+                connectorName, taskId, safeVersion);
     }
 
-    public static String getTopicMBeanName(int taskId, String topic) {
-        return String.format("com.clickhouse:type=ClickHouseKafkaConnector,name=SinkTask%d,version=%s,topic=%s", taskId, Version.ARTIFACT_VERSION, topic);
+    public String getMBeanName() {
+        return buildMBeanName(connectorName, taskId, Version.ARTIFACT_VERSION);
+    }
+
+    /**
+     * Composed from {@link #getMBeanName()}, not a second format string (D-08) - the two names
+     * share a literal prefix and cannot drift in null handling, colon handling or key order.
+     */
+    public String getTopicMBeanName(String topic) {
+        return getMBeanName() + ",topic=" + topic;
     }
 
     public void insertTime(long t, String topic) {

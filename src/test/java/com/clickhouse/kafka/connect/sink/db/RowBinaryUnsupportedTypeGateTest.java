@@ -63,7 +63,7 @@ public class RowBinaryUnsupportedTypeGateTest {
     @DisplayName(
             "TYPE-06: doWriteColValue throws upstream's RuntimeException for a JSON column under a default (flag-off) configuration")
     void doWriteColValueThrowsUpstreamRuntimeExceptionForJsonColumnUnderDefaultConfig() throws Exception {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         setSinkConfig(writer, new ClickHouseSinkConfig(new HashMap<>()));
         Column column = Column.builder().name("json_col").type(Type.JSON).build();
         Data data = new Data(Schema.STRING_SCHEMA, "irrelevant_value");
@@ -105,7 +105,7 @@ public class RowBinaryUnsupportedTypeGateTest {
                         "test_db",
                         null);
 
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         setSinkConfig(writer, new ClickHouseSinkConfig(new HashMap<>()));
 
         boolean validSchema = writer.validateDataSchema(table, record, false);
@@ -120,7 +120,7 @@ public class RowBinaryUnsupportedTypeGateTest {
     @DisplayName(
             "TYPE-06: doWriteColValue throws the actionable message for DYNAMIC and UNKNOWN columns (D-03's whole point)")
     void doWriteColValueThrowsForEveryUnsupportedType(Type type) throws Exception {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         Column column = Column.builder().name("unsupported_col").type(type).build();
         Data data = new Data(Schema.STRING_SCHEMA, "irrelevant_value");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -163,7 +163,7 @@ public class RowBinaryUnsupportedTypeGateTest {
                         "test_db",
                         null);
 
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         DataException ex =
                 assertThrows(DataException.class, () -> writer.validateDataSchema(table, record, false));
 

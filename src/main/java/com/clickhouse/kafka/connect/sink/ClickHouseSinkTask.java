@@ -1,6 +1,8 @@
 package com.clickhouse.kafka.connect.sink;
 
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
+import java.util.Collection;
+import java.util.Map;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -9,9 +11,6 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-import java.util.Map;
 
 public class ClickHouseSinkTask extends SinkTask {
 
@@ -33,18 +32,20 @@ public class ClickHouseSinkTask extends SinkTask {
     @Override
     public void start(Map<String, String> props) {
         LOGGER.info("Start SinkTask: ");
+        String connectorName;
         try {
             clickHouseSinkConfig = new ClickHouseSinkConfig(props);
             if (errorReporter == null) {
                 errorReporter = createErrorReporter();
             }
+            connectorName = props.get("name");
         } catch (Exception e) {
             throw new ConnectException("Failed to start new task" , e);
         }
 
         validateBufferConfig(clickHouseSinkConfig);
 
-        this.proxySinkTask = new ProxySinkTask(clickHouseSinkConfig, errorReporter);
+        this.proxySinkTask = new ProxySinkTask(clickHouseSinkConfig, errorReporter, connectorName);
         this.proxySinkTask.start();
 
         this.deliveryStrategy = createDeliveryStrategy(clickHouseSinkConfig, proxySinkTask, errorReporter);

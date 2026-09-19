@@ -1,5 +1,7 @@
 package com.clickhouse.kafka.connect.sink;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.clickhouse.client.api.query.GenericRecord;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseCluster;
@@ -9,18 +11,6 @@ import com.clickhouse.kafka.connect.sink.helper.SchemalessTestData;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
@@ -30,8 +20,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.LongStream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public class ClickHouseSinkTaskTest extends ClickHouseBase {
 
@@ -310,7 +309,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
         // Task metrics
-        final String mbeanName = SinkTaskStatistics.getMBeanName(taskId);
+        final String mbeanName = SinkTaskStatistics.buildMBeanName(null, taskId, Version.ARTIFACT_VERSION);
         ObjectName sinkMBean = new ObjectName(mbeanName);
         Object receivedRecords = mBeanServer.getAttribute(sinkMBean, "ReceivedRecords");
         assertEquals(sr.size() * 2L, ((Long)receivedRecords).longValue());
@@ -331,7 +330,8 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
 
 
         // Topic metrics
-        final ObjectName topicMbeanName = new ObjectName(SinkTaskStatistics.getTopicMBeanName(taskId, topic));
+        final ObjectName topicMbeanName = new ObjectName(
+                SinkTaskStatistics.buildMBeanName(null, taskId, Version.ARTIFACT_VERSION) + ",topic=" + topic);
         Object insertedRecords = mBeanServer.getAttribute(topicMbeanName, "TotalSuccessfulRecords");
         assertEquals(sr.size() * 2L, ((Long)insertedRecords).longValue());
         Object insertedBatches = mBeanServer.getAttribute(topicMbeanName, "TotalSuccessfulBatches");
@@ -389,7 +389,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         }
         MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
-        ObjectName topicMbeanName = new ObjectName(SinkTaskStatistics.getMBeanName(taskId));
+        ObjectName topicMbeanName = new ObjectName(SinkTaskStatistics.buildMBeanName(null, taskId, Version.ARTIFACT_VERSION));
         Object eventReceiveLag = mBeanServer.getAttribute(topicMbeanName, "MeanReceiveLag");
         assertTrue((Long)eventReceiveLag < 2000L);
         assertTrue((Long)eventReceiveLag > 400L, "eventReceiveLag: " + eventReceiveLag);

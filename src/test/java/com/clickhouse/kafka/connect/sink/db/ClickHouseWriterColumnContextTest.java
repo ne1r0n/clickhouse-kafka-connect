@@ -32,7 +32,7 @@ public class ClickHouseWriterColumnContextTest {
     private static final String CONTEXT_PREFIX = "Failed to write column";
 
     private static ClickHouseWriter newWriter() {
-        return new ClickHouseWriter(new SinkTaskStatistics(0));
+        return new ClickHouseWriter(new SinkTaskStatistics(null, 0));
     }
 
     @Test

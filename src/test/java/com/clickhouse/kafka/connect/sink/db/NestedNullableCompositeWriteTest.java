@@ -31,7 +31,7 @@ class NestedNullableCompositeWriteTest {
     @Test
     @DisplayName("CR-02: a null MAP value writes the RowBinary null marker instead of NPE-ing on value.getObject()")
     void nullMapValueWritesNullMarker() throws Exception {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         Column column = Column.builder().name("nested_map").type(Type.MAP).isNullable(true).build();
         Data nullData = new Data(Schema.OPTIONAL_STRING_SCHEMA, null);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -44,7 +44,7 @@ class NestedNullableCompositeWriteTest {
     @Test
     @DisplayName("CR-02: a null TUPLE value writes the RowBinary null marker instead of NPE-ing on value.getObject()")
     void nullTupleValueWritesNullMarker() throws Exception {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         Column column = Column.builder().name("nested_tuple").type(Type.TUPLE).isNullable(true).build();
         Data nullData = new Data(Schema.OPTIONAL_STRING_SCHEMA, null);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -57,7 +57,7 @@ class NestedNullableCompositeWriteTest {
     @Test
     @DisplayName("CR-02: a null VARIANT value writes the native null discriminator instead of NPE-ing on value.getObject()")
     void nullVariantValueWritesNullDiscriminator() throws Exception {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         Column column = Column.builder().name("nested_variant").type(Type.VARIANT).isNullable(true).build();
         Data nullData = new Data(Schema.OPTIONAL_STRING_SCHEMA, null);
         ByteArrayOutputStream out = new ByteArrayOutputStream();

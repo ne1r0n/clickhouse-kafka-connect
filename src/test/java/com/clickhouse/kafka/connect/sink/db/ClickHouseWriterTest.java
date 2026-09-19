@@ -1,5 +1,14 @@
 package com.clickhouse.kafka.connect.sink.db;
 
+import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import com.clickhouse.data.ClickHouseDataUpdater;
 import com.clickhouse.data.ClickHouseInputStream;
 import com.clickhouse.data.ClickHouseOutputStream;
@@ -18,6 +27,15 @@ import com.clickhouse.kafka.connect.test.junit.extension.FromVersionConditionExt
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.Utils;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -33,25 +51,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-
-import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @ExtendWith(FromVersionConditionExtension.class)
 public class ClickHouseWriterTest extends ClickHouseBase {
@@ -73,7 +72,7 @@ public class ClickHouseWriterTest extends ClickHouseBase {
 
     @Test
     public void writeUTF8StringPrimitive() throws IOException {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         Column column = Column.extractColumn(newDescriptor("utf8String", "String"));
         ClickHousePipedOutputStream out = new ClickHousePipedOutputStream(null) {
             List<Byte> bytes = new ArrayList<>();
@@ -126,7 +125,7 @@ public class ClickHouseWriterTest extends ClickHouseBase {
     }
 
     private void runWithWriter(Map<String, String> props, Consumer<ClickHouseWriter> test) {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         writer.start(new ClickHouseSinkConfig(props));
         try {
             test.accept(writer);
@@ -315,7 +314,7 @@ public class ClickHouseWriterTest extends ClickHouseBase {
                 .orderByColumn("id")
                 .execute(chc);
 
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         assertTrue(writer.start(new ClickHouseSinkConfig(props)));
 
         try {
@@ -427,7 +426,7 @@ public class ClickHouseWriterTest extends ClickHouseBase {
                 .orderByColumn("id")
                 .execute(chc);
 
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         assertTrue(writer.start(new ClickHouseSinkConfig(props)));
 
         try {

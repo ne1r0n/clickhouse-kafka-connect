@@ -57,7 +57,7 @@ public class AvroDecimalLogicalTest {
         assertEquals(18, col.getPrecision());
         assertEquals(4, col.getScale());
 
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         writer.doWriteColValue(col, out, amountData, false);
 

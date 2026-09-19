@@ -3,13 +3,14 @@ package com.clickhouse.kafka.connect.sink;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Docker-free unit pins for {@link ProxySinkTask#buildMBeanName(String, int, String)} - JMX-01,
+ * Docker-free unit pins for {@link SinkTaskStatistics#buildMBeanName(String, int, String)} - JMX-01,
  * JMX-02 and JMX-03. New fork-only class (D-16): it deliberately extends nothing, so it stays in
  * {@code testUnit} - extending {@code ClickHouseBase} would inherit its {@code @Tag("clickhouse")}
  * and drop this class out of the Docker-free loop (Phase 1 D-12).
@@ -24,7 +25,7 @@ class MBeanNameUnitTest {
         // version.
         assertEquals(
                 "com.clickhouse:type=ClickHouseKafkaConnector,connector=my-connector,name=SinkTask3,version=0.9.6",
-                ProxySinkTask.buildMBeanName("my-connector", 3, "0.9.6"));
+                SinkTaskStatistics.buildMBeanName("my-connector", 3, "0.9.6"));
     }
 
     @Test
@@ -35,7 +36,7 @@ class MBeanNameUnitTest {
         // four-character string "null" - this is a pin, not a bug report.
         assertEquals(
                 "com.clickhouse:type=ClickHouseKafkaConnector,connector=null,name=SinkTask0,version=0.9.6",
-                ProxySinkTask.buildMBeanName(null, 0, "0.9.6"));
+                SinkTaskStatistics.buildMBeanName(null, 0, "0.9.6"));
     }
 
     @Test
@@ -43,7 +44,7 @@ class MBeanNameUnitTest {
     void emptyConnectorNameRendersEmptyConnectorValue() {
         assertEquals(
                 "com.clickhouse:type=ClickHouseKafkaConnector,connector=,name=SinkTask0,version=0.9.6",
-                ProxySinkTask.buildMBeanName("", 0, "0.9.6"));
+                SinkTaskStatistics.buildMBeanName("", 0, "0.9.6"));
     }
 
     @Test
@@ -51,7 +52,7 @@ class MBeanNameUnitTest {
     void nullVersionRendersVersionUnknown() {
         assertEquals(
                 "com.clickhouse:type=ClickHouseKafkaConnector,connector=c,name=SinkTask1,version=unknown",
-                ProxySinkTask.buildMBeanName("c", 1, null));
+                SinkTaskStatistics.buildMBeanName("c", 1, null));
     }
 
     @ParameterizedTest(name = "JMX-03: colon(s) in version {0} are rendered as underscores")
@@ -59,7 +60,7 @@ class MBeanNameUnitTest {
     @DisplayName("JMX-03: every colon in the version is replaced by an underscore")
     void colonInVersionIsReplacedByUnderscore(String versionWithColons) {
         String expectedVersionSuffix = "version=" + versionWithColons.replace(':', '_');
-        String name = ProxySinkTask.buildMBeanName("c", 2, versionWithColons);
+        String name = SinkTaskStatistics.buildMBeanName("c", 2, versionWithColons);
         // endsWith, not "contains no colon" for the whole string - the ObjectName domain
         // separator "com.clickhouse:" is itself a colon, so a whole-string colon ban would be
         // wrong.

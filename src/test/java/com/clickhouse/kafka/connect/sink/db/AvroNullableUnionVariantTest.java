@@ -71,7 +71,7 @@ public class AvroNullableUnionVariantTest {
     Column col = Column.extractColumn("mixed", clickHouseType, false, false, false);
     assertEquals(Type.VARIANT, col.getType());
 
-    ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+    ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     writer.doWriteColValue(col, out, data.get("mixed"), false);
     return out.toByteArray();

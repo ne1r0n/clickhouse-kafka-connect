@@ -11,12 +11,6 @@ import com.clickhouse.kafka.connect.sink.state.provider.KeeperStateProvider;
 import com.clickhouse.kafka.connect.util.Utils;
 import com.clickhouse.kafka.connect.util.jmx.ExecutionTimer;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,6 +20,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class ProxySinkTask {
 
@@ -40,7 +39,7 @@ public final class ProxySinkTask {
     private final int id = NEXT_ID.getAndAdd(1);
     private final ErrorReporter errorReporter;
 
-    public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter) {
+    public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final String connectorName) {
         this.clickHouseSinkConfig = clickHouseSinkConfig;
         this.errorReporter = errorReporter;
         LOGGER.info("Enable ExactlyOnce? {}", clickHouseSinkConfig.isExactlyOnce());
@@ -49,7 +48,7 @@ public final class ProxySinkTask {
         } else {
             this.stateProvider = new InMemoryState();
         }
-        this.statistics = new SinkTaskStatistics(id);
+        this.statistics = new SinkTaskStatistics(connectorName, id);
         this.dbWriter = new ClickHouseWriter(this.statistics);
         processing = new Processing(stateProvider, dbWriter, errorReporter, clickHouseSinkConfig, statistics);
     }

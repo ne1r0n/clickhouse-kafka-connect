@@ -93,7 +93,7 @@ public class MetadataFreeJsonInsertUnitTest {
     @Test
     @DisplayName("JSON-03: cleanupExtraFields returns the payload untouched under insertFormat=json, and strips unknown keys under default config, without mutating the input map")
     void cleanupExtraFieldsBypassDiffersByInsertFormat() throws Exception {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         Column knownCol = Column.builder().name("known_col").type(Type.STRING).build();
         Table table = new Table("test_db", "test_table", false, List.of(knownCol), 1);
 
