@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 2
+open_count: 3
 waived_count: 0
 fixed_count: 0
-total_count: 2
-last_updated: 2026-09-18T23:34:42.669Z
+total_count: 3
+last_updated: 2026-09-19T00:16:21.710Z
 ---
 
 # Broken Windows Ledger
@@ -17,6 +17,7 @@ last_updated: 2026-09-18T23:34:42.669Z
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 07 | unrun-verify | src/test/java/com/clickhouse/kafka/connect/sink/MBeanNameUnitTest.java | 27 | compileTestJava fails: needs ProxySinkTask.buildMBeanName, dropped by the v1.6.0 mechanical merge and explicitly Phase 8's JMX re-plumb scope; does not extend ClickHouseBase so it blocks testUnit too | open |  | 2026-09-18T23:34:42.450Z |  |
 | 2 | 07 | unrun-verify | src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseTestHarnessTest.java | 71 | compileTestJava fails: needs ClickHouseBase.sharedContainerStarts() and ClickHouseTestHelpers.query(...), Phase 10's shared-container harness contract, explicitly excluded from this plan by D-06 | open |  | 2026-09-18T23:34:42.669Z |  |
+| 3 | 07 | deviation | build.gradle.kts |  | User-approved test-compile exclusion for MBeanNameUnitTest.java (Phase 8: needs ProxySinkTask.buildMBeanName) and ClickHouseTestHarnessTest.java (Phase 10: needs ClickHouseBase shared-container contract) — each owning phase must remove its own exclude line from sourceSets["test"].java when it lands the missing API. | open |  | 2026-09-19T00:16:21.710Z |  |
 
 ````json
 [
@@ -43,6 +44,19 @@ last_updated: 2026-09-18T23:34:42.669Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-18T23:34:42.669Z",
+    "resolved_at": null,
+    "milestone": "v1.6.0"
+  },
+  {
+    "id": 3,
+    "kind": "deviation",
+    "phase": "07",
+    "file": "build.gradle.kts",
+    "line": null,
+    "description": "User-approved test-compile exclusion for MBeanNameUnitTest.java (Phase 8: needs ProxySinkTask.buildMBeanName) and ClickHouseTestHarnessTest.java (Phase 10: needs ClickHouseBase shared-container contract) — each owning phase must remove its own exclude line from sourceSets[\"test\"].java when it lands the missing API.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-19T00:16:21.710Z",
     "resolved_at": null,
     "milestone": "v1.6.0"
   }

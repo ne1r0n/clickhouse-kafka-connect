@@ -58,7 +58,7 @@
 - [x] **WRT-01**: `doWriteColValue`'s `default:` branch throws the fork's actionable `DataException` instead of upstream's silent `LOGGER.error`, so an unsupported RowBinary type cannot desync the stream
 - [x] **WRT-02**: `validateDataSchema`'s fail-fast gate covers `DYNAMIC` and `UNKNOWN`; `JSON` is removed from the gate in favour of upstream's native `case JSON:` path
 - [x] **WRT-03**: Upstream's flag-gated JSON-as-string RowBinary write is available, and `TYPE-06`'s JSON assertions are rewritten to match its exception type and message rather than the fork's
-- [ ] **WRT-04**: The fork's duplicate `Map(K, Nullable(V))` null-marker patch is dropped in favour of upstream's version, which carries an extra `getMapValueType() != null` guard — the fork's pinning test stays and still passes
+- [x] **WRT-04**: The fork's duplicate `Map(K, Nullable(V))` null-marker patch is dropped in favour of upstream's version, which carries an extra `getMapValueType() != null` guard — the fork's pinning test stays and still passes
 - [x] **WRT-05**: `setTargetTableFilter(...)` still reaches the helper-client builder from `ClickHouseWriter.start()`
 
 ### Helper Client (HLP)
@@ -72,7 +72,7 @@
 
 - [x] **CFG-01**: `targetTableFilter` and `jsonInsertColumns` survive as config keys with their parsing contracts intact
 - [x] **CFG-02**: The connector sends no `async_insert` setting by default — upstream's `addClickHouseSetting("async_insert", "0", false)` stays commented out, `ASYNC-01..03` green
-- [ ] **CFG-03**: All thirteen new upstream config options are present and reach their consumers at their upstream defaults
+- [x] **CFG-03**: All thirteen new upstream config options are present and reach their consumers at their upstream defaults
 
 ### Orchestration & JMX (ORCH)
 
@@ -112,8 +112,8 @@
 <!-- These are OUT of scope as work. The requirement is to confirm and record, never to fix. -->
 
 - [ ] **FREE-01**: Upstream's `Utils.handleException` is confirmed to classify `com.clickhouse.client.api.ServerException` alongside `ClickHouseException`, and the fork's "error classification is dead code on client V2" follow-up is closed citing upstream issue #818 as the mechanism
-- [ ] **FREE-02**: Upstream's `Map(K, Nullable(V))` RowBinary fix is confirmed in the merged code, the fork's duplicate patch is confirmed dropped, and whether it also closes WR-01 is recorded either way
-- [ ] **FREE-03**: Whether upstream issue #580's `DESCRIBE TABLE`-database fix subsumes the fork's dormant P3-WR-02 follow-up is checked and recorded
+- [x] **FREE-02**: Upstream's `Map(K, Nullable(V))` RowBinary fix is confirmed in the merged code, the fork's duplicate patch is confirmed dropped, and whether it also closes WR-01 is recorded either way
+- [x] **FREE-03**: Whether upstream issue #580's `DESCRIBE TABLE`-database fix subsumes the fork's dormant P3-WR-02 follow-up is checked and recorded
 
 ---
 
@@ -184,7 +184,7 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | WRT-01 | Phase 7 | Complete |
 | WRT-02 | Phase 7 | Complete |
 | WRT-03 | Phase 7 | Complete |
-| WRT-04 | Phase 7 | Pending |
+| WRT-04 | Phase 7 | Complete |
 | WRT-05 | Phase 7 | Complete |
 | HLP-01 | Phase 7 | Complete |
 | HLP-02 | Phase 7 | Complete |
@@ -192,9 +192,9 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | HLP-04 | Phase 7 | Complete |
 | CFG-01 | Phase 7 | Complete |
 | CFG-02 | Phase 7 | Complete |
-| CFG-03 | Phase 7 | Pending |
-| FREE-02 | Phase 7 | Pending |
-| FREE-03 | Phase 7 | Pending |
+| CFG-03 | Phase 7 | Complete |
+| FREE-02 | Phase 7 | Complete |
+| FREE-03 | Phase 7 | Complete |
 | ORCH-01 | Phase 8 | Pending |
 | ORCH-02 | Phase 8 | Pending |
 | ORCH-03 | Phase 8 | Pending |
