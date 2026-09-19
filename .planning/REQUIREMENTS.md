@@ -84,8 +84,8 @@
 ### Metadata-free JSON Path (JSONP)
 
 - [ ] **JSONP-01**: The keep-or-drop decision for the metadata-free `insertFormat=json` path is made at a blocking-human checkpoint, on evidence from the merged code, and recorded with its rationale — not left as whatever the merge happened to produce
-- [ ] **JSONP-02**: `JSON-01..05` and R-01's labelled test reflect that decision: if kept, the bypass works and R-01's loss is still pinned; if dropped, R-01's test failing is recorded as the wanted signal that the loss is gone
-- [ ] **JSONP-03**: `jsonInsertColumns` works again, redesigned as a field filter inside upstream's `writeRecordsJson` — the `client.insert(table, columns, data, ...)` overload it used no longer exists at that call site — with `COLS-01..06` green
+- [x] **JSONP-02**: `JSON-01..05` and R-01's labelled test reflect that decision: if kept, the bypass works and R-01's loss is still pinned; if dropped, R-01's test failing is recorded as the wanted signal that the loss is gone
+- [x] **JSONP-03**: `jsonInsertColumns` works again, redesigned as a field filter inside upstream's `writeRecordsJson` — the `client.insert(table, columns, data, ...)` overload it used no longer exists at that call site — with `COLS-01..06` green
 - [ ] **JSONP-04**: No fork-only JSON-path code survives against a `Table` shape upstream no longer produces — verified by reading the resolved diff, not only by a green test
 
 ### Test Harness (HARN)
@@ -201,8 +201,8 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | ORCH-04 | Phase 8 | Complete |
 | FREE-01 | Phase 8 | Complete |
 | JSONP-01 | Phase 9 | Pending |
-| JSONP-02 | Phase 9 | Pending |
-| JSONP-03 | Phase 9 | Pending |
+| JSONP-02 | Phase 9 | Complete |
+| JSONP-03 | Phase 9 | Complete |
 | JSONP-04 | Phase 9 | Pending |
 | HARN-01 | Phase 10 | Pending |
 | HARN-02 | Phase 10 | Pending |

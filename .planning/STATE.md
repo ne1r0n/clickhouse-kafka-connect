@@ -5,16 +5,16 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 09
 current_phase_name: Metadata-free JSON Path — Keep or Drop
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-09-19T22:26:43.074Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-09-19T22:47:54.861Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 09 execution started
-state_head: 3f9ecd82318c2f80b29bfd8dc72fc1d896f9e4ff
+state_head: 7bcb98be815730c580f84f8baee34486101a7fba
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 09 (Metadata-free JSON Path — Keep or Drop) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 09 execution started
 
@@ -71,6 +71,7 @@ Last activity: 2026-09-20 — Phase 09 execution started
 | Phase 07 P03 | 55min | 2 tasks | 18 files |
 | Phase 07 P04 | 22 min | 2 tasks | 4 files |
 | Phase 09 P01 | 25 min | 4 tasks | 2 files |
+| Phase 09 P02 | 20 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 08]: Re-plumbed JMX `connector=<name>` into upstream's new naming owner `SinkTaskStatistics` (not back into the fork's old `ProxySinkTask.buildMBeanName` home), with the per-topic MBean composing from the task-level name; un-excluded `MBeanNameUnitTest`; UTF-8'd the three charset-less test-helper readers; discharged ORCH-01/ORCH-04/FREE-01 on recorded evidence rather than new code. Suite: 636 tests, 1 failure, 0 errors, 35 explained skips against a deliberately re-baselined gate. — Threading the name into upstream's owner shrinks the fork delta so the next sync does not re-fight this conflict; the three evidence-only requirements were documentation acts the plans' own prohibitions forbade pinning with tests.
 - [Phase 08]: UAT 16/16 passed (10 human checkpoints + 6 auto-covered); both human-verification items resolved and applied — `MERGE-CHECKLIST.md`'s ProcessingTest row wording corrected, and ORCH-01/ORCH-04/FREE-01 flipped to Complete in `REQUIREMENTS.md`. Security: 13 threats, 0 open (`08-SECURITY.md`). — The two doc edits invalidated `08-VERIFICATION.md`'s `covered_digest`; it was recomputed after confirming `git diff 911a3160..HEAD` touched planning documents only, with the reason recorded in the verification file itself.
 - [Phase 09]: [Phase 09]: Plan 09-01 re-applied the metadata-free insertFormat=json bypass (D-01 KEEP, re-confirmed at Task 1's checkpoint) as four early-return guards behind one shared predicate shouldSkipTableMetadata(), rebuilt the synthetic Table against upstream's immutable five-argument constructor, and re-attached jsonInsertColumns to the surviving five-argument client.insert overload in doInsertJsonV2. — Operator facts 2/3 mean no upstream configuration substitutes for the bypass (suppressTableExistenceException still calls describeTable; enableDbTopicSplit still runs updateMapping; bypassFieldCleanup covers only one of three effects) — KEEP is the only way to serve a connector user who cannot DESCRIBE/SHOW the target tables. Docker-free testUnit canary (MetadataFreeJsonInsertUnitTest, 11 tests) now pins all four guard sites and the overload branch so a future merge cannot silently drop them again.
+- [Phase 09]: [Phase 09]: Plan 09-02 re-enabled all 13 parked live JSON-path test methods (delete-only @Disabled removal, D-10) and adopted the TableTest.extractNullables() carry-in fix (D-14); full env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test run: 643 tests, 0 failures, 0 errors, 18 skipped (down from Phase 8's 35). — No newly-enabled method needed investigation -- all 13 passed on first live execution since the 581-commit merge, including R-01's labelled pin, proving plan 09-01's guards did not widen the bypass or damage non-JSON connectors.
 
 ### Pending Todos
 
@@ -131,8 +133,8 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-19T22:26:43.036Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-09-19T22:47:54.815Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
