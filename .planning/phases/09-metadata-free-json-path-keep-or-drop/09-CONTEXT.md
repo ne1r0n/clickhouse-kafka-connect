@@ -108,7 +108,7 @@ These are the inputs the repository cannot supply. They are the load-bearing evi
 
 The user did not constrain the following. All reversible; a planner may override with a stated reason.
 
-- **D-05** (named predicate vs. inlined condition), **D-09** (V1 untouched), **D-13** (commit sequence).
+- **Discretion carried by earlier decisions.** D-05 (named predicate vs. inlined condition), D-09 (V1 untouched), D-13 (commit sequence).
 - **Wave shape.** The four guards are one connected edit with one call site each and do not decompose. `jsonInsertColumns` (D-06) touches only `doInsertJsonV2` and is independent of the guards — it could run in a parallel wave. The `@Disabled` deletions depend on both. D-12's live run is necessarily last.
 - **JSONP-04's evidence act.** Discharged by reading `git diff v1.6.0 -- src/main/java/.../ClickHouseWriter.java` after the re-application and stating in the SUMMARY that (a) the only hand-built `Table` uses the 5-arg constructor, (b) no JSON-path code assumes the old mutable shape, (c) the guards are the only fork additions on that path. A grep is the evidence; a green test is not sufficient, per the requirement's own wording.
 - **No new metric.** `AGENTS.md` asks that metrics land in `SinkTaskStatistics`/`TopicStatistics`; this phase adds no insert path, only re-routes an existing one.

@@ -149,8 +149,16 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 09-01-PLAN.md — Re-apply the four bypass guards behind one predicate, rebuild the synthetic `Table` on upstream's 5-arg constructor, re-attach `jsonInsertColumns` server-side, and un-park the Docker-free canary (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 09-02-PLAN.md — Adopt the `TableTest` carry-in, un-park the three live JSON-path classes, and hold the full suite to a zero-failure binary gate (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 09-03-PLAN.md — Discharge JSONP-04 by reading the resolved diff, append the JSONP-03 rationale correction, and record the KEEP disposition with its operator evidence and accepted cost (wave 3)
 
 ### Phase 10: Test Harness Reconciliation
