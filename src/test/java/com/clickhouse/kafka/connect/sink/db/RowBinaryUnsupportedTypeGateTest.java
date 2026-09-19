@@ -88,13 +88,20 @@ public class RowBinaryUnsupportedTypeGateTest {
         Map<String, Data> jsonMap = new HashMap<>();
         jsonMap.put("json_col", new Data(Schema.STRING_SCHEMA, secretFieldValue));
 
+        // validateDataSchema's default: branch looks up each column's source Schema via
+        // record.getFields() (keyed by field name) before comparing type names - an empty
+        // fields list here (unlike the sibling DYNAMIC/UNKNOWN test, which never reaches this
+        // branch) leaves that lookup null and NPEs on Schema#name(). Mirror the field the
+        // jsonMap entry actually represents, exactly as Record.convert() would populate it.
+        List<org.apache.kafka.connect.data.Field> fields =
+                List.of(new org.apache.kafka.connect.data.Field("json_col", 0, Schema.STRING_SCHEMA));
         Record record =
                 Record.newRecord(
                         SchemaType.SCHEMA,
                         "test_topic",
                         0,
                         0L,
-                        Collections.emptyList(),
+                        fields,
                         jsonMap,
                         "test_db",
                         null);
