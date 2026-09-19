@@ -1384,7 +1384,11 @@ public class ClickHouseWriter implements DBWriter {
             out.close();
         };
         long s2 = System.currentTimeMillis();
-        try (InsertResponse insertResponse = awaitInsertResponse(client.insert(table.getName(), dataWriter, ClickHouseFormat.JSONEachRow, insertSettings), queryId)) {
+        List<String> insertColumns = csc.getJsonInsertColumns();
+        CompletableFuture<InsertResponse> insertFuture = (insertColumns != null && !insertColumns.isEmpty())
+                ? client.insert(table.getName(), insertColumns, dataWriter, ClickHouseFormat.JSONEachRow, insertSettings)
+                : client.insert(table.getName(), dataWriter, ClickHouseFormat.JSONEachRow, insertSettings);
+        try (InsertResponse insertResponse = awaitInsertResponse(insertFuture, queryId)) {
             LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", insertResponse.getWrittenBytes(), insertResponse.getWrittenRows(), queryId.getQueryId());
         }
         long s3 = System.currentTimeMillis();
