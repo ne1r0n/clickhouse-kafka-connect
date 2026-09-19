@@ -77,8 +77,8 @@
 ### Orchestration & JMX (ORCH)
 
 - [ ] **ORCH-01**: `ProxySinkTask` and `ClickHouseSinkTask` are resolved against upstream's new layering — `DeliveryStrategy`/`ChunkFlusher` above, the 5-arg `Processing` construction below — with no stale 4-arg call site anywhere
-- [ ] **ORCH-02**: The JMX MBean ObjectName carries `connector=<name>` again, re-plumbed from `ClickHouseSinkTask.start()` into `SinkTaskStatistics` where upstream now owns naming, with colon sanitization retained — `JMX-01..04` green against the new home
-- [ ] **ORCH-03**: Upstream's new per-topic MBean gets the same `connector=<name>` treatment, so per-topic metrics are attributable to a connector in a multi-connector worker
+- [x] **ORCH-02**: The JMX MBean ObjectName carries `connector=<name>` again, re-plumbed from `ClickHouseSinkTask.start()` into `SinkTaskStatistics` where upstream now owns naming, with colon sanitization retained — `JMX-01..04` green against the new home
+- [x] **ORCH-03**: Upstream's new per-topic MBean gets the same `connector=<name>` treatment, so per-topic metrics are attributable to a connector in a multi-connector worker
 - [ ] **ORCH-04**: `Utils.java` and `Processing.java` — which merge with no conflict marker despite both sides touching them — are explicitly reviewed rather than skipped, and their conflicting test files (`UtilsTest`, `ProcessingTest`) take upstream's versions
 
 ### Metadata-free JSON Path (JSONP)
@@ -196,8 +196,8 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | FREE-02 | Phase 7 | Complete |
 | FREE-03 | Phase 7 | Complete |
 | ORCH-01 | Phase 8 | Pending |
-| ORCH-02 | Phase 8 | Pending |
-| ORCH-03 | Phase 8 | Pending |
+| ORCH-02 | Phase 8 | Complete |
+| ORCH-03 | Phase 8 | Complete |
 | ORCH-04 | Phase 8 | Pending |
 | FREE-01 | Phase 8 | Pending |
 | JSONP-01 | Phase 9 | Pending |
