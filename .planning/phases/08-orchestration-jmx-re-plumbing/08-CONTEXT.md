@@ -108,7 +108,7 @@ So the only production behaviour this phase must *write* is the JMX segment. ORC
 
 The user did not constrain the following; these are the calls made, all reversible and open to a planner overriding them with a reason:
 
-- **D-13's carry-in split** (above) — explicitly delegated by the user.
+- **Carry-in split for D-13** (above) — explicitly delegated by the user.
 - **Wave shape.** The JMX re-plumb is one connected edit across four production/test files with a single call site each, so it does not decompose into parallel work. D-09's topic cases depend on D-08's composition existing; D-13's fixture fix is independent of everything and could run in parallel if the planner wants a second wave. D-12's full-suite run is necessarily last.
 - **`MBeanServerUtils` is not touched.** Its `registerMBean` still rethrows `InstanceAlreadyExistsException` as a `RuntimeException` and still swallows `MalformedObjectNameException` with a WARN. Both behaviours are load-bearing for existing tests (the leak sweep, and Phase 4's D-05 reasoning about hostile names) and neither is in this phase's requirements.
 - **No new metric is added.** `AGENTS.md` asks that relevant metrics land in `SinkTaskStatistics` / `TopicStatistics`; this phase changes only how those MBeans are *named*.
