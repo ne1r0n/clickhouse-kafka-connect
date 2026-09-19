@@ -115,7 +115,21 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   3. `./gradlew testUnit` is green with the new layering in place — `DeliveryStrategy`/`ChunkFlusher` above `ProxySinkTask`, upstream's 5-arg `Processing` construction below, and no stale 4-arg `Processing` call site anywhere in the tree.
   4. `Utils.java` and `Processing.java` — which merge with no conflict marker despite both sides touching them — have been read and explicitly reviewed, `UtilsTest`/`ProcessingTest` take upstream's versions, and the fork's "error classification is dead code on client V2" follow-up is closed in writing citing upstream issue #818 as the mechanism.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — The JMX re-plumb end-to-end (`SinkTaskStatistics` carrier + `ProxySinkTask` + `ClickHouseSinkTask` + the four call sites + the canary's build un-exclude), the per-topic composition cases, and the UTF-8 fixture fix (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 08-02-PLAN.md — The acceptance gate: `testUnit` green, then a full live suite with D-12's re-baselined pass condition and a named failure inventory, plus the `TableTest.extractNullables()` triage (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 08-03-PLAN.md — ORCH-01/ORCH-04/FREE-01 discharged by evidence, then eight checklist row flips, two annotate-don't-flip notes, and the three Recorded Facts (wave 3)
+
+**Note on the wave shape:** all three waves are sequential and that is structural, not conservative. The JMX re-plumb is one connected edit whose every link has exactly one call site, so it does not decompose into parallel work; D-12's live gate can only measure a tree that already has the re-plumb and the charset fix in it; and the checklist rows are flipped only once the live run has proved the behaviours, so that a `done` row never outruns its evidence. The UTF-8 fixture fix rides in wave 1 rather than a parallel plan because D-12 made a full live suite the gate, and a gate running against four known reds is a gate that can hide a fifth.
 
 ### Phase 9: Metadata-free JSON Path — Keep or Drop
 
@@ -192,7 +206,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 |-------|----------------|--------|-----------|
 | 6. Merge Groundwork & Build Migration | 3/3 | Complete    | 2026-09-18 |
 | 7. Type Mapping, Writer, Helper Client & Config | 4/4 | Complete    | 2026-09-19 |
-| 8. Orchestration & JMX Re-plumbing | 0/? | Not started | - |
+| 8. Orchestration & JMX Re-plumbing | 0/3 | Planned      | - |
 | 9. Metadata-free JSON Path — Keep or Drop | 0/? | Not started | - |
 | 10. Test Harness Reconciliation | 0/? | Not started | - |
 | 11. Full Suite, CI & Publication | 0/? | Not started | - |
