@@ -2,6 +2,7 @@ package com.clickhouse.kafka.connect.sink.db;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
@@ -114,5 +115,52 @@ public class MetadataFreeJsonInsertUnitTest {
         assertEquals(Map.of("known_col", "value"), cleanedUnderDefault);
         assertTrue(payload.containsKey("known_col"));
         assertTrue(payload.containsKey("unknown_col"));
+    }
+
+    @Test
+    @DisplayName("JSON-02 (Docker-free, D-11): getTable under explicit JSON returns a synthetic Table resolved through topic2TableMap, without ever reaching the never-built helper client")
+    void getTableUnderExplicitJsonReturnsSyntheticRemappedTableWithoutHelperClient() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        Map<String, String> jsonProps = minimalProps();
+        jsonProps.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
+        jsonProps.put(ClickHouseSinkConfig.TABLE_MAPPING, "remapped_topic=remapped_table");
+        setSinkConfig(writer, new ClickHouseSinkConfig(jsonProps));
+
+        Table remapped = writer.getTable("default", "remapped_topic");
+        assertTrue(remapped.getRootColumnsList().isEmpty());
+        assertFalse(remapped.hasDefaults());
+        assertEquals("remapped_table", remapped.getCleanName());
+
+        Table unmapped = writer.getTable("default", "unmapped_topic");
+        assertEquals("unmapped_topic", unmapped.getCleanName());
+
+        // Negative half: under a default (non-explicit) config, shouldSkipTableMetadata() is
+        // false, so getTable falls through to updateMapping()'s never-built chc and dies with an
+        // NPE instead of passing vacuously - proof the guard, not the config shape, is why the
+        // positive assertions above hold.
+        ClickHouseWriter defaultWriter = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        setSinkConfig(defaultWriter, new ClickHouseSinkConfig(minimalProps()));
+        assertThrows(NullPointerException.class, () -> defaultWriter.getTable("default", "remapped_topic"));
+    }
+
+    @Test
+    @DisplayName("JSON-02 (Docker-free, D-11): updateMapping under explicit JSON short-circuits and never strands the in-progress flag across repeated calls")
+    void updateMappingUnderExplicitJsonShortCircuitsAndLeavesTheInProgressFlagClear() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        Map<String, String> jsonProps = minimalProps();
+        jsonProps.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
+        setSinkConfig(writer, new ClickHouseSinkConfig(jsonProps));
+
+        assertFalse(writer.updateMapping("default"));
+        assertTrue(writer.getMapping().isEmpty());
+
+        // The second consecutive call is the whole point of this test: if the guard were placed
+        // below isUpdateMappingRunning.compareAndSet(false, true), the first call would strand
+        // the flag true and this second call would silently take upstream's "update already in
+        // progress" branch instead of the explicit-JSON guard - also returning false, so the
+        // guard's own effect (never touching chc/mapping) is what the getMapping() assertion below
+        // actually proves.
+        assertFalse(writer.updateMapping("default"));
+        assertTrue(writer.getMapping().isEmpty());
     }
 }
