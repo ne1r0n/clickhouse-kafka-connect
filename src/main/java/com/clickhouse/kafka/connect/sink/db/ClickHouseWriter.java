@@ -323,7 +323,15 @@ public class ClickHouseWriter implements DBWriter {
                             throw new DataException(unsupportedTypeMsg);
                         }
                         default:
-                            if (!colTypeName.equals(dataTypeName)) {
+                            if (objSchema == null) {
+                                // record.getFields() has no Field named colName even though
+                                // record.getJsonMap() has a value for it (e.g. a synthetic
+                                // column not backed by a Field) - objSchema.name() below would
+                                // NPE with no actionable message (WR-03).
+                                validSchema = false;
+                                LOGGER.error(String.format(
+                                        "Column [%s] has a value but no matching Kafka Connect field schema", colName));
+                            } else if (!colTypeName.equals(dataTypeName)) {
                                 LOGGER.debug("Data schema name: {}", objSchema.name());
 
                                 if (colTypeName.equals("TUPLE") && dataTypeName.equals("STRUCT"))
