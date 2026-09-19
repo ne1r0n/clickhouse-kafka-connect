@@ -1,6 +1,7 @@
 package com.clickhouse.kafka.connect.sink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
@@ -65,6 +66,60 @@ class MBeanNameUnitTest {
         // separator "com.clickhouse:" is itself a colon, so a whole-string colon ban would be
         // wrong.
         assertTrue(name.endsWith(expectedVersionSuffix), name);
+    }
+
+    @Test
+    @DisplayName("ORCH-03: the composed per-topic name equals the task-level name plus ,topic=<topic>, in key order type,connector,name,version,topic")
+    void topicNameWholeStringShapeMatchesComposedLiteral() {
+        // Uses the pure static plus a hand-supplied version - this case never moves when the
+        // build's artifact version moves, unlike the instance-based cases below.
+        assertEquals(
+                "com.clickhouse:type=ClickHouseKafkaConnector,connector=my-connector,name=SinkTask3,version=0.9.6,topic=orders",
+                SinkTaskStatistics.buildMBeanName("my-connector", 3, "0.9.6") + ",topic=orders");
+    }
+
+    @Test
+    @DisplayName("ORCH-03: getTopicMBeanName(topic) is composed from getMBeanName() + \",topic=\" + topic, not a second format string (anti-drift)")
+    void topicNameIsComposedFromTaskLevelName() {
+        SinkTaskStatistics statistics = new SinkTaskStatistics("my-connector", 5);
+        String topic = "orders";
+        // Written relative to getMBeanName() itself, never a hardcoded artifact-version value -
+        // this is what makes the two names structurally incapable of drifting in null handling,
+        // colon handling or key order.
+        assertEquals(statistics.getMBeanName() + ",topic=" + topic, statistics.getTopicMBeanName(topic));
+    }
+
+    @Test
+    @DisplayName("ORCH-03: an empty topic renders getMBeanName() + \",topic=\" with an empty value, staying strictly longer than the task-level name")
+    void emptyTopicRendersPresentButEmptyTopicValue() {
+        SinkTaskStatistics statistics = new SinkTaskStatistics("my-connector", 6);
+        assertEquals(statistics.getMBeanName() + ",topic=", statistics.getTopicMBeanName(""));
+    }
+
+    @Test
+    @DisplayName("ORCH-02/ORCH-03: a null connector name renders connector=null in the topic name too, inherited from getMBeanName() by construction")
+    void nullConnectorNameTopicNameInheritsNullHandling() {
+        SinkTaskStatistics statistics = new SinkTaskStatistics(null, 7);
+        assertTrue(statistics.getMBeanName().contains("connector=null"));
+        assertEquals(statistics.getMBeanName() + ",topic=orders", statistics.getTopicMBeanName("orders"));
+    }
+
+    @Test
+    @DisplayName("ORCH-04: a non-ASCII connector name and topic render verbatim, with the topic name a strict-prefix extension of the task name")
+    void nonAsciiConnectorAndTopicRenderVerbatimAsStrictPrefixExtension() {
+        // Unicode escapes, not literal non-ASCII characters: the test JVM runs windows-1252 by
+        // deliberate default and the compiler's source encoding is not pinned, so a literal
+        // non-ASCII character in the source is a portability hazard. The escapes keep the .java
+        // file pure ASCII while the runtime string still holds the real characters.
+        String connector = "\u043f\u0440\u0438\u0432\u0435\u0442"; // Cyrillic "privet"
+        String topic = "\u4e3b\u9898"; // CJK "topic"
+        SinkTaskStatistics statistics = new SinkTaskStatistics(connector, 8);
+        String taskName = statistics.getMBeanName();
+        String topicName = statistics.getTopicMBeanName(topic);
+        assertTrue(topicName.startsWith(taskName + ","), topicName);
+        assertNotEquals(taskName, topicName);
+        assertTrue(taskName.contains(connector), taskName);
+        assertTrue(topicName.contains(topic), topicName);
     }
 
     // D-05: ObjectName-hostile connector names (containing a comma, an equals sign, or a quote)
