@@ -41,6 +41,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ClickHouseHelperClient implements AutoCloseable {
@@ -336,15 +338,44 @@ public class ClickHouseHelperClient implements AutoCloseable {
     }
 
     /**
-     * Builds the {@code match(table, '...')} clause appended to the {@code system.columns} query
-     * that backs {@link #showTables(String)}. Returns the empty string when {@code targetTableFilter}
-     * is exactly the empty string (the connector default); otherwise doubles any single quote in the
-     * filter before embedding it in the SQL literal. No backslash handling, no trim.
+     * A backslash (or run of backslashes) sitting immediately before a quote character - either
+     * one already present in the filter, or the end of the filter (which {@link
+     * #buildTableFilterClause(String)} always follows with its own closing quote) - is the only
+     * position where a backslash can interact with our quote-doubling below (CR-01).
+     */
+    private static final Pattern BACKSLASH_RUN_BEFORE_QUOTE_OR_END = Pattern.compile("\\\\+(?='|\\z)");
+
+    /**
+     * Builds the {@code match(table, '...')} clause appended to the {@code WHERE} clause (before
+     * {@code GROUP BY}) of the {@code system.columns} query that backs {@link
+     * #showTables(String)}. Returns the empty string when {@code targetTableFilter} is exactly the
+     * empty string (the connector default).
+     *
+     * <p>Escaping (CR-01, D-19): every single quote is doubled, ClickHouse's own escape for a
+     * literal quote inside a string literal. Backslashes are otherwise passed through unchanged so
+     * regex character classes like {@code \d+}/{@code \w+} keep matching exactly as {@code match()}
+     * interprets them - EXCEPT that a run of backslashes directly before a quote (either one
+     * already in the filter, or the quote this method appends to close the literal) is padded to
+     * an even length first. ClickHouse decodes string-literal backslash escapes left to right: an
+     * even-length run always pairs up and self-cancels, leaving the following quote exactly as our
+     * doubling/closing intended, but an odd-length run lets the last backslash escape that quote
+     * and break out of the literal - the exact breakout a value like {@code x\' OR 1=1-- } exploits
+     * against naive quote-only doubling.
      */
     static String buildTableFilterClause(String targetTableFilter) {
-        return targetTableFilter.isEmpty()
-                ? ""
-                : String.format(" AND match(table, '%s')", targetTableFilter.replace("'", "''"));
+        if (targetTableFilter.isEmpty()) {
+            return "";
+        }
+        Matcher backslashRun = BACKSLASH_RUN_BEFORE_QUOTE_OR_END.matcher(targetTableFilter);
+        StringBuilder backslashSafe = new StringBuilder();
+        while (backslashRun.find()) {
+            String run = backslashRun.group();
+            String evenRun = run.length() % 2 == 0 ? run : run + "\\";
+            backslashRun.appendReplacement(backslashSafe, Matcher.quoteReplacement(evenRun));
+        }
+        backslashRun.appendTail(backslashSafe);
+        String quoteSafe = backslashSafe.toString().replace("'", "''");
+        return String.format(" AND match(table, '%s')", quoteSafe);
     }
 
     public List<Table.TableDesc> showTables(String database) {
@@ -362,8 +393,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
                 .nodeSelector(ClickHouseNodeSelector.of(ClickHouseProtocol.HTTP))
                 .build();
              ClickHouseResponse response = client.read(server)
-                     .query(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database)
-                             + buildTableFilterClause(targetTableFilter))
+                     .query(String.format("select database, table, count(*) as col_count from system.columns where database = '%s'", database)
+                             + buildTableFilterClause(targetTableFilter)
+                             + " group by database, table")
                      .format(ClickHouseFormat.RowBinaryWithNamesAndTypes)
                      .executeAndWait()) {
             for (ClickHouseRecord r : response.records()) {
@@ -380,8 +412,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
     public List<Table.TableDesc> showTablesV2(String database) {
         List<Table.TableDesc> tablesList = new ArrayList<>();
-        try (Records records = queryV2(String.format("select database, table, count(*) as col_count from system.columns where database = '%s' group by database, table", database)
-                + buildTableFilterClause(targetTableFilter))) {
+        try (Records records = queryV2(String.format("select database, table, count(*) as col_count from system.columns where database = '%s'", database)
+                + buildTableFilterClause(targetTableFilter)
+                + " group by database, table")) {
             for (GenericRecord record : records) {
                 String databaseName = record.getString(1);
                 String tableName = record.getString(2);
