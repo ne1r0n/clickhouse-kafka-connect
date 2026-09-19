@@ -60,6 +60,42 @@ class ClickHouseHelperClientForkUnitTest {
     }
 
     @Test
+    @DisplayName(
+            "CR-01: a backslash immediately followed by a quote no longer lets the quote-doubling breakout"
+                    + " (a backslash right before a quote is padded to an even run before the quote is doubled)")
+    void backslashImmediatelyBeforeQuoteIsNeutralizedBeforeDoubling() {
+        // Naive quote-only doubling turns this into: ' AND match(table, 'x\'' OR 1=1-- ')
+        // ClickHouse then parses \'' as (escaped quote) + (unescaped quote), closing the string
+        // literal early and exposing " OR 1=1-- " as raw SQL (CR-01). The fix must pad the
+        // single backslash to an even-length run BEFORE doubling the quote, so ClickHouse's own
+        // left-to-right backslash decoding always treats the pair as one literal backslash and
+        // leaves the doubled quote to close as one literal quote character - never the literal.
+        assertEquals(
+                " AND match(table, 'x\\\\'' OR 1=1-- ')",
+                ClickHouseHelperClient.buildTableFilterClause("x\\' OR 1=1-- "));
+    }
+
+    @Test
+    @DisplayName("CR-01: a trailing backslash (with no following quote in the filter itself) is"
+            + " neutralized against the closing quote this method appends")
+    void trailingBackslashIsNeutralizedAgainstTheClosingQuote() {
+        // A single trailing backslash would otherwise escape the closing quote this method
+        // appends, leaving the ClickHouse string literal unterminated.
+        assertEquals(
+                " AND match(table, 'foo\\\\')",
+                ClickHouseHelperClient.buildTableFilterClause("foo\\"));
+    }
+
+    @Test
+    @DisplayName("CR-01: an already-even run of backslashes before a quote is left untouched"
+            + " (self-cancelling, not re-doubled)")
+    void evenBackslashRunBeforeQuoteIsUntouched() {
+        assertEquals(
+                " AND match(table, 'x\\\\''y')",
+                ClickHouseHelperClient.buildTableFilterClause("x\\\\'y"));
+    }
+
+    @Test
     @DisplayName("DESC-01: .null subcolumn of a registered Nullable parent is skipped")
     void nullSubcolumnOverNullableParentIsSkipped() {
         Map<String, Column> columns = new HashMap<>();

@@ -48,6 +48,31 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
         }
     }
 
+    /**
+     * {@link ClickHouseTestHelpers#createClient(Map)} never calls {@code setTargetTableFilter} on
+     * the builder, so a client built through it always queries with an empty filter regardless of
+     * {@link ClickHouseSinkConfig#TARGET_TABLE_FILTER} in {@code props} - out of this phase's
+     * declared scope to fix (owned by Phase 10 per D-09). Tests that need a client with the filter
+     * actually wired build one directly here instead, mirroring {@code createClient}'s own
+     * construction with the one added call.
+     */
+    private static ClickHouseHelperClient createFilteredClient(Map<String, String> props) {
+        ClickHouseSinkConfig csc = new ClickHouseSinkConfig(props);
+        return new ClickHouseHelperClient.ClickHouseClientBuilder(
+                        csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+                .setDatabase(csc.getDatabase())
+                .setUsername(csc.getUsername())
+                .setPassword(csc.getPassword())
+                .sslEnable(csc.isSslEnabled())
+                .setTimeout(csc.getTimeout())
+                .setRetry(csc.getRetry())
+                .useClientV2("V2".equals(csc.getClientVersion()))
+                .setSslSocketSni(csc.getSslSocketSni())
+                .enableReplicaPinning(csc.isEnableReplicaPinning())
+                .setTargetTableFilter(csc.getTargetTableFilter())
+                .build();
+    }
+
     @Test
     @DisplayName("DESC-01: describeTable on Nullable/Array/String/JSON/parameterized-JSON/Dynamic columns returns exactly the declared root columns")
     void describeTableReturnsDeclaredColumnsForJsonAndDynamic() {
@@ -173,7 +198,7 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
         try {
             Map<String, String> props = getBaseProps();
             props.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, "o'brien");
-            ClickHouseHelperClient filteredChc = ClickHouseTestHelpers.createClient(props);
+            ClickHouseHelperClient filteredChc = createFilteredClient(props);
             List<Table.TableDesc> tables = filteredChc.showTables(filteredChc.getDatabase());
             assertNotNull(tables);
             assertTrue(tables.isEmpty());
@@ -198,14 +223,14 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
         try {
             Map<String, String> unanchoredProps = getBaseProps();
             unanchoredProps.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, stem + "_tbl_\\d+");
-            ClickHouseHelperClient unanchoredChc = ClickHouseTestHelpers.createClient(unanchoredProps);
+            ClickHouseHelperClient unanchoredChc = createFilteredClient(unanchoredProps);
             Set<String> unanchored = unanchoredChc.showTables(unanchoredChc.getDatabase()).stream()
                     .map(Table.TableDesc::getCleanName)
                     .collect(Collectors.toSet());
 
             Map<String, String> anchoredProps = getBaseProps();
             anchoredProps.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, "^" + stem + "_tbl_\\d+$");
-            ClickHouseHelperClient anchoredChc = ClickHouseTestHelpers.createClient(anchoredProps);
+            ClickHouseHelperClient anchoredChc = createFilteredClient(anchoredProps);
             Set<String> anchored = anchoredChc.showTables(anchoredChc.getDatabase()).stream()
                     .map(Table.TableDesc::getCleanName)
                     .collect(Collectors.toSet());
@@ -224,6 +249,32 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
             ClickHouseTestHelpers.dropTable(chc, tbl22);
             ClickHouseTestHelpers.dropTable(chc, tblx);
             ClickHouseTestHelpers.dropTable(chc, xtbl1y);
+        }
+    }
+
+    @Test
+    @DisplayName(
+            "CR-01: a targetTableFilter combining a backslash and a quote does not break out of the"
+                    + " discovery query's string literal")
+    void backslashQuoteCombinationDoesNotBreakOutOfTheFilterQuery() {
+        String topic = createTopicName("cr01_injection");
+        createTable(chc, topic, "CREATE TABLE %s ( `id` UInt32 ) Engine = MergeTree ORDER BY id");
+        try {
+            // Naive quote-only doubling turns this into a broken-out clause exposing
+            // " OR 1=1-- " as raw SQL in the system.columns discovery query (CR-01). A fixed
+            // buildTableFilterClause must still produce a query ClickHouse accepts, matching
+            // nothing (the literal table name "x' OR 1=1--" does not exist), rather than either
+            // throwing a syntax error or - worse - returning every table in the database.
+            Map<String, String> props = getBaseProps();
+            props.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, "x\\' OR 1=1-- ");
+            ClickHouseHelperClient filteredChc = createFilteredClient(props);
+
+            List<Table.TableDesc> tables = filteredChc.showTables(filteredChc.getDatabase());
+
+            assertNotNull(tables);
+            assertTrue(tables.isEmpty(), "a successful breakout would return every table: " + tables);
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
         }
     }
 
