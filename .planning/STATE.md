@@ -5,11 +5,11 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 9
 current_phase_name: Metadata-free JSON Path — Keep or Drop
 status: planning
-stopped_at: Phase 08 complete, ready to plan Phase 9
-last_updated: "2026-09-19T18:36:51.561Z"
+stopped_at: Phase 9 context gathered
+last_updated: "2026-09-19T20:28:43.801Z"
 last_activity: 2026-09-19
 last_activity_desc: Phase 08 complete, transitioned to Phase 9
-state_head: d564705d1ba837fdc36e79de53aa7f53753a61f3
+state_head: a84773316e571e9827c7fbc9be2045b1c29469db
 progress:
   total_phases: 6
   completed_phases: 3
@@ -129,9 +129,9 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-19T18:36:00Z
-Stopped at: Phase 08 complete (UAT 16/16 passed, security verified), ready to plan Phase 9
-Resume file: None
+Last session: 2026-09-19T20:28:43.749Z
+Stopped at: Phase 9 context gathered
+Resume file: .planning/phases/09-metadata-free-json-path-keep-or-drop/09-CONTEXT.md
 
 ## Operator Next Steps
 
