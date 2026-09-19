@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.stream.LongStream;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +27,6 @@ import org.junit.jupiter.api.Test;
  * merge and has not been re-applied to {@code src/main} in this phase. Every assertion below is
  * left intact so Phase 9 can re-enable this class unchanged if the decision is keep.
  */
-@Disabled("Pending JSONP-01 keep/drop decision — Phase 9")
 public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
     private static final String TABLE_SCHEMA = "CREATE TABLE %s ( `off16` Int16, `str` String ) Engine = MergeTree ORDER BY off16";
     private static final int RECORD_COUNT = 10;

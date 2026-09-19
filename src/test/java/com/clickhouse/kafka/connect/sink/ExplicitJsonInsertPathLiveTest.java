@@ -17,7 +17,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -41,7 +40,6 @@ import org.junit.jupiter.api.TestInfo;
  * phase. Every assertion below is left intact so Phase 9 can re-enable this class unchanged if
  * the decision is keep.
  */
-@Disabled("Pending JSONP-01 keep/drop decision — Phase 9")
 public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
 
     private void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {

@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -38,7 +37,6 @@ import org.junit.jupiter.api.TestInfo;
  * been re-applied to {@code src/main} in this phase. Every assertion below is left intact so
  * Phase 9 can re-enable this class unchanged if the decision is keep.
  */
-@Disabled("Pending JSONP-01 keep/drop decision — Phase 9")
 public class JsonInsertColumnsLiveTest extends ClickHouseBase {
 
     private static final String FOUR_COLUMN_DDL =
