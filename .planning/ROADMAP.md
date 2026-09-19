@@ -146,7 +146,12 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   3. `jsonInsertColumns` works again, redesigned as a field filter inside upstream's `writeRecordsJson` — the `client.insert(table, columns, data, ...)` overload it attached to no longer exists at that call site — with the Docker-free `JsonInsertColumnsUnitTest` green here and `COLS-01..06`'s live half re-run in Phase 11.
   4. Reading the resolved diff (not merely a green test) shows no fork-only JSON-path code left standing against a `Table` shape upstream no longer produces.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Re-apply the four bypass guards behind one predicate, rebuild the synthetic `Table` on upstream's 5-arg constructor, re-attach `jsonInsertColumns` server-side, and un-park the Docker-free canary (wave 1)
+- [ ] 09-02-PLAN.md — Adopt the `TableTest` carry-in, un-park the three live JSON-path classes, and hold the full suite to a zero-failure binary gate (wave 2)
+- [ ] 09-03-PLAN.md — Discharge JSONP-04 by reading the resolved diff, append the JSONP-03 rationale correction, and record the KEEP disposition with its operator evidence and accepted cost (wave 3)
 
 ### Phase 10: Test Harness Reconciliation
 
