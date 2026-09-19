@@ -13,7 +13,6 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,12 +27,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * it deliberately extends nothing - not {@code ClickHouseBase}, whose inherited {@code
  * @Tag("clickhouse")} would drop it out of {@code testUnit} (Phase 1 D-12).
  *
- * <p>Disabled pending the JSONP-01 keep/drop decision (Phase 9, D-11): the metadata-free
- * {@code insertFormat=json} bypass this class pins was dropped by the mechanical v1.6.0 merge and
- * has not been re-applied to {@code src/main} in this phase. Every assertion below is left intact
- * so Phase 9 can re-enable this class unchanged if the decision is keep.
+ * <p>Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-11): the metadata-free {@code
+ * insertFormat=json} bypass this class pins, dropped by the mechanical v1.6.0 merge, was
+ * re-applied to {@code src/main} in Phase 9 as {@code ClickHouseWriter.shouldSkipTableMetadata()}
+ * and its four guard sites. This class is that bypass's Docker-free canary inside {@code
+ * testUnit} - it must keep failing loudly if a future merge silently deletes the guards again.
  */
-@Disabled("Pending JSONP-01 keep/drop decision — Phase 9")
 public class MetadataFreeJsonInsertUnitTest {
 
     private static final String WRITER_SINK_CONFIG_FIELD = "csc";

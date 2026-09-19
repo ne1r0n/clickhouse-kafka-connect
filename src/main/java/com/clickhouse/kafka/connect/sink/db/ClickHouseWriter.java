@@ -122,6 +122,10 @@ public class ClickHouseWriter implements DBWriter {
         }
 
         LOGGER.debug("Ping was successful.");
+        if (shouldSkipTableMetadata()) {
+            LOGGER.info("Skipping table mapping and validation because insertFormat is explicitly set to JSON.");
+            return true;
+        }
         this.updateMapping(csc.getDatabase());
         if (mapping.isEmpty()) {
             // With db-topic split the destination database is derived per record, so the configured
@@ -140,6 +144,10 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     public boolean updateMapping(String database) {
+        if (shouldSkipTableMetadata()) {
+            LOGGER.debug("Skipping table mapping update because insertFormat is explicitly set to JSON.");
+            return false;
+        }
         // Do not start a new update cycle if one is already in progress
         // Atomically compare and set isUpdateMappingRunning
         if (!this.isUpdateMappingRunning.compareAndSet(false, true)) {
@@ -1385,7 +1393,7 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     protected Map<String, Object> cleanupExtraFields(Map<String, Object> m, Table t) {
-        if (csc.isBypassFieldCleanup()) {
+        if (csc.isBypassFieldCleanup() || shouldSkipTableMetadata()) {
             return m;
         }
 
@@ -1589,7 +1597,22 @@ public class ClickHouseWriter implements DBWriter {
 
         return request;
     }
+
+    /**
+     * The one predicate every metadata-free guard site reads (D-05). Keyed on {@code
+     * csc.isJsonInsertFormatExplicit()} and nothing else - {@code csc.getInsertFormat()} also
+     * matches the upstream unset-{@code insertFormat} default-branch typo (falls through to the
+     * JSON enum constant), and keying on that would widen the bypass to every default-configured
+     * connector in production.
+     */
+    private boolean shouldSkipTableMetadata() {
+        return csc != null && csc.isJsonInsertFormatExplicit();
+    }
+
     protected Table getTable(String database, String topic) {
+        if (shouldSkipTableMetadata()) {
+            return new Table(database, Utils.getMappedOrTopicTableName(topic, csc.getTopicToTableMap()), false, List.of(), 0);
+        }
         String tableName = Utils.getTableName(database, topic, csc.getTopicToTableMap());
         Table table = this.mapping.get(tableName);
         if (table == null) {
