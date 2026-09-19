@@ -12,6 +12,11 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.json.JSONObject;
@@ -19,11 +24,6 @@ import org.junit.jupiter.api.Assumptions;
 import org.opentest4j.TestAbortedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 public class ClickHouseTestHelpers {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseTestHelpers.class);
@@ -137,7 +137,8 @@ public class ClickHouseTestHelpers {
         querySettings.serverSetting("select_sequential_consistency", "1");
         try (QueryResponse queryResponse = chc.getClient().query(query, querySettings).get()) {
             List<JSONObject> jsonObjects = new ArrayList<>();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()));
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(queryResponse.getInputStream(), StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
                 JSONObject jsonObject = new JSONObject(line);
@@ -155,7 +156,8 @@ public class ClickHouseTestHelpers {
         querySettings.setFormat(ClickHouseFormat.JSONEachRow);
         try (QueryResponse queryResponse = chc.getClient().query(query, querySettings).get()) {
             List<JSONObject> jsonObjects = new ArrayList<>();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()));
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(queryResponse.getInputStream(), StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
                 JSONObject jsonObject = new JSONObject(line);
@@ -315,7 +317,8 @@ public class ClickHouseTestHelpers {
             }
             List<String> results = new ArrayList<>();
             LOGGER.info("read {} rows", queryResponse.getReadRows());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(queryResponse.getInputStream()));
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(queryResponse.getInputStream(), StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
                 String gsonString = line.replace("'", "").replace(" ", "").replace("\\u003d", ":");
