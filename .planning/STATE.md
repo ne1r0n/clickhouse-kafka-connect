@@ -4,17 +4,17 @@ milestone: v1.6.0_gg1-sync
 milestone_name: Upstream v1.6.0 Sync
 current_phase: 09
 current_phase_name: Metadata-free JSON Path — Keep or Drop
-status: executing
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-09-19T22:47:54.861Z"
+status: verifying
+stopped_at: Completed 09-03-PLAN.md — Phase 09 all 3 plans complete, ready for verification
+last_updated: "2026-09-19T22:55:03.898Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 09 execution started
-state_head: 7bcb98be815730c580f84f8baee34486101a7fba
+state_head: 3fc4535e29a7088ce9c4c44a89a31b917c469d7c
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 50
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 Phase: 09 (Metadata-free JSON Path — Keep or Drop) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-20 — Phase 09 execution started
 
 ## Performance Metrics
@@ -72,6 +72,7 @@ Last activity: 2026-09-20 — Phase 09 execution started
 | Phase 07 P04 | 22 min | 2 tasks | 4 files |
 | Phase 09 P01 | 25 min | 4 tasks | 2 files |
 | Phase 09 P02 | 20 min | 3 tasks | 4 files |
+| Phase 09 P03 | ~15min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 08]: UAT 16/16 passed (10 human checkpoints + 6 auto-covered); both human-verification items resolved and applied — `MERGE-CHECKLIST.md`'s ProcessingTest row wording corrected, and ORCH-01/ORCH-04/FREE-01 flipped to Complete in `REQUIREMENTS.md`. Security: 13 threats, 0 open (`08-SECURITY.md`). — The two doc edits invalidated `08-VERIFICATION.md`'s `covered_digest`; it was recomputed after confirming `git diff 911a3160..HEAD` touched planning documents only, with the reason recorded in the verification file itself.
 - [Phase 09]: [Phase 09]: Plan 09-01 re-applied the metadata-free insertFormat=json bypass (D-01 KEEP, re-confirmed at Task 1's checkpoint) as four early-return guards behind one shared predicate shouldSkipTableMetadata(), rebuilt the synthetic Table against upstream's immutable five-argument constructor, and re-attached jsonInsertColumns to the surviving five-argument client.insert overload in doInsertJsonV2. — Operator facts 2/3 mean no upstream configuration substitutes for the bypass (suppressTableExistenceException still calls describeTable; enableDbTopicSplit still runs updateMapping; bypassFieldCleanup covers only one of three effects) — KEEP is the only way to serve a connector user who cannot DESCRIBE/SHOW the target tables. Docker-free testUnit canary (MetadataFreeJsonInsertUnitTest, 11 tests) now pins all four guard sites and the overload branch so a future merge cannot silently drop them again.
 - [Phase 09]: [Phase 09]: Plan 09-02 re-enabled all 13 parked live JSON-path test methods (delete-only @Disabled removal, D-10) and adopted the TableTest.extractNullables() carry-in fix (D-14); full env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test run: 643 tests, 0 failures, 0 errors, 18 skipped (down from Phase 8's 35). — No newly-enabled method needed investigation -- all 13 passed on first live execution since the 581-commit merge, including R-01's labelled pin, proving plan 09-01's guards did not widen the bypass or damage non-JSON connectors.
+- [Phase 09]: Plan 09-03 discharged JSONP-04 by reading the resolved ClickHouseWriter.java diff against v1.6.0 (three findings: five-arg-only Table construction, no mutable-Table assumptions on the JSON path, guards-only Phase 9 additions), and recorded Phase 9's bookkeeping: REQUIREMENTS.md's JSONP-03 correction blockquote, all four JSONP requirements closed, MERGE-CHECKLIST.md row 26 annotated, Recorded Fact 13 resolved (citing commit b84b179e), and new Recorded Fact 14 stating the KEEP disposition's rationale, operator facts, accepted cost and conflict-policy departure. — ROADMAP criterion 4 requires JSONP-04 evidence from reading the diff, not a green test; criterion 1 requires a recorded decision with rationale. MERGE-CHECKLIST.md's own closing sentence stated no disposition was recorded anywhere until this plan supplied one.
 
 ### Pending Todos
 
@@ -133,8 +135,8 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-19T22:47:54.815Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-09-19T22:55:03.857Z
+Stopped at: Completed 09-03-PLAN.md — Phase 09 all 3 plans complete, ready for verification
 Resume file: None
 
 ## Operator Next Steps
