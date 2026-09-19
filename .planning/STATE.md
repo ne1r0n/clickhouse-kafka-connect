@@ -2,43 +2,43 @@
 gsd_state_version: "1.0"
 milestone: v1.6.0_gg1-sync
 milestone_name: Upstream v1.6.0 Sync
-current_phase: 08
-current_phase_name: Orchestration & JMX Re-plumbing
-status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-09-19T12:27:16.886Z"
+current_phase: 9
+current_phase_name: Metadata-free JSON Path — Keep or Drop
+status: planning
+stopped_at: Phase 08 complete, ready to plan Phase 9
+last_updated: "2026-09-19T18:36:51.561Z"
 last_activity: 2026-09-19
-last_activity_desc: Phase 08 execution started
-state_head: 340de46d0d3661f1def276eae1a795d887366811
+last_activity_desc: Phase 08 complete, transitioned to Phase 9
+state_head: d564705d1ba837fdc36e79de53aa7f53753a61f3
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 7
-  percent: 33
+  completed_plans: 10
+  percent: 50
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-18)
+See: .planning/PROJECT.md (updated 2026-09-19)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 08 — Orchestration & JMX Re-plumbing
+**Current focus:** Phase 09 — Metadata-free JSON Path — Keep or Drop
 
 ## Current Position
 
-Phase: 08 (Orchestration & JMX Re-plumbing) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 08
-Last activity: 2026-09-19 — Phase 08 execution started
+Phase: 9 — Metadata-free JSON Path — Keep or Drop
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-19 — Phase 08 complete, transitioned to Phase 9
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 7 (all from `v1.2.9_gg4-tests`)
+- Total plans completed: 10 (all from `v1.2.9_gg4-tests`)
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -48,7 +48,7 @@ Last activity: 2026-09-19 — Phase 08 execution started
 |-------|-------|-------|----------|
 | 06 | 3 | - | - |
 | 07 | 4 | - | - |
-| 08 | 0 | - | - |
+| 08 | 3 | - | - |
 | 09 | 0 | - | - |
 | 10 | 0 | - | - |
 | 11 | 0 | - | - |
@@ -95,6 +95,9 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 07]: Phase 07 Plan 04: Pinned all thirteen new upstream ClickHouseSinkConfig options at their defaults (NewUpstreamConfigDefaultsUnitTest), fixed a test-construction NPE in RowBinaryUnsupportedTypeGateTest's JSON validateDataSchema case, landed a user-approved build.gradle.kts test-compile exclusion for two future-phase files, and ran testUnit green with Docker genuinely stopped (300 tests, 0 failures); flipped Phase 7's twelve merge-checklist rows and recorded the two free wins (map null-marker guard confirmed with WR-01 stated open, describe-table database fix confirmed). — CFG-03/WRT-04/FREE-02/FREE-03 close out Phase 7's 17 requirements; the checklist flips keep Phase 11's zero-pending publication gate meaningful.
 - [Phase 07]: Phase 07 gap-closure (post-execution, commits `2c6a0f56` `92c9cece` `a6141221` `e411353c` `95e49964`): the orchestrator ran the full live suite — the first execution of anything since the 581-commit merge, because the test tree did not compile until plan 07-03 — and got 12 failures. Three belonged to Phase 7 and were fixed, along with both Critical code-review findings. **`targetTableFilter` was appended AFTER `group by` instead of into the `where` clause, so every non-empty filter threw `ILLEGAL_TYPE_OF_ARGUMENT` — the behaviour was entirely broken, not merely mis-escaped**, and `buildTableFilterClause` additionally allowed a `x\' OR 1=1-- ` backslash-before-quote breakout into the `system.columns` discovery query. Also null-guarded `doWriteColValue`'s MAP/TUPLE/VARIANT cases (an NPE mid-RowBinary-stream on `Array(Nullable(Tuple(...)))`) and `validateDataSchema`'s default branch. Suite went 12 → 7 failures, all 7 carry-ins outside Phase 7. — Phase 7's own acceptance gate (`testUnit`) is Docker-free by design and structurally could not have caught any of these; the live run is what proved the re-applied behaviours. Worth repeating at the end of Phases 8 and 10 rather than trusting a green `testUnit`.
 
+- [Phase 08]: Re-plumbed JMX `connector=<name>` into upstream's new naming owner `SinkTaskStatistics` (not back into the fork's old `ProxySinkTask.buildMBeanName` home), with the per-topic MBean composing from the task-level name; un-excluded `MBeanNameUnitTest`; UTF-8'd the three charset-less test-helper readers; discharged ORCH-01/ORCH-04/FREE-01 on recorded evidence rather than new code. Suite: 636 tests, 1 failure, 0 errors, 35 explained skips against a deliberately re-baselined gate. — Threading the name into upstream's owner shrinks the fork delta so the next sync does not re-fight this conflict; the three evidence-only requirements were documentation acts the plans' own prohibitions forbade pinning with tests.
+- [Phase 08]: UAT 16/16 passed (10 human checkpoints + 6 auto-covered); both human-verification items resolved and applied — `MERGE-CHECKLIST.md`'s ProcessingTest row wording corrected, and ORCH-01/ORCH-04/FREE-01 flipped to Complete in `REQUIREMENTS.md`. Security: 13 threats, 0 open (`08-SECURITY.md`). — The two doc edits invalidated `08-VERIFICATION.md`'s `covered_digest`; it was recomputed after confirming `git diff 911a3160..HEAD` touched planning documents only, with the reason recorded in the verification file itself.
+
 ### Pending Todos
 
 - `REQUIREMENTS.md`'s header coverage count said 46 v1 requirements; the document actually lists **53**. Corrected in the Traceability block at roadmap creation — no requirement was lost, the summary count was simply wrong.
@@ -102,16 +105,16 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 ### Blockers/Concerns
 
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...` (already in `config.json`'s `build_command`/`test_command`). Docker runs on colima profile `vz`.
-- [Merge]: ⚠ **Five fork behaviours vanish with no conflict marker and no compile error** unless deliberately re-applied — JMX `connector=<name>`, `async_insert` un-forcing, the UTF-8 `describeTable` readers, `targetTableFilter` + the sub-column skip, and `ClickHouseBase`'s `@Tag`/shared-container/MBean-sweep contract. Each has a named test as its canary (Phases 7, 8, 10).
+- [Merge]: ⚠ **Five fork behaviours vanish with no conflict marker and no compile error** unless deliberately re-applied. Four are now re-applied and canary-green: `async_insert` un-forcing, the UTF-8 `describeTable` readers, `targetTableFilter` + the sub-column skip (all Phase 7), and JMX `connector=<name>` (Phase 8). **One remains: `ClickHouseBase`'s `@Tag`/shared-container/MBean-sweep contract — Phase 10.**
 - [Prod]: ⚠ **Unfixed production bug, pinned only.** R-01: `insertFormat=json` + a `Struct` record + default `bypassRowBinary` silently discards every row. Its keep/drop disposition is Phase 9's blocking-human checkpoint — it must not be decided by accident.
 - [Merge]: `ClickHouseTestHelpers.java` is a modify/delete that git resolves by orphaning the fork's copy — post-merge the tree can hold two compiling copies with divergent defaults. Grep for exactly one canonical file (HARN-04, Phase 10).
 - [Tooling]: The `gh` CLI is not installed locally (deliberately — D-11), so CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel, so any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch. Confirmed live in Phase 7: the wave-2 dispatch was rejected by the isolation guard after intervening `gsd_run check` calls re-persisted the sentinel to `harness-worktree`; re-forcing immediately before each `Agent()` call is the working remedy.
 - [Phase 06]: ⚠ **CR-01, latent — safety-net script fails open.** `.planning/scripts/verify-merge-invariants.sh:44` treats a `git grep` error (exit ≥2) identically to "no match" (exit 1), with stderr suppressed, so Invariant 2 reports clean on a broken pathspec or unreadable commit. The property itself currently holds — re-derived at the Phase 6 security audit with corrected exit-code branching (592 commits, 0 markers, 0 git errors) — but **fix before Phase 11**, which gates publication on this script running unattended. Recorded in `06-SECURITY.md` → Carried Defects.
-- [Phase 07 → 8/10]: **RESOLVED BY USER DECISION, but both halves must be undone by their owning phase.** `compileTestJava` failed on two files after plan 07-03 — `MBeanNameUnitTest.java` (needs `ProxySinkTask.buildMBeanName`, Phase 8) and `ClickHouseTestHarnessTest.java` (needs `ClickHouseBase.sharedContainerStarts()`, Phase 10). The user chose a temporary test-compile exclusion in `build.gradle.kts` (commit `b25a71f1`) over pulling either sliver forward. Both files remain on disk byte-for-byte unmodified. **Phase 8 must delete its own `exclude("**/MBeanNameUnitTest.java")` line; Phase 10 must delete `exclude("**/ClickHouseTestHarnessTest.java")`.** Leaving either in place silently drops a canary test from the suite.
-- [Phase 07 → 10]: ⚠ **UTF-8 regression in the orphaned test helper — 4 live tests failing.** `src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java` lines ~140 (`getAllRowsAsJson`), ~158 (`getAllRowsAsJsonCloud`) and ~318 use `new InputStreamReader(stream)` with **no charset**, so UTF-8 bytes decode under the test JVM's deliberate `file.encoding=windows-1252` and non-ASCII values come back as mojibake (`привет` → `Ð¿Ñ€Ð¸Ð²ÐµÑ‚`). The fork's explicit UTF-8 was dropped by the v1.6.0 merge — the calling line in `JsonDynamicRoundTripTest` still says "read-back through the UTF-8-safe helper". Fails `JsonDynamicRoundTripTest` TYPE-07 ×2 and `SmtSinkLandingTest` HDRS-09/CONV-08. Three-line fix, owned by Phase 10 / HARN-04.
-- [Phase 07 → 8]: `MBeanRegistrationLiveTest` JMX-04 ×2 fail with NPE — the fork's JMX `connector=<name>` naming is not yet re-applied. Expected; Phase 8's canary firing as designed.
-- [Phase 07 → untriaged]: `TableTest.extractNullables()` fails (expected 3, got 2). `Table.java` is byte-identical to upstream v1.6.0 and was explicitly out of Phase 7's scope, so this is pre-existing upstream behaviour meeting a fork expectation. Needs triage in whichever phase owns `Table`/mapping coverage.
+- [Phase 10]: **Half done — Phase 8 closed its half, Phase 10 still owes its own.** `compileTestJava` failed on two files after plan 07-03; the user chose a temporary test-compile exclusion in `build.gradle.kts` (commit `b25a71f1`) over pulling either sliver forward. ✓ Phase 8 deleted `exclude("**/MBeanNameUnitTest.java")` — the canary now compiles and is green inside `testUnit`. **Phase 10 must still delete `exclude("**/ClickHouseTestHarnessTest.java")`** (needs `ClickHouseBase.sharedContainerStarts()`); leaving it in place silently drops that canary from the suite.
+- ~~[Phase 07 → 10]: UTF-8 regression in the orphaned test helper — 4 live tests failing~~ — **RESOLVED in Phase 8 (plan 08-01, D-13).** All three `InputStreamReader` constructions in `src/testFixtures/.../ClickHouseTestHelpers.java` (lines 141, 160, 321) now pass `StandardCharsets.UTF_8` explicitly, so non-ASCII values no longer decode as mojibake under the deliberate `windows-1252` test JVM. `JsonDynamicRoundTripTest` TYPE-07 ×2 and `SmtSinkLandingTest` HDRS-09/CONV-08 are green. Note Phase 10 / HARN-04 still owns the separate duplicate-helper-file question.
+- ~~[Phase 07 → 8]: `MBeanRegistrationLiveTest` JMX-04 ×2 NPE~~ — **RESOLVED in Phase 8.** The JMX `connector=<name>` naming is re-applied into `SinkTaskStatistics`; `MBeanRegistrationLiveTest` now passes at both task and per-topic level, including the four-tasks-two-connectors selective-unregistration path.
+- [Phase 10 (triaged in Phase 8)]: `TableTest.extractNullables()` fails (expected 3, got 2) — **cause now named, fix still owed.** Phase 8's read-only triage traced it to `ClickHouseHelperClient.shouldSkipDescribeRow` unconditionally stripping Nullable `.null` subcolumns — a fork behaviour already pinned by `DESC-01`, not a `Table.java` defect. `Table.java`/`TableTest.java` remain byte-identical to upstream v1.6.0. This is the single remaining failure in the re-baselined suite gate.
 - [Phase 07]: **3 Warning + 3 Info code-review findings left open** in `07-REVIEW.md` (both Criticals were fixed). Warnings: `Column.extractColumn`'s Array recursion swaps the `hasDefaultValue`/`isSubColumn` positional args (currently dead code, future landmine); `ClickHouseSinkConfig`'s `ConfigDef` default for `USERNAME` uses `passwordDefault` ("") instead of `usernameDefault` ("default") — misreports via Connect's config UI/docs, runtime unaffected; `JsonColumnTest` asserts row counts only, never reading back payload content.
 
 ## Deferred Items
@@ -126,10 +129,11 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-19T11:04:40.094Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-orchestration-jmx-re-plumbing/08-CONTEXT.md
+Last session: 2026-09-19T18:36:00Z
+Stopped at: Phase 08 complete (UAT 16/16 passed, security verified), ready to plan Phase 9
+Resume file: None
 
 ## Operator Next Steps
 
-- Plan the next phase with `/gsd-plan-phase 7`
+- Discuss the next phase with `/gsd-discuss-phase 9` (no `09-CONTEXT.md` yet), then `/gsd-plan-phase 9`
+- Phase 9 carries the R-01 keep/drop decision as a blocking-human checkpoint — it must not be decided by accident
