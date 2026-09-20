@@ -1,13 +1,16 @@
 ---
-status: testing
+status: complete
 phase: 09-metadata-free-json-path-keep-or-drop
 source: [09-VERIFICATION.md]
 started: "2026-09-19T23:08:58Z"
-updated: "2026-09-19T23:08:58Z"
+updated: "2026-09-20T00:00:00Z"
 ---
 
 ## Current Test
 
+[testing complete]
+
+<!-- Resolved checkpoint, retained for the record:
 number: 1
 name: CR-01 disposition — `auto.evolve` + metadata-free bypass interaction
 expected: |
@@ -39,19 +42,22 @@ expected: |
   empty column list — `09-CONTEXT.md`'s Integration Points enumerated only three
   (`validateDataSchema`, `doInsertRawBinaryV2`'s write loop/R-01, `cleanupExtraFields`).
 awaiting: user response
+-->
+
 
 ## Tests
 
 ### 1. CR-01 disposition: `auto.evolve` + metadata-free bypass interaction
 expected: Decide whether to guard `ClickHouseWriter.doInsert`'s `auto.evolve` branch with `shouldSkipTableMetadata()` now, or record it as an accepted scheduled follow-up. Under `auto.evolve=true` + explicit `insertFormat=json` + a schema'd record, the unguarded branch drives `ALTER TABLE` and `DESCRIBE` traffic on every batch against the synthetic empty-column `Table` — or fails hard where the `DESCRIBE` grant is absent, which is the exact operator scenario the KEEP decision exists to serve. Source: `09-REVIEW.md` CR-01 (Critical), independently re-confirmed present during verification.
-result: [pending]
+result: pass
+decision: "Fix now — accepted as already applied. Commit `51baea62` changed `ClickHouseWriter.doInsert:210` to `if (csc.isAutoEvolve() && !shouldSkipTableMetadata())` plus an `else if (csc.isAutoEvolve())` warn branch, pinned by two new Docker-free cases in `MetadataFreeJsonInsertUnitTest` (guard fires under explicit JSON; does not over-fire otherwise). The reviewer's secondary suggestion — rejecting `auto.evolve=true` + explicit `insertFormat=json` at startup in `ClickHouseSinkConfig` — remains deliberately not done. See `09-REVIEW-FIX.md`."
 
 ## Summary
 
 total: 1
-passed: 0
+passed: 1
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -70,3 +76,8 @@ Carried forward, low severity, doc-only (not a numbered test): **WR-01** —
 "Disabled pending the JSONP-01 keep/drop decision" even though `@Disabled` was removed
 and all three now run live. `MetadataFreeJsonInsertUnitTest`'s Javadoc was correctly
 rewritten in this phase, establishing the pattern the other three did not follow.
+
+**Resolved 2026-09-20** — commit `99908525` replaced the stale paragraph in all three
+classes with the "Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-10)" wording,
+following `MetadataFreeJsonInsertUnitTest`'s established pattern. Doc-only; no assertion,
+annotation, import or method body touched.
