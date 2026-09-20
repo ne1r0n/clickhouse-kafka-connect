@@ -74,6 +74,19 @@ public class ClickHouseSinkTaskWithSchemaProxyTest extends ClickHouseBase {
             .column("arr_bool", "Array(Bool)")
             .engine("MergeTree").orderByColumn("off16");
 
+    /**
+     * [D-02] This class and {@link ClickHouseSinkTaskSchemalessProxyTest} both bind Toxiproxy to
+     * {@code db.getNetwork()} and both claim network alias {@code toxiproxy} - under the shared
+     * container they would land on the same network with a colliding alias whenever Gradle
+     * assigns them to the same fork. Opting out gives each its own container and therefore its
+     * own {@link Network}, removing the collision by construction. The opt-out branch of {@code
+     * ClickHouseBase.tearDown()} is what stops this class's own container.
+     */
+    @Override
+    protected boolean usesSharedContainer() {
+        return false;
+    }
+
     @BeforeAll
     public void setup() throws IOException {
         super.setup();
