@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import java.lang.management.ManagementFactory;
@@ -23,15 +24,28 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
 
 /**
- * Proves the {@link ClickHouseBase} test harness contract (INFRA-03..06, D-05, D-08, D-09,
- * D-10, D-11): a single shared {@code latest} container per test JVM fork, a fresh, isolated
- * database per test class, MBean leak cleanup after a deliberate mid-test failure, a safe
- * unique connector-name helper, and UTF-8 helper decoding.
+ * Proves the {@link ClickHouseBase} test harness contract (HARN-01..03, D-01, D-02, D-05, D-07,
+ * D-08, D-09a, D-10): a single shared {@code latest} container per test JVM fork with an opt-out
+ * seam that leaves the shared-start counter untouched, a fresh, isolated database per test class
+ * dropped at class teardown, the {@code @AfterEach} MBean leak sweep covering both task-level and
+ * per-topic MBeans, a safe unique connector-name helper, and UTF-8 helper decoding. This class is
+ * the proof of the harness contract: D-07 knowingly moves both the contract and this canary in
+ * the same phase, so the proof now lives in the assertions below rather than in a zero diff
+ * against the pre-merge shape.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ClickHouseTestHarnessTest extends ClickHouseBase {
 
     private static final String LEAK_PROBE_CONNECTOR = "harness-mbean-leak-probe";
+
+    /** Matches the established per-file convention (e.g. {@code SmtSinkLandingTest}). */
+    private static void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /** Thrown deliberately between {@code start()} and {@code stop()} to prove D-09's sweep. */
     static final class DeliberateMidTestFailure extends RuntimeException {}
@@ -77,8 +91,8 @@ public class ClickHouseTestHarnessTest extends ClickHouseBase {
     public void classGetsFreshIsolatedDatabase() {
         Assumptions.assumeFalse(isCloud, "No shared container to inspect against ClickHouse Cloud");
 
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
 
         assertTrue(database.startsWith("kafka_connect_test_"));
 
@@ -116,11 +130,11 @@ public class ClickHouseTestHarnessTest extends ClickHouseBase {
     @Order(3)
     @ExtendWith(SwallowDeliberateMidTestFailure.class)
     public void testFailingBetweenStartAndStopLeaksAnMBean() {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         // ClickHouseWriter.start() requires at least one table in the class database to build
         // its table mapping; the class database starts empty (proven by Order(2)).
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc, "harness_mbean_probe_table", "CREATE TABLE IF NOT EXISTS %s (id UInt8) ENGINE = MergeTree ORDER BY id");
         props.put("name", LEAK_PROBE_CONNECTOR);
 
@@ -148,8 +162,8 @@ public class ClickHouseTestHarnessTest extends ClickHouseBase {
         assertTrue(name1.matches("^[A-Za-z0-9_$-]+$"), () -> name1 + " must be a safe ObjectName token");
         assertTrue(name2.matches("^[A-Za-z0-9_$-]+$"), () -> name2 + " must be a safe ObjectName token");
 
-        Map<String, String> props = createProps();
-        createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseTestHelpers.createClient(props);
         props.put("name", name1);
 
         ClickHouseSinkTask chst = new ClickHouseSinkTask();
@@ -172,12 +186,12 @@ public class ClickHouseTestHarnessTest extends ClickHouseBase {
     @Test
     @Order(5)
     public void helpersDecodeResponsesAsUtf8() {
-        ClickHouseHelperClient chc = createClient(createProps());
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
         String table = createTopicName("utf8_helper_test");
 
         ClickHouseTestHelpers.dropTable(chc, table);
-        ClickHouseTestHelpers.createTable(chc, table, "CREATE TABLE %s (id UInt8, s String) ENGINE = MergeTree ORDER BY id");
-        ClickHouseTestHelpers.query(
+        createTable(chc, table, "CREATE TABLE %s (id UInt8, s String) ENGINE = MergeTree ORDER BY id");
+        ClickHouseTestHelpers.executeQueryIgnoreResult(
                 chc,
                 String.format(
                         "INSERT INTO `%s` VALUES (1, unhex('D09FD180D0B8D0B2D0B5D18220E4B8ADE69687'))", table));

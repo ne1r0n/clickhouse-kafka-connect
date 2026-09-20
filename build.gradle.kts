@@ -437,17 +437,6 @@ sourceSets {
             srcDir(generateVersionFile)
         }
     }
-    // TEMPORARY (Phase 7, user-approved scope addition, #07-04): this file references an API
-    // reserved for a later phase of the v1.6.0_gg1-sync milestone and does not compile against
-    // the merged tree yet. Excluded from the test *compile* source set only - the file stays on
-    // disk byte-for-byte unchanged (AGENTS.md forbids weakening existing tests). Remove the
-    // matching line when the owning phase lands the API it needs.
-    test {
-        java {
-            // Phase 10 (HARN-04): ClickHouseBase shared-container contract
-            exclude("**/ClickHouseTestHarnessTest.java")
-        }
-    }
 }
 
 protobuf {
