@@ -95,7 +95,7 @@
 
 - [ ] **HARN-01**: `ClickHouseBase` carries `@Tag("clickhouse")` again, proven by `./gradlew testUnit` completing with Docker stopped
 - [ ] **HARN-02**: `ClickHouseBase`'s `@AfterEach` MBean leak sweep is restored and extended to cover upstream's per-topic MBeans, with a full-suite run showing zero `InstanceAlreadyExistsException`
-- [ ] **HARN-03**: `uniqueConnectorName(TestInfo)` is available again, and the per-JVM-fork shared-container strategy is re-derived over upstream's `@TestInstance(PER_CLASS)` shape — or, if that proves incompatible, the cost is measured and the fallback recorded
+- [x] **HARN-03**: `uniqueConnectorName(TestInfo)` is available again, and the per-JVM-fork shared-container strategy is re-derived over upstream's `@TestInstance(PER_CLASS)` shape — or, if that proves incompatible, the cost is measured and the fallback recorded
 - [ ] **HARN-04**: Exactly one `ClickHouseTestHelpers.java` exists in the tree, under `src/testFixtures`, carrying the fork's helpers, with every fork test import updated — verified by grep, not by compilation
 - [ ] **HARN-05**: `SchemaTestData` / `SchemalessTestData` exist only under `src/testFixtures` (the `src/integrationTest` duplicates deleted), and `FromVersionConditionExtension`'s package move is absorbed
 - [ ] **HARN-06**: `./gradlew compileIntegrationTestJava` succeeds, so the out-of-scope integration source set does not rot into a permanently broken state
@@ -209,7 +209,7 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | JSONP-04 | Phase 9 | Complete |
 | HARN-01 | Phase 10 | Pending |
 | HARN-02 | Phase 10 | Pending |
-| HARN-03 | Phase 10 | Pending |
+| HARN-03 | Phase 10 | Complete |
 | HARN-04 | Phase 10 | Pending |
 | HARN-05 | Phase 10 | Pending |
 | HARN-06 | Phase 10 | Pending |

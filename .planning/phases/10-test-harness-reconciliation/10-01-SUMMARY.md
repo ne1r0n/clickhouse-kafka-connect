@@ -194,6 +194,10 @@ None - no external service configuration required.
 - `sharedContainerStarts()` observed as `1` in every live run in this plan (single-fork local execution); the two-consecutive-clean-full-suite gate (D-09) and the 17 `MERGE-CHECKLIST.md` row flips are explicitly out of this plan's scope per `10-CONTEXT.md` and belong to plans 10-02/10-03.
 - Wall-clock note for Phase 11's `timeout-minutes: 45` CI measurement: this plan's three live Gradle invocations (5-test canary, 26-test opt-out trio, 7-test per-topic pin) measured 30s, 50s, and 16s respectively on this machine — not a full-suite number, but consistent with the shared-container decision (D-01) keeping per-class container-start overhead out of the hot path.
 
+## Self-Check: PASSED
+
+All 8 key files found on disk; all 7 commits (6 task commits + this SUMMARY's docs commit) found in git history via `git log --oneline --all`.
+
 ---
 *Phase: 10-test-harness-reconciliation*
 *Completed: 2026-09-20*
