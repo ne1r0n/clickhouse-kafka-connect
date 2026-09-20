@@ -111,7 +111,7 @@ This phase is therefore shaped as **rehearse → close the debt → measure → 
 
 ### CI shape & the wall-clock measurement
 
-- **D-09: Drop `CLICKHOUSE_VERSION: latest` from `tests.yaml`.** Phase 10 deferred this decision to here explicitly.
+- **D-09: Drop the `CLICKHOUSE_VERSION` env pin (value `latest`) from `tests.yaml`.** Phase 10 deferred this decision to here explicitly.
   - **Why:** `ClickHouseVersionDefaultUnitTest` is now the detector and it runs in CI too, so the env pin is no longer protective — it is what made the `latest` → `25.8.18.1` reversion **invisible from CI** for four phases. Dropping it makes CI exercise exactly the configuration a developer gets with nothing set.
   - **Mandatory companion edit:** `ClickHouseTestHelpers.java:32-34`'s Javadoc states "CI pins `CLICKHOUSE_VERSION: latest` in its job environment" — that sentence becomes false in the same commit and must be corrected with it. A stale comment asserting a pin that no longer exists is the next reader's trap.
   - **Apply consistently to `CLIENT_VERSION: V2`** — `extractClientVersion()` returns `"V2"` for anything not literally `"V1"`, so the same argument holds. Planner's call; the stated default is to drop both and keep the matrix declared in the job `name:` and the `FORK MODIFICATION` header comment, updating that comment if it names the env vars.

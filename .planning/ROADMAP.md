@@ -212,12 +212,26 @@ Plans:
 **Plans:** 7 plans across 5 waves — `rehearse → close the debt → measure → approve → publish`. Wave 1 is genuinely parallel; waves 2 through 5 are sequential and that is structural, because the local gate can only measure the tree as it will be published, the CI rehearsal can only run on the tree the local gate measured, and the approval can only weigh evidence that already exists.
 
 Plans:
+**Wave 1**
+
 - [ ] 11-01-PLAN.md — Pre-publication debt: fix the fail-open invariant script, flip the six unowned checklist rows on measured diffs, run the two missing security audits (D-05/D-06/D-07)
 - [ ] 11-02-PLAN.md — Drop the redundant CI job-environment pins so CI exercises the code defaults, and correct the Javadoc asserting them in the same commit (D-09)
 - [ ] 11-03-PLAN.md — `docs/FORK-DELTA.md`: behaviour ledger verified against the merged tree, raw numbers at both scopes, and a Known costs section leading on R-01 (D-13..D-16)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 11-04-PLAN.md — Local acceptance gate: one cache-busted full run on the published tree with the skip inventory re-derived from it, plus Docker-free `testUnit` (D-12)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 11-05-PLAN.md — Tracer: scratch-branch CI rehearsal end-to-end, wall-clock measured against a stated threshold, then D-03's evidence bundle (D-02/D-10/D-11)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 11-06-PLAN.md — The one blocking human gate, then the forced non-fast-forward merge, the non-force push of branch and both tags, and CI-06's evidence on the published SHA (D-01/D-03/D-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 11-07-PLAN.md — Close the milestone's last six requirements on re-run evidence and assert the final published state
 
 ## Merge Mechanics (applies to every phase)
