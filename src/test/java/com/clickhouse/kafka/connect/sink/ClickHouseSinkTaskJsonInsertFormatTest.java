@@ -22,10 +22,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Disabled pending the JSONP-01 keep/drop decision (Phase 9, D-11): the metadata-free
- * {@code insertFormat=json} bypass these tests exercise was dropped by the mechanical v1.6.0
- * merge and has not been re-applied to {@code src/main} in this phase. Every assertion below is
- * left intact so Phase 9 can re-enable this class unchanged if the decision is keep.
+ * Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-10): the metadata-free {@code
+ * insertFormat=json} bypass these tests exercise was re-applied to {@code src/main} in Phase 9;
+ * every assertion below is unchanged from the parked version.
  */
 public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
     private static final String TABLE_SCHEMA = "CREATE TABLE %s ( `off16` Int16, `str` String ) Engine = MergeTree ORDER BY off16";

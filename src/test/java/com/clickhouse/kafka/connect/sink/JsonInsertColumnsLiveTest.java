@@ -32,10 +32,9 @@ import org.junit.jupiter.api.TestInfo;
  * doInsertStringV2}) uses the 4-arg overload with no column list at all, so {@code
  * jsonInsertColumns} is unreachable from a String-record test.
  *
- * <p>Disabled pending the JSONP-01 keep/drop decision (Phase 9, D-11): {@code jsonInsertColumns}'
- * insert-time consumer this class pins was dropped by the mechanical v1.6.0 merge and has not
- * been re-applied to {@code src/main} in this phase. Every assertion below is left intact so
- * Phase 9 can re-enable this class unchanged if the decision is keep.
+ * <p>Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-10): the metadata-free {@code
+ * insertFormat=json} bypass this class exercises was re-applied to {@code src/main} in Phase 9;
+ * every assertion below is unchanged from the parked version.
  */
 public class JsonInsertColumnsLiveTest extends ClickHouseBase {
 
