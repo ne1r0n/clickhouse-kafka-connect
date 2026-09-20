@@ -1,6 +1,6 @@
 # Phase 10 — API Coverage Decision
 
-No external API integration: this phase re-composes the fork's own JUnit 5 / Testcontainers test harness (`ClickHouseBase`, `ClickHouseTestHelpers`, `ClickHouseTestHarnessTest`, `build.gradle.kts`) and touches no external API, SDK, or service.
+No external API integration: this phase re-composes the fork's own JUnit 5 / Testcontainers test harness (`ClickHouseBase`, `ClickHouseTestHelpers`, `build.gradle.kts`) and touches no external API, SDK, or service.
 
 ## Why the detector fired
 

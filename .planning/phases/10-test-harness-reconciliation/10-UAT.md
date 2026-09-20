@@ -1,37 +1,21 @@
 ---
-status: testing
+status: complete
 phase: 10-test-harness-reconciliation
 source: [10-VERIFICATION.md]
 started: 2026-09-20T16:06:09Z
-updated: 2026-09-20T16:06:09Z
+updated: 2026-09-20T17:53:29Z
 ---
 
 ## Current Test
 
-number: 1
-name: Stranger-read of the REQUIREMENTS.md HARN correction blockquote
-expected: |
-  Reading `.planning/REQUIREMENTS.md` lines 104-110 cold, with no knowledge of this
-  phase, leaves you with the true picture of Phase 10:
-    - four of seven requirements (HARN-04, HARN-05, HARN-06, HARN-07) were already
-      satisfied before the phase began, and closed on re-measured evidence rather
-      than on new code;
-    - the real finding of the phase is the server-version gap (MERGE-CHECKLIST.md
-      Recorded Fact 15) — every local gate since the v1.6.0 merge, including the
-      green closes of Phases 8 and 9, silently ran against `25.8.18.1` rather than
-      `latest`;
-    - HARN-03 took the re-derive branch, not the measured-fallback branch;
-    - HARN-02's collision clause is discharged by `MBeanServerUtils`'s rethrow
-      mechanism.
-  It must NOT read as "seven requirements' worth of work".
-awaiting: user response
+[testing complete]
 
 ## Tests
 
 ### 1. Stranger-read of the REQUIREMENTS.md HARN correction blockquote
 expected: The blockquote at `.planning/REQUIREMENTS.md:104-110` leaves a cold reader with the true picture — four of seven requirements pre-satisfied and closed on re-measured evidence; the server-version gap (Recorded Fact 15) as the phase's real finding; HARN-03 on the re-derive branch; HARN-02 discharged via `MBeanServerUtils`'s rethrow. It must not read as "seven requirements' worth of work".
 why_human: Plan 10-03 task 3's own deferred `human_judgment: true` item, held for end-of-phase UAT per `workflow.human_verify_mode=end-of-phase` rather than self-certified by the executor or the verifier. A stranger-read for tone and completeness is a judgment call, not a grep.
-result: [pending]
+result: pass
 
 ### 2. HARN-07 sequencing clause — accept "moot on arrival", or record as formally unmet
 expected: A considered call, recorded either as accepted or as a correction to REQUIREMENTS.md's HARN-07 note.
@@ -55,14 +39,14 @@ why_human: |
   genuinely debatable, and declined to mark it FAILED chiefly because Phase 10's own
   documents (ROADMAP note, REQUIREMENTS.md blockquote, MERGE-CHECKLIST fact) disclose it
   plainly rather than hiding it. It is an interpretive call no command can settle.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 2
-passed: 0
+passed: 2
 issues: 0
-pending: 2
+pending: 0
 skipped: 0
 blocked: 0
 
