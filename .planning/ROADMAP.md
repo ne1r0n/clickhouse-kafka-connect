@@ -28,7 +28,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 - [x] **Phase 7: Type Mapping, Writer, Helper Client & Config** - The leaf mapping layer and the two hardest files re-expressed against upstream's rewritten APIs (completed 2026-09-19)
 - [x] **Phase 8: Orchestration & JMX Re-plumbing** - `connector=<name>` restored where upstream now owns MBean naming — a re-plumb, not a patch re-apply (completed 2026-09-19)
 - [x] **Phase 9: Metadata-free JSON Path — Keep or Drop** - The R-01 keep/drop decision made at a blocking-human checkpoint, then the code and tests made to say the same thing (completed 2026-09-20)
-- [ ] **Phase 10: Test Harness Reconciliation** - The fork's `ClickHouseBase` contract and test fixtures re-composed over upstream's rewritten infrastructure
+- [x] **Phase 10: Test Harness Reconciliation** - The fork's `ClickHouseBase` contract and test fixtures re-composed over upstream's rewritten infrastructure (completed 2026-09-20)
 - [ ] **Phase 11: Full Suite, CI & Publication** - Green `./gradlew test` on `latest` × V2, green CI on the pushed SHA, `custom_build` published
 
 ## Phase Details
@@ -235,7 +235,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 7. Type Mapping, Writer, Helper Client & Config | 4/4 | Complete    | 2026-09-19 |
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
-| 10. Test Harness Reconciliation | 3/3 | In Progress|  |
+| 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
 | 11. Full Suite, CI & Publication | 0/? | Not started | - |
 
 ---

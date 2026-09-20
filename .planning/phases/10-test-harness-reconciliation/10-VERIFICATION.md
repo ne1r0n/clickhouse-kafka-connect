@@ -1,9 +1,10 @@
 ---
 phase: 10-test-harness-reconciliation
 verified: 2026-09-20T19:10:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 covered_files:
+
   - .planning/MERGE-CHECKLIST.md
   - .planning/REQUIREMENTS.md
   - .planning/phases/10-test-harness-reconciliation/10-01-PLAN.md
@@ -23,10 +24,12 @@ covered_files:
   - src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseTestHarnessTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseVersionDefaultUnitTest.java
   - src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java
+
 covered_digest: "v1:sha256:8d311c0bcfe5483f765a6e0f749b98cb75a9108342aa438f56e037a7a5ecfeaa"
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Read the REQUIREMENTS.md HARN correction blockquote (line 104-110) as a stranger would."
     expected: "The blockquote leaves a reader with the true picture of Phase 10: four of seven requirements (HARN-04/05/06/07) were already satisfied before the phase began and closed on re-measured evidence rather than new code; the real finding is the server-version gap (Recorded Fact 15); HARN-03 took the re-derive branch, not the fallback; HARN-02's collision clause is discharged by MBeanServerUtils's rethrow mechanism. It should not read as \"seven requirements' worth of work.\""
     why_human: "This is plan 10-03 task 3's own deferred human-judgment item (human_judgment: true in the plan/SUMMARY coverage table), explicitly deferred to end-of-phase UAT per workflow.human_verify_mode=end-of-phase rather than self-certified by the executor or this verifier. A stranger-read for tone/completeness is inherently a judgment call, not a grep."
