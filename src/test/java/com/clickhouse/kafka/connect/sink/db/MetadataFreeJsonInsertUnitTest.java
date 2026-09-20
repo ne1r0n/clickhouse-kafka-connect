@@ -6,14 +6,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
+import com.clickhouse.kafka.connect.sink.data.Record;
+import com.clickhouse.kafka.connect.sink.data.SchemaType;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
+import com.clickhouse.kafka.connect.sink.kafka.OffsetContainer;
+import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.kafka.connect.data.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -162,5 +167,83 @@ public class MetadataFreeJsonInsertUnitTest {
         // actually proves.
         assertFalse(writer.updateMapping("default"));
         assertTrue(writer.getMapping().isEmpty());
+    }
+
+    /**
+     * Test-only probe that isolates {@code doInsert}'s {@code auto.evolve} guard (CR-01) from
+     * table resolution: {@link #getTable} always returns the fixed {@code stubTable} instead of
+     * touching the never-built {@code chc}, and {@link #evolveTableSchema} records whether it was
+     * invoked instead of running the real DDL/{@code describeTable} logic.
+     */
+    private static final class RecordingAutoEvolveWriter extends ClickHouseWriter {
+        private final Table stubTable;
+        private boolean evolveTableSchemaCalled = false;
+
+        RecordingAutoEvolveWriter(SinkTaskStatistics statistics, Table stubTable) {
+            super(statistics);
+            this.stubTable = stubTable;
+        }
+
+        @Override
+        protected Table getTable(String database, String topic) {
+            return stubTable;
+        }
+
+        @Override
+        protected Table evolveTableSchema(Table table, Map<String, Schema> allFields) {
+            evolveTableSchemaCalled = true;
+            return table;
+        }
+    }
+
+    private static Record schemaRecordWithOneField(String topic, String database) {
+        org.apache.kafka.connect.data.Field field =
+                new org.apache.kafka.connect.data.Field("new_column", 0, Schema.STRING_SCHEMA);
+        return new Record(SchemaType.SCHEMA, new OffsetContainer(topic, 0, 0), List.of(field), null, database, null);
+    }
+
+    @Test
+    @DisplayName("CR-01: doInsert's auto.evolve branch is skipped under explicit JSON metadata-free mode, so evolveTableSchema is never reached")
+    void autoEvolveIsSkippedUnderExplicitJsonMetadataFreeMode() throws Exception {
+        Table stubTable = new Table("default", "auto_evolve_topic", false, List.of(), 0);
+        RecordingAutoEvolveWriter writer = new RecordingAutoEvolveWriter(new SinkTaskStatistics(null, 0), stubTable);
+
+        Map<String, String> jsonProps = minimalProps();
+        jsonProps.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
+        jsonProps.put(ClickHouseSinkConfig.AUTO_EVOLVE, "true");
+        jsonProps.put("bypassRowBinary", "true");
+        setSinkConfig(writer, new ClickHouseSinkConfig(jsonProps));
+
+        List<Record> records = List.of(schemaRecordWithOneField("auto_evolve_topic", "default"));
+        QueryIdentifier queryId = new QueryIdentifier("auto_evolve_topic", "test-query-id");
+
+        // evolveTableSchema is skipped by the CR-01 guard, so doInsert falls straight through to
+        // doInsertBatch, which still needs the never-built chc for the actual insert and dies with
+        // an NPE there instead of passing vacuously - proof the guard, not an unrelated early
+        // failure, is why evolveTableSchemaCalled stays false below.
+        assertThrows(NullPointerException.class, () -> writer.doInsert(records, queryId));
+        assertFalse(writer.evolveTableSchemaCalled);
+    }
+
+    @Test
+    @DisplayName("CR-01: doInsert's auto.evolve branch still runs under a non-explicit insertFormat, proving the new guard does not over-fire")
+    void autoEvolveStillRunsUnderNonExplicitInsertFormat() throws Exception {
+        Table stubTable = new Table("default", "auto_evolve_topic", false, List.of(), 0);
+        RecordingAutoEvolveWriter writer = new RecordingAutoEvolveWriter(new SinkTaskStatistics(null, 0), stubTable);
+
+        Map<String, String> defaultProps = minimalProps();
+        defaultProps.put(ClickHouseSinkConfig.AUTO_EVOLVE, "true");
+        defaultProps.put("bypassRowBinary", "true");
+        setSinkConfig(writer, new ClickHouseSinkConfig(defaultProps));
+
+        List<Record> records = List.of(schemaRecordWithOneField("auto_evolve_topic", "default"));
+        QueryIdentifier queryId = new QueryIdentifier("auto_evolve_topic", "test-query-id");
+
+        // Under a non-explicit insertFormat, shouldSkipTableMetadata() is false, so the guard must
+        // not suppress the existing evolve path - doInsertBatch still NPEs on the never-built chc
+        // afterward, but evolveTableSchemaCalled being true here is what proves the guard didn't
+        // over-fire.
+        assertThrows(NullPointerException.class, () -> writer.doInsert(records, queryId));
+        assertTrue(writer.evolveTableSchemaCalled);
     }
 }

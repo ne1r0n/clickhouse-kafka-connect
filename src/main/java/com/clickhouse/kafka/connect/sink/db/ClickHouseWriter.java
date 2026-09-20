@@ -207,7 +207,7 @@ public class ClickHouseWriter implements DBWriter {
         Table table = getTable(database, topic);
         if (table == null) { return; }//We checked the error flag in getTable, so we don't need to check it again here
 
-        if (csc.isAutoEvolve()) {
+        if (csc.isAutoEvolve() && !shouldSkipTableMetadata()) {
             // Check the last record's schema for new fields.
             // Limitation: if a batch contains multiple schema versions, only the last one is checked.
             // A full scan across all records can be implemented later if needed.
@@ -219,6 +219,10 @@ public class ClickHouseWriter implements DBWriter {
                 }
             }
             table = evolveTableSchema(table, lastFields);
+        } else if (csc.isAutoEvolve()) {
+            LOGGER.warn(
+                    "auto.evolve is enabled but insertFormat is explicitly set to JSON (metadata-free mode); "
+                            + "schema evolution is skipped because it would require table metadata the bypass exists to avoid.");
         }
 
         doInsertBatch(records, table, queryId);
