@@ -177,7 +177,7 @@ Plans:
   4. `./gradlew compileTestJava compileTestFixturesJava` and `./gradlew compileIntegrationTestJava` all succeed, so the out-of-scope integration source set does not rot into a permanently broken state.
   5. `uniqueConnectorName(TestInfo)` is available again and the `@AfterEach` MBean leak sweep runs, extended to cover upstream's per-topic MBeans; the per-JVM-fork shared-container strategy is re-derived over upstream's `@TestInstance(PER_CLASS)` shape, or its cost is measured and the fallback recorded.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 **Wave 1**
 
@@ -189,7 +189,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 10-03-PLAN.md — `HARN-04`/`05`/`06`/`07` discharged as re-measured evidence, the seventeen `MERGE-CHECKLIST.md` row flips, Recorded Facts 15 and 16, and the `HARN-01..07` closure in `REQUIREMENTS.md` (wave 3)
+- [x] 10-03-PLAN.md — `HARN-04`/`05`/`06`/`07` discharged as re-measured evidence, the seventeen `MERGE-CHECKLIST.md` row flips, Recorded Facts 15 and 16, and the `HARN-01..07` closure in `REQUIREMENTS.md` (wave 3)
 
 **Note on the wave shape and on this phase's real scope:** the three waves are sequential and that is structural. Plans 10-01 and 10-02 both resolve against `ClickHouseBase.java`'s final state, the gate can only measure a tree that already has the re-composition in it, and a checklist row flipped before its evidence exists would hollow out Phase 11's zero-pending assertion. Worth recording separately: **four of this phase's seven requirements were already satisfied before it began.** `HARN-04`'s feared duplicate helper does not exist, `HARN-05`'s test-data helpers are already single-copy, `HARN-06`'s integration source set already compiles, and `HARN-07`'s Testcontainers `2.0.5` already ran 645 tests green in Phase 9 — all four close on evidence re-measured at execution time, not on new code. What no requirement named, and what discussion found, is that `CLICKHOUSE_VERSION_DEFAULT` came out of the merge as a pinned LTS version, so every local gate since the merge — including the green closes of Phases 8 and 9 — silently ran against a different server from the one every planning document claims. CI could never have caught it, because `tests.yaml` pins the version in its job environment. That reversion is the seventh silently-vanishing fork behaviour and is fixed and pinned here.
 
@@ -235,7 +235,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 7. Type Mapping, Writer, Helper Client & Config | 4/4 | Complete    | 2026-09-19 |
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
-| 10. Test Harness Reconciliation | 2/3 | In Progress|  |
+| 10. Test Harness Reconciliation | 3/3 | In Progress|  |
 | 11. Full Suite, CI & Publication | 0/? | Not started | - |
 
 ---

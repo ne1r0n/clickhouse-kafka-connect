@@ -4,17 +4,17 @@ milestone: v1.6.0_gg1-sync
 milestone_name: Upstream v1.6.0 Sync
 current_phase: 10
 current_phase_name: Test Harness Reconciliation
-status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-09-20T15:12:13.785Z"
+status: verifying
+stopped_at: Completed 10-03-PLAN.md — Phase 10 complete
+last_updated: "2026-09-20T15:52:18.006Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 10 execution started
-state_head: 0ec36ae9048f207f0713b0ed0653cd4a0c639c4f
+state_head: 13be4a9944a7bf5d7d4e06a4e36ca7c83a7e9529
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 67
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 Phase: 10 (Test Harness Reconciliation) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-20 — Phase 10 execution started
 
 ## Performance Metrics
@@ -75,6 +75,7 @@ Last activity: 2026-09-20 — Phase 10 execution started
 | Phase 09 P03 | ~15min | 3 tasks | 2 files |
 | Phase 10 P01 | 16 min | 3 tasks | 8 files |
 | Phase 10 P02 | 4 min | 3 tasks | 0 files |
+| Phase 10 P03 | 7min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 09]: Code review found CR-01 (Critical) — `doInsert`'s `csc.isAutoEvolve()` branch was the one guard site plan 09-01 missed, so `auto.evolve=true` + explicit `insertFormat=json` would `ALTER TABLE` off the synthetic Table's empty column list and then fall through to a direct `describeTable`. Escalated to UAT as the phase's single human-verification item; user chose fix-now over scheduling it. Guarded with the same shared predicate (`51baea62`) plus two pin tests; WR-01's stale `Disabled pending…` Javadoc refreshed (`99908525`). Re-verification on the fixed tree: passed, 4/4 must-haves, 645 tests / 0 failures / 0 errors / 18 skipped. — The gap undermined KEEP's own rationale: the bypass exists to avoid exactly the metadata query `auto.evolve` was about to issue on every batch. A fifth guard site that no must-have in any of the three plans covered, which is why only code review caught it.
 - [Phase 10]: [Phase 10]: Plan 10-01 re-derived ClickHouseBase's shared-container-per-fork contract over upstream's per-class @TestInstance(PER_CLASS) rewrite (D-01/D-02), restored the @AfterEach MBean sweep with a proven per-topic extension (D-08/D-09a, HARN-02), and fixed the seventh silently-vanishing fork behaviour: CLICKHOUSE_VERSION_DEFAULT had reverted from "latest" to a pinned LTS version with no conflict marker, so every local gate since the merge (Phases 8-9 included) tested the wrong server. Live-confirmed the container now reports image clickhouse/clickhouse-server:latest. All 3 tasks green: canary 5/5, opt-out trio 26/26, testUnit 327 tests/0 failures + per-topic pin 7/7. — D-01/D-02/D-08/D-09a locked in 10-CONTEXT.md; D-04's version regression was found during Phase 10 discussion and closed here as the plan's seventh silently-vanishing behaviour, closing HARN-02/HARN-03/HARN-07 with the last two (10-02 full-suite gate, 10-03 checklist closeout) still ahead.
 - [Phase 10]: [Phase 10]: Plan 10-02 ran Phase 10's acceptance gate: HARN-01's Docker-free `testUnit` proof (Docker genuinely stopped via colima, 327 tests / 0 failures) and two consecutive clean full-suite runs on ClickHouse `latest` (654 tests each, 0 failures, 0 errors, byte-identical 57-class executed sets, skip count non-growing at 18). D-06 settled at the checkpoint: nothing for `latest` to attribute — both runs were clean, so no server-vs-harness attribution was needed. This is the milestone's first full-suite evidence taken on `latest` rather than the `25.8.18.1` pin Phases 8 and 9 silently ran against. HARN-01 and HARN-02 closed. — D-09/D-06 (10-CONTEXT.md): two runs, not one, because plan 10-01 made 25 classes order-dependent within a fork for the first time and Gradle's fork assignment varies run to run — one green run proves less here than it did in Phase 9. Run 2 was forced with `--rerun` to defeat Gradle's UP-TO-DATE cache, which would otherwise have echoed run 1's results as a fake second run.
+- [Phase 10]: [Phase 10]: Plan 10-03 discharged HARN-04/05/06/07 as recorded evidence acts (re-run commands, not citations), flipped all 17 Phase-10-owned MERGE-CHECKLIST.md rows to done with two new Recorded Facts (the image-default reversion as the seventh silently-vanishing fork behaviour; the container-ownership promotion's accepted cost), and closed HARN-01..07 in REQUIREMENTS.md with a correction blockquote. Phase 10 complete; zero Phase-10-owned MERGE-CHECKLIST.md rows remain pending. — Phase 11's publication gate asserts zero pending checklist rows; that assertion is only meaningful if no row was ever flipped ahead of its evidence, which is why every flip in this plan cites a command re-run at execution time rather than a planning document.
 
 ### Pending Todos
 
@@ -116,13 +118,13 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 ### Blockers/Concerns
 
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...` (already in `config.json`'s `build_command`/`test_command`). Docker runs on colima profile `vz`.
-- [Merge]: ⚠ **Six fork behaviours vanish with no conflict marker and no compile error** unless deliberately re-applied. Five are now re-applied and canary-green: `async_insert` un-forcing, the UTF-8 `describeTable` readers, `targetTableFilter` + the sub-column skip (all Phase 7), JMX `connector=<name>` (Phase 8), and the metadata-free `insertFormat=json` bypass + `jsonInsertColumns` re-attachment (Phase 9, D-11 — `MetadataFreeJsonInsertUnitTest` is the Docker-free canary, 13 tests). The bypass is the sixth entry precisely because it *just* vanished this way in the merge, and the pre-existing Docker-free coverage would not have caught it. **One remains: `ClickHouseBase`'s `@Tag`/shared-container/MBean-sweep contract — Phase 10.**
+- ~~[Merge]: ⚠ Six fork behaviours vanish with no conflict marker and no compile error unless deliberately re-applied. ... One remains: `ClickHouseBase`'s `@Tag`/shared-container/MBean-sweep contract — Phase 10.~~ — **RESOLVED (Phase 10, plan 10-01).** All seven are now re-applied and canary-green: `async_insert` un-forcing, the UTF-8 `describeTable` readers, `targetTableFilter` + the sub-column skip (all Phase 7), JMX `connector=<name>` (Phase 8), the metadata-free `insertFormat=json` bypass + `jsonInsertColumns` re-attachment (Phase 9, D-11 — `MetadataFreeJsonInsertUnitTest`, 13 tests), `ClickHouseBase`'s `@Tag`/shared-container/MBean-sweep contract (Phase 10, plan 10-01, commits `872d1197`/`fb09f823`), and a seventh entry plan 10-01 found mid-phase — `CLICKHOUSE_VERSION_DEFAULT`'s silent `latest` → `25.8.18.1` reversion, pinned by `ClickHouseVersionDefaultUnitTest`. See `MERGE-CHECKLIST.md` Recorded Fact 15 (plan 10-03).
 - [Prod]: ⚠ **Unfixed production bug, pinned only — disposition now decided.** R-01: `insertFormat=json` + a `Struct` record + default `bypassRowBinary` silently discards every row. Phase 9's blocking-human checkpoint resolved it: **KEEP the bypass** (D-01), so the loss is re-introduced knowingly as an accepted cost and stays pinned, not fixed. The `PIN - NOT AN ENDORSEMENT` Javadoc is byte-identical. Operator fact 2 — no live pipeline takes the `Struct` + explicit-JSON route today — is what makes that acceptable; it stops being acceptable the moment one does. The fail-fast fix remains an Active follow-up needing its own plan.
 - [Merge]: `ClickHouseTestHelpers.java` is a modify/delete that git resolves by orphaning the fork's copy — post-merge the tree can hold two compiling copies with divergent defaults. Grep for exactly one canonical file (HARN-04, Phase 10).
 - [Tooling]: The `gh` CLI is not installed locally (deliberately — D-11), so CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel, so any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch. Confirmed live in Phase 7: the wave-2 dispatch was rejected by the isolation guard after intervening `gsd_run check` calls re-persisted the sentinel to `harness-worktree`; re-forcing immediately before each `Agent()` call is the working remedy.
 - [Phase 06]: ⚠ **CR-01, latent — safety-net script fails open.** `.planning/scripts/verify-merge-invariants.sh:44` treats a `git grep` error (exit ≥2) identically to "no match" (exit 1), with stderr suppressed, so Invariant 2 reports clean on a broken pathspec or unreadable commit. The property itself currently holds — re-derived at the Phase 6 security audit with corrected exit-code branching (592 commits, 0 markers, 0 git errors) — but **fix before Phase 11**, which gates publication on this script running unattended. Recorded in `06-SECURITY.md` → Carried Defects.
-- [Phase 10]: **Half done — Phase 8 closed its half, Phase 10 still owes its own.** `compileTestJava` failed on two files after plan 07-03; the user chose a temporary test-compile exclusion in `build.gradle.kts` (commit `b25a71f1`) over pulling either sliver forward. ✓ Phase 8 deleted `exclude("**/MBeanNameUnitTest.java")` — the canary now compiles and is green inside `testUnit`. **Phase 10 must still delete `exclude("**/ClickHouseTestHarnessTest.java")`** (needs `ClickHouseBase.sharedContainerStarts()`); leaving it in place silently drops that canary from the suite.
+- ~~[Phase 10]: Half done — Phase 8 closed its half, Phase 10 still owes its own. `compileTestJava` failed on two files after plan 07-03; the user chose a temporary test-compile exclusion in `build.gradle.kts` (commit `b25a71f1`) over pulling either sliver forward. Phase 10 must still delete `exclude("**/ClickHouseTestHarnessTest.java")`.~~ — **RESOLVED (Phase 10, plan 10-01, commit `b39ed8fd`).** `ClickHouseTestHarnessTest` is un-excluded from `compileTestJava` (the `exclude("**/ClickHouseTestHarnessTest.java")` line and its TEMPORARY comment block deleted from `build.gradle.kts`), redirected onto the post-merge API, and green live (7/7 tests).
 - ~~[Phase 07 → 10]: UTF-8 regression in the orphaned test helper — 4 live tests failing~~ — **RESOLVED in Phase 8 (plan 08-01, D-13).** All three `InputStreamReader` constructions in `src/testFixtures/.../ClickHouseTestHelpers.java` (lines 141, 160, 321) now pass `StandardCharsets.UTF_8` explicitly, so non-ASCII values no longer decode as mojibake under the deliberate `windows-1252` test JVM. `JsonDynamicRoundTripTest` TYPE-07 ×2 and `SmtSinkLandingTest` HDRS-09/CONV-08 are green. Note Phase 10 / HARN-04 still owns the separate duplicate-helper-file question.
 - ~~[Phase 07 → 8]: `MBeanRegistrationLiveTest` JMX-04 ×2 NPE~~ — **RESOLVED in Phase 8.** The JMX `connector=<name>` naming is re-applied into `SinkTaskStatistics`; `MBeanRegistrationLiveTest` now passes at both task and per-topic level, including the four-tasks-two-connectors selective-unregistration path.
 - ~~[Phase 10 (triaged in Phase 8)]: `TableTest.extractNullables()` fails (expected 3, got 2)~~ — **RESOLVED in Phase 9 (D-14, commit `b84b179e`).** Phase 8 named the cause — `ClickHouseHelperClient.shouldSkipDescribeRow` unconditionally strips Nullable `.null` subcolumns, a fork behaviour already pinned by `DESC-01` — and Phase 9 adopted the carry-in and changed the assertion `3` → `2` with that citation. Taken outside `JSONP-01..04` at the user's explicit decision, so the acceptance gate became a clean binary instead of a re-baselined "one known red". MERGE-CHECKLIST Recorded Fact 13 flipped to resolved. The suite is now 0 failures, 0 errors.
@@ -142,12 +144,12 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-20T15:12:13.748Z
-Stopped at: Completed 10-02-PLAN.md
+Last session: 2026-09-20T15:52:17.969Z
+Stopped at: Completed 10-03-PLAN.md — Phase 10 complete
 Resume file: None
 
 ## Operator Next Steps
 
-- Discuss the next phase with `/gsd-discuss-phase 10` (no `10-CONTEXT.md` yet), then `/gsd-plan-phase 10`
-- Phase 10 owes the last of the six silently-vanishing fork behaviours: `ClickHouseBase`'s `@Tag`/shared-container/MBean-sweep contract, plus deleting `exclude("**/ClickHouseTestHarnessTest.java")` from `build.gradle.kts` and settling the duplicate `ClickHouseTestHelpers.java` question (HARN-04)
+- Phase 10 is complete: all 7 `HARN-*` requirements `Complete`, `MERGE-CHECKLIST.md` has zero Phase-10-owned rows pending. Run `/gsd-verify-work 10` next, then discuss/plan Phase 11 with `/gsd-discuss-phase 11` + `/gsd-plan-phase 11`.
 - Optional before Phase 11: `/gsd-secure-phase 09` and `/gsd-secure-phase 07` — both phases lack a SECURITY.md while security enforcement is on
+- Six `MERGE-CHECKLIST.md` Section 2 rows still pending, owned by Phases 6 and 8 — must reach zero before Phase 11's publication gate
