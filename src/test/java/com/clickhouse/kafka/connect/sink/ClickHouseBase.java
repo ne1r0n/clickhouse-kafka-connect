@@ -4,12 +4,19 @@ import com.clickhouse.client.config.ClickHouseClientOption;
 import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseCluster;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.util.jmx.MBeanServerUtils;
 import com.google.crypto.tink.internal.Random;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -27,11 +34,43 @@ import org.testcontainers.utility.MountableFile;
 public class ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBase.class);
     private static final AtomicLong CONNECTOR_NAME_COUNTER = new AtomicLong();
+
+    /**
+     * [D-01] Counts how many times the shared container was actually started in this test JVM
+     * fork - not how many classes reused it. Exactly one increment site exists in this file
+     * (the synchronized first-start branch of {@code setup()}), which is what makes {@code
+     * sharedContainerStarts()} assertable independent of fork assignment.
+     */
+    private static final AtomicInteger SHARED_CONTAINER_STARTS = new AtomicInteger();
+
+    /** [D-01] The one container shared by every class in this fork that does not opt out. */
+    private static volatile ClickHouseContainer sharedDb;
+
     protected ClickHouseContainer db;
     protected ClickHouseCluster cluster;
     protected static boolean isCloud = ClickHouseTestHelpers.isCloud();
     protected static boolean isCluster = ClickHouseTestHelpers.isCluster();
     protected String database = ClickHouseTestHelpers.DATABASE_DEFAULT;
+
+    /**
+     * [D-02] Opt-out seam: an overriding class gets its own container (and therefore its own
+     * {@link Network}) instead of the shared one. An overriding class's container start must not
+     * move the shared-start counter - the two Toxiproxy classes both bind to the same network
+     * alias and would collide if they landed on the shared container's network, and the counter
+     * rule only holds if opting out is invisible to it.
+     */
+    protected boolean usesSharedContainer() {
+        return true;
+    }
+
+    public static int sharedContainerStarts() {
+        return SHARED_CONTAINER_STARTS.get();
+    }
+
+    /** [D-08] Exposes the shared container for identity assertions, without reflection. */
+    protected static ClickHouseContainer sharedContainer() {
+        return sharedDb;
+    }
 
     @BeforeAll
     public void setup() throws IOException {
@@ -40,7 +79,20 @@ public class ClickHouseBase {
             cluster = ClickHouseCluster.getClusterFromEnvVarOrThrow();
             cluster.start();
         } else if (!isCloud) {
-            setupContainer(ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE);
+            if (usesSharedContainer()) {
+                synchronized (ClickHouseBase.class) {
+                    if (sharedDb == null) {
+                        setupContainer(ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE);
+                        sharedDb = this.db;
+                        SHARED_CONTAINER_STARTS.incrementAndGet();
+                        LOGGER.info("Started shared ClickHouse container {} for this test JVM fork", ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE);
+                    } else {
+                        this.db = sharedDb;
+                    }
+                }
+            } else {
+                setupContainer(ClickHouseTestHelpers.CLICKHOUSE_DOCKER_IMAGE);
+            }
         }
 
         try (var tmpClient = ClickHouseTestHelpers.createClient(getBaseProps())) {
@@ -83,13 +135,57 @@ public class ClickHouseBase {
         } else if (!isCloud) {
             ClickHouseContainer ch = getDb();
             if (ch != null) {
-                LOGGER.info("Stopping db container: id={}, port={}", ch.getContainerId(), ch.getMappedPort(8123));
-                ch.copyFileFromContainer("/var/log/clickhouse-server/clickhouse-server.log",
-                        "./build/reports/tests/server_" + +db.getMappedPort(8123) + ".log");
-                ch.copyFileFromContainer("/var/log/clickhouse-server/clickhouse-server.err.log",
-                        "./build/reports/tests/server-err_" + db.getMappedPort(8123) + ".log");
-                ch.stop();
+                copyServerLogs(ch);
+                if (usesSharedContainer()) {
+                    // D-01: the container survives for the next class in this fork - dropping the
+                    // database is the only isolation mechanism left between classes sharing it.
+                    try (var tmpClient = ClickHouseTestHelpers.createClient(getBaseProps())) {
+                        ClickHouseTestHelpers.dropDatabase(tmpClient, database);
+                    } catch (Exception e) {
+                        LOGGER.error("Error dropping database", e);
+                    }
+                } else {
+                    LOGGER.info("Stopping db container: id={}, port={}", ch.getContainerId(), ch.getMappedPort(8123));
+                    ch.stop();
+                }
             }
+        }
+    }
+
+    /**
+     * [D-03] Copies server logs out of the still-running container, keyed by this test class's
+     * simple name rather than a mapped port that up to 27 classes now share. Diagnostic
+     * convenience only - a failed extraction is logged at WARN and swallowed so it can never fail
+     * a class's teardown.
+     */
+    private void copyServerLogs(ClickHouseContainer ch) {
+        try {
+            ch.copyFileFromContainer("/var/log/clickhouse-server/clickhouse-server.log",
+                    "./build/reports/tests/server_" + getClass().getSimpleName() + ".log");
+            ch.copyFileFromContainer("/var/log/clickhouse-server/clickhouse-server.err.log",
+                    "./build/reports/tests/server-err_" + getClass().getSimpleName() + ".log");
+        } catch (Exception e) {
+            LOGGER.warn("Unable to extract ClickHouse server logs", e);
+        }
+    }
+
+    /**
+     * [D-09a, HARN-02] Safety net: unregisters any {@code com.clickhouse:type=ClickHouseKafkaConnector}
+     * MBean still registered after a test method, e.g. one that failed between {@code start()}
+     * and {@code stop()}. Logs each at WARN and continues - this exists to stop a leak crossing
+     * into the next test, not to police the test that leaked it.
+     */
+    @AfterEach
+    protected void cleanupLeakedMBeans() {
+        try {
+            Set<ObjectName> leaked = ManagementFactory.getPlatformMBeanServer()
+                    .queryNames(new ObjectName("com.clickhouse:type=ClickHouseKafkaConnector,*"), null);
+            for (ObjectName name : leaked) {
+                LOGGER.warn("Unregistering leaked MBean left by a test: {}", name);
+                MBeanServerUtils.unregisterMBean(name.toString());
+            }
+        } catch (MalformedObjectNameException e) {
+            throw new RuntimeException(e);
         }
     }
 
