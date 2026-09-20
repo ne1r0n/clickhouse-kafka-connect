@@ -96,10 +96,18 @@
 - [x] **HARN-01**: `ClickHouseBase` carries `@Tag("clickhouse")` again, proven by `./gradlew testUnit` completing with Docker stopped
 - [x] **HARN-02**: `ClickHouseBase`'s `@AfterEach` MBean leak sweep is restored and extended to cover upstream's per-topic MBeans, with a full-suite run showing zero `InstanceAlreadyExistsException`
 - [x] **HARN-03**: `uniqueConnectorName(TestInfo)` is available again, and the per-JVM-fork shared-container strategy is re-derived over upstream's `@TestInstance(PER_CLASS)` shape — or, if that proves incompatible, the cost is measured and the fallback recorded
-- [ ] **HARN-04**: Exactly one `ClickHouseTestHelpers.java` exists in the tree, under `src/testFixtures`, carrying the fork's helpers, with every fork test import updated — verified by grep, not by compilation
-- [ ] **HARN-05**: `SchemaTestData` / `SchemalessTestData` exist only under `src/testFixtures` (the `src/integrationTest` duplicates deleted), and `FromVersionConditionExtension`'s package move is absorbed
-- [ ] **HARN-06**: `./gradlew compileIntegrationTestJava` succeeds, so the out-of-scope integration source set does not rot into a permanently broken state
-- [ ] **HARN-07**: Testcontainers `2.0.5` is verified to start a ClickHouse container through `ClickHouseBase` before any of the 371 fork tests are adapted
+- [x] **HARN-04**: Exactly one `ClickHouseTestHelpers.java` exists in the tree, under `src/testFixtures`, carrying the fork's helpers, with every fork test import updated — verified by grep, not by compilation
+- [x] **HARN-05**: `SchemaTestData` / `SchemalessTestData` exist only under `src/testFixtures` (the `src/integrationTest` duplicates deleted), and `FromVersionConditionExtension`'s package move is absorbed
+- [x] **HARN-06**: `./gradlew compileIntegrationTestJava` succeeds, so the out-of-scope integration source set does not rot into a permanently broken state
+- [x] **HARN-07**: Testcontainers `2.0.5` is verified to start a ClickHouse container through `ClickHouseBase` before any of the 371 fork tests are adapted
+
+> **Correction (Phase 10, 2026-09-20).** `HARN-04`, `HARN-05`, `HARN-06` and `HARN-07` were already satisfied before Phase 10 began — by the Phase 6 merge (which never introduced the feared orphaned `ClickHouseTestHelpers.java` duplicate, never left `SchemaTestData`/`SchemalessTestData` multi-copy, and already left `compileIntegrationTestJava` green) and by Phase 7's early sliver. They close here on recorded evidence re-measured at execution time (plan 10-03 task 1, re-run against the tree as plan 10-01 left it — not by citing `10-CONTEXT.md`'s measured-state table, which was written before five source files changed and two were added), not on new code. Naming the evidence for each: `HARN-04` — `git ls-files` returns exactly one path whose basename is `ClickHouseTestHelpers.java`, at the canonical `src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/` package, with every `import ...ClickHouseTestHelpers;` in `src/` resolving there. `HARN-05` — `SchemaTestData.java`/`SchemalessTestData.java` each resolve to exactly one tracked path, both under `src/testFixtures`; `FromVersionConditionExtension.java` resolves to exactly one tracked path under the `src/testFixtures` JUnit extension package; `ClickHouseAPI.java` is tracked at zero paths with zero references anywhere under `src/`. `HARN-06` — `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew compileTestJava compileTestFixturesJava compileIntegrationTestJava` succeeds, and `compileIntegrationTestJava` also succeeds alone, producing real class output (7 files under `build/classes/java/integrationTest`, not a `NO-SOURCE` report). `HARN-07` — `gradle/libs.versions.toml` pins Testcontainers at `2.0.5`, and a ClickHouse container demonstrably started through the re-composed `ClickHouseBase` under that version during plan 10-01's and plan 10-02's own live runs. `HARN-07`'s sequencing clause ("before any of the 371 fork tests are adapted") was moot on arrival: the suite had been running green on Testcontainers `2.0.5` since Phase 9, so there was no ordering left to establish.
+>
+> The thing no requirement in this section named: the suite had been running against a pinned server version (`25.8.18.1`) rather than the floating `latest` tag since the Phase 6 merge, so Phases 8 and 9 both closed green against a server this milestone does not claim to test. This is a gap in the requirement set itself — seven HARN requirements and not one of them covered which server the harness starts. Plan 10-01 fixed the regression and plan 10-03 records the detail in `MERGE-CHECKLIST.md` Recorded Fact 15; see that fact rather than a duplicate account here.
+>
+> `HARN-03` used the re-derive branch, not the fallback branch the requirement text also permits: the shared-container strategy was re-derived over upstream's per-class `@TestInstance(PER_CLASS)` lifecycle rather than falling back to "the cost is measured and the fallback recorded" — the mechanism is a lazily started static container behind a single counted start site (`sharedContainerStarts()`), with an overridable per-class opt-out (`usesSharedContainer()`) for the two Toxiproxy classes.
+>
+> `HARN-02`'s second clause — "a full-suite run showing zero `InstanceAlreadyExistsException`" — was discharged by a mechanism rather than a new detector: `MBeanServerUtils`'s registration path rethrows a duplicate-name exception as a `RuntimeException`, so a naming collision is already a test failure. Plan 10-02's two zero-failure full-suite runs are therefore the proof, not an added assertion.
 
 ### Suite & CI (SUITE)
 
@@ -210,10 +218,10 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | HARN-01 | Phase 10 | Complete |
 | HARN-02 | Phase 10 | Complete |
 | HARN-03 | Phase 10 | Complete |
-| HARN-04 | Phase 10 | Pending |
-| HARN-05 | Phase 10 | Pending |
-| HARN-06 | Phase 10 | Pending |
-| HARN-07 | Phase 10 | Pending |
+| HARN-04 | Phase 10 | Complete |
+| HARN-05 | Phase 10 | Complete |
+| HARN-06 | Phase 10 | Complete |
+| HARN-07 | Phase 10 | Complete |
 | SUITE-01 | Phase 11 | Pending |
 | SUITE-02 | Phase 11 | Pending |
 | SUITE-03 | Phase 11 | Pending |
