@@ -5,16 +5,16 @@ milestone_name: Upstream v1.6.0 Sync
 current_phase: 10
 current_phase_name: Test Harness Reconciliation
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-09-20T14:30:36.792Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-09-20T15:12:13.785Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 10 execution started
-state_head: 3b64ecbce6ef853719908e07dbd0a50fed6525f4
+state_head: 0ec36ae9048f207f0713b0ed0653cd4a0c639c4f
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 67
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 10 (Test Harness Reconciliation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 10 execution started
 
@@ -74,6 +74,7 @@ Last activity: 2026-09-20 — Phase 10 execution started
 | Phase 09 P02 | 20 min | 3 tasks | 4 files |
 | Phase 09 P03 | ~15min | 3 tasks | 2 files |
 | Phase 10 P01 | 16 min | 3 tasks | 8 files |
+| Phase 10 P02 | 4 min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,7 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 09]: Plan 09-03 discharged JSONP-04 by reading the resolved ClickHouseWriter.java diff against v1.6.0 (three findings: five-arg-only Table construction, no mutable-Table assumptions on the JSON path, guards-only Phase 9 additions), and recorded Phase 9's bookkeeping: REQUIREMENTS.md's JSONP-03 correction blockquote, all four JSONP requirements closed, MERGE-CHECKLIST.md row 26 annotated, Recorded Fact 13 resolved (citing commit b84b179e), and new Recorded Fact 14 stating the KEEP disposition's rationale, operator facts, accepted cost and conflict-policy departure. — ROADMAP criterion 4 requires JSONP-04 evidence from reading the diff, not a green test; criterion 1 requires a recorded decision with rationale. MERGE-CHECKLIST.md's own closing sentence stated no disposition was recorded anywhere until this plan supplied one.
 - [Phase 09]: Code review found CR-01 (Critical) — `doInsert`'s `csc.isAutoEvolve()` branch was the one guard site plan 09-01 missed, so `auto.evolve=true` + explicit `insertFormat=json` would `ALTER TABLE` off the synthetic Table's empty column list and then fall through to a direct `describeTable`. Escalated to UAT as the phase's single human-verification item; user chose fix-now over scheduling it. Guarded with the same shared predicate (`51baea62`) plus two pin tests; WR-01's stale `Disabled pending…` Javadoc refreshed (`99908525`). Re-verification on the fixed tree: passed, 4/4 must-haves, 645 tests / 0 failures / 0 errors / 18 skipped. — The gap undermined KEEP's own rationale: the bypass exists to avoid exactly the metadata query `auto.evolve` was about to issue on every batch. A fifth guard site that no must-have in any of the three plans covered, which is why only code review caught it.
 - [Phase 10]: [Phase 10]: Plan 10-01 re-derived ClickHouseBase's shared-container-per-fork contract over upstream's per-class @TestInstance(PER_CLASS) rewrite (D-01/D-02), restored the @AfterEach MBean sweep with a proven per-topic extension (D-08/D-09a, HARN-02), and fixed the seventh silently-vanishing fork behaviour: CLICKHOUSE_VERSION_DEFAULT had reverted from "latest" to a pinned LTS version with no conflict marker, so every local gate since the merge (Phases 8-9 included) tested the wrong server. Live-confirmed the container now reports image clickhouse/clickhouse-server:latest. All 3 tasks green: canary 5/5, opt-out trio 26/26, testUnit 327 tests/0 failures + per-topic pin 7/7. — D-01/D-02/D-08/D-09a locked in 10-CONTEXT.md; D-04's version regression was found during Phase 10 discussion and closed here as the plan's seventh silently-vanishing behaviour, closing HARN-02/HARN-03/HARN-07 with the last two (10-02 full-suite gate, 10-03 checklist closeout) still ahead.
+- [Phase 10]: [Phase 10]: Plan 10-02 ran Phase 10's acceptance gate: HARN-01's Docker-free `testUnit` proof (Docker genuinely stopped via colima, 327 tests / 0 failures) and two consecutive clean full-suite runs on ClickHouse `latest` (654 tests each, 0 failures, 0 errors, byte-identical 57-class executed sets, skip count non-growing at 18). D-06 settled at the checkpoint: nothing for `latest` to attribute — both runs were clean, so no server-vs-harness attribution was needed. This is the milestone's first full-suite evidence taken on `latest` rather than the `25.8.18.1` pin Phases 8 and 9 silently ran against. HARN-01 and HARN-02 closed. — D-09/D-06 (10-CONTEXT.md): two runs, not one, because plan 10-01 made 25 classes order-dependent within a fork for the first time and Gradle's fork assignment varies run to run — one green run proves less here than it did in Phase 9. Run 2 was forced with `--rerun` to defeat Gradle's UP-TO-DATE cache, which would otherwise have echoed run 1's results as a fake second run.
 
 ### Pending Todos
 
@@ -140,8 +142,8 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-20T14:30:36.745Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-09-20T15:12:13.748Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -177,7 +177,7 @@ Plans:
   4. `./gradlew compileTestJava compileTestFixturesJava` and `./gradlew compileIntegrationTestJava` all succeed, so the out-of-scope integration source set does not rot into a permanently broken state.
   5. `uniqueConnectorName(TestInfo)` is available again and the `@AfterEach` MBean leak sweep runs, extended to cover upstream's per-topic MBeans; the per-JVM-fork shared-container strategy is re-derived over upstream's `@TestInstance(PER_CLASS)` shape, or its cost is measured and the fallback recorded.
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 **Wave 1**
 
@@ -185,7 +185,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-02-PLAN.md — The acceptance gate: `testUnit` with the Docker daemon provably stopped, then two consecutive clean full `./gradlew test` runs on ClickHouse `latest`, with D-06 attribution and a decision checkpoint for anything the new server surfaces (wave 2)
+- [x] 10-02-PLAN.md — The acceptance gate: `testUnit` with the Docker daemon provably stopped, then two consecutive clean full `./gradlew test` runs on ClickHouse `latest`, with D-06 attribution and a decision checkpoint for anything the new server surfaces (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -235,7 +235,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 7. Type Mapping, Writer, Helper Client & Config | 4/4 | Complete    | 2026-09-19 |
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
-| 10. Test Harness Reconciliation | 1/3 | In Progress|  |
+| 10. Test Harness Reconciliation | 2/3 | In Progress|  |
 | 11. Full Suite, CI & Publication | 0/? | Not started | - |
 
 ---
