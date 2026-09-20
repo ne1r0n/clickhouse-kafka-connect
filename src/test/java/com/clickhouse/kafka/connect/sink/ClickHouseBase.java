@@ -5,6 +5,10 @@ import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseCluster;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.google.crypto.tink.internal.Random;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,12 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.clickhouse.ClickHouseContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.images.PullPolicy;
 import org.testcontainers.utility.MountableFile;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Tag("clickhouse")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -53,7 +53,7 @@ public class ClickHouseBase {
     public void setupContainer(String clickhouseDockerImage) {
         Network network = Network.newNetwork();
 
-        this.db = new ClickHouseContainer(clickhouseDockerImage)
+        ClickHouseContainer container = new ClickHouseContainer(clickhouseDockerImage)
                 .withNetwork(network)
                 .withNetworkAliases(ClickHouseTestHelpers.CLICKHOUSE_DB_NETWORK_ALIAS)
                 .withPassword("test_password")
@@ -67,6 +67,12 @@ public class ClickHouseBase {
                 .withCopyFileToContainer(
                         MountableFile.forClasspathResource("clickhouse_keeper_map.xml"),
                         "/etc/clickhouse-server/config.d/keeper_map.xml");
+        // D-05: re-pull only a floating tag. Re-pulling a version the user deliberately pinned via
+        // CLICKHOUSE_VERSION is pure waste and breaks offline runs for no benefit.
+        if (ClickHouseTestHelpers.CLICKHOUSE_VERSION_LATEST.equals(ClickHouseTestHelpers.getClickhouseVersion())) {
+            container = container.withImagePullPolicy(PullPolicy.alwaysPull());
+        }
+        this.db = container;
         db.start();
     }
 

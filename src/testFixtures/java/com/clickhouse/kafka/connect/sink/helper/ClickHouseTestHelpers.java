@@ -27,7 +27,18 @@ import org.slf4j.LoggerFactory;
 
 public class ClickHouseTestHelpers {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseTestHelpers.class);
-    public static final String CLICKHOUSE_VERSION_DEFAULT = "25.8.18.1"; // keep this as close to the latest LTS version
+    /**
+     * [D-04] The seventh fork behaviour to silently vanish from the v1.6.0 merge with no conflict
+     * marker and no compile error: the merge reverted this default from the floating {@code
+     * latest} tag to a pinned LTS version. CI pins {@code CLICKHOUSE_VERSION: latest} in its job
+     * environment, so the regression was invisible there; every local run since the merge took
+     * its green evidence against the wrong server instead. The milestone's declared test matrix
+     * is ClickHouse {@code latest} with client V2 (see PROJECT.md constraints) - this constant is
+     * the contract, restored and pinned by {@code ClickHouseVersionDefaultUnitTest}, a Docker-free
+     * canary reachable from {@code testUnit}.
+     */
+    public static final String CLICKHOUSE_VERSION_LATEST = "latest";
+    public static final String CLICKHOUSE_VERSION_DEFAULT = CLICKHOUSE_VERSION_LATEST;
     public static final String CLICKHOUSE_DOCKER_IMAGE = String.format("clickhouse/clickhouse-server:%s", getClickhouseVersion());
     public static final String TOXIPROXY_DOCKER_IMAGE_NAME = "ghcr.io/shopify/toxiproxy:2.7.0";
 
