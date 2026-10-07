@@ -161,6 +161,12 @@ This phase is therefore shaped as **rehearse → close the debt → measure → 
   - Rejected — *R-01 only in the preamble* / *ledger only*: the second leaves the published repo with no statement of a known data-loss path.
   - **Reversibility:** reversible.
 
+- **D-17 (added 2026-10-07, mid-execution, user decision): fix ClickHouse 26.9 response-compression incompatibility in the connector, as gap plan 11-08, before plan 11-04's gate.** Wave 1's post-merge full-suite gate went red (654 tests, 281 failures): `clickhouse/clickhouse-server:latest` moved to **26.9.12.8** (image created 2026-10-06), whose defaults changed `network_compression_method` LZ4 → **ZSTD** and `enable_http_compression` 0 → 1. With `compress=1` the server now ZSTD-compresses native response blocks (method byte `0x90`); client 0.9.6 decodes LZ4 only → `Invalid LZ4 magic byte: '-112'`, surfacing as `Connection to ClickHouse is not active` (245 of 281). Raw-HTTP probes proved `network_compression_method=lz4` restores 25.8-identical `0x82` LZ4 framing on 26.9. Production runs 26.3.17.4 (LZ4) — unaffected today, broken on any upgrade to 26.9+, client V1 and V2 alike.
+  - Decision: the connector forces `network_compression_method=lz4` on every client it builds (V2 via `Client.Builder.serverSetting`, V1 via the shared default client options), overridable by an operator's explicit setting; pinned by a live test against `latest` and a Docker-free unit test.
+  - **Scope carve-out from D-08's "no `src/main` change in Phase 11":** exactly plan 11-08's commits, confined to `ClickHouseHelperClient.java` (plus any V1 builder site in `src/main` that bypasses the shared default options). Every later plan's `src/main` assertion excludes those commits by SHA and still fails on any other `src/main` change.
+  - Rejected — *pin tests to 26.8 and defer* (leaves prod's upgrade path broken and abandons the `latest` gate); *upgrade the client off 0.9.6* (dependency change outside this milestone's locked pins; larger blast radius).
+  - **Reversibility:** reversible — one setting, removable once the client decodes ZSTD.
+
 ### Claude's Discretion
 
 The user did not constrain the following. All reversible; a planner may override with a stated reason.
