@@ -64,7 +64,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 11-05-PLAN.md — Tracer: scratch-branch CI rehearsal end-to-end, wall-clock measured against a stated threshold, then D-03's evidence bundle (D-02/D-10/D-11)
+- [x] 11-05-PLAN.md — Tracer: scratch-branch CI rehearsal end-to-end, wall-clock measured against a stated threshold, then D-03's evidence bundle (D-02/D-10/D-11)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -99,7 +99,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
 | 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
-| 11. Full Suite, CI & Publication | 5/8 | In Progress | - |
+| 11. Full Suite, CI & Publication | 6/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.6.0_gg1-sync` created: 2026-09-18*
