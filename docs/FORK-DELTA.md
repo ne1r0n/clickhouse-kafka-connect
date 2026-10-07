@@ -14,6 +14,9 @@ Every row below was checked against the merged tree (`sync/v1.6.0`, commit `09ca
   - [Retired in favour of an upstream implementation](#retired-in-favour-of-an-upstream-implementation)
   - [Adopted wholesale](#adopted-wholesale)
 - [The raw numbers](#the-raw-numbers)
+- [Known costs and open items](#known-costs-and-open-items)
+- [Named skip inventory](#named-skip-inventory)
+- [For the next syncer](#for-the-next-syncer)
 
 ## What this fork still patches
 
@@ -102,3 +105,60 @@ Insertions grew at both scopes, from 8401 to 9255 at the wider scope and from 13
 One number does bear on how the delta reads: of the 30 `src/main` files that differ from upstream `v1.6.0`, 16 differ only in import order, because the fork keeps Spotless `importOrder()` (planner decision PD-01, above) while upstream applies Spotless with no configuration block. The other 14 carry fork logic: nine modified upstream files, including the service file, and five new transform classes.
 
 This ledger was derived from `.planning/MERGE-CHECKLIST.md`, whose Section 1 classifies every conflicted path as survives-as-is, re-express or redundant and whose numbered Recorded Facts carry the reasoning behind each disposition. Read it for the per-path index.
+
+## Known costs and open items
+
+Nothing in this section has been fixed by the sync. Each item is published knowingly open.
+
+**1. R-01: silent data loss with `insertFormat=json` and `Struct` records.** With `insertFormat` set explicitly to `json`, a record whose value is a Kafka Connect `Struct` (a schema'd record, as produced by the Avro, Protobuf and schema-enabled JSON converters), and `bypassRowBinary` left at its default of `false`, **every row is silently discarded**. No exception is thrown, `put()` returns normally.
+
+The mechanism: in metadata-free mode the writer builds a synthetic `Table` with no columns. `doInsertBatch` sends schema'd records to the RowBinary writer unless `bypassRowBinary` is true, and that writer's per-column loop iterates the table's root columns, which for the synthetic table is an empty list. Each record therefore serialises to zero bytes and the client reports zero rows written.
+
+The loss is pinned by a test rather than fixed: `ExplicitJsonInsertPathLiveTest.explicitJsonStructRecordWithDefaultBypassRowBinarySilentlyDropsBatch`, whose Javadoc is headed "R-01 PIN - NOT AN ENDORSEMENT". A fail-fast repair was left out on purpose, because it would turn a pipeline that is losing data quietly today into one that fails loudly, and it needs a migration story for existing `Struct`-converter pipelines.
+
+The loss was accepted when the metadata-free path was kept (Recorded Fact 14), and the acceptance rests on an operator fact: no live pipeline in the deployment this fork serves takes the `Struct` plus explicit-JSON route today. **That fact is true of that deployment and cannot be verified by anyone else building from this fork.** If you build from this fork, check your own connector configuration: do not combine an explicit `insertFormat=json` with `Struct` values unless you have confirmed rows arrive. The only route pinned by a passing test in metadata-free mode is schemaless `Map` values. Setting `bypassRowBinary=true` sends schema'd records through the JSON writer according to `doInsertBatch`, but no test pins that combination in metadata-free mode, so verify it before relying on it. Status: recorded as the Future Requirement "R-01 fail-fast" in `.planning/REQUIREMENTS.md`; not fixed.
+
+**2. WR-01 (test harness): `ClickHouseBase.tearDown()` swallows a database-drop failure.** It logs the failure and carries on. Under the shared container, that per-class database drop is the only isolation between classes in one JVM fork, so a transient failure can strand a database and make a different, innocent later class fail its isolation assertion with no attributable cause. The only detection mechanism today is a clean full-suite run. Status: accepted as a cost in Recorded Fact 16 of `.planning/MERGE-CHECKLIST.md` and carried as an open item in `.planning/STATE.md`; not scheduled, not fixed. This is a different item from the Future Requirement also named WR-01, which is item 4 below.
+
+**3. Four open code-review findings**, published with the findings open. Each is recorded in the review that found it (`07-REVIEW.md` and `09-REVIEW.md` under `.planning/phases/`) and carried as an open item in `.planning/STATE.md`; none is scheduled, and none is fixed.
+
+| Finding | What is wrong | Why it is not urgent |
+|---|---|---|
+| `Column.extractColumn`, `Array` recursion | The recursive call passes `isSubColumn` and `hasDefaultValue` in swapped positions | Dead code today; a landmine for a future change |
+| `ClickHouseSinkConfig`, `ConfigDef` default for `USERNAME` | The definition reads `passwordDefault` (`""`) instead of `usernameDefault` (`"default"`) | It misreports the default in Kafka Connect's config UI; the runtime value comes from a separate `getOrDefault` that uses the right default, so there is no runtime effect |
+| `JsonColumnTest` | Asserts row counts only and never reads the JSON payload back | Coverage gap, not a defect in the connector |
+| `ClickHouseWriter.cleanupExtraFields` (finding P9-IN-01) | The guard `csc.isBypassFieldCleanup() \|\| shouldSkipTableMetadata()` dereferences `csc` before the predicate whose point is a `csc != null` check | Unreachable today: the method is only called through a started writer |
+
+**4. Other tracked follow-ups.** The Future Requirements list in `.planning/REQUIREMENTS.md` remains open and is not contradicted by anything here. It includes WR-01 (map): end-to-end coverage for an actual `null` entry inside a `Map(K, Nullable(V))` column, which upstream's guarded write does not by itself close (Recorded Fact 9).
+
+**5. Upstream capability that the merge makes available and this milestone deliberately did not adopt:** `DebeziumRecordConvertor` (`debeziumCDCEnabled`), the `auto.evolve` family, buffered delivery (`bufferCount` and `bufferFlushTime`) and `retryOnSocketException` are all present in the tree and deliberately not adopted by this milestone.
+
+## Named skip inventory
+
+The current suite skips 18 tests. The structural basis is measured by command rather than copied from a report:
+
+```text
+grep -rc '@Disabled' src/test/java                -> 7 annotation sites, 7 test methods
+grep -rc 'Assumptions.assumeTrue' src/test/java   -> 1 site, in a parameterized test with 11 cases
+```
+
+Seven disabled methods plus the eleven parameterized cases behind the single standalone-mode assumption make 18.
+
+| Class | Test | Reason |
+|---|---|---|
+| `ClickHouseSinkTaskTest` | `clientNameTest()` | `@Disabled`: a pre-existing flaky-test disable |
+| `ClickHouseSinkTaskWithSchemaTest` | `schemaWithNestedTupleMapArrayAndVariant()` | `@Disabled`: requires a flag on the instance |
+| `ClickHouseSinkTaskWithSchemaTest` | `schemaWithTupleOfMapsWithVariantTest()` | `@Disabled`: requires a flag on the instance |
+| `ClickHouseSinkTaskWithSchemaTest` | `exactlyOnceStateMismatchTest`, cases `[1]` to `[11]` | `Assumptions.assumeTrue(isCluster \|\| isCloud)`: skipped in a standalone run |
+| `InsertFormatPerformanceTest` | `compareInsertPerformance()` | `@Disabled`: not suitable for unit tests |
+| `JsonColumnTest` | `compareAllConfigurations()` | `@Disabled`: not suitable for unit tests |
+| `transforms.ConvertToMapOrJsonPerformanceTestJson` | `testWideStructPerformance()` | `@Disabled`: not suitable for unit tests |
+| `transforms.ConvertToMapOrJsonPerformanceTestJson` | `testDeepNestedStructPerformance()` | `@Disabled`: not suitable for unit tests |
+
+None of the 18 belongs to the fork's own coverage. The SMT sink-landing tests, the JSON and Dynamic round-trip, RowBinary fail-fast, JMX registration and insert-columns tests all run.
+
+## For the next syncer
+
+Read this file first, then `.planning/MERGE-CHECKLIST.md`. The checklist's Section 1 gives a per-path resolution for every conflicted file, and its numbered Recorded Facts carry the reasoning behind each disposition in the ledger above.
+
+The most expensive fact of the `v1.6.0` sync is that seven fork behaviours vanished from the merge with no conflict marker and no compile error. The one found last, the test harness's default ClickHouse image reverting from `latest` to a pinned version, was found only after two phases had closed green against the wrong server. That is why every one of them now has a test pinning it, and why a green build after a merge is not evidence that the fork's behaviour survived: check each row of [What this fork still patches](#what-this-fork-still-patches) against the new tree.

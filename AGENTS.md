@@ -17,6 +17,7 @@ Key design goals:
 - Supports all Kafka record formats (see the Data Format Support section below)
 
 Full design rationale: [`docs/DESIGN.md`](./docs/DESIGN.md)
+- Fork delta against upstream (what this fork patches, what it retired): [`docs/FORK-DELTA.md`](./docs/FORK-DELTA.md)
 
 ### Package Structure
 
