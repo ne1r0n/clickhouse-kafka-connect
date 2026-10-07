@@ -29,7 +29,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 - [x] **Phase 8: Orchestration & JMX Re-plumbing** - `connector=<name>` restored where upstream now owns MBean naming — a re-plumb, not a patch re-apply (completed 2026-09-19)
 - [x] **Phase 9: Metadata-free JSON Path — Keep or Drop** - The R-01 keep/drop decision made at a blocking-human checkpoint, then the code and tests made to say the same thing (completed 2026-09-20)
 - [x] **Phase 10: Test Harness Reconciliation** - The fork's `ClickHouseBase` contract and test fixtures re-composed over upstream's rewritten infrastructure (completed 2026-09-20)
-- [ ] **Phase 11: Full Suite, CI & Publication** - Green `./gradlew test` on `latest` × V2, green CI on the pushed SHA, `custom_build` published
+- [x] **Phase 11: Full Suite, CI & Publication** - Green `./gradlew test` on `latest` × V2, green CI on the pushed SHA, `custom_build` published (completed 2026-10-07)
 
 ## Phase Details
 
@@ -209,7 +209,7 @@ Plans:
   4. `custom_build` is brought forward from `sync/v1.6.0` by a non-force merge and pushed to the public fork after human approval.
   5. A written record lists every fork change dropped in favour of upstream and why, and shows the fork's delta over upstream is smaller after this milestone than before it.
 
-**Plans:** 8/8 plans executed across 6 waves (11-08 inserted as gap closure, D-17) — `rehearse → close the debt → measure → approve → publish`. Wave 1 is genuinely parallel; waves 2 through 5 are sequential and that is structural, because the local gate can only measure the tree as it will be published, the CI rehearsal can only run on the tree the local gate measured, and the approval can only weigh evidence that already exists.
+**Plans:** 8/8 plans complete across 6 waves (11-08 inserted as gap closure, D-17) — `rehearse → close the debt → measure → approve → publish`. Wave 1 is genuinely parallel; waves 2 through 5 are sequential and that is structural, because the local gate can only measure the tree as it will be published, the CI rehearsal can only run on the tree the local gate measured, and the approval can only weigh evidence that already exists.
 
 Plans:
 **Wave 1**
@@ -263,7 +263,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
 | 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
-| 11. Full Suite, CI & Publication | 8/8 | In Progress | - |
+| 11. Full Suite, CI & Publication | 8/8 | Complete    | 2026-10-07 |
 
 ---
 *Roadmap for milestone `v1.6.0_gg1-sync` created: 2026-09-18*

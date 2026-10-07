@@ -31,13 +31,13 @@
     {
       "number": "11",
       "name": "Full Suite, CI & Publication",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 11 of 6 · 70% · executing"
+    "command": "/gsd:new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
   },
-  "updated_at": "2026-09-20T20:11:35.970Z"
+  "updated_at": "2026-10-07T15:52:32.049Z"
 }

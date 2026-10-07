@@ -100,6 +100,11 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ **Seventh silently-vanishing fork behaviour found and fixed:** `CLICKHOUSE_VERSION_DEFAULT` had reverted `latest` → `25.8.18.1` in the merge with no conflict marker and no compile error, so every local gate since Phase 6 — including the green closes of Phases 8 and 9 — silently ran against the wrong server. Pinned Docker-free by `ClickHouseVersionDefaultUnitTest` — Phase 10 (MERGE-CHECKLIST Recorded Fact 15)
 - ✓ The milestone's first full-suite evidence taken on the server it actually claims to test: two consecutive clean runs on ClickHouse `latest` (654 tests each, 0 failures, 0 errors, byte-identical 57-class executed sets, skips non-growing at 18), plus HARN-01's Docker-free `testUnit` proof with the colima daemon genuinely stopped (327 tests, 0 failures) — Phase 10 (HARN-01)
 - ✓ All 17 Phase-10-owned `MERGE-CHECKLIST.md` rows flipped to done, each citing a command re-run at execution time rather than a planning document; zero Phase-10-owned rows remain pending — Phase 10 (HARN-04..07)
+- ✓ Upstream `v1.6.0` merged into `custom_build` with every fork feature preserved or consciously retired: published as the two-parent `--no-ff` merge `c61d90ce` (parents `6ac2d20c`, `586af775`), pushed without force after a recorded human approval, tagged `v1.6.0_gg1`, with the rollback tag `pre-v1.6.0-sync` → `6ac2d20c` on `origin` — Phase 11 (CI-07)
+- ✓ `./gradlew test` green on ClickHouse `latest` (26.9.12.8) × client V2, fork tests plus upstream's: 663 tests, 0 failed, 0 errors, 18 skipped, with the skip set identical by (class, method) to Phase 10's named 18 and the Docker-free `testUnit` contract re-proved (331 tests) with the daemon down — Phase 11 (SUITE-01, SUITE-02)
+- ✓ `tests.yaml` green on the published SHA: run `37619434848` on `c61d90ce`, 386 s against a 1350 s threshold, coverage artifact published; `VERSION` = `v1.6.0_gg1`; CI's job-environment version pins dropped so `ClickHouseVersionDefaultUnitTest` is the single source of truth — Phase 11 (CI-05, CI-06)
+- ✓ `docs/FORK-DELTA.md` published as the written record of what the fork still patches and what it retired in favour of upstream, each row grep-confirmed against the merged tree, with R-01 leading its Known costs section. The delta is smaller by the behaviour ledger and by files (93→84 wide, 32→30 `src/main`), while insertions grew; the mixed raw numbers are published in full and were accepted at UAT — Phase 11 (SUITE-03)
+- ✓ **Server-default break found and fixed before publication (D-17):** ClickHouse 26.9 defaults `network_compression_method` to ZSTD, which client `0.9.6` cannot decode. The connector now forces `lz4` on every V1 and V2 client, applied before operator options so an explicit operator value wins. Pinned by `NetworkCompressionPinUnitTest` and `NetworkCompressionPinLiveTest` — Phase 11 (plan 11-08)
 
 **Fork additions (the subject of this project):**
 
@@ -151,12 +156,12 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 <!-- Scoped for v1.6.0_gg1-sync, followed by the nine unscheduled follow-ups carried forward from v1.2.9_gg4-tests. -->
 
-**v1.6.0_gg1-sync (this milestone) — scoped, REQ-IDs assigned in REQUIREMENTS.md:**
+**v1.6.0_gg1-sync (this milestone):** all four scoped requirements shipped in Phase 11 and moved to Validated.
 
-- [ ] Upstream `v1.6.0` merged into `custom_build` with every fork feature preserved or consciously retired in favour of an upstream equivalent
-- [ ] `./gradlew test` green on ClickHouse `latest` × client V2 — fork tests plus upstream's v1.6.0 tests
-- [ ] `tests.yaml` green on the pushed SHA, `VERSION` at `v1.6.0_gg1`, `custom_build` published to the public fork
-- [ ] A written record of which fork changes were dropped in favour of upstream, and why — the fork delta over upstream is smaller after this milestone than before it
+**Publication & client follow-ups (emerged in Phase 11, not yet scheduled):**
+
+- [ ] Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group, which cancels the branch run. CI-06 had to narrow its locator to `conclusion != cancelled`. Either key the concurrency group on `github.ref` too, or push tags separately, so a published SHA has exactly one run again
+- [ ] The forced `network_compression_method=lz4` (D-17) is a workaround for client `0.9.6`. Remove it once the client decodes ZSTD, under the removal condition recorded in `docs/FORK-DELTA.md`. Before a production rollout, check that no server profile constrains this setting (T-11-38, accepted risk)
 
 **Transform follow-ups (emerged in Phase 2 code review, not yet scheduled):**
 
@@ -251,6 +256,10 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| ZSTD-default break on ClickHouse 26.9 fixed **in the publishing phase** (D-17) by forcing `network_compression_method=lz4` as a connector default, not by bumping the client | Without it the connector cannot read any response from `latest`, so publishing without the fix would ship a broken connector. Bumping the client is a dependency change outside this milestone; a connector default applied before operator options is the smallest fix and leaves the operator in control | ✓ Phase 11 (plan 11-08, `87fa1e78`) — the only Phase 11 `src/main` change; unit and live pins; removal condition recorded in `FORK-DELTA.md` |
+| Publish as a `--no-ff` merge into `custom_build`, with the stale FORK-DELTA raw numbers (F-1) fixed in a docs-only commit **before** the merge | A single two-parent merge gives one revertible commit (`git revert -m 1`) for the whole bring-forward. Publishing with numbers the document itself says are pre-D-17 would contradict the published-SHA run | ✓ Phase 11 — user chose "Fix F-1, then publish (Recommended)" at the blocking-human gate; `c61d90ce` pushed without force; the published-SHA CI run covers the final tree |
+| CI-06's "exactly one run" locator narrowed to exclude cancelled runs instead of re-running CI | The tag push cancelled the branch run on the same SHA, so the plain locator returned two runs. Re-running CI to manufacture one match would be the run-laundering the plan forbade | ✓ Phase 11 — run `37619434848` is the only non-cancelled match; accepted at UAT test 1. Root cause tracked as an Active follow-up |
+| Both `CLICKHOUSE_VERSION` and `CLIENT_VERSION` dropped from the CI job environment | The CI pin is what let Phases 8–9 report green on a server no local run used. Removing it makes `ClickHouseVersionDefaultUnitTest` the single source of truth in both places | ✓ Phase 11 (D-09, CI-05) |
 | The shared-container contract **re-derived** over upstream's per-class `@TestInstance(PER_CLASS)` rewrite, rather than taking HARN-03's permitted fallback ("measure the cost, record the fallback") | Upstream rewrote the lifecycle the fork's contract sat on; re-deriving keeps the harness on upstream's shape instead of restoring a pre-merge file that would re-conflict on every future sync. The cost is that 25 classes became order-dependent within a fork for the first time | ✓ Phase 10 (D-01/D-02) — lazily started static container behind `sharedContainerStarts()`, per-class database drop as the only isolation mechanism, `usesSharedContainer()` opt-out for the two Toxiproxy classes |
 | The acceptance gate is **two** consecutive clean full-suite runs, not one, with run 2 forced via `--rerun` | Plan 10-01 made 25 classes order-dependent inside a fork and Gradle's fork assignment varies run to run, so one green run proves less here than it did in Phase 9. Without `--rerun`, Gradle's `UP-TO-DATE` cache would have echoed run 1's cached results as a fake second run — defeating the gate's entire purpose | ✓ Phase 10 (D-09) — 654 tests each run, 0 failures, byte-identical 57-class executed sets, skips 18 → 18. Anyone re-running this gate (Phase 11's CI measurement included) must bust the cache explicitly |
 | `HARN-04`/`05`/`06`/`07` closed on **re-measured evidence** rather than on new code, and the fact disclosed in `REQUIREMENTS.md` rather than left to read as work performed | All four were already satisfied before the phase began — by the Phase 6 merge and Phase 7's early sliver. Closing them on `10-CONTEXT.md`'s measured-state table would have cited numbers taken before five source files changed and two were added, so every command was re-run against the tree as plan 10-01 left it | ✓ Phase 10 (HARN-04..07) — the `REQUIREMENTS.md:104-110` correction blockquote names the evidence per requirement; confirmed by a human stranger-read at UAT |
@@ -308,4 +317,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-20 after Phase 10*
+*Last updated: 2026-10-07 after Phase 11*

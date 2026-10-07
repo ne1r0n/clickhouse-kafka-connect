@@ -3,42 +3,41 @@ gsd_state_version: "1.0"
 milestone: v1.6.0_gg1-sync
 milestone_name: Upstream v1.6.0 Sync
 current_phase: 11
-current_phase_name: Full Suite, CI & Publication
-status: executing
-stopped_at: Phase 11 context gathered
-last_updated: "2026-09-20T20:11:35.950Z"
-last_activity: 2026-09-20
-last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: 4dd8dd366eed6618d5d5f95b1bb7c1bc435849a2
+status: completed
+stopped_at: Phase 11 complete — all phases complete
+last_updated: "2026-10-07T15:52:32.031Z"
+last_activity: 2026-10-07
+last_activity_desc: Phase 11 complete
+state_head: dec471e167562333be361fa1f9de026bf04d725b
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 23
-  completed_plans: 16
-  percent: 70
+  completed_phases: 6
+  total_plans: 24
+  completed_plans: 24
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-20)
+See: .planning/PROJECT.md (updated 2026-10-07)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 11 — Full Suite, CI & Publication
+**Current focus:** Milestone `v1.6.0_gg1-sync` complete. Ready to archive with `/gsd-complete-milestone`
 
 ## Current Position
 
-Phase: 11 (Full Suite, CI & Publication) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-09-20 — Phase 10 complete, transitioned to Phase 11
+Phase: 11 (Full Suite, CI & Publication) — COMPLETE
+Plan: 8 of 8
+Status: All phases complete
+Last activity: 2026-10-07 — Phase 11 complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 16 (all from `v1.2.9_gg4-tests`)
+- Total plans completed: 24 (all from `v1.2.9_gg4-tests`)
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -51,7 +50,7 @@ Last activity: 2026-09-20 — Phase 10 complete, transitioned to Phase 11
 | 08 | 3 | - | - |
 | 09 | 3 | - | - |
 | 10 | 3 | - | - |
-| 11 | 0 | - | - |
+| 11 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -76,6 +75,13 @@ Last activity: 2026-09-20 — Phase 10 complete, transitioned to Phase 11
 | Phase 10 P01 | 16 min | 3 tasks | 8 files |
 | Phase 10 P02 | 4 min | 3 tasks | 0 files |
 | Phase 10 P03 | 7min | 3 tasks | 2 files |
+| Phase 11 P01 | 7 min | 3 tasks | 4 files |
+| Phase 11 P02 | 12 min | 2 tasks | 2 files |
+| Phase 11 P03 | 7 min | 2 tasks | 3 files |
+| Phase 11 P08 | 25 min | 3 tasks | 4 files |
+| Phase 11 P04 | 6 min | 3 tasks | 0 files |
+| Phase 11 P05 | 11 min | 2 tasks | 0 files |
+| Phase 11 P07 | 10 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -111,6 +117,13 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Phase 10]: [Phase 10]: Plan 10-02 ran Phase 10's acceptance gate: HARN-01's Docker-free `testUnit` proof (Docker genuinely stopped via colima, 327 tests / 0 failures) and two consecutive clean full-suite runs on ClickHouse `latest` (654 tests each, 0 failures, 0 errors, byte-identical 57-class executed sets, skip count non-growing at 18). D-06 settled at the checkpoint: nothing for `latest` to attribute — both runs were clean, so no server-vs-harness attribution was needed. This is the milestone's first full-suite evidence taken on `latest` rather than the `25.8.18.1` pin Phases 8 and 9 silently ran against. HARN-01 and HARN-02 closed. — D-09/D-06 (10-CONTEXT.md): two runs, not one, because plan 10-01 made 25 classes order-dependent within a fork for the first time and Gradle's fork assignment varies run to run — one green run proves less here than it did in Phase 9. Run 2 was forced with `--rerun` to defeat Gradle's UP-TO-DATE cache, which would otherwise have echoed run 1's results as a fake second run.
 - [Phase 10]: UAT 2/2 passed — both deferred `human_judgment` items resolved as accepted: the `REQUIREMENTS.md:104-110` correction blockquote survives a stranger-read (it reads as four pre-satisfied requirements closed on re-measured evidence, with the server-version gap as the phase's real finding — not as "seven requirements' worth of work"), and HARN-07's sequencing clause stands as "moot on arrival" rather than formally unmet. Security: 15 threats, 0 open (`10-SECURITY.md`). — Both were interpretive calls no command could settle; the verifier deliberately routed them to end-of-phase UAT rather than self-certifying. `10-SECURITY.md` closed on the ASVS-L1 short-circuit (register authored at plan time, all nine `mitigate` threats verified in the implementation, six accepted risks logged).
 - [Phase 10]: [Phase 10]: Plan 10-03 discharged HARN-04/05/06/07 as recorded evidence acts (re-run commands, not citations), flipped all 17 Phase-10-owned MERGE-CHECKLIST.md rows to done with two new Recorded Facts (the image-default reversion as the seventh silently-vanishing fork behaviour; the container-ownership promotion's accepted cost), and closed HARN-01..07 in REQUIREMENTS.md with a correction blockquote. Phase 10 complete; zero Phase-10-owned MERGE-CHECKLIST.md rows remain pending. — Phase 11's publication gate asserts zero pending checklist rows; that assertion is only meaningful if no row was ever flipped ahead of its evidence, which is why every flip in this plan cites a command re-run at execution time rather than a planning document.
+- [Phase 11]: Plan 11-01: Invariant 2 of verify-merge-invariants.sh now fails closed on a git grep tool error (pre-fix copy exits 0, fixed copy exits 1 on a pathspec git rejects with 128); unattended run over pre-v1.6.0-sync..HEAD exits 0. MERGE-CHECKLIST.md at 0 open / 48 done. 07-SECURITY.md (23 threats) and 09-SECURITY.md (17 threats) both 0 open; T-09-03 (R-01) recorded closed as an accepted risk, not escalated.
+- [Phase 11]: 11-02: dropped both CLICKHOUSE_VERSION and CLIENT_VERSION from the CI job environment so CI resolves code defaults; ClickHouseVersionDefaultUnitTest is the detector (D-09)
+- [Phase 11]: Plan 11-03: published docs/FORK-DELTA.md with measured raw numbers (9255 insertions, 450 wider-scope deletions after) and R-01 stated first; four open review findings and harness WR-01 are carried in STATE.md, not REQUIREMENTS.md Future Requirements
+- [Phase 11]: 11-08: forced network_compression_method=lz4 on V1+V2 clients (D-17); only src/main commit is 87fa1e78
+- [Phase 11]: Plan 11-05: sync/v1.6.0 pushed (no force) at 64289171; run 37617508949 located by head_sha+path, exactly one match, success, 350 s vs 1350 s threshold, jacoco artifact 816160 bytes. Evidence commits stay local so origin tip equals the run-located SHA. Gate findings: F-1 FORK-DELTA raw numbers stale after 11-08; F-2 07-REVIEW IN-01/IN-02 and Future-Requirements-vs-STATE split missing from published open list; publication count 750 not 697. — Evidence plan; scratch push reversible via git push origin --delete sync/v1.6.0.
+- [Phase 11]: Plan 11-07: closed SUITE-01..03 and CI-05..07 on commands re-run at execution time (fresh --rerun 663/0/0/18, skip set identical; REST API; ls-remote). Closure blockquote states SUITE-01/02 were evidence acts. Nothing pushed; post-publication bookkeeping (93a9b4e2, fd8fbdef, 3ff8c7a5 plus later) lives unpushed on local sync/v1.6.0; local custom_build == origin == c61d90ce.
+- [Phase 11]: UAT 5/5 passed. The user accepted the narrowed CI-06 locator (excluding the run the tag push cancelled), confirmed the CI-07 approval record, accepted the mixed "smaller delta" raw numbers for SUITE-03, and accepted both backstops (CI fork topology unmeasured; FORK-DELTA ordering untestable from one revision). Security: 38 threats, 0 open (`11-SECURITY.md`, ASVS L1 short-circuit). T-11-34's planned "scanned tree byte-identical to published" proof no longer held after the F-1 docs fix, so the scanned-vs-published diff (`docs/FORK-DELTA.md`, 5+/5−) was re-scanned and found clean. Verification `passed`; phase and milestone complete.
 
 ### Pending Todos
 
@@ -124,15 +137,17 @@ Milestone-level decisions are locked in `REQUIREMENTS.md` (the "Locked decisions
 - [Merge]: `ClickHouseTestHelpers.java` is a modify/delete that git resolves by orphaning the fork's copy — post-merge the tree can hold two compiling copies with divergent defaults. Grep for exactly one canonical file (HARN-04, Phase 10).
 - [Tooling]: The `gh` CLI is not installed locally (deliberately — D-11), so CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel, so any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch. Confirmed live in Phase 7: the wave-2 dispatch was rejected by the isolation guard after intervening `gsd_run check` calls re-persisted the sentinel to `harness-worktree`; re-forcing immediately before each `Agent()` call is the working remedy.
-- [Phase 06]: ⚠ **CR-01, latent — safety-net script fails open.** `.planning/scripts/verify-merge-invariants.sh:44` treats a `git grep` error (exit ≥2) identically to "no match" (exit 1), with stderr suppressed, so Invariant 2 reports clean on a broken pathspec or unreadable commit. The property itself currently holds — re-derived at the Phase 6 security audit with corrected exit-code branching (592 commits, 0 markers, 0 git errors) — but **fix before Phase 11**, which gates publication on this script running unattended. Recorded in `06-SECURITY.md` → Carried Defects.
+- ~~[Phase 06]: ⚠ **CR-01, latent — safety-net script fails open.** `.planning/scripts/verify-merge-invariants.sh:44` treats a `git grep` error (exit ≥2) identically to "no match" (exit 1), with stderr suppressed, so Invariant 2 reports clean on a broken pathspec or unreadable commit. The property itself currently holds — re-derived at the Phase 6 security audit with corrected exit-code branching (592 commits, 0 markers, 0 git errors) — but **fix before Phase 11**, which gates publication on this script running unattended. Recorded in `06-SECURITY.md` → Carried Defects.~~ — **RESOLVED (Phase 11, plan 11-01, commit `4b03e6f3`).** Invariant 2 now branches on `git grep` exit status (0 marker, 1 clean, 2-or-greater violation carrying git's stderr). Proved by a pathspec git rejects with exit 128: the pre-fix copy exits 0, the fixed copy exits 1. Unattended run over `pre-v1.6.0-sync..HEAD` exits 0.
 - ~~[Phase 10]: Half done — Phase 8 closed its half, Phase 10 still owes its own. `compileTestJava` failed on two files after plan 07-03; the user chose a temporary test-compile exclusion in `build.gradle.kts` (commit `b25a71f1`) over pulling either sliver forward. Phase 10 must still delete `exclude("**/ClickHouseTestHarnessTest.java")`.~~ — **RESOLVED (Phase 10, plan 10-01, commit `b39ed8fd`).** `ClickHouseTestHarnessTest` is un-excluded from `compileTestJava` (the `exclude("**/ClickHouseTestHarnessTest.java")` line and its TEMPORARY comment block deleted from `build.gradle.kts`), redirected onto the post-merge API, and green live (7/7 tests).
 - ~~[Phase 07 → 10]: UTF-8 regression in the orphaned test helper — 4 live tests failing~~ — **RESOLVED in Phase 8 (plan 08-01, D-13).** All three `InputStreamReader` constructions in `src/testFixtures/.../ClickHouseTestHelpers.java` (lines 141, 160, 321) now pass `StandardCharsets.UTF_8` explicitly, so non-ASCII values no longer decode as mojibake under the deliberate `windows-1252` test JVM. `JsonDynamicRoundTripTest` TYPE-07 ×2 and `SmtSinkLandingTest` HDRS-09/CONV-08 are green. Note Phase 10 / HARN-04 still owns the separate duplicate-helper-file question.
 - ~~[Phase 07 → 8]: `MBeanRegistrationLiveTest` JMX-04 ×2 NPE~~ — **RESOLVED in Phase 8.** The JMX `connector=<name>` naming is re-applied into `SinkTaskStatistics`; `MBeanRegistrationLiveTest` now passes at both task and per-topic level, including the four-tasks-two-connectors selective-unregistration path.
 - ~~[Phase 10 (triaged in Phase 8)]: `TableTest.extractNullables()` fails (expected 3, got 2)~~ — **RESOLVED in Phase 9 (D-14, commit `b84b179e`).** Phase 8 named the cause — `ClickHouseHelperClient.shouldSkipDescribeRow` unconditionally strips Nullable `.null` subcolumns, a fork behaviour already pinned by `DESC-01` — and Phase 9 adopted the carry-in and changed the assertion `3` → `2` with that citation. Taken outside `JSONP-01..04` at the user's explicit decision, so the acceptance gate became a clean binary instead of a re-baselined "one known red". MERGE-CHECKLIST Recorded Fact 13 flipped to resolved. The suite is now 0 failures, 0 errors.
 - [Phase 07]: **3 Warning + 3 Info code-review findings left open** in `07-REVIEW.md` (both Criticals were fixed). Warnings: `Column.extractColumn`'s Array recursion swaps the `hasDefaultValue`/`isSubColumn` positional args (currently dead code, future landmine); `ClickHouseSinkConfig`'s `ConfigDef` default for `USERNAME` uses `passwordDefault` ("") instead of `usernameDefault` ("default") — misreports via Connect's config UI/docs, runtime unaffected; `JsonColumnTest` asserts row counts only, never reading back payload content.
 - [Phase 09]: **1 Info code-review finding left open** in `09-REVIEW.md` (the Critical and the Warning were both fixed). P9-IN-01: `cleanupExtraFields`'s guard reads `csc.isBypassFieldCleanup() || shouldSkipTableMetadata()`, dereferencing `csc` *before* the predicate whose stated purpose is a `csc != null` short-circuit — so the null-safety guarantee documented on `shouldSkipTableMetadata()` does not hold at that call site. Unreachable today (only called through a started writer). Fix is to swap the operands.
-- [Security]: **Phases 07 and 09 still have no `SECURITY.md`** while `workflow.security_enforcement` is `true`. Phases 6, 8 and 10 have one. Run `/gsd-secure-phase 09` and `/gsd-secure-phase 07` before Phase 11's publication gate, or record the omission deliberately.
+- ~~[Security]: **Phases 07 and 09 still have no `SECURITY.md`** while `workflow.security_enforcement` is `true`. Phases 6, 8 and 10 have one. Run `/gsd-secure-phase 09` and `/gsd-secure-phase 07` before Phase 11's publication gate, or record the omission deliberately.~~ — **RESOLVED (Phase 11, plan 11-01, commit `ebd6c9e7`).** `07-SECURITY.md` (23 threats, 0 open) and `09-SECURITY.md` (17 threats, 0 open) written; R-01 recorded as T-09-03 with its existing accept disposition.
 - [Phase 10]: ⚠ **WR-01, accepted not fixed** — `ClickHouseBase.tearDown()` logs and swallows a database-drop failure (`ClickHouseBase.java:139-146`). Under the shared container that drop is the only isolation mechanism between classes in a JVM fork, so a transient failure strands a database and can make a *different, innocent* later class fail its isolation assertion with no attributable cause. Accepted as a cost in `MERGE-CHECKLIST.md` Recorded Fact 16 and recorded in `10-SECURITY.md` (same surface as T-10-02); its only detection mechanism today is a clean full-suite run.
+- [Phase 11 → next]: ⚠ **Post-publication bookkeeping is unpushed.** Every `.planning/` commit after `c61d90ce` (11-07 bookkeeping, review, verification, UAT and security commits) lives only on local `sync/v1.6.0`; `custom_build` is protected and equals `origin`. Decide how and whether to publish them before or during milestone close.
+- [CI]: Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group and cancels the branch run (seen on `c61d90ce`). Tracked as an Active follow-up in PROJECT.md.
 - [Phase 10 → 11]: Gradle's `UP-TO-DATE` cache will silently echo a prior run's results on a bare second `./gradlew test`. Phase 11's CI measurement and any future re-verification of the two-run gate must bust the cache explicitly (`--rerun` or equivalent) — a bare re-run is not independent evidence.
 
 ## Deferred Items
@@ -147,13 +162,13 @@ The nine follow-ups carried from `v1.2.9_gg4-tests` are out of scope for this mi
 
 ## Session Continuity
 
-Last session: 2026-09-20T19:16:51.484Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-full-suite-ci-publication/11-CONTEXT.md
+Last session: 2026-10-07T15:53:38.000Z
+Stopped at: Phase 11 complete (UAT 5/5, security 0 open, verification passed); milestone ready to close
+Resume file: None
 
 ## Operator Next Steps
 
-- Phase 10 is **closed**: all 7 `HARN-*` requirements Complete, UAT 2/2 passed, `10-SECURITY.md` at 0 open threats, verification `passed`, zero Phase-10-owned `MERGE-CHECKLIST.md` rows pending. Next: `/gsd-discuss-phase 11` then `/gsd-plan-phase 11`.
-- Before Phase 11's publication gate: `/gsd-secure-phase 09` and `/gsd-secure-phase 07` — both phases still lack a SECURITY.md while security enforcement is on
-- Six `MERGE-CHECKLIST.md` Section 2 rows still pending, owned by Phases 6 and 8 — must reach zero before Phase 11's publication gate
-- Fix before Phase 11: `.planning/scripts/verify-merge-invariants.sh:44` fails open on a `git grep` error (Phase 6 CR-01). Phase 11 gates publication on that script running unattended.
+- Phase 11 is **closed**: SUITE-01..03 and CI-05..07 Complete, UAT 5/5 passed, `11-SECURITY.md` at 0 open threats, verification `passed`. Every phase of `v1.6.0_gg1-sync` is complete. Next: `/gsd-complete-milestone v1.6.0_gg1-sync`.
+- ~~Before Phase 11's publication gate: `/gsd-secure-phase 09` and `/gsd-secure-phase 07`~~ — done in plan 11-01
+- ~~Six `MERGE-CHECKLIST.md` Section 2 rows still pending~~ — done in plan 11-01 (0 open, 48 done)
+- ~~Fix before Phase 11: `verify-merge-invariants.sh` fails open on a `git grep` error~~ — done in plan 11-01
