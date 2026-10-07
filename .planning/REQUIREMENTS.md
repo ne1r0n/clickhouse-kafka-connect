@@ -111,12 +111,18 @@
 
 ### Suite & CI (SUITE)
 
-- [ ] **SUITE-01**: `./gradlew test` is green against ClickHouse `latest` × client V2 — the fork's tests plus upstream's 56 test files — with every skip accounted for and explained
-- [ ] **SUITE-02**: The four fork SMTs (`TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, `ConvertToMapOrJson`) and their sink-landing tests pass untouched; any failure there is investigated as a genuine defect, since upstream touches nothing in that package
-- [ ] **SUITE-03**: A written record lists every fork change dropped in favour of upstream and why, and shows the fork's delta over upstream is smaller after this milestone than before it
-- [ ] **CI-05**: `tests.yaml` runs the merged suite on push and publishes coverage, with its runtime measured against the job's `timeout-minutes: 45`
-- [ ] **CI-06**: A `tests.yaml` run is machine-verified green on the pushed SHA, located by `head_sha` plus workflow `path` and asserting exactly one match
-- [ ] **CI-07**: `custom_build` is pushed to the public fork after human approval, by a non-force push from the scratch branch
+- [x] **SUITE-01**: `./gradlew test` is green against ClickHouse `latest` × client V2 — the fork's tests plus upstream's 56 test files — with every skip accounted for and explained
+- [x] **SUITE-02**: The four fork SMTs (`TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, `ConvertToMapOrJson`) and their sink-landing tests pass untouched; any failure there is investigated as a genuine defect, since upstream touches nothing in that package
+- [x] **SUITE-03**: A written record lists every fork change dropped in favour of upstream and why, and shows the fork's delta over upstream is smaller after this milestone than before it
+- [x] **CI-05**: `tests.yaml` runs the merged suite on push and publishes coverage, with its runtime measured against the job's `timeout-minutes: 45`
+- [x] **CI-06**: A `tests.yaml` run is machine-verified green on the pushed SHA, located by `head_sha` plus workflow `path` and asserting exactly one match
+- [x] **CI-07**: `custom_build` is pushed to the public fork after human approval, by a non-force push from the scratch branch
+
+> **Closure note (Phase 11, 2026-10-07).** `SUITE-01` and `SUITE-02` were **evidence acts in this phase, not fresh test work**. Phase 10 had already run the suite green twice on ClickHouse `latest` and named all 18 skips, and its gate substantially discharged `SUITE-02`'s SMT clause. What Phase 11 added is one cache-busted `./gradlew test --rerun` on the exact published tree, with the skip inventory re-derived from that run's result XML, plus CI on a runner nobody here controls. Three requirements (`SUITE-01`, `SUITE-02`, `SUITE-03`) therefore close on re-measured evidence and three (`CI-05`, `CI-06`, `CI-07`) on genuinely new evidence; it is not six requirements' worth of work. The phase's real risk was never the suite. It was CI on an untried runner and a push that cannot be taken back, which is why the push went through a scratch branch and a `--no-ff` merge commit (`git revert -m 1` is the undo).
+>
+> Each closure below cites a command re-run at execution time of plan 11-07 (2026-10-07), not a planning document. `SUITE-01` — `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --rerun` on tree `4a9fc072`, which differs from the published `c61d90ce` only under `.planning/` (`git diff --stat c61d90ce HEAD -- . ':!.planning'` is empty): `BUILD SUCCESSFUL in 2m 46s`, 663 tests, 645 succeeded, 0 failed, 0 errors, 18 skipped across 59 result classes, all 59 XML files written by that run. The 18 skipped `(class, method)` pairs, read from the XML, are set-identical to Phase 10's named 18 (compared pair by pair via the list plan 11-04 derived and diffed against Phase 10's inventory — not by count). The 663 against Phase 10's 654 is the nine `NetworkCompressionPin*` methods added by plan 11-08's D-17 fix for ClickHouse 26.9's ZSTD default. That run used 6 parallel forks on a 12-core machine; it is not a single-fork result. `SUITE-02` — from the same XML: `TableOperationFilterTest` 26, `HeadersToValueTest` 25, `HeaderToValueTest` 24, `ConvertToMapOrJsonTest` 37 and `SmtSinkLandingTest` 5, all with 0 failures, 0 errors and 0 skips; `ConvertToMapOrJsonPerformanceTestJson` ran 2 with exactly its two `@Disabled` benchmarks skipped. `git diff --quiet pre-v1.6.0-sync c61d90ce` over the five fork SMT main files and the five SMT test classes exits 0, so they pass untouched. `SmtSinkLandingTest` is the exception to "untouched": Phase 7 (`e1a90309`) adapted its table-creation helper calls to upstream's rewritten APIs, and no assertion line changed (0 added or removed lines matching `assert`). `SUITE-03` — `docs/FORK-DELTA.md` is in the published tree (167 lines, `git ls-tree` at `c61d90ce`), linked once each from `README.md` and `AGENTS.md`, and has its `Known costs and open items` section. The four `git diff --shortstat` commands re-run now give: `src build.gradle.kts gradle .github` 93 files / 8401 insertions / 423 deletions (`v1.2.9` to `pre-v1.6.0-sync`) against 84 / 9476 / 451 (`v1.6.0` to `c61d90ce`); `src/main` 32 / 1308 / 139 against 30 / 1368 / 98. Files and upstream-deletions fell; insertions rose, which the document states rather than hides.
+>
+> `CI-05` — GitHub REST API on the published-SHA run: run `37619434848` took 386 s run-level and 380 s job-level (`Run tests` step 363 s), against a 1350 s threshold derived from `timeout-minutes: 45`, so under it; the `jacoco-coverage-reports` artifact exists at 816157 bytes. The earlier scratch rehearsal, run `37617508949` on `64289171`, took 350 s. `CI-06` — `actions/runs?head_sha=c61d90ce5dfb32ea5876dffacc8bb54d8846739a` filtered to path `.github/workflows/tests.yaml` returns two runs, not one: `37619430314` (the `custom_build` branch push, `cancelled`) and `37619434848` (the `v1.6.0_gg1` tag push, `success`). Pushing the tag put a second push event on the same SHA into the workflow's `github.sha` concurrency group with `cancel-in-progress: true`, which cancelled the branch run. The locator was narrowed to `head_sha` + path + `conclusion != cancelled`, which returns exactly one run with `conclusion: success` — narrowed by excluding the cancelled run, never by taking the newest. https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/37619434848. `CI-07` — `git ls-remote --heads origin custom_build` returns `c61d90ce5dfb32ea5876dffacc8bb54d8846739a`, a two-parent merge commit pushed without a force flag; `pre-v1.6.0-sync` (`6ac2d20c`) and `v1.6.0_gg1` (`c61d90ce`) are both on `origin`, and `sync/v1.6.0` is no longer in `origin`'s heads. The approval is recorded in `11-06-SUMMARY.md` (key-decisions): the user chose "Fix F-1, then publish (Recommended)" directly to the orchestrator on 2026-10-07.
 
 ### Free Wins — Verify and Record (FREE)
 
@@ -222,12 +228,12 @@ Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Pha
 | HARN-05 | Phase 10 | Complete |
 | HARN-06 | Phase 10 | Complete |
 | HARN-07 | Phase 10 | Complete |
-| SUITE-01 | Phase 11 | Pending |
-| SUITE-02 | Phase 11 | Pending |
-| SUITE-03 | Phase 11 | Pending |
-| CI-05 | Phase 11 | Pending |
-| CI-06 | Phase 11 | Pending |
-| CI-07 | Phase 11 | Pending |
+| SUITE-01 | Phase 11 | Complete |
+| SUITE-02 | Phase 11 | Complete |
+| SUITE-03 | Phase 11 | Complete |
+| CI-05 | Phase 11 | Complete |
+| CI-06 | Phase 11 | Complete |
+| CI-07 | Phase 11 | Complete |
 
 **Phase map:**
 
