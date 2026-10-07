@@ -68,7 +68,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 11-06-PLAN.md — The one blocking human gate, then the forced non-fast-forward merge, the non-force push of branch and both tags, and CI-06's evidence on the published SHA (D-01/D-03/D-04)
+- [x] 11-06-PLAN.md — The one blocking human gate, then the forced non-fast-forward merge, the non-force push of branch and both tags, and CI-06's evidence on the published SHA (D-01/D-03/D-04)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -99,7 +99,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
 | 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
-| 11. Full Suite, CI & Publication | 6/8 | In Progress | - |
+| 11. Full Suite, CI & Publication | 7/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.6.0_gg1-sync` created: 2026-09-18*
