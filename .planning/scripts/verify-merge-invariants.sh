@@ -59,11 +59,27 @@ else
   elif [ -z "${PRE_COMMIT}" ]; then
     echo "INVARIANT 0 VIOLATION: PRE_TAG '${PRE_TAG}' does not resolve to a commit" >&2
     fail=1
-  elif ! git merge-base --is-ancestor "${PRE_COMMIT}" "${merge_line[1]}"; then
-    echo "INVARIANT 0 VIOLATION: ${PRE_TAG} is not an ancestor of first parent ${merge_line[1]}" >&2
-    fail=1
   else
-    shape_ok=1
+    # The rollback tag may itself be the integration merge that published the previous sync
+    # (custom_build's --no-ff merge commit). The scratch branch then descends from that merge's
+    # parents rather than from the merge, so accept a tag whose every parent is an ancestor.
+    pre_contained=1
+    if ! git merge-base --is-ancestor "${PRE_COMMIT}" "${merge_line[1]}"; then
+      pre_contained=0
+      read -ra pre_line <<< "$(git rev-list --parents -n 1 "${PRE_COMMIT}")"
+      if [ "${#pre_line[@]}" -gt 2 ]; then
+        pre_contained=1
+        for pre_parent in "${pre_line[@]:1}"; do
+          git merge-base --is-ancestor "${pre_parent}" "${merge_line[1]}" || pre_contained=0
+        done
+      fi
+    fi
+    if [ "${pre_contained}" -ne 1 ]; then
+      echo "INVARIANT 0 VIOLATION: ${PRE_TAG} (or, for a merge tag, each of its parents) is not an ancestor of first parent ${merge_line[1]}" >&2
+      fail=1
+    else
+      shape_ok=1
+    fi
   fi
 fi
 
