@@ -41,10 +41,17 @@ if [ -z "${RANGE_COMMITS}" ]; then
   fail=1
 else
   for c in ${RANGE_COMMITS}; do
-    if git grep -q -- "^${MARKER}" "${c}" -- "${SOURCE_PATHSPEC[@]}" 2>/dev/null; then
-      echo "INVARIANT 2 VIOLATION: ${MARKER} marker found in commit ${c}" >&2
-      fail=1
-    fi
+    # Exit 0 = marker found, 1 = clean, >=2 = the search itself failed. A failed search proves
+    # nothing about the commit, so it must be reported as a violation rather than read as clean.
+    grep_err="$(git grep -q -- "^${MARKER}" "${c}" -- "${SOURCE_PATHSPEC[@]}" 2>&1)"
+    grep_rc=$?
+    case "${grep_rc}" in
+      0) violation="${MARKER} marker found in commit ${c}" ;;
+      1) continue ;;
+      *) violation="search failed with exit status ${grep_rc} on commit ${c}: ${grep_err}" ;;
+    esac
+    echo "INVARIANT 2 VIOLATION: ${violation}" >&2
+    fail=1
   done
 fi
 
