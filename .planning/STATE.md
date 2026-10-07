@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 12
 current_phase_name: Upstream v1.7.0 Merge & Reconcile
 status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-10-07T19:21:42.286Z"
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-10-07T19:36:42.630Z"
 last_activity: 2026-10-07
-last_activity_desc: Roadmap created for v1.7.0_gg1-sync (Phases 12-15, 39/39 requirements mapped)
-state_head: 132d8bce60f613454b92f869a162103dc7213340
+last_activity_desc: Phase 12 execution started
+state_head: 3aae310f18276c320f15f877870774ac6b3297c5
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-07 after starting milestone v1.7.0_gg
 
 ## Current Position
 
-Phase: 12 (Upstream v1.7.0 Merge & Reconcile) — READY TO EXECUTE
-Plan: Not started
+Phase: 12 (Upstream v1.7.0 Merge & Reconcile) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-07 — Roadmap created for v1.7.0_gg1-sync (Phases 12-15, 39/39 requirements mapped)
+Last activity: 2026-10-07 — Phase 12 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -83,6 +83,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 11 P04 | 6 min | 3 tasks | 0 files |
 | Phase 11 P05 | 11 min | 2 tasks | 0 files |
 | Phase 11 P07 | 10 min | 2 tasks | 1 files |
+| Phase 12 P01 | 11 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ Roadmap decisions (2026-10-07):
 - The merge-line decisions (CMP, WRT-06/09, BLD-09/13, EOS-01) live in Phase 12 rather than in hardening.
 - Phase 13 is kept whole despite owning 15 requirements, because its writer items serialise on `ClickHouseWriter.java` anyway.
 - CI-08 lands in Phase 14 and is proven end to end by Phase 15's published-SHA run.
+- [Phase 12]: 12-01: invariant 0 accepts a merge-commit rollback tag whose every parent is an ancestor of MERGE^1 (pre-v1.7.0-sync = c61d90ce is the --no-ff merge, not an ancestor of sync/v1.6.0-derived branches)
+- [Phase 12]: 12-01: merge commit M = 54e63648 (v1.7.0 into sync/v1.7.0), zero authored lines; fork-anchors.txt (39 rows) authored after M from measured counts
 
 ### Pending Todos
 
@@ -136,9 +139,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-07T18:26:27.440Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-upstream-v1-7-0-merge-reconcile/12-CONTEXT.md
+Last session: 2026-10-07T19:36:42.609Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

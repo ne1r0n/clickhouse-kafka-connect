@@ -75,7 +75,7 @@
 - [ ] **BLD-10**: `lz4-java` is raised past upstream's `1.10.4` to an advisory-free release (≥ 1.11.2, target 1.12.0), after showing client `0.9.6` works with it (compile, `testUnit`, live LZ4 round-trip)
 - [ ] **BLD-11**: Jackson is `2.22.3` (runtime, ships in the Confluent archive), in its own commit, with the JSON-route tests green
 - [ ] **BLD-12**: okhttp `5.5.0`, org.json `20260814` and mockito `5.24.0` are applied as version edits (not dependabot cherry-picks), one commit each, each gated by `compileIntegrationTestJava` and Docker-free `testUnit`
-- [ ] **BLD-13**: The catalog drops `clickhouse-jdbc` and the obsolete `# FORK OVERRIDE (upstream 0.9.5)` comment while keeping `kafka = "4.1.1"`
+- [x] **BLD-13**: The catalog drops `clickhouse-jdbc` and the obsolete `# FORK OVERRIDE (upstream 0.9.5)` comment while keeping `kafka = "4.1.1"`
 
 ### CI (CI)
 
@@ -149,7 +149,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | BLD-10 | Phase 14 | Pending |
 | BLD-11 | Phase 14 | Pending |
 | BLD-12 | Phase 14 | Pending |
-| BLD-13 | Phase 12 | Pending |
+| BLD-13 | Phase 12 | Complete |
 | CI-08 | Phase 14 | Pending |
 | CI-09 | Phase 14 | Pending |
 | CI-10 | Phase 14 | Pending |
