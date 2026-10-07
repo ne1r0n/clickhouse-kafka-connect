@@ -611,13 +611,16 @@ public class ClickHouseWriter implements DBWriter {
                     }
                     break;
                 case MAP:
-                    if (value.getObject() == null) {
+                    if (value.getObject() == null && col.isNullable()) {
                         // Reached when this MAP is a Nullable child of an Array/Map and the
                         // actual entry is null - the parent's own null check (ARRAY's arrObject
                         // == null, MAP's "mapValue != null" guard before recursing) only decides
                         // whether to write the Nullable wrapper's NonNull marker, never whether
                         // to call back into doWriteColValue at all. Mirror doWritePrimitive/
                         // doWriteDates/Decimal's own null handling instead of dereferencing null.
+                        // Scoped to Nullable columns: for a non-nullable Map the null is upstream
+                        // #820's empty map, whose size byte doWriteCol already wrote, so a second
+                        // marker here would desync the RowBinary stream (WRT-06).
                         BinaryStreamUtils.writeNull(stream);
                         break;
                     }

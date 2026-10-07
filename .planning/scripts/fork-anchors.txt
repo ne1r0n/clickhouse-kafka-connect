@@ -23,6 +23,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	buildRo
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	.setTargetTableFilter(csc.getTargetTableFilter())	1	HLP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	new ClickHouseHelperClient.ClickHouseClientBuilder(	2	CMP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	.setCompressionMethod(csc.isSetCompressionMethod())	2	CMP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	if (value.getObject() == null && col.isNullable()) {	1	WRT-06
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	buildTableFilterClause	4	HLP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	shouldSkipDescribeRow	3	HLP-02
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	StandardCharsets.UTF_8	1	HLP-04

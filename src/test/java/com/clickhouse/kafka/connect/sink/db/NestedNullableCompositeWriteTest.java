@@ -66,4 +66,52 @@ class NestedNullableCompositeWriteTest {
 
         assertArrayEquals(new byte[] {VARIANT_NULL_DISCRIMINATOR}, out.toByteArray());
     }
+
+    @Test
+    @DisplayName("WRT-06/WRT-09: a null Map into a non-nullable MAP column writes upstream #820's empty map in RowBinary")
+    void nonNullableMapNullWritesUpstream820EmptyMapInRowBinary() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        Column column = Column.builder().name("m").type(Type.MAP).isNullable(false).build();
+        Data nullMap = new Data(Schema.OPTIONAL_STRING_SCHEMA, null);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        writer.doWriteCol(nullMap, true, column, out, false);
+
+        // 2026-10-07 user-approved tightening of the CR-02 pins (REQUIREMENTS.md, "CR-02 pin tests"):
+        // a non-nullable Map takes upstream #820's empty-map semantics, the single size byte
+        // doWriteCol writes; only the nullable case keeps the null marker (WRT-06).
+        assertArrayEquals(new byte[] {0x00}, out.toByteArray());
+    }
+
+    @Test
+    @DisplayName("WRT-06/WRT-09: a null Map into a non-nullable MAP column writes upstream #820's empty map in RowBinaryWithDefaults")
+    void nonNullableMapNullWritesUpstream820EmptyMapInRowBinaryWithDefaults() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        Column column = Column.builder().name("m").type(Type.MAP).isNullable(false).build();
+        Data nullMap = new Data(Schema.OPTIONAL_STRING_SCHEMA, null);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        writer.doWriteCol(nullMap, true, column, out, true);
+
+        // 2026-10-07 user-approved tightening of the CR-02 pins (REQUIREMENTS.md, "CR-02 pin tests"):
+        // the no-default marker, then varint 0 for the empty map, per upstream #820; the nullable
+        // case keeps the null marker and is pinned above (WRT-06).
+        assertArrayEquals(new byte[] {0x00, 0x00}, out.toByteArray());
+    }
+
+    @Test
+    @DisplayName("WRT-06/WRT-09: a null Map into a nullable MAP column still writes the null marker through doWriteCol")
+    void nullableMapNullThroughDoWriteColKeepsNullMarkerInRowBinary() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        Column column = Column.builder().name("m").type(Type.MAP).isNullable(true).build();
+        Data nullMap = new Data(Schema.OPTIONAL_STRING_SCHEMA, null);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        writer.doWriteCol(nullMap, true, column, out, false);
+
+        // 2026-10-07 user-approved tightening of the CR-02 pins (REQUIREMENTS.md, "CR-02 pin tests"):
+        // the nullable case is unchanged and keeps the null marker, while the non-nullable cases
+        // above take #820's empty map; the guard scope is WRT-06.
+        assertArrayEquals(new byte[] {NULL_MARKER}, out.toByteArray());
+    }
 }
