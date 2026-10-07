@@ -49,13 +49,36 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
-## Next Milestone Goals
+## Current Milestone: v1.7.0_gg1-sync Upstream v1.7.0 Sync & Follow-up Hardening
 
-Not yet defined — start with `/gsd-new-milestone`. The strongest candidates come from Requirements → Active:
+**Goal:** Merge upstream `v1.7.0` into `custom_build`, close all 17 open follow-ups (including R-01's silent data loss), and publish `v1.7.0_gg1` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
-- **R-01's silent data loss** — the only open item that loses production data. Needs its own plan: a fail-fast throw breaks any pipeline running explicit JSON behind a `Struct` converter.
-- **One CI run per published SHA** — fix the `github.sha` concurrency group so a tag push no longer cancels the branch run (WR-01).
-- **Retire the `lz4` pin** once a ClickHouse client that decodes ZSTD is adopted. That is a dependency bump, which needs the user's go-ahead first.
+**Target features:**
+
+- **Upstream `v1.7.0` sync** in the `v1.6.0_gg1-sync` shape: scratch branch, rollback tag, one mechanical merge commit, fork features re-applied by intent, non-force `--no-ff` merge into `custom_build` after human approval
+- **Retire D-17 in favour of upstream's `setCompressionMethod`** (upstream #841, default `true`, also disables server response compression). Client stays `0.9.6`; `docs/FORK-DELTA.md` updated
+- **R-01 fixed by routing**, not by throwing: in metadata-free `insertFormat=json` mode, `Struct` records go through the JSON writer so the rows actually land. The R-01 pin test flips to typed read-back. This is a deliberate fork behavior change — recorded in `FORK-DELTA.md` and CHANGELOG
+- **Writer null-correctness** — WR-01 (end-to-end null inside `Map(K, Nullable(V))`) and WR-02 (MAP/ARRAY fail loudly on a null in a non-nullable slot), reconciled with upstream's #820 null-Map fix
+- **Metadata/config correctness** — `shouldSkipDescribeRow` at any depth (P3-WR-01), fail-fast message for `INT128`/`INT256`/`UINT128`/`UINT256` (P3-WR-03), `Column.extractColumn` argument swap, `USERNAME` ConfigDef default, `cleanupExtraFields` operand order (P9-IN-01)
+- **Test debt** — `HeaderToValue` collision contract (WR-03), `JsonColumnTest` read-back, `ClickHouseSinkTaskJsonInsertFormatTest` try/finally (P4-WR-01), `ClickHouseBase.tearDown()` drop-failure handling (Phase 10 WR-01), stale Javadocs (Phase 11 IN-01, P4-IN-01)
+- **CI** — exactly one `tests.yaml` run per published SHA (concurrency group), and the CI fork count read from a log or recorded as unmeasured
+- **Dependency bumps (user-approved 2026-10-07)** — jackson 2.22.3, okhttp 5.5.0, org.json 20260814, mockito 5.24.0 (upstream's open dependabot branches), lz4-java 1.10.4 (from upstream `v1.7.0`)
+- **Publication & rollout** — `VERSION=v1.7.0_gg1`, CHANGELOG, push and green CI; publish the post-`c61d90ce` `.planning/` history; an operator rollout checklist (MBean rename D-07, compression setting, R-01 behavior change)
+
+**Baseline measured at milestone start (2026-10-07):** upstream `v1.7.0` = `379b8d01` (2026-09-30), 22 commits past `v1.6.0` (12 non-merge); `upstream/main` = `v1.7.0`. Delta: 8 files in `src/main` + build (+102 / −12), 12 test files (+580 / −42).
+
+| Upstream change | Collision with the fork |
+|---|---|
+| #841 `setCompressionMethod` in `ClickHouseHelperClient`, `ClickHouseSinkConfig`, `ClickHouseWriter`, `KeeperStateProvider` | Same lines as the fork's D-17 pin — resolve to upstream |
+| #820 null optional Map: `StructToJsonMap`, `ClickHouseWriter` MAP branch + nullable marker + `cleanupExtraFields` | Overlaps WR-01/WR-02 and P9-IN-01 |
+| `KeeperStateProvider` state read counts streamed rows instead of `getSummary().getResultRows()` | No fork edits in this file — high-risk (exactly-once), verify separately |
+| #801 buffered-sink duplicate after retriable failure (`AtLeastOnceBufferStrategy`) | None — fork does not use buffering |
+| #800 Avro record unions → JSON | None — take with the merge, do not adopt (as with `DebeziumRecordConvertor`) |
+| Client `0.9.5`→`0.9.6`, `lz4-java 1.10.4`, `clickhouse-jdbc` removed from the catalog | Fork's `0.9.6` FORK OVERRIDE becomes upstream's own value |
+
+**Ordering constraint:** the sync lands first — `v1.7.0` rewrites the same code that WR-01/WR-02, P9-IN-01 and D-17 touch, so hardening goes on top of the merged tree.
+
+**Out of this milestone:** ClickHouse client `0.10.0` (upstream dependabot, unmerged) — not adopted; the `lz4` setting stays on via upstream's flag. Adopting upstream's Avro-union or Debezium paths.
 
 <details>
 <summary>Milestone scope as planned — <code>v1.6.0_gg1-sync</code> Upstream v1.6.0 Sync (shipped 2026-10-07)</summary>
@@ -191,7 +214,9 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 <!-- Scoped for v1.6.0_gg1-sync, followed by the nine unscheduled follow-ups carried forward from v1.2.9_gg4-tests. -->
 
-**v1.6.0_gg1-sync:** all 53 requirements shipped and moved to Validated. No milestone is active.
+**v1.6.0_gg1-sync:** all 53 requirements shipped and moved to Validated.
+
+**v1.7.0_gg1-sync (active, started 2026-10-07):** every open follow-up below is in scope, plus the upstream `v1.7.0` sync, dependency bumps and publication — see Current Milestone and `REQUIREMENTS.md`.
 
 **Publication & client follow-ups (emerged in Phase 11, not yet scheduled):**
 
@@ -378,4 +403,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-07 after v1.6.0_gg1-sync milestone*
+*Last updated: 2026-10-07 after starting milestone v1.7.0_gg1-sync*
