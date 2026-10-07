@@ -30,12 +30,13 @@ public class ClickHouseTestHelpers {
     /**
      * [D-04] The seventh fork behaviour to silently vanish from the v1.6.0 merge with no conflict
      * marker and no compile error: the merge reverted this default from the floating {@code
-     * latest} tag to a pinned LTS version. CI pins {@code CLICKHOUSE_VERSION: latest} in its job
-     * environment, so the regression was invisible there; every local run since the merge took
-     * its green evidence against the wrong server instead. The milestone's declared test matrix
-     * is ClickHouse {@code latest} with client V2 (see PROJECT.md constraints) - this constant is
-     * the contract, restored and pinned by {@code ClickHouseVersionDefaultUnitTest}, a Docker-free
-     * canary reachable from {@code testUnit}.
+     * latest} tag to a pinned LTS version. CI used to set {@code CLICKHOUSE_VERSION: latest} in
+     * its job environment, so the regression was invisible there; every local run since the merge
+     * took its green evidence against the wrong server instead. As of this change the workflow
+     * sets no version, so CI and local runs both resolve through this constant. The milestone's
+     * declared test matrix is ClickHouse {@code latest} with client V2 (see PROJECT.md
+     * constraints) - this constant is the contract, restored and pinned by {@code
+     * ClickHouseVersionDefaultUnitTest}, a Docker-free canary reachable from {@code testUnit}.
      */
     public static final String CLICKHOUSE_VERSION_LATEST = "latest";
     public static final String CLICKHOUSE_VERSION_DEFAULT = CLICKHOUSE_VERSION_LATEST;
