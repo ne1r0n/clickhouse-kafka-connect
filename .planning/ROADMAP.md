@@ -60,7 +60,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 11-04-PLAN.md — Local acceptance gate: one cache-busted full run on the published tree with the skip inventory re-derived from it, plus Docker-free `testUnit` (D-12)
+- [x] 11-04-PLAN.md — Local acceptance gate: one cache-busted full run on the published tree with the skip inventory re-derived from it, plus Docker-free `testUnit` (D-12)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -99,7 +99,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
 | 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
-| 11. Full Suite, CI & Publication | 4/8 | In Progress | - |
+| 11. Full Suite, CI & Publication | 5/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.6.0_gg1-sync` created: 2026-09-18*
