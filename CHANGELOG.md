@@ -1,3 +1,25 @@
+# 1.7.0, 2026-09-30
+
+## Important Changes
+
+* Fixed issue with server response compression when using ClickHouse 26.9+. Problem
+  occurs because default `network_compression_method` value was switched from `LZ4` to `ZSTD`.
+  But client do not detect it automatically in payload from server.
+  (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/841)
+
+## Bug Fixes
+
+* Fixed NPE on null optional Map fields; they are written as empty ClickHouse maps. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/820)
+
+## Confluent Archive
+
+* Now includes shaded `org.lz4` to solve conflict between versions provided by `org.apache.kafka:connect-api > org.apache.kafka:kafka-clients`.
+
+## Dependencies
+
+* Bumped `com.clickhouse:*` from `0.9.5` to `0.9.6`.
+* Fixed resolution of `org.lz4` library.
+
 # 1.6.0, 2026-09-11
 
 ## Improvements
@@ -37,6 +59,12 @@
   version is not deduplicated on the first insert after upgrading. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/580)
 
 * The connector no longer refuses to start with `Did not find any tables in destination` when `enableDbTopicSplit=true`
+  and the configured database holds no tables, which is a valid multi-database setup.
+* With internal buffering (`bufferCount > 0`, `exactlyOnce=false`), a retriable insert failure such as code 252
+  `TOO_MANY_PARTS` left the failed batch in the buffer. Kafka Connect redelivers exactly that batch, so every retry
+  appended another copy and the eventual successful flush wrote each record several times. The batch is now removed
+  from the buffer when the flush fails, leaving the redelivery as the single copy.
+  (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/801)
   and the configured database holds no tables, which is a valid multi-database setup. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/580)
 
 * Fixed conversion from small integers to bigger ones. Previously Int32 values cannot be written to Int64 without 
@@ -65,6 +93,15 @@ transformation. Now number types can be written to wider number columns. (https:
 * [build] Updated `com.diffplug.spotless` from 8.6.0 to 8.9.0.
 * [build] Updated `gradle-wrapper from` 9.5.1 to 9.6.1
 * [tests] Updated `com.squareup.okhttp3:okhttp` from 5.3.2 to 5.4.0.
+
+* Support Avro record unions (e.g. `[TypeA, TypeB]`) mapping to a ClickHouse `JSON` column. Confluent's
+  Avro converter turns a union of records into a Connect union struct (`io.confluent.connect.avro.Union`)
+  keyed by branch record name; the connector serializes this to JSON in tagged form (which branch it was
+  is preserved). Writing to a `JSON` column in RowBinary requires `input_format_binary_read_json_as_string=1`,
+  so the Avro integration harness now routes JSON-target fixtures through a `setupAvroConnectorWithJson`
+  connector config. This promotes the `union_two_records` schema from the incompatible to the compatible
+  Avro test fixtures; the integration test reads the rows back from ClickHouse and asserts the
+  tagged-by-branch `JSON` value landed, not just the row count. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/800)
 
 ## Bug Fixes 
 

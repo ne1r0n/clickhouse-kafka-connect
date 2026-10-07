@@ -75,9 +75,13 @@ public class ClickHouseHelperClient implements AutoCloseable {
     @Getter
     private final boolean enableReplicaPinning;
     private final String targetTableFilter;
+    @Getter
+    private final boolean setCompressionMethod;
 
     // Part of HTTP protocol header
     public static final String REPLICA_TAG_HEADER = "X-ClickHouse-Replica-Tag";
+    public static final String NETWORK_COMPRESSION_METHOD = "network_compression_method";
+    public static final String LZ4 = "lz4";
 
     public ClickHouseHelperClient(ClickHouseClientBuilder builder) {
         this.hostname = builder.hostname;
@@ -97,6 +101,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         this.clusterClause = builder.clusterClause;
         this.enableReplicaPinning = builder.enableReplicaPinning;
         this.targetTableFilter = builder.targetTableFilter;
+        this.setCompressionMethod = builder.setCompressionMethod;
         // We are creating two clients, one for V1 and one for V2
         this.client = createClientV2();
         this.server = createClientV1();
@@ -112,8 +117,10 @@ public class ClickHouseHelperClient implements AutoCloseable {
     public Map<ClickHouseOption, Serializable> getDefaultClientOptions() {
         Map<ClickHouseOption, Serializable> options = new HashMap<>();
         options.put(ClickHouseClientOption.CLIENT_NAME, CONNECT_CLIENT_NAME);
-        options.put(ClickHouseClientOption.CUSTOM_SETTINGS,
-                NETWORK_COMPRESSION_METHOD_SETTING + "=" + NETWORK_COMPRESSION_METHOD_LZ4);
+        if (setCompressionMethod) {
+            options.put(ClickHouseClientOption.CUSTOM_SETTINGS, NETWORK_COMPRESSION_METHOD + "=" + LZ4);
+        }
+        options.put(ClickHouseClientOption.COMPRESS, false);
         if (proxyType != null && !proxyType.equals(ClickHouseProxyType.IGNORE)) {
             options.put(ClickHouseClientOption.PROXY_TYPE, proxyType);
             options.put(ClickHouseClientOption.PROXY_HOST, proxyHost);
@@ -143,6 +150,10 @@ public class ClickHouseHelperClient implements AutoCloseable {
         LOGGER.info("ClickHouse URL: {}", url);
 
         final Map<String, String> options = new HashMap<>();
+        if (setCompressionMethod) {
+            options.put(NETWORK_COMPRESSION_METHOD, LZ4);
+        }
+        options.put(ClickHouseClientOption.COMPRESS.getKey(), "false");
         if (username != null && password != null) {
             LOGGER.debug(String.format("Adding username [%s]", username));
             options.put("user", username);
@@ -182,9 +193,12 @@ public class ClickHouseHelperClient implements AutoCloseable {
                 .setUsername(this.username)
                 .setPassword(this.password)
                 .setClientName(CONNECT_CLIENT_NAME)
-                .setDefaultDatabase(this.database)
-                // Applied before the jdbcConnectionProperties loop so an operator's explicit value wins
-                .serverSetting(NETWORK_COMPRESSION_METHOD_SETTING, NETWORK_COMPRESSION_METHOD_LZ4);
+                .compressServerResponse(false)
+                .setDefaultDatabase(this.database);
+
+        if (setCompressionMethod) {
+            clientBuilder.serverSetting(NETWORK_COMPRESSION_METHOD, LZ4);
+        }
 
         if (jdbcConnectionProperties != null && !jdbcConnectionProperties.isEmpty()) {
             String props = jdbcConnectionProperties.startsWith("?") ? jdbcConnectionProperties.substring(1) : jdbcConnectionProperties;
@@ -788,6 +802,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         private String clusterClause = "";
         private boolean enableReplicaPinning = false;
         private String targetTableFilter = "";
+        private boolean setCompressionMethod = ClickHouseSinkConfig.setCompressionMethodDefault;
 
         public ClickHouseClientBuilder(String hostname, int port, ClickHouseProxyType proxyType, String proxyHost, int proxyPort) {
             this.hostname = hostname;
@@ -855,6 +870,11 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
         public ClickHouseClientBuilder setTargetTableFilter(String targetTableFilter) {
             this.targetTableFilter = targetTableFilter;
+            return this;
+        }
+
+        public ClickHouseClientBuilder setCompressionMethod(boolean setCompressionMethod) {
+            this.setCompressionMethod = setCompressionMethod;
             return this;
         }
 

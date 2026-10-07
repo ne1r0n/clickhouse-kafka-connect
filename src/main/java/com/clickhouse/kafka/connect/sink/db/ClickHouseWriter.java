@@ -94,6 +94,7 @@ public class ClickHouseWriter implements DBWriter {
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
                 .setTargetTableFilter(csc.getTargetTableFilter())
+                .setCompressionMethod(csc.isSetCompressionMethod())
                 .build();
 
         if (!chc.ping()) {
@@ -621,6 +622,12 @@ public class ClickHouseWriter implements DBWriter {
                         break;
                     }
                     Map<?, ?> mapTmp = (Map<?, ?>) value.getObject();
+                    if (mapTmp == null) {
+                        if (defaultsSupport) {
+                            BinaryStreamUtils.writeVarInt(stream, 0);
+                        }
+                        break;
+                    }
                     int mapSize = mapTmp.size();
                     BinaryStreamUtils.writeVarInt(stream, mapSize);
                     mapTmp.forEach((key, mapValue) -> {
@@ -962,8 +969,8 @@ public class ClickHouseWriter implements DBWriter {
                         BinaryStreamUtils.writeNonNull(stream);
                         BinaryStreamUtils.writeNull(stream);//Then we send null, write 1
                         return;//And we're done
-                    } else if (colType == Type.ARRAY) {//If the column is an array
-                        BinaryStreamUtils.writeNonNull(stream);//Then we send nonNull
+                    } else if (colType == Type.ARRAY || colType == Type.MAP) {
+                        BinaryStreamUtils.writeNonNull(stream);
                     } else if (colType == Type.VARIANT) {
                         BinaryStreamUtils.writeNonNull(stream);
                         BinaryStreamUtils.writeUnsignedInt8(stream, 255);
@@ -978,7 +985,7 @@ public class ClickHouseWriter implements DBWriter {
                     BinaryStreamUtils.writeNonNull(stream);
                 }
                 if (!col.isNullable() && value.getObject() == null) {
-                    if (colType == Type.ARRAY)
+                    if (colType == Type.ARRAY || colType == Type.MAP)
                         BinaryStreamUtils.writeNonNull(stream);
                     else if (colType == Type.VARIANT) {
                         BinaryStreamUtils.writeUnsignedInt8(stream, 255);
@@ -1408,7 +1415,12 @@ public class ClickHouseWriter implements DBWriter {
         Map<String, Object> cleaned = new HashMap<>();
         for (Column c : t.getRootColumnsList()) {
             if (m.containsKey(c.getName())) {
-                cleaned.put(c.getName(), m.get(c.getName()));
+                Object val = m.get(c.getName());
+                if (val == null && c.getType() == Type.MAP && !c.isNullable()) {
+                    cleaned.put(c.getName(), Collections.emptyMap());
+                } else {
+                    cleaned.put(c.getName(), val);
+                }
             }
         }
         return cleaned;
@@ -1583,6 +1595,7 @@ public class ClickHouseWriter implements DBWriter {
                 .setSslSocketSni(csc.getSslSocketSni())
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
+                .setCompressionMethod(csc.isSetCompressionMethod())
                 .build();
 
         ClickHouseNode server = chcTmp.getServer();
