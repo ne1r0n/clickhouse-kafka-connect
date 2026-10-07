@@ -104,9 +104,16 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
     public static final String CONNECT_CLIENT_NAME = "clickhouse-kafka-connect/" + Version.ARTIFACT_VERSION;
 
+    // ClickHouse 26.9 defaults network_compression_method to ZSTD, which client 0.9.6 cannot decode.
+    // Remove once the pinned client decodes ZSTD responses.
+    static final String NETWORK_COMPRESSION_METHOD_SETTING = "network_compression_method";
+    static final String NETWORK_COMPRESSION_METHOD_LZ4 = "lz4";
+
     public Map<ClickHouseOption, Serializable> getDefaultClientOptions() {
         Map<ClickHouseOption, Serializable> options = new HashMap<>();
         options.put(ClickHouseClientOption.CLIENT_NAME, CONNECT_CLIENT_NAME);
+        options.put(ClickHouseClientOption.CUSTOM_SETTINGS,
+                NETWORK_COMPRESSION_METHOD_SETTING + "=" + NETWORK_COMPRESSION_METHOD_LZ4);
         if (proxyType != null && !proxyType.equals(ClickHouseProxyType.IGNORE)) {
             options.put(ClickHouseClientOption.PROXY_TYPE, proxyType);
             options.put(ClickHouseClientOption.PROXY_HOST, proxyHost);
@@ -175,7 +182,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
                 .setUsername(this.username)
                 .setPassword(this.password)
                 .setClientName(CONNECT_CLIENT_NAME)
-                .setDefaultDatabase(this.database);
+                .setDefaultDatabase(this.database)
+                // Applied before the jdbcConnectionProperties loop so an operator's explicit value wins
+                .serverSetting(NETWORK_COMPRESSION_METHOD_SETTING, NETWORK_COMPRESSION_METHOD_LZ4);
 
         if (jdbcConnectionProperties != null && !jdbcConnectionProperties.isEmpty()) {
             String props = jdbcConnectionProperties.startsWith("?") ? jdbcConnectionProperties.substring(1) : jdbcConnectionProperties;
