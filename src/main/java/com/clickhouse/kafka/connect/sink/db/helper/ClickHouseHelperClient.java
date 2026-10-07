@@ -109,10 +109,6 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
     public static final String CONNECT_CLIENT_NAME = "clickhouse-kafka-connect/" + Version.ARTIFACT_VERSION;
 
-    // ClickHouse 26.9 defaults network_compression_method to ZSTD, which client 0.9.6 cannot decode.
-    // Remove once the pinned client decodes ZSTD responses.
-    static final String NETWORK_COMPRESSION_METHOD_SETTING = "network_compression_method";
-    static final String NETWORK_COMPRESSION_METHOD_LZ4 = "lz4";
 
     public Map<ClickHouseOption, Serializable> getDefaultClientOptions() {
         Map<ClickHouseOption, Serializable> options = new HashMap<>();

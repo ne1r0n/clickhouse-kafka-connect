@@ -30,7 +30,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	InputStreamReader	2	HLP-04
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.compressServerResponse(false)	1	CMP-02
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	options.put(ClickHouseClientOption.COMPRESS, false);	1	CMP-02
-src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	NETWORK_COMPRESSION_METHOD_	2	CMP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	NETWORK_COMPRESSION_METHOD_	0	CMP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Type.java	DYNAMIC	1	MAP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	Dynamic	1	MAP-01
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	new ClickHouseHelperClient.ClickHouseClientBuilder(	1	CMP-01
