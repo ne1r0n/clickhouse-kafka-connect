@@ -66,14 +66,14 @@ Phase artifacts: `milestones/v1.6.0_gg1-sync-phases/`
   4. D-17's constants and pin lines are gone, and every client the connector builds receives `setCompressionMethod`: writer V1/V2, the writer's temporary client and `KeeperStateProvider`. Docker-free tests pin `compress=false` / `compressServerResponse(false)` and `network_compression_method=lz4` on the V1 options, the V1 node and the V2 config. With the flag `false`, lz4 is absent and response compression stays off. A live insert-and-read-back on `latest` succeeds with the flag `true` and with `false`, and `FORK-DELTA.md` records from that run which control is load-bearing against the ZSTD default.
   5. A null optional `Map` written into a non-nullable `Map` column produces upstream #820's bytes (`00`, or `00 00` with defaults), pinned Docker-free, because the fork's MAP null guard now fires only for nullable columns. Every CR-02 pin re-pinned to the correct bytes carries its rationale next to the changed assertion. A `KeeperStateProvider` restart-read test passes: state is written, a new provider instance is created, and the same min/max/state is read back. That test has been seen to fail against the old summary-count code.
 
-**Plans**: 1/5 plans executed (sequential waves 1-5)
+**Plans**: 2/5 plans executed (sequential waves 1-5)
 
 Plans:
 **Wave 1**
 - [x] 12-01-PLAN.md — Tracer merge slice: rollback tag, scratch branch, parameterised invariant script with self-test, one mechanical merge commit with the D-03 gate, conflicted-paths record and fork anchor inventory (SYNC-07, BLD-13)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 12-02-PLAN.md — v1.7.0 merge checklist with per-hunk verdicts; WRT commit (MAP guard scoped to Nullable, #820 byte pins); BLD commit (one LZ4 rule, 1.10.2 wording) (SYNC-08, WRT-06, WRT-09, BLD-09)
+- [x] 12-02-PLAN.md — v1.7.0 merge checklist with per-hunk verdicts; WRT commit (MAP guard scoped to Nullable, #820 byte pins); BLD commit (one LZ4 rule, 1.10.2 wording) (SYNC-08, WRT-06, WRT-09, BLD-09)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 12-03-PLAN.md — CMP commit (D-17 leftovers removed, compress/lz4 unit pins, live sink-task round trip for the flag true/false, D-13 stop rule) plus the one-off D-12 probe (CMP-01, CMP-02, CMP-03)
@@ -192,7 +192,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 12. Upstream v1.7.0 Merge & Reconcile | 1/5 | In Progress | - |
+| 12. Upstream v1.7.0 Merge & Reconcile | 2/5 | In Progress | - |
 | 13. Fork Hardening on the Merged Tree | 0/TBD | Not started | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |

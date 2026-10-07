@@ -38,10 +38,10 @@
 
 ### Writer Null-Correctness (WRT)
 
-- [ ] **WRT-06**: A null optional `Map` written into a non-nullable `Map` column produces upstream #820's bytes (empty map, `00` / `00 00` with defaults); the fork's MAP null guard is scoped to nullable columns, upstream's `nullMapTypeTest` passes unmodified, and a Docker-free byte-level test pins it
+- [x] **WRT-06**: A null optional `Map` written into a non-nullable `Map` column produces upstream #820's bytes (empty map, `00` / `00 00` with defaults); the fork's MAP null guard is scoped to nullable columns, upstream's `nullMapTypeTest` passes unmodified, and a Docker-free byte-level test pins it
 - [ ] **WRT-07**: A `null` entry inside a `Map(K, Nullable(V))` column round-trips as `NULL` end-to-end, asserted by typed SQL read-back (WR-01)
 - [ ] **WRT-08**: A `null` landing in a **nested** non-nullable element slot (Array element, Map value, Tuple field) throws a `DataException` naming the column, instead of silently desyncing the RowBinary stream; top-level non-nullable Map/Array nulls keep upstream's coercion (WR-02)
-- [ ] **WRT-09**: Fork CR-02 pin tests that asserted the pre-#820 early-null bytes are re-pinned to the correct bytes — nullable case unchanged, non-nullable case per #820 — with the rationale recorded next to each changed assertion
+- [x] **WRT-09**: Fork CR-02 pin tests that asserted the pre-#820 early-null bytes are re-pinned to the correct bytes — nullable case unchanged, non-nullable case per #820 — with the rationale recorded next to each changed assertion
 
 ### Metadata-free JSON Path (JSONP)
 
@@ -127,10 +127,10 @@ Which phases cover which requirements. Filled during roadmap creation.
 | CMP-01 | Phase 12 | Pending |
 | CMP-02 | Phase 12 | Pending |
 | CMP-03 | Phase 12 | Pending |
-| WRT-06 | Phase 12 | Pending |
+| WRT-06 | Phase 12 | Complete |
 | WRT-07 | Phase 13 | Pending |
 | WRT-08 | Phase 13 | Pending |
-| WRT-09 | Phase 12 | Pending |
+| WRT-09 | Phase 12 | Complete |
 | JSONP-05 | Phase 13 | Pending |
 | JSONP-06 | Phase 13 | Pending |
 | JSONP-07 | Phase 13 | Pending |
