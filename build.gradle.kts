@@ -150,14 +150,6 @@ dependencies {
     testFixturesImplementation(libs.testcontainers)
 }
 
-// Temporary fix to resolve capability conflict
-configurations.configureEach {
-    resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
-        select("at.yawk.lz4:lz4-java:1.10.2")
-        because("Resolve capability conflict between org.lz4 and at.yawk.lz4 providers.")
-    }
-}
-
 @Suppress("UnstableApiUsage")
 testing {
     suites {

@@ -42,7 +42,7 @@ build.gradle.kts	windows-1252	2	BLD-05
 build.gradle.kts	slf4j-reload4j:2.0.17	1	BLD-08
 build.gradle.kts	jacocoForkReport	3	BLD-03
 build.gradle.kts	register<Test>("testUnit")	1	BLD-04
-build.gradle.kts	withCapability("org.lz4:lz4-java")	2	BLD-09
+build.gradle.kts	withCapability("org.lz4:lz4-java")	1	BLD-09
 build.gradle.kts	clickhouse.jdbc	0	BLD-13
 gradle/libs.versions.toml	kafka = "4.1.1"	1	BLD-08
 gradle/libs.versions.toml	clickhouse-jdbc	0	BLD-13

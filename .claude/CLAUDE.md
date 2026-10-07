@@ -58,7 +58,7 @@ The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.2.9_
 - OkHttp3 5.3.2 - HTTP client (used in integration tests)
 - Apache Kafka API 4.1.1 - Consumer/Producer protocol support
 - JSON library 20251224 - JSON parsing in tests
-- LZ4 compression 1.10.2 (at.yawk variant) - Data compression for ClickHouse
+- LZ4 compression via at.yawk.lz4:lz4-java (version from the catalog's lz4Java entry, selected by upstream's org.lz4 capability rule) - Data compression for ClickHouse
 
 ## Configuration
 
