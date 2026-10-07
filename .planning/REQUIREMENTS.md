@@ -120,12 +120,52 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| SYNC-07 | Phase 12 | Pending |
+| SYNC-08 | Phase 12 | Pending |
+| SYNC-09 | Phase 12 | Pending |
+| SYNC-10 | Phase 12 | Pending |
+| CMP-01 | Phase 12 | Pending |
+| CMP-02 | Phase 12 | Pending |
+| CMP-03 | Phase 12 | Pending |
+| WRT-06 | Phase 12 | Pending |
+| WRT-07 | Phase 13 | Pending |
+| WRT-08 | Phase 13 | Pending |
+| WRT-09 | Phase 12 | Pending |
+| JSONP-05 | Phase 13 | Pending |
+| JSONP-06 | Phase 13 | Pending |
+| JSONP-07 | Phase 13 | Pending |
+| JSONP-08 | Phase 13 | Pending |
+| EOS-01 | Phase 12 | Pending |
+| DESC-05 | Phase 13 | Pending |
+| TYPE-08 | Phase 13 | Pending |
+| COLS-07 | Phase 13 | Pending |
+| CFG-04 | Phase 13 | Pending |
+| DEBT-01 | Phase 13 | Pending |
+| DEBT-02 | Phase 13 | Pending |
+| DEBT-03 | Phase 13 | Pending |
+| DEBT-04 | Phase 13 | Pending |
+| DEBT-05 | Phase 13 | Pending |
+| BLD-09 | Phase 12 | Pending |
+| BLD-10 | Phase 14 | Pending |
+| BLD-11 | Phase 14 | Pending |
+| BLD-12 | Phase 14 | Pending |
+| BLD-13 | Phase 12 | Pending |
+| CI-08 | Phase 14 | Pending |
+| CI-09 | Phase 14 | Pending |
+| CI-10 | Phase 14 | Pending |
+| SUITE-04 | Phase 15 | Pending |
+| PUB-01 | Phase 15 | Pending |
+| PUB-02 | Phase 15 | Pending |
+| PUB-03 | Phase 15 | Pending |
+| PUB-04 | Phase 15 | Pending |
+| ROLL-01 | Phase 15 | Pending |
 
 **Coverage:**
 - v1 requirements: 39 total
-- Mapped to phases: 0
-- Unmapped: 39 ⚠️
+- Mapped to phases: 39
+- Unmapped: 0 ✓
+- By phase: Phase 12 → 12, Phase 13 → 15, Phase 14 → 6, Phase 15 → 6
 
 ---
 *Requirements defined: 2026-10-07*
-*Last updated: 2026-10-07 after initial definition*
+*Last updated: 2026-10-07 after roadmap creation (Phases 12-15, traceability filled)*

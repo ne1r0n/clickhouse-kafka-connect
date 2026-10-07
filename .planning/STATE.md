@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg1-sync
 milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 status: planning
-last_updated: "2026-10-07T16:17:45.876Z"
+last_updated: "2026-10-07T16:55:27.982Z"
 last_activity: 2026-10-07
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,23 +17,25 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-07 after v1.6.0_gg1-sync milestone)
+See: .planning/PROJECT.md (updated 2026-10-07 after starting milestone v1.7.0_gg1-sync)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Planning next milestone — `v1.6.0_gg1-sync` shipped and archived 2026-10-07
+**Current focus:** Phase 12 — Upstream v1.7.0 Merge & Reconcile
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-07 — Milestone v1.7.0_gg1-sync started
+Phase: 12 of 15 (Upstream v1.7.0 Merge & Reconcile)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-07 — Roadmap created for v1.7.0_gg1-sync (Phases 12-15, 39/39 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 24 (all from `v1.2.9_gg4-tests`)
+- Total plans completed this milestone: 0 (`v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16)
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -41,19 +43,17 @@ Last activity: 2026-10-07 — Milestone v1.7.0_gg1-sync started
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 06 | 3 | - | - |
-| 07 | 4 | - | - |
-| 08 | 3 | - | - |
-| 09 | 3 | - | - |
-| 10 | 3 | - | - |
-| 11 | 8 | - | - |
+| 12 | TBD | - | - |
+| 13 | TBD | - | - |
+| 14 | TBD | - | - |
+| 15 | TBD | - | - |
 
 **Recent Trend:**
 
 - Last 5 plans: -
 - Trend: -
 
-*Updated after each plan completion. Per-plan metrics for Phases 1-5 are archived with the `v1.2.9_gg4-tests` milestone.*
+*Updated after each plan completion. Per-plan metrics for Phases 1-5 are archived with the `v1.2.9_gg4-tests` milestone. The rows for Phases 6-11 below are from `v1.6.0_gg1-sync` and are kept for reference.*
 **Per-Plan Metrics:**
 
 | Plan | Duration | Tasks | Files |
@@ -95,6 +95,15 @@ The full decision log is in `PROJECT.md` → Key Decisions. The per-phase decisi
 - New sink-task tests must create their tables before `start()`, because `ClickHouseWriter.start()` fails against an empty database.
 - A two-run acceptance gate must bust Gradle's cache (`--rerun`). A bare second `./gradlew test` echoes the first run's results.
 
+`v1.7.0_gg1-sync` locked decisions live in `REQUIREMENTS.md` (decisions table at the top), and plans do not re-open them: sync by `git merge v1.7.0` (tag `379b8d01`, never bare `upstream/main`); D-17 retired onto upstream's `setCompressionMethod`, including its unconditional `compress=false`; R-01 fixed by **routing**, not by throwing, with wrong logical-type values fixed; CR-02 pins may be re-pinned to the correct bytes; the five dependency bumps, with lz4-java targeting 1.12.0; publication in scope; sync first, hardening on top.
+
+Roadmap decisions (2026-10-07):
+
+- Four phases (12-15), coarse, in the research's order.
+- The merge-line decisions (CMP, WRT-06/09, BLD-09/13, EOS-01) live in Phase 12 rather than in hardening.
+- Phase 13 is kept whole despite owning 15 requirements, because its writer items serialise on `ClickHouseWriter.java` anyway.
+- CI-08 lands in Phase 14 and is proven end to end by Phase 15's published-SHA run.
+
 ### Pending Todos
 
 None.
@@ -104,9 +113,11 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: ⚠ **Planning history after publication is local only.** Every `.planning/` commit after `c61d90ce` lives only on local `sync/v1.6.0`. That covers 11-07 bookkeeping, review, verification, UAT, security, and this milestone's archive commits. `custom_build` is protected and equals `origin`. Decide how and whether to publish them; pushing a tag or branch also triggers `tests.yaml`.
-- [CI]: Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group and cancels the branch run. This happened on `c61d90ce`. Tracked in PROJECT.md → Active.
-- [Prod]: ⚠ R-01's silent data loss is still pinned, not fixed (KEEP, Phase 9 D-01). The `lz4` pin (D-17) and the operator-visible MBean name change (D-07) are the two things to check at production rollout.
+- [Publish]: ⚠ **Planning history after publication is local only.** Every `.planning/` commit after `c61d90ce` lives only on local `sync/v1.6.0`. That covers 11-07 bookkeeping, review, verification, UAT, security, and this milestone's archive commits. `custom_build` is protected and equals `origin`. Decide how and whether to publish them; pushing a tag or branch also triggers `tests.yaml`. **Scheduled:** PUB-04 (Phase 15), published via merge.
+- [CI]: Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group and cancels the branch run. This happened on `c61d90ce`. **Scheduled:** CI-08 (Phase 14), which must land before any tag push.
+- [Prod]: ⚠ R-01's silent data loss is still pinned, not fixed (KEEP, Phase 9 D-01). The `lz4` pin (D-17) and the operator-visible MBean name change (D-07) are the two things to check at production rollout. **Scheduled:** R-01 → JSONP-05..07 (Phase 13); D-17 retirement → CMP-01..03 (Phase 12); rollout checklist → ROLL-01 (Phase 15).
+- [Research flag, Phase 12]: `KeeperStateProvider`'s stream-count state read has no standard-suite coverage (`exactlyOnceStateMismatchTest` is a named standalone skip). EOS-01 needs a deliberate restart-read test plus a mutation check against the old summary-count code.
+- [Research flag, Phase 13]: Spike before planning on JSON-route type fidelity (`Timestamp`/`Date`/`Time`/`Decimal`/`bytes` through Jackson) and on WR-02's nested-vs-top-level null discriminator in `doWriteColValue`.
 
 ## Deferred Items
 
@@ -116,15 +127,15 @@ Items acknowledged and deferred at milestone close, most recent first:
 |----------|------|--------|-------------|-----------|
 | *(none)* | | | | |
 
-`v1.6.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. Review and verification follow-ups (17) are tracked in `PROJECT.md` → Requirements → Active, not here.
+`v1.6.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. Its 17 review and verification follow-ups are all in scope for `v1.7.0_gg1-sync` (see `REQUIREMENTS.md`).
 
 ## Session Continuity
 
 Last session: 2026-10-07
-Stopped at: Milestone v1.6.0_gg1-sync completed and archived (override closeout)
+Stopped at: Roadmap for v1.7.0_gg1-sync created (Phases 12-15); ready to plan Phase 12
 Resume file: None
 
 ## Operator Next Steps
 
-- Decide whether to publish the post-`c61d90ce` planning history (see [Publish] above)
-- Start the next milestone with `/gsd-new-milestone`
+- Review `.planning/ROADMAP.md` (Phases 12-15)
+- Plan Phase 12 with `/gsd-discuss-phase 12` or `/gsd-plan-phase 12`
