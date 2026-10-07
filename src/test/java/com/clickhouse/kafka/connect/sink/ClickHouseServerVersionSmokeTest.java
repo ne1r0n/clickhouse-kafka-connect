@@ -55,8 +55,8 @@ public class ClickHouseServerVersionSmokeTest extends ClickHouseBase {
     public void serverVersionMatchesRequestedImage() {
         Assumptions.assumeFalse(isCloud, "No container to inspect against ClickHouse Cloud");
 
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String serverVersion = chc.version();
         String requestedTag = ClickHouseTestHelpers.getClickhouseVersion();
 

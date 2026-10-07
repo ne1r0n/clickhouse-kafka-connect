@@ -29,9 +29,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Run tests
-        env:
-          CLICKHOUSE_VERSION: latest
-          CLIENT_VERSION: V2
         run: ./gradlew test
 
       - name: Generate coverage summary

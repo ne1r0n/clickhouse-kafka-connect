@@ -1,30 +1,31 @@
 package com.clickhouse.kafka.connect.sink.db.mapping;
 
-import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
-import static org.junit.jupiter.api.Assertions.*;
-
+import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.ClickHouseBase;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.sink.helper.CreateTableStatement;
+import org.junit.jupiter.api.Test;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Test;
+
+import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TableTest extends ClickHouseBase {
 
     @Test
     public void extractMapOfPrimitives() {
-        Table table = new Table("default", "t");
-
         Column map = Column.extractColumn(newDescriptor("map", "Map(String, Decimal(5))"));
         Column mapValues = Column.extractColumn(newDescriptor("map.values", "Array(Decimal(5))"));
 
         assertEquals(Type.MAP, map.getType());
         assertNull(map.getMapValueType());
 
-        table.addColumn(map);
-        table.addColumn(mapValues);
+        Table table = new Table("default", "t", false, List.of(map, mapValues), 1);
+        assertEquals(1, table.getRootColumnsList().size());
 
         Column mapValueType = map.getMapValueType();
         assertEquals(Type.Decimal, mapValueType.getType());
@@ -33,24 +34,48 @@ class TableTest extends ClickHouseBase {
 
     @Test
     public void extractNullables() {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
 
         String tableName = createTopicName("extract-table-test");
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        ClickHouseTestHelpers.createTable(chc, tableName, "CREATE TABLE `%s` (`off16` Int16, date_number Nullable(Date)) Engine = MergeTree ORDER BY off16");
+        new CreateTableStatement()
+                .tableName(tableName)
+                .column("off16", "Int16")
+                .column("date_number", "Nullable(Date)")
+                .engine("MergeTree").orderByColumn("off16").execute(chc);
 
         Table table = chc.describeTable(chc.getDatabase(), tableName);
         assertNotNull(table);
-        assertEquals(table.getRootColumnsList().size(), 2);
-        assertEquals(table.getAllColumnsList().size(), 2);
+        assertEquals(2, table.getRootColumnsList().size());
+        // 2, not 3: shouldSkipDescribeRow (HLP-02/DESC-01) drops the structural date_number.null
+        // subcolumn before it reaches Table's constructor - see MERGE-CHECKLIST.md Recorded Fact 13
+        assertEquals(2, table.getAllColumnsList().size());
+        ClickHouseTestHelpers.dropTable(chc, tableName);
+    }
+
+    @Test
+    public void extractCommentV1() {
+        Map<String, String> props = getBaseProps();
+        props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V1");
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+
+        String tableName = createTopicName("extract-table-test");
+        ClickHouseTestHelpers.dropTable(chc, tableName);
+        new CreateTableStatement()
+                .tableName(tableName)
+                .column("c", "String COMMENT '\\\\'")
+                .column("d", "String COMMENT '\\n'")
+                .engine("MergeTree").orderByColumn("tuple()").execute(chc);
+
+        Table table = chc.describeTable(chc.getDatabase(), tableName);
+        assertNotNull(table);
+        assertEquals(2, table.getRootColumnsList().size());
         ClickHouseTestHelpers.dropTable(chc, tableName);
     }
 
     @Test
     public void extractMapWithComplexValue() {
-        Table table = new Table("default", "t");
-
         Column map = Column.extractColumn(newDescriptor("map", "Map(String, Map(String, Decimal(5)))"));
         Column mapValues = Column.extractColumn(newDescriptor("map.values", "Array(Map(String, Decimal(5)))"));
         Column mapValuesValues = Column.extractColumn(newDescriptor("map.values.values", "Array(Array(Decimal(5)))"));
@@ -58,9 +83,8 @@ class TableTest extends ClickHouseBase {
         assertEquals(Type.MAP, map.getType());
         assertNull(map.getMapValueType());
 
-        table.addColumn(map);
-        table.addColumn(mapValues);
-        table.addColumn(mapValuesValues);
+        Table table = new Table("default", "t", false, List.of(map, mapValues, mapValuesValues), 1);
+        assertEquals(1, table.getRootColumnsList().size());
 
         Column mapValueType = map.getMapValueType();
         assertEquals(Type.MAP, mapValueType.getType());
@@ -73,8 +97,6 @@ class TableTest extends ClickHouseBase {
 
     @Test
     public void extractMapOfMapOfMapOfString() {
-        Table table = new Table("default", "t");
-
         Column map = Column.extractColumn(newDescriptor("map", "Map(String, Map(String, Map(String, String)))"));
         Column mapValues = Column.extractColumn(newDescriptor("map.values", "Array(Map(String, Map(String, String)))"));
         Column mapValuesValues = Column.extractColumn(newDescriptor("map.values.values", "Array(Array(Map(String, String)))"));
@@ -83,10 +105,8 @@ class TableTest extends ClickHouseBase {
         assertEquals(Type.MAP, map.getType());
         assertNull(map.getMapValueType());
 
-        table.addColumn(map);
-        table.addColumn(mapValues);
-        table.addColumn(mapValuesValues);
-        table.addColumn(mapValuesValuesValues);
+        Table table = new Table("default", "t", false, List.of(map, mapValues, mapValuesValues, mapValuesValuesValues), 1);
+        assertEquals(1, table.getRootColumnsList().size());
 
         Column mapValueType = map.getMapValueType();
         assertEquals(Type.MAP, mapValueType.getType());
@@ -102,7 +122,6 @@ class TableTest extends ClickHouseBase {
 
     @Test
     public void extractTupleOfPrimitives() {
-        Table table = new Table("default", "t");
         Column tuple = Column.extractColumn(newDescriptor("tuple", "Tuple(first String, second Decimal(5))"));
         Column tupleFirst = Column.extractColumn(newDescriptor("tuple.first", "String"));
         Column tupleSecond = Column.extractColumn(newDescriptor("tuple.second", "Decimal(5)"));
@@ -110,9 +129,8 @@ class TableTest extends ClickHouseBase {
         assertEquals(Type.TUPLE, tuple.getType());
         assertEquals(List.of(), tuple.getTupleFields());
 
-        table.addColumn(tuple);
-        table.addColumn(tupleFirst);
-        table.addColumn(tupleSecond);
+        Table table = new Table("default", "t", false, List.of(tuple, tupleFirst, tupleSecond), 1);
+        assertEquals(1, table.getRootColumnsList().size());
 
         assertEquals(2, tuple.getTupleFields().size());
         assertEquals(List.of("tuple.first", "tuple.second"), tuple.getTupleFields().stream().map(Column::getName).collect(Collectors.toList()));
@@ -122,7 +140,6 @@ class TableTest extends ClickHouseBase {
 
     @Test
     public void extractTupleOfTupleOfTuple() {
-        Table table = new Table("default", "t");
         Column tuple = Column.extractColumn(newDescriptor("tuple", "Tuple(tuple Tuple(tuple Tuple(string String)))"));
         Column tupleTuple = Column.extractColumn(newDescriptor("tuple.tuple", "Tuple(tuple Tuple(string String))"));
         Column tupleTupleTuple = Column.extractColumn(newDescriptor("tuple.tuple.tuple", "Tuple(string String)"));
@@ -131,10 +148,8 @@ class TableTest extends ClickHouseBase {
         assertEquals(Type.TUPLE, tuple.getType());
         assertEquals(List.of(), tuple.getTupleFields());
 
-        table.addColumn(tuple);
-        table.addColumn(tupleTuple);
-        table.addColumn(tupleTupleTuple);
-        table.addColumn(tupleTupleTupleString);
+        Table table = new Table("default", "t", false, List.of(tuple, tupleTuple, tupleTupleTuple, tupleTupleTupleString), 1);
+        assertEquals(1, table.getRootColumnsList().size());
 
         assertEquals(1, tuple.getTupleFields().size());
         assertEquals(1, tuple.getTupleFields().get(0).getTupleFields().size());

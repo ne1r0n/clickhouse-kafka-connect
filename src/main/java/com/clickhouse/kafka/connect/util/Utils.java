@@ -1,9 +1,13 @@
 package com.clickhouse.kafka.connect.util;
 
 import com.clickhouse.client.ClickHouseException;
+import com.clickhouse.client.api.ServerException;
 import com.clickhouse.kafka.connect.sink.data.Record;
+import com.clickhouse.kafka.connect.sink.db.mapping.Column;
+import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
 import java.io.IOException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -34,10 +38,10 @@ public class Utils {
     }
 
     /**
-     * This will drill down to the first ClickHouseException in the exception chain
+     * This will drill down to the first ClickHouse server exception (client V1 or V2) in the exception chain
      *
      * @param e Exception to drill down
-     * @return ClickHouseException or null if none found
+     * @return the server exception, otherwise the deepest cause, or null if none found
      */
     public static Exception getRootCause(Exception e, Boolean prioritizeClickHouseException) {
         if (e == null)
@@ -45,12 +49,16 @@ public class Utils {
 
         Throwable runningException = e;//We have to use Throwable because of the getCause() signature
         while (runningException.getCause() != null &&
-                (!prioritizeClickHouseException || !(runningException instanceof ClickHouseException))) {
+                (!prioritizeClickHouseException || !isServerError(runningException))) {
             LOGGER.trace("Found exception: {}", runningException.getLocalizedMessage());
             runningException = runningException.getCause();
         }
 
         return runningException instanceof Exception ? (Exception) runningException : null;
+    }
+
+    private static boolean isServerError(Throwable t) {
+        return t instanceof ClickHouseException || t instanceof ServerException;
     }
 
 
@@ -60,16 +68,18 @@ public class Utils {
      * @param e Exception to check
      */
 
-    public static void handleException(Exception e, boolean errorsTolerance, Collection<SinkRecord> records) {
+    public static void handleException(Exception e, boolean errorsTolerance, boolean retryOnSocketException, Collection<SinkRecord> records) {
         LOGGER.warn("Deciding how to handle exception: {}", e.getLocalizedMessage());
 
         //Let's check if we have a ClickHouseException to reference the error code
         //https://github.com/ClickHouse/ClickHouse/blob/master/src/Common/ErrorCodes.cpp
         Exception rootCause = Utils.getRootCause(e, true);
-        if (rootCause instanceof ClickHouseException) {
-            ClickHouseException clickHouseException = (ClickHouseException) rootCause;
-            LOGGER.warn("ClickHouseException code: {}", clickHouseException.getErrorCode());
-            switch (clickHouseException.getErrorCode()) {
+        if (isServerError(rootCause)) {
+            int errorCode = rootCause instanceof ServerException
+                    ? ((ServerException) rootCause).getCode()
+                    : ((ClickHouseException) rootCause).getErrorCode();
+            LOGGER.warn("ClickHouse server error code: {}", errorCode);
+            switch (errorCode) {
                 case 3: // UNEXPECTED_END_OF_FILE
                 case 107: // FILE_DOESNT_EXIST
                 case 159: // TIMEOUT_EXCEEDED
@@ -87,7 +97,7 @@ public class Utils {
                 case 999: // KEEPER_EXCEPTION
                     throw new RetriableException(e);
                 default:
-                    LOGGER.error("Error code [{}] wasn't in the acceptable list.", clickHouseException.getErrorCode());
+                    LOGGER.error("Error code [{}] wasn't in the acceptable list.", errorCode);
                     break;
             }
         }
@@ -104,6 +114,9 @@ public class Utils {
             throw new RetriableException(e);
         } else if (rootCause instanceof UnknownHostException) {
             LOGGER.warn("UnknownHostException thrown, wrapping exception: {}", e.getLocalizedMessage());
+            throw new RetriableException(e);
+        } else if (retryOnSocketException && rootCause instanceof SocketException) {
+            LOGGER.warn("SocketException thrown, wrapping exception: {}", e.getLocalizedMessage());
             throw new RetriableException(e);
         } else if (rootCause instanceof IOException) {
             final String msg = rootCause.getMessage();
@@ -139,16 +152,46 @@ public class Utils {
         }
     }
 
+    public static void sendTODLQ(List<FailedRecords> failedRecords, ErrorReporter errorReporter) {
+
+        if (!failedRecords.isEmpty() && errorReporter != null) {
+            try {
+
+                for (FailedRecords records : failedRecords) {
+                    LOGGER.warn("Sending [{}] records to DLQ for exception: {}", failedRecords.size(), records.exception.getMessage());
+                    for (Record record :   records.records) {
+                        Utils.sendTODlq(errorReporter, record, records.exception);
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.error("failed to send messages to DLQ", e);
+            }
+        }
+    }
+
+    public static class FailedRecords {
+        List<Record> records;
+        Exception exception;
+
+        public FailedRecords(List<Record> records, Exception exception) {
+            this.records = records;
+            this.exception = exception;
+        }
+    }
+
     public static String getTableName(String database, String topicName, Map<String, String> topicToTableMap) {
+        String tableName = getMappedOrTopicTableName(topicName, topicToTableMap);
+        return escapeTableName(database, tableName);
+    }
+
+    public static String getMappedOrTopicTableName(String topicName, Map<String, String> topicToTableMap) {
         String tableName = topicToTableMap.get(topicName);
         LOGGER.debug("Topic name: {}, Table Name: {}", topicName, tableName);
         if (tableName == null) {
             tableName = topicName;
         }
-
-        return escapeTableName(database, tableName);
+        return tableName;
     }
-
 
     public static String getOffsets(Collection<SinkRecord> records) {
         long minOffset = Long.MAX_VALUE;
@@ -189,5 +232,73 @@ public class Utils {
         result.add(sb.toString().trim());
 
         return result;
+    }
+
+    public static void logDiffBetweenNewAndOldTable(Table oldTable, Table newTable) {
+        if (newTable == null) {
+            return;
+        }
+
+        if (oldTable == null) {
+            LOGGER.info("New table discovered: {}", newTable.getFullName());
+            return;
+        }
+
+        List<String> diffs = computeColumnDiff(oldTable, newTable);
+        if (diffs.isEmpty()) {
+            LOGGER.info("No schema changes detected for table {}",  newTable.getFullName());
+            return;
+        }
+
+        for (String diff : diffs) {
+            LOGGER.warn("Schema for table {} has changed: {}", newTable.getFullName(), diff);
+        }
+    }
+
+    public static List<String> computeColumnDiff(Table oldTable, Table newTable) {
+        List<Column> oldColumns = oldTable.getAllColumnsList();
+        List<Column> newColumns = newTable.getAllColumnsList();
+        int oldSize = oldColumns.size();
+        int newSize = newColumns.size();
+        int commonSize = Math.min(oldSize, newSize);
+
+        List<String> diffs = new ArrayList<>();
+
+        for (int i = 0; i < commonSize; i++) {
+            Column oldCol = oldColumns.get(i);
+            Column newCol = newColumns.get(i);
+            if (!columnsMatch(oldCol, newCol)) {
+                diffs.add(String.format("Column diff at position %d: old=[%s], new=[%s]",
+                        i, describeColumn(oldCol), describeColumn(newCol)));
+            }
+        }
+
+        for (int i = oldSize; i < newSize; i++) {
+            diffs.add(String.format("Column added at position %d: [%s]", i, describeColumn(newColumns.get(i))));
+        }
+
+        for (int i = newSize; i < oldSize; i++) {
+            diffs.add(String.format("Column removed at position %d: [%s]", i, describeColumn(oldColumns.get(i))));
+        }
+
+        return diffs;
+    }
+
+    // Limitation: two columns can match on (name, Type, nullable, precision, scale) but still differ in arrayType,
+    // mapValueType, tupleFields, enumValues, etc. TODO: extend this if needed in the future.
+    public static boolean columnsMatch(Column a, Column b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        return a.getName().equals(b.getName())
+                && a.getType() == b.getType()
+                && a.isNullable() == b.isNullable()
+                && a.getPrecision() == b.getPrecision()
+                && a.getScale() == b.getScale();
+    }
+
+    public static String describeColumn(Column col) {
+        return String.format("name=%s, type=%s, nullable=%s, precision=%d, scale=%d",
+                col.getName(), col.getType(), col.isNullable(), col.getPrecision(), col.getScale());
     }
 }

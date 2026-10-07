@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import java.util.List;
@@ -26,17 +27,25 @@ import org.junit.jupiter.api.TestInfo;
  */
 public class RowBinaryFailFastLiveTest extends ClickHouseBase {
 
+    private static void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     @DisplayName(
             "TYPE-06: put() on a JSON column under default config fails with the actionable message and leaves zero rows")
     void putFailsWithActionableMessageAndLeavesZeroRows(TestInfo testInfo) {
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String tableName = createTopicName("rowbinary_failfast_negative");
 
         // Create the table BEFORE start() - ClickHouseWriter.start() fails against an empty
         // database (Phase 1 rule).
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc, tableName, "CREATE TABLE %s (id UInt32, json_col JSON) ENGINE = MergeTree ORDER BY id");
         // Deliberately NOT setting bypassRowBinary or bypassSchemaValidation - the real
         // production default path, the one an operator actually hits.
@@ -88,12 +97,12 @@ public class RowBinaryFailFastLiveTest extends ClickHouseBase {
     @DisplayName(
             "TYPE-06: the same insert succeeds once bypassRowBinary=true is set (D-05 escape hatch proof)")
     void bypassRowBinaryEscapeHatchMakesTheSameInsertSucceed(TestInfo testInfo) {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         props.put("bypassRowBinary", "true"); // D-05: the escape hatch the new message advertises.
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String tableName = createTopicName("rowbinary_failfast_positive");
 
-        ClickHouseTestHelpers.createTable(
+        createTable(
                 chc, tableName, "CREATE TABLE %s (id UInt32, json_col JSON) ENGINE = MergeTree ORDER BY id");
         props.put("name", uniqueConnectorName(testInfo));
 

@@ -1,95 +1,71 @@
 package com.clickhouse.kafka.connect.sink;
 
-import com.clickhouse.client.config.ClickHouseClientOption;
 import com.clickhouse.kafka.connect.sink.data.Record;
 import com.clickhouse.kafka.connect.sink.db.ClickHouseWriter;
 import com.clickhouse.kafka.connect.sink.db.DBWriter;
-import com.clickhouse.kafka.connect.sink.db.TableMappingRefresher;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
 import com.clickhouse.kafka.connect.sink.processing.Processing;
 import com.clickhouse.kafka.connect.sink.state.StateProvider;
 import com.clickhouse.kafka.connect.sink.state.provider.InMemoryState;
 import com.clickhouse.kafka.connect.sink.state.provider.KeeperStateProvider;
+import com.clickhouse.kafka.connect.util.Utils;
 import com.clickhouse.kafka.connect.util.jmx.ExecutionTimer;
-import com.clickhouse.kafka.connect.util.jmx.MBeanServerUtils;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ProxySinkTask {
+public final class ProxySinkTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProxySinkTask.class);
     private static final AtomicInteger NEXT_ID = new AtomicInteger();
-    private Processing processing = null;
-    private StateProvider stateProvider = null;
-    private DBWriter dbWriter = null;
-    private ClickHouseSinkConfig clickHouseSinkConfig = null;
-    private final String connectorName;
-
+    private final Processing processing;
+    private final StateProvider stateProvider;
+    private final DBWriter dbWriter;
+    private final ClickHouseSinkConfig clickHouseSinkConfig;
 
     private final SinkTaskStatistics statistics;
-    private int id = NEXT_ID.getAndAdd(1);
+    private final int id = NEXT_ID.getAndAdd(1);
+    private final ErrorReporter errorReporter;
 
     public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final String connectorName) {
-        this.connectorName = connectorName;
         this.clickHouseSinkConfig = clickHouseSinkConfig;
+        this.errorReporter = errorReporter;
         LOGGER.info("Enable ExactlyOnce? {}", clickHouseSinkConfig.isExactlyOnce());
         if ( clickHouseSinkConfig.isExactlyOnce() ) {
             this.stateProvider = new KeeperStateProvider(clickHouseSinkConfig);
         } else {
             this.stateProvider = new InMemoryState();
         }
+        this.statistics = new SinkTaskStatistics(connectorName, id);
+        this.dbWriter = new ClickHouseWriter(this.statistics);
+        processing = new Processing(stateProvider, dbWriter, errorReporter, clickHouseSinkConfig, statistics);
+    }
 
-        ClickHouseWriter chWriter = new ClickHouseWriter();
-        this.dbWriter = chWriter;
-
-        // Add table mapping refresher
-        if (clickHouseSinkConfig.getTableRefreshInterval() > 0) {
-            TableMappingRefresher tableMappingRefresher = new TableMappingRefresher(clickHouseSinkConfig.getDatabase(), chWriter);
-            Timer tableRefreshTimer = new Timer();
-            tableRefreshTimer.schedule(tableMappingRefresher, clickHouseSinkConfig.getTableRefreshInterval(), clickHouseSinkConfig.getTableRefreshInterval());
-        }
+    public void start() {
+        this.statistics.registerMBean();
 
         // Add dead letter queue
         boolean isStarted = dbWriter.start(clickHouseSinkConfig);
-        if (!isStarted)
+        if (!isStarted) {
             throw new RuntimeException("Connection to ClickHouse is not active.");
-        processing = new Processing(stateProvider, dbWriter, errorReporter, clickHouseSinkConfig);
-
-        this.statistics = MBeanServerUtils.registerMBean(new SinkTaskStatistics(), getMBeanName());
-    }
-
-    /**
-     * Byte-for-byte extraction of the previous inline logic in {@code getMBeanName()} (D-02,
-     * JMX-01/JMX-02/JMX-03). The rendered MBean name is unchanged; this extraction exists solely
-     * so the null-version and colon-version branches are reachable from a test at all - the real
-     * client jar reports a plain version like {@code 0.9.6}, so neither branch could ever execute
-     * through {@code getMBeanName()} itself (which requires a live ClickHouse to construct).
-     */
-    static String buildMBeanName(String connectorName, int id, String version) {
-        if (version != null) {
-            version = version.replace(':', '_');
-        } else {
-            version = "unknown";
         }
-        return String.format("com.clickhouse:type=ClickHouseKafkaConnector,connector=%s,name=SinkTask%d,version=%s", connectorName, id, version);
-    }
-
-    private String getMBeanName() {
-        return buildMBeanName(connectorName, id, ClickHouseClientOption.class.getPackage().getImplementationVersion());
     }
 
     public void stop() {
-        MBeanServerUtils.unregisterMBean(getMBeanName());
+        dbWriter.stop();
+        statistics.unregisterMBean();
     }
 
     public void put(final Collection<SinkRecord> records) throws IOException, ExecutionException, InterruptedException {
@@ -98,8 +74,8 @@ public class ProxySinkTask {
             return;
         }
         // Group by topic & partition
+        statistics.receivedRecords(records);
         ExecutionTimer taskTime = ExecutionTimer.start();
-        statistics.receivedRecords(records.size());
         LOGGER.trace(String.format("Got %d records from put API.", records.size()));
         ExecutionTimer processingTime = ExecutionTimer.start();
 
@@ -107,17 +83,58 @@ public class ProxySinkTask {
                 .map(v -> Record.convert(v,
                         clickHouseSinkConfig.isEnableDbTopicSplit(),
                         clickHouseSinkConfig.getDbTopicSplitChar(),
-                        clickHouseSinkConfig.getDatabase() ))
-                .collect(Collectors.groupingBy(!clickHouseSinkConfig.isExactlyOnce() && clickHouseSinkConfig.isIgnorePartitionsWhenBatching()
-                        ? Record::getTopic : Record::getTopicAndPartition));
+                        clickHouseSinkConfig.getDatabase(),
+                        clickHouseSinkConfig.isDebeziumCDCEnabled()))
+                .collect(Collectors.groupingBy(batchKey()));
 
         statistics.recordProcessingTime(processingTime);
         // TODO - Multi process???
+        List<Utils.FailedRecords> failedMessages = new ArrayList<>(dataRecords.size());
         for (String topicAndPartition : dataRecords.keySet()) {
-            // Running on etch topic & partition
+            // Running on each topic & partition
             List<Record> rec = dataRecords.get(topicAndPartition);
-            processing.doLogic(rec);
+            try {
+                processing.doLogic(rec);
+            } catch (Exception e) {
+                boolean errorTolerance = clickHouseSinkConfig.isErrorsTolerance();
+                Utils.handleException(e, errorTolerance, clickHouseSinkConfig.isRetryOnSocketException(), records); // This will throw RetriableException and failed records will be retried. No need to continue with the next topic & partition
+                if (errorTolerance) {
+                    failedMessages.add(new Utils.FailedRecords(rec, e));
+                    statistics.sentToDLQ(rec.size());
+                }
+            }
         }
         statistics.taskProcessingTime(taskTime);
+        Utils.sendTODLQ(failedMessages, errorReporter);
+    }
+
+    /**
+     * A batch is inserted into the database of its first record, so records bound for different
+     * databases must never share a batch. Conversion strips the database prefix off the topic when
+     * db-topic split is on, which would otherwise leave records from {@code dbA.t} and {@code dbB.t}
+     * with the same key.
+     */
+    private Function<Record, String> batchKey() {
+        Function<Record, String> tableKey =
+                !clickHouseSinkConfig.isExactlyOnce() && clickHouseSinkConfig.isIgnorePartitionsWhenBatching()
+                        ? Record::getTopic : Record::getTopicAndPartition;
+        if (!clickHouseSinkConfig.isEnableDbTopicSplit()) {
+            return tableKey;
+        }
+        final String splitChar = clickHouseSinkConfig.getDbTopicSplitChar();
+        return record -> record.getDatabase() + splitChar + tableKey.apply(record);
+    }
+
+    public int getId() {
+        return id;
+    }
+
+
+    public void onPartitionRemoved(Collection<TopicPartition> partitions) {
+        stateProvider.onPartitionRemoved(partitions);
+    }
+
+    public Map<TopicPartition, OffsetAndMetadata> getInsertedOffsetsSnapshot() {
+        return stateProvider.getLastInsertedOffsetsSnapshot();
     }
 }

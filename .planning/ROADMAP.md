@@ -24,11 +24,11 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 
 ### v1.6.0_gg1-sync — Upstream v1.6.0 Sync
 
-- [ ] **Phase 6: Merge Groundwork & Build Migration** - Rollback point, conflict inventory, open decisions, then upstream's version-catalog build with all five fork additions re-applied
-- [ ] **Phase 7: Type Mapping, Writer, Helper Client & Config** - The leaf mapping layer and the two hardest files re-expressed against upstream's rewritten APIs
-- [ ] **Phase 8: Orchestration & JMX Re-plumbing** - `connector=<name>` restored where upstream now owns MBean naming — a re-plumb, not a patch re-apply
-- [ ] **Phase 9: Metadata-free JSON Path — Keep or Drop** - The R-01 keep/drop decision made at a blocking-human checkpoint, then the code and tests made to say the same thing
-- [ ] **Phase 10: Test Harness Reconciliation** - The fork's `ClickHouseBase` contract and test fixtures re-composed over upstream's rewritten infrastructure
+- [x] **Phase 6: Merge Groundwork & Build Migration** - Rollback point, conflict inventory, open decisions, then upstream's version-catalog build with all five fork additions re-applied (completed 2026-09-18)
+- [x] **Phase 7: Type Mapping, Writer, Helper Client & Config** - The leaf mapping layer and the two hardest files re-expressed against upstream's rewritten APIs (completed 2026-09-19)
+- [x] **Phase 8: Orchestration & JMX Re-plumbing** - `connector=<name>` restored where upstream now owns MBean naming — a re-plumb, not a patch re-apply (completed 2026-09-19)
+- [x] **Phase 9: Metadata-free JSON Path — Keep or Drop** - The R-01 keep/drop decision made at a blocking-human checkpoint, then the code and tests made to say the same thing (completed 2026-09-20)
+- [x] **Phase 10: Test Harness Reconciliation** - The fork's `ClickHouseBase` contract and test fixtures re-composed over upstream's rewritten infrastructure (completed 2026-09-20)
 - [ ] **Phase 11: Full Suite, CI & Publication** - Green `./gradlew test` on `latest` × V2, green CI on the pushed SHA, `custom_build` published
 
 ## Phase Details
@@ -49,108 +49,30 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
   4. All five fork build additions are provably present, not just intended: `jacocoTestReport` + the 15-class `jacocoForkReport` exist report-only, `testUnit` exists and is excluded from `check`, the *test* JVM is pinned to JDK 17 by an explicit `javaLauncher` and runs `file.encoding=windows-1252`, and the LZ4 capability resolution plus the ben-manes `dependencyUpdates` config still resolve.
   5. No committed revision on the scratch branch contains a literal `<<<<<<<` marker in tracked source, and no `.planning/` commit is interleaved with in-progress conflict resolution.
 
-**Plans**: 3 plans
+**Plans**: 3/3 plans executed
 **Wave 1**
 
-- [ ] 06-01-PLAN.md — Upstream remote, `pre-v1.6.0-sync` tag, `sync/v1.6.0` scratch branch, the 100%-mechanical merge commit, and the committed D-02/D-09 invariant script (wave 1)
+- [x] 06-01-PLAN.md — Upstream remote, `pre-v1.6.0-sync` tag, `sync/v1.6.0` scratch branch, the 100%-mechanical merge commit, and the committed D-02/D-09 invariant script (wave 1)
 
-**Wave 2** *(blocked on Wave 1 completion)*
+**Wave 2** *(blocked on Wave 1 completion; gap closure added 2026-10-07, D-17)*
 
-- [ ] 06-02-PLAN.md — Commit 2: catalog overrides, `VERSION` = `v1.6.0_gg1`, `.gitignore` union, the fork's `tests.yaml`, the fork build additions re-applied onto upstream's file, and the `help` + `dependencies` gate (wave 2)
+- [x] 11-08-PLAN.md — Gap closure: force `network_compression_method=lz4` on every connector-built client so client 0.9.6 works against ClickHouse 26.9+ (`latest`), pinned by a Docker-free unit test and a live round-trip test (D-17)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 06-03-PLAN.md — `.planning/MERGE-CHECKLIST.md` with the generated per-path Section 1, Section 2, and `## Recorded Facts`, plus the full-range invariant re-run (wave 3)
+- [x] 11-04-PLAN.md — Local acceptance gate: one cache-busted full run on the published tree with the skip inventory re-derived from it, plus Docker-free `testUnit` (D-12)
 
-**Note on the conflict count:** re-measured at planning time, `git merge-tree --write-tree custom_build v1.6.0` produces 40 conflict messages across **40** unique paths — one message per path. The "39 unique paths" figure above and in `REQUIREMENTS.md` § SYNC-03 is a summary miscount; no path was lost and no path carries two messages. Section 1 of the checklist is generated from the command rather than transcribed, so the correct count is self-evident.
+**Wave 4** *(blocked on Wave 3 completion)*
 
-### Phase 7: Type Mapping, Writer, Helper Client & Config
+- [x] 11-05-PLAN.md — Tracer: scratch-branch CI rehearsal end-to-end, wall-clock measured against a stated threshold, then D-03's evidence bundle (D-02/D-10/D-11)
 
-**Goal**: The five fork behaviours with no upstream anchor — `Type.DYNAMIC`, the RowBinary fail-fast, `targetTableFilter`, the describe sub-column skip, and UTF-8 describe readers — survive upstream's rewrite of `Column`/`Table`/`ClickHouseWriter`/`ClickHouseHelperClient`, and `src/main` compiles again.
+**Wave 5** *(blocked on Wave 4 completion)*
 
-**Depends on**: Phase 6
+- [ ] 11-06-PLAN.md — The one blocking human gate, then the forced non-fast-forward merge, the non-force push of branch and both tags, and CI-06's evidence on the published SHA (D-01/D-03/D-04)
 
-**Requirements**: MAP-01, MAP-02, MAP-03, WRT-01, WRT-02, WRT-03, WRT-04, WRT-05, HLP-01, HLP-02, HLP-03, HLP-04, CFG-01, CFG-02, CFG-03, FREE-02, FREE-03
+**Wave 6** *(blocked on Wave 5 completion)*
 
-**Success Criteria** (what must be TRUE):
-
-  1. `./gradlew compileJava` succeeds over the whole of `src/main`: `Type.DYNAMIC` exists alongside upstream's native `Type.JSON`, upstream's rewritten `Column` is adopted with the Dynamic branch ported in, and upstream's immutable `Table` is used as-is with every fork call site rewritten to the new constructor rather than the constructor being re-opened.
-  2. `./gradlew testUnit` (Docker-free) is green over the mapping, writer-gate and config-parsing tests: a `Dynamic` type string resolves to `Type.DYNAMIC` and never silently to `UNKNOWN`, the RowBinary gate throws the fork's actionable `DataException` for `DYNAMIC`/`UNKNOWN` while `JSON` follows upstream's flag-gated write-as-string with `TYPE-06`'s JSON assertions rewritten to upstream's exception type and message, and `targetTableFilter` / `jsonInsertColumns` still parse to their pinned contracts.
-  3. A connector started from a default config sends no `async_insert` setting, and all thirteen new upstream config options are present and reach their consumers at upstream defaults.
-  4. Table discovery is still filtered server-side by `match(table, '<regex>')` re-expressed over upstream's `List<Table.TableDesc>` signatures; `shouldSkipDescribeRow` still skips `.null`, `.size0`, bare `.size` and JSON/Dynamic children over upstream's local-`List<Column>` loop with `numColumns` incremented before any skip; and every `InputStreamReader(` in the resolved `ClickHouseHelperClient` specifies `StandardCharsets.UTF_8` — grep-verified across the whole file, not just the two call sites the fork originally patched. (Live `FILT-01..04` / `DESC-01..04` / `TYPE-07` confirmation lands in Phase 11's full suite; the Docker-free half of each passes here.)
-  5. Two free wins are recorded either way rather than assumed: upstream's `Map(K, Nullable(V))` null-marker fix is confirmed present with the fork's duplicate patch dropped and WR-01's status stated, and whether upstream issue #580 subsumes the dormant P3-WR-02 follow-up is checked and written down.
-
-**Plans**: TBD
-
-### Phase 8: Orchestration & JMX Re-plumbing
-
-**Goal**: Restore the JMX `connector=<name>` segment in its new home — upstream deleted the fork's carrier method and moved naming into `util.jmx.SinkTaskStatistics` with no `connector=` segment, so this is a deliberate design re-plumb, and the milestone's "prefer upstream" policy explicitly does **not** apply here because upstream's version fails JMX-01/02.
-
-**Depends on**: Phase 7 (`ProxySinkTask` constructs both the writer and the helper client, so its JMX work cannot finish until they compile)
-
-**Requirements**: ORCH-01, ORCH-02, ORCH-03, ORCH-04, FREE-01
-
-**Success Criteria** (what must be TRUE):
-
-  1. `MBeanNameUnitTest`'s literal `connector=` substring assertion is green against the new home: the sink-task ObjectName renders `connector=<name>` sourced from `ClickHouseSinkTask.start()`, with colon sanitization retained — and `JMX-01..04` pass re-targeted at `SinkTaskStatistics` rather than the deleted `ProxySinkTask.buildMBeanName`.
-  2. Upstream's new per-topic MBean carries the same `connector=<name>` segment, so per-topic metrics are attributable to a connector in a multi-connector worker.
-  3. `./gradlew testUnit` is green with the new layering in place — `DeliveryStrategy`/`ChunkFlusher` above `ProxySinkTask`, upstream's 5-arg `Processing` construction below, and no stale 4-arg `Processing` call site anywhere in the tree.
-  4. `Utils.java` and `Processing.java` — which merge with no conflict marker despite both sides touching them — have been read and explicitly reviewed, `UtilsTest`/`ProcessingTest` take upstream's versions, and the fork's "error classification is dead code on client V2" follow-up is closed in writing citing upstream issue #818 as the mechanism.
-
-**Plans**: TBD
-
-### Phase 9: Metadata-free JSON Path — Keep or Drop
-
-**Goal**: Settle the one genuinely open design question in this milestone — whether the fork's metadata-free `insertFormat=json` bypass (and with it R-01's silent data loss) is kept or retired in favour of upstream's `writeRecordsJson` — at a blocking-human checkpoint on evidence read from the merged code, then make the code and the tests say the same thing.
-
-**Depends on**: Phase 7 (the bypass is written against `Table` and the writer's insert methods); Phase 8 for a compiling orchestration layer
-
-**Requirements**: JSONP-01, JSONP-02, JSONP-03, JSONP-04
-
-**Success Criteria** (what must be TRUE):
-
-  1. A recorded keep-or-drop decision with its rationale exists, made at a blocking-human checkpoint on evidence from the merged code — and made *before* the dependent implementation work, not discovered afterwards in a test result nobody looked at.
-  2. The JSON-path tests reflect that decision: if kept, the metadata-free bypass works and R-01's labelled loss test still passes; if dropped, R-01's test failing is recorded as the wanted signal that the loss is gone.
-  3. `jsonInsertColumns` works again, redesigned as a field filter inside upstream's `writeRecordsJson` — the `client.insert(table, columns, data, ...)` overload it attached to no longer exists at that call site — with the Docker-free `JsonInsertColumnsUnitTest` green here and `COLS-01..06`'s live half re-run in Phase 11.
-  4. Reading the resolved diff (not merely a green test) shows no fork-only JSON-path code left standing against a `Table` shape upstream no longer produces.
-
-**Plans**: TBD
-
-### Phase 10: Test Harness Reconciliation
-
-**Goal**: The previous milestone's harness contract — `@Tag("clickhouse")`, the MBean leak sweep, `uniqueConnectorName`, one shared container per JVM fork — survives upstream's rewritten test infrastructure and the Testcontainers `2.0.5` major bump, so the 371 fork tests have somewhere to run.
-
-**Depends on**: Phase 7, Phase 8, Phase 9 (test helpers call production APIs whose shapes those phases fix)
-
-**Requirements**: HARN-01, HARN-02, HARN-03, HARN-04, HARN-05, HARN-06, HARN-07
-
-**Success Criteria** (what must be TRUE):
-
-  1. `./gradlew testUnit` completes with Docker stopped — the loudest, fastest proof that `@Tag("clickhouse")` is back on `ClickHouseBase` and that the Docker-free gate still means what it says.
-  2. Testcontainers `2.0.5` is verified to start a ClickHouse container through `ClickHouseBase` **before** any of the 371 fork tests are adapted to the new harness.
-  3. Exactly one `ClickHouseTestHelpers.java` exists in the tree — under `src/testFixtures`, carrying the fork's helpers, every fork import updated — and `SchemaTestData`/`SchemalessTestData` exist only there, verified by grep rather than by "it compiles".
-  4. `./gradlew compileTestJava compileTestFixturesJava` and `./gradlew compileIntegrationTestJava` all succeed, so the out-of-scope integration source set does not rot into a permanently broken state.
-  5. `uniqueConnectorName(TestInfo)` is available again and the `@AfterEach` MBean leak sweep runs, extended to cover upstream's per-topic MBeans; the per-JVM-fork shared-container strategy is re-derived over upstream's `@TestInstance(PER_CLASS)` shape, or its cost is measured and the fallback recorded.
-
-**Plans**: TBD
-
-### Phase 11: Full Suite, CI & Publication
-
-**Goal**: The merged connector is accepted by the suite the previous milestone was built to provide — green locally on ClickHouse `latest` × client V2, green in CI on the pushed SHA, published to the public fork by a non-force merge, with the shrunken fork delta written down.
-
-**Depends on**: Phase 10
-
-**Requirements**: SUITE-01, SUITE-02, SUITE-03, CI-05, CI-06, CI-07
-
-**Success Criteria** (what must be TRUE):
-
-  1. `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test` is green against ClickHouse `latest` × client V2 over the fork's tests plus upstream's 56 test files, with every skip accounted for and explained and zero `InstanceAlreadyExistsException` in a full-suite run.
-  2. The four fork SMTs (`TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, `ConvertToMapOrJson`) and their sink-landing tests pass untouched — upstream touches nothing in that package, so any failure there is investigated as a genuine defect rather than absorbed as merge fallout.
-  3. `tests.yaml` runs the merged suite on push and publishes coverage, its wall-clock measured against the job's `timeout-minutes: 45`, and a run is machine-verified green on the pushed SHA — located by `head_sha` plus workflow `path`, asserting exactly one match.
-  4. `custom_build` is brought forward from `sync/v1.6.0` by a non-force merge and pushed to the public fork after human approval.
-  5. A written record lists every fork change dropped in favour of upstream and why, and shows the fork's delta over upstream is smaller after this milestone than before it.
-
-**Plans**: TBD
+- [ ] 11-07-PLAN.md — Close the milestone's last six requirements on re-run evidence and assert the final published state
 
 ## Merge Mechanics (applies to every phase)
 
@@ -172,12 +94,12 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 6. Merge Groundwork & Build Migration | 0/3 | Planned | - |
-| 7. Type Mapping, Writer, Helper Client & Config | 0/? | Not started | - |
-| 8. Orchestration & JMX Re-plumbing | 0/? | Not started | - |
-| 9. Metadata-free JSON Path — Keep or Drop | 0/? | Not started | - |
-| 10. Test Harness Reconciliation | 0/? | Not started | - |
-| 11. Full Suite, CI & Publication | 0/? | Not started | - |
+| 6. Merge Groundwork & Build Migration | 3/3 | Complete    | 2026-09-18 |
+| 7. Type Mapping, Writer, Helper Client & Config | 4/4 | Complete    | 2026-09-19 |
+| 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
+| 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
+| 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
+| 11. Full Suite, CI & Publication | 6/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.6.0_gg1-sync` created: 2026-09-18*

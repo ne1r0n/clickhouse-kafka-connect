@@ -26,13 +26,21 @@ import org.junit.jupiter.api.TestInfo;
  */
 public class AsyncInsertLiveTest extends ClickHouseBase {
 
+    private static void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     @DisplayName("ASYNC-03: a sink insert with async_insert=1 and wait_for_async_insert=1 completes and its data is present")
     void asyncInsertWithWaitForAsyncInsertCompletesAndDataIsPresent(TestInfo testInfo) throws Exception {
         String tableName = createTopicName("async03_insert");
-        Map<String, String> props = createProps();
-        ClickHouseHelperClient chc = createClient(props);
-        ClickHouseTestHelpers.createTable(chc, tableName, "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id");
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        createTable(chc, tableName, "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id");
         props.put(ClickHouseSinkConfig.CLICKHOUSE_SETTINGS, "async_insert=1,wait_for_async_insert=1");
         props.put("name", uniqueConnectorName(testInfo));
 

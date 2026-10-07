@@ -21,12 +21,17 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-10): the metadata-free {@code
+ * insertFormat=json} bypass these tests exercise was re-applied to {@code src/main} in Phase 9;
+ * every assertion below is unchanged from the parked version.
+ */
 public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
     private static final String TABLE_SCHEMA = "CREATE TABLE %s ( `off16` Int16, `str` String ) Engine = MergeTree ORDER BY off16";
     private static final int RECORD_COUNT = 10;
 
     private Map<String, String> createJsonInsertProps() {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         return props;
     }
@@ -57,14 +62,18 @@ public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
     }
 
     private void createTable(ClickHouseHelperClient chc, String tableName) {
-        ClickHouseTestHelpers.createTable(chc, tableName, TABLE_SCHEMA);
+        try (Records ignored = chc.queryV2(String.format(TABLE_SCHEMA, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
     @DisplayName("JSON-05: explicitJsonInsertSkipsTableCheckOnStart asserts typed column values, not just a row count")
     public void explicitJsonInsertSkipsTableCheckOnStart() throws Exception {
         Map<String, String> props = createJsonInsertProps();
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
 
         String topic = createTopicName("json_insert_skip_mapping_test");
         String tableName = topic;
@@ -96,7 +105,7 @@ public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
         Map<String, String> props = createJsonInsertProps();
         props.put(ClickHouseSinkConfig.TARGET_TABLE_FILTER, "^filtered_.*");
         props.put(ClickHouseSinkConfig.TABLE_MAPPING, "json_topic=unfiltered_table");
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
 
         String topic = "json_topic";
         String tableName = "unfiltered_table";

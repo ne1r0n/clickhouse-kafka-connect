@@ -10,6 +10,7 @@ See the [ClickHouse website](https://clickhouse.com/docs/en/integrations/kafka/c
 
 ## Design
 For a full overview of the design and how exactly-once delivery semantics are achieved, see the [design document](./docs/DESIGN.md).
+For what this fork patches on top of upstream and what it retired in favour of upstream, see the [fork delta](./docs/FORK-DELTA.md).
 
 ## Help
 For additional help, please [file an issue in the repository](https://github.com/ClickHouse/clickhouse-kafka-connect/issues) or raise a question in [ClickHouse public Slack](https://clickhouse.com/slack).
@@ -36,3 +37,8 @@ transforms=keyToValue
 transforms.keyToValue.type=com.clickhouse.kafka.connect.transforms.KeyToValue
 transforms.keyToValue.field=_key
 ```
+
+## Performance Testing
+
+There is a dedicated gradle project in this repo - `benchmark` for performance testing. 
+Please see its [README](./benchmark/README.md) for more information and how to run.

@@ -33,27 +33,39 @@ import org.junit.jupiter.api.TestInfo;
  * actually changes behavior - R-01 proved the Struct + RowBinary combination under
  * {@code insertFormat=json} silently drops data, which is explicitly out of scope for a pin here
  * (see Task 4's blocking-human checkpoint).
+ *
+ * <p>Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-10): the metadata-free {@code
+ * insertFormat=json} bypass this class exercises was re-applied to {@code src/main} in Phase 9;
+ * every assertion below is unchanged from the parked version.
  */
 public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
+
+    private void createTable(ClickHouseHelperClient chc, String tableName, String createTableQuery) {
+        try (Records ignored = chc.queryV2(String.format(createTableQuery, tableName))) {
+            // table created
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Test
     @DisplayName("JSON-02: metadata-free mode resolves a remapped table with no fetched metadata and lands every column value")
     void metadataFreeModeResolvesRemappedTableAndLandsEveryColumnValue(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String topic = createTopicName("mf_topic");
         String tableName = createTopicName("mf_mapped_table");
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "JSON");
         props.put(ClickHouseSinkConfig.TABLE_MAPPING, topic + "=" + tableName);
         props.put("name", uniqueConnectorName(testInfo));
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
 
         ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
         try {
             assertDoesNotThrow(() -> sinkTask.start(props));
 
-            ClickHouseTestHelpers.createTable(chc, tableName,
+            createTable(chc, tableName,
                     "CREATE TABLE %s (id UInt32, str String, n Int32) ENGINE = MergeTree ORDER BY id");
 
             Map<String, Object> value1 = new LinkedHashMap<>();
@@ -100,16 +112,16 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
     @Test
     @DisplayName("JSON-01: with insertFormat unset, the connector-side table-existence check still throws for an absent table (metadata-free mode is what skips it)")
     void unsetInsertFormatStillThrowsOnAbsentTable(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String decoyTable = createTopicName("json01_decoy");
         String absentTopic = createTopicName("json01_absent");
         props.put("name", uniqueConnectorName(testInfo));
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, decoyTable);
         // A decoy table so updateMapping() finds at least one table and start() returns true;
         // the record below targets a different, never-created table.
-        ClickHouseTestHelpers.createTable(chc, decoyTable,
+        createTable(chc, decoyTable,
                 "CREATE TABLE %s (id UInt32) ENGINE = MergeTree ORDER BY id");
 
         ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
@@ -132,14 +144,14 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
     @Test
     @DisplayName("JSON-03: metadata-free mode inserts a payload key that is not a table column without throwing, and known columns land with correct values")
     void metadataFreeModeInsertsUnknownFieldWithoutThrowing(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String topic = createTopicName("json03_unknown_field");
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         props.put("name", uniqueConnectorName(testInfo));
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, topic);
-        ClickHouseTestHelpers.createTable(chc, topic,
+        createTable(chc, topic,
                 "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id");
 
         ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
@@ -182,14 +194,14 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
     @Test
     @DisplayName("JSON-04: a mixed batch of schemaless records and a tombstone inserts exactly the non-null records with correct values")
     void mixedBatchWithTombstoneInsertsOnlyNonNullRecords(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String topic = createTopicName("json04_mixed_batch");
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         props.put("name", uniqueConnectorName(testInfo));
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, topic);
-        ClickHouseTestHelpers.createTable(chc, topic,
+        createTable(chc, topic,
                 "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id");
 
         ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
@@ -228,14 +240,14 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
     @Test
     @DisplayName("JSON-04: [R-01 note] an all-tombstone batch pins its actual observed outcome rather than a predicted one")
     void allTombstoneBatchPinsObservedOutcome(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String topic = createTopicName("json04_all_tombstone");
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         props.put("name", uniqueConnectorName(testInfo));
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, topic);
-        ClickHouseTestHelpers.createTable(chc, topic,
+        createTable(chc, topic,
                 "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id");
 
         ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
@@ -291,16 +303,16 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
     @DisplayName(
             "JSON-01: [R-01 pin] insertFormat=json + a Struct record + bypassRowBinary left unset silently drops the whole batch - confirmed data loss, not fixed in this phase (see checkpoint)")
     void explicitJsonStructRecordWithDefaultBypassRowBinarySilentlyDropsBatch(TestInfo testInfo) throws Exception {
-        Map<String, String> props = createProps();
+        Map<String, String> props = getBaseProps();
         String topic = createTopicName("json01_r01_struct_pin");
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
         // bypassRowBinary is intentionally left UNSET (defaults to false) - this is exactly the
         // combination R-01 probed and the user directed be pinned at the Task 4 checkpoint.
         props.put("name", uniqueConnectorName(testInfo));
 
-        ClickHouseHelperClient chc = createClient(props);
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, topic);
-        ClickHouseTestHelpers.createTable(chc, topic,
+        createTable(chc, topic,
                 "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id");
 
         ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
