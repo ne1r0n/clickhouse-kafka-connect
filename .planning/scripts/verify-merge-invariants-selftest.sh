@@ -55,7 +55,7 @@ expect_failure() {
   local -a env_args=()
   while [ "$1" != "--" ]; do env_args+=("$1"); shift; done
   shift
-  env "${env_args[@]}" bash "${SCRIPT}" "$@" > "${WORK_DIR}/out" 2> "${WORK_DIR}/err"
+  env ${env_args[@]+"${env_args[@]}"} bash "${SCRIPT}" "$@" > "${WORK_DIR}/out" 2> "${WORK_DIR}/err"
   local rc=$?
   if [ "${rc}" -ne 0 ] && grep -q "${needle}" "${WORK_DIR}/err"; then
     report PASS "${name}"
