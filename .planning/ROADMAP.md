@@ -56,7 +56,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 
 **Wave 2** *(blocked on Wave 1 completion; gap closure added 2026-10-07, D-17)*
 
-- [ ] 11-08-PLAN.md — Gap closure: force `network_compression_method=lz4` on every connector-built client so client 0.9.6 works against ClickHouse 26.9+ (`latest`), pinned by a Docker-free unit test and a live round-trip test (D-17)
+- [x] 11-08-PLAN.md — Gap closure: force `network_compression_method=lz4` on every connector-built client so client 0.9.6 works against ClickHouse 26.9+ (`latest`), pinned by a Docker-free unit test and a live round-trip test (D-17)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -99,7 +99,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
 | 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
-| 11. Full Suite, CI & Publication | 3/7 | In Progress | - |
+| 11. Full Suite, CI & Publication | 4/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.6.0_gg1-sync` created: 2026-09-18*
