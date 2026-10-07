@@ -30,7 +30,14 @@ class NetworkCompressionPinLiveTest extends ClickHouseBase {
     private static final String TYPED_QUERY =
             "SELECT toUInt8(1) AS n, version() AS v, getSetting('network_compression_method') AS m";
 
+    // lz4hc frames blocks with the same LZ4 method byte, so client 0.9.6 still decodes it
+    private static final String OPERATOR_METHOD = "lz4hc";
+
     private ClickHouseHelperClient buildClient(boolean useClientV2) {
+        return buildClient(useClientV2, "");
+    }
+
+    private ClickHouseHelperClient buildClient(boolean useClientV2, String jdbcConnectionProperties) {
         ClickHouseSinkConfig csc = new ClickHouseSinkConfig(getBaseProps());
         return new ClickHouseHelperClient.ClickHouseClientBuilder(
                         csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
@@ -41,6 +48,7 @@ class NetworkCompressionPinLiveTest extends ClickHouseBase {
                 .setTimeout(csc.getTimeout())
                 .setRetry(csc.getRetry())
                 .useClientV2(useClientV2)
+                .setJdbcConnectionProperties(jdbcConnectionProperties)
                 .build();
     }
 
@@ -82,6 +90,38 @@ class NetworkCompressionPinLiveTest extends ClickHouseBase {
                 assertEquals("lz4", record.getValue(2).asString());
                 LOGGER.info("V1 server version: {}", record.getValue(1).asString());
             }
+        }
+    }
+
+    @Test
+    @DisplayName("D-17: an operator's V2 server setting overrides the lz4 default on the wire")
+    void operatorOverrideReachesServerOnV2() throws Exception {
+        try (ClickHouseHelperClient chc =
+                buildClient(true, "?clickhouse_setting_network_compression_method=" + OPERATOR_METHOD)) {
+            try (Records records = chc.queryV2(TYPED_QUERY)) {
+                for (GenericRecord record : records) {
+                    assertEquals(OPERATOR_METHOD, record.getString("m"));
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("D-17: an operator's V1 custom_settings overrides the lz4 default and merges other keys")
+    void operatorOverrideReachesServerOnV1() throws Exception {
+        String customSettings = "custom_settings=network_compression_method%3D" + OPERATOR_METHOD + ",max_threads%3D3";
+        try (ClickHouseHelperClient chc = buildClient(false, "?" + customSettings);
+                ClickHouseClient client = ClickHouseClient.builder()
+                        .options(chc.getDefaultClientOptions())
+                        .nodeSelector(ClickHouseNodeSelector.of(ClickHouseProtocol.HTTP))
+                        .build();
+                ClickHouseResponse response = client.read(chc.getServer())
+                        .format(ClickHouseFormat.RowBinaryWithNamesAndTypes)
+                        .query("SELECT getSetting('network_compression_method'), toString(getSetting('max_threads'))")
+                        .executeAndWait()) {
+            var record = response.firstRecord();
+            assertEquals(OPERATOR_METHOD, record.getValue(0).asString());
+            assertEquals("3", record.getValue(1).asString());
         }
     }
 
