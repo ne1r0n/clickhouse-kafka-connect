@@ -25,10 +25,10 @@
 
 ### Upstream Sync (SYNC)
 
-- [ ] **SYNC-07**: Upstream `v1.7.0` lands on a scratch branch as one mechanical merge commit, with a rollback tag `pre-v1.7.0-sync` on the pre-sync `custom_build` SHA. The merge-invariant script is parameterised (`PRE_TAG`, `UPSTREAM_REF`); the old "conflicted paths byte-identical to upstream" invariant is replaced by a line-provenance check plus a grep that every `docs/FORK-DELTA.md` anchor construct survives
-- [ ] **SYNC-08**: A v1.7.0 merge checklist records every path upstream changed, its predicted and actual conflict class, and a reviewed verdict for the **auto-merged** hunks inside fork-touched files (`ClickHouseWriter` MAP branch, `build.gradle.kts` LZ4 rule, `ClickHouseClientBuilder` setter sites, test helpers)
-- [ ] **SYNC-09**: Every fork feature in `docs/FORK-DELTA.md` survives the merge — `Type.DYNAMIC` fail-fast, JMX `connector=<name>`, `targetTableFilter`, describe sub-column skip, metadata-free JSON path, Kafka Connect API `4.1.1`, `CLICKHOUSE_VERSION_DEFAULT = latest` — each proven by its existing pin test passing
-- [ ] **SYNC-10**: Upstream's new and changed tests from `v1.7.0` (`nullMapTypeTest`, `testSetCompressionMethod_*`, #800 Avro-union, #801 buffer, cluster `buildFromClause`) are accepted **unmodified** and pass on `latest` × V2, or skip for a named reason recorded in `FORK-DELTA.md`
+- [x] **SYNC-07**: Upstream `v1.7.0` lands on a scratch branch as one mechanical merge commit, with a rollback tag `pre-v1.7.0-sync` on the pre-sync `custom_build` SHA. The merge-invariant script is parameterised (`PRE_TAG`, `UPSTREAM_REF`); the old "conflicted paths byte-identical to upstream" invariant is replaced by a line-provenance check plus a grep that every `docs/FORK-DELTA.md` anchor construct survives
+- [x] **SYNC-08**: A v1.7.0 merge checklist records every path upstream changed, its predicted and actual conflict class, and a reviewed verdict for the **auto-merged** hunks inside fork-touched files (`ClickHouseWriter` MAP branch, `build.gradle.kts` LZ4 rule, `ClickHouseClientBuilder` setter sites, test helpers)
+- [x] **SYNC-09**: Every fork feature in `docs/FORK-DELTA.md` survives the merge — `Type.DYNAMIC` fail-fast, JMX `connector=<name>`, `targetTableFilter`, describe sub-column skip, metadata-free JSON path, Kafka Connect API `4.1.1`, `CLICKHOUSE_VERSION_DEFAULT = latest` — each proven by its existing pin test passing
+- [x] **SYNC-10**: Upstream's new and changed tests from `v1.7.0` (`nullMapTypeTest`, `testSetCompressionMethod_*`, #800 Avro-union, #801 buffer, cluster `buildFromClause`) are accepted **unmodified** and pass on `latest` × V2, or skip for a named reason recorded in `FORK-DELTA.md`
 
 ### Compression (CMP)
 
@@ -71,7 +71,7 @@
 
 ### Build & Dependencies (BLD)
 
-- [ ] **BLD-09**: The fork's LZ4 capability rule is removed in favour of upstream's; `dependencyInsight` shows exactly one `at.yawk.lz4:lz4-java` on `runtimeClasspath`; the stale "1.10.2" wording is fixed in `FORK-DELTA.md`, `MERGE-CHECKLIST.md` and `.claude/CLAUDE.md`
+- [x] **BLD-09**: The fork's LZ4 capability rule is removed in favour of upstream's; `dependencyInsight` shows exactly one `at.yawk.lz4:lz4-java` on `runtimeClasspath`; the stale "1.10.2" wording is fixed in `FORK-DELTA.md`, `MERGE-CHECKLIST.md` and `.claude/CLAUDE.md`
 - [ ] **BLD-10**: `lz4-java` is raised past upstream's `1.10.4` to an advisory-free release (≥ 1.11.2, target 1.12.0), after showing client `0.9.6` works with it (compile, `testUnit`, live LZ4 round-trip)
 - [ ] **BLD-11**: Jackson is `2.22.3` (runtime, ships in the Confluent archive), in its own commit, with the JSON-route tests green
 - [ ] **BLD-12**: okhttp `5.5.0`, org.json `20260814` and mockito `5.24.0` are applied as version edits (not dependabot cherry-picks), one commit each, each gated by `compileIntegrationTestJava` and Docker-free `testUnit`
@@ -120,10 +120,10 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SYNC-07 | Phase 12 | Pending |
-| SYNC-08 | Phase 12 | Pending |
-| SYNC-09 | Phase 12 | Pending |
-| SYNC-10 | Phase 12 | Pending |
+| SYNC-07 | Phase 12 | Complete |
+| SYNC-08 | Phase 12 | Complete |
+| SYNC-09 | Phase 12 | Complete |
+| SYNC-10 | Phase 12 | Complete |
 | CMP-01 | Phase 12 | Complete |
 | CMP-02 | Phase 12 | Complete |
 | CMP-03 | Phase 12 | Complete |
@@ -145,7 +145,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | DEBT-03 | Phase 13 | Pending |
 | DEBT-04 | Phase 13 | Pending |
 | DEBT-05 | Phase 13 | Pending |
-| BLD-09 | Phase 12 | Pending |
+| BLD-09 | Phase 12 | Complete |
 | BLD-10 | Phase 14 | Pending |
 | BLD-11 | Phase 14 | Pending |
 | BLD-12 | Phase 14 | Pending |

@@ -4,17 +4,17 @@ milestone: v1.7.0_gg1-sync
 milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 12
 current_phase_name: Upstream v1.7.0 Merge & Reconcile
-status: executing
-stopped_at: Completed 12-04-PLAN.md
-last_updated: "2026-10-07T19:56:06.001Z"
+status: verifying
+stopped_at: Completed 12-05-PLAN.md
+last_updated: "2026-10-07T20:06:37.649Z"
 last_activity: 2026-10-07
 last_activity_desc: Phase 12 execution started
-state_head: 0a0cf6b3a573c16a0a76730cd058e84d5b27eb57
+state_head: 85a69af48cc32c883fae3b899c974f5ed0831138
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-07 after starting milestone v1.7.0_gg
 
 Phase: 12 (Upstream v1.7.0 Merge & Reconcile) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-07 — Phase 12 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -87,6 +87,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P02 | 7 min | 3 tasks | 8 files |
 | Phase 12 P03 | 11 min | 3 tasks | 5 files |
 | Phase 12 P04 | 12 min | 2 tasks | 1 files |
+| Phase 12 P05 | 5 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 12]: Fork LZ4 capability rule deleted (BLD-09); lz4-java stays at upstream's 1.10.4 on runtimeClasspath and clickhouseDependencies, bumps remain Phase 14
 - [Phase 12]: 12-03: D-17 retired onto setCompressionMethod; compress=false alone suffices on V2 and V1 against 26.9.12.8, V1 ?compress=true is a no-observation (does not reach node options)
 - [Phase 12]: 12-04: EOS-01 restart-read test seen RED (4 of 6, expected BEFORE_PROCESSING but was NONE) against the pre-v1.7.0 summary-count read; KeeperStateProvider.java restored byte-identical to v1.7.0; D-16 hunt not needed
+- [Phase 12]: 12-05: D-17 load-bearing-control sentence derived only from the D-12 probe rows (Recorded Fact 26), keeping the V1 'not observed' clause
+- [Phase 12]: 12-05: full suite on latest 26.9.12.8 x V2 green (61 classes, 691 tests, 18 named skips); #800/cluster buildFromClause tests are compile-only (user to confirm SYNC-10 reading)
 
 ### Pending Todos
 
@@ -147,8 +150,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-07T19:56:05.980Z
-Stopped at: Completed 12-04-PLAN.md
+Last session: 2026-10-07T20:06:37.626Z
+Stopped at: Completed 12-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
