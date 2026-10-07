@@ -1,12 +1,33 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg1-sync",
-  "phases": [],
+  "milestone": "v1.7.0_gg1-sync — Upstream v1.7.0 Sync & Follow-up Hardening",
+  "phases": [
+    {
+      "number": "12",
+      "name": "Upstream v1.7.0 Merge & Reconcile",
+      "status": "pending"
+    },
+    {
+      "number": "13",
+      "name": "Fork Hardening on the Merged Tree",
+      "status": "pending"
+    },
+    {
+      "number": "14",
+      "name": "Dependency Bumps & CI",
+      "status": "pending"
+    },
+    {
+      "number": "15",
+      "name": "Suite Gate, Publication & Rollout",
+      "status": "pending"
+    }
+  ],
   "next": {
-    "command": "/gsd:discuss-phase",
-    "label": "Discuss the first phase",
-    "reason": "Project initialized — plan your first phase"
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 12 of 4 · 0% · executing"
   },
-  "updated_at": "2026-10-07T16:17:45.878Z"
+  "updated_at": "2026-10-07T19:21:42.305Z"
 }
