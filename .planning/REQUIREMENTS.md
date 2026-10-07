@@ -32,9 +32,9 @@
 
 ### Compression (CMP)
 
-- [ ] **CMP-01**: The fork's D-17 constants and pin lines are gone; upstream's `setCompressionMethod` (default `true`) is the single mechanism, and every client the connector builds — writer V1/V2, the writer's temporary client, `KeeperStateProvider` — receives the flag
-- [ ] **CMP-02**: Docker-free tests pin `compress=false` / `compressServerResponse(false)` and the `network_compression_method=lz4` setting on V1 options, the V1 node and the V2 config; with `setCompressionMethod=false` the lz4 setting is absent and response compression is still off
-- [ ] **CMP-03**: A live test on `latest` inserts and reads back successfully with `setCompressionMethod=true` and with `=false`; which control is load-bearing against the ZSTD default (`compress=false` vs `lz4`) is recorded in `FORK-DELTA.md` from that observation
+- [x] **CMP-01**: The fork's D-17 constants and pin lines are gone; upstream's `setCompressionMethod` (default `true`) is the single mechanism, and every client the connector builds — writer V1/V2, the writer's temporary client, `KeeperStateProvider` — receives the flag
+- [x] **CMP-02**: Docker-free tests pin `compress=false` / `compressServerResponse(false)` and the `network_compression_method=lz4` setting on V1 options, the V1 node and the V2 config; with `setCompressionMethod=false` the lz4 setting is absent and response compression is still off
+- [x] **CMP-03**: A live test on `latest` inserts and reads back successfully with `setCompressionMethod=true` and with `=false`; which control is load-bearing against the ZSTD default (`compress=false` vs `lz4`) is recorded in `FORK-DELTA.md` from that observation
 
 ### Writer Null-Correctness (WRT)
 
@@ -124,9 +124,9 @@ Which phases cover which requirements. Filled during roadmap creation.
 | SYNC-08 | Phase 12 | Pending |
 | SYNC-09 | Phase 12 | Pending |
 | SYNC-10 | Phase 12 | Pending |
-| CMP-01 | Phase 12 | Pending |
-| CMP-02 | Phase 12 | Pending |
-| CMP-03 | Phase 12 | Pending |
+| CMP-01 | Phase 12 | Complete |
+| CMP-02 | Phase 12 | Complete |
+| CMP-03 | Phase 12 | Complete |
 | WRT-06 | Phase 12 | Complete |
 | WRT-07 | Phase 13 | Pending |
 | WRT-08 | Phase 13 | Pending |
