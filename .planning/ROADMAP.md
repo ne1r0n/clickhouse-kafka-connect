@@ -72,7 +72,7 @@ Phase artifacts: `milestones/v1.2.9_gg4-tests-phases/`
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 11-07-PLAN.md — Close the milestone's last six requirements on re-run evidence and assert the final published state
+- [x] 11-07-PLAN.md — Close the milestone's last six requirements on re-run evidence and assert the final published state
 
 ## Merge Mechanics (applies to every phase)
 
@@ -99,7 +99,7 @@ The dependency ordering is otherwise exactly as researched and is not negotiable
 | 8. Orchestration & JMX Re-plumbing | 3/3 | Complete    | 2026-09-19 |
 | 9. Metadata-free JSON Path — Keep or Drop | 3/3 | Complete    | 2026-09-20 |
 | 10. Test Harness Reconciliation | 3/3 | Complete    | 2026-09-20 |
-| 11. Full Suite, CI & Publication | 7/8 | In Progress | - |
+| 11. Full Suite, CI & Publication | 8/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.6.0_gg1-sync` created: 2026-09-18*
