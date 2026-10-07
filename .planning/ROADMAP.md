@@ -66,7 +66,7 @@ Phase artifacts: `milestones/v1.6.0_gg1-sync-phases/`
   4. D-17's constants and pin lines are gone, and every client the connector builds receives `setCompressionMethod`: writer V1/V2, the writer's temporary client and `KeeperStateProvider`. Docker-free tests pin `compress=false` / `compressServerResponse(false)` and `network_compression_method=lz4` on the V1 options, the V1 node and the V2 config. With the flag `false`, lz4 is absent and response compression stays off. A live insert-and-read-back on `latest` succeeds with the flag `true` and with `false`, and `FORK-DELTA.md` records from that run which control is load-bearing against the ZSTD default.
   5. A null optional `Map` written into a non-nullable `Map` column produces upstream #820's bytes (`00`, or `00 00` with defaults), pinned Docker-free, because the fork's MAP null guard now fires only for nullable columns. Every CR-02 pin re-pinned to the correct bytes carries its rationale next to the changed assertion. A `KeeperStateProvider` restart-read test passes: state is written, a new provider instance is created, and the same min/max/state is read back. That test has been seen to fail against the old summary-count code.
 
-**Plans**: 3/5 plans executed (sequential waves 1-5)
+**Plans**: 4/5 plans executed (sequential waves 1-5)
 
 Plans:
 **Wave 1**
@@ -79,7 +79,7 @@ Plans:
 - [x] 12-03-PLAN.md — CMP commit (D-17 leftovers removed, compress/lz4 unit pins, live sink-task round trip for the flag true/false, D-13 stop rule) plus the one-off D-12 probe (CMP-01, CMP-02, CMP-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 12-04-PLAN.md — EOS commit: KeeperStateProvider restart-read live test, with the D-15 mutation check and the D-16 stop rule (EOS-01)
+- [x] 12-04-PLAN.md — EOS commit: KeeperStateProvider restart-read live test, with the D-15 mutation check and the D-16 stop rule (EOS-01)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 12-05-PLAN.md — Full-suite gate on latest x V2 (SYNC-09 pin matrix, SYNC-10 byte identity), Docs commit (FORK-DELTA rows, checklist closure, Recorded Facts from 17) and the end-of-phase invariant gate (SYNC-09, SYNC-10, SYNC-08, SYNC-07, BLD-09, CMP-03)
@@ -192,7 +192,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 12. Upstream v1.7.0 Merge & Reconcile | 3/5 | In Progress | - |
+| 12. Upstream v1.7.0 Merge & Reconcile | 4/5 | In Progress | - |
 | 13. Fork Hardening on the Merged Tree | 0/TBD | Not started | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |

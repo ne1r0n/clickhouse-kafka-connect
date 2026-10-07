@@ -52,7 +52,7 @@
 
 ### Exactly-once State (EOS)
 
-- [ ] **EOS-01**: Upstream's `KeeperStateProvider` state-read change (counting streamed rows instead of the response summary) is covered by a direct restart-read test — state written, new provider instance, same min/max/state read back — that is shown to fail against the old summary-count code
+- [x] **EOS-01**: Upstream's `KeeperStateProvider` state-read change (counting streamed rows instead of the response summary) is covered by a direct restart-read test — state written, new provider instance, same min/max/state read back — that is shown to fail against the old summary-count code
 
 ### Metadata, Types & Config (DESC / TYPE / COLS / CFG)
 
@@ -135,7 +135,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | JSONP-06 | Phase 13 | Pending |
 | JSONP-07 | Phase 13 | Pending |
 | JSONP-08 | Phase 13 | Pending |
-| EOS-01 | Phase 12 | Pending |
+| EOS-01 | Phase 12 | Complete |
 | DESC-05 | Phase 13 | Pending |
 | TYPE-08 | Phase 13 | Pending |
 | COLS-07 | Phase 13 | Pending |

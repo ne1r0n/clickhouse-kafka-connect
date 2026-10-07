@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 12
 current_phase_name: Upstream v1.7.0 Merge & Reconcile
 status: executing
-stopped_at: Completed 12-03-PLAN.md
-last_updated: "2026-10-07T19:51:40.969Z"
+stopped_at: Completed 12-04-PLAN.md
+last_updated: "2026-10-07T19:56:06.001Z"
 last_activity: 2026-10-07
 last_activity_desc: Phase 12 execution started
-state_head: 9a4f79785f9097b263ca34771eebe4ead25904a3
+state_head: 0a0cf6b3a573c16a0a76730cd058e84d5b27eb57
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-07 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 12 (Upstream v1.7.0 Merge & Reconcile) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-07 — Phase 12 execution started
 
@@ -86,6 +86,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P01 | 11 min | 2 tasks | 9 files |
 | Phase 12 P02 | 7 min | 3 tasks | 8 files |
 | Phase 12 P03 | 11 min | 3 tasks | 5 files |
+| Phase 12 P04 | 12 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,7 @@ Roadmap decisions (2026-10-07):
 - [Phase 12]: MAP null guard scoped to Nullable columns (WRT-06); nested null Maps fall to upstream's mapTmp == null branch and are left to Phase 13 WR-02
 - [Phase 12]: Fork LZ4 capability rule deleted (BLD-09); lz4-java stays at upstream's 1.10.4 on runtimeClasspath and clickhouseDependencies, bumps remain Phase 14
 - [Phase 12]: 12-03: D-17 retired onto setCompressionMethod; compress=false alone suffices on V2 and V1 against 26.9.12.8, V1 ?compress=true is a no-observation (does not reach node options)
+- [Phase 12]: 12-04: EOS-01 restart-read test seen RED (4 of 6, expected BEFORE_PROCESSING but was NONE) against the pre-v1.7.0 summary-count read; KeeperStateProvider.java restored byte-identical to v1.7.0; D-16 hunt not needed
 
 ### Pending Todos
 
@@ -145,8 +147,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-07T19:51:40.949Z
-Stopped at: Completed 12-03-PLAN.md
+Last session: 2026-10-07T19:56:05.980Z
+Stopped at: Completed 12-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
