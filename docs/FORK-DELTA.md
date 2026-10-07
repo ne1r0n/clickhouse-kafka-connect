@@ -2,7 +2,7 @@
 
 This document records what this fork of `ClickHouse/clickhouse-kafka-connect` still patches on top of upstream, and what it gave up in favour of upstream's own implementation when `v1.6.0` was merged in. It is written for whoever runs the next upstream sync: it says which behaviours exist only here, where they live, why upstream does not supply them, and which test or requirement pins each one, so that a merge which silently drops one of them is noticed.
 
-Every row below was checked against the merged tree (`sync/v1.6.0`, commit `09cae191`) by searching the code for the construct the row describes. A row that claims a patch survives was only recorded after the patch was found in the source; a row that claims a patch was retired was only recorded after the fork's version was found to be absent. The rows describe what the code contains, not what a plan intended.
+Every row below was checked against the merged tree (`sync/v1.6.0`, commit `09cae191`; the `network_compression_method` row was added at its fix commit `87fa1e78`) by searching the code for the construct the row describes. A row that claims a patch survives was only recorded after the patch was found in the source; a row that claims a patch was retired was only recorded after the fork's version was found to be absent. The rows describe what the code contains, not what a plan intended.
 
 ## Contents
 
@@ -85,14 +85,14 @@ This is the claim the sync milestone exists to support: that the fork carries le
 
 ## The raw numbers
 
-The table gives files changed, insertions and deletions for the same two scopes at both endpoints. The wider scope is `src build.gradle.kts gradle .github`; the narrower scope is `src/main` alone. "Before" compares the fork's base `v1.2.9` with the pre-sync tip `pre-v1.6.0-sync`; "after" compares upstream `v1.6.0` with the merged `sync/v1.6.0`. Figures were measured at commit `09cae191`, before plan 11-08's `network_compression_method` fix landed in `ClickHouseHelperClient.java`, so a refresh now includes that fix's lines in the "after" `src/main` rows. They can be refreshed by running the four commands shown beneath the table.
+The table gives files changed, insertions and deletions for the same two scopes at both endpoints. The wider scope is `src build.gradle.kts gradle .github`; the narrower scope is `src/main` alone. "Before" compares the fork's base `v1.2.9` with the pre-sync tip `pre-v1.6.0-sync`; "after" compares upstream `v1.6.0` with the merged `sync/v1.6.0`. Figures were measured on the tree as published, including the `network_compression_method` fix in `ClickHouseHelperClient.java` and its two test classes. They can be refreshed by running the four commands shown beneath the table.
 
 | Scope | Endpoint | Files | Insertions | Deletions |
 |---|---|---|---|---|
 | `src build.gradle.kts gradle .github` | before: `v1.2.9` to `pre-v1.6.0-sync` | 93 | 8401 | 423 |
-| `src build.gradle.kts gradle .github` | after: `v1.6.0` to `sync/v1.6.0` | 82 | 9255 | 450 |
+| `src build.gradle.kts gradle .github` | after: `v1.6.0` to `sync/v1.6.0` | 84 | 9476 | 451 |
 | `src/main` | before: `v1.2.9` to `pre-v1.6.0-sync` | 32 | 1308 | 139 |
-| `src/main` | after: `v1.6.0` to `sync/v1.6.0` | 30 | 1358 | 97 |
+| `src/main` | after: `v1.6.0` to `sync/v1.6.0` | 30 | 1368 | 98 |
 
 ```text
 git diff --shortstat v1.2.9 pre-v1.6.0-sync -- src build.gradle.kts gradle .github
@@ -101,7 +101,7 @@ git diff --shortstat v1.2.9 pre-v1.6.0-sync -- src/main
 git diff --shortstat v1.6.0 sync/v1.6.0 -- src/main
 ```
 
-Insertions grew at both scopes, from 8401 to 9255 at the wider scope and from 1308 to 1358 in `src/main`, and deletions at the wider scope also rose, from 423 to 450. The reason is that the fork-only tests, plus this milestone's canaries, are the previous milestone's deliverable, so line growth in the test tree is the product rather than the debt. Deletions in `src/main` fell, from 139 to 97, and the file counts fell at both scopes, but neither of those says how much fork logic each file carries, so neither is offered as the headline. The smaller-delta claim rests on the behaviour ledger above, not on any single number here.
+Insertions grew at both scopes, from 8401 to 9476 at the wider scope and from 1308 to 1368 in `src/main`, and deletions at the wider scope also rose, from 423 to 451. The reason is that the fork-only tests, plus this milestone's canaries, are the previous milestone's deliverable, so line growth in the test tree is the product rather than the debt. Deletions in `src/main` fell, from 139 to 98, and the file counts fell at both scopes, but neither of those says how much fork logic each file carries, so neither is offered as the headline. The smaller-delta claim rests on the behaviour ledger above, not on any single number here.
 
 One number does bear on how the delta reads: of the 30 `src/main` files that differ from upstream `v1.6.0`, 16 differ only in import order, because the fork keeps Spotless `importOrder()` (planner decision PD-01, above) while upstream applies Spotless with no configuration block. The other 14 carry fork logic: nine modified upstream files, including the service file, and five new transform classes.
 
