@@ -1,0 +1,5 @@
+VERSION
+gradle/libs.versions.toml
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
