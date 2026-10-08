@@ -10,7 +10,9 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -202,6 +204,20 @@ public class MetadataFreeJsonTypeParityLiveTest extends ClickHouseBase {
         }
     }
 
+    /** Writes {@code records} through one sink task on the metadata-free route ({@code insertFormat=json}). */
+    private void writeThroughJsonRoute(
+            TestInfo testInfo,
+            String connectorSuffix,
+            String topic,
+            String table,
+            List<SinkRecord> records,
+            Map<String, String> extraProps)
+            throws Exception {
+        Map<String, String> jsonProps = new LinkedHashMap<>(extraProps);
+        jsonProps.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
+        writeThroughTask(testInfo, connectorSuffix, topic, table, records, jsonProps);
+    }
+
     /**
      * Writes the same records through the JSON route first and the RowBinary route second, so that a
      * mutation of a shared {@code ByteBuffer} by the JSON path would surface as a RowBinary
@@ -215,9 +231,7 @@ public class MetadataFreeJsonTypeParityLiveTest extends ClickHouseBase {
             List<SinkRecord> records,
             Map<String, String> extraProps)
             throws Exception {
-        Map<String, String> jsonProps = new LinkedHashMap<>(extraProps);
-        jsonProps.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
-        writeThroughTask(testInfo, JSON_SUFFIX, topic, jsonTable, records, jsonProps);
+        writeThroughJsonRoute(testInfo, JSON_SUFFIX, topic, jsonTable, records, extraProps);
         writeThroughTask(testInfo, ROWBINARY_SUFFIX, topic, rbTable, records, extraProps);
     }
 
@@ -265,31 +279,34 @@ public class MetadataFreeJsonTypeParityLiveTest extends ClickHouseBase {
                 .orElseThrow(() -> new AssertionError("no row with id " + id + " in " + rows.size() + " rows"));
     }
 
+    private static List<Map<String, String>> selectRows(
+            ClickHouseHelperClient chc, Projection projection, String table) throws Exception {
+        return RowSnapshots.select(chc, String.format(projection.sqlTemplate(), table), projection.aliases());
+    }
+
     /**
-     * Reads both tables with the same SELECT, runs {@code referenceAnchors} on the RowBinary rows
-     * first, then asserts the JSON table holds the same rows value for value.
+     * Reads both tables with the same SELECT, runs {@code referenceAnchors} on the reference rows
+     * first, then asserts the candidate table holds the same rows value for value.
      */
     private static void assertRoutesAgree(
             ClickHouseHelperClient chc,
             Projection projection,
-            String jsonTable,
-            String rbTable,
+            String candidateTable,
+            String referenceTable,
             Consumer<List<Map<String, String>>> referenceAnchors)
             throws Exception {
-        List<Map<String, String>> reference =
-                RowSnapshots.select(chc, String.format(projection.sqlTemplate(), rbTable), projection.aliases());
+        List<Map<String, String>> reference = selectRows(chc, projection, referenceTable);
         referenceAnchors.accept(reference);
 
-        List<Map<String, String>> actual =
-                RowSnapshots.select(chc, String.format(projection.sqlTemplate(), jsonTable), projection.aliases());
-        assertEquals(reference.size(), actual.size(), "JSON route row count differs from RowBinary");
+        List<Map<String, String>> candidate = selectRows(chc, projection, candidateTable);
+        assertEquals(reference.size(), candidate.size(), candidateTable + " row count differs from " + referenceTable);
         for (int i = 0; i < reference.size(); i++) {
             String id = reference.get(i).get("id");
             for (String alias : projection.aliases()) {
                 assertEquals(
                         reference.get(i).get(alias),
-                        actual.get(i).get(alias),
-                        "JSON route differs from RowBinary in column " + alias + " of id " + id);
+                        candidate.get(i).get(alias),
+                        candidateTable + " differs from " + referenceTable + " in column " + alias + " of id " + id);
             }
         }
     }
@@ -455,6 +472,319 @@ public class MetadataFreeJsonTypeParityLiveTest extends ClickHouseBase {
         } finally {
             ClickHouseTestHelpers.dropTable(chc, jsonTable);
             ClickHouseTestHelpers.dropTable(chc, rbTable);
+        }
+    }
+
+    private static final Schema CDC_ROW_SCHEMA = SchemaBuilder.struct()
+            .optional()
+            .field("id", Schema.INT32_SCHEMA)
+            .field("ts", Timestamp.SCHEMA)
+            .field("amount", Decimal.schema(4))
+            .build();
+
+    private static final Schema CDC_SOURCE_SCHEMA = SchemaBuilder.struct()
+            .optional()
+            .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
+            .build();
+
+    private static final String CDC_DDL = "CREATE TABLE %s (id Int32, ts DateTime64(3, 'UTC'), "
+            + "amount Decimal(18,4), _version UInt64, is_deleted UInt8) ENGINE = MergeTree ORDER BY id";
+
+    private static Schema cdcEnvelopeSchema(Schema rowSchema) {
+        return SchemaBuilder.struct()
+                .name("server.db.orders.Envelope")
+                .field("op", Schema.STRING_SCHEMA)
+                .field("before", rowSchema)
+                .field("after", rowSchema)
+                .field("source", CDC_SOURCE_SCHEMA)
+                .build();
+    }
+
+    private static Struct cdcCreateEnvelope(Schema envelopeSchema, Struct after, long lsn) {
+        return new Struct(envelopeSchema)
+                .put("op", "c")
+                .put("after", after)
+                .put("source", new Struct(CDC_SOURCE_SCHEMA).put("lsn", lsn));
+    }
+
+    private static Struct cdcRow(int id, long epochMillis, String amount) {
+        return new Struct(CDC_ROW_SCHEMA)
+                .put("id", id)
+                .put("ts", timestamp(epochMillis))
+                .put("amount", new BigDecimal(amount));
+    }
+
+    @Test
+    @DisplayName(
+            "JSONP-06/D-06: a Debezium CDC envelope with a Connect Timestamp and a Decimal stores the RowBinary value on the metadata-free JSON route")
+    void cdcEnvelopeReachesRowBinaryParityOnTheMetadataFreeRoute(TestInfo testInfo) throws Exception {
+        String topic = createTopicName("jsonp06_cdc_parity");
+        String jsonTable = topic + JSON_SUFFIX;
+        String rbTable = topic + ROWBINARY_SUFFIX;
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        ClickHouseTestHelpers.dropTable(chc, jsonTable);
+        ClickHouseTestHelpers.dropTable(chc, rbTable);
+        // The UTC zone on ts keeps toString(ts) independent of the server's default zone.
+        createTable(chc, jsonTable, CDC_DDL);
+        createTable(chc, rbTable, CDC_DDL);
+        try {
+            Schema envelopeSchema = cdcEnvelopeSchema(CDC_ROW_SCHEMA);
+            List<Struct> envelopes = List.of(
+                    cdcCreateEnvelope(envelopeSchema, cdcRow(1, 1704067200123L, "12.3456"), 100L),
+                    cdcCreateEnvelope(envelopeSchema, cdcRow(2, 86400123L, "-0.0001"), 101L));
+            writeThroughBothRoutes(
+                    testInfo,
+                    topic,
+                    jsonTable,
+                    rbTable,
+                    sinkRecords(topic, envelopeSchema, envelopes),
+                    Map.of(ClickHouseSinkConfig.DEBEZIUM_CDC_ENABLED, "true"));
+
+            Projection projection = new Projection()
+                    .strings("ts", "amount", "_version", "is_deleted")
+                    .expression("ts_ms", "toUnixTimestamp64Milli(ts)");
+
+            assertRoutesAgree(chc, projection, jsonTable, rbTable, reference -> {
+                assertEquals(2, reference.size(), "RowBinary reference row count");
+                assertEquals("2024-01-01 00:00:00.123", rowWithId(reference, 1).get("ts_s"));
+                assertEquals("12.3456", rowWithId(reference, 1).get("amount_s"));
+                assertEquals("100", rowWithId(reference, 1).get("_version_s"));
+                assertEquals("86400123", rowWithId(reference, 2).get("ts_ms"));
+            });
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, jsonTable);
+            ClickHouseTestHelpers.dropTable(chc, rbTable);
+        }
+    }
+
+    @Test
+    @DisplayName(
+            "D-18: io.debezium.time.Date and io.debezium.time.MicroTimestamp after-fields read back as the calendar date and the microsecond datetime on the metadata-free JSON route")
+    void debeziumDateAndMicroTimestampReadBackAsLiterals(TestInfo testInfo) throws Exception {
+        String topic = createTopicName("d18_debezium_literals");
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        createTable(chc, topic,
+                "CREATE TABLE %s (id Int32, d Date, mts DateTime64(6, 'UTC'), _version UInt64, is_deleted UInt8) "
+                        + "ENGINE = MergeTree ORDER BY id");
+        try {
+            Schema rowSchema = SchemaBuilder.struct()
+                    .optional()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("d", SchemaBuilder.int32().name("io.debezium.time.Date").build())
+                    .field("mts", SchemaBuilder.int64().name("io.debezium.time.MicroTimestamp").build())
+                    .build();
+            Schema envelopeSchema = cdcEnvelopeSchema(rowSchema);
+            Struct after = new Struct(rowSchema).put("id", 1).put("d", 19723).put("mts", 1704067200123456L);
+            writeThroughJsonRoute(
+                    testInfo,
+                    JSON_SUFFIX,
+                    topic,
+                    topic,
+                    sinkRecords(topic, envelopeSchema, List.of(cdcCreateEnvelope(envelopeSchema, after, 100L))),
+                    Map.of(ClickHouseSinkConfig.DEBEZIUM_CDC_ENABLED, "true"));
+
+            // Literals, not a RowBinary comparison: RowBinary's Date path divides local-midnight
+            // millis, so its result depends on the JVM time zone (RESEARCH Pitfall 3, ledger L-05).
+            List<Map<String, String>> rows = selectRows(chc, new Projection().strings("d", "mts"), topic);
+            assertEquals(1, rows.size());
+            assertEquals("2024-01-01", rows.get(0).get("d_s"));
+            assertEquals("2024-01-01 00:00:00.123456", rows.get(0).get("mts_s"));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
+    @DisplayName(
+            "JSONP-07: with every optional field null the metadata-free JSON route stores NULL in Nullable columns and the DEFAULT or type default elsewhere")
+    void nullFieldsStoreNullInNullableColumnsAndDefaultsElsewhere(TestInfo testInfo) throws Exception {
+        String topic = createTopicName("jsonp07_null_semantics");
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        createTable(chc, topic,
+                "CREATE TABLE %s (id UInt32, n Nullable(Int32), nd Nullable(Int32) DEFAULT 5, nn Int32, "
+                        + "ndf Int32 DEFAULT 7, s String, a Array(Int32), m Map(String,String), "
+                        + "dt Nullable(DateTime64(3))) ENGINE = MergeTree ORDER BY id");
+        try {
+            Schema schema = SchemaBuilder.struct()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("n", Schema.OPTIONAL_INT32_SCHEMA)
+                    .field("nd", Schema.OPTIONAL_INT32_SCHEMA)
+                    .field("nn", Schema.OPTIONAL_INT32_SCHEMA)
+                    .field("ndf", Schema.OPTIONAL_INT32_SCHEMA)
+                    .field("s", Schema.OPTIONAL_STRING_SCHEMA)
+                    .field("a", SchemaBuilder.array(Schema.INT32_SCHEMA).optional().build())
+                    .field("m", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.STRING_SCHEMA).optional().build())
+                    .field("dt", Timestamp.builder().optional().build())
+                    .build();
+            writeThroughJsonRoute(
+                    testInfo,
+                    JSON_SUFFIX,
+                    topic,
+                    topic,
+                    sinkRecords(topic, schema, List.of(new Struct(schema).put("id", 1))),
+                    Map.of());
+
+            // JSONP-07: the writer omits top-level nulls, so a Nullable column with a non-NULL DEFAULT
+            // (nd) takes that DEFAULT instead of NULL; a non-nullable column takes its DEFAULT or
+            // type default.
+            Projection projection = new Projection()
+                    .expression("n_null", "isNull(n)")
+                    .expression("nd_null", "isNull(nd)")
+                    .expression("dt_null", "isNull(dt)")
+                    .strings("nd", "nn", "ndf", "s", "a", "m");
+            List<Map<String, String>> rows = selectRows(chc, projection, topic);
+            assertEquals(1, rows.size());
+            Map<String, String> row = rows.get(0);
+            assertEquals("1", row.get("n_null"));
+            assertEquals("0", row.get("nd_null"));
+            assertEquals("5", row.get("nd_s"));
+            assertEquals("0", row.get("nn_s"));
+            assertEquals("7", row.get("ndf_s"));
+            assertEquals("", row.get("s_s"));
+            assertEquals("[]", row.get("a_s"));
+            assertEquals("{}", row.get("m_s"));
+            assertEquals("1", row.get("dt_null"));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
+    @DisplayName(
+            "JSONP-07: nulls inside arrays, maps and nested structs are coerced to the element default or stored as NULL by the metadata-free JSON route")
+    void nestedNullsAreCoercedInsideContainers(TestInfo testInfo) throws Exception {
+        String topic = createTopicName("jsonp07_nested_nulls");
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        createTable(chc, topic,
+                "CREATE TABLE %s (id UInt32, a2 Array(Int32), m2 Map(String,String), m3 Map(String, Nullable(Int32)), "
+                        + "t Tuple(x Nullable(Int32), y Int32)) ENGINE = MergeTree ORDER BY id");
+        try {
+            Schema tupleSchema = SchemaBuilder.struct()
+                    .field("x", Schema.OPTIONAL_INT32_SCHEMA)
+                    .field("y", Schema.OPTIONAL_INT32_SCHEMA)
+                    .build();
+            Schema schema = SchemaBuilder.struct()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("a2", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build())
+                    .field("m2", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA).build())
+                    .field("m3", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.OPTIONAL_INT32_SCHEMA).build())
+                    .field("t", tupleSchema)
+                    .build();
+            Map<String, String> nullString = new LinkedHashMap<>();
+            nullString.put("k", null);
+            Map<String, Integer> nullInt = new LinkedHashMap<>();
+            nullInt.put("k", null);
+            Struct value = new Struct(schema)
+                    .put("id", 1)
+                    .put("a2", Arrays.asList(1, null))
+                    .put("m2", nullString)
+                    .put("m3", nullInt)
+                    .put("t", new Struct(tupleSchema));
+            writeThroughJsonRoute(testInfo, JSON_SUFFIX, topic, topic, sinkRecords(topic, schema, List.of(value)), Map.of());
+
+            // RowBinary rejects these same nested nulls in non-nullable slots after plan 13-03, so this
+            // is a deliberate cross-route asymmetry (ledger L-07).
+            List<Map<String, String>> rows = selectRows(chc, new Projection().strings("a2", "m2", "m3", "t"), topic);
+            assertEquals(1, rows.size());
+            assertEquals("[1,0]", rows.get(0).get("a2_s"));
+            assertEquals("{'k':''}", rows.get(0).get("m2_s"));
+            assertEquals("{'k':NULL}", rows.get(0).get("m3_s"));
+            assertEquals("(NULL,0)", rows.get(0).get("t_s"));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
+    @DisplayName(
+            "JSONP-07/Phase 9 D-06: jsonInsertColumns=id,listed on a Struct fills the listed column and leaves unlisted columns at their DEFAULT")
+    void jsonInsertColumnsLeavesUnlistedColumnsAtDefaultForStructRecords(TestInfo testInfo) throws Exception {
+        String topic = createTopicName("jsonp07_insert_columns");
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        createTable(chc, topic,
+                "CREATE TABLE %s (id UInt32, listed Int32, extra Int32 DEFAULT 42, tag String DEFAULT 'unset') "
+                        + "ENGINE = MergeTree ORDER BY id");
+        try {
+            Schema schema = SchemaBuilder.struct()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("listed", Schema.INT32_SCHEMA)
+                    .field("extra", Schema.INT32_SCHEMA)
+                    .field("tag", Schema.STRING_SCHEMA)
+                    .field("bogus", Schema.STRING_SCHEMA)
+                    .build();
+            Struct value = new Struct(schema)
+                    .put("id", 1)
+                    .put("listed", 9)
+                    .put("extra", 777)
+                    .put("tag", "should_not_land")
+                    .put("bogus", "x");
+            writeThroughJsonRoute(
+                    testInfo,
+                    JSON_SUFFIX,
+                    topic,
+                    topic,
+                    sinkRecords(topic, schema, List.of(value)),
+                    Map.of(ClickHouseSinkConfig.JSON_INSERT_COLUMNS, "id,listed"));
+
+            List<Map<String, String>> rows = selectRows(chc, new Projection().strings("listed", "extra", "tag"), topic);
+            assertEquals(1, rows.size());
+            assertEquals("9", rows.get(0).get("listed_s"));
+            assertEquals("42", rows.get(0).get("extra_s"));
+            assertEquals("unset", rows.get(0).get("tag_s"));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
+    @DisplayName(
+            "JSONP-07: bypassFieldCleanup true and false land identical rows for a Struct with a non-column field on the metadata-free JSON route")
+    void bypassFieldCleanupDoesNotChangeWhatLandsOnTheMetadataFreeRoute(TestInfo testInfo) throws Exception {
+        String topic = createTopicName("jsonp07_bypass_cleanup");
+        String bypassTable = topic + "_bypass";
+        String cleanupTable = topic + "_cleanup";
+        String ddl = "CREATE TABLE %s (id UInt32, str String) ENGINE = MergeTree ORDER BY id";
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        ClickHouseTestHelpers.dropTable(chc, bypassTable);
+        ClickHouseTestHelpers.dropTable(chc, cleanupTable);
+        createTable(chc, bypassTable, ddl);
+        createTable(chc, cleanupTable, ddl);
+        try {
+            Schema schema = SchemaBuilder.struct()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("str", Schema.STRING_SCHEMA)
+                    .field("not_a_column", Schema.STRING_SCHEMA)
+                    .build();
+            String text = "Grüße ✓";
+            List<SinkRecord> records = sinkRecords(
+                    topic, schema, List.of(new Struct(schema).put("id", 1).put("str", text).put("not_a_column", "x")));
+            writeThroughJsonRoute(
+                    testInfo, "_bypass", topic, bypassTable, records,
+                    Map.of(ClickHouseSinkConfig.BYPASS_FIELD_CLEANUP, "true"));
+            writeThroughJsonRoute(
+                    testInfo, "_cleanup", topic, cleanupTable, records,
+                    Map.of(ClickHouseSinkConfig.BYPASS_FIELD_CLEANUP, "false"));
+
+            Projection projection = new Projection().hexes("str");
+            assertRoutesAgree(chc, projection, cleanupTable, bypassTable, reference -> {
+                assertEquals(1, reference.size(), "bypassFieldCleanup=true row count");
+                assertEquals(
+                        HexFormat.of().withUpperCase().formatHex(text.getBytes(StandardCharsets.UTF_8)),
+                        reference.get(0).get("str_hex"));
+            });
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, bypassTable);
+            ClickHouseTestHelpers.dropTable(chc, cleanupTable);
         }
     }
 }
