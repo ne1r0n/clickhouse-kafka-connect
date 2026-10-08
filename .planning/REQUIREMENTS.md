@@ -52,6 +52,8 @@
 - [ ] **JSONP-07**: Null-field semantics on that route are defined and pinned (Nullable column → `NULL`, non-nullable → column `DEFAULT`), as is the interaction with `jsonInsertColumns` and `bypassFieldCleanup`
 - [ ] **JSONP-08**: `cleanupExtraFields`' guard evaluates `shouldSkipTableMetadata()` before dereferencing `csc`, so the documented null-safety holds at every call site (P9-IN-01)
 
+> **Correction (Phase 13, 2026-10-08, D-13).** The operand swap makes metadata-free mode skip the `isBypassFieldCleanup()` read. It does not deliver null-safety: a null `csc` still throws `NullPointerException`, and no null-config short-circuit is added. FORK-DELTA's P9-IN-01 wording is corrected in Phase 15. The requirement text above is left as originally written.
+
 ### Exactly-once State (EOS)
 
 - [x] **EOS-01**: Upstream's `KeeperStateProvider` state-read change (counting streamed rows instead of the response summary) is covered by a direct restart-read test — state written, new provider instance, same min/max/state read back — that is shown to fail against the old summary-count code
