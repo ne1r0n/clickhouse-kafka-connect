@@ -32,10 +32,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Live pin for D-17 against the default {@code latest} image: ClickHouse 26.9 answers {@code
- * compress=1} requests with ZSTD native blocks unless the connector forces {@code
- * network_compression_method=lz4}, and client 0.9.6 only decodes LZ4 ({@code Invalid LZ4 magic
- * byte: '-112'}, surfacing as {@code Connection to ClickHouse is not active}).
+ * Live pin for CMP-01/CMP-02 against the default {@code latest} image (D-17 retired in Phase
+ * 12). ClickHouse 26.9 answers {@code compress=1} requests with ZSTD native blocks unless
+ * {@code network_compression_method=lz4} is in effect, and client 0.9.6 only decodes LZ4 ({@code
+ * Invalid LZ4 magic byte: '-112'}, surfacing as {@code Connection to ClickHouse is not active}).
+ * With the connector's controls in effect (upstream's {@code setCompressionMethod}, default true,
+ * adds the lz4 setting, and {@code compress=false} is set unconditionally), queries round-trip on
+ * both clients. Against 26.9.12.8, {@code compress=false} alone suffices on both clients, and the
+ * lz4 setting alone suffices on V2 when an operator re-enables response compression; removing both
+ * on V2 with {@code compress=true} fails with the magic-byte error above. An operator's {@code
+ * compress=true} in {@code jdbcConnectionProperties} re-enables response compression on V2
+ * (Recorded Facts 25 and 26).
  */
 class NetworkCompressionPinLiveTest extends ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(NetworkCompressionPinLiveTest.class);

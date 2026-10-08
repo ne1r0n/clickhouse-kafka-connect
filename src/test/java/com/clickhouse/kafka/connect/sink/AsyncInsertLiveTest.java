@@ -20,6 +20,8 @@ import org.junit.jupiter.api.TestInfo;
  * {@code wait_for_async_insert=1} completes and its data is present immediately after {@code
  * put()}. With {@code async_insert=1} alone the server acknowledges before the data is
  * queryable, so a read immediately after {@code put()} can legitimately see zero rows (D-15).
+ * That race is cited only as the reason this test requires {@code wait_for_async_insert=1}; this
+ * class does not test the race itself, only the deterministic wait path (P4-IN-01).
  * {@code wait_for_async_insert=1} makes the insert return only once the buffer is flushed, which
  * keeps this assertion deterministic with no polling loop. New fork-only class (D-16): it
  * extends {@code ClickHouseBase} because it needs a live ClickHouse insert.

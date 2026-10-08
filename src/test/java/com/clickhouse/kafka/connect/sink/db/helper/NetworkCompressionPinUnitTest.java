@@ -9,11 +9,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free pin for D-17: every client the connector builds sends {@code
- * network_compression_method=lz4}. ClickHouse 26.9 defaults that setting to ZSTD, which client
- * 0.9.6 cannot decode, so a sync that silently drops the setting breaks the connector against
- * every 26.9+ server. Deliberately extends nothing - extending {@code ClickHouseBase} would
- * inherit {@code @Tag("clickhouse")} and exclude this class from {@code testUnit}.
+ * Docker-free pin for CMP-01/CMP-02 (D-17 retired in Phase 12). Upstream's {@code
+ * setCompressionMethod} (default true) makes every client the connector builds send {@code
+ * network_compression_method=lz4}, and {@code compress=false} is set unconditionally (V2 through
+ * {@code compressServerResponse(false)}). This class pins both on the V1 options, the V1 node and
+ * the V2 config, plus the {@code setCompressionMethod=false} case. ClickHouse 26.9 defaults the
+ * method to ZSTD, which client 0.9.6 cannot decode, so a sync that drops both controls breaks
+ * reads. An operator's {@code compress=true} in {@code jdbcConnectionProperties} re-enables
+ * response compression on V2 (Recorded Facts 25 and 26). Deliberately extends nothing -
+ * extending {@code ClickHouseBase} would inherit its {@code clickhouse} tag and exclude this
+ * class from {@code testUnit}.
  *
  * <p>Clients are built against an unreachable endpoint: construction never contacts the server,
  * so only configuration is asserted.
