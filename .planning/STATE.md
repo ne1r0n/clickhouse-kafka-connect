@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
 status: executing
-stopped_at: Completed 13-06-PLAN.md
-last_updated: "2026-10-08T17:45:14.658Z"
+stopped_at: Completed 13-04-PLAN.md
+last_updated: "2026-10-08T17:55:53.901Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 13 execution started
-state_head: 3054e790a66405af948be3ee842cb2546810ed58
+state_head: 166cd5453e784bb0f1bbd0dcec752413d4bc11d2
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 ## Current Position
 
 Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 13 execution started
 
@@ -94,6 +94,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 13 P02 | 12 min | 2 tasks | 1 files |
 | Phase 13 P03 | 13 min | 3 tasks | 4 files |
 | Phase 13 P06 | 6 min | 3 tasks | 3 files |
+| Phase 13 P04 | 8 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 13]: 13-03: WRT-07 needed no writer change (pinned live with a seen-RED mutation); WRT-08/D-09/D-10/D-16 implemented in doWriteColValue container loops, nested null scalar/Tuple slots throw a data-free DataException (root cause of Processing's RuntimeException), nested null Array/Map coerce to empty; ledger L-09..L-13 in 13-03-SUMMARY.md
 - [Phase 13]: 13-06: HeaderToValue non-STRING target pinned as current behaviour (schema path throws DataException, schemaless overwrites with String); no main change per D-15
 - [Phase 13]: 13-06: JsonColumnTest asserts Base64 String for four configs and signed-byte Array(Nullable(Int64)) for the two Gson configs (bytes.to.base64 only affects Struct input)
+- [Phase 13]: 13-04: JSONP-08 delivers evaluation order only (metadata-free predicate first, no csc==null short-circuit, NPE on null config preserved); dated D-13 correction in REQUIREMENTS.md
+- [Phase 13]: 13-04: TYPE-08 gate narrowed to INT256/UINT256 by sharing the DYNAMIC/UNKNOWN case block in validateDataSchema; Int128/UInt128 unchanged; ledger L-14, L-15 in 13-04-SUMMARY.md
 
 ### Pending Todos
 
@@ -165,8 +168,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T17:45:14.623Z
-Stopped at: Completed 13-06-PLAN.md
+Last session: 2026-10-08T17:55:53.869Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -112,7 +112,7 @@ Plans:
      - A database-drop failure in `ClickHouseBase.tearDown()` is attributed to the class that caused it rather than logged and swallowed.
      - The `ClickHouseVersionDefaultUnitTest`, `AsyncInsertLiveTest` and `NetworkCompressionPin*` Javadocs describe the code as it now is.
 
-**Plans**: 6/8 plans executed (waves 1-4)
+**Plans**: 7/8 plans executed (waves 1-4)
 
 Plans:
 **Wave 1**
@@ -126,7 +126,7 @@ Plans:
 - [x] 13-06-PLAN.md — HeaderToValue non-STRING pin, JsonColumnTest typed read-back, try/finally lifecycles (DEBT-01, DEBT-02, DEBT-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 13-04-PLAN.md — cleanupExtraFields operand swap with a Mockito order pin and an honest note; Int256/UInt256 fail fast in validateDataSchema, Int128/UInt128 still write (JSONP-08, TYPE-08)
+- [x] 13-04-PLAN.md — cleanupExtraFields operand swap with a Mockito order pin and an honest note; Int256/UInt256 fail fast in validateDataSchema, Int128/UInt128 still write (JSONP-08, TYPE-08)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 13-08-PLAN.md — Full-suite gate on latest x V2 with the 18 named skips, consolidated behaviour ledger for Phase 15, backlog entry for the Column nullability defect (all 15 requirements)
@@ -210,7 +210,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
-| 13. Fork Hardening on the Merged Tree | 6/8 | In Progress | - |
+| 13. Fork Hardening on the Merged Tree | 7/8 | In Progress | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 
