@@ -302,6 +302,34 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
     }
 
     @Test
+    @DisplayName("DESC-05: describeTable skips rows at any depth below a JSON column and keeps Tuple-in-Tuple sub-columns")
+    void describeTableSkipsRowsAtAnyDepthBelowJson() {
+        String topic = createTopicName("desc05_json_depth_test");
+        createTable(chc, topic,
+                "CREATE TABLE %s ( `id` UInt32, "
+                        + "`j` JSON(a Int32, `b.c` String, d Tuple(x Int32, y String), e Array(Int32)), "
+                        + "`nt` Tuple(a Tuple(b Int32))) Engine = MergeTree ORDER BY id");
+        try {
+            Table table = chc.describeTable(chc.getDatabase(), topic);
+            assertNotNull(table);
+
+            Set<String> actualRoots = table.getRootColumnsList().stream()
+                    .map(Column::getName)
+                    .collect(Collectors.toSet());
+            assertEquals(Set.of("id", "j", "nt"), actualRoots);
+
+            Set<String> allKeys = table.getAllColumnsMap().keySet();
+            assertTrue(
+                    allKeys.stream().noneMatch(key -> key.startsWith("j.")),
+                    "no sub-column of the JSON column may become a Column, found: " + allKeys);
+            assertTrue(allKeys.contains("nt.a"), "Tuple sub-column nt.a must be kept, found: " + allKeys);
+            assertTrue(allKeys.contains("nt.a.b"), "nested Tuple sub-column nt.a.b must be kept, found: " + allKeys);
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
     @DisplayName("DESC-04: a table with Array(Nested(...)) makes describeTable return null")
     void arrayOfNestedTableIsUnmappable() {
         String topic = createTopicName("desc04_nested_table_test");

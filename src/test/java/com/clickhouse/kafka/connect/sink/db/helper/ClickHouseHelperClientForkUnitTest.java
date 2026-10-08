@@ -224,4 +224,40 @@ class ClickHouseHelperClientForkUnitTest {
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor("map_col.values", "String"), columns));
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor("tuple_col.a", "String"), columns));
     }
+
+    private static Map<String, Column> columnsSoFar(String... nameAndTypePairs) {
+        Map<String, Column> columns = new HashMap<>();
+        for (int i = 0; i < nameAndTypePairs.length; i += 2) {
+            Column column = Column.extractColumn(newDescriptor(nameAndTypePairs[i], nameAndTypePairs[i + 1]));
+            columns.put(column.getName(), column);
+        }
+        return columns;
+    }
+
+    @ParameterizedTest(name = "DESC-05: {0} is skipped because a JSON or Dynamic ancestor exists")
+    @ValueSource(strings = {"j.a", "j.b.c", "j.d.x", "j.d.y", "d.a.b", "tj.jj.k"})
+    @DisplayName("DESC-05: a row at any depth below a JSON or Dynamic ancestor is skipped")
+    void rowsAtAnyDepthBelowJsonOrDynamicAreSkipped(String rowName) {
+        Map<String, Column> columns = columnsSoFar(
+                "j", "JSON",
+                "d", "Dynamic",
+                "tj", "Tuple(jj JSON)",
+                "tj.jj", "JSON");
+
+        assertTrue(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor(rowName, "String"), columns));
+    }
+
+    @ParameterizedTest(name = "DESC-05: {0} is kept because no ancestor is JSON or Dynamic")
+    @ValueSource(strings = {"nt.a.b", "aj.k", "m.values", "t.a"})
+    @DisplayName("DESC-05: the ancestor walk does not widen to Tuple-in-Tuple, Array(JSON), Map or Tuple rows")
+    void rowsWithoutJsonOrDynamicAncestorAreNotSkipped(String rowName) {
+        Map<String, Column> columns = columnsSoFar(
+                "nt", "Tuple(a Tuple(b Int32))",
+                "nt.a", "Tuple(b Int32)",
+                "aj", "Array(JSON)",
+                "m", "Map(String, Int32)",
+                "t", "Tuple(a Int32)");
+
+        assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor(rowName, "Int32"), columns));
+    }
 }

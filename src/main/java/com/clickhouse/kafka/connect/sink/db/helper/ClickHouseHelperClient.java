@@ -459,8 +459,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
      * Returns true when {@code fieldDescriptor} is a structural DESCRIBE sub-column row that
      * should not become its own {@link Column}: a {@code .null}/{@code .size0}/bare {@code .size}
      * suffix (present on every {@code Nullable}/{@code Array} column, regardless of parent type),
-     * or any sub-column of a {@code JSON}/{@code Dynamic} parent (whose sub-paths are dynamic and
-     * not meaningful as standalone {@link Column}s). Map and Tuple sub-columns are deliberately
+     * or a sub-column at any depth below a {@code JSON}/{@code Dynamic} ancestor (whose sub-paths are
+     * dynamic and not meaningful as standalone {@link Column}s; typed paths such as {@code j.b.c}
+     * have no {@code j.b} row of their own). Map and Tuple sub-columns are deliberately
      * left un-skipped so {@link Table}'s own parent-routing keeps working.
      *
      * <p>{@code columnsSoFar} is the loop-local map of top-level columns extracted so far in the
@@ -476,13 +477,13 @@ public class ClickHouseHelperClient implements AutoCloseable {
         if (name.endsWith(".null") || name.endsWith(".size0") || name.endsWith(".size")) {
             return true;
         }
-        int lastDot = name.lastIndexOf('.');
-        if (lastDot < 0) {
-            return false;
+        for (int dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+            Column ancestor = columnsSoFar.get(name.substring(0, dot));
+            if (ancestor != null && (ancestor.getType() == Type.JSON || ancestor.getType() == Type.DYNAMIC)) {
+                return true;
+            }
         }
-        String parentName = name.substring(0, lastDot);
-        Column parent = columnsSoFar.get(parentName);
-        return parent != null && (parent.getType() == Type.JSON || parent.getType() == Type.DYNAMIC);
+        return false;
     }
 
     public Table describeTableV1(String database, String tableName) {
