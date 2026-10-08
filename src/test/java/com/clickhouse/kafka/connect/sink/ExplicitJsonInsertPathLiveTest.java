@@ -9,15 +9,19 @@ import com.clickhouse.client.api.query.GenericRecord;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -326,6 +330,110 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
                         HexFormat.of().withUpperCase().formatHex(strings.get(i).getBytes(StandardCharsets.UTF_8)),
                         rows.get(i).get("str_hex"));
             }
+        } finally {
+            sinkTask.stop();
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    private static final Schema CDC_ROW_SCHEMA = SchemaBuilder.struct().optional()
+            .field("id", Schema.INT32_SCHEMA)
+            .field("ts", Timestamp.SCHEMA)
+            .field("amount", Decimal.schema(4))
+            .field("name", Schema.STRING_SCHEMA)
+            .build();
+
+    private static final Schema CDC_SOURCE_SCHEMA = SchemaBuilder.struct().optional()
+            .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
+            .build();
+
+    private static final Schema CDC_ENVELOPE_SCHEMA = SchemaBuilder.struct().name("server.db.orders.Envelope")
+            .field("op", Schema.STRING_SCHEMA)
+            .field("before", CDC_ROW_SCHEMA)
+            .field("after", CDC_ROW_SCHEMA)
+            .field("source", CDC_SOURCE_SCHEMA)
+            .build();
+
+    private static Struct cdcRow(int id, String name) {
+        return new Struct(CDC_ROW_SCHEMA)
+                .put("id", id)
+                .put("ts", new Date(1_704_067_200_123L))
+                .put("amount", new BigDecimal("12.3456"))
+                .put("name", name);
+    }
+
+    private static Struct cdcEnvelope(String op, Struct before, Struct after, long lsn) {
+        Struct envelope = new Struct(CDC_ENVELOPE_SCHEMA)
+                .put("op", op)
+                .put("source", new Struct(CDC_SOURCE_SCHEMA).put("lsn", lsn));
+        if (before != null) {
+            envelope.put("before", before);
+        }
+        if (after != null) {
+            envelope.put("after", after);
+        }
+        return envelope;
+    }
+
+    @Test
+    @DisplayName(
+            "JSONP-05/D-19: a Debezium CDC batch on the metadata-free route lands typed rows and skips records that carry no values")
+    void metadataFreeRouteLandsCdcRecordsAndSkipsEmptyOnes(TestInfo testInfo) throws Exception {
+        Map<String, String> props = getBaseProps();
+        String topic = createTopicName("jsonp05_cdc_route");
+        props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
+        props.put(ClickHouseSinkConfig.DEBEZIUM_CDC_ENABLED, "true");
+        props.put("name", uniqueConnectorName(testInfo));
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        ClickHouseTestHelpers.dropTable(chc, topic);
+        // The UTC time zone on ts keeps toString(ts) independent of the server's default zone.
+        createTable(chc, topic,
+                "CREATE TABLE %s (id Int32, ts DateTime64(3, 'UTC'), amount Decimal(18,4), name String, "
+                        + "_version UInt64, is_deleted UInt8) ENGINE = MergeTree ORDER BY id");
+
+        ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
+        try {
+            sinkTask.start(props);
+
+            // op=t and op=u with a null after struct convert to an empty value map: without D-19
+            // each would land as an all-defaults row with id 0.
+            List<SinkRecord> records = new ArrayList<>();
+            Struct[] envelopes = {
+                cdcEnvelope("c", null, cdcRow(1, "created"), 100L),
+                cdcEnvelope("t", null, null, 110L),
+                cdcEnvelope("u", null, null, 120L),
+                cdcEnvelope("d", cdcRow(2, "deleted"), null, 101L),
+            };
+            for (int i = 0; i < envelopes.length; i++) {
+                records.add(new SinkRecord(topic, 0, null, null, CDC_ENVELOPE_SCHEMA, envelopes[i], i + 1));
+            }
+
+            assertDoesNotThrow(() -> sinkTask.put(records));
+
+            List<Map<String, String>> rows = allRows(chc,
+                    String.format(
+                            "SELECT id, toString(ts) AS ts, toString(amount) AS amount, name, "
+                                    + "toString(_version) AS v, toString(is_deleted) AS del FROM `%s` ORDER BY id",
+                            topic),
+                    "id", "ts", "amount", "name", "v", "del");
+            assertEquals(2, rows.size());
+
+            Map<String, String> created = rows.get(0);
+            assertEquals("1", created.get("id"));
+            assertEquals("2024-01-01 00:00:00.123", created.get("ts"));
+            assertEquals("12.3456", created.get("amount"));
+            assertEquals("created", created.get("name"));
+            assertEquals("100", created.get("v"));
+            assertEquals("0", created.get("del"));
+
+            Map<String, String> deleted = rows.get(1);
+            assertEquals("2", deleted.get("id"));
+            assertEquals("2024-01-01 00:00:00.123", deleted.get("ts"));
+            assertEquals("12.3456", deleted.get("amount"));
+            assertEquals("deleted", deleted.get("name"));
+            assertEquals("101", deleted.get("v"));
+            assertEquals("1", deleted.get("del"));
         } finally {
             sinkTask.stop();
             ClickHouseTestHelpers.dropTable(chc, topic);

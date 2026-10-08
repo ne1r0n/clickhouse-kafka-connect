@@ -1288,6 +1288,18 @@ public class ClickHouseWriter implements DBWriter {
                 if (metadataFree && record.getSchemaType() == SchemaType.SCHEMA) {
                     beforeSerialize = System.currentTimeMillis();
                     bytes = MetadataFreeJsonWriter.structRow((Struct) record.getSinkRecord().value());
+                } else if (metadataFree && record.getSchemaType() == SchemaType.DEBEZIUM_CDC) {
+                    // op=t and a null before/after struct convert to an empty map, which would
+                    // otherwise land as an all-defaults row.
+                    if (record.getJsonMap() == null || record.getJsonMap().isEmpty()) {
+                        LOGGER.debug("Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]",
+                                record.getTopic(),
+                                record.getRecordOffsetContainer().getPartition(),
+                                record.getRecordOffsetContainer().getOffset());
+                        continue;
+                    }
+                    beforeSerialize = System.currentTimeMillis();
+                    bytes = MetadataFreeJsonWriter.cdcRow(record.getJsonMap());
                 } else {
                     Map<String, Object> data;
                     switch (record.getSchemaType()) {
