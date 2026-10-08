@@ -4,17 +4,17 @@ milestone: v1.7.0_gg1-sync
 milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
-status: executing
-stopped_at: Completed 13-04-PLAN.md
-last_updated: "2026-10-08T17:55:53.901Z"
+status: verifying
+stopped_at: Completed 13-08-PLAN.md
+last_updated: "2026-10-08T18:06:52.381Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 13 execution started
-state_head: 166cd5453e784bb0f1bbd0dcec752413d4bc11d2
+state_head: 15836a63f07e928757282feab283ec757d7eb427
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 25
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 
 Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-08 — Phase 13 execution started
 
 Progress: [███░░░░░░░] 25%
@@ -95,6 +95,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 13 P03 | 13 min | 3 tasks | 4 files |
 | Phase 13 P06 | 6 min | 3 tasks | 3 files |
 | Phase 13 P04 | 8 min | 2 tasks | 5 files |
+| Phase 13 P08 | 6 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,7 @@ Roadmap decisions (2026-10-07):
 - [Phase 13]: 13-06: JsonColumnTest asserts Base64 String for four configs and signed-byte Array(Nullable(Int64)) for the two Gson configs (bytes.to.base64 only affects Struct input)
 - [Phase 13]: 13-04: JSONP-08 delivers evaluation order only (metadata-free predicate first, no csc==null short-circuit, NPE on null config preserved); dated D-13 correction in REQUIREMENTS.md
 - [Phase 13]: 13-04: TYPE-08 gate narrowed to INT256/UINT256 by sharing the DYNAMIC/UNKNOWN case block in validateDataSchema; Int128/UInt128 unchanged; ledger L-14, L-15 in 13-04-SUMMARY.md
+- [Phase 13]: 13-08: Phase 13 gate green on ClickHouse latest (26.9.13.15) x V2: 803 tests, 0 failures, 18 named skips; behaviour ledger L-01..L-19 consolidated; Enum8/Enum16/Tuple nullability defect logged as backlog 999.1
 
 ### Pending Todos
 
@@ -168,8 +170,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T17:55:53.869Z
-Stopped at: Completed 13-04-PLAN.md
+Last session: 2026-10-08T18:06:52.346Z
+Stopped at: Completed 13-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -112,7 +112,7 @@ Plans:
      - A database-drop failure in `ClickHouseBase.tearDown()` is attributed to the class that caused it rather than logged and swallowed.
      - The `ClickHouseVersionDefaultUnitTest`, `AsyncInsertLiveTest` and `NetworkCompressionPin*` Javadocs describe the code as it now is.
 
-**Plans**: 7/8 plans executed (waves 1-4)
+**Plans**: 8/8 plans executed (waves 1-4)
 
 Plans:
 **Wave 1**
@@ -129,7 +129,7 @@ Plans:
 - [x] 13-04-PLAN.md — cleanupExtraFields operand swap with a Mockito order pin and an honest note; Int256/UInt256 fail fast in validateDataSchema, Int128/UInt128 still write (JSONP-08, TYPE-08)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 13-08-PLAN.md — Full-suite gate on latest x V2 with the 18 named skips, consolidated behaviour ledger for Phase 15, backlog entry for the Column nullability defect (all 15 requirements)
+- [x] 13-08-PLAN.md — Full-suite gate on latest x V2 with the 18 named skips, consolidated behaviour ledger for Phase 15, backlog entry for the Column nullability defect (all 15 requirements)
 
 **Research flag**: spike before planning on (a) JSON-route type fidelity: what `Timestamp`/`Date`/`Time`/`Decimal`/`bytes` actually store through Jackson today. The matrix asserts observed values and does not assume parity with RowBinary. (b) WR-02's discriminator: how `doWriteColValue` tells a nested non-nullable slot from a top-level column, and what that means for the CR-02 TUPLE/VARIANT branches. Ordering inside the phase is structural. R-01 routing, WR-02, P9-IN-01 and P3-WR-03 all edit `ClickHouseWriter.java` and serialise. The metadata/config fixes and the test debt touch other files and can be planned as parallel plans. Both the R-01 change and the nested-null `DataException` are operator-visible behaviour changes. Each is recorded for the CHANGELOG and `FORK-DELTA.md` (written in Phase 15) as it lands.
 
@@ -210,7 +210,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
-| 13. Fork Hardening on the Merged Tree | 7/8 | In Progress | - |
+| 13. Fork Hardening on the Merged Tree | 8/8 | In Progress | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 

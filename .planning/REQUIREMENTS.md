@@ -39,18 +39,18 @@
 ### Writer Null-Correctness (WRT)
 
 - [x] **WRT-06**: A null optional `Map` written into a non-nullable `Map` column produces upstream #820's bytes (empty map, `00` / `00 00` with defaults); the fork's MAP null guard is scoped to nullable columns, upstream's `nullMapTypeTest` passes unmodified, and a Docker-free byte-level test pins it
-- [ ] **WRT-07**: A `null` entry inside a `Map(K, Nullable(V))` column round-trips as `NULL` end-to-end, asserted by typed SQL read-back (WR-01)
-- [ ] **WRT-08**: A `null` landing in a **nested** non-nullable element slot (Array element, Map value, Tuple field) throws a `DataException` naming the column, instead of silently desyncing the RowBinary stream; top-level non-nullable Map/Array nulls keep upstream's coercion (WR-02)
+- [x] **WRT-07**: A `null` entry inside a `Map(K, Nullable(V))` column round-trips as `NULL` end-to-end, asserted by typed SQL read-back (WR-01)
+- [x] **WRT-08**: A `null` landing in a **nested** non-nullable element slot (Array element, Map value, Tuple field) throws a `DataException` naming the column, instead of silently desyncing the RowBinary stream; top-level non-nullable Map/Array nulls keep upstream's coercion (WR-02)
 - [x] **WRT-09**: Fork CR-02 pin tests that asserted the pre-#820 early-null bytes are re-pinned to the correct bytes — nullable case unchanged, non-nullable case per #820 — with the rationale recorded next to each changed assertion
 
 > **Narrowing (Phase 13, 2026-10-08, D-09).** A nested null `Array` or `Map` in a non-nullable slot is coerced to an empty container, mirroring #820's top-level rule, so WRT-08's `DataException` covers nested non-nullable scalar and `Tuple` slots only. A `Tuple` slot follows `Column`'s reported nullability (D-16), so `Array(Nullable(Tuple(a Int32)))` null elements now throw. Through `ClickHouseSinkTask.put` the `DataException` is the root cause of a `RuntimeException`, because `Processing.doInsert` wraps every failure. The requirement text above is left as originally written.
 
 ### Metadata-free JSON Path (JSONP)
 
-- [ ] **JSONP-05**: With `insertFormat=json`, a `Struct` record and `bypassRowBinary` at its default `false`, rows land through the JSON writer (routing on `shouldSkipTableMetadata()`, never on the raw format string). The R-01 pin test flips from "0 rows, no throw" to typed read-back of every record (R-01)
-- [ ] **JSONP-06**: On that route, Kafka logical types — `Timestamp`, `Date`, `Time`, `Decimal`, `bytes` — land in matching ClickHouse columns (`DateTime`, `DateTime64`, `Date`/`Date32`, `Decimal`, `String`) with correct values, proven by a typed read-back matrix; conversion is fixed wherever Jackson's defaults would store a wrong value
-- [ ] **JSONP-07**: Null-field semantics on that route are defined and pinned (Nullable column → `NULL`, non-nullable → column `DEFAULT`), as is the interaction with `jsonInsertColumns` and `bypassFieldCleanup`
-- [ ] **JSONP-08**: `cleanupExtraFields`' guard evaluates `shouldSkipTableMetadata()` before dereferencing `csc`, so the documented null-safety holds at every call site (P9-IN-01)
+- [x] **JSONP-05**: With `insertFormat=json`, a `Struct` record and `bypassRowBinary` at its default `false`, rows land through the JSON writer (routing on `shouldSkipTableMetadata()`, never on the raw format string). The R-01 pin test flips from "0 rows, no throw" to typed read-back of every record (R-01)
+- [x] **JSONP-06**: On that route, Kafka logical types — `Timestamp`, `Date`, `Time`, `Decimal`, `bytes` — land in matching ClickHouse columns (`DateTime`, `DateTime64`, `Date`/`Date32`, `Decimal`, `String`) with correct values, proven by a typed read-back matrix; conversion is fixed wherever Jackson's defaults would store a wrong value
+- [x] **JSONP-07**: Null-field semantics on that route are defined and pinned (Nullable column → `NULL`, non-nullable → column `DEFAULT`), as is the interaction with `jsonInsertColumns` and `bypassFieldCleanup`
+- [x] **JSONP-08**: `cleanupExtraFields`' guard evaluates `shouldSkipTableMetadata()` before dereferencing `csc`, so the documented null-safety holds at every call site (P9-IN-01)
 
 > **Correction (Phase 13, 2026-10-08, D-13).** The operand swap makes metadata-free mode skip the `isBypassFieldCleanup()` read. It does not deliver null-safety: a null `csc` still throws `NullPointerException`, and no null-config short-circuit is added. FORK-DELTA's P9-IN-01 wording is corrected in Phase 15. The requirement text above is left as originally written.
 
@@ -60,18 +60,18 @@
 
 ### Metadata, Types & Config (DESC / TYPE / COLS / CFG)
 
-- [ ] **DESC-05**: `shouldSkipDescribeRow` skips DESCRIBE rows at any depth below a `JSON`/`Dynamic` column, not only the immediate child (P3-WR-01)
-- [ ] **TYPE-08**: `Int256`/`UInt256` columns fail fast through `validateDataSchema` with the actionable message, while `Int128`/`UInt128` keep being written (P3-WR-03, narrowed)
-- [ ] **COLS-07**: `Column.extractColumn`'s Array recursion passes `hasDefaultValue` and `isSubColumn` in the right order, pinned by a test
-- [ ] **CFG-04**: `ClickHouseSinkConfig`'s `ConfigDef` reports `"default"` as the `USERNAME` default
+- [x] **DESC-05**: `shouldSkipDescribeRow` skips DESCRIBE rows at any depth below a `JSON`/`Dynamic` column, not only the immediate child (P3-WR-01)
+- [x] **TYPE-08**: `Int256`/`UInt256` columns fail fast through `validateDataSchema` with the actionable message, while `Int128`/`UInt128` keep being written (P3-WR-03, narrowed)
+- [x] **COLS-07**: `Column.extractColumn`'s Array recursion passes `hasDefaultValue` and `isSubColumn` in the right order, pinned by a test
+- [x] **CFG-04**: `ClickHouseSinkConfig`'s `ConfigDef` reports `"default"` as the `USERNAME` default
 
 ### Test Debt (DEBT)
 
-- [ ] **DEBT-01**: `HeaderToValue`'s behavior when `fields` names a pre-existing non-STRING column is pinned by a test (WR-03)
-- [ ] **DEBT-02**: `JsonColumnTest` reads the payload back and asserts values, not row counts
-- [ ] **DEBT-03**: `ClickHouseSinkTaskJsonInsertFormatTest`'s two tests use the `try/finally` task-lifecycle pattern (P4-WR-01)
-- [ ] **DEBT-04**: A database-drop failure in `ClickHouseBase.tearDown()` is surfaced so it is attributable to the class that caused it, instead of being logged and swallowed (Phase 10 WR-01)
-- [ ] **DEBT-05**: Stale Javadocs are corrected — `ClickHouseVersionDefaultUnitTest` (Phase 11 IN-01), `AsyncInsertLiveTest` (P4-IN-01), and the `NetworkCompressionPin*` rationale after CMP-01
+- [x] **DEBT-01**: `HeaderToValue`'s behavior when `fields` names a pre-existing non-STRING column is pinned by a test (WR-03)
+- [x] **DEBT-02**: `JsonColumnTest` reads the payload back and asserts values, not row counts
+- [x] **DEBT-03**: `ClickHouseSinkTaskJsonInsertFormatTest`'s two tests use the `try/finally` task-lifecycle pattern (P4-WR-01)
+- [x] **DEBT-04**: A database-drop failure in `ClickHouseBase.tearDown()` is surfaced so it is attributable to the class that caused it, instead of being logged and swallowed (Phase 10 WR-01)
+- [x] **DEBT-05**: Stale Javadocs are corrected — `ClickHouseVersionDefaultUnitTest` (Phase 11 IN-01), `AsyncInsertLiveTest` (P4-IN-01), and the `NetworkCompressionPin*` rationale after CMP-01
 
 ### Build & Dependencies (BLD)
 
@@ -132,23 +132,23 @@ Which phases cover which requirements. Filled during roadmap creation.
 | CMP-02 | Phase 12 | Complete |
 | CMP-03 | Phase 12 | Complete |
 | WRT-06 | Phase 12 | Complete |
-| WRT-07 | Phase 13 | Pending |
-| WRT-08 | Phase 13 | Pending |
+| WRT-07 | Phase 13 | Complete |
+| WRT-08 | Phase 13 | Complete |
 | WRT-09 | Phase 12 | Complete |
-| JSONP-05 | Phase 13 | Pending |
-| JSONP-06 | Phase 13 | Pending |
-| JSONP-07 | Phase 13 | Pending |
-| JSONP-08 | Phase 13 | Pending |
+| JSONP-05 | Phase 13 | Complete |
+| JSONP-06 | Phase 13 | Complete |
+| JSONP-07 | Phase 13 | Complete |
+| JSONP-08 | Phase 13 | Complete |
 | EOS-01 | Phase 12 | Complete |
-| DESC-05 | Phase 13 | Pending |
-| TYPE-08 | Phase 13 | Pending |
-| COLS-07 | Phase 13 | Pending |
-| CFG-04 | Phase 13 | Pending |
-| DEBT-01 | Phase 13 | Pending |
-| DEBT-02 | Phase 13 | Pending |
-| DEBT-03 | Phase 13 | Pending |
-| DEBT-04 | Phase 13 | Pending |
-| DEBT-05 | Phase 13 | Pending |
+| DESC-05 | Phase 13 | Complete |
+| TYPE-08 | Phase 13 | Complete |
+| COLS-07 | Phase 13 | Complete |
+| CFG-04 | Phase 13 | Complete |
+| DEBT-01 | Phase 13 | Complete |
+| DEBT-02 | Phase 13 | Complete |
+| DEBT-03 | Phase 13 | Complete |
+| DEBT-04 | Phase 13 | Complete |
+| DEBT-05 | Phase 13 | Complete |
 | BLD-09 | Phase 12 | Complete |
 | BLD-10 | Phase 14 | Pending |
 | BLD-11 | Phase 14 | Pending |
