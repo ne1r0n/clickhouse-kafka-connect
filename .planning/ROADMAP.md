@@ -112,12 +112,12 @@ Plans:
      - A database-drop failure in `ClickHouseBase.tearDown()` is attributed to the class that caused it rather than logged and swallowed.
      - The `ClickHouseVersionDefaultUnitTest`, `AsyncInsertLiveTest` and `NetworkCompressionPin*` Javadocs describe the code as it now is.
 
-**Plans**: 1/8 plans executed (waves 1-4)
+**Plans**: 2/8 plans executed (waves 1-4)
 
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — Tracer: route Struct/CDC records to the JSON writer in metadata-free mode, flip the R-01 pin to typed read-back, then encode logical types (decimal seconds, integer days, raw bytes) at every depth, CDC scope and the empty-CDC skip (JSONP-05, JSONP-06)
-- [ ] 13-05-PLAN.md — DESCRIBE skip at any depth below JSON/Dynamic, extractColumn Array recursion argument order, USERNAME ConfigDef default (DESC-05, COLS-07, CFG-04)
+- [x] 13-05-PLAN.md — DESCRIBE skip at any depth below JSON/Dynamic, extractColumn Array recursion argument order, USERNAME ConfigDef default (DESC-05, COLS-07, CFG-04)
 - [ ] 13-07-PLAN.md — tearDown drop-failure attribution, shared RowSnapshots read-back helper, four stale Javadocs (DEBT-04, DEBT-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -210,7 +210,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
-| 13. Fork Hardening on the Merged Tree | 1/8 | In Progress | - |
+| 13. Fork Hardening on the Merged Tree | 2/8 | In Progress | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 

@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-10-08T17:01:10.755Z"
+stopped_at: Completed 13-05-PLAN.md
+last_updated: "2026-10-08T17:09:17.318Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 13 execution started
-state_head: d3f6d6fb2dab3f5287611deafcc634359295b116
+state_head: d8e03ea8729bae917a7787633428c95f9c6926de
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 6
+  completed_plans: 7
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 ## Current Position
 
 Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 13 execution started
 
@@ -89,6 +89,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 12 P04 | 12 min | 2 tasks | 1 files |
 | Phase 12 P05 | 5 min | 2 tasks | 2 files |
 | Phase 13 P01 | 10 min | 2 tasks | 7 files |
+| Phase 13 P05 | 8 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 12]: UAT 8/8 (2026-10-08): user accepted the additive WRT-09 pins, the compile-only SYNC-10 reading, the D-17 FORK-DELTA wording, and one full-suite ordering as sufficient for now (Phase 15 still requires two clean runs)
 - [Phase 13]: 13-01: R-01 fixed by routing keyed on shouldSkipTableMetadata(), unconditional, no opt-out flag; metadata-free route uses a private MetadataFreeJsonWriter (mapper copy), shared DataJson.OBJECT_MAPPER untouched
 - [Phase 13]: 13-01: metadata-free JSON encodings are Timestamp decimal seconds, Date epoch days, Time ms, Decimal BigDecimal, bytes raw via writeUTF8String; empty CDC records skipped (D-19); behaviour ledger L-01..L-07 in 13-01-SUMMARY.md
+- [Phase 13]: 13-05: DESC-05 skips DESCRIBE rows below a JSON/Dynamic ancestor at any depth via an ancestor-prefix walk; Tuple/Map/Array(JSON) rows stay un-skipped
+- [Phase 13]: 13-05: COLS-07 Array recursion passes hasDefaultValue, isSubColumn in signature order; CFG-04 USERNAME ConfigDef default is usernameDefault; ledger L-16..L-18 in 13-05-SUMMARY.md
 
 ### Pending Todos
 
@@ -153,8 +156,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T17:01:04.435Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-10-08T17:09:17.284Z
+Stopped at: Completed 13-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
