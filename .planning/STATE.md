@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
+See: .planning/PROJECT.md (updated 2026-10-08 after Phase 13)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 13 — Fork Hardening on the Merged Tree
+**Current focus:** Phase 14 — Dependency Bumps & CI
 
 ## Current Position
 
@@ -155,8 +155,8 @@ None.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
 - [Publish]: ⚠ **Planning history after publication is local only.** Every `.planning/` commit after `c61d90ce` lives only on local `sync/v1.6.0`. That covers 11-07 bookkeeping, review, verification, UAT, security, and this milestone's archive commits. `custom_build` is protected and equals `origin`. Decide how and whether to publish them; pushing a tag or branch also triggers `tests.yaml`. **Scheduled:** PUB-04 (Phase 15), published via merge.
 - [CI]: Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group and cancels the branch run. This happened on `c61d90ce`. **Scheduled:** CI-08 (Phase 14), which must land before any tag push.
-- [Prod]: ⚠ R-01's silent data loss is still pinned, not fixed (KEEP, Phase 9 D-01). The `lz4` pin (D-17) and the operator-visible MBean name change (D-07) are the two things to check at production rollout. **Scheduled:** R-01 → JSONP-05..07 (Phase 13); D-17 retirement done in Phase 12 (CMP-01..03); rollout checklist → ROLL-01 (Phase 15).
-- [Research flag, Phase 13]: Spike before planning on JSON-route type fidelity (`Timestamp`/`Date`/`Time`/`Decimal`/`bytes` through Jackson) and on WR-02's nested-vs-top-level null discriminator in `doWriteColValue`.
+- [Prod]: R-01 fixed by routing in Phase 13 (JSONP-05..07) — a deliberate behaviour change for explicit-JSON + Struct pipelines (rows now land). Rollout must cover it, the MBean rename (D-07), the compression setting (CMP), the nested-null `DataException` (WRT-08) and the `Int256`/`UInt256` fail-fast (TYPE-08). Source for the prose: `phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md` (L-01..L-19). **Scheduled:** ROLL-01, CHANGELOG/FORK-DELTA (Phase 15).
+- [Phase 13]: ⚠ `io.debezium.time.Timestamp` (epoch millis) is not converted on the metadata-free JSON route — ClickHouse reads it as seconds (13-REVIEW WR-02, ledger L-05). Five other review findings (WR-01, WR-03..05) are open in `13-REVIEW-DISPOSITION.md`; WR-05 is backlog 999.1. None blocks Phase 14; decide before Phase 15 publication whether WR-02 is fixed or documented as a rollout caveat.
 
 ## Deferred Items
 
@@ -170,10 +170,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T18:06:52.346Z
+Last session: 2026-10-08T18:18:41Z
 Stopped at: Phase 13 complete, ready to plan Phase 14
 Resume file: None
 
 ## Operator Next Steps
 
-- Plan Phase 13 with `/gsd-discuss-phase 13` or `/gsd-plan-phase 13` (research flag: spike JSON-route type fidelity and WR-02's null discriminator first)
+- Plan Phase 14 with `/gsd-discuss-phase 14` or `/gsd-plan-phase 14`
+- Optional before Phase 15: `/gsd-code-review 13 --fix` for the five open Phase 13 review warnings, and `/gsd-map-codebase` (the codebase map predates the v1.7.0 merge; drift gate advisory)
