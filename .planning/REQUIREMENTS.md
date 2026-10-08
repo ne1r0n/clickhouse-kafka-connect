@@ -43,6 +43,8 @@
 - [ ] **WRT-08**: A `null` landing in a **nested** non-nullable element slot (Array element, Map value, Tuple field) throws a `DataException` naming the column, instead of silently desyncing the RowBinary stream; top-level non-nullable Map/Array nulls keep upstream's coercion (WR-02)
 - [x] **WRT-09**: Fork CR-02 pin tests that asserted the pre-#820 early-null bytes are re-pinned to the correct bytes — nullable case unchanged, non-nullable case per #820 — with the rationale recorded next to each changed assertion
 
+> **Narrowing (Phase 13, 2026-10-08, D-09).** A nested null `Array` or `Map` in a non-nullable slot is coerced to an empty container, mirroring #820's top-level rule, so WRT-08's `DataException` covers nested non-nullable scalar and `Tuple` slots only. A `Tuple` slot follows `Column`'s reported nullability (D-16), so `Array(Nullable(Tuple(a Int32)))` null elements now throw. Through `ClickHouseSinkTask.put` the `DataException` is the root cause of a `RuntimeException`, because `Processing.doInsert` wraps every failure. The requirement text above is left as originally written.
+
 ### Metadata-free JSON Path (JSONP)
 
 - [ ] **JSONP-05**: With `insertFormat=json`, a `Struct` record and `bypassRowBinary` at its default `false`, rows land through the JSON writer (routing on `shouldSkipTableMetadata()`, never on the raw format string). The R-01 pin test flips from "0 rows, no throw" to typed read-back of every record (R-01)
