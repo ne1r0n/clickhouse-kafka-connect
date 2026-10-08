@@ -44,7 +44,7 @@ Phase artifacts: `milestones/v1.6.0_gg1-sync-phases/`
 **Milestone goal:** Merge upstream `v1.7.0` into `custom_build`, close all 17 open follow-ups (including R-01's silent data loss), and publish `v1.7.0_gg1` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
 - [x] **Phase 12: Upstream v1.7.0 Merge & Reconcile** - `v1.7.0` merged mechanically on a scratch branch with every fork feature proven intact, D-17 retired onto upstream's `setCompressionMethod`, #820's null-Map fix made reachable, and exactly-once state reads proven across a restart (completed 2026-10-08)
-- [ ] **Phase 13: Fork Hardening on the Merged Tree** - R-01's silent data loss fixed by routing, nulls in Map/Array/Tuple slots either round-trip or fail loudly, and the metadata, config and test-debt follow-ups closed
+- [x] **Phase 13: Fork Hardening on the Merged Tree** - R-01's silent data loss fixed by routing, nulls in Map/Array/Tuple slots either round-trip or fail loudly, and the metadata, config and test-debt follow-ups closed (completed 2026-10-08)
 - [ ] **Phase 14: Dependency Bumps & CI** - lz4-java, Jackson, okhttp, org.json and mockito bumped one attributable commit at a time; CI compiles integration sources, reports its fork count, and runs once per SHA
 - [ ] **Phase 15: Suite Gate, Publication & Rollout** - Two clean full-suite runs, `v1.7.0_gg1` published to `custom_build` with green CI on the published SHA, planning history on `origin`, operator rollout checklist written
 
@@ -112,7 +112,7 @@ Plans:
      - A database-drop failure in `ClickHouseBase.tearDown()` is attributed to the class that caused it rather than logged and swallowed.
      - The `ClickHouseVersionDefaultUnitTest`, `AsyncInsertLiveTest` and `NetworkCompressionPin*` Javadocs describe the code as it now is.
 
-**Plans**: 8/8 plans executed (waves 1-4)
+**Plans**: 8/8 plans complete (waves 1-4)
 
 Plans:
 **Wave 1**
@@ -210,7 +210,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
-| 13. Fork Hardening on the Merged Tree | 8/8 | In Progress | - |
+| 13. Fork Hardening on the Merged Tree | 8/8 | Complete    | 2026-10-08 |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 

@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg1-sync
 milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
-current_phase: 13
-current_phase_name: Fork Hardening on the Merged Tree
-status: verifying
-stopped_at: Completed 13-08-PLAN.md
-last_updated: "2026-10-08T18:06:52.381Z"
+current_phase: 14
+current_phase_name: Dependency Bumps & CI
+status: planning
+stopped_at: Phase 13 complete, ready to plan Phase 14
+last_updated: "2026-10-08T18:17:28.352Z"
 last_activity: 2026-10-08
-last_activity_desc: Phase 13 execution started
-state_head: 15836a63f07e928757282feab283ec757d7eb427
+last_activity_desc: Phase 13 complete, transitioned to Phase 14
+state_head: 6bb03dece14c0cc1edb99c27e93eb3a6cb6dd3b5
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 13
   completed_plans: 13
-  percent: 25
+  percent: 50
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 
 ## Current Position
 
-Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
-Last activity: 2026-10-08 — Phase 13 execution started
+Phase: 14 — Dependency Bumps & CI
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-08 — Phase 13 complete, transitioned to Phase 14
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -49,7 +49,7 @@ Progress: [███░░░░░░░] 25%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 12 | 5 | - | - |
-| 13 | TBD | - | - |
+| 13 | 8 | - | - |
 | 14 | TBD | - | - |
 | 15 | TBD | - | - |
 
@@ -171,7 +171,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-08T18:06:52.346Z
-Stopped at: Completed 13-08-PLAN.md
+Stopped at: Phase 13 complete, ready to plan Phase 14
 Resume file: None
 
 ## Operator Next Steps
