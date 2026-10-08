@@ -172,4 +172,71 @@ public class RowBinaryUnsupportedTypeGateTest {
         assertTrue(ex.getMessage().contains("unsupported_col"), ex.getMessage());
         assertFalse(ex.getMessage().contains(secretFieldValue), ex.getMessage());
     }
+
+    private static final String SECRET_FIELD_VALUE = "distinctive_secret_value_should_never_leak_into_logs_or_dlq";
+
+    private static Record recordWithOneColumn(String columnName, Data data, List<org.apache.kafka.connect.data.Field> fields) {
+        Map<String, Data> jsonMap = new HashMap<>();
+        jsonMap.put(columnName, data);
+        return Record.newRecord(SchemaType.SCHEMA, "test_topic", 0, 0L, fields, jsonMap, "test_db", null);
+    }
+
+    @ParameterizedTest(name = "TYPE-08: validateDataSchema throws the actionable message for {0}")
+    @EnumSource(
+            value = Type.class,
+            names = {"INT256", "UINT256"})
+    @DisplayName(
+            "TYPE-08: validateDataSchema throws the actionable message for a non-nullable, no-default Int256/UInt256 root column, and never leaks the record's field value")
+    void validateDataSchemaThrowsForEveryWideIntegerTypeAndNeverLeaksTheValue(Type type) {
+        Column column = Column.builder().name("wide_col").type(type).isNullable(false).hasDefault(false).build();
+        Table table = new Table("test_db", "test_table", false, List.of(column), 1);
+        Record record = recordWithOneColumn(
+                "wide_col", new Data(Schema.STRING_SCHEMA, SECRET_FIELD_VALUE), Collections.emptyList());
+
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        DataException ex = assertThrows(DataException.class, () -> writer.validateDataSchema(table, record, false));
+
+        assertTrue(ex.getMessage().contains("insertFormat=json"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("bypassRowBinary=true"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("wide_col"), ex.getMessage());
+        assertFalse(ex.getMessage().contains(SECRET_FIELD_VALUE), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName(
+            "TYPE-08: a Nullable(Int256) column skips the validateDataSchema gate but still fails mid-stream from doWriteColValue with the same actionable message and no bytes written")
+    void nullableInt256SkipsTheGateAndFailsFromTheDoWriteColValueBackstop() throws Exception {
+        Column column = Column.builder().name("wide_col").type(Type.INT256).isNullable(true).hasDefault(false).build();
+        Table table = new Table("test_db", "test_table", false, List.of(column), 1);
+        Data data = new Data(Schema.INT64_SCHEMA, 1L);
+        Record record = recordWithOneColumn("wide_col", data, Collections.emptyList());
+
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        assertTrue(writer.validateDataSchema(table, record, false));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        DataException ex = assertThrows(DataException.class, () -> writer.doWriteColValue(column, out, data, true));
+
+        assertTrue(ex.getMessage().contains("insertFormat=json"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("bypassRowBinary=true"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("wide_col"), ex.getMessage());
+        assertEquals(0, out.size());
+    }
+
+    @ParameterizedTest(name = "TYPE-08: validateDataSchema accepts INT64 data for a {0} column")
+    @EnumSource(
+            value = Type.class,
+            names = {"INT128", "UINT128"})
+    @DisplayName("TYPE-08: validateDataSchema keeps accepting INT64 data for non-nullable Int128/UInt128 columns - the gate is narrowed to the 256-bit types")
+    void validateDataSchemaStillAcceptsInt64DataForOneTwentyEightBitColumns(Type type) {
+        Column column = Column.builder().name("wide_col").type(type).isNullable(false).hasDefault(false).build();
+        Table table = new Table("test_db", "test_table", false, List.of(column), 1);
+        org.apache.kafka.connect.data.Field field =
+                new org.apache.kafka.connect.data.Field("wide_col", 0, Schema.INT64_SCHEMA);
+        Record record = recordWithOneColumn("wide_col", new Data(Schema.INT64_SCHEMA, Long.MAX_VALUE), List.of(field));
+
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+
+        assertTrue(writer.validateDataSchema(table, record, false));
+    }
 }

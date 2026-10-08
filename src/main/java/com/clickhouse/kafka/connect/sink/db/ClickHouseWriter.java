@@ -329,6 +329,8 @@ public class ClickHouseWriter implements DBWriter {
                             }
                             break;
                         }
+                        case "INT256":
+                        case "UINT256":
                         case "DYNAMIC":
                         case "UNKNOWN": {
                             String unsupportedTypeMsg = buildRowBinaryUnsupportedTypeMessage(colName, type);
