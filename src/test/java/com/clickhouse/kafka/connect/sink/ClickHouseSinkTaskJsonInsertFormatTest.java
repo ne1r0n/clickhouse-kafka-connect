@@ -25,6 +25,9 @@ import org.junit.jupiter.api.Test;
  * Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-10): the metadata-free {@code
  * insertFormat=json} bypass these tests exercise was re-applied to {@code src/main} in Phase 9;
  * every assertion below is unchanged from the parked version.
+ *
+ * <p>Both tests use the try/finally lifecycle, so a failed put still unregisters the MBean and
+ * drops the table (DEBT-03).
  */
 public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
     private static final String TABLE_SCHEMA = "CREATE TABLE %s ( `off16` Int16, `str` String ) Engine = MergeTree ORDER BY off16";
@@ -80,22 +83,26 @@ public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
         ClickHouseTestHelpers.dropTable(chc, tableName);
 
         ClickHouseSinkTask chst = new ClickHouseSinkTask();
-        assertDoesNotThrow(() -> chst.start(props));
+        try {
+            assertDoesNotThrow(() -> chst.start(props));
 
-        createTable(chc, tableName);
-        Collection<SinkRecord> records = createJsonRecords(topic, 0, RECORD_COUNT);
+            createTable(chc, tableName);
+            Collection<SinkRecord> records = createJsonRecords(topic, 0, RECORD_COUNT);
 
-        chst.put(records);
-        chst.stop();
+            chst.put(records);
 
-        assertEquals(records.size(), ClickHouseTestHelpers.countRows(chc, tableName));
+            assertEquals(records.size(), ClickHouseTestHelpers.countRows(chc, tableName));
 
-        List<Map<String, String>> rows = allRows(chc,
-                String.format("SELECT off16, str FROM `%s` ORDER BY off16", tableName), "off16", "str");
-        assertEquals(RECORD_COUNT, rows.size());
-        for (int i = 0; i < RECORD_COUNT; i++) {
-            assertEquals(String.valueOf(i), rows.get(i).get("off16"));
-            assertEquals("num" + i, rows.get(i).get("str"));
+            List<Map<String, String>> rows = allRows(chc,
+                    String.format("SELECT off16, str FROM `%s` ORDER BY off16", tableName), "off16", "str");
+            assertEquals(RECORD_COUNT, rows.size());
+            for (int i = 0; i < RECORD_COUNT; i++) {
+                assertEquals(String.valueOf(i), rows.get(i).get("off16"));
+                assertEquals("num" + i, rows.get(i).get("str"));
+            }
+        } finally {
+            chst.stop();
+            ClickHouseTestHelpers.dropTable(chc, tableName);
         }
     }
 
@@ -110,23 +117,28 @@ public class ClickHouseSinkTaskJsonInsertFormatTest extends ClickHouseBase {
         String topic = "json_topic";
         String tableName = "unfiltered_table";
         ClickHouseTestHelpers.dropTable(chc, tableName);
-        createTable(chc, tableName);
-
-        Collection<SinkRecord> records = createJsonRecords(topic, 0, RECORD_COUNT);
 
         ClickHouseSinkTask chst = new ClickHouseSinkTask();
-        chst.start(props);
-        chst.put(records);
-        chst.stop();
+        try {
+            createTable(chc, tableName);
 
-        assertEquals(records.size(), ClickHouseTestHelpers.countRows(chc, tableName));
+            Collection<SinkRecord> records = createJsonRecords(topic, 0, RECORD_COUNT);
 
-        List<Map<String, String>> rows = allRows(chc,
-                String.format("SELECT off16, str FROM `%s` ORDER BY off16", tableName), "off16", "str");
-        assertEquals(RECORD_COUNT, rows.size());
-        for (int i = 0; i < RECORD_COUNT; i++) {
-            assertEquals(String.valueOf(i), rows.get(i).get("off16"));
-            assertEquals("num" + i, rows.get(i).get("str"));
+            chst.start(props);
+            chst.put(records);
+
+            assertEquals(records.size(), ClickHouseTestHelpers.countRows(chc, tableName));
+
+            List<Map<String, String>> rows = allRows(chc,
+                    String.format("SELECT off16, str FROM `%s` ORDER BY off16", tableName), "off16", "str");
+            assertEquals(RECORD_COUNT, rows.size());
+            for (int i = 0; i < RECORD_COUNT; i++) {
+                assertEquals(String.valueOf(i), rows.get(i).get("off16"));
+                assertEquals("num" + i, rows.get(i).get("str"));
+            }
+        } finally {
+            chst.stop();
+            ClickHouseTestHelpers.dropTable(chc, tableName);
         }
     }
 
