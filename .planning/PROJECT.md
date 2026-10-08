@@ -210,6 +210,15 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ Quality gate — `./gradlew test` green in full on ClickHouse `latest` × client V2 (371 tests, 0 failures, 0 errors, 7 pre-existing skips), confirmed both locally and in CI — Phase 5
 - ✓ Quality gate — fork CI runs the suite on push against `latest` × V2 and publishes the coverage report — Phase 5
 
+**Delivered in `v1.7.0_gg1-sync`:**
+
+- ✓ Upstream `v1.7.0` merged on scratch branch `sync/v1.7.0` as one mechanical merge commit (`54e63648`, zero authored lines), rollback tag `pre-v1.7.0-sync`, parameterised merge-invariant script with line provenance plus a 39-row FORK-DELTA anchor grep, and a v1.7.0 merge checklist with reviewed verdicts for auto-merged hunks in fork-touched files — Phase 12 (SYNC-07, SYNC-08)
+- ✓ Every fork feature in `docs/FORK-DELTA.md` survives the merge, each proven by its existing pin test; upstream's `v1.7.0` tests accepted unmodified, with the #800 Avro-union and cluster `buildFromClause` tests compile-only and named in the FORK-DELTA skip inventory — Phase 12 (SYNC-09, SYNC-10)
+- ✓ D-17 retired onto upstream's `setCompressionMethod` for every client the connector builds, pinned Docker-free and proven live on `latest` with the flag on and off; FORK-DELTA records `compress=false` alone as sufficient on both clients — Phase 12 (CMP-01..03)
+- ✓ #820's null-Map bytes reachable for non-nullable `Map` columns (fork MAP null guard scoped to `Nullable`), pinned Docker-free; CR-02 handled by adding non-nullable pins beside the unchanged nullable ones, each with its rationale — Phase 12 (WRT-06, WRT-09)
+- ✓ `KeeperStateProvider`'s streamed-row state read covered by a restart-read test, seen red (4 of 6) against the old summary-count read — Phase 12 (EOS-01)
+- ✓ Fork LZ4 capability rule removed in favour of upstream's (one `lz4-java` on `runtimeClasspath`), catalog drops `clickhouse-jdbc` and keeps `kafka = "4.1.1"`; full suite green on `latest` 26.9.12.8 × V2 (691 tests, 18 named skips) — Phase 12 (BLD-09, BLD-13)
+
 ### Active
 
 <!-- Scoped for v1.6.0_gg1-sync, followed by the nine unscheduled follow-ups carried forward from v1.2.9_gg4-tests. -->
@@ -224,7 +233,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - [ ] The CI fork count was never read from a log. The local gate ran 6 forks; CI's was inferred from a 2-core runner assumption, and public `ubuntu-latest` runners are usually 4 vCPU. Read it from an authenticated log, or accept the topology as unmeasured (Phase 11 verification backstop)
 
 - [ ] Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group, which cancels the branch run. CI-06 had to narrow its locator to `conclusion != cancelled`. Either key the concurrency group on `github.ref` too, or push tags separately, so a published SHA has exactly one run again
-- [ ] The forced `network_compression_method=lz4` (D-17) is a workaround for client `0.9.6`. Remove it once the client decodes ZSTD, under the removal condition recorded in `docs/FORK-DELTA.md`. Before a production rollout, check that no server profile constrains this setting (T-11-38, accepted risk)
+- ~~The forced `network_compression_method=lz4` (D-17) is a workaround for client `0.9.6`. Remove it once the client decodes ZSTD, under the removal condition recorded in `docs/FORK-DELTA.md`~~ **Closed in Phase 12 (CMP-01..03)** — D-17 retired onto upstream's `setCompressionMethod`. The pre-rollout check that no server profile constrains the compression setting (T-11-38) moves to the rollout checklist (ROLL-01)
 
 **Transform follow-ups (emerged in Phase 2 code review, not yet scheduled):**
 
@@ -342,6 +351,9 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| WRT-09's "re-pin" delivered **additively**: three new pins beside the unchanged nullable CR-02 pins, no existing assertion edited | All three CR-02 pins sit on nullable columns and stay correct after #820; the 12-02 plan forbade editing existing assertions, so the literal "re-pin" reading conflicted with the plan | ✓ Phase 12 — accepted at UAT test 5 |
+| #800 Avro-union and cluster `buildFromClause` tests accepted as **compile-only** for SYNC-10 | They live in `integrationTest`, are byte-identical to `v1.7.0`, and `compileIntegrationTestJava` passes; running them needs cloud/cluster infrastructure | ✓ Phase 12 — named in the FORK-DELTA skip inventory; accepted at UAT test 7 |
+| D-17 retired onto upstream's `setCompressionMethod` (default `true`) instead of keeping the fork's lz4 pin | Upstream #841 covers the same ZSTD break; keeping both re-creates a conflict on every sync. The live probe showed `compress=false` alone suffices on V2 and V1 against 26.9.12.8 | ✓ Phase 12 (CMP-01..03) — FORK-DELTA's load-bearing sentence derived only from Recorded Fact 26; accepted at UAT test 6 |
 | ZSTD-default break on ClickHouse 26.9 fixed **in the publishing phase** (D-17) by forcing `network_compression_method=lz4` as a connector default, not by bumping the client | Without it the connector cannot read any response from `latest`, so publishing without the fix would ship a broken connector. Bumping the client is a dependency change outside this milestone; a connector default applied before operator options is the smallest fix and leaves the operator in control | ✓ Phase 11 (plan 11-08, `87fa1e78`) — the only Phase 11 `src/main` change; unit and live pins; removal condition recorded in `FORK-DELTA.md` |
 | Publish as a `--no-ff` merge into `custom_build`, with the stale FORK-DELTA raw numbers (F-1) fixed in a docs-only commit **before** the merge | A single two-parent merge gives one revertible commit (`git revert -m 1`) for the whole bring-forward. Publishing with numbers the document itself says are pre-D-17 would contradict the published-SHA run | ✓ Phase 11 — user chose "Fix F-1, then publish (Recommended)" at the blocking-human gate; `c61d90ce` pushed without force; the published-SHA CI run covers the final tree |
 | CI-06's "exactly one run" locator narrowed to exclude cancelled runs instead of re-running CI | The tag push cancelled the branch run on the same SHA, so the plain locator returned two runs. Re-running CI to manufacture one match would be the run-laundering the plan forbade | ✓ Phase 11 — run `37619434848` is the only non-cancelled match; accepted at UAT test 1. Root cause tracked as an Active follow-up |
@@ -403,4 +415,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-07 after starting milestone v1.7.0_gg1-sync*
+*Last updated: 2026-10-08 after Phase 12*

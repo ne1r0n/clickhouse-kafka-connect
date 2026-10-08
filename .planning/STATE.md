@@ -2,39 +2,39 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg1-sync
 milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
-current_phase: 12
-current_phase_name: Upstream v1.7.0 Merge & Reconcile
-status: verifying
-stopped_at: Completed 12-05-PLAN.md
-last_updated: "2026-10-07T20:06:37.649Z"
-last_activity: 2026-10-07
-last_activity_desc: Phase 12 execution started
-state_head: 85a69af48cc32c883fae3b899c974f5ed0831138
+current_phase: 13
+current_phase_name: Fork Hardening on the Merged Tree
+status: planning
+stopped_at: Phase 12 complete, ready to plan Phase 13
+last_updated: "2026-10-08T12:51:48.233Z"
+last_activity: 2026-10-08
+last_activity_desc: Phase 12 complete, transitioned to Phase 13
+state_head: d8531a1a7f9bb1ad709fe22113263079cb974ce5
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
   completed_plans: 5
-  percent: 0
+  percent: 25
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-07 after starting milestone v1.7.0_gg1-sync)
+See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 12 — Upstream v1.7.0 Merge & Reconcile
+**Current focus:** Phase 13 — Fork Hardening on the Merged Tree
 
 ## Current Position
 
-Phase: 12 (Upstream v1.7.0 Merge & Reconcile) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-10-07 — Phase 12 execution started
+Phase: 13 — Fork Hardening on the Merged Tree
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-08 — Phase 12 complete, transitioned to Phase 13
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -48,7 +48,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 12 | TBD | - | - |
+| 12 | 5 | - | - |
 | 13 | TBD | - | - |
 | 14 | TBD | - | - |
 | 15 | TBD | - | - |
@@ -121,7 +121,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 12]: 12-03: D-17 retired onto setCompressionMethod; compress=false alone suffices on V2 and V1 against 26.9.12.8, V1 ?compress=true is a no-observation (does not reach node options)
 - [Phase 12]: 12-04: EOS-01 restart-read test seen RED (4 of 6, expected BEFORE_PROCESSING but was NONE) against the pre-v1.7.0 summary-count read; KeeperStateProvider.java restored byte-identical to v1.7.0; D-16 hunt not needed
 - [Phase 12]: 12-05: D-17 load-bearing-control sentence derived only from the D-12 probe rows (Recorded Fact 26), keeping the V1 'not observed' clause
-- [Phase 12]: 12-05: full suite on latest 26.9.12.8 x V2 green (61 classes, 691 tests, 18 named skips); #800/cluster buildFromClause tests are compile-only (user to confirm SYNC-10 reading)
+- [Phase 12]: 12-05: full suite on latest 26.9.12.8 x V2 green (61 classes, 691 tests, 18 named skips); #800/cluster buildFromClause tests are compile-only
+- [Phase 12]: UAT 8/8 (2026-10-08): user accepted the additive WRT-09 pins, the compile-only SYNC-10 reading, the D-17 FORK-DELTA wording, and one full-suite ordering as sufficient for now (Phase 15 still requires two clean runs)
 
 ### Pending Todos
 
@@ -134,8 +135,7 @@ None.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
 - [Publish]: ⚠ **Planning history after publication is local only.** Every `.planning/` commit after `c61d90ce` lives only on local `sync/v1.6.0`. That covers 11-07 bookkeeping, review, verification, UAT, security, and this milestone's archive commits. `custom_build` is protected and equals `origin`. Decide how and whether to publish them; pushing a tag or branch also triggers `tests.yaml`. **Scheduled:** PUB-04 (Phase 15), published via merge.
 - [CI]: Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group and cancels the branch run. This happened on `c61d90ce`. **Scheduled:** CI-08 (Phase 14), which must land before any tag push.
-- [Prod]: ⚠ R-01's silent data loss is still pinned, not fixed (KEEP, Phase 9 D-01). The `lz4` pin (D-17) and the operator-visible MBean name change (D-07) are the two things to check at production rollout. **Scheduled:** R-01 → JSONP-05..07 (Phase 13); D-17 retirement → CMP-01..03 (Phase 12); rollout checklist → ROLL-01 (Phase 15).
-- [Research flag, Phase 12]: `KeeperStateProvider`'s stream-count state read has no standard-suite coverage (`exactlyOnceStateMismatchTest` is a named standalone skip). EOS-01 needs a deliberate restart-read test plus a mutation check against the old summary-count code.
+- [Prod]: ⚠ R-01's silent data loss is still pinned, not fixed (KEEP, Phase 9 D-01). The `lz4` pin (D-17) and the operator-visible MBean name change (D-07) are the two things to check at production rollout. **Scheduled:** R-01 → JSONP-05..07 (Phase 13); D-17 retirement done in Phase 12 (CMP-01..03); rollout checklist → ROLL-01 (Phase 15).
 - [Research flag, Phase 13]: Spike before planning on JSON-route type fidelity (`Timestamp`/`Date`/`Time`/`Decimal`/`bytes` through Jackson) and on WR-02's nested-vs-top-level null discriminator in `doWriteColValue`.
 
 ## Deferred Items
@@ -150,11 +150,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-07T20:06:37.626Z
-Stopped at: Completed 12-05-PLAN.md
+Last session: 2026-10-08
+Stopped at: Phase 12 complete, ready to plan Phase 13
 Resume file: None
 
 ## Operator Next Steps
 
-- Review `.planning/ROADMAP.md` (Phases 12-15)
-- Plan Phase 12 with `/gsd-discuss-phase 12` or `/gsd-plan-phase 12`
+- Plan Phase 13 with `/gsd-discuss-phase 13` or `/gsd-plan-phase 13` (research flag: spike JSON-route type fidelity and WR-02's null discriminator first)

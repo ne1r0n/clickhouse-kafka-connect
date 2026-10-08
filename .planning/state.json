@@ -6,7 +6,7 @@
     {
       "number": "12",
       "name": "Upstream v1.7.0 Merge & Reconcile",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "13",
@@ -26,8 +26,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 12 of 4 · 0% · executing"
+    "label": "Advance to the next step (plan phase 13)",
+    "reason": "Phase 13 of 4 — needs a plan"
   },
-  "updated_at": "2026-10-07T19:21:42.305Z"
+  "updated_at": "2026-10-08T12:51:48.261Z"
 }

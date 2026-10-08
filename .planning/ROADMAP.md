@@ -43,7 +43,7 @@ Phase artifacts: `milestones/v1.6.0_gg1-sync-phases/`
 
 **Milestone goal:** Merge upstream `v1.7.0` into `custom_build`, close all 17 open follow-ups (including R-01's silent data loss), and publish `v1.7.0_gg1` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
-- [ ] **Phase 12: Upstream v1.7.0 Merge & Reconcile** - `v1.7.0` merged mechanically on a scratch branch with every fork feature proven intact, D-17 retired onto upstream's `setCompressionMethod`, #820's null-Map fix made reachable, and exactly-once state reads proven across a restart
+- [x] **Phase 12: Upstream v1.7.0 Merge & Reconcile** - `v1.7.0` merged mechanically on a scratch branch with every fork feature proven intact, D-17 retired onto upstream's `setCompressionMethod`, #820's null-Map fix made reachable, and exactly-once state reads proven across a restart (completed 2026-10-08)
 - [ ] **Phase 13: Fork Hardening on the Merged Tree** - R-01's silent data loss fixed by routing, nulls in Map/Array/Tuple slots either round-trip or fail loudly, and the metadata, config and test-debt follow-ups closed
 - [ ] **Phase 14: Dependency Bumps & CI** - lz4-java, Jackson, okhttp, org.json and mockito bumped one attributable commit at a time; CI compiles integration sources, reports its fork count, and runs once per SHA
 - [ ] **Phase 15: Suite Gate, Publication & Rollout** - Two clean full-suite runs, `v1.7.0_gg1` published to `custom_build` with green CI on the published SHA, planning history on `origin`, operator rollout checklist written
@@ -66,7 +66,7 @@ Phase artifacts: `milestones/v1.6.0_gg1-sync-phases/`
   4. D-17's constants and pin lines are gone, and every client the connector builds receives `setCompressionMethod`: writer V1/V2, the writer's temporary client and `KeeperStateProvider`. Docker-free tests pin `compress=false` / `compressServerResponse(false)` and `network_compression_method=lz4` on the V1 options, the V1 node and the V2 config. With the flag `false`, lz4 is absent and response compression stays off. A live insert-and-read-back on `latest` succeeds with the flag `true` and with `false`, and `FORK-DELTA.md` records from that run which control is load-bearing against the ZSTD default.
   5. A null optional `Map` written into a non-nullable `Map` column produces upstream #820's bytes (`00`, or `00 00` with defaults), pinned Docker-free, because the fork's MAP null guard now fires only for nullable columns. Every CR-02 pin re-pinned to the correct bytes carries its rationale next to the changed assertion. A `KeeperStateProvider` restart-read test passes: state is written, a new provider instance is created, and the same min/max/state is read back. That test has been seen to fail against the old summary-count code.
 
-**Plans**: 5/5 plans executed (sequential waves 1-5)
+**Plans**: 5/5 plans complete (sequential waves 1-5)
 
 Plans:
 **Wave 1**
@@ -192,7 +192,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | In Progress | - |
+| 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
 | 13. Fork Hardening on the Merged Tree | 0/TBD | Not started | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
