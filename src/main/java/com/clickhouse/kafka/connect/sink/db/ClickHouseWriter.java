@@ -548,6 +548,50 @@ public class ClickHouseWriter implements DBWriter {
                 columnName, columnType);
     }
 
+    // Slot kinds name the position of a nested null in the schema; none of them carries record data.
+    private static final String NESTED_NULL_MESSAGE_FORMAT = "column '%s' (%s) %s: null in non-nullable slot";
+    private static final String NESTED_NULL_SLOT_ELEMENT = "element";
+    private static final String NESTED_NULL_SLOT_MAP_VALUE = "map value";
+    private static final String NESTED_NULL_SLOT_TUPLE = "tuple";
+    private static final String NESTED_NULL_SLOT_TUPLE_FIELD_FORMAT = "tuple field '%s'";
+
+    /**
+     * Builds the {@link DataException} message for a null in a nested non-nullable slot (WRT-08).
+     * Built only from {@code Column} metadata: it reaches logs, Connect status and DLQ headers, so
+     * it must never carry a field value, array element or map key.
+     */
+    private String buildNestedNullMessage(Column container, String slotKind) {
+        return String.format(NESTED_NULL_MESSAGE_FORMAT, container.getName(), renderColumnType(container), slotKind);
+    }
+
+    private static String renderColumnType(Column col) {
+        String rendered;
+        switch (col.getType()) {
+            case ARRAY:
+                rendered = "Array(" + (col.getArrayType() == null ? "?" : renderColumnType(col.getArrayType())) + ")";
+                break;
+            case MAP:
+                rendered = "Map(" + col.getMapKeyType() + ", "
+                        + (col.getMapValueType() == null ? "?" : renderColumnType(col.getMapValueType())) + ")";
+                break;
+            case TUPLE:
+                rendered = "Tuple(...)";
+                break;
+            default:
+                rendered = col.getType().name();
+                break;
+        }
+        return col.isNullable() ? "Nullable(" + rendered + ")" : rendered;
+    }
+
+    /**
+     * A null in a nested non-nullable ARRAY or MAP slot is written as an empty container whatever
+     * {@code defaultsSupport} says, mirroring upstream #820's top-level rule (D-09).
+     */
+    private static boolean isNullCoercedToEmpty(Column slot) {
+        return slot.getType() == Type.ARRAY || slot.getType() == Type.MAP;
+    }
+
     /**
      * Builds the message thrown by {@code doInsertRawBinaryV1}/{@code V2} when {@code
      * validateDataSchema} reports an invalid schema (TYPE-06). A JSON column is the one case where
@@ -636,6 +680,14 @@ public class ClickHouseWriter implements DBWriter {
                     mapTmp.forEach((key, mapValue) -> {
                         try {
                             doWritePrimitive(col.getMapKeyType(), value.getMapKeySchema().type(), stream, key, col);
+                            if (mapValue == null && col.getMapValueType() != null && !col.getMapValueType().isNullable()
+                                    && col.getMapValueType().getType() != Type.VARIANT) {
+                                if (!isNullCoercedToEmpty(col.getMapValueType())) {
+                                    throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_MAP_VALUE));
+                                }
+                                BinaryStreamUtils.writeVarInt(stream, 0);
+                                return;
+                            }
                             if (col.getMapValueType() != null && col.getMapValueType().isNullable() && mapValue != null) {
                                 BinaryStreamUtils.writeNonNull(stream);
                             }
@@ -657,6 +709,13 @@ public class ClickHouseWriter implements DBWriter {
                         BinaryStreamUtils.writeVarInt(stream, sizeArrObject);
                         arrObject.forEach(v -> {
                             try {
+                                if (v == null && !col.getArrayType().isNullable() && col.getArrayType().getType() != Type.VARIANT) {
+                                    if (!isNullCoercedToEmpty(col.getArrayType())) {
+                                        throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_ELEMENT));
+                                    }
+                                    BinaryStreamUtils.writeVarInt(stream, 0);
+                                    return;
+                                }
                                 if (col.getArrayType().isNullable() && v != null) {
                                     BinaryStreamUtils.writeNonNull(stream);
                                 }
@@ -669,6 +728,11 @@ public class ClickHouseWriter implements DBWriter {
                     break;
                 case TUPLE:
                     if (value.getObject() == null) {
+                        // Column reports a Tuple non-nullable even for Nullable(Tuple(...)) (D-16),
+                        // so only a slot it does report nullable may take the marker (D-10).
+                        if (!col.isNullable()) {
+                            throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_TUPLE));
+                        }
                         // See the MAP case above: a Nullable(Tuple(...)) reached as an
                         // Array/Map child with a genuine null entry must write the null marker,
                         // not dereference value.getObject() below.
@@ -689,6 +753,14 @@ public class ClickHouseWriter implements DBWriter {
                         String[] colNameSplit = column.getName().split("\\.");
                         String fieldName = colNameSplit.length > 0 ? colNameSplit[colNameSplit.length - 1] : column.getName();
                         Data innerData = (Data) jsonMapValues.get(fieldName);
+                        if (jsonMapValues.containsKey(fieldName)
+                                && (innerData == null || innerData.getObject() == null)
+                                && !column.isNullable()
+                                && !isNullCoercedToEmpty(column)
+                                && column.getType() != Type.VARIANT) {
+                            throw new DataException(buildNestedNullMessage(
+                                    col, String.format(NESTED_NULL_SLOT_TUPLE_FIELD_FORMAT, fieldName)));
+                        }
                         try {
                             // we need to apply here the default and nullable logic
                             doWriteCol(innerData, jsonMapValues.containsKey(fieldName), column, stream, false);
