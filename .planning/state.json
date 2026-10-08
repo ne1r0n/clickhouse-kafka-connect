@@ -11,7 +11,7 @@
     {
       "number": "13",
       "name": "Fork Hardening on the Merged Tree",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "14",
@@ -26,8 +26,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 13 of 4 · 25% · executing"
+    "label": "Advance to the next step (plan phase 14)",
+    "reason": "Phase 14 of 4 — needs a plan"
   },
-  "updated_at": "2026-10-08T16:27:56.497Z"
+  "updated_at": "2026-10-08T18:17:28.371Z"
 }
