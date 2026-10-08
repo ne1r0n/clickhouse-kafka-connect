@@ -475,4 +475,85 @@ public class HeaderToValueTest {
             Assertions.assertEquals(Schema.OPTIONAL_STRING_SCHEMA, newSchema.field("Trace_Id").schema());
         }
     }
+
+    private static HeaderToValue<SinkRecord> configuredForDateDate() {
+        HeaderToValue<SinkRecord> headerToValue = new HeaderToValue<>();
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("fields", "date_date");
+        configs.put("headers", "headerKey1");
+        headerToValue.configure(configs);
+        return headerToValue;
+    }
+
+    private static void assertSchemaPathRejectsStringForInt32(String headerText) {
+        try (HeaderToValue<SinkRecord> headerToValue = configuredForDateDate()) {
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("headerKey1", headerText);
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, headers);
+
+            DataException ex =
+                    Assertions.assertThrows(DataException.class, () -> headerToValue.apply(record));
+            Assertions.assertEquals("Failed to transform record", ex.getMessage());
+            Assertions.assertInstanceOf(DataException.class, ex.getCause());
+            Assertions.assertTrue(
+                    ex.getCause().getMessage().contains("date_date"),
+                    "cause should name the INT32 field: " + ex.getCause().getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("DEBT-01: schema path throws when fields names an existing INT32 field and the header is present")
+    public void testSchemaPathThrowsForExistingInt32Field() {
+        assertSchemaPathRejectsStringForInt32("headerValue1");
+    }
+
+    @Test
+    @DisplayName("DEBT-01: schema path still throws for a numeric-looking String header into an INT32 field")
+    public void testSchemaPathThrowsForNumericLookingStringIntoInt32Field() {
+        assertSchemaPathRejectsStringForInt32("123");
+    }
+
+    @Test
+    @DisplayName("DEBT-01: schema path keeps the INT32 value and type when the configured header is absent")
+    public void testSchemaPathKeepsInt32ValueWhenHeaderAbsent() {
+        try (HeaderToValue<SinkRecord> headerToValue = configuredForDateDate()) {
+            SinkRecord record = TransformTestHelpers.schemaRecord("topic1", 0, new ConnectHeaders());
+
+            SinkRecord newRecord = Assertions.assertDoesNotThrow(() -> headerToValue.apply(record));
+            Struct newValue = (Struct) newRecord.value();
+
+            Assertions.assertEquals(1715376000, newValue.get("date_date"));
+            Assertions.assertEquals(Schema.Type.INT32, newValue.schema().field("date_date").schema().type());
+        }
+    }
+
+    @Test
+    @DisplayName("DEBT-01: schemaless path replaces the INT32 value with the header's String text")
+    public void testSchemalessPathReplacesInt32WithHeaderString() {
+        try (HeaderToValue<SinkRecord> headerToValue = configuredForDateDate()) {
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addString("headerKey1", "headerValue1");
+
+            SinkRecord record = TransformTestHelpers.schemalessRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+
+            Map<String, Object> value = (Map<String, Object>) newRecord.value();
+            Assertions.assertEquals("headerValue1", value.get("date_date"));
+        }
+    }
+
+    @Test
+    @DisplayName("DEBT-01: schemaless path lands a non-String header value as its String text")
+    public void testSchemalessPathCoercesIntegerHeaderToString() {
+        try (HeaderToValue<SinkRecord> headerToValue = configuredForDateDate()) {
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.addInt("headerKey1", 42);
+
+            SinkRecord record = TransformTestHelpers.schemalessRecord("topic1", 0, headers);
+            SinkRecord newRecord = headerToValue.apply(record);
+
+            Map<String, Object> value = (Map<String, Object>) newRecord.value();
+            Assertions.assertEquals("42", value.get("date_date"));
+        }
+    }
 }
