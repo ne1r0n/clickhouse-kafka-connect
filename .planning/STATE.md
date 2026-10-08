@@ -5,11 +5,11 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
 status: planning
-stopped_at: Phase 12 complete, ready to plan Phase 13
-last_updated: "2026-10-08T12:51:48.233Z"
+stopped_at: Phase 13 context gathered
+last_updated: "2026-10-08T13:49:00.330Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 12 complete, transitioned to Phase 13
-state_head: d8531a1a7f9bb1ad709fe22113263079cb974ce5
+state_head: 43f4f60cec704b15d9b2d4d5aaf7e7bdcfd05bc6
 progress:
   total_phases: 4
   completed_phases: 1
@@ -150,9 +150,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08
-Stopped at: Phase 12 complete, ready to plan Phase 13
-Resume file: None
+Last session: 2026-10-08T13:49:00.292Z
+Stopped at: Phase 13 context gathered
+Resume file: .planning/phases/13-fork-hardening-on-the-merged-tree/13-CONTEXT.md
 
 ## Operator Next Steps
 
