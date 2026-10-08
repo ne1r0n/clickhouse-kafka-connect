@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
 status: executing
-stopped_at: Phase 13 context gathered
-last_updated: "2026-10-08T16:27:56.477Z"
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-10-08T17:01:10.755Z"
 last_activity: 2026-10-08
-last_activity_desc: Phase 12 complete, transitioned to Phase 13
-state_head: be73825285a47253d0022affe73b247d2bd401bf
+last_activity_desc: Phase 13 execution started
+state_head: d3f6d6fb2dab3f5287611deafcc634359295b116
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 5
+  completed_plans: 6
   percent: 25
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 
 ## Current Position
 
-Phase: 13 (Fork Hardening on the Merged Tree) — READY TO EXECUTE
-Plan: Not started
+Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-10-08 — Phase 12 complete, transitioned to Phase 13
+Last activity: 2026-10-08 — Phase 13 execution started
 
 Progress: [███░░░░░░░] 25%
 
@@ -88,6 +88,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 12 P03 | 11 min | 3 tasks | 5 files |
 | Phase 12 P04 | 12 min | 2 tasks | 1 files |
 | Phase 12 P05 | 5 min | 2 tasks | 2 files |
+| Phase 13 P01 | 10 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 12]: 12-05: D-17 load-bearing-control sentence derived only from the D-12 probe rows (Recorded Fact 26), keeping the V1 'not observed' clause
 - [Phase 12]: 12-05: full suite on latest 26.9.12.8 x V2 green (61 classes, 691 tests, 18 named skips); #800/cluster buildFromClause tests are compile-only
 - [Phase 12]: UAT 8/8 (2026-10-08): user accepted the additive WRT-09 pins, the compile-only SYNC-10 reading, the D-17 FORK-DELTA wording, and one full-suite ordering as sufficient for now (Phase 15 still requires two clean runs)
+- [Phase 13]: 13-01: R-01 fixed by routing keyed on shouldSkipTableMetadata(), unconditional, no opt-out flag; metadata-free route uses a private MetadataFreeJsonWriter (mapper copy), shared DataJson.OBJECT_MAPPER untouched
+- [Phase 13]: 13-01: metadata-free JSON encodings are Timestamp decimal seconds, Date epoch days, Time ms, Decimal BigDecimal, bytes raw via writeUTF8String; empty CDC records skipped (D-19); behaviour ledger L-01..L-07 in 13-01-SUMMARY.md
 
 ### Pending Todos
 
@@ -150,9 +153,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T13:49:00.292Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-fork-hardening-on-the-merged-tree/13-CONTEXT.md
+Last session: 2026-10-08T17:01:04.435Z
+Stopped at: Completed 13-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
