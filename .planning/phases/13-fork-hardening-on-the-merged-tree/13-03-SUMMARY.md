@@ -192,7 +192,7 @@ The unit and live failures were all the expected ones; the Stop rule (a message 
 ## Issues Encountered
 
 - The WRT-07 mutation attempt printed compiler deprecation warnings (`BinaryStreamUtils`, `ClickHouseNode`) that are pre-existing and unrelated.
-- The REQUIREMENTS acceptance check (`git log -1 --grep='(13-03)' -- .planning/REQUIREMENTS.md`, then count removed lines) prints 0 for the note commit `a313adc1`. The closing metadata commit also carries `(13-03)` and flips the WRT-07/WRT-08 checkboxes (`- [ ]` to `- [x]`, via `requirements.mark-complete`), so re-running that check after the closing commit reports removed lines for those two checkbox lines. The WRT-08 requirement text itself is unchanged.
+- WRT-07 and WRT-08 were not marked complete in REQUIREMENTS.md by this plan: `requirements.ready-ids` reported 0/2 ready, because plan 13-08 also declares both IDs and has no SUMMARY yet (shared-ID gate, #2388). They flip when 13-08 finishes. This also keeps the REQUIREMENTS acceptance check (`git log -1 --grep='(13-03)' -- .planning/REQUIREMENTS.md`, then count removed lines) at 0 removed lines.
 
 ## Verification
 
