@@ -1514,7 +1514,9 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     protected Map<String, Object> cleanupExtraFields(Map<String, Object> m, Table t) {
-        if (csc.isBypassFieldCleanup() || shouldSkipTableMetadata()) {
+        // The metadata-free predicate goes first so that mode never reads the bypass flag (JSONP-08);
+        // a null config still throws here, because the predicate returns false for it.
+        if (shouldSkipTableMetadata() || csc.isBypassFieldCleanup()) {
             return m;
         }
 
@@ -1730,7 +1732,9 @@ public class ClickHouseWriter implements DBWriter {
      * csc.isJsonInsertFormatExplicit()} and nothing else - {@code csc.getInsertFormat()} also
      * matches the upstream unset-{@code insertFormat} default-branch typo (falls through to the
      * JSON enum constant), and keying on that would widen the bypass to every default-configured
-     * connector in production.
+     * connector in production. Its own null check makes only this predicate safe to call on an
+     * unstarted writer; it does not make its callers null-safe, since {@code cleanupExtraFields}
+     * reads the config again after it (JSONP-08).
      */
     private boolean shouldSkipTableMetadata() {
         return csc != null && csc.isJsonInsertFormatExplicit();

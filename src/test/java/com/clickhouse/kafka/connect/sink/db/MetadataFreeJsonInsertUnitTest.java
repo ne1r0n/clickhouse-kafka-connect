@@ -3,7 +3,13 @@ package com.clickhouse.kafka.connect.sink.db;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.data.Record;
@@ -123,6 +129,59 @@ public class MetadataFreeJsonInsertUnitTest {
         assertEquals(Map.of("known_col", "value"), cleanedUnderDefault);
         assertTrue(payload.containsKey("known_col"));
         assertTrue(payload.containsKey("unknown_col"));
+    }
+
+    private static Table oneColumnTable() {
+        Column knownCol = Column.builder().name("known_col").type(Type.STRING).build();
+        return new Table("test_db", "test_table", false, List.of(knownCol), 1);
+    }
+
+    @Test
+    @DisplayName("JSONP-08: cleanupExtraFields in metadata-free mode returns the payload untouched and never reads isBypassFieldCleanup(), including for an empty payload and when bypassFieldCleanup is also set")
+    void cleanupExtraFieldsInMetadataFreeModeNeverReadsTheBypassFlag() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        ClickHouseSinkConfig csc = mock(ClickHouseSinkConfig.class);
+        when(csc.isJsonInsertFormatExplicit()).thenReturn(true);
+        when(csc.isBypassFieldCleanup()).thenReturn(true);
+        setSinkConfig(writer, csc);
+        Table table = oneColumnTable();
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("known_col", "value");
+        payload.put("unknown_col", "distinctive_unknown_value");
+        assertSame(payload, writer.cleanupExtraFields(payload, table));
+
+        Map<String, Object> empty = new HashMap<>();
+        assertSame(empty, writer.cleanupExtraFields(empty, table));
+
+        // The operand order is the whole point: metadata-free mode must short-circuit before the bypass flag is read.
+        verify(csc, never()).isBypassFieldCleanup();
+    }
+
+    @Test
+    @DisplayName("JSONP-08: cleanupExtraFields in default mode reads isBypassFieldCleanup() exactly once and returns the payload untouched when it is set")
+    void cleanupExtraFieldsInDefaultModeReadsTheBypassFlagOnce() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        ClickHouseSinkConfig csc = mock(ClickHouseSinkConfig.class);
+        when(csc.isJsonInsertFormatExplicit()).thenReturn(false);
+        when(csc.isBypassFieldCleanup()).thenReturn(true);
+        setSinkConfig(writer, csc);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("known_col", "value");
+        payload.put("unknown_col", "distinctive_unknown_value");
+        assertSame(payload, writer.cleanupExtraFields(payload, oneColumnTable()));
+
+        verify(csc, times(1)).isBypassFieldCleanup();
+    }
+
+    @Test
+    @DisplayName("JSONP-08: cleanupExtraFields with a null sink config still throws NullPointerException - the operand swap delivers evaluation order, not null-safety (D-13)")
+    void cleanupExtraFieldsWithNullSinkConfigStillThrowsNullPointerException() throws Exception {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+        setSinkConfig(writer, null);
+
+        assertThrows(NullPointerException.class, () -> writer.cleanupExtraFields(new HashMap<>(), oneColumnTable()));
     }
 
     @Test
