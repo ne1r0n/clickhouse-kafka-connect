@@ -112,7 +112,7 @@ Plans:
      - A database-drop failure in `ClickHouseBase.tearDown()` is attributed to the class that caused it rather than logged and swallowed.
      - The `ClickHouseVersionDefaultUnitTest`, `AsyncInsertLiveTest` and `NetworkCompressionPin*` Javadocs describe the code as it now is.
 
-**Plans**: 5/8 plans executed (waves 1-4)
+**Plans**: 6/8 plans executed (waves 1-4)
 
 Plans:
 **Wave 1**
@@ -123,7 +123,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 13-02-PLAN.md — Live RowBinary-vs-JSON parity matrix for every D-04 pair, CDC parity, null semantics and the jsonInsertColumns / bypassFieldCleanup pins (JSONP-06, JSONP-07)
 - [x] 13-03-PLAN.md — WRT-07 pin with a mutation check; nested-null rules in doWriteColValue's container loops (coerce containers, data-free DataException), live and DLQ pins, WRT-08 narrowing note (WRT-07, WRT-08)
-- [ ] 13-06-PLAN.md — HeaderToValue non-STRING pin, JsonColumnTest typed read-back, try/finally lifecycles (DEBT-01, DEBT-02, DEBT-03)
+- [x] 13-06-PLAN.md — HeaderToValue non-STRING pin, JsonColumnTest typed read-back, try/finally lifecycles (DEBT-01, DEBT-02, DEBT-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 13-04-PLAN.md — cleanupExtraFields operand swap with a Mockito order pin and an honest note; Int256/UInt256 fail fast in validateDataSchema, Int128/UInt128 still write (JSONP-08, TYPE-08)
@@ -210,7 +210,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
-| 13. Fork Hardening on the Merged Tree | 5/8 | In Progress | - |
+| 13. Fork Hardening on the Merged Tree | 6/8 | In Progress | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 

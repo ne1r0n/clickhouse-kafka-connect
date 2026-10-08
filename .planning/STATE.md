@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
 status: executing
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-10-08T17:40:44.947Z"
+stopped_at: Completed 13-06-PLAN.md
+last_updated: "2026-10-08T17:45:14.658Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 13 execution started
-state_head: cdba3b7d16775b3cfb710d0f8b3bff395c22f866
+state_head: 3054e790a66405af948be3ee842cb2546810ed58
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 ## Current Position
 
 Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 13 execution started
 
@@ -93,6 +93,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 13 P07 | 12 min | 2 tasks | 7 files |
 | Phase 13 P02 | 12 min | 2 tasks | 1 files |
 | Phase 13 P03 | 13 min | 3 tasks | 4 files |
+| Phase 13 P06 | 6 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 13]: 13-07: ClickHouseBase.dropSharedDatabaseOrAttribute is package-private static with a nested DatabaseDrop action, so a shared-container drop failure is attributed (IllegalStateException with class, database, cause) and pinned Docker-free (DEBT-04, D-14)
 - [Phase 13]: 13-02: MetadataFreeJsonWriter needed no fix; all D-04 parity cells, boundaries and D-07 nested cells already match RowBinary — Live twin-table matrix passed on first run; Timestamp-encoding mutation made it fail, so the matrix is not vacuous
 - [Phase 13]: 13-03: WRT-07 needed no writer change (pinned live with a seen-RED mutation); WRT-08/D-09/D-10/D-16 implemented in doWriteColValue container loops, nested null scalar/Tuple slots throw a data-free DataException (root cause of Processing's RuntimeException), nested null Array/Map coerce to empty; ledger L-09..L-13 in 13-03-SUMMARY.md
+- [Phase 13]: 13-06: HeaderToValue non-STRING target pinned as current behaviour (schema path throws DataException, schemaless overwrites with String); no main change per D-15
+- [Phase 13]: 13-06: JsonColumnTest asserts Base64 String for four configs and signed-byte Array(Nullable(Int64)) for the two Gson configs (bytes.to.base64 only affects Struct input)
 
 ### Pending Todos
 
@@ -162,8 +165,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T17:40:44.914Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-10-08T17:45:14.623Z
+Stopped at: Completed 13-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
