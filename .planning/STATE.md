@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
 status: executing
-stopped_at: Completed 13-07-PLAN.md
-last_updated: "2026-10-08T17:14:41.080Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-10-08T17:26:50.476Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 13 execution started
-state_head: ed57a0195244fe2eef5f02cf71bad99c2989d81c
+state_head: 84745a8f2cf37859fc4d4759ed6915e5fd1add26
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 ## Current Position
 
 Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 13 execution started
 
@@ -91,6 +91,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 13 P01 | 10 min | 2 tasks | 7 files |
 | Phase 13 P05 | 8 min | 3 tasks | 7 files |
 | Phase 13 P07 | 12 min | 2 tasks | 7 files |
+| Phase 13 P02 | 12 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,7 @@ Roadmap decisions (2026-10-07):
 - [Phase 13]: 13-05: DESC-05 skips DESCRIBE rows below a JSON/Dynamic ancestor at any depth via an ancestor-prefix walk; Tuple/Map/Array(JSON) rows stay un-skipped
 - [Phase 13]: 13-05: COLS-07 Array recursion passes hasDefaultValue, isSubColumn in signature order; CFG-04 USERNAME ConfigDef default is usernameDefault; ledger L-16..L-18 in 13-05-SUMMARY.md
 - [Phase 13]: 13-07: ClickHouseBase.dropSharedDatabaseOrAttribute is package-private static with a nested DatabaseDrop action, so a shared-container drop failure is attributed (IllegalStateException with class, database, cause) and pinned Docker-free (DEBT-04, D-14)
+- [Phase 13]: 13-02: MetadataFreeJsonWriter needed no fix; all D-04 parity cells, boundaries and D-07 nested cells already match RowBinary — Live twin-table matrix passed on first run; Timestamp-encoding mutation made it fail, so the matrix is not vacuous
 
 ### Pending Todos
 
@@ -158,8 +160,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T17:14:41.044Z
-Stopped at: Completed 13-07-PLAN.md
+Last session: 2026-10-08T17:26:50.439Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

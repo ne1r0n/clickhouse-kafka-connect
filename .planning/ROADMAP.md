@@ -112,7 +112,7 @@ Plans:
      - A database-drop failure in `ClickHouseBase.tearDown()` is attributed to the class that caused it rather than logged and swallowed.
      - The `ClickHouseVersionDefaultUnitTest`, `AsyncInsertLiveTest` and `NetworkCompressionPin*` Javadocs describe the code as it now is.
 
-**Plans**: 3/8 plans executed (waves 1-4)
+**Plans**: 4/8 plans executed (waves 1-4)
 
 Plans:
 **Wave 1**
@@ -121,7 +121,7 @@ Plans:
 - [x] 13-07-PLAN.md — tearDown drop-failure attribution, shared RowSnapshots read-back helper, four stale Javadocs (DEBT-04, DEBT-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 13-02-PLAN.md — Live RowBinary-vs-JSON parity matrix for every D-04 pair, CDC parity, null semantics and the jsonInsertColumns / bypassFieldCleanup pins (JSONP-06, JSONP-07)
+- [x] 13-02-PLAN.md — Live RowBinary-vs-JSON parity matrix for every D-04 pair, CDC parity, null semantics and the jsonInsertColumns / bypassFieldCleanup pins (JSONP-06, JSONP-07)
 - [ ] 13-03-PLAN.md — WRT-07 pin with a mutation check; nested-null rules in doWriteColValue's container loops (coerce containers, data-free DataException), live and DLQ pins, WRT-08 narrowing note (WRT-07, WRT-08)
 - [ ] 13-06-PLAN.md — HeaderToValue non-STRING pin, JsonColumnTest typed read-back, try/finally lifecycles (DEBT-01, DEBT-02, DEBT-03)
 
@@ -210,7 +210,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
-| 13. Fork Hardening on the Merged Tree | 3/8 | In Progress | - |
+| 13. Fork Hardening on the Merged Tree | 4/8 | In Progress | - |
 | 14. Dependency Bumps & CI | 0/TBD | Not started | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 
