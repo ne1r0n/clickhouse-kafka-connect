@@ -11,12 +11,13 @@
 #
 # Counts measured at the v1.7.0 merge commit. Expected moves: withCapability("org.lz4:lz4-java") 2 -> 1
 # (12-02, BLD-09), NETWORK_COMPRESSION_METHOD_ 2 -> 0 (12-03, CMP-01), clickhouse.jdbc / clickhouse-jdbc stay 0.
+# shouldSkipTableMetadata() 6 -> 8 (13-01, JSONP-05).
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	TARGET_TABLE_FILTER	3	CFG-01
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	jsonInsertFormatExplicit	2	CFG-01
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	//this.addClickHouseSetting("async_insert", "0", false);	1	CFG-02
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {	1	RF-8
 src/main/java/com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.java	connector=%s	1	ORCH-02
-src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	shouldSkipTableMetadata()	6	JSONP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	shouldSkipTableMetadata()	8	JSONP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	csc.getJsonInsertColumns()	1	JSONP-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	case "DYNAMIC":	1	WRT-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	buildRowBinaryUnsupportedTypeMessage	5	WRT-01

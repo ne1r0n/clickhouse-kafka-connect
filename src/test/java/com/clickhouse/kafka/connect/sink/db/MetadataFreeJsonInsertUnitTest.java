@@ -18,10 +18,13 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.kafka.connect.data.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -197,9 +200,13 @@ public class MetadataFreeJsonInsertUnitTest {
     }
 
     private static Record schemaRecordWithOneField(String topic, String database) {
+        return recordWithOneField(SchemaType.SCHEMA, topic, database);
+    }
+
+    private static Record recordWithOneField(SchemaType schemaType, String topic, String database) {
         org.apache.kafka.connect.data.Field field =
                 new org.apache.kafka.connect.data.Field("new_column", 0, Schema.STRING_SCHEMA);
-        return new Record(SchemaType.SCHEMA, new OffsetContainer(topic, 0, 0), List.of(field), null, database, null);
+        return new Record(schemaType, new OffsetContainer(topic, 0, 0), List.of(field), null, database, null);
     }
 
     @Test
@@ -245,5 +252,72 @@ public class MetadataFreeJsonInsertUnitTest {
         // over-fire.
         assertThrows(NullPointerException.class, () -> writer.doInsert(records, queryId));
         assertTrue(writer.evolveTableSchemaCalled);
+    }
+
+    /**
+     * Test-only probe for {@code doInsertBatch}'s routing: both insert hooks are replaced by
+     * counters, so a routing test asserts which hook ran without a ClickHouse server.
+     */
+    private static final class RecordingRouteWriter extends ClickHouseWriter {
+        private final Table stubTable;
+        private int jsonCalls = 0;
+        private int rawBinaryCalls = 0;
+
+        RecordingRouteWriter(SinkTaskStatistics statistics, Table stubTable) {
+            super(statistics);
+            this.stubTable = stubTable;
+        }
+
+        @Override
+        protected Table getTable(String database, String topic) {
+            return stubTable;
+        }
+
+        @Override
+        protected void doInsertJson(List<Record> records, Table table, QueryIdentifier queryId) {
+            jsonCalls++;
+        }
+
+        @Override
+        protected void doInsertRawBinary(
+                List<Record> records, Table table, QueryIdentifier queryId, boolean supportDefaults, boolean retry) {
+            rawBinaryCalls++;
+        }
+    }
+
+    private static Stream<Arguments> routingCases() {
+        return Stream.of(
+                Arguments.of("SCHEMA + insertFormat=json -> JSON", SchemaType.SCHEMA, "json", null, true),
+                Arguments.of("DEBEZIUM_CDC + insertFormat=json -> JSON", SchemaType.DEBEZIUM_CDC, "json", null, true),
+                Arguments.of("SCHEMA + insertFormat unset -> RowBinary", SchemaType.SCHEMA, null, null, false),
+                Arguments.of("DEBEZIUM_CDC + insertFormat unset -> RowBinary", SchemaType.DEBEZIUM_CDC, null, null, false),
+                Arguments.of("SCHEMA + insertFormat=none -> RowBinary", SchemaType.SCHEMA, "none", null, false),
+                Arguments.of("SCHEMA + bypassRowBinary=true, insertFormat unset -> JSON", SchemaType.SCHEMA, null, "true", true),
+                Arguments.of("SCHEMA + insertFormat=json + bypassRowBinary=true -> JSON", SchemaType.SCHEMA, "json", "true", true));
+    }
+
+    @ParameterizedTest(name = "JSONP-05: {0}")
+    @MethodSource("routingCases")
+    @DisplayName("JSONP-05: doInsertBatch routes SCHEMA and DEBEZIUM_CDC records to the JSON writer when bypassRowBinary or an explicit insertFormat=json asks for it, and to RowBinary otherwise")
+    void schemaAndCdcRecordsRouteToJsonOnlyWhenMetadataFreeOrBypassed(
+            String caseName, SchemaType schemaType, String insertFormat, String bypassRowBinary, boolean expectJson)
+            throws Exception {
+        Table stubTable = new Table("default", "route_topic", false, List.of(), 0);
+        RecordingRouteWriter writer = new RecordingRouteWriter(new SinkTaskStatistics(null, 0), stubTable);
+
+        Map<String, String> props = minimalProps();
+        if (insertFormat != null) {
+            props.put(ClickHouseSinkConfig.INSERT_FORMAT, insertFormat);
+        }
+        if (bypassRowBinary != null) {
+            props.put("bypassRowBinary", bypassRowBinary);
+        }
+        setSinkConfig(writer, new ClickHouseSinkConfig(props));
+
+        List<Record> records = List.of(recordWithOneField(schemaType, "route_topic", "default"));
+        writer.doInsert(records, new QueryIdentifier("route_topic", "test-query-id"));
+
+        assertEquals(expectJson ? 1 : 0, writer.jsonCalls, caseName + ": doInsertJson calls");
+        assertEquals(expectJson ? 0 : 1, writer.rawBinaryCalls, caseName + ": doInsertRawBinary calls");
     }
 }

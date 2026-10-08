@@ -235,7 +235,7 @@ public class ClickHouseWriter implements DBWriter {
         switch (first.getSchemaType()) {
             case SCHEMA:
             case DEBEZIUM_CDC:
-                if (csc.isBypassRowBinary()) {
+                if (csc.isBypassRowBinary() || shouldSkipTableMetadata()) {
                     doInsertJson(records, table, queryId);
                 } else {
                     doInsertRawBinary(records, table, queryId, table.hasDefaults(), true);
@@ -1278,46 +1278,65 @@ public class ClickHouseWriter implements DBWriter {
      */
     private long writeRecordsJson(List<Record> records, Table table, OutputStream stream) throws IOException {
         long dataSerializeTime = 0;
+        boolean metadataFree = shouldSkipTableMetadata();
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
                 LOGGER.trace("Record: {}", record.getTopicAndPartition());
 
-                Map<String, Object> data;
-                switch (record.getSchemaType()) {
-                    case SCHEMA:
-                        data = new HashMap<>(16);
-                        Struct struct = (Struct) record.getSinkRecord().value();
-                        for (Field field : struct.schema().fields()) {
-                            data.put(field.name(), struct.get(field));//Doesn't handle multi-level object depth
-                        }
-                        break;
-                    case DEBEZIUM_CDC:
-                        data = new HashMap<>(record.getJsonMap().size());
-                        record.getJsonMap().forEach((k, v) -> data.put(k, v.getObject()));
-                        break;
-                    default:
-                        data = (Map<String, Object>) record.getSinkRecord().value();
-                        break;
+                long beforeSerialize;
+                byte[] bytes;
+                if (metadataFree && record.getSchemaType() == SchemaType.SCHEMA) {
+                    beforeSerialize = System.currentTimeMillis();
+                    bytes = MetadataFreeJsonWriter.structRow((Struct) record.getSinkRecord().value());
+                } else {
+                    Map<String, Object> data;
+                    switch (record.getSchemaType()) {
+                        case SCHEMA:
+                            data = new HashMap<>(16);
+                            Struct struct = (Struct) record.getSinkRecord().value();
+                            for (Field field : struct.schema().fields()) {
+                                data.put(field.name(), struct.get(field));//Doesn't handle multi-level object depth
+                            }
+                            break;
+                        case DEBEZIUM_CDC:
+                            data = new HashMap<>(record.getJsonMap().size());
+                            record.getJsonMap().forEach((k, v) -> data.put(k, v.getObject()));
+                            break;
+                        default:
+                            data = (Map<String, Object>) record.getSinkRecord().value();
+                            break;
+                    }
+                    beforeSerialize = System.currentTimeMillis();
+                    Map<String, Object> cleaned = cleanupExtraFields(data, table);
+                    bytes = OBJECT_MAPPER.writeValueAsBytes(cleaned);
                 }
-                long beforeSerialize = System.currentTimeMillis();
-                Map<String, Object> cleaned = cleanupExtraFields(data, table);
-                byte[] bytes = OBJECT_MAPPER.writeValueAsBytes(cleaned);
-                dataSerializeTime += System.currentTimeMillis() - beforeSerialize;
-
-                if (LOGGER.isTraceEnabled()) {
-                    LOGGER.trace("topic {} partition {} offset {} payload {}",
-                            record.getTopic(),
-                            record.getRecordOffsetContainer().getPartition(),
-                            record.getRecordOffsetContainer().getOffset(),
-                            new String(bytes, StandardCharsets.UTF_8));
-                }
-                statistics.bytesInserted(bytes.length);
-                BinaryStreamUtils.writeBytes(stream, bytes);
+                dataSerializeTime += writeJsonRow(record, bytes, beforeSerialize, stream);
             } else {
                 LOGGER.warn(String.format("Getting empty record skip the insert topic[%s] offset[%d]", record.getTopic(), record.getSinkRecord().kafkaOffset()));
             }
         }
         return dataSerializeTime;
+    }
+
+    /**
+     * Shared tail of {@link #writeRecordsJson}: accounts the serialization time, traces the payload
+     * (TRACE only, since it carries record data) and appends one serialized row to the stream.
+     *
+     * @return milliseconds elapsed since {@code serializeStartMillis}
+     */
+    private long writeJsonRow(Record record, byte[] bytes, long serializeStartMillis, OutputStream stream) throws IOException {
+        long serializeTime = System.currentTimeMillis() - serializeStartMillis;
+
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("topic {} partition {} offset {} payload {}",
+                    record.getTopic(),
+                    record.getRecordOffsetContainer().getPartition(),
+                    record.getRecordOffsetContainer().getOffset(),
+                    new String(bytes, StandardCharsets.UTF_8));
+        }
+        statistics.bytesInserted(bytes.length);
+        BinaryStreamUtils.writeBytes(stream, bytes);
+        return serializeTime;
     }
 
     protected void doInsertJsonV1(List<Record> records, Table table, QueryIdentifier queryId) throws IOException, ExecutionException, InterruptedException {

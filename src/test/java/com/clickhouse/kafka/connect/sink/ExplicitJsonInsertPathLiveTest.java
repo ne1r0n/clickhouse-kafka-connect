@@ -9,7 +9,9 @@ import com.clickhouse.client.api.query.GenericRecord;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,11 +30,10 @@ import org.junit.jupiter.api.TestInfo;
  * live half of the {@code cleanupExtraFields} bypass - the Docker-free half lives in
  * {@code MetadataFreeJsonInsertUnitTest}), and JSON-04 (tombstone handling in a mixed batch and
  * an all-tombstone batch). New fork-only class (D-16): it does not extend or modify any upstream
- * test class. Every record built in this class is a schemaless {@code Map} value rather than a
- * {@code Struct}, per D-06, because the schemaless route is the only one where metadata-free mode
- * actually changes behavior - R-01 proved the Struct + RowBinary combination under
- * {@code insertFormat=json} silently drops data, which is explicitly out of scope for a pin here
- * (see Task 4's blocking-human checkpoint).
+ * test class. Most records built in this class are schemaless {@code Map} values. {@code Struct}
+ * records now land through the JSON writer under {@code insertFormat=json} as well (JSONP-05,
+ * formerly the R-01 silent-loss pin); the dedicated test for that route sits at the end of the
+ * class.
  *
  * <p>Re-enabled per the JSONP-01 KEEP decision (Phase 9, D-01/D-10): the metadata-free {@code
  * insertFormat=json} bypass this class exercises was re-applied to {@code src/main} in Phase 9;
@@ -276,38 +277,20 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
     }
 
     /**
-     * R-01 PIN - NOT AN ENDORSEMENT.
-     *
-     * <p>This test records CONFIRMED SILENT DATA LOSS for {@code insertFormat=json}
-     * (metadata-free mode) combined with a {@code Struct} (schema'd) record and {@code
-     * bypassRowBinary} left at its default ({@code false}). {@code doInsert} routes {@code
-     * SCHEMA} records to {@code doInsertRawBinaryV2}, whose per-column write loop iterates
-     * {@code table.getRootColumnsList()} - which is empty for the synthetic, column-less {@code
-     * Table} that metadata-free mode builds - so every record silently serializes to zero bytes.
-     * {@code put()} returns normally, no exception is thrown anywhere in the call chain, and 0 of
-     * the batch's records land. This was empirically confirmed both in 04-RESEARCH.md's session
-     * (client's own {@code InsertResponse} reported {@code Written Rows: [0]} for a 5-record
-     * batch, server {@code 26.8.6.5}) and re-confirmed by this test.
-     *
-     * <p>This test was added at the 04-01 Task 4 blocking-human checkpoint (the R-01 escalation)
-     * at the user's EXPLICIT direction (the answer was {@code pin-current-behavior}), specifically
-     * so a future change to this behavior does not go unnoticed by the suite. A fail-fast throw
-     * for this combination is deliberately NOT in scope here: 04-CONTEXT.md D-01 and D-07 do not
-     * pre-approve it, because it would break - loudly, at startup of the next batch - any
-     * production pipeline currently running {@code insertFormat=json} with a Struct converter.
-     * That pipeline is losing data today but is not failing today; turning this into a loud error
-     * is a separate decision that needs its own plan, not something this test or this plan
-     * performs.
+     * Added at the 04-01 Task 4 checkpoint to pin R-01's silent loss ({@code insertFormat=json} with
+     * a {@code Struct} record routed to RowBinary against a column-less synthetic table, so every
+     * record serialized to zero bytes). Flipped in Phase 13: R-01 is fixed by routing, per the
+     * milestone's locked decision.
      */
     @Test
     @DisplayName(
-            "JSON-01: [R-01 pin] insertFormat=json + a Struct record + bypassRowBinary left unset silently drops the whole batch - confirmed data loss, not fixed in this phase (see checkpoint)")
-    void explicitJsonStructRecordWithDefaultBypassRowBinarySilentlyDropsBatch(TestInfo testInfo) throws Exception {
+            "JSONP-05: insertFormat=json + a Struct record + bypassRowBinary left unset lands every record through the JSON writer (formerly the R-01 pin)")
+    void explicitJsonStructRecordWithDefaultBypassRowBinaryLandsEveryRecord(TestInfo testInfo) throws Exception {
         Map<String, String> props = getBaseProps();
         String topic = createTopicName("json01_r01_struct_pin");
         props.put(ClickHouseSinkConfig.INSERT_FORMAT, "json");
-        // bypassRowBinary is intentionally left UNSET (defaults to false) - this is exactly the
-        // combination R-01 probed and the user directed be pinned at the Task 4 checkpoint.
+        // bypassRowBinary is intentionally left UNSET (defaults to false): the combination R-01
+        // used to lose silently.
         props.put("name", uniqueConnectorName(testInfo));
 
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
@@ -323,19 +306,26 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
                     .field("id", Schema.INT32_SCHEMA)
                     .field("str", Schema.STRING_SCHEMA)
                     .build();
+            List<String> strings = List.of("row1", "row2", "row3", "row4", "Gr\u00fc\u00dfe \u2713");
             List<SinkRecord> records = new ArrayList<>();
-            for (int i = 1; i <= 5; i++) {
-                Struct value = new Struct(schema).put("id", i).put("str", "row" + i);
+            for (int i = 1; i <= strings.size(); i++) {
+                Struct value = new Struct(schema).put("id", i).put("str", strings.get(i - 1));
                 records.add(new SinkRecord(topic, 0, null, null, schema, value, i));
             }
 
-            // Observed outcome (live run against ClickHouse latest, this session, matching
-            // 04-RESEARCH.md's R-01 finding against server 26.8.6.5): put() does not throw and
-            // every one of the 5 records is silently discarded - 0 rows land. This is ground
-            // truth for the current fork behavior, recorded here exactly as observed, not as
-            // predicted.
             assertDoesNotThrow(() -> sinkTask.put(records));
-            assertEquals(0, ClickHouseTestHelpers.countRows(chc, topic));
+
+            // hex() keeps the comparison byte-exact under the test JVM's windows-1252 default.
+            List<Map<String, String>> rows = allRows(chc,
+                    String.format("SELECT id, hex(str) AS str_hex FROM `%s` ORDER BY id", topic),
+                    "id", "str_hex");
+            assertEquals(strings.size(), rows.size());
+            for (int i = 0; i < strings.size(); i++) {
+                assertEquals(String.valueOf(i + 1), rows.get(i).get("id"));
+                assertEquals(
+                        HexFormat.of().withUpperCase().formatHex(strings.get(i).getBytes(StandardCharsets.UTF_8)),
+                        rows.get(i).get("str_hex"));
+            }
         } finally {
             sinkTask.stop();
             ClickHouseTestHelpers.dropTable(chc, topic);
