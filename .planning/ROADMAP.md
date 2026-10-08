@@ -112,7 +112,24 @@ Plans:
      - A database-drop failure in `ClickHouseBase.tearDown()` is attributed to the class that caused it rather than logged and swallowed.
      - The `ClickHouseVersionDefaultUnitTest`, `AsyncInsertLiveTest` and `NetworkCompressionPin*` Javadocs describe the code as it now is.
 
-**Plans**: TBD
+**Plans**: 8 plans (waves 1-4)
+
+Plans:
+**Wave 1**
+- [ ] 13-01-PLAN.md — Tracer: route Struct/CDC records to the JSON writer in metadata-free mode, flip the R-01 pin to typed read-back, then encode logical types (decimal seconds, integer days, raw bytes) at every depth, CDC scope and the empty-CDC skip (JSONP-05, JSONP-06)
+- [ ] 13-05-PLAN.md — DESCRIBE skip at any depth below JSON/Dynamic, extractColumn Array recursion argument order, USERNAME ConfigDef default (DESC-05, COLS-07, CFG-04)
+- [ ] 13-07-PLAN.md — tearDown drop-failure attribution, shared RowSnapshots read-back helper, four stale Javadocs (DEBT-04, DEBT-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 13-02-PLAN.md — Live RowBinary-vs-JSON parity matrix for every D-04 pair, CDC parity, null semantics and the jsonInsertColumns / bypassFieldCleanup pins (JSONP-06, JSONP-07)
+- [ ] 13-03-PLAN.md — WRT-07 pin with a mutation check; nested-null rules in doWriteColValue's container loops (coerce containers, data-free DataException), live and DLQ pins, WRT-08 narrowing note (WRT-07, WRT-08)
+- [ ] 13-06-PLAN.md — HeaderToValue non-STRING pin, JsonColumnTest typed read-back, try/finally lifecycles (DEBT-01, DEBT-02, DEBT-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 13-04-PLAN.md — cleanupExtraFields operand swap with a Mockito order pin and an honest note; Int256/UInt256 fail fast in validateDataSchema, Int128/UInt128 still write (JSONP-08, TYPE-08)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 13-08-PLAN.md — Full-suite gate on latest x V2 with the 18 named skips, consolidated behaviour ledger for Phase 15, backlog entry for the Column nullability defect (all 15 requirements)
 
 **Research flag**: spike before planning on (a) JSON-route type fidelity: what `Timestamp`/`Date`/`Time`/`Decimal`/`bytes` actually store through Jackson today. The matrix asserts observed values and does not assume parity with RowBinary. (b) WR-02's discriminator: how `doWriteColValue` tells a nested non-nullable slot from a top-level column, and what that means for the CR-02 TUPLE/VARIANT branches. Ordering inside the phase is structural. R-01 routing, WR-02, P9-IN-01 and P3-WR-03 all edit `ClickHouseWriter.java` and serialise. The metadata/config fixes and the test debt touch other files and can be planned as parallel plans. Both the R-01 change and the nested-null `DataException` are operator-visible behaviour changes. Each is recorded for the CHANGELOG and `FORK-DELTA.md` (written in Phase 15) as it lands.
 
