@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 13
 current_phase_name: Fork Hardening on the Merged Tree
 status: executing
-stopped_at: Completed 13-05-PLAN.md
-last_updated: "2026-10-08T17:09:17.318Z"
+stopped_at: Completed 13-07-PLAN.md
+last_updated: "2026-10-08T17:14:41.080Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 13 execution started
-state_head: d8e03ea8729bae917a7787633428c95f9c6926de
+state_head: ed57a0195244fe2eef5f02cf71bad99c2989d81c
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 13
-  completed_plans: 7
+  completed_plans: 8
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 12)
 ## Current Position
 
 Phase: 13 (Fork Hardening on the Merged Tree) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 13 execution started
 
@@ -90,6 +90,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 12 P05 | 5 min | 2 tasks | 2 files |
 | Phase 13 P01 | 10 min | 2 tasks | 7 files |
 | Phase 13 P05 | 8 min | 3 tasks | 7 files |
+| Phase 13 P07 | 12 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,7 @@ Roadmap decisions (2026-10-07):
 - [Phase 13]: 13-01: metadata-free JSON encodings are Timestamp decimal seconds, Date epoch days, Time ms, Decimal BigDecimal, bytes raw via writeUTF8String; empty CDC records skipped (D-19); behaviour ledger L-01..L-07 in 13-01-SUMMARY.md
 - [Phase 13]: 13-05: DESC-05 skips DESCRIBE rows below a JSON/Dynamic ancestor at any depth via an ancestor-prefix walk; Tuple/Map/Array(JSON) rows stay un-skipped
 - [Phase 13]: 13-05: COLS-07 Array recursion passes hasDefaultValue, isSubColumn in signature order; CFG-04 USERNAME ConfigDef default is usernameDefault; ledger L-16..L-18 in 13-05-SUMMARY.md
+- [Phase 13]: 13-07: ClickHouseBase.dropSharedDatabaseOrAttribute is package-private static with a nested DatabaseDrop action, so a shared-container drop failure is attributed (IllegalStateException with class, database, cause) and pinned Docker-free (DEBT-04, D-14)
 
 ### Pending Todos
 
@@ -156,8 +158,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T17:09:17.284Z
-Stopped at: Completed 13-05-PLAN.md
+Last session: 2026-10-08T17:14:41.044Z
+Stopped at: Completed 13-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
