@@ -5,11 +5,11 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 14
 current_phase_name: Dependency Bumps & CI
 status: planning
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-10-08T18:17:28.352Z"
+stopped_at: Phase 14 context gathered
+last_updated: "2026-10-09T10:41:00.734Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 6bb03dece14c0cc1edb99c27e93eb3a6cb6dd3b5
+state_head: 864d82464c1edbeccc1f21420a0acfcfecf39165
 progress:
   total_phases: 4
   completed_phases: 2
@@ -170,9 +170,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T18:18:41Z
-Stopped at: Phase 13 complete, ready to plan Phase 14
-Resume file: None
+Last session: 2026-10-09T10:41:00.674Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-dependency-bumps-ci/14-CONTEXT.md
 
 ## Operator Next Steps
 
