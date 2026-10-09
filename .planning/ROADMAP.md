@@ -148,11 +148,11 @@ Plans:
   3. `tests.yaml` compiles the integration-test source set (`compileIntegrationTestJava`) on every push. CI's test fork count is read from a job log or summary of a run on this tree, or is explicitly recorded as unmeasured with the reason.
   4. `tests.yaml`'s trigger and concurrency group are fixed so that a branch push and a tag push on the same SHA produce exactly one completed run. The fix is committed before any tag reaches `origin`.
 
-**Plans**: 4 plans (sequential waves 1-4)
+**Plans**: 1/4 plans executed (sequential waves 1-4)
 
 Plans:
 **Wave 1**
-- [ ] 14-01-PLAN.md — Tracer CI slice: `tests.yaml` branch-only trigger, fork-count step (log, summary, notice annotation) and integration compile step, plus the D-11(a) note; then the live LZ4 round-trip test, green on the pre-bump lz4-java (CI-08, CI-09, CI-10, BLD-10)
+- [x] 14-01-PLAN.md — Tracer CI slice: `tests.yaml` branch-only trigger, fork-count step (log, summary, notice annotation) and integration compile step, plus the D-11(a) note; then the live LZ4 round-trip test, green on the pre-bump lz4-java (CI-08, CI-09, CI-10, BLD-10)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 14-02-PLAN.md — lz4-java to 1.12.0 (D-03 ladder to 1.11.4) as a pure catalog commit, with OSV and `dependencyInsight` evidence, the dated 1.11.4-floor correction and a test-classpath backlog item; then okhttp 5.5.0 and mockito 5.24.0, one commit each (BLD-10, BLD-12)
@@ -224,7 +224,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
 | 13. Fork Hardening on the Merged Tree | 8/8 | Complete    | 2026-10-08 |
-| 14. Dependency Bumps & CI | 0/TBD | Not started | - |
+| 14. Dependency Bumps & CI | 1/4 | In Progress | - |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 
 ---

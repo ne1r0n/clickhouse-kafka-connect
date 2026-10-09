@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 14
 current_phase_name: Dependency Bumps & CI
 status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-10-09T13:29:38.445Z"
-last_activity: 2026-10-08
-last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: b0a370983c9ba8def71830b5db829a479029b6e3
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-10-09T19:14:59.540Z"
+last_activity: 2026-10-09
+last_activity_desc: Phase 14 execution started
+state_head: 6a615aaa7bd6894f7fc544a32a9ddfa6e0905e07
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 14
   percent: 50
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 13)
 
 ## Current Position
 
-Phase: 14 (Dependency Bumps & CI) — READY TO EXECUTE
-Plan: Not started
+Phase: 14 (Dependency Bumps & CI) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-10-08 — Phase 13 complete, transitioned to Phase 14
+Last activity: 2026-10-09 — Phase 14 execution started
 
 Progress: [█████░░░░░] 50%
 
@@ -96,6 +96,7 @@ Progress: [█████░░░░░] 50%
 | Phase 13 P06 | 6 min | 3 tasks | 3 files |
 | Phase 13 P04 | 8 min | 2 tasks | 5 files |
 | Phase 13 P08 | 6 min | 2 tasks | 3 files |
+| Phase 14 P01 | 25 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 13]: 13-04: JSONP-08 delivers evaluation order only (metadata-free predicate first, no csc==null short-circuit, NPE on null config preserved); dated D-13 correction in REQUIREMENTS.md
 - [Phase 13]: 13-04: TYPE-08 gate narrowed to INT256/UINT256 by sharing the DYNAMIC/UNKNOWN case block in validateDataSchema; Int128/UInt128 unchanged; ledger L-14, L-15 in 13-04-SUMMARY.md
 - [Phase 13]: 13-08: Phase 13 gate green on ClickHouse latest (26.9.13.15) x V2: 803 tests, 0 failures, 18 named skips; behaviour ledger L-01..L-19 consolidated; Enum8/Enum16/Tuple nullability defect logged as backlog 999.1
+- [Phase 14]: 14-01: read DateTime64 back with getZonedDateTime().toInstant(); client-v2 0.9.6 getInstant() throws ClassCastException for tz-bearing DateTime64
+- [Phase 14]: 14-01: tests.yaml fork count is read from a ::notice annotation (job logs return 403 unauthenticated); LZ4 response leg proven by uncommitted zstd probe
 
 ### Pending Todos
 
@@ -170,9 +173,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-09T10:41:00.674Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-dependency-bumps-ci/14-CONTEXT.md
+Last session: 2026-10-09T19:14:59.500Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
