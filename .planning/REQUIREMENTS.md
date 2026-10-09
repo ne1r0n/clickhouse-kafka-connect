@@ -81,6 +81,8 @@
 - [ ] **BLD-12**: okhttp `5.5.0`, org.json `20260814` and mockito `5.24.0` are applied as version edits (not dependabot cherry-picks), one commit each, each gated by `compileIntegrationTestJava` and Docker-free `testUnit`
 - [x] **BLD-13**: The catalog drops `clickhouse-jdbc` and the obsolete `# FORK OVERRIDE (upstream 0.9.5)` comment while keeping `kafka = "4.1.1"`
 
+> **Correction (Phase 14, 2026-10-09, D-04).** OSV on 2026-10-09 shows `at.yawk.lz4:lz4-java` 1.11.2 and 1.11.3 still affected by three advisories (GHSA-343h-94h5-c4wr, GHSA-gm45-99xc-r7wv, GHSA-mcr4-qmvw-px4g), all fixed in 1.11.4, so the advisory-free floor is 1.11.4. This supersedes the "≥ 1.11.2" wording in BLD-10, in the locked-decisions table and in ROADMAP Phase 14 success criterion 1. The 1.12.0 target is unchanged. The requirement text above is left as originally written.
+
 ### CI (CI)
 
 - [ ] **CI-08**: A published SHA gets exactly one completed `tests.yaml` run — the tag/branch trigger and concurrency group are fixed **before** any tag is pushed

@@ -240,3 +240,12 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.2: Test classpath carries org.lz4:lz4-java 1.8.0 beside at.yawk.lz4 (BACKLOG)
+
+**Goal:** `testRuntimeClasspath` selects `org.lz4:lz4-java:1.8.0` (via the Confluent 7.9.1 test stack) beside `at.yawk.lz4:lz4-java`, although upstream's capability rule redirects it on `runtimeClasspath` and `integrationTestRuntimeClasspath`; it is test-only and not shipped; it is affected by the 2026-10-07 lz4 advisories, with no fix on that coordinate; fixing it needs a `build.gradle.kts` change outside Phase 14's scope; found 2026-10-09, Phase 14 research
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
