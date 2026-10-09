@@ -77,8 +77,8 @@
 
 - [x] **BLD-09**: The fork's LZ4 capability rule is removed in favour of upstream's; `dependencyInsight` shows exactly one `at.yawk.lz4:lz4-java` on `runtimeClasspath`; the stale "1.10.2" wording is fixed in `FORK-DELTA.md`, `MERGE-CHECKLIST.md` and `.claude/CLAUDE.md`
 - [x] **BLD-10**: `lz4-java` is raised past upstream's `1.10.4` to an advisory-free release (≥ 1.11.2, target 1.12.0), after showing client `0.9.6` works with it (compile, `testUnit`, live LZ4 round-trip)
-- [ ] **BLD-11**: Jackson is `2.22.3` (runtime, ships in the Confluent archive), in its own commit, with the JSON-route tests green
-- [ ] **BLD-12**: okhttp `5.5.0`, org.json `20260814` and mockito `5.24.0` are applied as version edits (not dependabot cherry-picks), one commit each, each gated by `compileIntegrationTestJava` and Docker-free `testUnit`
+- [x] **BLD-11**: Jackson is `2.22.3` (runtime, ships in the Confluent archive), in its own commit, with the JSON-route tests green
+- [x] **BLD-12**: okhttp `5.5.0`, org.json `20260814` and mockito `5.24.0` are applied as version edits (not dependabot cherry-picks), one commit each, each gated by `compileIntegrationTestJava` and Docker-free `testUnit`
 - [x] **BLD-13**: The catalog drops `clickhouse-jdbc` and the obsolete `# FORK OVERRIDE (upstream 0.9.5)` comment while keeping `kafka = "4.1.1"`
 
 > **Correction (Phase 14, 2026-10-09, D-04).** OSV on 2026-10-09 shows `at.yawk.lz4:lz4-java` 1.11.2 and 1.11.3 still affected by three advisories (GHSA-343h-94h5-c4wr, GHSA-gm45-99xc-r7wv, GHSA-mcr4-qmvw-px4g), all fixed in 1.11.4, so the advisory-free floor is 1.11.4. This supersedes the "≥ 1.11.2" wording in BLD-10, in the locked-decisions table and in ROADMAP Phase 14 success criterion 1. The 1.12.0 target is unchanged. The requirement text above is left as originally written.
@@ -153,8 +153,8 @@ Which phases cover which requirements. Filled during roadmap creation.
 | DEBT-05 | Phase 13 | Complete |
 | BLD-09 | Phase 12 | Complete |
 | BLD-10 | Phase 14 | Complete |
-| BLD-11 | Phase 14 | Pending |
-| BLD-12 | Phase 14 | Pending |
+| BLD-11 | Phase 14 | Complete |
+| BLD-12 | Phase 14 | Complete |
 | BLD-13 | Phase 12 | Complete |
 | CI-08 | Phase 14 | Pending |
 | CI-09 | Phase 14 | Pending |

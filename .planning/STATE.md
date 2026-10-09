@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 14
 current_phase_name: Dependency Bumps & CI
 status: executing
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-10-09T19:20:08.957Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-10-09T19:29:40.853Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 14 execution started
-state_head: 5c898b848c70ec85aac70c7d8584cb048c23930e
+state_head: 28ec85ccee5726d8561ce71a9c732367d029c66f
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-08 after Phase 13)
 ## Current Position
 
 Phase: 14 (Dependency Bumps & CI) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 14 execution started
 
@@ -98,6 +98,7 @@ Progress: [█████░░░░░] 50%
 | Phase 13 P08 | 6 min | 2 tasks | 3 files |
 | Phase 14 P01 | 25 min | 2 tasks | 3 files |
 | Phase 14 P02 | 30 min | 2 tasks | 5 files |
+| Phase 14 P03 | 25 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,7 @@ Roadmap decisions (2026-10-07):
 - [Phase 14]: 14-01: tests.yaml fork count is read from a ::notice annotation (job logs return 403 unauthenticated); LZ4 response leg proven by uncommitted zstd probe
 - [Phase 14]: 14-02: lz4-java 1.12.0 chosen (passed every gate; 1.11.4 rung unused). Advisory-free floor is 1.11.4; 1.11.2 and 1.11.3 are still affected.
 - [Phase 14]: 14-02: test-classpath org.lz4:lz4-java 1.8.0 duplicate not fixed (needs build.gradle.kts change); recorded as ROADMAP backlog 999.2.
+- [Phase 14]: 14-03: jacksonAnnotations stays 2.22 because jackson-bom 2.22.3 pairs databind 2.22.3 with annotations 2.22 and no 2.22.3 annotations artifact exists
 
 ### Pending Todos
 
@@ -176,8 +178,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-09T19:20:08.916Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-10-09T19:29:40.812Z
+Stopped at: Completed 14-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
