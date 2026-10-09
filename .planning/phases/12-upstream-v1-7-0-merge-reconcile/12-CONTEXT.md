@@ -33,6 +33,7 @@ Requirements: SYNC-07, SYNC-08, SYNC-09, SYNC-10, CMP-01, CMP-02, CMP-03, WRT-06
   - `pre-v1.7.0-sync` still tags **`c61d90ce`**, the pre-sync `custom_build` SHA, as SYNC-07 requires. That makes the invariant script's range `pre-v1.7.0-sync..HEAD` include the 18 planning commits. That is harmless: they touch no tracked source in the script's pathspec.
   - The branch stays local through Phases 12–14, as D-05 required in v1.6.0. Pushing any branch fires `tests.yaml`.
   - Before publishing, confirm that `.planning/.gsd-ws-arg` is not tracked. It is not tracked today.
+  - **Amended by Phase 14 D-13 (2026-10-09):** sync/v1.7.0 is pushed to origin once in Phase 14, branch only (no tag, custom_build untouched), behind a blocking human-approval checkpoint, after every Phase 14 bump and CI commit and the D-09 local gates. If the user holds, the branch stays local until Phase 15.
 
 - **D-02:** The merge commit is **mechanical with line provenance**. Every line in a conflicted path comes from one side: `pre-v1.7.0-sync` or `v1.7.0`. Hunks are resolved by choosing a side or taking the union of both; no new lines are authored.
   - The **D-17 hunks resolve to upstream's side inside the merge commit**: the V1 `getDefaultClientOptions`, the V2 builder chain and the config-key block. Choosing upstream's lines for these is still mechanical.
