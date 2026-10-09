@@ -1,0 +1,1 @@
+No external API integration: Phase 14 bumps five library versions and edits a CI workflow; the OSV and GitHub REST reads are one-off unauthenticated evidence lookups made during execution, not an integration shipped in the connector.
