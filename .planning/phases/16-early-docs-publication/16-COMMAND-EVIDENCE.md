@@ -253,4 +253,62 @@ ROLLOUT-FINDINGS-OK
 
 Matches text: yes
 
+### E-12: facts stated by the new CHANGELOG text
+
+Backs: `CHANGELOG.md`, `1.7.0_gg1` section: the new Important Changes bullet ("`version=` segment changes from `v1.6.0_gg1` to `v1.7.0_gg1`", client name `clickhouse-kafka-connect/v1.7.0_gg1`) and the Dependencies bullet (lz4-java `1.10.2` to `1.12.0`, `1.11.2` and `1.11.3` affected by three advisories, all fixed in `1.11.4`).
+
+```sh
+cat VERSION
+git show c61d90ce5dfb32ea5876dffacc8bb54d8846739a:VERSION
+grep -n 'version = file' build.gradle.kts
+grep -n 'ARTIFACT_VERSION = ' build.gradle.kts
+grep -n 'CONNECT_CLIENT_NAME =' src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+grep -n 'version=%s' src/main/java/com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.java
+grep -n '^lz4Java' gradle/libs.versions.toml
+B=$(git show c61d90ce5dfb32ea5876dffacc8bb54d8846739a:build.gradle.kts); printf '%s\n' "$B" | grep -n 'at.yawk.lz4:lz4-java:'
+grep -o '1.11.2 and 1.11.3 are still affected by three advisories, all fixed in 1.11.4' docs/FORK-DELTA.md
+```
+
+```text
+v1.7.0_gg1
+v1.6.0_gg1
+48:version = file("VERSION").readText().trim()
+429:    public static final String ARTIFACT_VERSION = "${project.version}";
+111:    public static final String CONNECT_CLIENT_NAME = "clickhouse-kafka-connect/" + Version.ARTIFACT_VERSION;
+176:                "com.clickhouse:type=ClickHouseKafkaConnector,connector=%s,name=SinkTask%d,version=%s",
+10:lz4Java = "1.12.0"
+137:        select("at.yawk.lz4:lz4-java:1.10.2")
+1.11.2 and 1.11.3 are still affected by three advisories, all fixed in 1.11.4
+```
+
+`VERSION` is `v1.7.0_gg1` here and `v1.6.0_gg1` at `c61d90ce`. The client name and the MBean `version=` segment are both built from `Version.ARTIFACT_VERSION`, which is `project.version`, which is read from `VERSION`. So the MBean `version=` segment and the client name change with the release version. lz4-java is `1.12.0` now and was `1.10.2` at `v1.6.0_gg1`. The advisory wording is FORK-DELTA's, the source of truth (D-01).
+
+Matches text: yes
+
+### E-13: CHANGELOG section check
+
+Backs: `CHANGELOG.md`, the whole `1.7.0_gg1` section (D-01): no bare planning ID or advisory ID; the MBean/client-name facts in Important Changes; lz4 versions and the advisory reason in Dependencies; no stale "no known advisories" parenthetical; no line over 121 characters; the header unchanged; everything from `# 1.7.0, 2026-09-30` to the end of the file byte-identical to `505e4981`. The second command lists the non-`.planning` files that differ from `505e4981`.
+
+```sh
+python3 -I -c 'import re,subprocess as s;b=s.run(["git","show","505e49819fba7b2ba980a718d9ec6b66b55027b0:CHANGELOG.md"],capture_output=True,check=True,encoding="utf-8").stdout;t=open("CHANGELOG.md",encoding="utf-8").read();k="\n# 1.7.0, 2026-09-30\n";i=t.find(k);j=b.find(k);sec=t[:i];imp=sec[sec.find("## Important Changes"):sec.find("## Bug Fixes")];dep=sec[sec.find("## Dependencies"):];ids=re.findall(r"\b(?:[A-Z]{1,6}-\d{2}|\d{2}-REVIEW|999\.1|GHSA-[\w-]+|CVE-\d{4}-\d+)\b",sec);need_imp=["`version=`","`v1.6.0_gg1`","`v1.7.0_gg1`","`clickhouse-kafka-connect/v1.7.0_gg1`","item 7"];need_dep=["`1.10.2`","`1.12.0`","`1.11.2`","`1.11.3`","three published advisories","`1.11.4`","docs/FORK-DELTA.md"];miss=[n for n in need_imp if n not in imp]+[n for n in need_dep if n not in dep];wide=[n for n,l in enumerate(sec.split("\n"),1) if len(l)>121];stale="no known advisories" in sec;print("header-ok",sec.split("\n")[0]=="# 1.7.0_gg1, 2026-10-10","upstream-identical",i>0 and j>0 and t[i:]==b[j:],"ids",ids,"missing",miss,"over-121",wide,"stale-parenthetical",stale);raise SystemExit(0 if i>0 and j>0 and t[i:]==b[j:] and sec.split("\n")[0]=="# 1.7.0_gg1, 2026-10-10" and not ids and not miss and not wide and not stale else 1)' && echo CHANGELOG-SECTION-OK
+git diff --name-only 505e49819fba7b2ba980a718d9ec6b66b55027b0 HEAD -- . ':(exclude).planning'
+```
+
+```text
+header-ok True upstream-identical True ids [] missing [] over-121 [] stale-parenthetical False
+CHANGELOG-SECTION-OK
+CHANGELOG.md
+docs/FORK-DELTA.md
+docs/ROLLOUT-v1.7.0_gg1.md
+```
+
+Matches text: yes
+
 ## Finding map
+
+| Finding | Changed text | Evidence entries |
+|---|---|---|
+| IN-07 | `docs/ROLLOUT-v1.7.0_gg1.md` item 2, What to do: opener "Step 1 always; step 2 only for connectors with `exactlyOnce=true`", one replayed-ranges sentence, closing nothing-to-recover sentence (commit `fad6f7f9`) | E-08, E-09, E-11 |
+| IN-08 | `docs/ROLLOUT-v1.7.0_gg1.md` item 8: revert-of-revert paragraph (commit `fad6f7f9`) | E-06, E-11 |
+| IN-09 | `docs/FORK-DELTA.md` line 94 (raw-numbers sentence) and the two skip-count commands under "Named skip inventory" (commit `65582a31`) | E-01, E-02, E-03, E-04 |
+| IN-10 | `docs/ROLLOUT-v1.7.0_gg1.md` preface ledger link, item 2 and 5 headings and TOC, ledger tags, item 6 grep (commit `fad6f7f9`); `CHANGELOG.md` `1.7.0_gg1` section (commit `8c1f0bc1`) | E-05, E-07, E-10, E-12, E-13 |
