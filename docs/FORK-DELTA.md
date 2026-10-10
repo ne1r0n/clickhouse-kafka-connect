@@ -91,7 +91,7 @@ This is the claim the sync milestone exists to support: that the fork carries le
 
 ## The raw numbers
 
-The table gives files changed, insertions and deletions for the same two scopes at both endpoints. The wider scope is `src build.gradle.kts gradle .github`; the narrower scope is `src/main` alone. "Before" compares upstream `v1.6.0` with the pre-sync tip `pre-v1.7.0-sync`, the tree that `v1.6.0_gg1` was published from; "after" compares upstream `v1.7.0` with `v1.7.0_gg1`. The after figures were measured on `sync/v1.7.0` at the commit that carries this document, whose `src`, build and CI tree the publication gate keeps unchanged through publication, so they are the figures of the published tree. They can be refreshed by running the four commands shown beneath the table once the `v1.7.0_gg1` tag exists.
+The table gives files changed, insertions and deletions for the same two scopes at both endpoints. The wider scope is `src build.gradle.kts gradle .github`; the narrower scope is `src/main` alone. "Before" compares upstream `v1.6.0` with the pre-sync tip `pre-v1.7.0-sync`, the tree that `v1.6.0_gg1` was published from; "after" compares upstream `v1.7.0` with `v1.7.0_gg1`. The after figures were measured on `sync/v1.7.0` at the commit that carries this document, whose `src`, build and CI tree the publication gate keeps unchanged through publication, so they are the figures of the published tree. The four commands shown beneath the table reproduce them against the `v1.7.0_gg1` tag.
 
 | Scope | Endpoint | Files | Insertions | Deletions |
 |---|---|---|---|---|
@@ -151,8 +151,8 @@ Open items:
 The current suite skips 18 tests. The structural basis is measured by command rather than copied from a report:
 
 ```text
-grep -rc '@Disabled' src/test/java                -> 7 annotation sites, 7 test methods
-grep -rc 'Assumptions.assumeTrue' src/test/java   -> 1 site, in a parameterized test with 11 cases
+grep -rho '@Disabled' src/test/java | wc -l                -> 7 annotation sites, 7 test methods
+grep -rho 'Assumptions.assumeTrue' src/test/java | wc -l   -> 1 site, in a parameterized test with 11 cases
 ```
 
 Seven disabled methods plus the eleven parameterized cases behind the single standalone-mode assumption make 18.
