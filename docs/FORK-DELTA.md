@@ -131,7 +131,7 @@ Open items:
 
 - L-03: the upstream `bypassRowBinary=true` route without an explicit `insertFormat=json` keeps Jackson's defaults (epoch milliseconds read as seconds, base64 bytes), unlike the metadata-free route.
 - L-04: a Kafka `Date` written to a `DateTime` or `DateTime64` column on the metadata-free route lands its day count as seconds.
-- L-05, narrowed by L-20: of the Debezium time types only `ZonedTimestamp` strings still pass through unchanged, and they parse only while the server keeps `date_time_input_format=best_effort`.
+- L-05, narrowed by L-20: of the Debezium time types only `ZonedTimestamp` strings still pass through unchanged, and they parse only while the server's `date_time_input_format` is `best_effort` (the default on ClickHouse 26.9; older releases default to `basic`).
 - The `ByteBuffer` asymmetry: the metadata-free route writes the remaining bytes, RowBinary writes the whole backing array (L-02).
 - The non-nullable null outcomes depend on the server's `input_format_null_as_default` staying at 1 (L-08).
 - L-22: explicit `insertFormat=json` together with `bypassRowBinary=true` changed writer in this release. Only the routing is pinned by a test; no test pins the stored values for that exact combination.

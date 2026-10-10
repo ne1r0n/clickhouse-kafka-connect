@@ -49,16 +49,17 @@ The required/precautionary split rests on an inference: ClickHouse block dedupli
 You are affected if any connector runs with `exactlyOnce=true`. Then:
 
 1. Stop or pause the connector cleanly.
-2. In the connector's database, query the KeeperMap state table. The table is named by the connector's `zkDatabase` setting (default `connect_state`):
+2. In the connector's database, query the KeeperMap state table. The table is named by the connector's `zkDatabase` setting (default `connect_state`) and stored under its `zkPath` (default `/kafka-connect`). **The table is shared:** every `exactlyOnce` connector with the same `zkDatabase` and `zkPath` writes into it, and a row's `key` names a topic and partition, not a connector. Scope the query to the topics this connector consumes:
 
 ```sql
 SELECT `key`, minOffset, maxOffset, state
 FROM `<zkDatabase>`
 WHERE state != 'AFTER_PROCESSING'
+  AND arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>', '<topic>')
 ORDER BY `key`;
 ```
 
-The `key` column holds `<topic>-<partition>`. With `enableDbTopicSplit=true` the topic part is prefixed by `<db>` and the configured `dbTopicSplitChar`. The state values the connector writes are `BEFORE_PROCESSING` and `AFTER_PROCESSING`.
+The `key` column holds `<topic>-<partition>`. The `arrayStringConcat(...)` expression strips the trailing `-<partition>`, so `'orders'` matches `orders-0` but not `orders-v2-0`. With `enableDbTopicSplit=true` the topic part is prefixed by `<db>` and the configured `dbTopicSplitChar`, so list `'<db><dbTopicSplitChar><topic>'` instead of `'<topic>'`. Without the topic filter the result also lists the in-flight batches of every other connector on the table and may never become empty. The state values the connector writes are `BEFORE_PROCESSING` and `AFTER_PROCESSING`.
 
 **Empty result:** no batch is in flight and nothing is waiting for a retry, so it is safe to upgrade. **Non-empty result:** each listed `key` has a batch that may or may not have reached ClickHouse; do not upgrade yet.
 
@@ -68,6 +69,7 @@ The query is derived from the connector's source (the table is created as `` `ke
 
 - Result empty: upgrade.
 - Result non-empty: start the old `v1.6.0_gg1` jar again, let those ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then upgrade.
+- A row for a topic or partition the connector no longer consumes stays in `BEFORE_PROCESSING` and never clears. Confirm that no running connector owns it, then ignore it, or delete that one key with the item 2 `DELETE` example.
 - The check is **required** for connectors that combine explicit `insertFormat=json` with `bypassRowBinary=true` and write `Struct`/CDC records under `exactlyOnce=true`, because that is the one route whose stored values change for a batch the old jar could have completed. It is **precautionary** for every other route in the table above.
 
 ---
@@ -99,11 +101,14 @@ Step 2 as an example (not run, adjust to your own topic-partitions):
 
 ```sql
 -- EXAMPLE: delete the state rows of the affected topic-partitions
+-- (with enableDbTopicSplit=true each key is '<db><dbTopicSplitChar><topic>-<partition>')
 DELETE FROM `<zkDatabase>` WHERE `key` IN ('<topic>-<partition>', '<topic>-<partition>');
 
--- EXAMPLE: or clear every state row of this connector's table
-TRUNCATE TABLE `<zkDatabase>`;
+-- EXAMPLE: or delete the state rows of every partition of the affected topics
+DELETE FROM `<zkDatabase>` WHERE arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>');
 ```
+
+Do not `TRUNCATE` the table. It is shared by every `exactlyOnce` connector with the same `zkDatabase` and `zkPath` (item 1), so truncating it also erases their state. A batch another connector left in `BEFORE_PROCESSING` is then no longer retried as the same block, and deduplication cannot catch it.
 
 Then start the connector. Without step 2 the connector sees the replayed ranges as already stored (state `AFTER_PROCESSING`) and drops them. If you use neither exactly-once nor an explicit `insertFormat=json` with schema'd records, there is nothing to recover. Rolling back to `v1.6.0_gg1` re-introduces the silent loss (item 8).
 
@@ -118,7 +123,7 @@ The JSON routes encode some Kafka types differently from RowBinary. The explicit
 - **Encodings (L-02).** Timestamp is an unquoted decimal-seconds number with exactly three fractional digits; Date is an unquoted integer count of epoch days; Time is its integer milliseconds; Decimal is a JSON number; bytes are raw bytes inside a JSON string (quote, backslash and control bytes escaped), never base64. A `ByteBuffer` emits its remaining bytes, whereas RowBinary writes the whole backing array; the two differ when the buffer position is not zero.
 - **Upstream bypass route unchanged (L-03).** `bypassRowBinary=true` without an explicit `insertFormat=json` keeps Jackson's defaults: epoch milliseconds that ClickHouse reads as seconds, and base64 bytes. This differs from the explicit json route above and is deliberate, so upstream's bytes do not change.
 - **Date into DateTime (L-04).** On the metadata-free route a Kafka Date written to a `DateTime` or `DateTime64` column lands its day count as seconds (a 1970 timestamp), because the same literal must also serve `Date` and `Date32`. Date into `Date` and `Date32` is correct.
-- **CDC conversion scope (L-05, narrowed by L-20).** Connect Timestamp, `io.debezium.time.Date` and `io.debezium.time.MicroTimestamp` are converted. As of this release `io.debezium.time.Timestamp` (epoch milliseconds) and `io.debezium.time.NanoTimestamp` (epoch nanoseconds) are converted too (L-20, found as a review finding of the fork's Phase 13, 13-REVIEW WR-02): they are written as decimal seconds with three and nine fractional digits. Before, the raw number passed through and ClickHouse read it as seconds: a `DateTime64` column silently clamped to the maximum date for `Timestamp`, and the server rejected a `NanoTimestamp` batch with `DECIMAL_OVERFLOW`. Small `NanoTimestamp` values appear in scientific notation (for example `1E-9`); the server accepts them. Only `io.debezium.time.ZonedTimestamp` strings still pass through unchanged: they parse when the server's `date_time_input_format` is `best_effort` (the default) and fail when it is `basic`, so a profile that pins `basic` breaks them.
+- **CDC conversion scope (L-05, narrowed by L-20).** Connect Timestamp, `io.debezium.time.Date` and `io.debezium.time.MicroTimestamp` are converted. As of this release `io.debezium.time.Timestamp` (epoch milliseconds) and `io.debezium.time.NanoTimestamp` (epoch nanoseconds) are converted too (L-20, found as a review finding of the fork's Phase 13, 13-REVIEW WR-02): they are written as decimal seconds with three and nine fractional digits. Before, the raw number passed through and ClickHouse read it as seconds: a `DateTime64` column silently clamped to the maximum date for `Timestamp`, and the server rejected a `NanoTimestamp` batch with `DECIMAL_OVERFLOW`. Small `NanoTimestamp` values appear in scientific notation (for example `1E-9`); the server accepts them. Only `io.debezium.time.ZonedTimestamp` strings still pass through unchanged: they parse only when the server's `date_time_input_format` is `best_effort` and fail when it is `basic`. `best_effort` is the default on ClickHouse 26.9, the version this was checked on; older ClickHouse releases default to `basic`. Check the value (below) rather than assume it.
 - **Null handling (L-08).** With all top-level fields null: `Nullable(Int32)` stores NULL, a `Nullable` column with a `DEFAULT` stores the default, non-nullable columns store their default or type default. Nested `null` in `Array(Int32)` or `Map(String, String)` is coerced to the element default. These non-nullable outcomes rely on the server keeping `input_format_null_as_default=1` (the default). The connector deliberately does not force it; a server or profile that sets it to 0 changes them.
 - **Explicit `insertFormat=json` plus `bypassRowBinary=true` (L-22).** In `v1.6.0_gg1` this combination used the legacy Jackson path. It now uses the metadata-free writer, so stored Timestamp, Date, Time, Decimal and bytes values change for the same input (L-02) and an empty CDC record is skipped instead of producing an all-defaults row. Someone who set both options to work around item 2 sees different stored values after the upgrade. No automated test pins stored values for exactly this combination (only the routing is pinned), so verify it on a copy of your data before relying on it.
 
@@ -140,7 +145,7 @@ FROM system.settings
 WHERE name IN ('date_time_input_format', 'input_format_null_as_default');
 ```
 
-**Empty result:** your server is too old for these settings and the notes about them do not apply. **Two rows** with `changed = 0` mean the server defaults (`best_effort` and `1`) apply. A row with `changed = 1` and `date_time_input_format = 'basic'` means Debezium `ZonedTimestamp` strings will be rejected; `input_format_null_as_default = 0` means the null coercions above do not hold.
+**Empty result:** your server is too old for these settings and the notes about them do not apply. **Two rows:** decide on `value`, not on `changed`, because the defaults differ between ClickHouse releases. `date_time_input_format = 'basic'`, changed or not, means Debezium `ZonedTimestamp` strings will be rejected; `best_effort` means they parse. `input_format_null_as_default = 0` means the null coercions above do not hold; `1` means they hold.
 
 ### What to do
 
@@ -289,7 +294,12 @@ WHERE event_date >= today() - 1
 
 ### What to do
 
-Match `version=` by wildcard (for example `version=*`) in dashboards, alerts and exporter rules, so the next release does not break them. Update filters on the client name the same way.
+Stop matching on the exact `version=` value in dashboards, alerts and exporter rules, so the next release does not break them. The wildcard syntax depends on the kind of matcher:
+
+- JMX `ObjectName` pattern: `com.clickhouse:type=ClickHouseKafkaConnector,connector=<connector-name>,name=SinkTask*,version=*,*`. The trailing `,*` covers the other properties, such as `topic=`.
+- Regular expression (JMX exporter rules, Prometheus relabelling, most dashboard matchers): `version=[^,]*`. In a regular expression `version=*` means "version followed by zero or more `=`", so a rule copied from the `ObjectName` form silently stops matching.
+
+Update filters on the client name the same way.
 
 ---
 
