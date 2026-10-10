@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 16
 current_phase_name: Early Docs Publication
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-10-10T17:44:38.637Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-10-10T17:52:49.946Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 16 execution started
-state_head: 2a4f85f2ce20a3b0e28b4ec61657ffdfb77cb4a4
+state_head: e45c6387fd1d4b01f0506196f91bbaa895074280
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-10 after v1.7.0_gg1-sync milestone)
 ## Current Position
 
 Phase: 16 (Early Docs Publication) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-10 — Phase 16 execution started
 
@@ -107,6 +107,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 15 P06 | 35min | 2 tasks | 1 files |
 | Phase 15 P07 | 21 min | 3 tasks | 1 files |
 | Phase 16 P01 | 4 min | 3 tasks | 4 files |
+| Phase 16 P02 | 7 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - CI/build/test hygiene (Phase 17) runs before code because `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19. CI-17 is proven by an approved branch-only scratch push in Phase 17, so the release merge's run is not the new workflow's first.
 - Writer fixes (Phase 18) come before 999.1 (Phase 19), because both edit `ClickHouseWriter.java` and Phase 19's flipped pins rely on Phase 18's column-naming `DataException`. The Phase 19 Tuple spike (COLS-09) runs first in its phase. Its go/no-go cannot hold the release, and the Enum fix ships either way. DEBT-09 follows the COLS-10 outcome.
 - Every approval gate (Phase 16 merge, Phase 17 scratch push, Phase 20 rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
+- [Phase 16]: 16-02: IN-01 fixed by naming 'git merge <merge-commit>^2' in rollout item 8 instead of the unpublished sync/v1.7.0 branch; refines D-05 wording only
 
 ### Pending Todos
 
@@ -163,8 +165,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T17:44:38.618Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-10-10T17:52:49.926Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

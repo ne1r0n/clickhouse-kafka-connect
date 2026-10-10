@@ -90,14 +90,14 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
      - only `custom_build` was pushed, and no tag
   5. That merge SHA has exactly one `tests.yaml` run, located by `head_sha` plus workflow path. The run is green and has no cancelled sibling.
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 Plans:
 **Wave 1**
 - [x] 16-01-PLAN.md — Fix IN-07..IN-10 in the rollout doc, FORK-DELTA and CHANGELOG (D-01..D-06), with every quoted command recorded in 16-COMMAND-EVIDENCE.md; tracer dry-runs the publication gate
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 16-02-PLAN.md — Pre-gate review of the Phase 16 docs diff with every finding dispositioned, IN-07..IN-10 closed in 15-REVIEW-DISPOSITION (D-09, D-10), and the measured approval bundle on X0
+- [x] 16-02-PLAN.md — Pre-gate review of the Phase 16 docs diff with every finding dispositioned, IN-07..IN-10 closed in 15-REVIEW-DISPOSITION (D-09, D-10), and the measured approval bundle on X0
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 16-03-PLAN.md — Blocking-human gate, then the docs-only `--no-ff` merge in a throwaway worktree, push of `custom_build` alone (no tag), and its single green `tests.yaml` run (D-11, D-12)
@@ -313,7 +313,7 @@ After publication, check once that `test-head.yaml`'s nightly schedule no longer
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 16. Early Docs Publication | v1.7.0_gg2-hardening | 1/3 | In Progress | - |
+| 16. Early Docs Publication | v1.7.0_gg2-hardening | 2/3 | In Progress | - |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
