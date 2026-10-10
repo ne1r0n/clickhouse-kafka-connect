@@ -56,6 +56,60 @@
 
 ---
 
+## Milestone: v1.6.0_gg1-sync — Upstream v1.6.0 Sync
+
+**Shipped:** 2026-10-07
+**Phases:** 6 | **Plans:** 24 | **Tasks:** 63 | **Commits:** 170 first-parent (751 with the merged upstream history) | **Timeline:** 20 days (2026-09-18 → 2026-10-07)
+
+### What Was Built
+
+- A 581-commit upstream merge (`v1.2.9` → `v1.6.0`) landed as one purely mechanical commit. All 40 conflicted paths were byte-identical to upstream, checked by a committed, self-testing invariant script, with a generated per-path `MERGE-CHECKLIST.md` as the gate for every later phase.
+- Upstream's version-catalog build (Gradle 9.6.1, Testcontainers 2.0.5, `testFixtures`) adopted wholesale, with the fork's six build additions re-applied on top.
+- Every fork behaviour re-applied by intent onto upstream's rewritten code: `Type.DYNAMIC` and its fail-fast, `targetTableFilter`, the describe sub-column skip, JMX `connector=<name>` (re-plumbed into upstream's new naming owner), the metadata-free JSON path (KEEP), `jsonInsertColumns`, and the shared-container test harness.
+- Suite at 663 tests on ClickHouse `latest` (26.9.12.8) × V2, 0 failures, 18 named skips. CI green on the published SHA. `custom_build` published as a non-force `--no-ff` merge tagged `v1.6.0_gg1`, with a rollback tag.
+- `docs/FORK-DELTA.md`: a grep-confirmed ledger of what the fork still patches and what it retired.
+
+### What Worked
+
+- **The previous milestone's suite paid for itself.** It was written to make a rebase safe, and it was the acceptance gate here. It caught fork behaviours that disappeared with no conflict marker and no compile error — the risk the research had flagged as six silent vanishings, which turned out to be seven.
+- **Mechanical merge first, intent second.** A byte-identity invariant on commit 1 turned each re-applied fork behaviour into its own small, reviewable diff against upstream. Without it, those judgement calls would have been buried in a 500-file merge commit.
+- **Re-plumbing onto upstream's shape instead of restoring the fork's.** JMX naming went into `SinkTaskStatistics`, the harness contract was re-derived over `@TestInstance(PER_CLASS)`, and `targetTableFilter` went onto `showTables*`. Each choice shrinks the conflict surface of the next sync.
+- **Blocking-human checkpoints on irreversible or contested calls.** Three fired: the JSON path KEEP/DROP decision (made on evidence from the merged code), the one-way publication, and the D-17 fix-before-publish. The executor also refused, correctly, to act on an approval relayed by another agent.
+- **Rehearsing CI on a scratch branch before publishing.** Run `37617508949` proved the workflow end-to-end before anything touched `custom_build`.
+
+### What Was Inefficient
+
+- **A silent default reversion went unseen for four phases.** The merge reverted `CLICKHOUSE_VERSION_DEFAULT` to `25.8.18.1`, and CI pinned the version in its job environment, so local and CI both looked green. Phases 8 and 9 closed against a server the milestone does not claim to test. Phase 10 found it, and Phase 11 removed the CI pin that masked it.
+- **The mechanical merge dropped more than the plan expected.** Twelve fork test files lost their `ClickHouseBase`/`ClickHouseTestHelpers` dependencies, which surfaced as a compile gap mid-Phase 7. The planned carve-out was four items.
+- **Server drift arrived during the milestone.** ClickHouse `latest` moved to 26.9 with a ZSTD default that client `0.9.6` cannot decode. That added a gap-closure plan (11-08) to the publishing phase. Testing against a floating tag means accepting this.
+- **The publication gate needed manual orchestration.** The tag push cancelled the branch run on the same SHA, CI-06's locator had to be narrowed after the fact, and the approval had to be re-confirmed at UAT.
+- **Verification staleness again.** Phases 6–10 all read stale at close, for the same structural reason as last milestone, so this was a second `override_closeout`.
+
+### Patterns Established
+
+- **Upstream sync recipe:** permanent `upstream` remote → rollback tag → scratch branch → one mechanical merge commit with a byte-identity invariant → generated per-path checklist → re-apply by intent, one bisectable commit per behaviour → full suite on `latest` → scratch CI rehearsal → human-approved non-force `--no-ff` merge.
+- **Pin defaults Docker-free.** `ClickHouseVersionDefaultUnitTest` and `NewUpstreamConfigDefaultsUnitTest` catch silent default changes in `testUnit`, without a server.
+- **No version pins in CI's job environment.** CI should run the code defaults, so the unit test pinning them is the single source of truth.
+- **Two-run acceptance gates must bust Gradle's cache.** Use `--rerun`, or the second run just replays the first one's results.
+- **Recorded Facts beside the checklist.** Free wins, triage outcomes and accepted costs live as numbered facts in `MERGE-CHECKLIST.md`, citing commands re-run at execution time.
+
+### Key Lessons
+
+1. **A merge's most dangerous changes are the ones that compile.** Seven fork behaviours vanished with no marker and no error. Only a suite asserting on them, run against the right server, caught them.
+2. **Check what the gate is actually testing against.** A green run on the wrong ClickHouse version is worse than a red one. Pin the default with a test, and keep CI from overriding it.
+3. **Prefer upstream's shape even when restoring the fork's is easier.** Every re-plumb onto upstream's owner is one less conflict next time. Where the fork had to diverge, writing it down in `FORK-DELTA.md` is what makes the next sync tractable.
+4. **A floating `latest` tag means server drift can land mid-milestone.** Budget a gap-closure slot in the final phase.
+5. **One-way publication needs its own CI hygiene.** Branch and tag pushes at one SHA must not share a cancel-in-progress concurrency group, or "exactly one green run" stops being checkable.
+
+### Quality Observations
+
+- Code review ran on all six phases: **4 critical findings, all fixed**. They were the fail-open invariant script (Phase 6), two in Phase 7, and the `auto.evolve` guard gap (Phase 9). Warnings and info findings were triaged, and 9 new follow-ups were carried into PROJECT.md → Active.
+- Security audits completed for all six phases, with 0 open threats at close.
+- Final suite: 663 tests, 0 failures, 0 errors, 18 named skips, green locally and in CI (run `37619434848`).
+- `src/main` changes beyond re-applying fork behaviour: one, the D-17 `lz4` default. The fork delta shrank by files (93→84 wide, 32→30 `src/main`) while insertions grew (8,401→9,476), mostly tests.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -63,13 +117,17 @@
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
 | v1.2.9_gg4-tests | 5 | 16 | First GSD milestone on this repo. Established parallel independent test tracks, blocking-human checkpoints for out-of-scope production changes, and real test/build commands in `config.json`. |
+| v1.6.0_gg1-sync | 6 | 24 | First upstream sync. Mechanical-merge-then-intent with a byte-identity invariant, a generated per-path merge checklist, scratch-branch CI rehearsal, and human-gated one-way publication. |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Critical Review Findings | Production Bugs Fixed | Tracked Follow-ups |
 |-----------|-------|--------------------------|----------------------|--------------------|
 | v1.2.9_gg4-tests | 187 → 371 | 0 | 7 (+1 pinned by decision) | 9 |
+| v1.6.0_gg1-sync | 371 → 663 (incl. upstream's) | 4 (all fixed) | 2 silent merge reversions + D-17 + CR-01 auto.evolve (R-01 still pinned) | 17 |
 
 ### Top Lessons (Verified Across Milestones)
 
-*Needs a second milestone before any lesson here is cross-validated. The five above are single-milestone observations.*
+1. **Verification goes stale in sequential phases.** Both milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. Re-verify at close, or plan for the override.
+2. **Blocking-human checkpoints on irreversible or production-affecting calls pay off.** They fired 3 times in each milestone and were right each time. Examples: R-01 pinned rather than fixed, KEEP over DROP, and both one-way publications.
+3. **Check the environment and the gate before trusting a result.** In v1.2.9_gg4-tests a red baseline turned out to be an environment artifact (`TESTCONTAINERS_HOST_OVERRIDE`). In v1.6.0_gg1-sync a green run turned out to be against the wrong server (`CLICKHOUSE_VERSION_DEFAULT`).

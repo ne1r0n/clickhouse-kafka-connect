@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
@@ -56,6 +57,22 @@ repositories {
 
 val clickhouseDependencies: Configuration by configurations.creating
 
+// The ClickHouse client-v2 depends on the maintained `at.yawk.lz4:lz4-java` fork, while
+// kafka-clients depends on the original `org.lz4:lz4-java`. Both declare the same
+// `org.lz4:lz4-java` capability, so Gradle needs to be told which one to keep. The fork is a
+// drop-in replacement (same `net.jpountz.lz4` package) and newer, so we select it everywhere.
+configurations.all {
+    resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
+        val fork = candidates.firstOrNull {
+            (it.id as? ModuleComponentIdentifier)?.group == "at.yawk.lz4"
+        }
+        if (fork != null) {
+            select(fork)
+            because("client-v2 uses the maintained at.yawk.lz4 fork, a drop-in replacement for org.lz4:lz4-java")
+        }
+    }
+}
+
 dependencies {
     // Exposed as `api` because they leak into the connector's public signatures
     // (e.g. ClickHouseHelperClient returns ClickHouseResponse/Records, ClickHouseSinkTask
@@ -66,6 +83,7 @@ dependencies {
     api(libs.clickhouse.http.client)
     api(libs.clickhouse.data)
     api(libs.clickhouse.client.v2)
+    implementation(libs.lz4.java)
     implementation(libs.gson)
     implementation(libs.httpclient5)
 
@@ -85,6 +103,7 @@ dependencies {
     clickhouseDependencies(libs.httpclient5)
     clickhouseDependencies(libs.clickhouse.client)
     clickhouseDependencies(libs.clickhouse.client.v2)
+    clickhouseDependencies(libs.lz4.java)
     clickhouseDependencies(libs.clickhouse.http.client)
     clickhouseDependencies(libs.gson)
     clickhouseDependencies(libs.jackson.core)
@@ -131,14 +150,6 @@ dependencies {
     testFixturesImplementation(libs.testcontainers)
 }
 
-// Temporary fix to resolve capability conflict
-configurations.configureEach {
-    resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
-        select("at.yawk.lz4:lz4-java:1.10.2")
-        because("Resolve capability conflict between org.lz4 and at.yawk.lz4 providers.")
-    }
-}
-
 @Suppress("UnstableApiUsage")
 testing {
     suites {
@@ -158,7 +169,6 @@ testing {
                 implementation(libs.okhttp)
                 implementation(libs.json)
                 implementation(libs.httpclient5.test)
-                implementation(libs.clickhouse.jdbc)
                 implementation(libs.clickhouse.client)
                 implementation(libs.clickhouse.client.v2)
                 implementation(libs.clickhouse.http.client)

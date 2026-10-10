@@ -9,6 +9,7 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -223,5 +224,101 @@ class ClickHouseHelperClientForkUnitTest {
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor("map_col.keys", "String"), columns));
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor("map_col.values", "String"), columns));
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor("tuple_col.a", "String"), columns));
+    }
+
+    private static Map<String, Column> columnsSoFar(String... nameAndTypePairs) {
+        Map<String, Column> columns = new HashMap<>();
+        for (int i = 0; i < nameAndTypePairs.length; i += 2) {
+            Column column = Column.extractColumn(newDescriptor(nameAndTypePairs[i], nameAndTypePairs[i + 1]));
+            columns.put(column.getName(), column);
+        }
+        return columns;
+    }
+
+    @ParameterizedTest(name = "DESC-05: {0} is skipped because a JSON or Dynamic ancestor exists")
+    @ValueSource(strings = {"j.a", "j.b.c", "j.d.x", "j.d.y", "d.a.b", "tj.jj.k"})
+    @DisplayName("DESC-05: a row at any depth below a JSON or Dynamic ancestor is skipped")
+    void rowsAtAnyDepthBelowJsonOrDynamicAreSkipped(String rowName) {
+        Map<String, Column> columns = columnsSoFar(
+                "j", "JSON",
+                "d", "Dynamic",
+                "tj", "Tuple(jj JSON)",
+                "tj.jj", "JSON");
+
+        assertTrue(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor(rowName, "String"), columns));
+    }
+
+    @ParameterizedTest(name = "DESC-05: {0} is kept because no ancestor is JSON or Dynamic")
+    @ValueSource(strings = {"nt.a.b", "aj.k", "m.values", "t.a"})
+    @DisplayName("DESC-05: the ancestor walk does not widen to Tuple-in-Tuple, Array(JSON), Map or Tuple rows")
+    void rowsWithoutJsonOrDynamicAncestorAreNotSkipped(String rowName) {
+        Map<String, Column> columns = columnsSoFar(
+                "nt", "Tuple(a Tuple(b Int32))",
+                "nt.a", "Tuple(b Int32)",
+                "aj", "Array(JSON)",
+                "m", "Map(String, Int32)",
+                "t", "Tuple(a Int32)");
+
+        assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor(rowName, "Int32"), columns));
+    }
+
+    @ParameterizedTest(name = "D-02: {0} is flagged")
+    @ValueSource(
+            strings = {
+                "Array(Nullable(Enum8('x' = 1)))",
+                "Map(String, Nullable(Enum16('y' = 1)))",
+                "Nullable(Tuple(a Int32))",
+                "Nullable(Enum8('z' = 1))",
+                "Array(Nullable(Tuple(a Int32, b String)))",
+                "Tuple(a Nullable(Enum8('q' = 1)))"
+            })
+    @DisplayName("D-02: a raw type containing Nullable(Enum8(, Nullable(Enum16( or Nullable(Tuple( at any depth is flagged")
+    void nullableEnumOrTupleTypesAreFlagged(String rawType) {
+        assertTrue(ClickHouseHelperClient.hasNullableEnumOrTuple(rawType));
+    }
+
+    @ParameterizedTest(name = "D-02: {0} is not flagged")
+    @ValueSource(
+            strings = {
+                "Array(Nullable(Int32))",
+                "Enum8('a' = 1)",
+                "Tuple(a Nullable(Int32))",
+                "Nullable(String)",
+                "Map(String, Enum16('b' = 2))",
+                "LowCardinality(Nullable(String))"
+            })
+    @DisplayName("D-02: nullable scalars and non-nullable Enum or Tuple types are not flagged")
+    void otherTypesAreNotFlagged(String rawType) {
+        assertFalse(ClickHouseHelperClient.hasNullableEnumOrTuple(rawType));
+    }
+
+    @Test
+    @DisplayName("D-02: a null raw type is not flagged")
+    void nullRawTypeIsNotFlagged() {
+        assertFalse(ClickHouseHelperClient.hasNullableEnumOrTuple(null));
+    }
+
+    @Test
+    @DisplayName("D-02: the warning fires once per database, table, column and raw type, and again when the raw type changes")
+    void warnOnceDedupesPerColumnAndRawType() {
+        String table = "d02_" + UUID.randomUUID();
+
+        assertTrue(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
+        assertTrue(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("e", "Nullable(Enum16('a' = 1))")));
+    }
+
+    @Test
+    @DisplayName("D-02: sub-column rows and root columns with an unflagged type never warn")
+    void subColumnsAndUnflaggedTypesNeverWarn() {
+        String table = "d02_" + UUID.randomUUID();
+
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("m.values", "Array(Nullable(Enum16('y' = 1)))")));
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("n", "Array(Nullable(Int32))")));
     }
 }

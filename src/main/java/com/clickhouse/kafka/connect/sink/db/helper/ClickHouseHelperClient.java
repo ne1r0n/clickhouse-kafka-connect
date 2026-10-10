@@ -39,6 +39,7 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
@@ -75,9 +76,13 @@ public class ClickHouseHelperClient implements AutoCloseable {
     @Getter
     private final boolean enableReplicaPinning;
     private final String targetTableFilter;
+    @Getter
+    private final boolean setCompressionMethod;
 
     // Part of HTTP protocol header
     public static final String REPLICA_TAG_HEADER = "X-ClickHouse-Replica-Tag";
+    public static final String NETWORK_COMPRESSION_METHOD = "network_compression_method";
+    public static final String LZ4 = "lz4";
 
     public ClickHouseHelperClient(ClickHouseClientBuilder builder) {
         this.hostname = builder.hostname;
@@ -97,6 +102,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         this.clusterClause = builder.clusterClause;
         this.enableReplicaPinning = builder.enableReplicaPinning;
         this.targetTableFilter = builder.targetTableFilter;
+        this.setCompressionMethod = builder.setCompressionMethod;
         // We are creating two clients, one for V1 and one for V2
         this.client = createClientV2();
         this.server = createClientV1();
@@ -104,16 +110,14 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
     public static final String CONNECT_CLIENT_NAME = "clickhouse-kafka-connect/" + Version.ARTIFACT_VERSION;
 
-    // ClickHouse 26.9 defaults network_compression_method to ZSTD, which client 0.9.6 cannot decode.
-    // Remove once the pinned client decodes ZSTD responses.
-    static final String NETWORK_COMPRESSION_METHOD_SETTING = "network_compression_method";
-    static final String NETWORK_COMPRESSION_METHOD_LZ4 = "lz4";
 
     public Map<ClickHouseOption, Serializable> getDefaultClientOptions() {
         Map<ClickHouseOption, Serializable> options = new HashMap<>();
         options.put(ClickHouseClientOption.CLIENT_NAME, CONNECT_CLIENT_NAME);
-        options.put(ClickHouseClientOption.CUSTOM_SETTINGS,
-                NETWORK_COMPRESSION_METHOD_SETTING + "=" + NETWORK_COMPRESSION_METHOD_LZ4);
+        if (setCompressionMethod) {
+            options.put(ClickHouseClientOption.CUSTOM_SETTINGS, NETWORK_COMPRESSION_METHOD + "=" + LZ4);
+        }
+        options.put(ClickHouseClientOption.COMPRESS, false);
         if (proxyType != null && !proxyType.equals(ClickHouseProxyType.IGNORE)) {
             options.put(ClickHouseClientOption.PROXY_TYPE, proxyType);
             options.put(ClickHouseClientOption.PROXY_HOST, proxyHost);
@@ -143,6 +147,10 @@ public class ClickHouseHelperClient implements AutoCloseable {
         LOGGER.info("ClickHouse URL: {}", url);
 
         final Map<String, String> options = new HashMap<>();
+        if (setCompressionMethod) {
+            options.put(NETWORK_COMPRESSION_METHOD, LZ4);
+        }
+        options.put(ClickHouseClientOption.COMPRESS.getKey(), "false");
         if (username != null && password != null) {
             LOGGER.debug(String.format("Adding username [%s]", username));
             options.put("user", username);
@@ -182,9 +190,12 @@ public class ClickHouseHelperClient implements AutoCloseable {
                 .setUsername(this.username)
                 .setPassword(this.password)
                 .setClientName(CONNECT_CLIENT_NAME)
-                .setDefaultDatabase(this.database)
-                // Applied before the jdbcConnectionProperties loop so an operator's explicit value wins
-                .serverSetting(NETWORK_COMPRESSION_METHOD_SETTING, NETWORK_COMPRESSION_METHOD_LZ4);
+                .compressServerResponse(false)
+                .setDefaultDatabase(this.database);
+
+        if (setCompressionMethod) {
+            clientBuilder.serverSetting(NETWORK_COMPRESSION_METHOD, LZ4);
+        }
 
         if (jdbcConnectionProperties != null && !jdbcConnectionProperties.isEmpty()) {
             String props = jdbcConnectionProperties.startsWith("?") ? jdbcConnectionProperties.substring(1) : jdbcConnectionProperties;
@@ -449,8 +460,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
      * Returns true when {@code fieldDescriptor} is a structural DESCRIBE sub-column row that
      * should not become its own {@link Column}: a {@code .null}/{@code .size0}/bare {@code .size}
      * suffix (present on every {@code Nullable}/{@code Array} column, regardless of parent type),
-     * or any sub-column of a {@code JSON}/{@code Dynamic} parent (whose sub-paths are dynamic and
-     * not meaningful as standalone {@link Column}s). Map and Tuple sub-columns are deliberately
+     * or a sub-column at any depth below a {@code JSON}/{@code Dynamic} ancestor (whose sub-paths are
+     * dynamic and not meaningful as standalone {@link Column}s; typed paths such as {@code j.b.c}
+     * have no {@code j.b} row of their own). Map and Tuple sub-columns are deliberately
      * left un-skipped so {@link Table}'s own parent-routing keeps working.
      *
      * <p>{@code columnsSoFar} is the loop-local map of top-level columns extracted so far in the
@@ -466,13 +478,52 @@ public class ClickHouseHelperClient implements AutoCloseable {
         if (name.endsWith(".null") || name.endsWith(".size0") || name.endsWith(".size")) {
             return true;
         }
-        int lastDot = name.lastIndexOf('.');
-        if (lastDot < 0) {
+        for (int dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+            Column ancestor = columnsSoFar.get(name.substring(0, dot));
+            if (ancestor != null && (ancestor.getType() == Type.JSON || ancestor.getType() == Type.DYNAMIC)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static final Pattern NULLABLE_ENUM_OR_TUPLE = Pattern.compile("Nullable\\((?:Enum8|Enum16|Tuple)\\(");
+
+    private static final String NULLABLE_ENUM_OR_TUPLE_WARNING = "Column {}.{}.{} has type {}, which contains "
+            + "Nullable(Enum8), Nullable(Enum16) or Nullable(Tuple(...)). The connector writes such slots without "
+            + "their null marker, so values in that slot may be stored as NULL or shifted with no error, and a null "
+            + "entry fails the batch with DataException. See Known costs in docs/FORK-DELTA.md (backlog 999.1).";
+
+    // Process-wide so every task and every table-mapping refresh cycle warns once per column.
+    private static final Set<String> WARNED_NULLABLE_ENUM_OR_TUPLE = ConcurrentHashMap.newKeySet();
+
+    /**
+     * True when the raw DESCRIBE type contains {@code Nullable(Enum8(}, {@code Nullable(Enum16(} or
+     * {@code Nullable(Tuple(} at any depth. It reads the raw string because {@link
+     * Column#extractColumn} drops exactly this nullability.
+     */
+    static boolean hasNullableEnumOrTuple(String rawType) {
+        return rawType != null && NULLABLE_ENUM_OR_TUPLE.matcher(rawType).find();
+    }
+
+    /**
+     * Logs one WARN per database, table, column and raw type for a root column that {@link
+     * #hasNullableEnumOrTuple} flags. Carries catalog metadata only, never record data.
+     *
+     * @return true when this call logged the warning
+     */
+    static boolean warnOnceIfNullableEnumOrTuple(
+            String database, String tableName, ClickHouseFieldDescriptor fieldDescriptor) {
+        String rawType = fieldDescriptor.getType();
+        if (fieldDescriptor.isSubcolumn() || !hasNullableEnumOrTuple(rawType)) {
             return false;
         }
-        String parentName = name.substring(0, lastDot);
-        Column parent = columnsSoFar.get(parentName);
-        return parent != null && (parent.getType() == Type.JSON || parent.getType() == Type.DYNAMIC);
+        String name = fieldDescriptor.getName();
+        if (!WARNED_NULLABLE_ENUM_OR_TUPLE.add(database + "." + tableName + "." + name + ":" + rawType)) {
+            return false;
+        }
+        LOGGER.warn(NULLABLE_ENUM_OR_TUPLE_WARNING, database, tableName, name, rawType);
+        return true;
     }
 
     public Table describeTableV1(String database, String tableName) {
@@ -524,6 +575,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
                     skippedCols.add(fieldDescriptor.getName());
                     continue;
                 }
+
+                warnOnceIfNullableEnumOrTuple(database, tableName, fieldDescriptor);
 
                 if (fieldDescriptor.hasDefault()) {
                     hasDefaults = true;
@@ -593,6 +646,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
                         skippedCols.add(fieldDescriptor.getName());
                         continue;
                     }
+
+                    warnOnceIfNullableEnumOrTuple(database, tableName, fieldDescriptor);
 
                     if (fieldDescriptor.hasDefault()) {
                         hasDefaults = true;
@@ -788,6 +843,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         private String clusterClause = "";
         private boolean enableReplicaPinning = false;
         private String targetTableFilter = "";
+        private boolean setCompressionMethod = ClickHouseSinkConfig.setCompressionMethodDefault;
 
         public ClickHouseClientBuilder(String hostname, int port, ClickHouseProxyType proxyType, String proxyHost, int proxyPort) {
             this.hostname = hostname;
@@ -855,6 +911,11 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
         public ClickHouseClientBuilder setTargetTableFilter(String targetTableFilter) {
             this.targetTableFilter = targetTableFilter;
+            return this;
+        }
+
+        public ClickHouseClientBuilder setCompressionMethod(boolean setCompressionMethod) {
+            this.setCompressionMethod = setCompressionMethod;
             return this;
         }
 

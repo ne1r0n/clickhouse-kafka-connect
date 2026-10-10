@@ -1,227 +1,293 @@
-# Feature Research — Fork vs. Upstream v1.6.0 Disposition
+# Feature Research
 
-**Domain:** ClickHouse Kafka Connect sink — fork (`custom_build`, `v1.2.9_gg4`) vs. upstream `v1.6.0`
-**Researched:** 2026-09-18
-**Confidence:** HIGH — every claim below is backed by `git show`/`git diff` output against `v1.6.0` (`789a57c`) and `main` (`bec167d` = upstream `v1.2.9`), quoted inline. Two items are marked explicitly as requiring the fork's live test suite to confirm (noted per-item).
+**Domain:** Brownfield fork maintenance of a Kafka Connect ClickHouse sink (Java 17). Milestone `v1.7.0_gg1-sync`: upstream `v1.7.0` sync plus 17 open follow-ups plus publication.
+**Researched:** 2026-10-07
+**Confidence:** HIGH for everything read from code at `HEAD` (`94d98615`) or `git show v1.7.0:<path>` (`379b8d01`). MEDIUM where marked (behaviour predicted from library defaults, not yet observed live).
 
-**Method used:** `git show v1.6.0:<path>`, `git diff main...v1.6.0 -- <path>`, `git diff main...custom_build -- <path>`, `git show v1.6.0:CHANGELOG.md`, plus one direct jar inspection (`unzip -l` on the resolved `kafka-clients-4.1.1.jar` in the local Gradle cache) to settle a compile-safety question. No memory-based claims.
+All `file:line` references are to the current tree (`custom_build` + v1.6.0 sync) unless prefixed `v1.7.0:`. "Writer" means `src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java`.
 
----
+## Findings that correct or sharpen the milestone brief
 
-## Disposition Table (the eight fork features)
+The roadmap should treat these as inputs, because each changes scope or ordering.
 
-| # | Fork feature | Upstream v1.6.0 coverage | Disposition | Fork test that adjudicates |
-|---|---|---|---|---|
-| 1 | `TableOperationFilter` SMT (drop `c`/`u`/`d`/`t` per `database.table`) | **Not at all.** No file of this name exists at `v1.6.0` (`git ls-tree -r v1.6.0` — no match). Upstream's new `DebeziumRecordConvertor` is a different job (see below) — it doesn't drop ops, it *converts* the whole envelope into a flattened, versioned row. | **Keep fork wholesale.** Carry the file forward unchanged; only mechanical import/package adjustments possible. | `TableOperationFilterTest` (26 unit) + 1 sink-level test — must stay green byte-for-byte, no upstream code path touches it |
-| 2 | `HeadersToValue` SMT (all headers → one map field) | **Not at all.** No such file upstream. | **Keep fork wholesale.** | `HeadersToValueTest` (25 unit) + 1 sink-level |
-| 3 | `HeaderToValue` SMT + `HeaderToValueConfig` (selected headers → value fields) | **Not at all** for the transform itself. But upstream **independently fixed the identical bug class** the fork found in this transform family — see "KeyToValue" below: upstream's 1.3.8 changelog entry reads *"Fixed `com.clickhouse.kafka.connect.transforms.KeyToValue` transformation to handle different schemas. Before this fix, the value schema was cached and not updated, making the transformation incompatible with evolving schemas."* That is the same stale-`valueSchema`-cache defect the fork fixed in `HeaderToValue`/`HeadersToValue` (D-02) — upstream just never touched `HeaderToValue` itself, so the fork's fix there still stands and is still needed. | **Keep fork wholesale**, including the D-02 stale-schema-cache fix — upstream never fixed this particular class. | `HeaderToValueTest` (24 unit) + 1 sink-level |
-| 4 | `ConvertToMapOrJson` SMT (Struct → Map/JSON, Jackson/Gson, bytes→base64) | **Not at all.** No such file upstream. | **Keep fork wholesale.** | `ConvertToMapOrJsonTest` (37 unit) + perf + 1 sink-level |
-| 5 | `targetTableFilter` config (regex, server-side `match(table, '<regex>')`) | **Not at all.** `git show v1.6.0:.../ClickHouseHelperClient.java` has no `match(` clause and no filter-related config; `showTables`/`showTablesV1`/`showTablesV2` build an unconditional `WHERE database = '%s'` with no filter argument. | **Keep fork's feature, re-applied by intent.** The carrier class changed shape substantially (see below) so this is a manual re-application, not a patch apply. | `ClickHouseSinkTaskMappingTest.tableFilterTest`, FILT-01..04 |
-| 6a | `JSON(...)` parameterized column recognition in `Column`/`Type` | **Covered natively, same approach.** `Type.JSON` now exists upstream (confirmed: `git show v1.6.0:.../Type.java` lists `JSON` as the last enum constant, `main`'s does not). `Column.dispatchPrimitive` has `else if (valueType.startsWith("JSON")) { // There are some parameters that we ignore because server will handle them for us; type = Type.JSON; }` — functionally identical posture to the fork's own `valueType.startsWith("JSON")` branch. | **Adopt upstream's `Column.java`/`Type.java` for the `JSON` half.** It brings extra value: `SimpleAggregateFunction` unwrapping, Confluent Avro/Protobuf union-schema detection, and `connectTypeToClickHouseType`/`resolveBaseType` for `auto.evolve` (new upstream feature, see below) — none of which the fork has. | TYPE-01..05 (JSON portion) |
-| 6b | `Dynamic` column recognition in `Column`/`Type` | **Not at all.** `git show v1.6.0:.../Type.java` has no `DYNAMIC` constant (confirmed directly — milestone's stated lead holds). A raw `Dynamic` type string falls through `dispatchPrimitive`'s `default:` with no match, returning `Type.UNKNOWN` (never throws, never returns null) — so a `Dynamic` column silently becomes an `UNKNOWN`-typed `Column` upstream, which later fails validation with the old bare "Data schema validation failed" message (the same class of gap the fork's own P3-WR-03 follow-up already documents for `INT128`/`INT256`). | **Keep fork's `Type.DYNAMIC` + its `Column.dispatchPrimitive` branch, ported onto upstream's rewritten `Column.java`.** This is exactly the "candidate for removal… still stays" case the milestone context already predicted; now code-confirmed. | TYPE-01..05 (Dynamic portion) |
-| 6c | `describeTable` sub-column skip (`.null`, `.size0`, `.size`, children of `JSON`/`Dynamic`) | **Partially covered, by a different mechanism — needs live verification.** Upstream's `Table.handleNonRoot` only special-cases `.null`/`.size[0-9]+` inside the `ARRAY` branch (`SIZE_FIELD_MATCHER = Pattern.compile(".+\\.size[0-9]+$")` — note: requires a trailing **digit**, so a bare `.size` suffix with no digit, which the fork explicitly matches, would NOT match this regex). For any parent type the `switch` doesn't recognize (which now includes `JSON`, since upstream has no `case JSON:` there either), it falls to `default:`, which since 1.3.5 logs at `DEBUG` (`"Ignoring complex parent type…"`) instead of erroring, and the sub-column is still added to `allColumnsMap`/`allColumnsList` (via `registerValidColumn`, called unconditionally in `addColumn`) but never wired into any parent's structure and never added to `rootColumnsList`/`rootColumnsMap`. Net effect on insert correctness looks equivalent (no orphaned root column, no thrown error) but is unproven for real ClickHouse `JSON`/`Dynamic` sub-column shapes, and the exact-match-vs-suffix-regex gap (`.size` vs `.size0`) is a real, code-confirmed divergence. | **Keep the fork's explicit `shouldSkipDescribeRow` structural rule**, ported onto upstream's rewritten `Table`/`ClickHouseHelperClient` describe path — don't rely on upstream's implicit swallow, since it's a different code path with an unverified edge (bare `.size`) and doesn't skip the row before `Column.extractColumn` is even called (upstream still constructs and stores the sub-column; the fork's version never does). | DESC-01..04 — **this is the test suite that would settle whether upstream's implicit handling alone would actually pass**; it wasn't run against upstream's `Table.java` as part of this research (static reading only) |
-| 7 | Metadata-free JSON insert path (`insertFormat=json` skips discovery/validation/cleanup) + `jsonInsertColumns` | **Not at all.** Upstream's `doInsertJsonV1`/`doInsertJsonV2` still take a `Table table` parameter and still call `cleanupExtraFields(data, table)` iterating `t.getRootColumnsList()` (`git show v1.6.0:.../ClickHouseWriter.java` lines ~1229–1310) — meaning upstream's JSON insert path *still requires* a normally-described `Table`. There is no `shouldSkipTableMetadata()`-equivalent anywhere upstream (confirmed: `grep -n` for that identifier and for `jsonInsertColumns` across `ClickHouseWriter.java`/`ClickHouseSinkConfig.java`/`ClickHouseHelperClient.java` at `v1.6.0` returns nothing). | **Keep fork wholesale, re-applied by intent** onto the rewritten `ClickHouseWriter`/`ClickHouseSinkConfig` — the `shouldSkipTableMetadata()` gate in `start()`/`updateMapping()`/`getTable()`, and `jsonInsertColumns` parsing, have no upstream equivalent to merge against. | JSON-01..04, JSON-05, COLS-01..06 |
-| 8 | JMX `connector=<name>` naming; `async_insert` not forced | **`connector=<name>`: not at all, and the carrier method is gone.** Upstream moved MBean-name construction entirely out of `ProxySinkTask` (whose `getMBeanNAme()`/`buildMBeanName` no longer exist there) into a new `SinkTaskStatistics.getMBeanName(int taskId)` / `getTopicMBeanName(int taskId, String topic)` (new: per-topic MBeans, see Statistics section below). Both format as `"com.clickhouse:type=ClickHouseKafkaConnector,name=SinkTask%d,version=%s"` — no `connector=` segment anywhere, confirmed by direct read of `SinkTaskStatistics.java` at `v1.6.0`. Version source also changed: `Version.ARTIFACT_VERSION`, a build-time-generated constant from the connector's own `VERSION` file (via a new `generateVersionFile` Gradle task), **not** the ClickHouse client jar's `getImplementationVersion()` the fork's tests target. **`async_insert` not forced: unaffected — no upstream diff touches it** (`git diff main...v1.6.0 -- ClickHouseWriter.java \| grep async_insert` is empty). | **`connector=<name>`: keep fork's intent, but it must be reimplemented in the new location** (`SinkTaskStatistics`), not merged as a patch — the carrier method it lived in no longer exists. Also decide whether to extend it to the new `getTopicMBeanName()` for consistency. The fork's `:` → `_` / `null` → `unknown` sanitization is now largely moot for the *null* case (`Version.ARTIFACT_VERSION` is a compile-time non-null constant) but should be kept for safety since `connectorName` itself can still be null/contain `:`. **`async_insert`: keep fork wholesale, no conflict.** | JMX-01..04 (needs re-target once `SinkTaskStatistics` owns naming) · ASYNC-01..03 (unaffected, should stay green as-is) |
+1. **#800 (Avro record unions) has no `src/main` change.** `git diff v1.6.0 v1.7.0 -- src/main` touches 10 files (CHANGELOG, VERSION, build, `AtLeastOnceBufferStrategy`, `ClickHouseSinkConfig`, `StructToJsonMap`, Writer, `ClickHouseHelperClient`, `KeeperStateProvider`, catalog). #800 landed as fixtures, an integration test and a CHANGELOG line (`git log --stat v1.6.0..v1.7.0`, commits `792efb11`, `f2956fb5`). Nothing to "not adopt" in code. The merge carries test fixtures only.
+2. **P3-WR-03 is narrower than recorded.** `INT128`/`UINT128` are now written by RowBinary (Writer:576-581 routes them to `doWritePrimitive`; Writer:916-925 writes them from `BigInteger` or `String`). Only `INT256`/`UINT256` still fall through `validateDataSchema`'s default branch (`colWidth == null`, so `validSchema = false`) and surface the bare `"Data schema validation failed."` (Writer:1139-1142, 1216-1219, 559-565). The fail-fast message applies to `INT256`/`UINT256` only. Telling users `INT128` is unsupported would be wrong.
+3. **The fork's own null guards in `case MAP` and `case TUPLE` collide with #820 and are semantically wrong.** Writer:613-621 (`MAP` null -> `writeNull`) sits in the same hunk as upstream's `if (mapTmp == null)` branch (`git diff v1.6.0 v1.7.0`, Writer `@@ -554`). The fork's guard writes byte `0x01` for a null `Map`. ClickHouse does not allow `Nullable(Map(...))` or `Nullable(Tuple(...))` (HIGH from ClickHouse type rules; confirm live in the WR-02 test), so a null `Map` or `Tuple` reaching `doWriteColValue` is always a non-nullable slot, where `0x01` is read as a length or tuple byte and desynchronises the stream. That is WR-02's exact bug class. Resolve `MAP` to upstream's branch; turn `TUPLE` into the WR-02 throw. The `VARIANT` guard (Writer:695-702, writes discriminator 255) is correct and stays.
+4. **P9-IN-01's operand swap is cosmetic.** `shouldSkipTableMetadata()` returns `false` for `csc == null` (Writer:1616-1618), so `shouldSkipTableMetadata() || csc.isBypassFieldCleanup()` still dereferences `csc` when it is null. The swap changes evaluation order only. Acceptance must be "behaviour-identical for all non-null `csc`" plus a Javadoc correction, not "null-safe".
+5. **`USERNAME` default and `Column.extractColumn` swap are upstream bugs too.** Both are present verbatim in `v1.7.0` (`ClickHouseSinkConfig` line 418-420, `Column.java` line 211). Fixing them grows the fork delta by two lines in upstream-owned files. They are still worth fixing (see below), and are candidates for an upstream PR so the delta shrinks again.
+6. **#841 is a larger behaviour change than "retire D-17".** Beyond `network_compression_method=lz4`, `v1.7.0` unconditionally sets V1 `COMPRESS=false` (`v1.7.0` helper client `getDefaultClientOptions`) and V1 node option `compress=false`, and V2 `.compressServerResponse(false)`, independent of the `setCompressionMethod` flag. Server response compression is therefore off for every operator. This is also why `NetworkCompressionPinLiveTest` (class Javadoc, lines 20-25: "answers `compress=1` requests with ZSTD") loses discriminating power: with `compress=false` the ZSTD response never occurs. See the D-17 row.
+7. **R-01 routing depends on #820's `StructToJsonMap` fix.** `SchemaRecordConvertor.doConvert` builds `StructToJsonMap.toJsonMap(struct)` eagerly for every `SCHEMA` record (`SchemaRecordConvertor.java:20`), including ones that will only be written as JSON. At `HEAD`, a Struct with a null optional `Map` field throws an NPE there (`StructToJsonMap.java:86`: `new HashMap<>(struct.getMap(fieldName))`). So rerouting Structs into the JSON writer would still lose those records until #820 is merged. This forces "sync before R-01" (already the ordering constraint) and justifies one null-Map case in the R-01 test matrix.
+8. **There is a pre-existing upstream asymmetry in nested null containers.** `doWriteColValue`'s `ARRAY` branch writes a marker only `if (defaultsSupport)` (Writer:641-645) and #820's `MAP` branch does the same. At the top level `doWriteCol` supplies the missing byte (Writer:965-966, 980-982), so top level is consistent. For a null `Array`/`Map` element nested inside another container, nothing supplies it when `defaultsSupport == false`. WR-02 has to handle this, not only scalar slots.
 
----
+## Feature Landscape
 
-## Detail: the "known leads" questions, answered directly
+### Table Stakes (must ship for `v1.7.0_gg1` to be publishable)
 
-### Does upstream's `JSON` support parse `JSON(...)` parameters, skip sub-columns, and serialize through RowBinary?
+| # | Feature | Why expected | Complexity | Dependencies |
+|---|---------|--------------|------------|--------------|
+| T1 | Mechanical merge of upstream `v1.7.0` (ref `v1.7.0` = `379b8d01`; never bare `upstream/main`) in the `v1.6.0_gg1-sync` shape | Whole milestone premise. Collision files: Writer, `ClickHouseHelperClient`, `ClickHouseSinkConfig`, `ClickHouseTestHelpers` (+1 line), `build.gradle.kts`, `libs.versions.toml`, CHANGELOG, VERSION | MEDIUM | Must land first: v1.7.0 rewrites the lines that D-17, WR-01/02, P9-IN-01 and R-01 touch |
+| T2 | Retire D-17; take upstream's `setCompressionMethod` implementation | See "D-17 retirement" below | MEDIUM | T1 |
+| T3 | R-01 fixed by routing | See "R-01 routing" below. Only silent-data-loss item | MEDIUM | T1 (#820 `StructToJsonMap` fix), T2 not required |
+| T4 | WR-01 + WR-02 writer null-correctness, reconciled with #820 | See "Null semantics" below | MEDIUM-HIGH | T1 |
+| T5 | Metadata/config fixes: P3-WR-01, P3-WR-03 (narrowed), `extractColumn` swap, `USERNAME` default, P9-IN-01 | See follow-up table | LOW each | T1 for P9-IN-01 (adjacent hunk); others independent |
+| T6 | Test debt: WR-03, `JsonColumnTest` read-back, P4-WR-01, `ClickHouseBase.tearDown`, IN-01, P4-IN-01 | Core Value: every fork behaviour pinned by a test that actually asserts it | LOW-MEDIUM | T4 for nothing; independent |
+| T7 | CI: one `tests.yaml` run per published SHA; fork count read or recorded unmeasured | CI-06 had to filter `conclusion != cancelled` last time | LOW | None |
+| T8 | Dependency bumps already user-approved: jackson 2.22.3, okhttp 5.5.0, org.json 20260814, mockito 5.24.0; lz4-java 1.10.4 arrives with the merge | `AGENTS.md` forbids unapproved bumps; this list is the approval. Nothing else is bumped | LOW | T1 (catalog file). Jackson bump sits under the JSON writer, re-run R-01 matrix after it |
+| T9 | Publication: `VERSION=v1.7.0_gg1`, CHANGELOG, push, green CI on the published SHA, publish post-`c61d90ce` `.planning` history | Definition of done | LOW-MEDIUM | All |
+| T10 | Operator rollout checklist | Three operator-visible changes (MBean version segment, compression, R-01) | LOW | T2, T3 |
+| T11 | `docs/FORK-DELTA.md` brought to the new tree, each row re-grepped | The next syncer's only map; seven behaviours vanished silently last time | MEDIUM | All code items |
 
-- **Parses `JSON(...)`:** yes, same way the fork does — `startsWith("JSON")` matches both bare `JSON` and parameterized `JSON(max_dynamic_paths=…)`, with parameters deliberately ignored ("the server will handle them for us" — same comment text, same posture, in `Column.java` at `v1.6.0`).
-- **Skips sub-columns in `describeTable`:** partially, implicitly, by a different mechanism than the fork's — see row 6c above. Not proven equivalent; DESC-01..04 is the test that settles it.
-- **Serializes JSON through RowBinary:** **yes, conditionally** — this is new capability the fork doesn't have at all. `ClickHouseWriter.doWriteColValue`'s `case JSON:` (new in `v1.6.0`, confirmed present at line 651):
-  ```java
-  case JSON:
-      if (value.getObject() == null) {
-          BinaryStreamUtils.writeNull(stream);
-          break;
-      }
-      if (csc.isBinaryFormatWrtiteJsonAsString()) {
-          if (value.getFieldType() == Schema.Type.STRUCT) {
-              byte[] jsonBytes = OBJECT_MAPPER.writeValueAsBytes(value);
-              BinaryStreamUtils.writeString(stream, jsonBytes);
-          } else if (value.getFieldType() == Schema.Type.STRING) {
-              BinaryStreamUtils.writeString(stream, ((String) value.getObject()).getBytes(StandardCharsets.UTF_8));
-          } else {
-              throw new RuntimeException("Unsupported field type: " + value.getFieldType() + " for column type [JSON]");
-          }
-      } else {
-          throw new RuntimeException("Writing JSON in binary is not supported yet. Use `input_format_binary_read_json_as_string=1` in clickhouse settings to allow writing as string");
-      }
-  ```
-  `isBinaryFormatWrtiteJsonAsString()` is derived from `clickhouseSettings.get("input_format_binary_read_json_as_string")` (a passthrough setting key, not a first-class connector config) — `ClickHouseSinkConfig.java` line 326-327. Default off → **default behavior is a bare `RuntimeException`, not the fork's actionable `DataException` naming `insertFormat=json`/`bypassRowBinary=true`.** This is genuinely new capability (JSON-as-string via RowBinary when the setting is opted in) that the fork's fail-fast approach (TYPE-06) doesn't offer. `Dynamic` has no equivalent `case DYNAMIC:` upstream at all (falls to `default:` which now *throws* a `DataException` in the fork but upstream's default just logs an error and silently drops the byte — a real behavioral gap the fork's TYPE-06 fix specifically closed and upstream hasn't).
+### R-01 routing: exact scope and observable output (Table stakes T3)
 
-  **Recommendation:** adopt upstream's `case JSON:` capability (it's strictly more than the fork has for the JSON-as-string case) but retain the fork's TYPE-06 fail-fast wording/behavior for the *un-opted-in* path and for `Dynamic`, since upstream's default-path exception (bare `RuntimeException`) and default `default:` case (silent log, no throw) are both worse than what TYPE-06 already pins.
+**Mechanism today.** `doInsert` -> `getTable` returns a synthetic, column-less `Table` under `shouldSkipTableMetadata()` (Writer:1620-1623: `new Table(database, mappedName, false, List.of(), 0)`). `doInsertBatch` sends `SCHEMA` and `DEBEZIUM_CDC` records to `doInsertRawBinary` unless `csc.isBypassRowBinary()` (Writer:235-241). `writeRecordsRowBinary` iterates `table.getRootColumnsList()` (Writer:1194), which is empty, so each record serialises to zero bytes. `validateDataSchema` is vacuous for the same reason (Writer:286). The client reports `Written Rows: [0]` and nothing throws.
 
-### `DebeziumRecordConvertor.java` (+289, new file) — what does it do, does it overlap fork features, new config?
+**Routing rule (the whole change).** In `doInsertBatch`, `case SCHEMA` / `case DEBEZIUM_CDC`: take the JSON branch when `csc.isBypassRowBinary() || shouldSkipTableMetadata()`. One predicate already exists and is already null-safe (Writer:1616-1618); no new config key.
 
-Genuinely new, opt-in upstream capability — not a replacement for anything the fork has. Summary (from `git show v1.6.0:.../DebeziumRecordConvertor.java`):
+| Config | Record type | Before | After |
+|--------|-------------|--------|-------|
+| `insertFormat=json` (explicit), `bypassRowBinary=false` | `SCHEMA` (Struct) | RowBinary on empty table, **0 rows, no error** | `doInsertJson` -> `JSONEachRow`, rows land |
+| same | `DEBEZIUM_CDC` (only if `debeziumCDCEnabled=true`, which the fork does not use) | same loss | same reroute, for consistency |
+| `insertFormat=json`, `bypassRowBinary=true` | `SCHEMA` | JSON (already) | unchanged; **no test pins this combination in metadata-free mode today** (FORK-DELTA.md:120) |
+| `insertFormat=json` | `SCHEMA_LESS` (Map) | JSON | unchanged; this is the operator-confirmed production route (MERGE-CHECKLIST Fact 14, fact 2) |
+| `insertFormat=json` | `STRING_SCHEMA` | `doInsertString`, raw string as `JSONEachRow` (Writer:1424-1434) | unchanged |
+| `insertFormat` unset, `none`, `csv`, `tsv` | any | unchanged | unchanged. `jsonInsertFormatExplicit` is false even though `InsertFormats` resolves to `JSON` through the `"node"` default typo (ClickHouseSinkConfig.java:262-278), so the bypass never widens |
+| any, `auto.evolve=true` + explicit json | any | warn and skip evolve (Writer:222-226) | unchanged |
 
-- **Activation:** gated by *both* the new `debeziumCDCEnabled` config (`ClickHouseSinkConfig.java` line 313, default `false`) *and* the incoming schema name ending in `.Envelope` — wired in `Record.java`: `if (debeziumCDCEnabled && schema.name() != null && schema.name().endsWith(".Envelope"))`. **Opt-in, safe by default** — a fork production connector that doesn't set `debeziumCDCEnabled=true` is unaffected even if its records happen to have `.Envelope`-named schemas.
-- **Behavior:** flattens the Debezium envelope into a `ReplacingMergeTree(_version, is_deleted)`-shaped row: `op=c/r/u` → `after` struct with `is_deleted=0`; `op=d` → `before` struct with `is_deleted=1`; `op=t` → record skipped entirely. Injects synthetic `_version` (from `source.lsn`/`gtid`/`pos`, PostgreSQL/MySQL/SQL Server aware) and `is_deleted` columns. Also does Debezium-logical-type-aware value conversion (`MicroTimestamp`, `Date`, `Decimal`, hex-encoded raw bytes).
-- **Overlap with fork features:** none structurally. `TableOperationFilter` *drops* selected op types per table (a filter); `DebeziumRecordConvertor` *converts every op* (except `t`) into an upsert/tombstone row for a specific ClickHouse table engine pattern (ReplacingMergeTree) — a different CDC strategy entirely, and the two could in principle be used together (`TableOperationFilter` upstream of `DebeziumRecordConvertor`'s auto-detection, since SMTs run before the sink task's `Record.convert`). `ConvertToMapOrJson` (Struct→Map/JSON formatting) doesn't overlap either — it's schema-agnostic, not Debezium-envelope-aware.
-- **New config surface just for this:** `debeziumCDCEnabled` (boolean, default `false`).
-- **Recommendation:** must-absorb capability to know about (it's a real upstream feature the fork's CDC users may want), but **not required** for this milestone's scope (default off, no interaction with the fork's existing eight features). Record it as a "new capability" in Requirements, not a disposition item.
+Only the first two rows change behaviour. Per the operator facts, no known production pipeline is in them, so the routing is a no-op for the deployment that motivated the fork and a fix for everyone else.
 
-### `KeyToValue.java` — upstream rewrote (+90), fork touched (+3) — does the fork's change survive?
+**How Struct -> JSON works (answer to "via StructToJsonMap").** It does not use `StructToJsonMap`. `writeRecordsJson` reads the `Struct` directly: `for (Field field : struct.schema().fields()) data.put(field.name(), struct.get(field))` (Writer:1277-1283, comment "Doesn't handle multi-level object depth"). The `DEBEZIUM_CDC` branch reads `record.getJsonMap()` (Writer:1284-1287). Nested Structs are handled by Jackson via `JacksonStructSerializer` (`DataJson.java:36-58`), which recurses field by field and writes explicit nulls. `StructToJsonMap` only builds `Record.jsonMap`, used by RowBinary and by `Tuple`; for JSON it is pure eager overhead plus the null-Map NPE in finding 7. `cleanupExtraFields` returns the payload untouched in metadata-free mode (Writer:1404).
 
-**No survives-as-meaningful-change — the fork's diff is a no-op.** `git diff main...custom_build -- .../KeyToValue.java` shows the entire fork delta is an import-block reorder (`java.util.Map` moved above the `org.apache.kafka...` imports — a Spotless artifact), zero functional change.
+**What the user observes after the change.** `{"id":1,"str":"row1"}` per record, `JSONEachRow`, into the `topic2TableMap`-resolved table, with `clickhouseSettings` applied (Writer:1381-1383) and `jsonInsertColumns` applied on client V2 (Writer:1391-1394; V1 ignores it, out of matrix). Differences from RowBinary that the test matrix must pin or document:
 
-Upstream's rewrite is a real bug fix, independently confirmed by the `1.3.8` `CHANGELOG.md` entry quoted in row 3 above: it replaces the single cached `valueSchema` field (which went stale on schema evolution — the exact same defect class Phase 2 of this project fixed in `HeaderToValue`/`HeadersToValue`, D-02) with a size-bounded `LRUCache<CacheKey, Schema>` keyed on `(valueSchema, keySchema)`, adds a new `shema_cache_max_size` config (range `[16, 1000]`, default `32`), and switches `builder.name/version/doc(...)` to null-guarded calls.
+| Aspect | JSON-route behaviour | Confidence |
+|--------|----------------------|------------|
+| Validation | No client-side schema validation (Writer:1328-1329 comment). Type errors come from the server as a `ServerException`, not a `DataException`. Unknown fields skipped by server (already pinned: `ExplicitJsonInsertPathLiveTest.metadataFreeModeInsertsUnknownFieldWithoutThrowing`) | HIGH |
+| Top-level nulls | `OBJECT_MAPPER` is `NON_NULL` (`DataJson.java:33`), so a null top-level field is **omitted**, not sent as `null`. Nullable column without `DEFAULT` -> NULL; column with a non-NULL `DEFAULT` -> the default. Nested Struct fields are written as explicit `null` (the Jackson serializer bypasses NON_NULL) | HIGH (code), MEDIUM (server result) |
+| `Timestamp` / `Date` / `Time` logical types | `struct.get(field)` yields `java.util.Date`; the default `ObjectMapper` writes epoch **milliseconds**. Correct for `DateTime64(3)`; wrong or erroring for `DateTime` and `Date`, which read a number as seconds or days | MEDIUM: derived from Jackson/ClickHouse defaults, not observed. The R-01 matrix must observe it live |
+| `Decimal` | `BigDecimal` -> JSON number; already round-trips (TYPE-05, `JsonDynamicRoundTripTest`) | HIGH |
+| `bytes` | `byte[]` -> base64 string | HIGH (Jackson default) |
+| Null optional `Map` | omitted, column default (empty map) | HIGH after #820 |
 
-**Recommendation:** **adopt upstream's `KeyToValue.java` wholesale** — the fork carries no functional divergence to preserve, and upstream's version fixes a real bug for free.
+**Done looks like.**
+- `ExplicitJsonInsertPathLiveTest.explicitJsonStructRecordWithDefaultBypassRowBinarySilentlyDropsBatch` (lines 278-343) is **renamed and flipped**: 5 records, `assertEquals(5, countRows)` and typed read-back of `id`/`str`. The "R-01 PIN - NOT AN ENDORSEMENT" Javadoc is replaced, not left stale.
+- A second test pins `explicit json + bypassRowBinary=true + Struct` (the unpinned combination).
+- A mixed-type live matrix under metadata-free mode that mirrors TYPE-05 (`JsonDynamicRoundTripTest` lines 230-410, which already does it with metadata on the `bypassRowBinary=true` route): String, UInt32, Float64, Decimal, Nullable-with-null, a null optional `Map` (ties to #820), `Array`, nested Struct, and `DateTime64(3)`. The `DateTime`/`Date` outcome is **recorded as observed**, not fixed (anti-feature below).
+- `MetadataFreeJsonInsertUnitTest` gains a Docker-free assertion that `doInsertBatch` takes the JSON branch under the predicate (the existing class is the canary for the guards, lines 98-250).
+- FORK-DELTA.md: Known costs item 1 (lines 114-120) is deleted; the metadata-free row (line 33) is amended; CHANGELOG states the behaviour change.
 
-**Compile-safety check performed:** upstream's rewrite imports `org.apache.kafka.common.cache.{Cache,LRUCache,SynchronizedCache}`. Verified directly against the fork's actual resolved dependency (`kafka-clients-4.1.1.jar` in the local Gradle module cache) via `unzip -l`: `org/apache/kafka/common/cache/{Cache,LRUCache,LRUCache$1,SynchronizedCache}.class` are all present. **No compile risk from the Kafka Connect API version difference** (upstream's own `libs.versions.toml` pins `kafka = "2.7.0"`; the fork stays on 4.1.1 — this class package survives across that range).
+### D-17 retirement (Table stakes T2): expected end state
 
-### `Utils.handleException` (+135) — does it now handle `com.clickhouse.client.api.ServerException`? Client-V2 dead-error-classification question.
+| Aspect | Fork D-17 (HEAD) | After taking upstream #841 |
+|--------|------------------|----------------------------|
+| V2 | `.serverSetting(lz4)` unconditional, before the jdbc-properties loop (`ClickHouseHelperClient.java:185-187`) | Same, but guarded by `setCompressionMethod`; plus `.compressServerResponse(false)` |
+| V1 | `CUSTOM_SETTINGS="network_compression_method=lz4"` unconditional (`:114-116`) | Same, guarded; plus `COMPRESS=false` and V1 node option `network_compression_method=lz4` |
+| Config | none | `setCompressionMethod`, default `true`, alias `set_compression_method` (`v1.7.0` `ClickHouseSinkConfig`) |
+| Escape hatch | operator's `jdbcConnectionProperties` value wins on V2 | same, plus `setCompressionMethod=false` |
+| `KeeperStateProvider` | not passed | `.setCompressionMethod(csc.isSetCompressionMethod())` |
+| Constants | package-private `NETWORK_COMPRESSION_METHOD_SETTING`/`_LZ4` (`:109-110`) | public `NETWORK_COMPRESSION_METHOD`, `LZ4` |
 
-**Yes — plainly, confirmed by direct read of `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/util/Utils.java`:**
+**Done looks like.** `ClickHouseHelperClient.java` is upstream's for these lines, with the fork comment block at `:106-110` deleted. `NetworkCompressionPinUnitTest` keeps passing: it asserts configuration values through `getClient().getConfiguration()` and `getDefaultClientOptions()`, not the private constant names, so it needs no edit and is retained as the fork's canary. `NetworkCompressionPinLiveTest` is **retained and extended**: add a `setCompressionMethod=false` case against `latest`. If it passes (likely, because `compress=false`), the Javadoc rationale (lines 20-25) must be rewritten, because D-17's ZSTD story is now only a second line of defence. If it fails, that is a rollout fact for the checklist. FORK-DELTA.md: the `network_compression_method` row (line 36) and the "eighth behaviour" paragraph (line 167) are replaced by a pointer to upstream's flag. The `at.yawk.lz4` capability resolution (FORK-DELTA.md:49) now duplicates upstream's identical block in `v1.7.0` `build.gradle.kts`; take upstream's, leaving five fork build additions, not six. The `0.9.6` row (line 51) shrinks to the Connect API pin.
 
-```java
-import com.clickhouse.client.ClickHouseException;
-import com.clickhouse.client.api.ServerException;
-...
-private static boolean isServerError(Throwable t) {
-    return t instanceof ClickHouseException || t instanceof ServerException;
-}
-...
-public static void handleException(Exception e, boolean errorsTolerance, boolean retryOnSocketException, Collection<SinkRecord> records) {
-    Exception rootCause = Utils.getRootCause(e, true);
-    if (isServerError(rootCause)) {
-        int errorCode = rootCause instanceof ServerException
-                ? ((ServerException) rootCause).getCode()
-                : ((ClickHouseException) rootCause).getErrorCode();
-        LOGGER.warn("ClickHouse server error code: {}", errorCode);
-        switch (errorCode) {
-            case 3: case 107: case 159: case 164: case 202: case 203: case 209:
-            case 210: case 241: case 242: case 252: case 285: case 319: case 425: case 999:
-                throw new RetriableException(e);
-            ...
+### Null semantics: #820 vs WR-01 and WR-02 (Table stakes T4)
+
+**What #820 changes** (`git diff v1.6.0 v1.7.0`):
+- `StructToJsonMap` MAP case: a null optional Map becomes `new Data(schema, null)` instead of an NPE.
+- Writer `case MAP`: `mapTmp == null` -> if `defaultsSupport`, write varint `0`; otherwise nothing.
+- `doWriteCol`: the non-nullable null rule now treats `ARRAY || MAP` alike, writing a non-null marker (both branches).
+- `cleanupExtraFields`: a null, non-nullable `MAP` column becomes `Collections.emptyMap()` on the JSON route.
+
+Semantics: **a null value for a non-nullable top-level `Map` column is an empty map.** Lenient by design, same as `ARRAY`. Upstream tests `nullMapTypeTest`, `nullMapTypeJsonInsertTest`, `nullMapTypesTest` pin it.
+
+**Verdict on overlap.**
+
+| Item | Subsumed by #820? | Relationship |
+|------|-------------------|--------------|
+| WR-01 (null **entry** inside `Map(K, Nullable(V))`) | **No.** #820 handles a null whole map only | Code reading says the path is correct: the MAP loop skips the non-null marker when `mapValue == null` (Writer:629-631) and `doWritePrimitive` writes `0x01` for null (Writer:800-803), which is the Nullable null marker. It has simply never been run. Needs a live read-back test |
+| WR-02 (null in a **non-nullable** element slot) | **No.** #820 is the lenient top-level case | WR-02 must carve out #820's top-level leniency, not contradict it |
+| Fork `MAP`/`TUPLE` null guards | Collide textually with #820 | See finding 3 |
+| P9-IN-01 | Adjacent hunk only | `cleanupExtraFields` body changes upstream, guard line changes in the fork; expect a clean merge, verify |
+
+**"Fail loudly" consistent with `doWriteCol()`.** The existing contract at the top level is: null in a non-nullable column -> coerce for `ARRAY` (and now `MAP`) and `VARIANT` (discriminator 255), otherwise `RuntimeException("An attempt to write null into not nullable column '%s'")` (Writer:965-973, 980-988). WR-02 applies the same decision table to **element and value slots** of `ARRAY` and `MAP` (Writer:626-636, 648-657):
+
+| Element/value slot type | Slot nullable | Null value | Behaviour |
+|-------------------------|---------------|-----------|-----------|
+| scalar (String, Int, Date, Decimal, FixedString, UUID, Enum) | yes | null | write Nullable null marker (today) |
+| scalar | **no** | null | **throw**, same message shape, naming the column. Today `doWritePrimitive` writes `0x01`, desyncing the stream |
+| `ARRAY`, `MAP` | no (cannot be Nullable) | null | coerce to empty container, **always** emitting the size varint regardless of `defaultsSupport` when nested (finding 8). At top level keep the current marker arithmetic |
+| `VARIANT` | n/a | null | discriminator 255 (today) |
+| `TUPLE` | no (cannot be Nullable) | null | **throw** (replaces the fork's `writeNull` guard) |
+
+Recommended exception: `DataException` with `doWriteCol`'s wording. It is a `RuntimeException` subclass, so `assertThrows(RuntimeException.class, ...)` style assertions still hold, and `Utils.handleException` rethrows it as-is when tolerance is off (`Utils.java:106-108`) and it is DLQ-able when tolerance is on. Do not rewrite `doWriteCol`'s own `RuntimeException`; changing the top-level exception type is a behaviour change nobody asked for.
+
+**Done looks like.**
+- Byte-level Docker-free tests (a `ByteArrayOutputStream` through `doWriteColValue`) for: null element in `Array(String)` throws; null value in `Map(String,String)` throws; null element in `Array(Nullable(String))` writes `0x01`; null `Array(Map(...))` element writes exactly one `0x00` in both `defaultsSupport` modes; null `Tuple` element throws.
+- Live read-back: `Map(String, Nullable(String))` with `{"a": null, "b": "x"}` returns `a -> NULL`, `b -> x` (closes WR-01 with typed read-back, matching Core Value rule "never `countRows`").
+- Live: a top-level null optional `Map` still lands as an empty map on RowBinary, JSON (`bypassRowBinary=true`) and metadata-free routes, i.e. #820 is not weakened.
+- A stream-desync regression guard: a record after the failing one is not corrupted (the throw happens before any partial write is flushed, or the batch is rejected whole).
+
+### Remaining follow-ups: expected behaviour and testable acceptance (Table stakes T5-T7)
+
+| Follow-up | Expected behaviour | Acceptance (testable) | Complexity |
+|-----------|--------------------|-----------------------|------------|
+| **P3-WR-01** `shouldSkipDescribeRow` at any depth (`ClickHouseHelperClient.java:461-476`) | Walk every dot-boundary ancestor of the row name, not only `lastIndexOf('.')`; skip when any ancestor present in `columnsSoFar` is `JSON` or `DYNAMIC`. Column names may contain dots, so test every prefix, not just the first segment. `Map`/`Tuple` ancestors alone still do not skip (Table's parent routing needs them) | Docker-free unit in `ClickHouseHelperClientForkUnitTest`: `j.a.b` with `{j: JSON}` -> skip; `j.a.b.c` -> skip; `t.x.y` with `{t: TUPLE}` -> no skip; `t.j.a.b` with `{t: TUPLE, t.j: JSON}` -> skip. Live: DESCRIBE a table with a typed JSON path if `latest` emits one | LOW |
+| **P3-WR-03** fail-fast message (narrowed: `INT256`/`UINT256` only) | `validateDataSchema` throws the same `DataException` as `DYNAMIC`/`UNKNOWN` (Writer:331-336) for `INT256`/`UINT256`, via `buildRowBinaryUnsupportedTypeMessage` (Writer:543-548). **Do not** include `INT128`/`UINT128` | `RowBinaryUnsupportedTypeGateTest` gains `INT256` and `UINT256` cases asserting the message names the column, type and the two escape hatches; a negative case proves `INT128` is *not* rejected (existing coverage at `ClickHouseSinkTaskWithSchemaTest:1880`). Implementing 256-bit serialization is out of scope | LOW |
+| **WR-03** `HeaderToValue` collision contract | Pin, do not change: schema path with `fields` naming a pre-existing non-STRING field throws `DataException` (wrapped "Failed to transform record", `HeaderToValue.java:94-97`) **only when the header is present**; header absent -> record passes through; pre-existing STRING field -> header value overwrites; schemaless path -> overwritten, no exception | Four tests in `HeaderToValueTest` mirroring `HeadersToValueTest` HDRS-05 (lines 377-415) | LOW |
+| **P4-WR-01** `ClickHouseSinkTaskJsonInsertFormatTest` try/finally | Both tests (lines 78-130) stop the task in `finally`, as every sibling does | After a forced `put()` failure no MBean remains (the `@AfterEach` sweep logs nothing at WARN) | LOW |
+| **P4-IN-01** `AsyncInsertLiveTest` Javadoc | State plainly that bare `async_insert=1` is **not** pinned (the class pins `async_insert=1` + `wait_for_async_insert=1` only) | Comment-only; reviewer read | LOW |
+| **IN-01** `ClickHouseVersionDefaultUnitTest` Javadoc | Replace "CI pins `CLICKHOUSE_VERSION: latest`" (line 12) with the D-09 fact: CI sets no version env var, so the code default is the single source of truth | Comment-only; the assertion itself is untouched | LOW |
+| **`Column.extractColumn` swap** (`Column.java:213`) | Pass `(…, false, hasDefaultValue, isSubColumn, arrayDepth + 1)` in the right order | `ColumnTest` Docker-free: `Array(String)` with `hasDefault=true,isSub=false` yields an array child with `hasDefault()==true`, `isSubColumn()==false`; and the inverse. Array children are never fed to `Table.addColumn` (`Table.java:85` reads root columns only), so no behaviour moves; run `TableTest` + the full `ColumnTest` to confirm | LOW |
+| **`USERNAME` ConfigDef default** (`ClickHouseSinkConfig.java:433-435`) | `usernameDefault` (`"default"`), not `passwordDefault` | `ClickHouseSinkConfig.CONFIG.configKeys().get("username").defaultValue` equals `"default"` (Docker-free). Runtime unchanged: `username = props.getOrDefault(USERNAME, usernameDefault)` (`:218`) and tasks receive raw props, not parsed defaults | LOW |
+| **P9-IN-01** guard order (`Writer:1404`) | `shouldSkipTableMetadata() \|\| csc.isBypassFieldCleanup()`; correct the `shouldSkipTableMetadata()` Javadoc so it no longer implies call sites are null-safe (finding 4) | Existing `MetadataFreeJsonInsertUnitTest` JSON-03 test (line 98) stays green; behaviour identical for non-null `csc` | LOW |
+| **JsonColumnTest read-back** | The five enabled configs read back `json_data.nested_str`, `json_data.nested_int`, and `nested_bytes` per config (base64 string when stringified, otherwise the observed shape) with aggregate queries, e.g. `countIf(json_data.nested_str = concat('test', toString(id))) = RECORDS` | Replace the `assertEquals(RECORDS, countRows)` at line 82 with the aggregate assertions; the disabled `compareAllConfigurations` stays disabled | LOW-MEDIUM (bytes shape per config must be observed) |
+| **`ClickHouseBase.tearDown` drop failure** (`ClickHouseBase.java:142-146`) | Retry the drop (small bounded retry), then **fail the class** with an attributable message ("database X not dropped; later classes in this fork lose isolation") instead of logging and carrying on | A Docker-free test over an extracted drop helper (or overridable hook) proving: success on retry passes, exhaustion throws with the database name. The non-shared path (`ch.stop()`) is untouched | LOW-MEDIUM |
+| **CI concurrency** (`tests.yaml:11-13`) | Today the group is `github.sha`, so a tag at the branch SHA cancels the branch run. Restrict the trigger so a tag push starts no run (`on: push: branches: ['**']` or `tags-ignore`) **and** key the group on `github.ref`. Keying on `ref` alone would yield two completed runs per SHA, which is still not "exactly one" | Push branch and tag at one SHA; the Actions API shows exactly one run, none `cancelled` | LOW |
+| **CI fork count** (`build.gradle.kts:192-194`: `availableProcessors()/2`) | Record the measured value, not the inferred one. Cheapest durable fix: write `nproc` and the resolved `maxParallelForks` to `$GITHUB_STEP_SUMMARY` so every run self-documents; otherwise record "unmeasured" in FORK-DELTA/verification. Public `ubuntu-latest` is believed to be 4 vCPU (so 2 forks), MEDIUM | Either a summary line in a green run, or an explicit "unmeasured" sentence with the inference stated | LOW |
+
+### Upstream v1.7.0 features for fork users
+
+| Upstream change | Fork users get it? | Table stakes to carry | Not adopted / no action |
+|-----------------|--------------------|-----------------------|--------------------------|
+| #841 `setCompressionMethod` (and `compress=false`) | Yes, default on | Carry; document flag, alias and the response-compression side effect in CHANGELOG and rollout checklist | Do not default it to `false` in the fork |
+| #820 null optional Map -> empty map | Yes | Carry; extend with WR-01/02 on top | Do not make top-level null Map throw |
+| `KeeperStateProvider` counts streamed rows (`response.stream().collect`, `v1.7.0` diff) | Yes, only affects `exactlyOnce=true` | Take byte-identical to `v1.7.0` (no fork edits exist in this file). It replaces `getSummary().getResultRows()` by materialising the stream, so memory cost is one state row. The embedded Keeper in `ClickHouseBase` (lines 117-121) lets upstream's exactly-once tests run on standalone, so the suite does exercise it; confirm those tests are in the executed set, since 11 `exactlyOnceStateMismatchTest` cases skip standalone | Do not touch. AGENTS.md rates this file consistency-critical |
+| #801 buffered-sink duplicate | Yes, only if `bufferCount > 0` (the fork does not use buffering) | Carry silently | Buffering stays un-adopted (FORK-DELTA §5) |
+| #800 Avro record unions as JSON | Fixtures and an integration test only (finding 1) | Nothing in `src/main` to carry | Do not adopt the Avro/Debezium paths |
+| Client `0.9.5` -> `0.9.6`, `lz4-java 1.10.4`, `clickhouse-jdbc` dropped from catalog | Yes | The fork's `0.9.6` FORK OVERRIDE becomes upstream's value; `lz4-java` bump and capability resolution come with the merge | Client `0.10.0` stays out |
+| Shaded `org.lz4` in the Confluent archive | Yes, packaging only | Verify the shadow jar still builds (`shadowJar`), since the fork pins Connect API 4.1.1 and keeps its own LZ4 handling | n/a |
+
+### Rollout checklist contents (Table stakes T10)
+
+The checklist is an operator-facing document, one section per change, each with "what changed", "how to check you are affected", "what to do". It must contain:
+
+1. **JMX MBean name (D-07, repeats every release).** Names are `com.clickhouse:type=ClickHouseKafkaConnector,connector=<name>,name=SinkTask<id>,version=<VERSION>[,topic=<t>]`; `version=` is `Version.ARTIFACT_VERSION`, which becomes `v1.7.0_gg1` and **changes again on every `VERSION` bump** (MERGE-CHECKLIST Fact 11). Scrapers or dashboards keyed on `v1.6.0_gg1` or on the pre-fork `0.9.6` go blank. Fix: wildcard the `version` and `connector` attributes in the exporter pattern.
+2. **Compression.** `setCompressionMethod` defaults on and forces `network_compression_method=lz4`; **server response compression is now off regardless**. Check: no server profile or constraint forbids changing `network_compression_method` (T-11-38; a constraint violation fails every request). Escape hatch: `setCompressionMethod=false`. Check `jdbcConnectionProperties` does not set `compress`/`network_compression_method` expecting different behaviour. Expect slightly larger responses for `DESCRIBE` and state reads.
+3. **R-01 behaviour change.** Who is affected: connectors with `insertFormat=json` set explicitly **and** Struct values (Avro, Protobuf, or JSON converter with `schemas.enable=true`). Before: zero rows, no error. After: rows land, and failures are now server-side parse errors. Actions: (a) identify affected connectors by config; (b) compare `count()` with the committed Kafka offsets to measure the gap; (c) decide on an offset reset to backfill, remembering that replays duplicate under `exactlyOnce=false`; (d) review the JSON-route caveats (null fields omitted so non-NULL `DEFAULT`s apply; Timestamp logical types as epoch millis, so use `DateTime64(3)`; bytes as base64). Connectors that produce schemaless `Map` values are unaffected.
+4. **Null `Map` semantics (#820).** A null optional `Map` now lands as `{}` instead of failing the task with an NPE. Affects downstream queries that distinguished "failed" from "empty".
+5. **WR-02 strictness.** A null in a non-nullable `Array`/`Map` element now raises a `DataException` (DLQ-able under `errors.tolerance=all`) instead of silently corrupting the insert. Tell operators what the message looks like.
+6. **Config UI default for `username`** now reads `default` (cosmetic).
+7. **Rollback.** Name the rollback tag for this sync (pattern: `pre-v1.7.0-sync`) and the `git revert -m 1` route for the single `--no-ff` merge.
+8. **Publication facts.** `custom_build` is protected, so the post-`c61d90ce` `.planning` history goes out by the route the branch rules allow; tag pushes must not start a second CI run (see T7).
+
+### Differentiators (valuable, not required)
+
+| Feature | Value | Complexity | Notes |
+|---------|-------|------------|-------|
+| One INFO log at start when metadata-free mode routes schema'd records to JSON | Makes the R-01 behaviour change visible in the operator's own logs on first run after upgrade | LOW | Mirror the existing start-up log at Writer:126 |
+| `NetworkCompressionPinLiveTest` case for `setCompressionMethod=false` on `latest` | Turns "is D-17's rationale still true?" into a recorded fact; informs removal of the flag's relevance | LOW | See D-17 section |
+| Upstream PRs for `USERNAME` default and `extractColumn` swap | Shrinks the fork delta back by two lines; next sync is cheaper | LOW | Both bugs exist in `v1.7.0` |
+| A tiny `FORK-DELTA.md` consistency script (grep each "Where it lives" claim) | Seven behaviours vanished silently in the last sync; a mechanical check is cheaper than a human re-grep | MEDIUM | `MERGE-CHECKLIST` already has a self-testing invariant script; extend, do not invent a second tool |
+| Summary-line fork count in CI (see CI follow-up) | Removes a recurring "unmeasured" caveat permanently | LOW | Preferred over a one-off log read |
+
+### Anti-Features (explicitly do NOT build)
+
+| Anti-feature | Why requested | Why problematic | Do instead |
+|--------------|---------------|-----------------|-----------|
+| Adopt client `0.10.0` | Upstream dependabot branch exists; ZSTD might decode | A client bump is a wire-behaviour change on a fork with no production soak; explicitly out of scope in PROJECT.md | Stay on `0.9.6`; `setCompressionMethod` covers ZSTD |
+| Revisit the KEEP decision for the metadata-free JSON path | R-01 was KEEP's accepted cost; fixing it might tempt removal | Removal needs production grants or table pre-creation (Fact 14); the missing `DESCRIBE`/`SHOW` grant is unreachable by any upstream option | Route, as decided |
+| Throw (fail-fast) for Struct + explicit JSON | The earlier suggested fix | Breaks loudly any pipeline that is running; user chose routing | Route Structs to the JSON writer |
+| Convert `Timestamp`/`Date` logical types for the JSON route, or build a custom Struct-to-JSON serializer | The JSON route has date caveats | New capability on a rebase-sensitive file; widens the delta; the same caveat already exists for `bypassRowBinary=true` | Pin the observed behaviour, document `DateTime64(3)` |
+| Implement 256-bit integer serialization | P3-WR-03 mentions the types | New feature, not a bug fix | Fail-fast message only |
+| Make top-level null `Map` throw, or revert #820's leniency | "Fail loudly" read too broadly | Contradicts upstream's tests and #820's stated semantics | Throw only in non-nullable element slots |
+| Rewrite `doWriteCol`'s `RuntimeException` to `DataException` | Consistency | Changes existing error classification for everyone | Use `DataException` only on the new paths |
+| Refactor `ClickHouseWriter` null handling wholesale | WR-02 touches several branches | Writer is already the main conflict surface (±1,289 lines last sync) | Smallest hunks, one shared helper for the null decision table |
+| Adopt `DebeziumRecordConvertor`, `auto.evolve`, buffering, `retryOnSocketException` | They arrive with the merge | Not fork features; unpinned; FORK-DELTA §5 | Leave un-adopted; keep the written note |
+| Modify `KeeperStateProvider` or `Processing` | Exactly-once code arrived in the merge | Consistency-critical (AGENTS.md); fork has no edits there | Byte-identical to `v1.7.0` |
+| Default `setCompressionMethod=false` in the fork | Avoid a behaviour change | Brings back the exact ZSTD risk on 26.9+ if anything else asks for compressed responses | Keep upstream's default |
+| Bump any dependency beyond the approved list | `dependencyUpdates` plugin will list more | AGENTS.md: ask first | Approved: jackson 2.22.3, okhttp 5.5.0, org.json 20260814, mockito 5.24.0, lz4-java 1.10.4 |
+| Force `async_insert` or add a client-side `jsonInsertColumns` filter | "Hardening" | Both are recorded KEEP/behaviour-preserving decisions (ASYNC-01..03, JSONP D-06) | Leave as pinned |
+| Re-add a V1 or older-server test matrix | A new `ClickHouseHelperClient` V1 line (`COMPRESS`) tempts it | Out of scope per Constraints; V1 is only config-asserted | Docker-free assertions on V1 options |
+
+## Feature Dependencies
+
+```
+T1 merge v1.7.0
+    ├──required by──> T2 retire D-17 (same lines as #841)
+    ├──required by──> T3 R-01 routing (needs #820 StructToJsonMap fix, finding 7)
+    ├──required by──> T4 WR-01/WR-02 (same hunks as #820; resolve fork MAP/TUPLE guards)
+    ├──required by──> P9-IN-01 (adjacent hunk in cleanupExtraFields)
+    └──required by──> T8 dependency bumps (catalog + lz4 block merge)
+
+T3 R-01 routing ──enhanced by──> T4 (null-Map case in R-01 matrix)
+T3 ──requires──> FORK-DELTA/CHANGELOG/rollout (T9-T11) to record a deliberate behaviour change
+T2 ──requires──> rollout item "compression" + live pin extension
+T8 jackson bump ──touches──> JSON writer used by T3: re-run the R-01 matrix after the bump
+
+P3-WR-01, P3-WR-03, extractColumn, USERNAME, WR-03, P4-WR-01, P4-IN-01, IN-01, JsonColumnTest,
+tearDown, CI x2 ──independent of each other──> any order after T1 (no src/main overlap with v1.7.0)
+
+T9 publish ──requires──> CI concurrency fix (else the tag push re-cancels the branch run)
+T11 FORK-DELTA ──requires──> every code item landed (rows are grep-confirmed against the final tree)
 ```
 
-This is exactly the fix the fork's Active follow-up describes needing: `getRootCause`'s drill-down (`isServerError`) and the retriable-code switch both now match client V2's `ServerException` as well as V1's `ClickHouseException`, via `getCode()` vs `getErrorCode()`. Upstream's own `CHANGELOG.md` documents it explicitly under `1.6.0` Bug Fixes: *"With client V2, server errors arrive as `com.clickhouse.client.api.ServerException` rather than the V1 `ClickHouseException`, so the retriable error-code list in `Utils.handleException` never matched and tasks failed instead of retrying. Both exception types now share the same list."* (issue #818).
+### Dependency Notes
 
-The fork's own `Utils.java` diff over `main` is, like `KeyToValue.java`, a pure import-reorder no-op (`git diff main...custom_build -- .../Utils.java` — 6 lines moved, zero logic changed).
+- **T1 before everything:** unchanged from the brief. The additional reason is the Writer hunk collision in `case MAP`.
+- **Mechanical merge discipline:** the sync should repeat the v1.6.0 shape (scratch branch, rollback tag, one mechanical merge commit, fork behaviour re-applied by intent). Every fork behaviour that can vanish silently must have a canary before the merge: `NetworkCompressionPin*`, `ClickHouseVersionDefaultUnitTest`, `MetadataFreeJsonInsertUnitTest`, `MBeanNameUnitTest`, `RowBinaryUnsupportedTypeGateTest` already exist; confirm each fails when its guard is deleted.
+- **Test-tree merge hazard:** upstream changed `ClickHouseTestHelpers` by one line (and `SchemaTestData`, `SchemalessTestData` by +40/+31). The fork carries UTF-8 and `CLICKHOUSE_VERSION_DEFAULT` edits in that file. The `latest` -> pinned reversion happened silently there last time; check `ClickHouseVersionDefaultUnitTest` first after the merge.
+- **R-01 and WR-02 share `writeRecordsJson` only through #820**; they do not need to be in the same phase, but R-01's null-Map case must wait for T1.
 
-**Recommendation:** **adopt upstream's `Utils.java` wholesale.** This closes the fork's Active follow-up "Error classification is dead code on the V2 path" for free, via absorbing upstream's fix rather than writing one — record this fact per the milestone's out-of-scope instruction; do not additionally "fix" it.
+## MVP Definition
 
-**Signature change to note:** `handleException` gained a `retryOnSocketException` parameter (new config, see below) and a new `SocketException`-retry branch gated by it — every call site (`ChunkFlusher.putDirect`, `ProxySinkTask.put`) must pass the new arg; this is a mechanical merge-time change, not a disposition question.
+### Launch With (everything below is `v1.7.0_gg1`)
 
-### `DeliveryStrategy`/`DirectDeliveryStrategy`/`AtLeastOnceBufferStrategy`/`ExactlyOnceBufferStrategy`/`ChunkFlusher` — do they change where `insertFormat` / the metadata-free JSON path plug in?
+- [ ] T1 mechanical merge, fork behaviour re-applied by intent, `FORK-DELTA` rows re-grepped
+- [ ] T2 D-17 retired onto upstream's flag, pins retained
+- [ ] T3 R-01 routed, pin flipped to typed read-back, matrix and `bypassRowBinary=true` combination pinned
+- [ ] T4 WR-01 live read-back and WR-02 loud failure, reconciled with #820
+- [ ] T5 and T6 the nine small fixes and test-debt items
+- [ ] T7 CI concurrency and fork-count outcome
+- [ ] T8 approved dependency bumps
+- [ ] T9-T11 publication, CHANGELOG, rollout checklist, FORK-DELTA
 
-**No structural conflict.** All four strategies funnel through `ChunkFlusher.putDirect()`, whose entire body is:
+### Suggested phase grouping
 
-```java
-void putDirect(Collection<SinkRecord> records) {
-    try {
-        ...
-        this.proxySinkTask.put(records);
-        ...
-    } catch (Exception e) {
-        ...
-        Utils.handleException(e, errorTolerance, retryOnSocketException, records);
-        ...
-    }
-}
-```
+1. **Sync** (T1, T8 catalog parts): mechanical merge, suite as acceptance gate.
+2. **Re-apply and retire** (T2, finding 3's MAP-guard resolution, P9-IN-01): small, `ClickHouseHelperClient` and Writer guards.
+3. **Writer correctness** (T3, T4): shares Writer and the live matrix; do R-01 first (no dependency on WR-02), then WR-01/02.
+4. **Metadata/config and test debt** (T5, T6): parallel-safe, mostly Docker-free.
+5. **CI, docs, publication** (T7, T9-T11).
 
-— i.e. it still calls `ProxySinkTask.put(records)`, the exact same entry point that exists pre-refactor, which is where `insertFormat`/the metadata-free path lives (inside `ClickHouseWriter`/`Processing`, several layers below `ProxySinkTask`). Selection of which strategy to use is gated by the new `bufferCount` config (`ClickHouseSinkTask.createDeliveryStrategy`: `bufferCount == 0` → `DirectDeliveryStrategy`, matching pre-refactor behavior exactly; `bufferCount > 0` → buffered strategies, chunking records before calling the same `put()`). Default `bufferCount=0`, so **out of the box, behavior for the fork's JSON insert path is unchanged.** If a fork user opts into `bufferCount>0`, `insertFormat=json` and `jsonInsertColumns` still apply per-chunk with no code interaction — worth a smoke test post-merge but not a disposition-changing finding.
+### Future Consideration (defer)
 
-### `ClickHouseSinkConfig.java` (+227) — every new config option, collisions checked
+- Upstream PRs for the two upstream bugs (nice, not blocking).
+- Removing the `setCompressionMethod` dependency entirely once a client that decodes ZSTD is adopted (needs its own milestone; `0.10.0` is currently out of scope).
+- A fork-owned `Struct`-to-JSON date/bytes converter (anti-feature now; revisit only if an operator needs `DateTime` columns on the metadata-free route).
 
-| New config key | Type / default | Purpose | Collides with fork's `targetTableFilter`/`jsonInsertColumns`? |
-|---|---|---|---|
-| `retryOnSocketException` | boolean, `false` | Retry the batch on `java.net.SocketException` (broken pipe/reset) instead of failing the task — matters more under client V2's persistent connections | No |
-| `bufferCount` | int ≥0, `0` | Records to buffer before flush (0 = no buffering / original behavior) | No |
-| `bufferFlushTime` | long ≥0 ms, `0` | Time-based flush bound, only effective when `bufferCount>0` | No |
-| `clickhouseClientInsertTimeoutMs` | long ≥100 ms | Bounds a single insert's wait so a hung insert can't outlive `consumer.override.max.poll.interval.ms` | No |
-| `reportInsertedOffsets` | boolean, `false` | `preCommit()` reports only actually-inserted offsets instead of echoing `currentOffsets` | No |
-| `debeziumCDCEnabled` | boolean, `false` | Enables `DebeziumRecordConvertor` routing (see above) | No |
-| `auto.evolve` | boolean, `false` | Auto `ALTER TABLE … ADD COLUMN IF NOT EXISTS` for new fields | No |
-| `auto.evolve.ddl.refresh.retries` | int ≥0, `3` | Retries waiting for DDL propagation after evolution | No |
-| `auto.evolve.struct.to.json` | boolean, `false` | Maps Connect `STRUCT` → ClickHouse `JSON` during auto-evolution | No |
-| `errors.retry.timeout` | long ms, `60000` | Connect framework retry-timeout override, validated with a warning threshold | No |
-| `clusterName` | string, `""` | Adds `ON CLUSTER '<name>'` to distributed DDL (auto-evolve's `ALTER TABLE`) | No |
-| `enableReplicaPinning` | boolean, `false` | Pins retries to one ClickHouse replica via `X-ClickHouse-Replica-Tag` | No |
-| `ssl_socket_sni` | string, `""` | Overrides TLS SNI hostname (proxy routing) | No |
+## Feature Prioritization Matrix
 
-**No name or intent collision with `targetTableFilter` or `jsonInsertColumns`** — confirmed by `grep -n -i "targetTableFilter\|jsonInsertColumns"` returning nothing in `ClickHouseSinkConfig.java`, `ClickHouseWriter.java`, or `ClickHouseHelperClient.java` at `v1.6.0`.
+| Feature | User value | Cost | Priority |
+|---------|-----------|------|----------|
+| T1 merge | HIGH | MEDIUM | P1 |
+| T3 R-01 routing | HIGH (silent data loss) | MEDIUM | P1 |
+| T2 D-17 retirement | MEDIUM (smaller delta) | MEDIUM | P1 (same lines as T1) |
+| T4 WR-02 loud failure | HIGH (silent stream corruption) | MEDIUM-HIGH | P1 |
+| T4 WR-01 live test | MEDIUM | LOW | P1 |
+| T10 rollout checklist | HIGH | LOW | P1 |
+| T11 FORK-DELTA | HIGH (next sync) | MEDIUM | P1 |
+| T7 CI concurrency | MEDIUM | LOW | P1 |
+| P3-WR-01, P3-WR-03, `extractColumn`, `USERNAME`, P9-IN-01 | LOW-MEDIUM | LOW | P2 |
+| WR-03, `JsonColumnTest`, P4-WR-01, `tearDown` | MEDIUM (test trust) | LOW-MEDIUM | P2 |
+| IN-01, P4-IN-01 | LOW | LOW | P3 |
+| CI fork count | LOW | LOW | P3 |
+| Differentiators above | LOW-MEDIUM | LOW-MEDIUM | P3 |
 
-### `SinkTaskStatisticsMBean`, `TopicStatistics`, `TopicStatisticsMBean`, `SimpleMovingAverage`, `SinkTaskStatistics` (+163) — interaction with `connector=<name>`
+**Priority key:** P1 must ship for publication; P2 should ship, all 17 are in scope; P3 comment-level or optional.
 
-Covered in row 8 above. To restate the concrete porting requirement: the fork's `connector=<name>` addition currently lives in `ProxySinkTask.buildMBeanName(String connectorName, int id, String version)` — a method that **no longer exists** at `v1.6.0` (the whole `getMBeanNAme()`/name-building responsibility moved into `SinkTaskStatistics.registerMBean()`/`getMBeanName(int taskId)`/`getTopicMBeanName(int taskId, String topic)`, which are new, per-topic-MBean-aware, and sourced from `Version.ARTIFACT_VERSION` — the connector's own build-time version, not the ClickHouse client jar's). Porting the fork's intent means:
+## Code-backed risk notes for the roadmap
 
-1. Thread `connectorName` (already extracted as `props.get("name")` in the fork's `ClickHouseSinkTask.start()`) through to `new SinkTaskStatistics(id)`, which needs a new constructor parameter.
-2. Rebuild `getMBeanName`/`getTopicMBeanName` to include `connector=%s` the way the fork's `buildMBeanName` does.
-3. Re-decide the sanitization: `:` → `_` still matters if `connectorName` can contain a colon; `null` → `unknown` for version is now largely moot (`Version.ARTIFACT_VERSION` is a non-null compile-time constant) but may still be worth keeping defensively.
-4. `MBeanNameUnitTest`/`MBeanRegistrationLiveTest`/`ProxySinkTask.buildMBeanName`-targeting tests all need re-targeting to the new home — this is a genuine "carry by intent, not by diff" case, same class of risk the milestone context already flags for `ClickHouseWriter.java`.
-
-### `ClickHouseHelperClient.java` (+359) — table-filtering or describe-streaming overlap?
-
-**None.** `showTables`/`showTablesV1`/`showTablesV2` build an unconditional `WHERE database = '%s' GROUP BY database, table` with no filter parameter anywhere (confirmed: no `match(`, no filter-clause building function in the file at `v1.6.0`). `describeTableV1`/`describeTableV2` only skip `isAlias()`/`isMaterialized()`/`isEphemeral()` columns and their sub-columns — no `.size0`/`.null`/JSON-Dynamic-structural skip (see row 6c). The `+359` lines are almost entirely: the `Table`/`Table.TableDesc` split (immutable `Table` built from a fully-populated column list rather than mutated in place), `alterTableAddColumns` (new, for `auto.evolve`), `retryOnSocketException`/`enableReplicaPinning`/`clusterName`/`ssl_socket_sni` plumbing, and `extractTablesMapping`'s new cache-freshness comparison against `Table.TableDesc.getNumColumns()`. None of it does what `targetTableFilter` does.
-
-**Merge-risk note:** `Table`'s constructor signature changed completely (`Table(String database, String name, boolean hasDefaults, List<Column> columns, int numColumns)`, columns supplied up front and `addColumn` made `private`) — the fork's `targetTableFilter`/`shouldSkipDescribeRow` code, which calls `table.addColumn(column)` in a streaming loop and sets `table.hasDefaults(true)` via a fluent setter, cannot be patched onto this file; it must be rewritten against the new immutable-construction shape.
-
----
-
-## New upstream capability at v1.6.0 — categorized for the fork's production CDC pipelines
-
-**Must-absorb** (the fork loses correctness or a documented bug otherwise):
-- `Utils.handleException` client-V2 `ServerException` fix — closes the fork's own "dead error classification on V2" Active follow-up for free (adopt wholesale, don't re-fix).
-- `KeyToValue` stale-schema-cache fix — same bug class Phase 2 already fixed in the fork's own SMTs; adopting upstream's rewrite is strictly better and has zero fork-side cost (fork's own diff there was a no-op).
-- Map-`Nullable`-value RowBinary null-marker fix, upstream `1.3.8` (issue/PR #687): *"Fixed RowBinary serialization for Map columns with Nullable value types. The nullable marker byte was missing when writing map values, causing CANNOT_READ_ALL_DATA errors for `Map(K, Nullable(V))` columns."* — **this is the exact same bug the fork's own Phase 2 (commit `3929ce6`) fixed independently**, confirmed by reading the matching code in `git show v1.6.0:.../ClickHouseWriter.java` (`if (col.getMapValueType() != null && col.getMapValueType().isNullable() && mapValue != null) { BinaryStreamUtils.writeNonNull(stream); }` — upstream additionally null-guards `col.getMapValueType() != null`, a small defensive improvement the fork's version lacks). **Action: drop the fork's duplicate patch during the merge and take upstream's version** — record this as a "closed for free" item per the milestone's out-of-scope instruction (do not re-verify the WR-01 null-entry follow-up's status without running the suite; it's out of this milestone's scope either way).
-- `enableDbTopicSplit` multi-database fixes (`DESCRIBE TABLE` built from the wrong database, records silently dropped/misrouted across databases, connector refusing to start on an empty split database) — relevant if any fork production pipeline uses `enableDbTopicSplit=true`.
-
-**Neutral** (opt-in, zero effect unless explicitly configured):
-- `debeziumCDCEnabled` / `DebeziumRecordConvertor` — off by default, gated on schema name `.Envelope` AND the flag; no fork pipeline is silently rerouted through it.
-- `auto.evolve` / `auto.evolve.ddl.refresh.retries` / `auto.evolve.struct.to.json` / `clusterName` — all off/empty by default.
-- `bufferCount`/`bufferFlushTime` buffered delivery strategies — `bufferCount=0` by default, `DirectDeliveryStrategy` preserves pre-refactor behavior exactly.
-- `retryOnSocketException`, `enableReplicaPinning`, `ssl_socket_sni`, `reportInsertedOffsets`, `clickhouseClientInsertTimeoutMs`, `errors.retry.timeout` — all opt-in or conservative defaults.
-- JSON-as-string RowBinary writing (`input_format_binary_read_json_as_string`) — off by default; when off, upstream's default-path exception differs from the fork's TYPE-06 message (see above) but neither path executes unless a JSON column with a non-null value actually reaches RowBinary, which the fork's own JSON columns route through `insertFormat=json`/`bypassRowBinary` already.
-- Per-topic JMX MBeans (`TopicStatistics`/`TopicStatisticsMBean`) — additive; doesn't remove or rename the existing per-task MBean, just adds new ones. Should get the `connector=<name>` treatment for consistency once ported (see above), but isn't required for correctness.
-
-**Potentially breaking for the fork's production CDC pipelines — flag for the merge plan:**
-- **JMX MBean name format changes even without `connector=<name>` re-application**: `version=%s` now sources from `Version.ARTIFACT_VERSION` (the connector's own build version, e.g. what the fork's `VERSION` file says) instead of the ClickHouse client jar's implementation version (`0.9.6`-style). Any external JMX scraping/dashboards keyed on the old version string format will see a different value after the merge — independent of whether `connector=<name>` gets re-applied.
-- **`Table`'s immutable-construction API break**: any fork code outside `ClickHouseHelperClient`/`Table` itself that called the old `new Table(database, name)` / `table.addColumn(column)` / `table.hasDefaults(true)` fluent setters (the fork's `targetTableFilter`/`shouldSkipDescribeRow` describe-loop does exactly this) will not compile against `v1.6.0`'s `Table` — this is a required, non-optional rewrite, not a nice-to-have.
-- **Batch grouping key changed** when `enableDbTopicSplit=true`: upstream's `1.4.0` changelog documents that batches are now correctly keyed per-database (previously records for `dbA.t`/`dbB.t` could collapse into one batch and all land in the first database) — a correctness fix, but a behavior change for any fork pipeline currently relying on (or unknowingly working around) the old collapsing behavior. Also documented: *"a batch left in the `BEFORE` state by an earlier version is not deduplicated on the first insert after upgrading"* for `exactlyOnce=true` users with `enableDbTopicSplit=true` — an operational note for the eventual production rollout, not this milestone, but worth carrying into that follow-up's context.
-- **`ClickHouseSinkTask.start()`/`ProxySinkTask` constructor signature changes** (new `errorReporter`-carrying field, `statistics.registerMBean()` moved out of the constructor into a new `start()` method, `dbWriter.stop()` added to `stop()`) — mechanical but must be reconciled with the fork's `connectorName`-carrying constructor change; not a behavior risk once correctly merged, but a guaranteed merge-conflict site.
-
----
-
-## Summary for the requirements step
-
-- **Zero of the fork's four SMTs (`TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, `ConvertToMapOrJson`) exist upstream in any form** — no naming collision, no native coverage, no upstream Debezium/auto-evolve feature does their job. Carry all four forward unchanged.
-- **`targetTableFilter` and the JSON/Dynamic sub-column skip are fork-only, need re-application (not patching)** onto a substantially reshaped `Table`/`ClickHouseHelperClient`.
-- **The metadata-free JSON insert path + `jsonInsertColumns` are entirely fork-only** — upstream's JSON insert still requires full table description; must be re-applied by intent onto the rewritten `ClickHouseWriter`.
-- **`Type.JSON` mapping is now upstream-native and should be adopted from upstream** (brings extras); **`Type.DYNAMIC` has zero upstream coverage and must stay fork-only**, confirmed directly in `Type.java`.
-- **`connector=<name>` JMX naming is fork-only and the code it lived in was deleted** — must be reimplemented against the new `SinkTaskStatistics`-owned naming, alongside a version-source semantic change (client-jar version → connector build version) that's worth flagging regardless of what happens to `connector=<name>`.
-- **`async_insert` non-forcing needs zero action** — untouched upstream.
-- **Two of the fork's own bug fixes (Map-`Nullable` null marker, and by extension the dead-error-classification issue) are already fixed upstream** — the merge should take upstream's versions and drop the fork's duplicate patches, closing two items from the milestone's Active follow-ups list "for free" (record the fact per the milestone instruction; do not additionally fix anything here).
-- **`KeyToValue`'s rewrite is a pure win** — the fork's own diff there is a no-op, upstream's version fixes the same bug class the fork independently found elsewhere, and it's confirmed compile-safe against the fork's actual Kafka Connect API 4.1.1 dependency.
-- **Zero new upstream config option collides by name or intent with `targetTableFilter`/`jsonInsertColumns`.**
-- **`debeziumCDCEnabled`/`DebeziumRecordConvertor` is a large, genuinely new, safe-by-default capability** worth a line in Requirements as "available, not adopted this milestone" — it does not conflict with or replace any of the eight fork features.
+- **Exactly-once is not touched** by any item, but `KeeperStateProvider` changes in the merge; keep it byte-identical to `v1.7.0` and verify by `git diff v1.7.0 -- src/main/.../KeeperStateProvider.java` being empty.
+- **Batch-composition rule (AGENTS.md):** none of the routing or null changes alter a batch after `BEFORE` is set; they decide serialisation of a given batch deterministically from its records, so retries still rebuild identical blocks. Worth a one-line assertion in the plan.
+- **R-01 hot path:** the new condition runs once per batch (`doInsertBatch`), not per record; no allocation concern.
+- **`doInsertBatch` inspects only the first record's `SchemaType`** (Writer:234). Mixed batches already route by the first record; unchanged and not in scope.
 
 ## Sources
 
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Type.java` / `git show custom_build:...Type.java`
-- `git diff main...v1.6.0 -- src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java` and `git show v1.6.0:...Column.java`
-- `git diff main...v1.6.0 -- src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java`
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java` and `git show custom_build:src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java`
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java` and `git diff main...custom_build -- .../ClickHouseWriter.java`
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/sink/data/convert/DebeziumRecordConvertor.java`
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/sink/data/Record.java`
-- `git diff main...v1.6.0 -- src/main/java/com/clickhouse/kafka/connect/transforms/KeyToValue.java` and `git diff main...custom_build -- .../KeyToValue.java`
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/util/Utils.java` and `git diff main...custom_build -- .../Utils.java`
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/sink/{DeliveryStrategy,DirectDeliveryStrategy,ChunkFlusher}.java`
-- `git diff main...v1.6.0 -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java` and `git show v1.6.0:...ClickHouseSinkConfig.java`
-- `git diff main...v1.6.0 -- src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java` and `git diff main...custom_build -- .../ProxySinkTask.java`
-- `git show v1.6.0:src/main/java/com/clickhouse/kafka/connect/util/jmx/{SinkTaskStatistics,MBeanServerUtils}.java`
-- `git show v1.6.0:build.gradle.kts` (Version.java generation, `generateVersionFile` task) and `git show v1.6.0:gradle/libs.versions.toml` (`kafka = "2.7.0"`)
-- `git show v1.6.0:CHANGELOG.md` (release notes 1.3.0 through 1.6.0, quoted directly for the KeyToValue, Map-Nullable, handleException, and enableDbTopicSplit fixes)
-- Direct jar inspection: `unzip -l ~/.gradle/caches/modules-2/files-2.1/org.apache.kafka/kafka-clients/4.1.1/.../kafka-clients-4.1.1.jar | grep -i common/cache` — confirms `org.apache.kafka.common.cache.{Cache,LRUCache,SynchronizedCache}` present in the fork's actual resolved dependency
+- `.planning/PROJECT.md` (Current Milestone, Requirements -> Active, Key Decisions); `docs/FORK-DELTA.md`; `.planning/MERGE-CHECKLIST.md` Facts 9, 11, 14 (HIGH, project records).
+- Source reads at `HEAD`: `ClickHouseWriter.java` (lines cited inline), `ClickHouseSinkConfig.java`, `ClickHouseHelperClient.java`, `Column.java`, `StructToJsonMap.java`, `SchemaRecordConvertor.java`, `DataJson.java`, `HeaderToValue.java`, `ClickHouseBase.java`, `.github/workflows/tests.yaml`, `build.gradle.kts` (HIGH).
+- Upstream: `git diff v1.6.0 v1.7.0` over `src/main`, `src/test`, `src/testFixtures`, `CHANGELOG.md`, `build.gradle.kts`, `gradle/libs.versions.toml`; `git log --stat v1.6.0..v1.7.0` (HIGH).
+- Tests read: `ExplicitJsonInsertPathLiveTest`, `MetadataFreeJsonInsertUnitTest`, `JsonDynamicRoundTripTest`, `NetworkCompressionPinUnitTest`, `NetworkCompressionPinLiveTest`, `JsonColumnTest`, `ClickHouseSinkTaskJsonInsertFormatTest`, `AsyncInsertLiveTest`, `ClickHouseVersionDefaultUnitTest`.
+- No external web research was needed; every claim is about this repository or its upstream tag. Jackson date serialisation, `NON_NULL` effects on server defaults, `Nullable(Map|Tuple)` being illegal, and the 4 vCPU public-runner size are domain knowledge (MEDIUM until confirmed by the live tests named above).
 
 ---
-*Feature research for: ClickHouse Kafka Connect fork vs. upstream v1.6.0 sync*
-*Researched: 2026-09-18*
+*Feature research for: `v1.7.0_gg1-sync` (ClickHouse Kafka Connect fork)*
+*Researched: 2026-10-07*

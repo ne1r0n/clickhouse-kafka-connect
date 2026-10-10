@@ -1,252 +1,177 @@
-# Requirements: v1.6.0_gg1-sync — Upstream v1.6.0 Sync
+# Requirements: v1.7.0_gg1-sync — Upstream v1.7.0 Sync & Follow-up Hardening
 
-**Defined:** 2026-09-18
+**Defined:** 2026-10-07
 **Core Value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
-**Milestone goal:** Merge upstream `v1.6.0` (581 commits past the fork's `v1.2.9` base) into `custom_build`, preserving every fork feature or consciously retiring it in favour of an upstream equivalent, with the fork's test suite as the acceptance gate.
+**Milestone goal:** Merge upstream `v1.7.0` into `custom_build`, close all 17 open follow-ups (including R-01's silent data loss), and publish `v1.7.0_gg1` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
 **Locked decisions this milestone is built on** (settled during questioning — plans do not re-open these):
 
 | Decision | Choice |
 |---|---|
-| Sync strategy | `git merge v1.6.0` into `custom_build` — history preserved, no rebase, no replay |
-| Steps | Big-bang straight to `v1.6.0`, not stepwise through `v1.3`/`v1.4`/`v1.5` |
-| Conflict policy | Prefer upstream **wherever its implementation passes the fork's tests**; shrinking the fork delta is an explicit goal. Where upstream's version cannot pass (JMX naming), the policy does not apply — keep the fork's |
-| `build.gradle.kts` | Take upstream's wholesale (version catalog + `testFixtures`), re-apply the fork's additions on top |
-| Upstream tests | Accept all 56 files; run only ClickHouse `latest` × client V2; cloud-dependent ones stay skipped |
-| Done | `./gradlew test` green locally **+** `tests.yaml` green on the pushed SHA **+** `custom_build` pushed to the public fork **+** `VERSION` = `v1.6.0_gg1` |
-| Kafka Connect API | Keep the fork's `4.1.1` (upstream's catalog is still `2.7.0`) — carries the LZ4 `resolutionStrategy` with it |
-| Testcontainers | Accept upstream's `2.0.5` (major bump from `1.21.4`), with its own verification checkpoint |
-| JUnit Jupiter | Take upstream's `5.14.4`; delete the fork's vestigial `5.11.3` direct pin rather than porting it |
-| RowBinary + JSON | Adopt upstream's flag-gated write-as-string for `JSON`; keep the fork's fail-fast throw for `DYNAMIC`/`UNKNOWN` |
-| R-01 | Decided at a blocking-human checkpoint inside the JSON-path phase, on evidence — not pre-decided here |
-| The nine deferred follow-ups | Out of scope. Two close for free; record the fact, do not fix |
-| Production rollout | Out of scope |
+| Sync strategy | `git merge v1.7.0` in the `v1.6.0_gg1-sync` shape: scratch branch, rollback tag, one mechanical merge commit, re-apply by intent, non-force `--no-ff` into `custom_build` after human approval |
+| Upstream ref | Tag `v1.7.0` (`379b8d01`). Never bare `upstream/main` — a stale `refs/upstream/main` makes it ambiguous |
+| Conflict policy | Prefer upstream wherever its implementation passes the fork's tests (unchanged from `v1.6.0_gg1-sync`) |
+| D-17 `lz4` pin | Retired in favour of upstream's `setCompressionMethod` (incl. its unconditional `compress=false`). Client stays `0.9.6`; `0.10.0` is out |
+| R-01 | Fixed by **routing** Struct records to the JSON writer in metadata-free mode — not by a fail-fast throw. Wrong logical-type values on that route are **fixed**, not just documented |
+| CR-02 pin tests | May be **re-pinned to correct bytes** where they assert the pre-#820 early-null behavior: nullable case kept, non-nullable case takes #820's empty-map semantics. Recorded as a user-approved tightening, not a weakening (2026-10-07) |
+| Dependency bumps | User-approved 2026-10-07: jackson 2.22.3, okhttp 5.5.0, org.json 20260814, mockito 5.24.0, and lz4-java **beyond** upstream's 1.10.4 to an advisory-free release (≥ 1.11.2, target 1.12.0) |
+| Publication | In scope: push, tags, green CI, publish the post-`c61d90ce` `.planning/` history, operator rollout checklist |
+| Ordering | Sync lands first; hardening goes on top of the merged tree |
 
 ---
 
 ## v1 Requirements
 
-### Inventory & Rollback (SYNC)
+### Upstream Sync (SYNC)
 
-- [x] **SYNC-01**: Upstream `ClickHouse/clickhouse-kafka-connect` is configured as a named git remote in this repo, so future syncs do not depend on ad-hoc `git fetch <url>` invocations
-- [x] **SYNC-02**: The pre-merge tip of `custom_build` is tagged (e.g. `pre-v1.6.0-sync`) as an unambiguous rollback point, and the merge is performed on a scratch branch so the already-published `custom_build` never requires a force-push
-- [x] **SYNC-03**: The `git merge-tree --write-tree custom_build v1.6.0` conflict inventory is captured as a checked-in, per-file resolution checklist — 40 conflict messages (35 `content` + 5 `modify/delete`) across 39 unique paths, each marked with its resolution shape: survives as-is / re-express / redundant
-- [x] **SYNC-04**: The resolved ClickHouse Java client version from upstream's `gradle/libs.versions.toml` is recorded explicitly and compared against what the fork runs in production, so a wholesale build adoption cannot silently bump it
-- [x] **SYNC-05**: A production-config audit is recorded answering whether any live connector combines `enableDbTopicSplit=true`+`exactlyOnce=true` (upstream documents a one-time dedup gap on upgrade) or `bufferCount>0`+`exactlyOnce=true` (now rejected at startup unless `bufferFlushTime=0` and `ignorePartitionsWhenBatching=false`)
-- [x] **SYNC-06**: The merge lands as a single identifiable merge commit with no `.planning/` churn interleaved into conflict resolution — no committed revision in the merge range contains a literal `<<<<<<<` conflict marker in tracked source
+- [x] **SYNC-07**: Upstream `v1.7.0` lands on a scratch branch as one mechanical merge commit, with a rollback tag `pre-v1.7.0-sync` on the pre-sync `custom_build` SHA. The merge-invariant script is parameterised (`PRE_TAG`, `UPSTREAM_REF`); the old "conflicted paths byte-identical to upstream" invariant is replaced by a line-provenance check plus a grep that every `docs/FORK-DELTA.md` anchor construct survives
+- [x] **SYNC-08**: A v1.7.0 merge checklist records every path upstream changed, its predicted and actual conflict class, and a reviewed verdict for the **auto-merged** hunks inside fork-touched files (`ClickHouseWriter` MAP branch, `build.gradle.kts` LZ4 rule, `ClickHouseClientBuilder` setter sites, test helpers)
+- [x] **SYNC-09**: Every fork feature in `docs/FORK-DELTA.md` survives the merge — `Type.DYNAMIC` fail-fast, JMX `connector=<name>`, `targetTableFilter`, describe sub-column skip, metadata-free JSON path, Kafka Connect API `4.1.1`, `CLICKHOUSE_VERSION_DEFAULT = latest` — each proven by its existing pin test passing
+- [x] **SYNC-10**: Upstream's new and changed tests from `v1.7.0` (`nullMapTypeTest`, `testSetCompressionMethod_*`, #800 Avro-union, #801 buffer, cluster `buildFromClause`) are accepted **unmodified** and pass on `latest` × V2, or skip for a named reason recorded in `FORK-DELTA.md`
 
-### Build Migration (BLD)
+### Compression (CMP)
 
-- [x] **BLD-01**: `build.gradle.kts` and `gradle/libs.versions.toml` come from upstream `v1.6.0` (version catalog, `jvm-test-suite`, `java-test-fixtures`, `protobuf`, `com.gradleup.shadow`), with the dead `signing` and `buildconfig` plugins dropped
-- [x] **BLD-02**: The Gradle wrapper is at `9.6.1`, matching the version upstream authored and tested the new build file against
-- [x] **BLD-03**: JaCoCo is re-applied — `jacocoTestReport` plus the 15-class `jacocoForkReport`, report-only with no failing threshold, and `.github/scripts/jacoco_summary.py` still renders both XML reports without edits
-- [x] **BLD-04**: `testUnit` is re-applied — `excludeTags("clickhouse")`, JaCoCo disabled on it, and kept out of `check` via the `if (name != "testUnit")` guard
-- [x] **BLD-05**: The test JVM is pinned to JDK 17 by an explicit `javaLauncher`/toolchain mechanism — not merely by `options.release` — and runs with `file.encoding=windows-1252`, so a machine invoking Gradle on a different JDK cannot silently change what the suite exercises
-- [x] **BLD-06**: The fork's two undocumented build additions survive: the LZ4 `withCapability("org.lz4:lz4-java")` resolution and the `com.github.ben-manes.versions` plugin with its `dependencyUpdates` configuration
-- [x] **BLD-07**: `VERSION` reads `v1.6.0_gg1`
-- [x] **BLD-08**: Dependency versions are reconciled deliberately — upstream's for Jackson, HttpClient5, Lombok, Mockito, OkHttp, `org.json`, slf4j and JUnit Jupiter; the fork's for the ClickHouse client (`0.9.6`) and Kafka Connect API (`4.1.1`); `slf4j-reload4j` kept as a literal coordinate since upstream's catalog has no entry for it
+- [x] **CMP-01**: The fork's D-17 constants and pin lines are gone; upstream's `setCompressionMethod` (default `true`) is the single mechanism, and every client the connector builds — writer V1/V2, the writer's temporary client, `KeeperStateProvider` — receives the flag
+- [x] **CMP-02**: Docker-free tests pin `compress=false` / `compressServerResponse(false)` and the `network_compression_method=lz4` setting on V1 options, the V1 node and the V2 config; with `setCompressionMethod=false` the lz4 setting is absent and response compression is still off
+- [x] **CMP-03**: A live test on `latest` inserts and reads back successfully with `setCompressionMethod=true` and with `=false`; which control is load-bearing against the ZSTD default (`compress=false` vs `lz4`) is recorded in `FORK-DELTA.md` from that observation
 
-### Type & Mapping Layer (MAP)
+### Writer Null-Correctness (WRT)
 
-- [x] **MAP-01**: `Type.DYNAMIC` exists alongside upstream's native `Type.JSON`, and `Column` dispatches `Dynamic` type strings to it — a `Dynamic` column must not silently become `Type.UNKNOWN`
-- [x] **MAP-02**: Upstream's rewritten `Column.java` is adopted for everything else, including its `SimpleAggregateFunction` unwrapping and Avro/Protobuf union handling, with `TYPE-01..05`'s JSON assertions passing against it
-- [x] **MAP-03**: Upstream's immutable `Table` is adopted as-is (`addColumn()` private, columns supplied to the constructor), with every fork call site rewritten against the new shape rather than the constructor being re-opened
+- [x] **WRT-06**: A null optional `Map` written into a non-nullable `Map` column produces upstream #820's bytes (empty map, `00` / `00 00` with defaults); the fork's MAP null guard is scoped to nullable columns, upstream's `nullMapTypeTest` passes unmodified, and a Docker-free byte-level test pins it
+- [x] **WRT-07**: A `null` entry inside a `Map(K, Nullable(V))` column round-trips as `NULL` end-to-end, asserted by typed SQL read-back (WR-01)
+- [x] **WRT-08**: A `null` landing in a **nested** non-nullable element slot (Array element, Map value, Tuple field) throws a `DataException` naming the column, instead of silently desyncing the RowBinary stream; top-level non-nullable Map/Array nulls keep upstream's coercion (WR-02)
+- [x] **WRT-09**: Fork CR-02 pin tests that asserted the pre-#820 early-null bytes are re-pinned to the correct bytes — nullable case unchanged, non-nullable case per #820 — with the rationale recorded next to each changed assertion
 
-### Writer (WRT)
-
-- [x] **WRT-01**: `doWriteColValue`'s `default:` branch throws the fork's actionable `DataException` instead of upstream's silent `LOGGER.error`, so an unsupported RowBinary type cannot desync the stream
-- [x] **WRT-02**: `validateDataSchema`'s fail-fast gate covers `DYNAMIC` and `UNKNOWN`; `JSON` is removed from the gate in favour of upstream's native `case JSON:` path
-- [x] **WRT-03**: Upstream's flag-gated JSON-as-string RowBinary write is available, and `TYPE-06`'s JSON assertions are rewritten to match its exception type and message rather than the fork's
-- [x] **WRT-04**: The fork's duplicate `Map(K, Nullable(V))` null-marker patch is dropped in favour of upstream's version, which carries an extra `getMapValueType() != null` guard — the fork's pinning test stays and still passes
-- [x] **WRT-05**: `setTargetTableFilter(...)` still reaches the helper-client builder from `ClickHouseWriter.start()`
-
-### Helper Client (HLP)
-
-- [x] **HLP-01**: `targetTableFilter` still restricts table discovery server-side via `match(table, '<regex>')`, re-expressed against upstream's `showTables*` methods that return `List<Table.TableDesc>` — `FILT-01..04` green
-- [x] **HLP-02**: `shouldSkipDescribeRow`'s structural rule (`.null`, `.size0`, `.size`, and children of `JSON`/`Dynamic` columns) is re-expressed against upstream's local-`List<Column>` describe loop — `DESC-01..04` green, and the bare `.size` case that upstream's `.size[0-9]+` regex misses is covered
-- [x] **HLP-03**: `numColumns` is incremented before any skip decision, matching upstream's treatment of alias/materialized/ephemeral columns, so `extractTablesMapping`'s cache-staleness comparison stays correct
-- [x] **HLP-04**: Every `InputStreamReader` in the resolved `ClickHouseHelperClient` specifies `StandardCharsets.UTF_8` — verified by grepping the whole resolved file, not just the two call sites the fork originally patched — with `TYPE-07` green under the suite's `windows-1252` JVM
-
-### Configuration (CFG)
-
-- [x] **CFG-01**: `targetTableFilter` and `jsonInsertColumns` survive as config keys with their parsing contracts intact
-- [x] **CFG-02**: The connector sends no `async_insert` setting by default — upstream's `addClickHouseSetting("async_insert", "0", false)` stays commented out, `ASYNC-01..03` green
-- [x] **CFG-03**: All thirteen new upstream config options are present and reach their consumers at their upstream defaults
-
-### Orchestration & JMX (ORCH)
-
-- [x] **ORCH-01**: `ProxySinkTask` and `ClickHouseSinkTask` are resolved against upstream's new layering — `DeliveryStrategy`/`ChunkFlusher` above, the 5-arg `Processing` construction below — with no stale 4-arg call site anywhere
-- [x] **ORCH-02**: The JMX MBean ObjectName carries `connector=<name>` again, re-plumbed from `ClickHouseSinkTask.start()` into `SinkTaskStatistics` where upstream now owns naming, with colon sanitization retained — `JMX-01..04` green against the new home
-- [x] **ORCH-03**: Upstream's new per-topic MBean gets the same `connector=<name>` treatment, so per-topic metrics are attributable to a connector in a multi-connector worker
-- [x] **ORCH-04**: `Utils.java` and `Processing.java` — which merge with no conflict marker despite both sides touching them — are explicitly reviewed rather than skipped, and their conflicting test files (`UtilsTest`, `ProcessingTest`) take upstream's versions
+> **Narrowing (Phase 13, 2026-10-08, D-09).** A nested null `Array` or `Map` in a non-nullable slot is coerced to an empty container, mirroring #820's top-level rule, so WRT-08's `DataException` covers nested non-nullable scalar and `Tuple` slots only. A `Tuple` slot follows `Column`'s reported nullability (D-16), so `Array(Nullable(Tuple(a Int32)))` null elements now throw. Through `ClickHouseSinkTask.put` the `DataException` is the root cause of a `RuntimeException`, because `Processing.doInsert` wraps every failure. The requirement text above is left as originally written.
 
 ### Metadata-free JSON Path (JSONP)
 
-- [x] **JSONP-01**: The keep-or-drop decision for the metadata-free `insertFormat=json` path is made at a blocking-human checkpoint, on evidence from the merged code, and recorded with its rationale — not left as whatever the merge happened to produce
-- [x] **JSONP-02**: `JSON-01..05` and R-01's labelled test reflect that decision: if kept, the bypass works and R-01's loss is still pinned; if dropped, R-01's test failing is recorded as the wanted signal that the loss is gone
-- [x] **JSONP-03**: `jsonInsertColumns` works again, redesigned as a field filter inside upstream's `writeRecordsJson` — the `client.insert(table, columns, data, ...)` overload it used no longer exists at that call site — with `COLS-01..06` green
+- [x] **JSONP-05**: With `insertFormat=json`, a `Struct` record and `bypassRowBinary` at its default `false`, rows land through the JSON writer (routing on `shouldSkipTableMetadata()`, never on the raw format string). The R-01 pin test flips from "0 rows, no throw" to typed read-back of every record (R-01)
+- [x] **JSONP-06**: On that route, Kafka logical types — `Timestamp`, `Date`, `Time`, `Decimal`, `bytes` — land in matching ClickHouse columns (`DateTime`, `DateTime64`, `Date`/`Date32`, `Decimal`, `String`) with correct values, proven by a typed read-back matrix; conversion is fixed wherever Jackson's defaults would store a wrong value
+- [x] **JSONP-07**: Null-field semantics on that route are defined and pinned (Nullable column → `NULL`, non-nullable → column `DEFAULT`), as is the interaction with `jsonInsertColumns` and `bypassFieldCleanup`
+- [x] **JSONP-08**: `cleanupExtraFields`' guard evaluates `shouldSkipTableMetadata()` before dereferencing `csc`, so the documented null-safety holds at every call site (P9-IN-01)
 
-> **Correction (Phase 9, 2026-09-20).** `javap` on `client-v2-0.9.6.jar`'s `com.clickhouse.client.api.Client` confirms `insert(String, List<String>, DataStreamWriter, ClickHouseFormat, InsertSettings)` still exists — the overload was never removed from the API, only left unused at the old call site after the merge. This requirement's stated rationale was therefore wrong; its goal is unchanged and is satisfied by re-attaching the surviving overload server-side per D-06. The requirement text above is left as originally written.
+> **Correction (Phase 13, 2026-10-08, D-13).** The operand swap makes metadata-free mode skip the `isBypassFieldCleanup()` read. It does not deliver null-safety: a null `csc` still throws `NullPointerException`, and no null-config short-circuit is added. FORK-DELTA's P9-IN-01 wording is corrected in Phase 15. The requirement text above is left as originally written.
 
-- [x] **JSONP-04**: No fork-only JSON-path code survives against a `Table` shape upstream no longer produces — verified by reading the resolved diff, not only by a green test
+### Exactly-once State (EOS)
 
-### Test Harness (HARN)
+- [x] **EOS-01**: Upstream's `KeeperStateProvider` state-read change (counting streamed rows instead of the response summary) is covered by a direct restart-read test — state written, new provider instance, same min/max/state read back — that is shown to fail against the old summary-count code
 
-- [x] **HARN-01**: `ClickHouseBase` carries `@Tag("clickhouse")` again, proven by `./gradlew testUnit` completing with Docker stopped
-- [x] **HARN-02**: `ClickHouseBase`'s `@AfterEach` MBean leak sweep is restored and extended to cover upstream's per-topic MBeans, with a full-suite run showing zero `InstanceAlreadyExistsException`
-- [x] **HARN-03**: `uniqueConnectorName(TestInfo)` is available again, and the per-JVM-fork shared-container strategy is re-derived over upstream's `@TestInstance(PER_CLASS)` shape — or, if that proves incompatible, the cost is measured and the fallback recorded
-- [x] **HARN-04**: Exactly one `ClickHouseTestHelpers.java` exists in the tree, under `src/testFixtures`, carrying the fork's helpers, with every fork test import updated — verified by grep, not by compilation
-- [x] **HARN-05**: `SchemaTestData` / `SchemalessTestData` exist only under `src/testFixtures` (the `src/integrationTest` duplicates deleted), and `FromVersionConditionExtension`'s package move is absorbed
-- [x] **HARN-06**: `./gradlew compileIntegrationTestJava` succeeds, so the out-of-scope integration source set does not rot into a permanently broken state
-- [x] **HARN-07**: Testcontainers `2.0.5` is verified to start a ClickHouse container through `ClickHouseBase` before any of the 371 fork tests are adapted
+### Metadata, Types & Config (DESC / TYPE / COLS / CFG)
 
-> **Correction (Phase 10, 2026-09-20).** `HARN-04`, `HARN-05`, `HARN-06` and `HARN-07` were already satisfied before Phase 10 began — by the Phase 6 merge (which never introduced the feared orphaned `ClickHouseTestHelpers.java` duplicate, never left `SchemaTestData`/`SchemalessTestData` multi-copy, and already left `compileIntegrationTestJava` green) and by Phase 7's early sliver. They close here on recorded evidence re-measured at execution time (plan 10-03 task 1, re-run against the tree as plan 10-01 left it — not by citing `10-CONTEXT.md`'s measured-state table, which was written before five source files changed and two were added), not on new code. Naming the evidence for each: `HARN-04` — `git ls-files` returns exactly one path whose basename is `ClickHouseTestHelpers.java`, at the canonical `src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/` package, with every `import ...ClickHouseTestHelpers;` in `src/` resolving there. `HARN-05` — `SchemaTestData.java`/`SchemalessTestData.java` each resolve to exactly one tracked path, both under `src/testFixtures`; `FromVersionConditionExtension.java` resolves to exactly one tracked path under the `src/testFixtures` JUnit extension package; `ClickHouseAPI.java` is tracked at zero paths with zero references anywhere under `src/`. `HARN-06` — `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew compileTestJava compileTestFixturesJava compileIntegrationTestJava` succeeds, and `compileIntegrationTestJava` also succeeds alone, producing real class output (7 files under `build/classes/java/integrationTest`, not a `NO-SOURCE` report). `HARN-07` — `gradle/libs.versions.toml` pins Testcontainers at `2.0.5`, and a ClickHouse container demonstrably started through the re-composed `ClickHouseBase` under that version during plan 10-01's and plan 10-02's own live runs. `HARN-07`'s sequencing clause ("before any of the 371 fork tests are adapted") was moot on arrival: the suite had been running green on Testcontainers `2.0.5` since Phase 9, so there was no ordering left to establish.
->
-> The thing no requirement in this section named: the suite had been running against a pinned server version (`25.8.18.1`) rather than the floating `latest` tag since the Phase 6 merge, so Phases 8 and 9 both closed green against a server this milestone does not claim to test. This is a gap in the requirement set itself — seven HARN requirements and not one of them covered which server the harness starts. Plan 10-01 fixed the regression and plan 10-03 records the detail in `MERGE-CHECKLIST.md` Recorded Fact 15; see that fact rather than a duplicate account here.
->
-> `HARN-03` used the re-derive branch, not the fallback branch the requirement text also permits: the shared-container strategy was re-derived over upstream's per-class `@TestInstance(PER_CLASS)` lifecycle rather than falling back to "the cost is measured and the fallback recorded" — the mechanism is a lazily started static container behind a single counted start site (`sharedContainerStarts()`), with an overridable per-class opt-out (`usesSharedContainer()`) for the two Toxiproxy classes.
->
-> `HARN-02`'s second clause — "a full-suite run showing zero `InstanceAlreadyExistsException`" — was discharged by a mechanism rather than a new detector: `MBeanServerUtils`'s registration path rethrows a duplicate-name exception as a `RuntimeException`, so a naming collision is already a test failure. Plan 10-02's two zero-failure full-suite runs are therefore the proof, not an added assertion.
+- [x] **DESC-05**: `shouldSkipDescribeRow` skips DESCRIBE rows at any depth below a `JSON`/`Dynamic` column, not only the immediate child (P3-WR-01)
+- [x] **TYPE-08**: `Int256`/`UInt256` columns fail fast through `validateDataSchema` with the actionable message, while `Int128`/`UInt128` keep being written (P3-WR-03, narrowed)
+- [x] **COLS-07**: `Column.extractColumn`'s Array recursion passes `hasDefaultValue` and `isSubColumn` in the right order, pinned by a test
+- [x] **CFG-04**: `ClickHouseSinkConfig`'s `ConfigDef` reports `"default"` as the `USERNAME` default
 
-### Suite & CI (SUITE)
+### Test Debt (DEBT)
 
-- [ ] **SUITE-01**: `./gradlew test` is green against ClickHouse `latest` × client V2 — the fork's tests plus upstream's 56 test files — with every skip accounted for and explained
-- [ ] **SUITE-02**: The four fork SMTs (`TableOperationFilter`, `HeadersToValue`, `HeaderToValue`, `ConvertToMapOrJson`) and their sink-landing tests pass untouched; any failure there is investigated as a genuine defect, since upstream touches nothing in that package
-- [ ] **SUITE-03**: A written record lists every fork change dropped in favour of upstream and why, and shows the fork's delta over upstream is smaller after this milestone than before it
-- [ ] **CI-05**: `tests.yaml` runs the merged suite on push and publishes coverage, with its runtime measured against the job's `timeout-minutes: 45`
-- [ ] **CI-06**: A `tests.yaml` run is machine-verified green on the pushed SHA, located by `head_sha` plus workflow `path` and asserting exactly one match
-- [ ] **CI-07**: `custom_build` is pushed to the public fork after human approval, by a non-force push from the scratch branch
+- [x] **DEBT-01**: `HeaderToValue`'s behavior when `fields` names a pre-existing non-STRING column is pinned by a test (WR-03)
+- [x] **DEBT-02**: `JsonColumnTest` reads the payload back and asserts values, not row counts
+- [x] **DEBT-03**: `ClickHouseSinkTaskJsonInsertFormatTest`'s two tests use the `try/finally` task-lifecycle pattern (P4-WR-01)
+- [x] **DEBT-04**: A database-drop failure in `ClickHouseBase.tearDown()` is surfaced so it is attributable to the class that caused it, instead of being logged and swallowed (Phase 10 WR-01)
+- [x] **DEBT-05**: Stale Javadocs are corrected — `ClickHouseVersionDefaultUnitTest` (Phase 11 IN-01), `AsyncInsertLiveTest` (P4-IN-01), and the `NetworkCompressionPin*` rationale after CMP-01
 
-### Free Wins — Verify and Record (FREE)
+### Build & Dependencies (BLD)
 
-<!-- These are OUT of scope as work. The requirement is to confirm and record, never to fix. -->
+- [x] **BLD-09**: The fork's LZ4 capability rule is removed in favour of upstream's; `dependencyInsight` shows exactly one `at.yawk.lz4:lz4-java` on `runtimeClasspath`; the stale "1.10.2" wording is fixed in `FORK-DELTA.md`, `MERGE-CHECKLIST.md` and `.claude/CLAUDE.md`
+- [x] **BLD-10**: `lz4-java` is raised past upstream's `1.10.4` to an advisory-free release (≥ 1.11.2, target 1.12.0), after showing client `0.9.6` works with it (compile, `testUnit`, live LZ4 round-trip)
+- [x] **BLD-11**: Jackson is `2.22.3` (runtime, ships in the Confluent archive), in its own commit, with the JSON-route tests green
+- [x] **BLD-12**: okhttp `5.5.0`, org.json `20260814` and mockito `5.24.0` are applied as version edits (not dependabot cherry-picks), one commit each, each gated by `compileIntegrationTestJava` and Docker-free `testUnit`
+- [x] **BLD-13**: The catalog drops `clickhouse-jdbc` and the obsolete `# FORK OVERRIDE (upstream 0.9.5)` comment while keeping `kafka = "4.1.1"`
 
-- [x] **FREE-01**: Upstream's `Utils.handleException` is confirmed to classify `com.clickhouse.client.api.ServerException` alongside `ClickHouseException`, and the fork's "error classification is dead code on client V2" follow-up is closed citing upstream issue #818 as the mechanism
-- [x] **FREE-02**: Upstream's `Map(K, Nullable(V))` RowBinary fix is confirmed in the merged code, the fork's duplicate patch is confirmed dropped, and whether it also closes WR-01 is recorded either way
-- [x] **FREE-03**: Whether upstream issue #580's `DESCRIBE TABLE`-database fix subsumes the fork's dormant P3-WR-02 follow-up is checked and recorded
+> **Correction (Phase 14, 2026-10-09, D-04).** OSV on 2026-10-09 shows `at.yawk.lz4:lz4-java` 1.11.2 and 1.11.3 still affected by three advisories (GHSA-343h-94h5-c4wr, GHSA-gm45-99xc-r7wv, GHSA-mcr4-qmvw-px4g), all fixed in 1.11.4, so the advisory-free floor is 1.11.4. This supersedes the "≥ 1.11.2" wording in BLD-10, in the locked-decisions table and in ROADMAP Phase 14 success criterion 1. The 1.12.0 target is unchanged. The requirement text above is left as originally written.
 
----
+### CI (CI)
+
+- [x] **CI-08**: A published SHA gets exactly one completed `tests.yaml` run — the tag/branch trigger and concurrency group are fixed **before** any tag is pushed
+- [x] **CI-09**: CI's test fork count is read from a job log or summary (e.g. `nproc` / `maxParallelForks`), or explicitly recorded as unmeasured
+- [x] **CI-10**: CI compiles the integration-test source set (`compileIntegrationTestJava`), so integration-only dependencies like okhttp are checked on every push
+
+### Suite Gate (SUITE)
+
+- [ ] **SUITE-04**: The full suite on ClickHouse `latest` × client V2 passes twice (second run with `--rerun`), with 0 failures, 0 errors and a skip set equal to the named skips in `FORK-DELTA.md`; `testUnit` passes with Docker stopped
+
+### Publication (PUB)
+
+- [ ] **PUB-01**: `VERSION` is `v1.7.0_gg1` (built after `clean`, so `Version.java` is not stale) and `CHANGELOG.md` has a `1.7.0_gg1` section listing the fork's own changes — R-01 behavior change, WR-02 strictness, compression, lz4
+- [x] **PUB-02**: `docs/FORK-DELTA.md` reflects the new state — D-17 retired, R-01 removed from known costs, LZ4 rule and version, MAP guard scoping, any new kept patches or costs
+- [ ] **PUB-03**: `custom_build` receives a non-force `--no-ff` merge after human approval, tags `v1.7.0_gg1` and `pre-v1.7.0-sync` are on `origin`, and CI is green on the published SHA
+- [ ] **PUB-04**: The `.planning/` history after `c61d90ce` is published on `origin` via merge (not fast-forward), without `.planning/.gsd-ws-arg` or local-only tags
+
+### Rollout (ROLL)
+
+- [x] **ROLL-01**: An operator rollout checklist exists covering: JMX MBean name before/after (`connector=` and the per-release `version=` segment); compression semantics, the `compress=true`-in-`jdbcConnectionProperties` caveat and the server-profile check; R-01's behavior change and the exactly-once backfill procedure (offset reset + KeeperMap state clear); JSON-route type notes; the new `DataException` (DLQ-able) for nested nulls; the rollback tag
 
 ## Future Requirements
 
 Deferred — tracked, not in this roadmap.
 
-### Follow-ups carried from v1.2.9_gg4-tests
-
-- **R-01 fail-fast** — a real fix for the silent-data-loss path, if JSONP-01 decides to keep the bypass. Needs a migration story for existing Struct-converter pipelines
-- **WR-01** — end-to-end coverage for an actual `null` entry inside a `Map(K, Nullable(V))` column, unless FREE-02 shows upstream closed it
-- **WR-02** — `ClickHouseWriter` MAP/ARRAY branches failing loudly when a `null` lands in a non-nullable element slot
-- **WR-03** — pin `HeaderToValue`'s behavior when `fields` names a pre-existing non-STRING column
-- **P3-WR-01** — `shouldSkipDescribeRow` walking more than one level up for deeply nested `JSON`/`Dynamic` children
-- **P3-WR-03** — `validateDataSchema`'s gate covering `INT128`/`INT256`/`UINT128`/`UINT256`
-- **P3-WR-02** — `describeTableV2` using the passed-in `database` parameter, unless FREE-03 shows upstream closed it
-- **P4-WR-01** — `ClickHouseSinkTaskJsonInsertFormatTest`'s missing `try/finally` task-lifecycle pattern
-- **P4-IN-01** — `AsyncInsertLiveTest`'s misleading class Javadoc
-
-### New upstream capability, available but not adopted
-
-- **`debeziumCDCEnabled` / `DebeziumRecordConvertor`** — flattens a Debezium envelope into a `ReplacingMergeTree(_version, is_deleted)` row. Off by default, gated on a `.Envelope` schema name. Does not overlap the fork's SMTs; potentially valuable to the fork's CDC pipelines, but adopting it is a separate decision
-- **`auto.evolve`** family — automatic `ALTER TABLE … ADD COLUMN IF NOT EXISTS`, with `clusterName` for distributed DDL
-- **`bufferCount` / `bufferFlushTime`** buffered delivery strategies
-- **`retryOnSocketException`** — worth deliberately enabling, since it targets a client-V2 persistent-connection failure mode the fork is exposed to today with no mitigation
-
----
+- **ClickHouse client `0.10.0`** — upstream dependabot branch, unmerged. Revisit once upstream adopts it; it may make the lz4 setting unnecessary
+- **Production rollout execution** — this milestone delivers the checklist, not the rollout itself
 
 ## Out of Scope
 
-| Item | Reason |
-|---|---|
-| Fixing any of the nine deferred follow-ups | Mixing 581 upstream commits with production bug fixes makes it impossible to tell which one broke what. Two close for free; record, do not fix |
-| Production rollout of the v1.6.0-based connector | The milestone ends at a green suite, green CI, and a pushed branch |
-| Stepwise sync through `v1.3.x` / `v1.4.0` / `v1.5.0` | User chose big-bang. The tests shipped by the previous milestone are the safety net that makes it affordable |
-| Rebasing or replaying fork history onto `v1.6.0` | `custom_build` is already published; merge preserves history without a force-push |
-| Test matrix beyond ClickHouse `latest` × client V2 | Unchanged constraint — production uses V2, and older ClickHouse lacks JSON/Dynamic |
-| Upstream's cloud and cluster test jobs, and the `use-clickhouse-java` composite action | No cloud credentials, no cluster deployment; the fork's single-job CI stands |
-| Making `src/integrationTest` pass | Confluent/Cloud-dependent and outside `./gradlew test`. Required only to compile (HARN-06) |
-| Adopting `DebeziumRecordConvertor`, `auto.evolve`, or buffered delivery | Real new upstream capability, but adopting it is feature work, not sync work |
-| Replacing `slf4j-reload4j` | Pre-existing upstream-hardening item, untouched by this sync |
-
----
+| Feature | Reason |
+|---------|--------|
+| Adopting upstream's Avro record-union (#800) or `DebeziumRecordConvertor` paths | New capability, not fork behavior; merged as upstream code, not adopted (as in `v1.6.0_gg1-sync`) |
+| Changing the metadata-free JSON path's KEEP decision | Settled in Phase 9 (D-01); R-01 is fixed inside it, not by dropping it |
+| Client V1 / older ClickHouse test matrix, ClickHouse Cloud | Unchanged project constraint — production is `latest` × V2 |
+| Upstream hardening of code the fork never touched (SQL interpolation in `KeeperStateProvider`, reload4j) | Not fork additions |
 
 ## Traceability
 
-Mapped during roadmap creation for milestone `v1.6.0_gg1-sync` (2026-09-18). Phase numbering continues from the shipped `v1.2.9_gg4-tests` milestone, which ended at Phase 5.
+Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SYNC-01 | Phase 6 | Complete |
-| SYNC-02 | Phase 6 | Complete |
-| SYNC-03 | Phase 6 | Complete |
-| SYNC-04 | Phase 6 | Complete |
-| SYNC-05 | Phase 6 | Complete |
-| SYNC-06 | Phase 6 | Complete |
-| BLD-01 | Phase 6 | Complete |
-| BLD-02 | Phase 6 | Complete |
-| BLD-03 | Phase 6 | Complete |
-| BLD-04 | Phase 6 | Complete |
-| BLD-05 | Phase 6 | Complete |
-| BLD-06 | Phase 6 | Complete |
-| BLD-07 | Phase 6 | Complete |
-| BLD-08 | Phase 6 | Complete |
-| MAP-01 | Phase 7 | Complete |
-| MAP-02 | Phase 7 | Complete |
-| MAP-03 | Phase 7 | Complete |
-| WRT-01 | Phase 7 | Complete |
-| WRT-02 | Phase 7 | Complete |
-| WRT-03 | Phase 7 | Complete |
-| WRT-04 | Phase 7 | Complete |
-| WRT-05 | Phase 7 | Complete |
-| HLP-01 | Phase 7 | Complete |
-| HLP-02 | Phase 7 | Complete |
-| HLP-03 | Phase 7 | Complete |
-| HLP-04 | Phase 7 | Complete |
-| CFG-01 | Phase 7 | Complete |
-| CFG-02 | Phase 7 | Complete |
-| CFG-03 | Phase 7 | Complete |
-| FREE-02 | Phase 7 | Complete |
-| FREE-03 | Phase 7 | Complete |
-| ORCH-01 | Phase 8 | Complete |
-| ORCH-02 | Phase 8 | Complete |
-| ORCH-03 | Phase 8 | Complete |
-| ORCH-04 | Phase 8 | Complete |
-| FREE-01 | Phase 8 | Complete |
-| JSONP-01 | Phase 9 | Complete |
-| JSONP-02 | Phase 9 | Complete |
-| JSONP-03 | Phase 9 | Complete |
-| JSONP-04 | Phase 9 | Complete |
-| HARN-01 | Phase 10 | Complete |
-| HARN-02 | Phase 10 | Complete |
-| HARN-03 | Phase 10 | Complete |
-| HARN-04 | Phase 10 | Complete |
-| HARN-05 | Phase 10 | Complete |
-| HARN-06 | Phase 10 | Complete |
-| HARN-07 | Phase 10 | Complete |
-| SUITE-01 | Phase 11 | Pending |
-| SUITE-02 | Phase 11 | Pending |
-| SUITE-03 | Phase 11 | Pending |
-| CI-05 | Phase 11 | Pending |
-| CI-06 | Phase 11 | Pending |
-| CI-07 | Phase 11 | Pending |
-
-**Phase map:**
-
-- **Phase 6 — Merge Groundwork & Build Migration**: 14 requirements
-- **Phase 7 — Type Mapping, Writer, Helper Client & Config**: 17 requirements
-- **Phase 8 — Orchestration & JMX Re-plumbing**: 5 requirements
-- **Phase 9 — Metadata-free JSON Path — Keep or Drop**: 4 requirements
-- **Phase 10 — Test Harness Reconciliation**: 7 requirements
-- **Phase 11 — Full Suite, CI & Publication**: 6 requirements
+| SYNC-07 | Phase 12 | Complete |
+| SYNC-08 | Phase 12 | Complete |
+| SYNC-09 | Phase 12 | Complete |
+| SYNC-10 | Phase 12 | Complete |
+| CMP-01 | Phase 12 | Complete |
+| CMP-02 | Phase 12 | Complete |
+| CMP-03 | Phase 12 | Complete |
+| WRT-06 | Phase 12 | Complete |
+| WRT-07 | Phase 13 | Complete |
+| WRT-08 | Phase 13 | Complete |
+| WRT-09 | Phase 12 | Complete |
+| JSONP-05 | Phase 13 | Complete |
+| JSONP-06 | Phase 13 | Complete |
+| JSONP-07 | Phase 13 | Complete |
+| JSONP-08 | Phase 13 | Complete |
+| EOS-01 | Phase 12 | Complete |
+| DESC-05 | Phase 13 | Complete |
+| TYPE-08 | Phase 13 | Complete |
+| COLS-07 | Phase 13 | Complete |
+| CFG-04 | Phase 13 | Complete |
+| DEBT-01 | Phase 13 | Complete |
+| DEBT-02 | Phase 13 | Complete |
+| DEBT-03 | Phase 13 | Complete |
+| DEBT-04 | Phase 13 | Complete |
+| DEBT-05 | Phase 13 | Complete |
+| BLD-09 | Phase 12 | Complete |
+| BLD-10 | Phase 14 | Complete |
+| BLD-11 | Phase 14 | Complete |
+| BLD-12 | Phase 14 | Complete |
+| BLD-13 | Phase 12 | Complete |
+| CI-08 | Phase 14 | Complete |
+| CI-09 | Phase 14 | Complete |
+| CI-10 | Phase 14 | Complete |
+| SUITE-04 | Phase 15 | Pending |
+| PUB-01 | Phase 15 | Pending |
+| PUB-02 | Phase 15 | Complete |
+| PUB-03 | Phase 15 | Pending |
+| PUB-04 | Phase 15 | Pending |
+| ROLL-01 | Phase 15 | Complete |
 
 **Coverage:**
-
-- v1 requirements: 53 total
-- Mapped to phases: 53 ✓
-- Unmapped: 0
-- Duplicates (a requirement in more than one phase): 0
-
-> **Count correction.** This block previously read "46 total". The document has always listed **53** v1 requirements (`grep -c '^- \[ \] \*\*'` = 53); the earlier summary figure was a miscount, not a lost set of requirements. No requirement was added or removed at roadmap creation.
+- v1 requirements: 39 total
+- Mapped to phases: 39
+- Unmapped: 0 ✓
+- By phase: Phase 12 → 12, Phase 13 → 15, Phase 14 → 6, Phase 15 → 6
 
 ---
-*Requirements defined: 2026-09-18*
-*Last updated: 2026-09-18 — traceability populated at roadmap creation (Phases 6-11)*
+*Requirements defined: 2026-10-07*
+*Last updated: 2026-10-07 after roadmap creation (Phases 12-15, traceability filled)*

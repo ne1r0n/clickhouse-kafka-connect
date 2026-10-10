@@ -34,6 +34,9 @@ import org.testcontainers.utility.MountableFile;
 public class ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBase.class);
     private static final AtomicLong CONNECTOR_NAME_COUNTER = new AtomicLong();
+    private static final String DROP_FAILURE_MESSAGE_FORMAT =
+            "Test class %s failed to drop its database %s on the shared ClickHouse container; "
+                    + "later classes in this JVM fork may see its tables";
 
     /**
      * [D-01] Counts how many times the shared container was actually started in this test JVM
@@ -139,16 +142,38 @@ public class ClickHouseBase {
                 if (usesSharedContainer()) {
                     // D-01: the container survives for the next class in this fork - dropping the
                     // database is the only isolation mechanism left between classes sharing it.
-                    try (var tmpClient = ClickHouseTestHelpers.createClient(getBaseProps())) {
-                        ClickHouseTestHelpers.dropDatabase(tmpClient, database);
-                    } catch (Exception e) {
-                        LOGGER.error("Error dropping database", e);
-                    }
+                    // A failed drop now fails this class (DEBT-04, D-14).
+                    dropSharedDatabaseOrAttribute(getClass().getSimpleName(), database, () -> {
+                        try (var tmpClient = ClickHouseTestHelpers.createClient(getBaseProps())) {
+                            ClickHouseTestHelpers.dropDatabase(tmpClient, database);
+                        }
+                    });
                 } else {
                     LOGGER.info("Stopping db container: id={}, port={}", ch.getContainerId(), ch.getMappedPort(8123));
                     ch.stop();
                 }
             }
+        }
+    }
+
+    /** The drop of a per-class database, as an action that may throw. */
+    @FunctionalInterface
+    interface DatabaseDrop {
+        void run() throws Exception;
+    }
+
+    /**
+     * [DEBT-04, D-14] Runs the per-class database drop and, on failure, rethrows it naming the
+     * leaking class and database so JUnit reports the failure against the class that caused it
+     * instead of a later class tripping over the leftover tables.
+     */
+    static void dropSharedDatabaseOrAttribute(String testClassName, String database, DatabaseDrop drop) {
+        try {
+            drop.run();
+        } catch (Exception e) {
+            String message = String.format(DROP_FAILURE_MESSAGE_FORMAT, testClassName, database);
+            LOGGER.error(message, e);
+            throw new IllegalStateException(message, e);
         }
     }
 

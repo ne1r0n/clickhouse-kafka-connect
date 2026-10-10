@@ -1,6 +1,7 @@
 package com.clickhouse.kafka.connect.sink;
 
 import com.clickhouse.client.config.ClickHouseProxyType;
+import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import lombok.Getter;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -69,6 +70,9 @@ public class ClickHouseSinkConfig {
     public static final String CLUSTER_NAME = "clusterName";
     public static final String ENABLE_REPLICA_PINNING = "enableReplicaPinning";
     public static final String TARGET_TABLE_FILTER = "targetTableFilter";
+    public static final String SET_COMPRESSION_METHOD = "setCompressionMethod";
+    public static final String NETWORK_COMPRESSION_METHOD = ClickHouseHelperClient.NETWORK_COMPRESSION_METHOD;
+    public static final String LZ4 = ClickHouseHelperClient.LZ4;
 
     public static final long MINIMAL_RETRY_TIMEOUT_THR_WARN = TimeUnit.SECONDS.toMillis(10);
     public static final String SSL_SOCKET_SNI = "ssl_socket_sni";
@@ -90,6 +94,7 @@ public class ClickHouseSinkConfig {
     public static final Long clickhouseClientInsertTimeoutMsDefault = TimeUnit.MINUTES.toMillis(4);
     public static final Boolean reportInsertedOffsetsDefault = Boolean.FALSE;
     public static final Boolean enableReplicaPinningDefault = Boolean.FALSE;
+    public static final Boolean setCompressionMethodDefault = Boolean.TRUE;
 
     private final String hostname;
     private final int port;
@@ -136,6 +141,7 @@ public class ClickHouseSinkConfig {
     private final String targetTableFilter;
     private final List<String> jsonInsertColumns;
     private final boolean jsonInsertFormatExplicit;
+    private final boolean setCompressionMethod;
 
     public enum InsertFormats {
         NONE,
@@ -336,6 +342,7 @@ public class ClickHouseSinkConfig {
         this.clusterName = props.getOrDefault(CLUSTER_NAME, "");
         this.enableReplicaPinning = Boolean.parseBoolean(props.getOrDefault(ENABLE_REPLICA_PINNING, enableReplicaPinningDefault.toString()));
         this.targetTableFilter = props.getOrDefault(TARGET_TABLE_FILTER, "").trim();
+        this.setCompressionMethod = Boolean.parseBoolean(props.getOrDefault(SET_COMPRESSION_METHOD, props.getOrDefault("set_compression_method", setCompressionMethodDefault.toString())));
 
         if (this.bufferCount > 0) {
             LOGGER.info("Internal buffering enabled: bufferCount={}, bufferFlushTime={}ms", this.bufferCount, this.bufferFlushTime);
@@ -432,7 +439,7 @@ public class ClickHouseSinkConfig {
                 "Clickhouse database name.");
         configDef.define(USERNAME,
                 ConfigDef.Type.STRING,
-                passwordDefault,
+                usernameDefault,
                 ConfigDef.Importance.LOW,
                 "username",
                 group,
@@ -825,6 +832,16 @@ public class ClickHouseSinkConfig {
                 ++orderInGroup,
                 ConfigDef.Width.MEDIUM,
                 "Target Table Filter (regex pattern).");
+        configDef.define(SET_COMPRESSION_METHOD,
+                ConfigDef.Type.BOOLEAN,
+                setCompressionMethodDefault,
+                ConfigDef.Importance.LOW,
+                "Whether to set network compression method on the ClickHouse client. default: true",
+                group,
+                ++orderInGroup,
+                ConfigDef.Width.SHORT,
+                "Set compression method."
+        );
 
         String ddlGroup = "DDL";
         int ddlOrderInGroup = 0;

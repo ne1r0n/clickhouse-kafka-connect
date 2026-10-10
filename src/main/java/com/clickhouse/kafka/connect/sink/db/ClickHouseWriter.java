@@ -94,6 +94,7 @@ public class ClickHouseWriter implements DBWriter {
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
                 .setTargetTableFilter(csc.getTargetTableFilter())
+                .setCompressionMethod(csc.isSetCompressionMethod())
                 .build();
 
         if (!chc.ping()) {
@@ -234,7 +235,7 @@ public class ClickHouseWriter implements DBWriter {
         switch (first.getSchemaType()) {
             case SCHEMA:
             case DEBEZIUM_CDC:
-                if (csc.isBypassRowBinary()) {
+                if (csc.isBypassRowBinary() || shouldSkipTableMetadata()) {
                     doInsertJson(records, table, queryId);
                 } else {
                     doInsertRawBinary(records, table, queryId, table.hasDefaults(), true);
@@ -328,6 +329,8 @@ public class ClickHouseWriter implements DBWriter {
                             }
                             break;
                         }
+                        case "INT256":
+                        case "UINT256":
                         case "DYNAMIC":
                         case "UNKNOWN": {
                             String unsupportedTypeMsg = buildRowBinaryUnsupportedTypeMessage(colName, type);
@@ -547,6 +550,50 @@ public class ClickHouseWriter implements DBWriter {
                 columnName, columnType);
     }
 
+    // Slot kinds name the position of a nested null in the schema; none of them carries record data.
+    private static final String NESTED_NULL_MESSAGE_FORMAT = "column '%s' (%s) %s: null in non-nullable slot";
+    private static final String NESTED_NULL_SLOT_ELEMENT = "element";
+    private static final String NESTED_NULL_SLOT_MAP_VALUE = "map value";
+    private static final String NESTED_NULL_SLOT_TUPLE = "tuple";
+    private static final String NESTED_NULL_SLOT_TUPLE_FIELD_FORMAT = "tuple field '%s'";
+
+    /**
+     * Builds the {@link DataException} message for a null in a nested non-nullable slot (WRT-08).
+     * Built only from {@code Column} metadata: it reaches logs, Connect status and DLQ headers, so
+     * it must never carry a field value, array element or map key.
+     */
+    private String buildNestedNullMessage(Column container, String slotKind) {
+        return String.format(NESTED_NULL_MESSAGE_FORMAT, container.getName(), renderColumnType(container), slotKind);
+    }
+
+    private static String renderColumnType(Column col) {
+        String rendered;
+        switch (col.getType()) {
+            case ARRAY:
+                rendered = "Array(" + (col.getArrayType() == null ? "?" : renderColumnType(col.getArrayType())) + ")";
+                break;
+            case MAP:
+                rendered = "Map(" + col.getMapKeyType() + ", "
+                        + (col.getMapValueType() == null ? "?" : renderColumnType(col.getMapValueType())) + ")";
+                break;
+            case TUPLE:
+                rendered = "Tuple(...)";
+                break;
+            default:
+                rendered = col.getType().name();
+                break;
+        }
+        return col.isNullable() ? "Nullable(" + rendered + ")" : rendered;
+    }
+
+    /**
+     * A null in a nested non-nullable ARRAY or MAP slot is written as an empty container whatever
+     * {@code defaultsSupport} says, mirroring upstream #820's top-level rule (D-09).
+     */
+    private static boolean isNullCoercedToEmpty(Column slot) {
+        return slot.getType() == Type.ARRAY || slot.getType() == Type.MAP;
+    }
+
     /**
      * Builds the message thrown by {@code doInsertRawBinaryV1}/{@code V2} when {@code
      * validateDataSchema} reports an invalid schema (TYPE-06). A JSON column is the one case where
@@ -610,22 +657,39 @@ public class ClickHouseWriter implements DBWriter {
                     }
                     break;
                 case MAP:
-                    if (value.getObject() == null) {
+                    if (value.getObject() == null && col.isNullable()) {
                         // Reached when this MAP is a Nullable child of an Array/Map and the
                         // actual entry is null - the parent's own null check (ARRAY's arrObject
                         // == null, MAP's "mapValue != null" guard before recursing) only decides
                         // whether to write the Nullable wrapper's NonNull marker, never whether
                         // to call back into doWriteColValue at all. Mirror doWritePrimitive/
                         // doWriteDates/Decimal's own null handling instead of dereferencing null.
+                        // Scoped to Nullable columns: for a non-nullable Map the null is upstream
+                        // #820's empty map, whose size byte doWriteCol already wrote, so a second
+                        // marker here would desync the RowBinary stream (WRT-06).
                         BinaryStreamUtils.writeNull(stream);
                         break;
                     }
                     Map<?, ?> mapTmp = (Map<?, ?>) value.getObject();
+                    if (mapTmp == null) {
+                        if (defaultsSupport) {
+                            BinaryStreamUtils.writeVarInt(stream, 0);
+                        }
+                        break;
+                    }
                     int mapSize = mapTmp.size();
                     BinaryStreamUtils.writeVarInt(stream, mapSize);
                     mapTmp.forEach((key, mapValue) -> {
                         try {
                             doWritePrimitive(col.getMapKeyType(), value.getMapKeySchema().type(), stream, key, col);
+                            if (mapValue == null && col.getMapValueType() != null && !col.getMapValueType().isNullable()
+                                    && col.getMapValueType().getType() != Type.VARIANT) {
+                                if (!isNullCoercedToEmpty(col.getMapValueType())) {
+                                    throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_MAP_VALUE));
+                                }
+                                BinaryStreamUtils.writeVarInt(stream, 0);
+                                return;
+                            }
                             if (col.getMapValueType() != null && col.getMapValueType().isNullable() && mapValue != null) {
                                 BinaryStreamUtils.writeNonNull(stream);
                             }
@@ -647,6 +711,13 @@ public class ClickHouseWriter implements DBWriter {
                         BinaryStreamUtils.writeVarInt(stream, sizeArrObject);
                         arrObject.forEach(v -> {
                             try {
+                                if (v == null && !col.getArrayType().isNullable() && col.getArrayType().getType() != Type.VARIANT) {
+                                    if (!isNullCoercedToEmpty(col.getArrayType())) {
+                                        throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_ELEMENT));
+                                    }
+                                    BinaryStreamUtils.writeVarInt(stream, 0);
+                                    return;
+                                }
                                 if (col.getArrayType().isNullable() && v != null) {
                                     BinaryStreamUtils.writeNonNull(stream);
                                 }
@@ -659,6 +730,11 @@ public class ClickHouseWriter implements DBWriter {
                     break;
                 case TUPLE:
                     if (value.getObject() == null) {
+                        // Column reports a Tuple non-nullable even for Nullable(Tuple(...)) (D-16),
+                        // so only a slot it does report nullable may take the marker (D-10).
+                        if (!col.isNullable()) {
+                            throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_TUPLE));
+                        }
                         // See the MAP case above: a Nullable(Tuple(...)) reached as an
                         // Array/Map child with a genuine null entry must write the null marker,
                         // not dereference value.getObject() below.
@@ -679,6 +755,14 @@ public class ClickHouseWriter implements DBWriter {
                         String[] colNameSplit = column.getName().split("\\.");
                         String fieldName = colNameSplit.length > 0 ? colNameSplit[colNameSplit.length - 1] : column.getName();
                         Data innerData = (Data) jsonMapValues.get(fieldName);
+                        if (jsonMapValues.containsKey(fieldName)
+                                && (innerData == null || innerData.getObject() == null)
+                                && !column.isNullable()
+                                && !isNullCoercedToEmpty(column)
+                                && column.getType() != Type.VARIANT) {
+                            throw new DataException(buildNestedNullMessage(
+                                    col, String.format(NESTED_NULL_SLOT_TUPLE_FIELD_FORMAT, fieldName)));
+                        }
                         try {
                             // we need to apply here the default and nullable logic
                             doWriteCol(innerData, jsonMapValues.containsKey(fieldName), column, stream, false);
@@ -962,8 +1046,8 @@ public class ClickHouseWriter implements DBWriter {
                         BinaryStreamUtils.writeNonNull(stream);
                         BinaryStreamUtils.writeNull(stream);//Then we send null, write 1
                         return;//And we're done
-                    } else if (colType == Type.ARRAY) {//If the column is an array
-                        BinaryStreamUtils.writeNonNull(stream);//Then we send nonNull
+                    } else if (colType == Type.ARRAY || colType == Type.MAP) {
+                        BinaryStreamUtils.writeNonNull(stream);
                     } else if (colType == Type.VARIANT) {
                         BinaryStreamUtils.writeNonNull(stream);
                         BinaryStreamUtils.writeUnsignedInt8(stream, 255);
@@ -978,7 +1062,7 @@ public class ClickHouseWriter implements DBWriter {
                     BinaryStreamUtils.writeNonNull(stream);
                 }
                 if (!col.isNullable() && value.getObject() == null) {
-                    if (colType == Type.ARRAY)
+                    if (colType == Type.ARRAY || colType == Type.MAP)
                         BinaryStreamUtils.writeNonNull(stream);
                     else if (colType == Type.VARIANT) {
                         BinaryStreamUtils.writeUnsignedInt8(stream, 255);
@@ -1268,46 +1352,77 @@ public class ClickHouseWriter implements DBWriter {
      */
     private long writeRecordsJson(List<Record> records, Table table, OutputStream stream) throws IOException {
         long dataSerializeTime = 0;
+        boolean metadataFree = shouldSkipTableMetadata();
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
                 LOGGER.trace("Record: {}", record.getTopicAndPartition());
 
-                Map<String, Object> data;
-                switch (record.getSchemaType()) {
-                    case SCHEMA:
-                        data = new HashMap<>(16);
-                        Struct struct = (Struct) record.getSinkRecord().value();
-                        for (Field field : struct.schema().fields()) {
-                            data.put(field.name(), struct.get(field));//Doesn't handle multi-level object depth
-                        }
-                        break;
-                    case DEBEZIUM_CDC:
-                        data = new HashMap<>(record.getJsonMap().size());
-                        record.getJsonMap().forEach((k, v) -> data.put(k, v.getObject()));
-                        break;
-                    default:
-                        data = (Map<String, Object>) record.getSinkRecord().value();
-                        break;
+                long beforeSerialize;
+                byte[] bytes;
+                if (metadataFree && record.getSchemaType() == SchemaType.SCHEMA) {
+                    beforeSerialize = System.currentTimeMillis();
+                    bytes = MetadataFreeJsonWriter.structRow((Struct) record.getSinkRecord().value());
+                } else if (metadataFree && record.getSchemaType() == SchemaType.DEBEZIUM_CDC) {
+                    // op=t and a null before/after struct convert to an empty map, which would
+                    // otherwise land as an all-defaults row.
+                    if (record.getJsonMap() == null || record.getJsonMap().isEmpty()) {
+                        LOGGER.debug("Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]",
+                                record.getTopic(),
+                                record.getRecordOffsetContainer().getPartition(),
+                                record.getRecordOffsetContainer().getOffset());
+                        continue;
+                    }
+                    beforeSerialize = System.currentTimeMillis();
+                    bytes = MetadataFreeJsonWriter.cdcRow(record.getJsonMap());
+                } else {
+                    Map<String, Object> data;
+                    switch (record.getSchemaType()) {
+                        case SCHEMA:
+                            data = new HashMap<>(16);
+                            Struct struct = (Struct) record.getSinkRecord().value();
+                            for (Field field : struct.schema().fields()) {
+                                data.put(field.name(), struct.get(field));//Doesn't handle multi-level object depth
+                            }
+                            break;
+                        case DEBEZIUM_CDC:
+                            data = new HashMap<>(record.getJsonMap().size());
+                            record.getJsonMap().forEach((k, v) -> data.put(k, v.getObject()));
+                            break;
+                        default:
+                            data = (Map<String, Object>) record.getSinkRecord().value();
+                            break;
+                    }
+                    beforeSerialize = System.currentTimeMillis();
+                    Map<String, Object> cleaned = cleanupExtraFields(data, table);
+                    bytes = OBJECT_MAPPER.writeValueAsBytes(cleaned);
                 }
-                long beforeSerialize = System.currentTimeMillis();
-                Map<String, Object> cleaned = cleanupExtraFields(data, table);
-                byte[] bytes = OBJECT_MAPPER.writeValueAsBytes(cleaned);
-                dataSerializeTime += System.currentTimeMillis() - beforeSerialize;
-
-                if (LOGGER.isTraceEnabled()) {
-                    LOGGER.trace("topic {} partition {} offset {} payload {}",
-                            record.getTopic(),
-                            record.getRecordOffsetContainer().getPartition(),
-                            record.getRecordOffsetContainer().getOffset(),
-                            new String(bytes, StandardCharsets.UTF_8));
-                }
-                statistics.bytesInserted(bytes.length);
-                BinaryStreamUtils.writeBytes(stream, bytes);
+                dataSerializeTime += writeJsonRow(record, bytes, beforeSerialize, stream);
             } else {
                 LOGGER.warn(String.format("Getting empty record skip the insert topic[%s] offset[%d]", record.getTopic(), record.getSinkRecord().kafkaOffset()));
             }
         }
         return dataSerializeTime;
+    }
+
+    /**
+     * Shared tail of {@link #writeRecordsJson}: accounts the serialization time, traces the payload
+     * (TRACE only, since it carries record data) and appends one serialized row to the stream.
+     *
+     * @return milliseconds elapsed since {@code serializeStartMillis}
+     */
+    private long writeJsonRow(Record record, byte[] bytes, long serializeStartMillis, OutputStream stream) throws IOException {
+        long serializeTime = System.currentTimeMillis() - serializeStartMillis;
+
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("topic {} partition {} offset {} payload {}",
+                    record.getTopic(),
+                    record.getRecordOffsetContainer().getPartition(),
+                    record.getRecordOffsetContainer().getOffset(),
+                    new String(bytes, StandardCharsets.UTF_8));
+        }
+        statistics.bytesInserted(bytes.length);
+        BinaryStreamUtils.writeBytes(stream, bytes);
+        return serializeTime;
     }
 
     protected void doInsertJsonV1(List<Record> records, Table table, QueryIdentifier queryId) throws IOException, ExecutionException, InterruptedException {
@@ -1401,14 +1516,21 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     protected Map<String, Object> cleanupExtraFields(Map<String, Object> m, Table t) {
-        if (csc.isBypassFieldCleanup() || shouldSkipTableMetadata()) {
+        // The metadata-free predicate goes first so that mode never reads the bypass flag (JSONP-08);
+        // a null config still throws here, because the predicate returns false for it.
+        if (shouldSkipTableMetadata() || csc.isBypassFieldCleanup()) {
             return m;
         }
 
         Map<String, Object> cleaned = new HashMap<>();
         for (Column c : t.getRootColumnsList()) {
             if (m.containsKey(c.getName())) {
-                cleaned.put(c.getName(), m.get(c.getName()));
+                Object val = m.get(c.getName());
+                if (val == null && c.getType() == Type.MAP && !c.isNullable()) {
+                    cleaned.put(c.getName(), Collections.emptyMap());
+                } else {
+                    cleaned.put(c.getName(), val);
+                }
             }
         }
         return cleaned;
@@ -1583,6 +1705,7 @@ public class ClickHouseWriter implements DBWriter {
                 .setSslSocketSni(csc.getSslSocketSni())
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
+                .setCompressionMethod(csc.isSetCompressionMethod())
                 .build();
 
         ClickHouseNode server = chcTmp.getServer();
@@ -1611,7 +1734,9 @@ public class ClickHouseWriter implements DBWriter {
      * csc.isJsonInsertFormatExplicit()} and nothing else - {@code csc.getInsertFormat()} also
      * matches the upstream unset-{@code insertFormat} default-branch typo (falls through to the
      * JSON enum constant), and keying on that would widen the bypass to every default-configured
-     * connector in production.
+     * connector in production. Its own null check makes only this predicate safe to call on an
+     * unstarted writer; it does not make its callers null-safe, since {@code cleanupExtraFields}
+     * reads the config again after it (JSONP-08).
      */
     private boolean shouldSkipTableMetadata() {
         return csc != null && csc.isJsonInsertFormatExplicit();

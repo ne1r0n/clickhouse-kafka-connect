@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
 import com.clickhouse.kafka.connect.test.junit.extension.FromVersionConditionExtension;
 import com.clickhouse.kafka.connect.test.junit.extension.SinceClickHouseVersion;
 import com.clickhouse.kafka.connect.transforms.ConvertToMapOrJson;
@@ -21,6 +22,17 @@ public class JsonColumnTest extends ClickHouseBase {
     private static final int BYTE_ARRAY_SIZE = 128;
     private byte[] sampleBytes;
     private String tableName;
+
+    /**
+     * How the sample bytes land in {@code json_data.nested_bytes}. {@code bytes.to.base64} only
+     * affects {@code Struct} input and these tests send {@code Map} values, so the rendering is
+     * decided by the JSON library: Gson serializes a {@code byte[]} as an array of signed numbers,
+     * every other configuration stores the Base64 text.
+     */
+    private enum BytesRendering {
+        BASE64_STRING,
+        SIGNED_BYTE_ARRAY
+    }
 
     @BeforeEach
     void setUp() {
@@ -50,7 +62,12 @@ public class JsonColumnTest extends ClickHouseBase {
         return records;
     }
 
-    private void runJsonTest(Map<String, String> props, Map<String, Object> transformConfig, String testLabel) {
+    private void runJsonTest(
+            Map<String, String> props,
+            Map<String, Object> transformConfig,
+            String testLabel,
+            BytesRendering bytesRendering)
+            throws Exception {
         // props.put(ClickHouseSinkConnector.CLIENT_VERSION, "V2");
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         ClickHouseTestHelpers.dropTable(chc, tableName);
@@ -73,90 +90,134 @@ public class JsonColumnTest extends ClickHouseBase {
 
             // Insert records
             ClickHouseSinkTask sinkTask = new ClickHouseSinkTask();
-            sinkTask.start(props);
-            sinkTask.put(transformedRecords);
-            sinkTask.stop();
+            try {
+                sinkTask.start(props);
+                sinkTask.put(transformedRecords);
+            } finally {
+                sinkTask.stop();
+            }
 
             // Verify results and data points
             assertEquals(RECORDS, ClickHouseTestHelpers.countRows(chc, tableName));
+            assertPayloadValues(chc, bytesRendering);
+        }
+    }
 
+    private void assertPayloadValues(ClickHouseHelperClient chc, BytesRendering bytesRendering)
+            throws Exception {
+        String expectedBytes;
+        String expectedBytesType;
+        if (bytesRendering == BytesRendering.BASE64_STRING) {
+            expectedBytes = Base64.getEncoder().encodeToString(sampleBytes);
+            expectedBytesType = "String";
+        } else {
+            StringJoiner signed = new StringJoiner(",", "[", "]");
+            for (byte b : sampleBytes) {
+                signed.add(Byte.toString(b));
+            }
+            expectedBytes = signed.toString();
+            expectedBytesType = "Array(";
+        }
+
+        List<Map<String, String>> rows = RowSnapshots.select(
+                chc,
+                String.format(
+                        "SELECT id, toString(json_data.nested_str) AS s, toString(json_data.nested_int) AS n, "
+                                + "dynamicType(json_data.nested_bytes) AS bt, toString(json_data.nested_bytes) AS b "
+                                + "FROM %s ORDER BY id",
+                        tableName),
+                "id", "s", "n", "bt", "b");
+        assertEquals(RECORDS, rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, String> row = rows.get(i);
+            assertEquals(String.valueOf(i), row.get("id"));
+            assertEquals("test" + i, row.get("s"), "nested_str of row " + i);
+            assertEquals(String.valueOf(i), row.get("n"), "nested_int of row " + i);
+            if (bytesRendering == BytesRendering.BASE64_STRING) {
+                assertEquals(expectedBytesType, row.get("bt"), "nested_bytes dynamic type of row " + i);
+            } else {
+                assertTrue(
+                        row.get("bt").startsWith(expectedBytesType),
+                        "nested_bytes dynamic type of row " + i + " was " + row.get("bt"));
+            }
+            assertEquals(expectedBytes, row.get("b"), "nested_bytes of row " + i);
         }
     }
 
     @Test
     @SinceClickHouseVersion("25.3")
-    public void testBytesNoBase64NoJson() {
+    public void testBytesNoBase64NoJson() throws Exception {
         Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", false,
             "output.json.enabled", false
         );
-        runJsonTest(props, transformConfig, "No Base64, No JSON");
+        runJsonTest(props, transformConfig, "No Base64, No JSON", BytesRendering.BASE64_STRING);
     }
 
     @Test
     @SinceClickHouseVersion("25.3")
-    public void testBytesBase64NoJson() {
+    public void testBytesBase64NoJson() throws Exception {
         Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", true,
             "output.json.enabled", false
         );
-        runJsonTest(props, transformConfig, "Base64, No JSON");
+        runJsonTest(props, transformConfig, "Base64, No JSON", BytesRendering.BASE64_STRING);
     }
 
     @Test
     @SinceClickHouseVersion("25.3")
-    public void testBytesNoBase64JsonWithJackson() {
+    public void testBytesNoBase64JsonWithJackson() throws Exception {
         Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", false,
             "output.json.enabled", true,
             "output.json.library", "jackson"
         );
-        runJsonTest(props, transformConfig, "No Base64, JSON (Jackson)");
+        runJsonTest(props, transformConfig, "No Base64, JSON (Jackson)", BytesRendering.BASE64_STRING);
     }
 
     @Test
     @SinceClickHouseVersion("25.3")
-    public void testBytesNoBase64JsonWithGson() {
+    public void testBytesNoBase64JsonWithGson() throws Exception {
         Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", false,
             "output.json.enabled", true,
             "output.json.library", "gson"
         );
-        runJsonTest(props, transformConfig, "No Base64, JSON (Gson)");
+        runJsonTest(props, transformConfig, "No Base64, JSON (Gson)", BytesRendering.SIGNED_BYTE_ARRAY);
     }
 
     @Test
     @SinceClickHouseVersion("25.3")
-    public void testBytesBase64JsonWithJackson() {
+    public void testBytesBase64JsonWithJackson() throws Exception {
         Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", true,
             "output.json.enabled", true,
             "output.json.library", "jackson"
         );
-        runJsonTest(props, transformConfig, "Base64, JSON (Jackson)");
+        runJsonTest(props, transformConfig, "Base64, JSON (Jackson)", BytesRendering.BASE64_STRING);
     }
 
     @Test
     @SinceClickHouseVersion("25.3")
-    public void testBytesBase64JsonWithGson() {
+    public void testBytesBase64JsonWithGson() throws Exception {
         Map<String, String> props = getBaseProps();
         Map<String, Object> transformConfig = Map.of(
             "bytes.to.base64", true,
             "output.json.enabled", true,
             "output.json.library", "gson"
         );
-        runJsonTest(props, transformConfig, "Base64, JSON (Gson)");
+        runJsonTest(props, transformConfig, "Base64, JSON (Gson)", BytesRendering.SIGNED_BYTE_ARRAY);
     }
 
     @Disabled("Disabled because it not suitable for unit tests")
     @Test
     @SinceClickHouseVersion("25.3")
-    public void compareAllConfigurations() {
+    public void compareAllConfigurations() throws Exception {
         List<Map<String, Object>> configs = List.of(
             Map.of("bytes.to.base64", false, "output.json.enabled", false),
             Map.of("bytes.to.base64", true, "output.json.enabled", false),
@@ -179,7 +240,13 @@ public class JsonColumnTest extends ClickHouseBase {
                     : "");
 
             long startTime = System.nanoTime();
-            runJsonTest(props, config, label);
+            runJsonTest(
+                    props,
+                    config,
+                    label,
+                    "gson".equals(config.get("output.json.library"))
+                            ? BytesRendering.SIGNED_BYTE_ARRAY
+                            : BytesRendering.BASE64_STRING);
             long endTime = System.nanoTime();
 
             results.add(new PerformanceResult(

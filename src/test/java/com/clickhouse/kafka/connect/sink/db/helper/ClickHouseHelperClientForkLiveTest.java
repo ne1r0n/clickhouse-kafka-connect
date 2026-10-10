@@ -14,6 +14,7 @@ import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
 import com.clickhouse.kafka.connect.sink.helper.SchemalessTestData;
 import java.util.Collection;
 import java.util.List;
@@ -302,6 +303,34 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
     }
 
     @Test
+    @DisplayName("DESC-05: describeTable skips rows at any depth below a JSON column and keeps Tuple-in-Tuple sub-columns")
+    void describeTableSkipsRowsAtAnyDepthBelowJson() {
+        String topic = createTopicName("desc05_json_depth_test");
+        createTable(chc, topic,
+                "CREATE TABLE %s ( `id` UInt32, "
+                        + "`j` JSON(a Int32, `b.c` String, d Tuple(x Int32, y String), e Array(Int32)), "
+                        + "`nt` Tuple(a Tuple(b Int32))) Engine = MergeTree ORDER BY id");
+        try {
+            Table table = chc.describeTable(chc.getDatabase(), topic);
+            assertNotNull(table);
+
+            Set<String> actualRoots = table.getRootColumnsList().stream()
+                    .map(Column::getName)
+                    .collect(Collectors.toSet());
+            assertEquals(Set.of("id", "j", "nt"), actualRoots);
+
+            Set<String> allKeys = table.getAllColumnsMap().keySet();
+            assertTrue(
+                    allKeys.stream().noneMatch(key -> key.startsWith("j.")),
+                    "no sub-column of the JSON column may become a Column, found: " + allKeys);
+            assertTrue(allKeys.contains("nt.a"), "Tuple sub-column nt.a must be kept, found: " + allKeys);
+            assertTrue(allKeys.contains("nt.a.b"), "nested Tuple sub-column nt.a.b must be kept, found: " + allKeys);
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
     @DisplayName("DESC-04: a table with Array(Nested(...)) makes describeTable return null")
     void arrayOfNestedTableIsUnmappable() {
         String topic = createTopicName("desc04_nested_table_test");
@@ -358,6 +387,47 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
             assertEquals(
                     enumMemberTwo.codePointCount(0, enumMemberTwo.length()),
                     actualMemberTwo.codePointCount(0, actualMemberTwo.length()));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, topic);
+        }
+    }
+
+    @Test
+    @DisplayName("D-02: describeTable registers the Nullable(Enum8|Enum16|Tuple) warning for every flagged root column, once")
+    void describeTableWarnsOnceForNullableEnumOrTupleColumns() throws Exception {
+        String topic = createTopicName("d02_nullable_enum_tuple");
+        createTable(chc, topic,
+                "CREATE TABLE %s ( `id` UInt32, `e` Nullable(Enum8('a' = 1)), "
+                        + "`m` Map(String, Nullable(Enum16('y' = 1))), `t` Array(Nullable(Tuple(a Int32))), "
+                        + "`n` Array(Nullable(Int32)) ) Engine = MergeTree ORDER BY id");
+        try {
+            assertNotNull(chc.describeTable(chc.getDatabase(), topic));
+
+            Map<String, String> rawTypes = new java.util.HashMap<>();
+            for (Map<String, String> row : RowSnapshots.select(
+                    chc,
+                    String.format(
+                            "SELECT name, type FROM system.columns WHERE database = '%s' AND table = '%s'",
+                            chc.getDatabase(), topic),
+                    "name",
+                    "type")) {
+                rawTypes.put(row.get("name"), row.get("type"));
+            }
+            String undescribedTable = topic + "_undescribed";
+            for (String flagged : List.of("e", "m", "t")) {
+                String rawType = rawTypes.get(flagged);
+                assertTrue(ClickHouseHelperClient.hasNullableEnumOrTuple(rawType), flagged + " raw type " + rawType);
+                assertFalse(
+                        ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                                chc.getDatabase(), topic, ClickHouseTestHelpers.newDescriptor(flagged, rawType)),
+                        "describeTable did not register the warning for " + flagged);
+                assertTrue(
+                        ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                                chc.getDatabase(), undescribedTable, ClickHouseTestHelpers.newDescriptor(flagged, rawType)),
+                        "an undescribed table must still warn for " + flagged);
+            }
+
+            assertNotNull(chc.describeTable(chc.getDatabase(), topic), "a second describeTable still succeeds");
         } finally {
             ClickHouseTestHelpers.dropTable(chc, topic);
         }

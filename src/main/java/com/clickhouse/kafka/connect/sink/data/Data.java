@@ -21,6 +21,10 @@ public class Data {
         return schema.type();
     }
 
+    public Schema getSchema() {
+        return schema;
+    }
+
     public Schema getMapKeySchema() {
         return schema.keySchema();
     }

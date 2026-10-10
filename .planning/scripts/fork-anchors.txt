@@ -1,0 +1,57 @@
+# Fork anchor inventory (D-08), read by invariant 3 of verify-merge-invariants.sh.
+#
+# Format: four TAB-separated fields per row:
+#   path <TAB> fixed-string pattern <TAB> expected count <TAB> backs-ID
+# The expected count is the number of matching LINES under `grep -cF -e <pattern> <blob>`.
+# The script evaluates this file at every commit in PRE_TAG..range-end that contains it, so an
+# anchor can only change in the commit that rewrites this file.
+# Rule: any commit that intentionally changes an anchor updates this file in the same commit.
+# backs-ID is the FORK-DELTA row's "Pinned by" ID (RF-n for a row pinned only by a Recorded Fact)
+# or this milestone's requirement ID.
+#
+# Counts measured at the v1.7.0 merge commit. Expected moves: withCapability("org.lz4:lz4-java") 2 -> 1
+# (12-02, BLD-09), NETWORK_COMPRESSION_METHOD_ 2 -> 0 (12-03, CMP-01), clickhouse.jdbc / clickhouse-jdbc stay 0.
+# shouldSkipTableMetadata() 6 -> 8 (13-01, JSONP-05).
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	TARGET_TABLE_FILTER	3	CFG-01
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	jsonInsertFormatExplicit	2	CFG-01
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	//this.addClickHouseSetting("async_insert", "0", false);	1	CFG-02
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {	1	RF-8
+src/main/java/com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.java	connector=%s	1	ORCH-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	shouldSkipTableMetadata()	8	JSONP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	csc.getJsonInsertColumns()	1	JSONP-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	case "DYNAMIC":	1	WRT-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	buildRowBinaryUnsupportedTypeMessage	5	WRT-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	.setTargetTableFilter(csc.getTargetTableFilter())	1	HLP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	new ClickHouseHelperClient.ClickHouseClientBuilder(	2	CMP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	.setCompressionMethod(csc.isSetCompressionMethod())	2	CMP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	if (value.getObject() == null && col.isNullable()) {	1	WRT-06
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	buildTableFilterClause	4	HLP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	shouldSkipDescribeRow	3	HLP-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	StandardCharsets.UTF_8	1	HLP-04
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	InputStreamReader	2	HLP-04
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.compressServerResponse(false)	1	CMP-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	options.put(ClickHouseClientOption.COMPRESS, false);	1	CMP-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	NETWORK_COMPRESSION_METHOD_	0	CMP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Type.java	DYNAMIC	1	MAP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	Dynamic	1	MAP-01
+src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	new ClickHouseHelperClient.ClickHouseClientBuilder(	1	CMP-01
+src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
+src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
+.github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
+VERSION	v1.7.0_gg1	1	BLD-07
+build.gradle.kts	windows-1252	2	BLD-05
+build.gradle.kts	slf4j-reload4j:2.0.17	1	BLD-08
+build.gradle.kts	jacocoForkReport	3	BLD-03
+build.gradle.kts	register<Test>("testUnit")	1	BLD-04
+build.gradle.kts	withCapability("org.lz4:lz4-java")	1	BLD-09
+build.gradle.kts	clickhouse.jdbc	0	BLD-13
+gradle/libs.versions.toml	kafka = "4.1.1"	1	BLD-08
+gradle/libs.versions.toml	clickhouse-jdbc	0	BLD-13
+src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	@Tag("clickhouse")	1	HARN-01
+src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	sharedContainerStarts()	2	HARN-03
+src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java	CLICKHOUSE_VERSION_LATEST	2	RF-15
+src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java	StandardCharsets.UTF_8	3	HLP-04
+src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.java	"io.debezium.time.Timestamp"	1	PUB-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.java	"io.debezium.time.NanoTimestamp"	1	PUB-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	static boolean hasNullableEnumOrTuple(	1	PUB-02

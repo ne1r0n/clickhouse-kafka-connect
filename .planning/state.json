@@ -1,43 +1,33 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.6.0_gg1-sync — Upstream v1.6.0 Sync",
+  "milestone": "v1.7.0_gg1-sync — Upstream v1.7.0 Sync & Follow-up Hardening",
   "phases": [
     {
-      "number": "6",
-      "name": "Merge Groundwork & Build Migration",
+      "number": "12",
+      "name": "Upstream v1.7.0 Merge & Reconcile",
       "status": "complete"
     },
     {
-      "number": "7",
-      "name": "Type Mapping, Writer, Helper Client & Config",
+      "number": "13",
+      "name": "Fork Hardening on the Merged Tree",
       "status": "complete"
     },
     {
-      "number": "8",
-      "name": "Orchestration & JMX Re-plumbing",
-      "status": "complete"
+      "number": "14",
+      "name": "Dependency Bumps & CI",
+      "status": "pending"
     },
     {
-      "number": "9",
-      "name": "Metadata-free JSON Path — Keep or Drop",
-      "status": "complete"
-    },
-    {
-      "number": "10",
-      "name": "Test Harness Reconciliation",
-      "status": "complete"
-    },
-    {
-      "number": "11",
-      "name": "Full Suite, CI & Publication",
+      "number": "15",
+      "name": "Suite Gate, Publication & Rollout",
       "status": "pending"
     }
   ],
   "next": {
     "command": "/gsd:progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 11 of 6 · 70% · executing"
+    "reason": "Phase 14 of 4 · 50% · executing"
   },
-  "updated_at": "2026-09-20T20:11:35.970Z"
+  "updated_at": "2026-10-09T13:29:38.483Z"
 }

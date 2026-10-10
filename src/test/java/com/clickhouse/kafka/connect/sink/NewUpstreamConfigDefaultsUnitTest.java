@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -102,5 +103,33 @@ class NewUpstreamConfigDefaultsUnitTest {
     void constructionRaisesNoConfigurationException() {
         assertNotNull(ClickHouseSinkConfig.CONFIG);
         assertDoesNotThrow(() -> new ClickHouseSinkConfig(minimalProps()));
+    }
+
+    @Test
+    @DisplayName(
+            "CFG-03 / CMP-01: the fourteenth upstream option setCompressionMethod defaults to true, with canonical key and snake_case alias")
+    void setCompressionMethodFourteenthOptionDefaultsTrueWithCanonicalKeyAndAlias() {
+        Map<String, String> props = minimalProps();
+        assertFalse(props.containsKey(ClickHouseSinkConfig.SET_COMPRESSION_METHOD));
+
+        ClickHouseSinkConfig csc = new ClickHouseSinkConfig(props);
+        assertTrue(csc.isSetCompressionMethod());
+        assertEquals(ClickHouseSinkConfig.setCompressionMethodDefault, csc.isSetCompressionMethod());
+        assertEquals("setCompressionMethod", ClickHouseSinkConfig.SET_COMPRESSION_METHOD);
+
+        Map<String, String> canonical = minimalProps();
+        canonical.put(ClickHouseSinkConfig.SET_COMPRESSION_METHOD, "false");
+        assertFalse(new ClickHouseSinkConfig(canonical).isSetCompressionMethod());
+
+        Map<String, String> alias = minimalProps();
+        alias.put("set_compression_method", "false");
+        assertFalse(new ClickHouseSinkConfig(alias).isSetCompressionMethod());
+
+        assertEquals(
+                true,
+                ClickHouseSinkConfig.CONFIG
+                        .configKeys()
+                        .get(ClickHouseSinkConfig.SET_COMPRESSION_METHOD)
+                        .defaultValue);
     }
 }
