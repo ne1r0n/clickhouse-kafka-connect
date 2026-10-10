@@ -192,7 +192,28 @@ Plans:
   4. After a recorded human approval, `custom_build` on `origin` is a non-force `--no-ff` merge, and tags `v1.7.0_gg1` and `pre-v1.7.0-sync` are on `origin`. The published SHA has exactly one completed `tests.yaml` run, located by `head_sha` plus workflow path, with no cancelled sibling. That run is green, which proves CI-08 end to end.
   5. The `.planning/` history after `c61d90ce` is on `origin` through a merge, not a fast-forward. It carries neither `.planning/.gsd-ws-arg` nor any local-only tag.
 
-**Plans**: TBD
+**Plans**: 8 plans (waves 1-6; wave 3 has three independent plans)
+
+Plans:
+**Wave 1** *(Phase 15: code first, D-10 step 1)*
+- [ ] 15-01-PLAN.md — Tracer: 13-REVIEW WR-02 fix (Debezium Timestamp/NanoTimestamp as decimal seconds) proven live at RowBinary parity; then the D-02/D-15 once-per-column WARN for Nullable(Enum8|Enum16|Tuple) types, pinned Docker-free and live (PUB-02, ROLL-01)
+
+**Wave 2** *(Phase 15: blocked on 15-01, D-10 step 2)*
+- [ ] 15-02-PLAN.md — Scoped code review of the D-01/D-02 commits and any review-forced fix inside the D-04 carve-out (PUB-02)
+
+**Wave 3** *(Phase 15: blocked on 15-02, D-10 steps 3-4)*
+- [ ] 15-03-PLAN.md — VERSION v1.7.0_gg1 with its anchor row; ledger L-20..L-22, closed review dispositions, zero pending MERGE-CHECKLIST rows (PUB-01, PUB-02, PUB-03)
+- [ ] 15-04-PLAN.md — Retroactive security audits of Phases 13 and 14 (D-09) (PUB-03)
+- [ ] 15-05-PLAN.md — docs/ROLLOUT-v1.7.0_gg1.md operator checklist and the CHANGELOG 1.7.0_gg1 section (ROLL-01, PUB-01)
+
+**Wave 4** *(Phase 15: blocked on 15-03, 15-04 and 15-05)*
+- [ ] 15-06-PLAN.md — docs/FORK-DELTA.md rewritten for the v1.7.0 tree and grep-confirmed (PUB-02)
+
+**Wave 5** *(Phase 15: blocked on 15-06, D-10 step 5 and D-11)*
+- [ ] 15-07-PLAN.md — Local gate (two full runs, Docker-down testUnit, invariants), branch-only rehearsal push of sync/v1.7.0 with one green CI run, and the measured approval bundle (SUITE-04, PUB-01, PUB-03, PUB-04)
+
+**Wave 6** *(Phase 15: blocked on 15-07, the blocking-human gate)*
+- [ ] 15-08-PLAN.md — Blocking-human approval, then orchestrator-inline publication: --no-ff merge of the rehearsed SHA, custom_build push, CI-08 proof, named tags, cleanup, local-only records (PUB-03, PUB-04)
 
 **Note**: this phase mirrors Phase 11's shape: rehearse, measure, approve, publish. The human approval is a blocking-human gate. `gsd-executor` refuses approvals relayed through the orchestrator, so the orchestrator runs post-gate tasks inline. `custom_build` is GSD's protected base branch.
 
