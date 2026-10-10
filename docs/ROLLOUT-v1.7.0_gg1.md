@@ -319,6 +319,6 @@ You are affected if you need to go back after upgrading, or you want to know in 
 2. Redeploy the `v1.6.0_gg1` artifact.
 3. Run the exactly-once check of item 1 in reverse: stop cleanly, run the same query, and go back only when no row is outside `AFTER_PROCESSING`. A batch the new jar left in `BEFORE_PROCESSING` is then retried by the old jar.
 
-To go forward again after `git revert -m 1`, revert the revert commit first (`git revert <revert-commit>`); merging `sync/v1.7.0` again without that brings nothing back.
+To go forward again after `git revert -m 1`, revert the revert commit first (`git revert <revert-commit>`); merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back.
 
 Rolling back re-introduces the silent loss of item 2 (explicit `insertFormat=json` with `Struct`/CDC records writes no rows while the offsets still advance) and the Debezium Timestamp mis-storage of item 3 (millisecond values read as seconds). It also brings back the old error message for `Int256`/`UInt256` columns and the less strict nested-null handling.
