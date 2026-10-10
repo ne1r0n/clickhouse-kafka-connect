@@ -560,6 +560,64 @@ public class MetadataFreeJsonTypeParityLiveTest extends ClickHouseBase {
 
     @Test
     @DisplayName(
+            "D-01 (13-REVIEW WR-02): io.debezium.time.Timestamp into DateTime64(3) and io.debezium.time.NanoTimestamp into DateTime64(9) store the RowBinary value on the metadata-free JSON route")
+    void debeziumTimestampAndNanoTimestampReachRowBinaryParityOnTheMetadataFreeRoute(TestInfo testInfo)
+            throws Exception {
+        String topic = createTopicName("d01_debezium_timestamps");
+        String jsonTable = topic + JSON_SUFFIX;
+        String rbTable = topic + ROWBINARY_SUFFIX;
+        String ddl = "CREATE TABLE %s (id Int32, ts DateTime64(3, 'UTC'), nts DateTime64(9, 'UTC'), "
+                + "_version UInt64, is_deleted UInt8) ENGINE = MergeTree ORDER BY id";
+
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        ClickHouseTestHelpers.dropTable(chc, jsonTable);
+        ClickHouseTestHelpers.dropTable(chc, rbTable);
+        createTable(chc, jsonTable, ddl);
+        createTable(chc, rbTable, ddl);
+        try {
+            Schema rowSchema = SchemaBuilder.struct()
+                    .optional()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("ts", SchemaBuilder.int64().name("io.debezium.time.Timestamp").build())
+                    .field("nts", SchemaBuilder.int64().name("io.debezium.time.NanoTimestamp").build())
+                    .build();
+            Schema envelopeSchema = cdcEnvelopeSchema(rowSchema);
+            long[][] cells = {{1_704_067_200_123L, 1_704_067_200_123_456_789L}, {0L, 0L}, {1L, 1L}, {-1L, -1L}};
+            List<Struct> envelopes = new ArrayList<>();
+            for (int i = 0; i < cells.length; i++) {
+                Struct after = new Struct(rowSchema)
+                        .put("id", i + 1)
+                        .put("ts", cells[i][0])
+                        .put("nts", cells[i][1]);
+                envelopes.add(cdcCreateEnvelope(envelopeSchema, after, 100L + i));
+            }
+            writeThroughBothRoutes(
+                    testInfo,
+                    topic,
+                    jsonTable,
+                    rbTable,
+                    sinkRecords(topic, envelopeSchema, envelopes),
+                    Map.of(ClickHouseSinkConfig.DEBEZIUM_CDC_ENABLED, "true"));
+
+            Projection projection = new Projection()
+                    .strings("ts", "nts")
+                    .expression("ts_ms", "toUnixTimestamp64Milli(ts)")
+                    .expression("nts_ns", "toUnixTimestamp64Nano(nts)");
+
+            assertRoutesAgree(chc, projection, jsonTable, rbTable, reference -> {
+                assertEquals(4, reference.size(), "RowBinary reference row count");
+                assertEquals("2024-01-01 00:00:00.123", rowWithId(reference, 1).get("ts_s"));
+                assertEquals("1704067200123456789", rowWithId(reference, 1).get("nts_ns"));
+                assertEquals("-1", rowWithId(reference, 4).get("ts_ms"));
+            });
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, jsonTable);
+            ClickHouseTestHelpers.dropTable(chc, rbTable);
+        }
+    }
+
+    @Test
+    @DisplayName(
             "D-18: io.debezium.time.Date and io.debezium.time.MicroTimestamp after-fields read back as the calendar date and the microsecond datetime on the metadata-free JSON route")
     void debeziumDateAndMicroTimestampReadBackAsLiterals(TestInfo testInfo) throws Exception {
         String topic = createTopicName("d18_debezium_literals");

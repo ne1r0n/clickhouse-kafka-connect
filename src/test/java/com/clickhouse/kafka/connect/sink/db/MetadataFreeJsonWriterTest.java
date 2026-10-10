@@ -44,6 +44,7 @@ public class MetadataFreeJsonWriterTest {
     private static final String DEBEZIUM_DATE = "io.debezium.time.Date";
     private static final String DEBEZIUM_MICRO_TIMESTAMP = "io.debezium.time.MicroTimestamp";
     private static final String DEBEZIUM_TIMESTAMP = "io.debezium.time.Timestamp";
+    private static final String DEBEZIUM_NANO_TIMESTAMP = "io.debezium.time.NanoTimestamp";
     private static final String DEBEZIUM_ZONED_TIMESTAMP = "io.debezium.time.ZonedTimestamp";
 
     private static String latin1(byte[] bytes) {
@@ -302,15 +303,45 @@ public class MetadataFreeJsonWriterTest {
     }
 
     @Test
-    @DisplayName("D-18: MicroTimestamp is decimal seconds with six fractional digits; Timestamp and ZonedTimestamp pass through")
-    void cdcMicroTimestampConvertsAndOtherDebeziumTimesPassThrough() throws Exception {
+    @DisplayName("D-01 (13-REVIEW WR-02): Debezium Timestamp, MicroTimestamp and NanoTimestamp are decimal seconds with three, six and nine fractional digits; ZonedTimestamp passes through")
+    void cdcDebeziumTimestampsAreDecimalSecondsAndZonedTimestampPassesThrough() throws Exception {
         Map<String, Data> values = new LinkedHashMap<>();
         values.put("micro", new Data(SchemaBuilder.int64().name(DEBEZIUM_MICRO_TIMESTAMP).build(), 1_704_067_200_123_456L));
         values.put("millis", new Data(SchemaBuilder.int64().name(DEBEZIUM_TIMESTAMP).build(), 1_704_067_200_123L));
+        values.put("nanos", new Data(SchemaBuilder.int64().name(DEBEZIUM_NANO_TIMESTAMP).build(), 1_704_067_200_123_456_789L));
         values.put("zoned", new Data(SchemaBuilder.string().name(DEBEZIUM_ZONED_TIMESTAMP).build(), "2024-01-01T00:00:00Z"));
+        // This is a tightening per D-01, not a weakening: the assertion used to expect the raw 1704067200123,
+        // which pinned 13-REVIEW WR-02's bug (ClickHouse reads it as seconds and clamps DateTime64 to 9999-12-31).
         assertEquals(
-                "{\"micro\":1704067200.123456,\"millis\":1704067200123,\"zoned\":\"2024-01-01T00:00:00Z\"}",
+                "{\"micro\":1704067200.123456,\"millis\":1704067200.123,\"nanos\":1704067200.123456789,"
+                        + "\"zoned\":\"2024-01-01T00:00:00Z\"}",
                 latin1(MetadataFreeJsonWriter.cdcRow(values)));
+    }
+
+    @ParameterizedTest(name = "D-01: {0} value {1} is written as {2}")
+    @CsvSource({
+        "io.debezium.time.Timestamp, 0, 0.000",
+        "io.debezium.time.Timestamp, 1, 0.001",
+        "io.debezium.time.Timestamp, -1, -0.001",
+        "io.debezium.time.NanoTimestamp, 0, 0E-9",
+        "io.debezium.time.NanoTimestamp, 1, 1E-9",
+        "io.debezium.time.NanoTimestamp, -1, -1E-9",
+    })
+    @DisplayName("D-01: Timestamp and NanoTimestamp zero, sub-unit and pre-1970 values are the exact BigDecimal.valueOf(v, scale) rendering")
+    void debeziumTimestampEdgeValuesAreExactDecimalSeconds(String logicalName, long value, String expectedNumber)
+            throws Exception {
+        Map<String, Data> values = new LinkedHashMap<>();
+        values.put("t", new Data(SchemaBuilder.int64().name(logicalName).build(), value));
+        assertEquals("{\"t\":" + expectedNumber + "}", latin1(MetadataFreeJsonWriter.cdcRow(values)));
+    }
+
+    @ParameterizedTest(name = "D-01: a non-Number value under {0} is not converted")
+    @CsvSource({"io.debezium.time.Timestamp", "io.debezium.time.NanoTimestamp"})
+    @DisplayName("D-01: a non-Number value under a Debezium Timestamp or NanoTimestamp name falls through to the default rules")
+    void nonNumberDebeziumTimestampFallsThrough(String logicalName) throws Exception {
+        Map<String, Data> values = new LinkedHashMap<>();
+        values.put("t", new Data(SchemaBuilder.string().name(logicalName).build(), "2024-01-01T00:00:00Z"));
+        assertEquals("{\"t\":\"2024-01-01T00:00:00Z\"}", latin1(MetadataFreeJsonWriter.cdcRow(values)));
     }
 
     @Test

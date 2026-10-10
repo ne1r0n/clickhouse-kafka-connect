@@ -34,7 +34,10 @@ import org.apache.kafka.connect.data.Timestamp;
  * <p>Encodings are numeric and time-zone free so ClickHouse stores what RowBinary would store
  * without any forced insert setting: a Timestamp is decimal seconds with three fractional digits,
  * a Date is an integer count of epoch days, a Time is its integer milliseconds, a Decimal is
- * Jackson's BigDecimal number, and bytes are raw bytes inside a JSON string (never base64).
+ * Jackson's BigDecimal number, and bytes are raw bytes inside a JSON string (never base64). A
+ * Debezium {@code Timestamp}, {@code MicroTimestamp} and {@code NanoTimestamp} are decimal seconds
+ * with three, six and nine fractional digits; a {@code ZonedTimestamp} string passes through
+ * unchanged.
  */
 final class MetadataFreeJsonWriter {
 
@@ -45,11 +48,14 @@ final class MetadataFreeJsonWriter {
     private static final String KAFKA_TIME = Time.LOGICAL_NAME;
     private static final String KAFKA_DECIMAL = Decimal.LOGICAL_NAME;
     private static final String DEBEZIUM_DATE = "io.debezium.time.Date";
+    private static final String DEBEZIUM_TIMESTAMP = "io.debezium.time.Timestamp";
     private static final String DEBEZIUM_MICRO_TIMESTAMP = "io.debezium.time.MicroTimestamp";
+    private static final String DEBEZIUM_NANO_TIMESTAMP = "io.debezium.time.NanoTimestamp";
 
     private static final long MILLIS_PER_DAY = 86_400_000L;
     private static final int MILLIS_SCALE = 3;
     private static final int MICROS_SCALE = 6;
+    private static final int NANOS_SCALE = 9;
 
     // A private copy: registering the row serializers on the shared mapper would change the bytes
     // of every other route that uses it.
@@ -180,8 +186,8 @@ final class MetadataFreeJsonWriter {
 
     /**
      * Writes a logical-type value when {@code logicalName} and the runtime class of {@code value}
-     * both match. Anything else, including {@code io.debezium.time.Timestamp} and ZonedTimestamp,
-     * returns false and falls through to the caller's default rules.
+     * both match. Anything else, including ZonedTimestamp, returns false and falls through to the
+     * caller's default rules.
      */
     private static boolean writeLogicalValue(JsonGenerator gen, String logicalName, Object value) throws IOException {
         switch (logicalName) {
@@ -216,9 +222,21 @@ final class MetadataFreeJsonWriter {
                     return true;
                 }
                 return false;
+            case DEBEZIUM_TIMESTAMP:
+                if (value instanceof Number millis) {
+                    gen.writeNumber(BigDecimal.valueOf(millis.longValue(), MILLIS_SCALE));
+                    return true;
+                }
+                return false;
             case DEBEZIUM_MICRO_TIMESTAMP:
                 if (value instanceof Number micros) {
                     gen.writeNumber(BigDecimal.valueOf(micros.longValue(), MICROS_SCALE));
+                    return true;
+                }
+                return false;
+            case DEBEZIUM_NANO_TIMESTAMP:
+                if (value instanceof Number nanos) {
+                    gen.writeNumber(BigDecimal.valueOf(nanos.longValue(), NANOS_SCALE));
                     return true;
                 }
                 return false;
