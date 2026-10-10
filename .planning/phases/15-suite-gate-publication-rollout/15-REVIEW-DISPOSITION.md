@@ -29,15 +29,15 @@ findings:
     title: "Edge-value pins cover the mantissa-less scientific form only"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Item 1 and item 2 treat a shared KeeperMap table as if it were per-connector"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The `date_time_input_format` default is stated as `best_effort` without a version"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The `version=*` wildcard advice is wrong for the regex-based consumers the same sentence names"
   - id: IN-07
     severity: info
@@ -55,7 +55,7 @@ findings:
     severity: info
     disposition: open
     title: "Planning-internal identifiers appear in operator-facing text without a path, and the item 6 self-check pattern is broader than its explanation"
-open: 7
+open: 4
 total: 13
 recorded: 2026-10-10T12:29:38.081Z
 ---
@@ -70,9 +70,9 @@ recorded: 2026-10-10T12:29:38.081Z
 | IN-04 | info | deferred | deferred in 15-02: WARN mechanism is pinned; wording stays a read-by-human deliverable |
 | IN-05 | info | deferred | deferred in 15-02: moving constants adds churn against upstream rebasing for no behaviour change |
 | IN-06 | info | deferred | deferred in 15-02: mantissa-with-fraction form verified against the server in review, no committed test |
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
+| WR-01 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
+| WR-02 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
+| WR-03 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
 | IN-07 | info | open | - |
 | IN-08 | info | open | - |
 | IN-09 | info | open | - |

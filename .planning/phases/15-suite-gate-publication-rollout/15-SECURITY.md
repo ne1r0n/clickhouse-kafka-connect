@@ -1,9 +1,9 @@
 ---
 phase: "15"
 slug: "suite-gate-publication-rollout"
-status: draft
+status: verified
 # threats_open = count of OPEN threats at or above workflow.security_block_on severity (the blocking gate)
-threats_open: 1
+threats_open: 0
 asvs_level: 1
 created: "2026-10-10"
 ---
@@ -59,7 +59,7 @@ The orchestrator then reopened T-15-14 on the evidence of 15-REVIEW WR-01, check
 | T-15-11 | Information Disclosure | open high threat from Phase 13/14 published | high | mitigate | 13-SECURITY.md and 14-SECURITY.md both report `threats_open: 0`, with all high rows closed. The audit commits are ancestors of T0 and in M. | closed |
 | T-15-12 | Repudiation | audit verdicts cited, not measured | medium | mitigate | Every audit row cites a file:line, a test or a command result. The OSV re-query is recorded with positive controls (14-SECURITY.md:31-48). | closed |
 | T-15-13 | Information Disclosure | internal names in ROLLOUT/CHANGELOG | high | mitigate | ROLLOUT uses placeholders only. The auditor re-ran the public-content scan on M's ROLLOUT and CHANGELOG section: clean. Both files were in the 44-file pre-push secret scan. | closed |
-| T-15-14 | Tampering | operator follows a wrong exactly-once procedure | high | mitigate | Verified: the query columns match `KeeperStateProvider.java:79`, the default `connect_state` is at `ClickHouseSinkConfig.java:315`, the key format at `TopicPartitionContainer.java:22`, and the backfill steps match the ledger verbatim. **Gap, from 15-REVIEW WR-01, checked against the source:** the KeeperMap table is named by `zkDatabase` (default `connect_state`), lives at `zkPath` (default `/kafka-connect`) and is keyed only by `<topic>-<partition>`, so with default settings every `exactlyOnce` connector on a database shares it. The published ROLLOUT item 2 offers `TRUNCATE TABLE <zkDatabase>` as "clear every state row of this connector's table". On a shared table that wipes other connectors' exactly-once state, and their next batches are then treated as new, which risks duplicates. Item 1's "repeat until empty" can also never finish while another connector is active, and the `DELETE` example omits the `<db><dbTopicSplitChar>` key prefix used under `enableDbTopicSplit=true`. | open |
+| T-15-14 | Tampering | operator follows a wrong exactly-once procedure | high | mitigate | Verified: the query columns match `KeeperStateProvider.java:79`, the default `connect_state` is at `ClickHouseSinkConfig.java:315`, the key format at `TopicPartitionContainer.java:22`, and the backfill steps match the ledger verbatim. **Gap, from 15-REVIEW WR-01, checked against the source:** the KeeperMap table is named by `zkDatabase` (default `connect_state`), lives at `zkPath` (default `/kafka-connect`) and is keyed only by `<topic>-<partition>`, so with default settings every `exactlyOnce` connector on a database shares it. The published ROLLOUT item 2 offers `TRUNCATE TABLE <zkDatabase>` as "clear every state row of this connector's table". On a shared table that wipes other connectors' exactly-once state, and their next batches are then treated as new, which risks duplicates. Item 1's "repeat until empty" can also never finish while another connector is active, and the `DELETE` example omits the `<db><dbTopicSplitChar>` key prefix used under `enableDbTopicSplit=true`. **Fixed in 505e4981** (docs only, on local `sync/v1.7.0`): item 1 scopes the state query to the connector's topics, matching the exact topic after stripping `-<partition>` and including the db prefix. It also says what to do with orphan rows. Item 2 replaces `TRUNCATE` with key- and topic-scoped `DELETE`s and warns against truncating the shared table. The 15-05 checks (content, backfill-verbatim, public scan) still pass. The published `v1.7.0_gg1` copy keeps the old text until the next approved publish. | closed |
 | T-15-15 | Information Disclosure | understating the Nullable Enum/Tuple defect | high | mitigate | ROLLOUT:162 says "may be stored as NULL or shifted with no error". The self-check at :174-178 matches top-level columns. The WARN constant (`ClickHouseHelperClient.java:494`) uses the same wording. | closed |
 | T-15-16 | Repudiation | FORK-DELTA claims untrue of the published tree | high | mitigate | RAW-NUMBERS-MATCH re-run against `v1.7.0..v1.7.0_gg1`: 4/4. Skip basis 18, equal to the gate skip set. The T0..M diff outside `.planning/` is empty. | closed |
 | T-15-17 | Information Disclosure | internal names in FORK-DELTA | medium | mitigate | Public-content scan of `f328fd21:docs/FORK-DELTA.md`: clean. The file was in the pre-push scan. | closed |
@@ -97,6 +97,7 @@ The orchestrator then reopened T-15-14 on the evidence of 15-REVIEW WR-01, check
 |------------|---------------|--------|------|--------|
 | 2026-10-10 | 29 | 29 | 0 | gsd-security-auditor (opus), read-only, against f328fd21 / ae8520ed |
 | 2026-10-10 | 29 | 28 | 1 | orchestrator: T-15-14 reopened on 15-REVIEW WR-01, checked against `KeeperStateProvider.java` and `ClickHouseSinkConfig.java:314-315` |
+| 2026-10-10 | 29 | 29 | 0 | orchestrator: T-15-14 closed by 505e4981 after the user chose "Fix the doc locally"; topic-scoped SQL tested in clickhouse-local, 15-05/15-06 automated checks re-run green |
 
 Auditor notes, all non-blocking:
 - **Scan type:** the pre-push scan was a secret scan, not the IPv4/hostname scan. The auditor re-scanned the published docs and they are clean.
@@ -110,7 +111,7 @@ Auditor notes, all non-blocking:
 
 - [x] All threats have a disposition (mitigate / accept / transfer)
 - [x] Accepted risks documented in Accepted Risks Log
-- [ ] `threats_open: 0` confirmed
-- [ ] `status: verified` set in frontmatter
+- [x] `threats_open: 0` confirmed
+- [x] `status: verified` set in frontmatter
 
-**Approval:** pending: T-15-14 open (high)
+**Approval:** verified 2026-10-10. T-15-14 is fixed on the local tail. Publishing that fix to `custom_build` is a separate, approved step.
