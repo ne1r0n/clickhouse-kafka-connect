@@ -6,10 +6,10 @@ current_phase: 14
 current_phase_name: Dependency Bumps & CI
 status: verifying
 stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-10-10T08:28:18.567Z"
+last_updated: "2026-10-10T08:28:29.836Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 14 execution started
-state_head: 97d03f1033592c4d9133dc1fc18e421537e0fbf7
+state_head: d1caaa27e55f16bbf13065f91a96c9ec426cceb0
 progress:
   total_phases: 4
   completed_phases: 2
@@ -151,6 +151,7 @@ Roadmap decisions (2026-10-07):
 - [Phase 14]: 14-02: lz4-java 1.12.0 chosen (passed every gate; 1.11.4 rung unused). Advisory-free floor is 1.11.4; 1.11.2 and 1.11.3 are still affected.
 - [Phase 14]: 14-02: test-classpath org.lz4:lz4-java 1.8.0 duplicate not fixed (needs build.gradle.kts change); recorded as ROADMAP backlog 999.2.
 - [Phase 14]: 14-03: jacksonAnnotations stays 2.22 because jackson-bom 2.22.3 pairs databind 2.22.3 with annotations 2.22 and no 2.22.3 annotations artifact exists
+- [Phase 14]: D-13: sync/v1.7.0 pushed to origin once (branch only, 54b5ce2f); tests.yaml run 38037397969 green, compile step before Run tests, CI fork count nproc=4 -> maxParallelForks=2 — User answered "push" at the blocking-human gate; orchestrator ran Task 3 inline. Evidence commit 97d03f10 stays local until Phase 15 (PUB-04).
 
 ### Pending Todos
 
