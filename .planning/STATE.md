@@ -5,17 +5,17 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 15
 current_phase_name: Suite Gate, Publication & Rollout
 status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-10-10T10:23:42.573Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-10-10T10:37:16.927Z"
 last_activity: 2026-10-10
-last_activity_desc: Phase 14 complete, transitioned to Phase 15
-state_head: e4755e386b66aa51d0890249d7800c6efd7a8038
+last_activity_desc: Phase 15 execution started
+state_head: 2af2f70af7e6df98f19c24ceba659e927dab009b
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 25
-  completed_plans: 17
-  percent: 68
+  completed_plans: 18
+  percent: 72
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-10 after Phase 14)
 
 ## Current Position
 
-Phase: 15 (Suite Gate, Publication & Rollout) — READY TO EXECUTE
-Plan: Not started
+Phase: 15 (Suite Gate, Publication & Rollout) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-10-10 — Phase 14 complete, transitioned to Phase 15
+Last activity: 2026-10-10 — Phase 15 execution started
 
-Progress: [███████░░░] 68%
+Progress: [███████░░░] 72%
 
 ## Performance Metrics
 
@@ -99,6 +99,7 @@ Progress: [███████░░░] 68%
 | Phase 14 P01 | 25 min | 2 tasks | 3 files |
 | Phase 14 P02 | 30 min | 2 tasks | 5 files |
 | Phase 14 P03 | 25 min | 2 tasks | 2 files |
+| Phase 15 P01 | 10 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 14]: 14-02: test-classpath org.lz4:lz4-java 1.8.0 duplicate not fixed (needs build.gradle.kts change); recorded as ROADMAP backlog 999.2.
 - [Phase 14]: 14-03: jacksonAnnotations stays 2.22 because jackson-bom 2.22.3 pairs databind 2.22.3 with annotations 2.22 and no 2.22.3 annotations artifact exists
 - [Phase 14]: D-13: sync/v1.7.0 pushed to origin once (branch only, 54b5ce2f); tests.yaml run 38037397969 green, compile step before Run tests, CI fork count nproc=4 -> maxParallelForks=2 — User answered "push" at the blocking-human gate; orchestrator ran Task 3 inline. Evidence commit 97d03f10 stays local until Phase 15 (PUB-04).
+- [Phase 15]: 15-01: Debezium Timestamp/NanoTimestamp written as BigDecimal.valueOf(v,3|9) on the metadata-free JSON route (13-REVIEW WR-02 closed); NanoTimestamp small values render as 0E-9/1E-9/-1E-9 and ClickHouse accepts them (A7 closed)
+- [Phase 15]: 15-01: Nullable(Enum8|Enum16|Tuple) discovery WARN is process-wide deduped on database.table.column:rawType, hooked once per describe loop; Column.java untouched (backlog 999.1 stays)
 
 ### Pending Todos
 
@@ -179,9 +182,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T09:20:47.666Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-suite-gate-publication-rollout/15-CONTEXT.md
+Last session: 2026-10-10T10:37:16.881Z
+Stopped at: Completed 15-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
