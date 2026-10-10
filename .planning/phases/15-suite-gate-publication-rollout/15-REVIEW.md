@@ -134,7 +134,7 @@ Verified correct, with no finding:
 
 ### Warnings
 
-#### WR-01: Item 1 and item 2 treat a shared KeeperMap table as if it were per-connector
+### WR-01: Item 1 and item 2 treat a shared KeeperMap table as if it were per-connector
 
 **File:** `docs/ROLLOUT-v1.7.0_gg1.md:52-70` and `:98-106`
 **Issue:** The state table is named by `zkDatabase` (default `connect_state`) and backed by `zkPath` (default `/kafka-connect`). Its key is only `<topic>-<partition>` (optionally db-prefixed); it carries no connector identity (`KeeperStateProvider.init`, lines 78-81 and 99). With defaults, every `exactlyOnce` connector that uses the same ClickHouse database shares one table.
@@ -157,7 +157,7 @@ ORDER BY `key`;
 
 State that the table is shared by every connector using the same `zkDatabase` and `zkPath` unless they are set apart, that rows for topics nobody consumes any more can be ignored after checking them, and drop the `TRUNCATE` example, or mark it as safe only when this connector is the sole user of the table. Use the prefixed key in the item 2 `DELETE` example.
 
-#### WR-02: The `date_time_input_format` default is stated as `best_effort` without a version
+### WR-02: The `date_time_input_format` default is stated as `best_effort` without a version
 
 **File:** `docs/ROLLOUT-v1.7.0_gg1.md:121` and `:143-149`; `docs/FORK-DELTA.md:134`
 **Issue:** Item 3 says Debezium `ZonedTimestamp` strings "parse when the server's `date_time_input_format` is `best_effort` (the default)", and the self-check reads two rows with `changed = 0` as "the server defaults (`best_effort` and `1`) apply". I reproduced `best_effort`, `changed = 0` on 26.9.14.10, which is the only version this was probed on. The connector supports servers back to 22.5, and ClickHouse's documented default for this setting on older releases is `basic`. On such a server an operator sees `basic` with `changed = 0`, is told the defaults are fine, and is not told that `ZonedTimestamp` strings will be rejected. The check keys on `changed` when the decision depends on `value`.
@@ -167,7 +167,7 @@ State that the table is shared by every connector using the same `zkDatabase` an
 
 Apply the same qualification to FORK-DELTA Known costs, item 4, L-05 (line 134).
 
-#### WR-03: The `version=*` wildcard advice is wrong for the regex-based consumers the same sentence names
+### WR-03: The `version=*` wildcard advice is wrong for the regex-based consumers the same sentence names
 
 **File:** `docs/ROLLOUT-v1.7.0_gg1.md:279` and `:292`
 **Issue:** Item 7 tells the operator to "match `version=` by wildcard (for example `version=*`) in dashboards, alerts and exporter rules". `version=*` is valid only as a JMX `ObjectName` property-value pattern. JMX exporter rules, Prometheus relabel rules and most dashboard matchers use regular expressions, where `version=*` means "version followed by zero or more equals signs". A rule copied from the example silently stops matching the bean, so a dashboard goes blank or an alert stops firing, with no error. The text also does not say that the other properties (`connector=`, `name=`, `topic=`) must be present or covered by `,*` for an `ObjectName` pattern to match.
@@ -177,25 +177,25 @@ Apply the same qualification to FORK-DELTA Known costs, item 4, L-05 (line 134).
 
 ### Info
 
-#### IN-07: Item 2's recovery steps are not qualified by `exactlyOnce`, and the closing sentence is logically loose
+### IN-07: Item 2's recovery steps are not qualified by `exactlyOnce`, and the closing sentence is logically loose
 
 **File:** `docs/ROLLOUT-v1.7.0_gg1.md:93-108`
 **Issue:** "Both steps are needed" is unconditional, but step 2 (clearing KeeperMap) applies only to connectors running with `exactlyOnce=true`; CHANGELOG says so, the rollout item does not. For a connector without `exactlyOnce` there is no state table and the `DELETE` fails with `UNKNOWN_TABLE`. The sentence "Skipping this step makes the connector see the replayed ranges as already stored ..." appears twice (lines 96 and 108). The last sentence, "If you use neither exactly-once nor an explicit `insertFormat=json` with schema'd records, there is nothing to recover", reads as if exactly-once alone were a reason to recover; the only condition that matters is an explicit `insertFormat=json` with schema'd records, and exactly-once decides only whether step 2 is needed.
 **Fix:** Open with "Step 1 always; step 2 only for connectors with `exactlyOnce=true`", delete the duplicate sentence, and end with "If no connector combines an explicit `insertFormat=json` with schema'd records, there is nothing to recover."
 
-#### IN-08: Item 8 omits the re-merge consequence of `git revert -m 1`
+### IN-08: Item 8 omits the re-merge consequence of `git revert -m 1`
 
 **File:** `docs/ROLLOUT-v1.7.0_gg1.md:306-310`
 **Issue:** Reverting a merge commit on `custom_build` records that the merged history is "undone". A later merge of `sync/v1.7.0` (or of upstream `v1.7.0` changes already contained in it) will not bring back the reverted content until the revert itself is reverted. Anyone who rolls back and later wants to roll forward again will find the release silently missing.
 **Fix:** Add one line: "To go forward again, revert the revert commit first; merging `sync/v1.7.0` again without that brings nothing back."
 
-#### IN-09: FORK-DELTA still speaks of the `v1.7.0_gg1` tag as future, and the skip-count command does not print the totals it claims
+### IN-09: FORK-DELTA still speaks of the `v1.7.0_gg1` tag as future, and the skip-count command does not print the totals it claims
 
 **File:** `docs/FORK-DELTA.md:94` and `:153-156`
 **Issue:** Line 94 says the after-figures "can be refreshed ... once the `v1.7.0_gg1` tag exists". The tag exists (it is the merge `f328fd21`), and the four commands now reproduce the table exactly, so the sentence is stale. Lines 154-155 show `grep -rc '@Disabled' src/test/java -> 7 annotation sites`; `grep -rc` prints one count per file, not a total, so the operator-visible output is not what the arrow shows (the total is 7, summed over five files).
 **Fix:** Replace "once the tag exists" with "the commands below reproduce them against the tag". Use `grep -rho '@Disabled' src/test/java | wc -l` and `grep -rho 'Assumptions.assumeTrue' src/test/java | wc -l`.
 
-#### IN-10: Planning-internal identifiers appear in operator-facing text without a path, and the item 6 self-check pattern is broader than its explanation
+### IN-10: Planning-internal identifiers appear in operator-facing text without a path, and the item 6 self-check pattern is broader than its explanation
 
 **File:** `CHANGELOG.md:1-48` (for example lines 17, 34), `docs/ROLLOUT-v1.7.0_gg1.md:13` and `:241`
 **Issue:** CHANGELOG uses `R-01`, `WR-02 strictness` and `13-REVIEW WR-02` with no explanation. A reader of a published release note, who may not have the planning directory, cannot resolve them. The rollout note at line 13 says ledger entries live "in this repository's planning directory" but gives no path (`.planning/phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md`). The item 6 `grep` includes the bare alternative `set_compression_method`, which matches the alias with any value including `true`, while the text after it treats a non-empty result as risk only for `compress=true` together with `setCompressionMethod=false`. CHANGELOG also lists the JMX `version=` change and the new client name nowhere, although item 7 treats them as an upgrade item, and it states the lz4 bump without the reason (FORK-DELTA records that `1.11.2` and `1.11.3` are affected by three advisories).
