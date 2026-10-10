@@ -27,10 +27,37 @@ findings:
     severity: info
     disposition: open
     title: "Edge-value pins cover the mantissa-less scientific form only"
-open: 6
-total: 6
-unparsed: 7
-recorded: 2026-10-10T12:29:23.319Z
+  - id: WR-01
+    severity: warning
+    disposition: open
+    title: "Item 1 and item 2 treat a shared KeeperMap table as if it were per-connector"
+  - id: WR-02
+    severity: warning
+    disposition: open
+    title: "The `date_time_input_format` default is stated as `best_effort` without a version"
+  - id: WR-03
+    severity: warning
+    disposition: open
+    title: "The `version=*` wildcard advice is wrong for the regex-based consumers the same sentence names"
+  - id: IN-07
+    severity: info
+    disposition: open
+    title: "Item 2's recovery steps are not qualified by `exactlyOnce`, and the closing sentence is logically loose"
+  - id: IN-08
+    severity: info
+    disposition: open
+    title: "Item 8 omits the re-merge consequence of `git revert -m 1`"
+  - id: IN-09
+    severity: info
+    disposition: open
+    title: "FORK-DELTA still speaks of the `v1.7.0_gg1` tag as future, and the skip-count command does not print the totals it claims"
+  - id: IN-10
+    severity: info
+    disposition: open
+    title: "Planning-internal identifiers appear in operator-facing text without a path, and the item 6 self-check pattern is broader than its explanation"
+open: 13
+total: 13
+recorded: 2026-10-10T12:29:38.081Z
 ---
 
 # Phase 15: Code Review Disposition
@@ -43,6 +70,13 @@ recorded: 2026-10-10T12:29:23.319Z
 | IN-04 | info | open | - |
 | IN-05 | info | open | - |
 | IN-06 | info | open | - |
+| WR-01 | warning | open | - |
+| WR-02 | warning | open | - |
+| WR-03 | warning | open | - |
+| IN-07 | info | open | - |
+| IN-08 | info | open | - |
+| IN-09 | info | open | - |
+| IN-10 | info | open | - |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
