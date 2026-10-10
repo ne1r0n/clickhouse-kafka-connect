@@ -2,9 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
+current_phase: 16
+current_phase_name: Early Docs Publication
 status: planning
-last_updated: "2026-10-10T15:05:57.000Z"
+stopped_at: Phase 16 context gathered
+last_updated: "2026-10-10T16:53:21.547Z"
 last_activity: 2026-10-10
+last_activity_desc: Roadmap created for v1.7.0_gg2-hardening (Phases 16-20, 26/26 requirements mapped)
+state_head: 8bdf03d4a0d117d2948bdf70d9e26254e7b4ed47
 progress:
   total_phases: 5
   completed_phases: 0
@@ -157,9 +162,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T15:05:57.000Z
-Stopped at: Roadmap created for v1.7.0_gg2-hardening (Phases 16-20)
-Resume file: None
+Last session: 2026-10-10T16:53:21.530Z
+Stopped at: Phase 16 context gathered
+Resume file: .planning/phases/16-early-docs-publication/16-CONTEXT.md
 
 ## Operator Next Steps
 
