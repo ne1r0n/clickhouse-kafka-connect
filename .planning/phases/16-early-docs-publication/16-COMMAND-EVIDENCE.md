@@ -304,6 +304,33 @@ docs/ROLLOUT-v1.7.0_gg1.md
 
 Matches text: yes
 
+### E-14: item 8 go-forward command, `git merge <merge-commit>^2` (16-REVIEW IN-01)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md`, item 8, the changed sentence "merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back." Same demonstration as E-06 on the release merge `f328fd21`, in a detached throwaway worktree (`/tmp/gsd16/revert-demo2`), with the text's exact command `git merge "$G1^2"`. The `-c user.name/user.email` options only give the throwaway commits an identity.
+
+```sh
+G1=f328fd218dce5b9c652f8872042e922f9686b87f
+P1=c61d90ce5dfb32ea5876dffacc8bb54d8846739a
+git worktree add --quiet --detach /tmp/gsd16/revert-demo2 "$G1"
+git -C /tmp/gsd16/revert-demo2 revert --no-edit -m 1 HEAD
+git -C /tmp/gsd16/revert-demo2 merge --no-edit "$G1^2"
+git -C /tmp/gsd16/revert-demo2 revert --no-edit "$R"
+git worktree remove --force /tmp/gsd16/revert-demo2 && git worktree prune
+```
+
+```text
+R=844fdf2faaaac20029717c37ddae6384f0880e6f
+after revert: tree(HEAD)==tree(pre-v1.7.0-sync c61d90ce)
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2
+tree still == c61d90ce
+after revert-of-revert: tree(HEAD)==tree(f328fd21)
+```
+
+`R` is the revert commit. `git merge <merge-commit>^2` after the revert changed nothing, and reverting `R` restored the release tree. `git worktree list` afterwards shows only the main working tree and `custom_build` is still `f328fd21`.
+
+Matches text: yes
+
 ## Finding map
 
 | Finding | Changed text | Evidence entries |
@@ -312,3 +339,5 @@ Matches text: yes
 | IN-08 | `docs/ROLLOUT-v1.7.0_gg1.md` item 8: revert-of-revert paragraph (commit `fad6f7f9`) | E-06, E-11 |
 | IN-09 | `docs/FORK-DELTA.md` line 94 (raw-numbers sentence) and the two skip-count commands under "Named skip inventory" (commit `65582a31`) | E-01, E-02, E-03, E-04 |
 | IN-10 | `docs/ROLLOUT-v1.7.0_gg1.md` preface ledger link, item 2 and 5 headings and TOC, ledger tags, item 6 grep (commit `fad6f7f9`); `CHANGELOG.md` `1.7.0_gg1` section (commit `8c1f0bc1`) | E-05, E-07, E-10, E-12, E-13 |
+
+Phase 16 review finding (16-REVIEW.md): IN-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 (commit `fd99a476`), backed by E-14.
