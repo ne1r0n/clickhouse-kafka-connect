@@ -73,14 +73,22 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
-## Next Milestone Goals
+## Current Milestone: `v1.7.0_gg2-hardening` Follow-up Hardening & CI Hygiene
 
-No milestone is defined yet; start one with `/gsd-new-milestone`. Candidates, in rough priority order:
+**Goal:** Close all 11 follow-ups left open by `v1.7.0_gg1-sync`, getting the corrected rollout doc onto `origin` first, and publish `v1.7.0_gg2` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
-- **Publish `505e4981`.** The rollout doc published on `custom_build` still offers `TRUNCATE TABLE` on the shared KeeperMap state table. Following it erases other connectors' exactly-once state.
-- **Backlog 999.1.** `Column.extractColumn` drops `Nullable` for `Enum8`/`Enum16`/`Tuple`. This is the one remaining wrong-value defect in the writer.
-- **The next upstream sync**, when upstream tags past `v1.7.0`. It follows the same shape: scratch branch, rollback tag, mechanical merge, and FORK-DELTA as the starting record.
-- **Remaining review follow-ups** under Requirements → Active, plus CI hygiene: the Node 20 action deprecation, Ubuntu 26 runners from 2026-10-19, and a `permissions:` block.
+**Target features:**
+
+- **Early publication (first phase)** — docs-only `--no-ff` merge of `sync/v1.7.0` (17+ planning/docs commits, including `505e4981`) into `custom_build` and CI green on that SHA, before any code work. Removes the published `TRUNCATE TABLE` advice on the shared KeeperMap state table (15-REVIEW WR-01/WR-02/WR-03)
+- **Writer correctness** — 999.1 `Column.extractColumn` keeps `Nullable` for `Enum8`/`Enum16`/`Tuple` (values round-trip, nested-null guards accept legal slots); WR-03 `doWriteCol` names the column in its exception; WR-04 null check before `getMessage().contains(code)`; 13-REVIEW WR-01 empty-CDC skip also on the `bypassRowBinary=true` JSON route
+- **Test & build debt** — `Lz4RoundTripLiveTest` gains a standing response-leg assertion (14 WR-01); 999.2 drops the duplicate `org.lz4:lz4-java:1.8.0` from `testRuntimeClasspath`
+- **CI hygiene (each change user-approved 2026-10-10)** — Node 24 majors for `actions/checkout`/`actions/upload-artifact`; runner pinned to `ubuntu-24.04` ahead of the 2026-10-19 `ubuntu-latest` → Ubuntu 26 switch; every action SHA-pinned plus a least-privilege `permissions:` block (T-14-16); the fork-count step reads Gradle's value instead of recomputing it in shell (14 WR-02); the Lombok "Ambiguous: Jackson2 and Jackson3" warning silenced
+- **Upstream-identical code fixed in the fork, each patch recorded in `docs/FORK-DELTA.md`** — T-13-19: mask the raw DateTime value in upstream's two ERROR logs; 15-02 review IN-01..IN-10: each fixed or closed with a written reason
+- **Release** — `VERSION=v1.7.0_gg2`, CHANGELOG, tag; rollout note for the 999.1 value change on `Nullable(Enum)`/`Nullable(Tuple)` columns; second `--no-ff` merge into `custom_build` with CI green on the published SHA
+
+**Baseline at milestone start (2026-10-10):** `origin/custom_build` = `f328fd21` (`v1.7.0_gg1`); local `sync/v1.7.0` is 20 commits ahead. `upstream/main` = `v1.7.0` (`379b8d01`) — no newer upstream tag, so no sync this milestone. No seeds, no pending todos.
+
+**Out of this milestone:** the next upstream sync (nothing to sync); ClickHouse client `0.10.0`; adopting upstream's Avro-union or Debezium paths; running the upgrade on production connectors.
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg1-sync</code> Upstream v1.7.0 Sync & Follow-up Hardening (shipped 2026-10-10)</summary>
@@ -270,7 +278,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 ### Active
 
-<!-- No milestone is active. Struck-through items are history; open `[ ]` items are unscheduled follow-ups for the next milestone. -->
+<!-- Milestone `v1.7.0_gg2-hardening` is active: every open `[ ]` item below is in its scope (see REQUIREMENTS.md). Struck-through items are history. -->
 
 **v1.6.0_gg1-sync:** all 53 requirements shipped and moved to Validated.
 
@@ -506,4 +514,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-10 after v1.7.0_gg1-sync milestone*
+*Last updated: 2026-10-10 after starting v1.7.0_gg2-hardening milestone*
