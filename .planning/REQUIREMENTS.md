@@ -96,7 +96,7 @@
 ### Publication (PUB)
 
 - [ ] **PUB-01**: `VERSION` is `v1.7.0_gg1` (built after `clean`, so `Version.java` is not stale) and `CHANGELOG.md` has a `1.7.0_gg1` section listing the fork's own changes — R-01 behavior change, WR-02 strictness, compression, lz4
-- [ ] **PUB-02**: `docs/FORK-DELTA.md` reflects the new state — D-17 retired, R-01 removed from known costs, LZ4 rule and version, MAP guard scoping, any new kept patches or costs
+- [x] **PUB-02**: `docs/FORK-DELTA.md` reflects the new state — D-17 retired, R-01 removed from known costs, LZ4 rule and version, MAP guard scoping, any new kept patches or costs
 - [ ] **PUB-03**: `custom_build` receives a non-force `--no-ff` merge after human approval, tags `v1.7.0_gg1` and `pre-v1.7.0-sync` are on `origin`, and CI is green on the published SHA
 - [ ] **PUB-04**: The `.planning/` history after `c61d90ce` is published on `origin` via merge (not fast-forward), without `.planning/.gsd-ws-arg` or local-only tags
 
@@ -161,7 +161,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | CI-10 | Phase 14 | Complete |
 | SUITE-04 | Phase 15 | Pending |
 | PUB-01 | Phase 15 | Pending |
-| PUB-02 | Phase 15 | Pending |
+| PUB-02 | Phase 15 | Complete |
 | PUB-03 | Phase 15 | Pending |
 | PUB-04 | Phase 15 | Pending |
 | ROLL-01 | Phase 15 | Complete |
