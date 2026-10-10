@@ -1,206 +1,259 @@
-# Technology Stack
+# Stack Research
 
-**Project:** ClickHouse Kafka Connect `custom_build` fork - milestone `v1.7.0_gg1-sync`
-**Researched:** 2026-10-07
-**Scope:** Delta only. The fork's v1.6.0 stack (Gradle 9.6.1, version catalog, Testcontainers 2.0.5, JUnit 5.14.4, JaCoCo, `testUnit`, JDK 17 pin) is validated and not re-researched.
-**Overall confidence:** HIGH for build mechanics (verified by simulating the merge in a throwaway clone and resolving the real dependency graph). MEDIUM for upstream release-note claims (read through a page summariser, not the raw files).
+**Domain:** CI hygiene and build hardening for a Java 17 / Gradle 9.6.1 fork of the ClickHouse Kafka Connect sink (milestone `v1.7.0_gg2-hardening`)
+**Researched:** 2026-10-10
+**Confidence:** HIGH (every version, SHA, label and runner fact below was read from GitHub's API, `git ls-remote`, the actions' own `action.yml`, or the runner-images repo. The Lombok key and both Gradle mechanisms were reproduced locally.)
 
-## Method
+Scope: only what is NEW for this milestone. The existing stack (client 0.9.6 V2, Connect API 4.1.1, Jackson 2.22.3, lz4-java 1.12.0, Testcontainers 2.0.5, JUnit 5.14.4) is not re-researched. No dependency bumps are recommended. The user pre-approved the Node 24 action majors, SHA pinning, the `ubuntu-24.04` pin and the Lombok warning fix on 2026-10-10.
 
-- Read-only git on the real repo (`git diff`, `git show`, `git grep`, `git log`, `git for-each-ref`).
-- A throwaway `git clone --local` under `/tmp/sim-parent/sim` (since deleted) to run `git merge v1.7.0` and real Gradle resolution. The real repo was never checked out, merged or edited.
-- Gradle 9.6.1 `dependencyInsight` / `dependencies` / `confluentJar` / `compileIntegrationTestJava` were run in that clone only.
+## Recommended Stack
 
-## Summary
+### CI actions (`.github/workflows/tests.yaml`)
 
-The build-file delta of `v1.7.0` is small and merges almost cleanly. Five things matter:
+All four runtimes are verified `node24` by reading `runs.using` in each tag's `action.yml`. Pin to the commit SHA, with the tag in a trailing comment so a human or Dependabot can read it.
 
-1. `v1.7.0` changes the build in exactly three ways: `clickHouseDriver` 0.9.5 -> 0.9.6 (already the fork's value), a new `lz4Java = "1.10.4"` catalog entry used as `implementation` and `clickhouseDependencies`, and a group-based `org.lz4:lz4-java` capability rule. It also drops `clickhouse-jdbc` from the catalog and from the `integrationTest` suite.
-2. **The auto-merge keeps both capability rules and raises no conflict.** Upstream's rule lands near line 40 and the fork's `select("at.yawk.lz4:lz4-java:1.10.2")` block stays near line 136. Resolution still works, but the fork block is now dead weight (see Part 1).
-3. `clickhouse-jdbc` is not used anywhere in the fork. Removing it is safe (Part 2).
-4. All four dependabot branches are one-line catalog edits. Jackson is runtime, shipped in the Confluent jar. The other three are test-only. None is breaking. All resolved and compiled in the simulation (Part 3).
-5. lz4-java 1.10.2 -> 1.10.4 has no functional or security fix. 1.10.4 is itself behind several moderate advisories fixed in 1.11.x and 1.12.0 (Part 4).
+| Action | Today | Pin to | Commit SHA (verified two ways) | Runtime |
+|--------|-------|--------|--------------------------------|---------|
+| `actions/checkout` | `@v4` (node20) | `v7.0.1` (2026-07-20) | `3d3c42e5aac5ba805825da76410c181273ba90b1` | node24 |
+| `actions/setup-java` | `@v6` | `v6.0.1` (2026-09-09) | `de7274f081f381c8f8158605e0321c36c376e2e6` | node24 |
+| `gradle/actions/setup-gradle` | `@v6` | `v6.4.0` (2026-09-28) | `3f5f9adaf7d9fecd50b5935e54106014257a94e6` | node24 |
+| `actions/upload-artifact` | `@v4` (node20) | `v7.0.2` (2026-10-07) | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` | node24 |
 
-## Part 1 - Build file delta
+Target snippets:
 
-### 1a. `git diff v1.6.0 v1.7.0 -- build.gradle.kts gradle/` (upstream's whole change)
-
-| File | Change | Effect |
-|------|--------|--------|
-| `gradle/libs.versions.toml` | `clickHouseDriver` `0.9.5` -> `0.9.6` | Fork already runs `0.9.6` as a `# FORK OVERRIDE`. This becomes upstream's own value. |
-| `gradle/libs.versions.toml` | adds `lz4Java = "1.10.4"` and `lz4-java = { module = "at.yawk.lz4:lz4-java", ... }` | New direct dependency. |
-| `gradle/libs.versions.toml` | removes `clickhouse-jdbc = { ... }` | Part 2. |
-| `build.gradle.kts` | `import org.gradle.api.artifacts.component.ModuleComponentIdentifier` | Needed by the new rule. |
-| `build.gradle.kts` | new `configurations.all { resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") { select the candidate whose group is "at.yawk.lz4" } }` | Group-based and version-agnostic. |
-| `build.gradle.kts` | `implementation(libs.lz4.java)` and `clickhouseDependencies(libs.lz4.java)` | Direct dependency on 1.10.4 for the runtime classpath and the Confluent jar. |
-| `build.gradle.kts` | removes `implementation(libs.clickhouse.jdbc)` from the `integrationTest` suite | Part 2. |
-
-Upstream also bumped `VERSION` to `v1.7.0` and `CHANGELOG.md`. No shadow relocation was added. Upstream's CHANGELOG line "includes shaded `org.lz4`" really means *bundled in the Confluent archive*. I confirmed the jar holds `net/jpountz/lz4/*` (105 entries) unrelocated, with `META-INF/maven/at.yawk.lz4/lz4-java` at version 1.10.4.
-
-### 1b. `git diff v1.6.0 HEAD -- build.gradle.kts gradle/` (the fork's delta, the thing to preserve)
-
-Catalog: `clickHouseDriver = "0.9.6"` and `kafka = "4.1.1"`, both marked `# FORK OVERRIDE`.
-
-`build.gradle.kts`:
-- JDK 17 toolchain, `defaultJdkVersion = 17`, no `options.release.set(11)`.
-- `jacoco` plugin, `jacocoTestReport`, `jacocoForkReport` (15 classes), `jacoco { toolVersion = "0.8.15" }`.
-- `testUnit` task, the `check` guard, `file.encoding=windows-1252`, the test `javaLauncher`, and the summary `TestListener`.
-- ben-manes `versions` plugin plus the `dependencyUpdates` stable-only filter.
-- `implementation("org.slf4j:slf4j-reload4j:2.0.17")`.
-- Spotless `importOrder()` + `removeUnusedImports()` and the `removeUnusedImports` task.
-- The "Temporary fix" capability block: `select("at.yawk.lz4:lz4-java:1.10.2")`.
-
-### 1c. Simulated merge result (`git merge --no-commit v1.7.0` in the clone)
-
-| Path | Result | Action needed |
-|------|--------|---------------|
-| `build.gradle.kts` | **Auto-merged, no conflict.** Both capability rules present. `implementation(libs.lz4.java)` and `clickhouseDependencies(libs.lz4.java)` added. `clickhouse.jdbc` line gone. All fork additions intact. | Remove the fork's duplicate capability block (below). |
-| `gradle/libs.versions.toml` | **Conflict** in the header lines only (`clickHouseDriver`, `kafka`). `lz4Java` added and `clickhouse-jdbc` removed cleanly. | Keep fork's `kafka = "4.1.1"  # FORK OVERRIDE`. For the driver line, take `clickHouseDriver = "0.9.6"` and **drop the `# FORK OVERRIDE (upstream 0.9.5)` comment**, since it is now false. |
-| `VERSION` | Conflict (`v1.6.0_gg1` vs `v1.7.0`) | Resolve to `v1.7.0_gg1`. |
-| `ClickHouseSinkConfig`, `ClickHouseWriter`, `ClickHouseHelperClient` | Conflicts (source, outside this file's scope) | Phase work. See the D-17 note in Part 5. |
-
-### LZ4 capability resolution: how the fork's rule and upstream's interact
-
-I resolved `runtimeClasspath` three ways in the clone. Every variant resolved `at.yawk.lz4:lz4-java:1.10.4`, and `org.lz4:lz4-java:1.8.0` from `kafka-clients:4.1.1` was replaced by it.
-
-| Variant | Result |
-|---------|--------|
-| Both rules (what git produces) | OK. Reason shown: "On capability org.lz4:lz4-java client-v2 uses the maintained at.yawk fork" (upstream's `because`). Upstream's rule fires first because it appears earlier in the file. |
-| Fork rule only, with the catalog at 1.10.4 | OK. Gradle's `select("g:a:1.10.2")` matched the candidate module and the final version still came from conflict resolution (1.10.4). |
-| Upstream rule only | OK. |
-
-The risk is not breakage. It is that two rules for one capability exist, the fork's says "1.10.2" in its notation, and the next reader will believe 1.10.2 is pinned. It isn't.
-
-**Recommendation: delete the fork's "Temporary fix" `configurations.configureEach { ... select("at.yawk.lz4:lz4-java:1.10.2") }` block and keep upstream's.**
-- Upstream's rule is version-agnostic (matches on group) and has an accurate comment.
-- The fork's reason for its own rule (the Kafka `4.1.1` override pulling `org.lz4` 1.8.0) is covered by upstream's rule, as the three runs show.
-- This is one fewer fork build addition. FORK-DELTA's "Six fork build additions" row shrinks to five, and the `1.10.2` wording in it, in `.planning/MERGE-CHECKLIST.md` (lines 14, 74) and in `.claude/CLAUDE.md` / `.planning/codebase/STACK.md` becomes wrong.
-- Keep the Kafka `4.1.1` coupling note. The capability rule still has to exist because `kafka-clients:4.1.1` still depends on `org.lz4:lz4-java:1.8.0`.
-
-How lz4 reaches the Confluent jar: `confluentJar` is `from(clickhouseDependencies, main.output)`. Before `v1.7.0`, `client-v2:0.9.6` already carried `at.yawk.lz4:lz4-java:1.10.2` into that configuration (confirmed by `dependencyInsight` with the explicit dependency removed). `v1.7.0` changes the jar's lz4 from **1.10.2 to 1.10.4** and makes it explicit. The same pin also goes into the runtime classpath, which is where the Kafka/`org.lz4` conflict arises.
-
-### Build-time quirk found during the simulation
-
-`generateVersionFile` declares outputs only (no inputs), so Gradle treats it as up to date when `build/generated/.../Version.java` exists. After a `VERSION` bump in a dirty tree, `Version.ARTIFACT_VERSION` can stay stale. I saw it keep merge-conflict text. That feeds the JMX `version=` segment and the client name. CI builds are clean and unaffected. Locally run `./gradlew clean` (or delete `build/generated`) after the `VERSION=v1.7.0_gg1` edit before trusting any test that reads the version.
-
-## Part 2 - Does the fork use `clickhouse-jdbc`?
-
-**No. Removing the catalog entry is safe.**
-
-- `git grep` at HEAD for `clickhouse-jdbc`, `libs.clickhouse.jdbc`, `com.clickhouse.jdbc`, `jdbc:`, `DriverManager`, `ClickHouseDriver` across `src`, `build.gradle.kts`, `.github`: the only live reference is `integrationTest { implementation(libs.clickhouse.jdbc) }` at `build.gradle.kts:161`, plus the catalog line. The other hits are a `docs/DESIGN.md` link, a code comment (`ClickHouseWriter.java:752`, "how NESTED works in JDBC") and `java.sql.Date` / `java.sql.Timestamp` (JDK classes, unrelated).
-- Classpath diff, HEAD vs merged build, `integrationTest` compile and runtime classpaths: only `com.clickhouse:clickhouse-jdbc`, `com.clickhouse:jdbc-v2` and `org.antlr:antlr4-runtime` disappear. Nothing is added.
-- `compileTestFixturesJava` and `compileIntegrationTestJava` succeed in the merged clone with jdbc removed and all four bumps applied.
-- Note: the integration suite is `workflow_dispatch` only in CI and the main `test` task does not compile it. Add `compileIntegrationTestJava` to the verification commands, otherwise a break here would be invisible.
-
-## Part 3 - Approved dependency bumps
-
-All four dependabot branches (`refs/remotes/upstream/dependabot/gradle/*`) are based on `379b8d01` (= `v1.7.0`) and contain **exactly one line** in `gradle/libs.versions.toml`. No source changes.
-
-| Bump | Catalog line | Scope | Where it lands |
-|------|--------------|-------|----------------|
-| jackson `2.22.2` -> `2.22.3` | `jackson = "2.22.3"` | **Runtime** | `jackson-core` + `jackson-databind` in `implementation` and `clickhouseDependencies`, so it ships in the Confluent jar. Used in `ConvertToMapOrJson`, `ClickHouseHelperClient`, `ClickHouseFieldDescriptor`, `DataJson`. |
-| okhttp `5.4.0` -> `5.5.0` | `okhttp = "5.5.0"` | **Test only** (`integrationTest` suite) | Single importer: `src/integrationTest/.../helper/ConfluentPlatform.java`. |
-| org.json `20260522` -> `20260814` | `orgJson = "20260814"` | **Test only** (`testFixturesImplementation` and `integrationTest`) | About 10 test/fixture files import it. |
-| mockito `5.23.0` -> `5.24.0` | `mockito = "5.24.0"` | **Test only** | Only `mockito-junit-jupiter` (pulls `mockito-core`). |
-
-Out of scope and untouched: `clickHouseDriver-0.10.0` branch.
-
-Resolution check (clone, `dependencies` before vs after): Jackson's BOM aligns every `jackson-*` module (including the older Confluent/schema-registry transitives pinned at 2.12-2.16) to 2.22.3 in `testRuntimeClasspath`, `integrationTestRuntimeClasspath` and `clickhouseDependencies`. `jackson-annotations` stays `2.22` (annotations ship only as `2.22`). okhttp 5.5.0 raises transitive `okio` 3.17.0 -> 3.18.1 on the integration-test classpath. No other version moves. JDK 17 is fine for all four (Mockito 5.x needs 11+, OkHttp 5.x and org.json run on 8+/17).
-
-### Per-bump notes
-
-**Jackson 2.22.3 (released 2026-09-21)** - patch release. Per the Jackson wiki release notes: hardening in `jackson-core` (`NumberInput.looksLikeValidNumber`, `UTF8DataInputJsonParser` honouring `maxErrorTokenLength`), a `WriterBasedJsonGenerator` AIOOBE fix, `UTF32Reader` surrogate-pair fix, databind bounds on `TypeDeserializer` type-id cache growth, quadratic forward-reference handling in Collection/Map/ObjectArray deserializers, and bracketed IPv6 `InetSocketAddress` serialization. The wiki lists several CVE IDs for these. I am treating them as informational because the IDs came through a summariser and I did not cross-check them against NVD. Risk: low. The only behaviour change someone could notice is the IPv6 serialization format, which the connector does not use.
-- *Why take it:* it is the one bump that changes shipped bits, and it is a security-hardening patch.
-- *Verification:* the existing `ConvertToMapOrJson*` tests and the full `test` run cover the fork's Jackson use. No new tests needed.
-
-**OkHttp 5.5.0 (released 2026-08-16)** - minor release. New: opt-in Encrypted Client Hello, a redesigned DNS API, `DnsOverHttps`/`AndroidDns`, artifact signing key change. Fixes: hostname verifier rejects hosts failing IP canonicalisation, multipart part closure, HTTP/1 request-body timeouts, QUERY redirects, proxy-selector fallback. Dependency: Okio 3.18.1. No source-breaking change documented for the blocking `OkHttpClient` API that `ConfluentPlatform` uses.
-- *Verification:* `compileIntegrationTestJava` passed in the clone. Runtime behaviour is only exercised by the Confluent-platform integration tests, which CI does not run.
-
-**org.json 20260814 (released 2026-08-14)** - this jump spans two releases: 20260719 and 20260814. 20260814 has one change (`XML.unescape` for valid whitespace characters, PR #1070; the fork does not use org.json's XML). 20260719 added a fix for CVE-2026-59171 (bounds checking on BigDecimal -> BigInteger expansion in `objectToBigInteger`), a **new configurable max length for BigInteger/BigDecimal numbers**, restored lenient consecutive commas in `JSONArray`, and CDL changes.
-- *Residual risk (LOW confidence, could not read the PR):* I could not determine the default for the new number-length limit. If a test builds or parses a very large integer/decimal through org.json (for example `Int256`/`UInt256`/`Decimal256` fixtures), it could behave differently. This is test-only, and the first full `test` run is the check.
-- *Verification:* any failure shows up as a test failure in `ClickHouseTestHelpers` / `SchemaTestData` consumers. Bisect by reverting just `orgJson`.
-
-**Mockito 5.24.0 (released 2026-09-23)** - minor release. Added the `SpyStatic` API, a `@Spy` mock-maker option, a data-race fix in `InvocationContainerImpl.invocationForStubbing`, a fix for non-deterministic `AssertionError` with the SUBCLASS mock maker, and `clearInlineMocks` restoring method parameters. No breaking change or ByteBuddy/Objenesis bump stated. Only one test file imports Mockito, so exposure is minimal.
-
-### How to apply
-
-Edit the four version strings in the merged `libs.versions.toml` as a single commit (`jackson`, `okhttp`, `orgJson`, `mockito`), after the sync merge commit. Do not `cherry-pick` the dependabot commits. They were authored against upstream's catalog (`kafka = "2.7.0"`), whose context lines will not apply cleanly against the fork's `kafka = "4.1.1"  # FORK OVERRIDE` line. Do not touch `jacksonAnnotations`.
-
-## Part 4 - lz4-java 1.10.4 vs 1.10.2
-
-| Version | Notable content (GitHub release notes via summariser) |
-|---------|-------------------------------------------------------|
-| 1.10.1 | Fix for CVE-2025-66566 (info leak from the Java decompressors' uninitialised output buffer). Already in 1.10.2. |
-| 1.10.2 | Reproducible build, OSGi manifest headers fixed, Windows JNI library renamed. |
-| 1.10.3 | Docs; NPE fix in `LZ4FrameInputStream#available`. |
-| 1.10.4 | Linux native build flags tuned and xxhash compilation fixed (performance regression fix). |
-
-- **No functional or security difference that matters for this connector.** No API or package change (`net.jpountz.*` is the same), no new JDK requirement. The clone's `confluentJar`, runtime resolution and compile all work on 1.10.4.
-- The practical value of this bump is alignment with upstream, so the next sync produces no `lz4Java` diff. The native-flags fix concerns the JNI path, which the connector's client uses only via `LZ4Factory.fastestInstance()` when the native library loads.
-- **Flag for the user (AGENTS.md: notify, do not upgrade unasked):** `at.yawk.lz4:lz4-java` has published moderate and low advisories fixed after 1.10.4. Maven Central lists 1.11.0 to 1.11.4 and 1.12.0 (latest, 2026-09-25). They cover `LZ4BlockInputStream` unvalidated compressed length (fixed in 1.11.2), native XXHash JVM crash on bad ranges (fixed in 1.11.1), `LZ4DecompressorWithLength`, `LZ4FrameInputStream` buffer reallocation, `LZ4BlockInputStream` recursion, and a native-library extraction temp-dir race (late September advisories). Affected-version ranges for the later ones were not readable, so assume 1.10.4 is affected. The ClickHouse client ships its own `ClickHouseLZ4InputStream` and calls the `LZ4Factory` decompressors, so the vulnerable `LZ4BlockInputStream` classes are probably not on its path. I did not verify reachability, so confidence is LOW. Taking 1.10.4 as approved is fine. A one-line follow-up to raise `lz4Java` to at least 1.11.2 (or 1.12.0) would need the user's explicit approval and a ClickHouse-client compatibility check on `0.9.6`.
-
-## Part 5 - What NOT to change
-
-| Do not | Reason |
-|--------|--------|
-| Adopt client `0.10.0` (dependabot branch) | Explicitly out of scope. Also the client is the thing that decides whether ZSTD decoding works, so it would change the D-17 story. |
-| Revert `kafka = "4.1.1"  # FORK OVERRIDE` to upstream's `2.7.0` | The fork needs Connect API 4.1.1. `onPartitionsRevoked` has no `@Override` for that reason. The `org.lz4` capability rule must stay for the same reason (`kafka-clients:4.1.1` -> `org.lz4:lz4-java:1.8.0`). |
-| Keep the stale `# FORK OVERRIDE (upstream 0.9.5)` comment | After the merge, `0.9.6` is upstream's own value. Update the comment or the FORK-DELTA "Fork dependency pins" row will lie. |
-| Keep both capability rules | Redundant (Part 1). Keep upstream's. |
-| Pin anything to `1.10.2` | The merged build must show 1.10.4 on `runtimeClasspath` and in the Confluent jar's `pom.properties`. |
-| Re-add `clickhouse-jdbc` | No code needs it (Part 2). |
-| Touch the fork's JaCoCo, `testUnit`, JDK 17 `javaLauncher`, `windows-1252`, Spotless, `dependencyUpdates`, `slf4j-reload4j:2.0.17` or the `forkChangedClasses` list | All auto-merged intact. They are the fork's reason for existing. If `jacocoForkReport` classes change names in the sync, update the list. |
-| Bump Gradle, Shadow, Testcontainers, JUnit, JaCoCo, Spotless, protobuf or any other dependency | Outside the approved list. Dependabot may have more open branches, so check `refs/remotes/upstream/dependabot/gradle/*` and ignore everything outside the four. |
-| Add a version-catalog entry for `slf4j-reload4j` | Intentionally a literal (BLD-08). |
-| Add a shadow `relocate` for `net.jpountz` | Upstream did not, and a relocation would be a behaviour change in the Confluent archive. |
-
-### D-17 retirement - what it means for the stack (for the roadmap)
-
-Upstream's flag is broader than the fork's pin. When `setCompressionMethod=true` (default) it sends `network_compression_method=lz4` on V1 (`CUSTOM_SETTINGS`) and V2 (`serverSetting`), like D-17. **It also sets `compress=false` on V1 (`ClickHouseClientOption.COMPRESS`) and `compressServerResponse(false)` on V2, in both modes (not gated on the flag).** So server responses stop being compressed at all. This is why upstream's approach avoids the ZSTD failure independently of the pinned client. Consequences:
-- The fork's pin is a subset of upstream's behaviour. Retiring it needs no extra stack change, only the source conflict resolution in `ClickHouseHelperClient` (constant names differ: the fork has package-private `NETWORK_COMPRESSION_METHOD_SETTING` / `NETWORK_COMPRESSION_METHOD_LZ4`, upstream has public `NETWORK_COMPRESSION_METHOD` / `LZ4`).
-- `NetworkCompressionPinUnitTest` reads `getDefaultClientOptions().get(CUSTOM_SETTINGS)`. That should still hold with the flag on, but the tests need adapting to the flag and to the new `COMPRESS=false` option. Add a flag-off assertion.
-- Response size grows (uncompressed DESCRIBE/SHOW/insert-response bodies). These are small, but note it in the operator rollout checklist.
-- The `FORK-DELTA.md` D-17 row and its "For the next syncer" paragraph (the "eighth behaviour") must be rewritten. The removal condition ("once the client decodes ZSTD") no longer applies.
-
-## Recommended stack after the milestone
-
-| Item | Version | Source | Note |
-|------|---------|--------|------|
-| ClickHouse client (`clickhouse-client`, `-http-client`, `-data`, `client-v2`) | 0.9.6 | upstream `v1.7.0` | Drop the FORK OVERRIDE comment. |
-| Kafka Connect API | 4.1.1 | fork override | Kept. |
-| `at.yawk.lz4:lz4-java` | 1.10.4 | upstream `v1.7.0` | Replaces 1.10.2. Single capability rule (upstream's). |
-| Jackson (`core`, `databind`) | 2.22.3 | approved bump | Runtime, shipped. `jackson-annotations` stays 2.22. |
-| OkHttp | 5.5.0 | approved bump | `integrationTest` only. |
-| org.json | 20260814 | approved bump | Tests/fixtures only. |
-| mockito-junit-jupiter | 5.24.0 | approved bump | Tests only. |
-| `clickhouse-jdbc` | removed | upstream `v1.7.0` | Unused. |
-| Gradle, JUnit, Testcontainers, JaCoCo, Spotless, Shadow, protobuf | unchanged | | Out of scope. |
-
-## Verification commands for the roadmap
-
-```bash
-./gradlew clean dependencyInsight --dependency lz4-java --configuration runtimeClasspath    # expect at.yawk.lz4:lz4-java:1.10.4, no org.lz4 left
-./gradlew dependencyInsight --dependency lz4-java --configuration clickhouseDependencies    # expect 1.10.4 (was 1.10.2 via client-v2)
-./gradlew compileTestFixturesJava compileIntegrationTestJava                                # catches a jdbc/okhttp/org.json break the main test task misses
-./gradlew confluentJar && unzip -p build/libs/*-confluent.jar META-INF/maven/at.yawk.lz4/lz4-java/pom.properties   # version=1.10.4
-./gradlew test testUnit                                                                     # the acceptance gate; watch org.json number-handling tests
-grep -n "capabilitiesResolution" build.gradle.kts                                           # expect exactly one
+```yaml
+- uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+  with:
+    persist-credentials: false
+- uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+- uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+- uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
 ```
 
-## Confidence
+Why these exact choices:
 
-| Claim | Confidence | Basis |
-|-------|------------|-------|
-| Build diffs, auto-merge behaviour, double capability rule, jdbc removal safe, resolved versions, Confluent jar contents, `generateVersionFile` staleness | HIGH | Reproduced in a throwaway clone with real Gradle runs and `git grep`. |
-| Dependabot branches are single-line and scoped as stated | HIGH | `git diff` on each ref. |
-| Release-note content for Jackson, OkHttp, org.json, Mockito, lz4-java | MEDIUM | GitHub/Jackson wiki pages through a summariser. CVE IDs not cross-checked against NVD. |
-| org.json 20260719 number-length limit default, lz4 advisory reachability from the client | LOW | Details unreadable. Covered by the test run and flagged to the user. |
+- **`gradle/actions` is an annotated tag.** `git ls-remote` shows tag object `b9bee63e...` for `v6.4.0`, but the commit it dereferences to (`^{}`) is `3f5f9ada...`. Pin the commit. Pinning the tag-object SHA is the classic mistake, and it fails at "Set up job" with a not-found error.
+- **No behaviour drift from SHA pinning on setup-java or setup-gradle.** The floating `v6` tags already resolve to `de7274f0...` (setup-java) and `3f5f9ada...` (setup-gradle). Pinning freezes what CI runs today. Only checkout and upload-artifact actually change code.
+- **checkout `v7.0.1`, not `v6.1.0`.** `v6.1.0` and `v5.1.0` are backports of v7's one breaking change, published later the same day (2026-07-20), so they are not "newer". `v7.0.1` is the current line.
+- **upload-artifact `v7.0.2`, not `v6.x`.** v6 added Node 24; v7 added ESM and an opt-in `archive: false` input. `v7.0.2` (Oct 7) only improves HTTP 429 retry handling. v7 is the current major.
+- **Add `persist-credentials: false` to checkout.** The workflow never pushes. This is the least-privilege companion to the `permissions:` block. Nothing in the build calls `git` (`build.gradle.kts` reads the `VERSION` file only), and `fetch-depth: 1` is unchanged from v4.
+
+### Breaking changes v4 to new majors (all benign for this workflow)
+
+| Action | Change | Effect here |
+|--------|--------|-------------|
+| `checkout` v5 | Node 24 runtime | Needs runner >= 2.327.1. Hosted runners are always newer. |
+| `checkout` v6 | Credentials persisted to a separate file under `$RUNNER_TEMP`, not `.git/config` | None. Nothing here reads git credentials. `persist-credentials: false` removes them anyway. |
+| `checkout` v7 / v6.1 | Blocks checking out a fork PR under `pull_request_target` and `workflow_run`. Opt-in input `allow-unsafe-pr-checkout`. | None. The trigger is `push` only. |
+| `checkout` v7 | ESM rewrite | Internal only. |
+| `upload-artifact` v5 | "Supports Node 24", treated as breaking, still ran on node20 | None. |
+| `upload-artifact` v6 | Runs on node24, min runner 2.327.1 | None on hosted runners. |
+| `upload-artifact` v7 | ESM; new `archive` input (default `true`) | None. Our `path:` globs are directories, which still zip. |
+| `upload-artifact` (v4 semantics, unchanged) | Hidden files excluded (`include-hidden-files: false`); artifact names immutable per run (`overwrite: false`) | `build/reports/jacoco/` and `build/reports/tests/` contain no dot-files or dot-dirs. The two artifact names are distinct. No change needed. |
+
+One pre-existing wrinkle, not caused by this milestone: because names are immutable per run, "Re-run all jobs" can hit a 409 on upload. `overwrite: true` would fix it, but it changes behaviour, so leave it unless the user asks.
+
+setup-gradle v6.4.0 adds annotations for the status of the Gradle version in use. Gradle `9.6.1` against a current `9.8.0` is two minors behind, and the rule flags "more than two minors behind", so no notice is expected. Expect one if the wrapper stays put for another minor.
+
+### Runner label
+
+| Technology | Value | Purpose | Why |
+|------------|-------|---------|-----|
+| `runs-on` | `ubuntu-24.04` | Pin the hosted image | `ubuntu-latest` starts moving to Ubuntu 26.04 on 2026-10-19, completing by 2026-11-19 (runner-images #14748). |
+
+Facts about `ubuntu-24.04` (image `20261004.327.1`, read from the runner-images readme):
+
+- Docker client 28.0.4, Compose 2.38.2. Testcontainers 2.0.5 has what it needs, and the daemon is running on hosted runners.
+- Java 17.0.20 (Temurin build) is preinstalled as the default. `setup-java` with `temurin` 17 stays authoritative, and the Gradle toolchain is pinned to 17.
+- Node 22 is the image default, but this does not matter because every action above bundles its own `node24`.
+- `nproc` is 4 on the standard public runner (observed in run `38037397969`).
+
+**Support horizon: about two more years (HIGH).** GitHub's stated policy is "we support (at maximum) 2 GA images and 1 beta image". 26.04 reached GA on 2026-09-17, which began the deprecation of the oldest image, 22.04 (deprecated 2026-09-17, retired 2027-04-17). So 24.04 is retired only after the next Ubuntu GA, 28.04, around September 2028. No official 24.04 end date exists yet, so that date is inferred from the policy.
+
+**Why not jump to `ubuntu-26.04` now.** It is GA, but its default Java is 25 and its Docker client is 29.4.2. Docker 29.0 to 29.2 raised the daemon's minimum API to 1.44 and broke older docker-java. Testcontainers >= 2.0.2 is reported fixed and we are on 2.0.5, but that is untested on this suite. Treat 26.04 as its own later change: run one branch build on `ubuntu-26.04`, then decide. The user approved the 24.04 pin, not 26.04.
+
+### Least-privilege `permissions:`
+
+```yaml
+permissions:
+  contents: read
+```
+
+Place it at workflow level. There is one job, so no per-job override is needed. This answers T-14-16.
+
+- **`contents: read` is sufficient.** GitHub documents that specifying any permission sets every unspecified scope to `none`. The job needs exactly one scope: `contents: read` for checkout.
+- **Artifact upload, the Actions cache and setup-gradle caching do not use `GITHUB_TOKEN`.** They use the runtime/cache service token, so `actions:` and `packages:` are not needed.
+- **`$GITHUB_STEP_SUMMARY` and `::notice::` are workflow commands.** They are parsed from stdout by the runner and need no token scope. `checks: write` is not needed for them.
+- **Do not add the setup-gradle scopes.** The doc lists `contents: write` for dependency-graph submission (default `disabled`) and `pull-requests: write` for the PR comment (default `never`). Neither is enabled here.
+- **Keep the existing `push` trigger.** Fork-PR token downgrade concerns do not apply.
+- **Confidence on the permission claims is MEDIUM-HIGH.** They come from docs, not from a run with the block present. The first CI run after the change is the proof. Verify that it is green and that "Set up Gradle", both uploads and the summary step succeed.
+
+### Lombok "Ambiguous: Jackson2 and Jackson3 exist"
+
+| Item | Finding |
+|------|---------|
+| Emitted since | Lombok `1.18.44` (2026-03-11): "`@Jacksonized` now supports both Jackson2 and Jackson3; you'll get a warning until you configure which one". `1.18.46` (our catalog version) only adds "finishing touches". |
+| Trigger in this repo | One class: `sink/db/helper/ClickHouseFieldDescriptor` (`@Data @Builder @Jacksonized @JsonNaming`, imports `com.fasterxml.jackson.*` only, so Jackson 2). |
+| Key | `lombok.jacksonized.jacksonVersion` (list of enum `2`, `3`; unset default is "2 + warning"), confirmed with `java -jar lombok-1.18.46.jar config -g --verbose`. |
+| Fix | Append `lombok.jacksonized.jacksonVersion += 2` to the root `lombok.config`. |
+
+Current root `lombok.config` is two lines (`config.stopBubbling = true`, `lombok.addLombokGeneratedAnnotation = true`). Add the third line:
+
+```properties
+lombok.jacksonized.jacksonVersion += 2
+```
+
+**Verified in a scratch directory** (outside the repo) with `javac` plus the cached Lombok 1.18.46 and Jackson 2.22.3 jars. A class shaped like `ClickHouseFieldDescriptor` printed `warning: Ambiguous: Jackson2 and Jackson3 exist; define which variant(s) you want in 'lombok.config'` without the line, and compiled silently with it.
+
+Use `+= 2`, not `+= 3`. The code is on `com.fasterxml.jackson`, and `3` would generate `tools.jackson` annotations that nothing here reads. Use `+=` rather than `=`, because the key is a list. It is a zero-byte-code change: the generated Jackson 2 builder annotations are the same as the unset default, so no behaviour test is needed beyond the existing `describeTable` tests and a compile with no warning.
+
+### Gradle: drop `org.lz4:lz4-java:1.8.0` from `testRuntimeClasspath` (backlog 999.2)
+
+**What the resolved graph shows** (from `dependencyInsight`, run offline):
+
+- The only thing still carrying `org.lz4:lz4-java:1.8.0` is `testRuntimeClasspath`. The root entry is `org.apache.kafka:kafka-clients:7.9.1-ccs`, reached from `connect-api` and a dozen Confluent 7.9.1 modules (`kafka-schema-registry`, `kafka_2.13`, `kafka-server`, ...).
+- On `runtimeClasspath` and `integrationTestRuntimeClasspath` the same dependency resolves as `org.lz4:lz4-java:1.8.0 -> at.yawk.lz4:lz4-java:1.12.0`. The selection reason there is "By conflict resolution: On capability org.lz4:lz4-java client-v2 uses the maintained at.yawk.lz4 fork". The capability rule in `build.gradle.kts` (`configurations.all { resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") ... }`) is the one that does this.
+- On `testRuntimeClasspath` that capability conflict is **not detected**. The `at.yawk` 1.12.0 selection shows only a version-conflict reason, and 1.8.0 survives as a second jar. Both jars ship the `net.jpountz.lz4` package, so classpath order decides which one wins at runtime. The root cause is not confirmed (the only structural difference from the integration-test graph is the full `kafka-schema-registry` server stack that `test` pulls in, so it is a Gradle capability-detection quirk). The fix does not depend on the cause.
+
+**Recommended fix: a scoped exclude.**
+
+```kotlin
+// 999.2: the capability rule above is not applied on testRuntimeClasspath (Confluent
+// 7.9.1 test stack), so org.lz4:lz4-java:1.8.0 rides along beside at.yawk.lz4. at.yawk is a
+// drop-in (same net.jpountz.lz4 package) and is already declared, so drop the original.
+configurations.named("testRuntimeClasspath") {
+    exclude(group = "org.lz4", module = "lz4-java")
+}
+```
+
+Place it next to the existing capability-rule block.
+
+**Tried both candidate mechanisms through a throwaway init script** (`./gradlew -I`, no repo edit), checking `dependencies --configuration testRuntimeClasspath`:
+
+| Mechanism | Result on `testRuntimeClasspath` | Verdict |
+|-----------|----------------------------------|---------|
+| `exclude(group = "org.lz4", module = "lz4-java")` scoped to `testRuntimeClasspath` | The only lz4 left is `at.yawk.lz4:lz4-java:1.12.0`. `org.lz4` is gone. | **Recommended.** Matches the goal ("drops the duplicate"), is the smallest edit, and cannot touch `at.yawk.lz4` because the group differs. |
+| `dependencySubstitution { substitute(module("org.lz4:lz4-java")).using(module("at.yawk.lz4:lz4-java:1.12.0")) }` | Works: shows `org.lz4:lz4-java:1.8.0 -> at.yawk.lz4:lz4-java:1.12.0`. | Valid fallback. It mirrors how `runtimeClasspath` reads, but hard-codes a version that would drift from the catalog unless built from `libs.versions.lz4Java`. |
+| Widening the existing `withCapability` rule | Not tried, because that rule already works elsewhere and is upstream's. | Do not touch. It would enlarge the fork delta. |
+
+Scoping notes: `test` and `testUnit` both use `sourceSets["test"].runtimeClasspath`, so one exclude covers both. The `testCompileOnly` listing in `dependencies` also shows 1.8.0, but that is the compile-only bucket and never reaches a runtime classpath. Do not widen to `configurations.all`: it is unnecessary and would hide the (working) capability resolution on the shipped classpaths. Nothing here is shipped, since `confluentJar` is built from `clickhouseDependencies`, not from `test`.
+
+**Acceptance check** (Docker-free): `./gradlew -q dependencyInsight --configuration testRuntimeClasspath --dependency org.lz4` reports no match, and `--dependency lz4-java` shows only `at.yawk.lz4`. Then re-run `Lz4RoundTripLiveTest` and `testUnit`.
+
+### Gradle: expose the effective `maxParallelForks` (14 WR-02)
+
+Add a tiny task next to the `tasks.withType<Test>` block in `build.gradle.kts`:
+
+```kotlin
+tasks.register("printTestForks") {
+    group = "verification"
+    description = "Prints the effective maxParallelForks of the test task (CI reads this)"
+    val forks = tasks.named<Test>("test").map { it.maxParallelForks }
+    doLast { println(forks.get()) }
+}
+```
+
+Prototyped through an init script and run on this machine (12 CPUs): `./gradlew -q printTestForks` printed exactly `6`. With `CLICKHOUSE_CLUSTER_NAME=x` set it printed `1`, so the cluster branch is honoured. It also works with `--configuration-cache`. Under `-q` it prints one line and nothing else.
+
+Why a task and not shell arithmetic: the shell step (`nproc / 2`) is a second copy of a formula that lives in `build.gradle.kts`. That copy drifts if the formula changes. It also ignores the `CLICKHOUSE_CLUSTER_NAME` branch unless the shell repeats it. The value is read lazily via `tasks.named<Test>("test").map { ... }`, so it is the value the `withType<Test>` block actually assigned. The same expression applies to every `Test` task, because they all run the one formula.
+
+CI step replacement:
+
+```yaml
+- name: Report test fork count
+  run: |
+    forks="$(./gradlew -q --console=plain printTestForks | tail -n 1)"
+    msg="runner nproc=$(nproc), Gradle maxParallelForks=${forks} (read from build.gradle.kts)"
+    echo "$msg"
+    echo "### Test fork count" >> "$GITHUB_STEP_SUMMARY"
+    echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+    echo "::notice title=Test fork count::${msg}"
+```
+
+`tail -n 1` guards against stray daemon or toolchain chatter. Keep `nproc` in the message as context only; it is no longer an input to any computation. The step's position (before "Compile integration-test sources") is fine: it makes this the first Gradle call and starts the daemon, which the compile step then reuses. Keep the `::notice` annotation, because job logs are unreadable without admin rights (CI-09).
+
+## Installation
+
+No new runtime or build dependencies. The edits are:
+
+```text
+.github/workflows/tests.yaml   runs-on, permissions, 4 SHA pins, persist-credentials, fork-count step
+lombok.config                  + lombok.jacksonized.jacksonVersion += 2
+build.gradle.kts               + exclude on testRuntimeClasspath, + printTestForks task
+.github/dependabot.yml         OPTIONAL, see below (needs a user decision)
+```
+
+## Alternatives Considered
+
+| Recommended | Alternative | When to use the alternative |
+|-------------|-------------|-----------------------------|
+| Commit-SHA pins plus a `# vX.Y.Z` comment | Floating major tags (`@v7`) | Only if Dependabot/Renovate maintenance is not wanted. The user approved SHA pinning, so this is not on the table. |
+| `ubuntu-24.04` | `ubuntu-26.04` | After a trial run. Different default Java (25), Docker 29.4.2, Python 3.14. |
+| `ubuntu-24.04` | `ubuntu-latest` | Never for a gate whose results must stay comparable over time. |
+| Workflow-level `permissions: contents: read` | Job-level block plus `permissions: {}` at the top | Add this when a second job appears. With one job it is the same effective grant. |
+| Scoped `exclude` | `dependencySubstitution` | If someone wants the redirect to stay visible in `dependencyInsight`. Build the target version from the catalog, not a literal. |
+| `printTestForks` Gradle task | A `doFirst` in the `test` task that prints `::notice::` | Fewer CI lines, but it only fires if the test step runs, so a failure before `test` leaves no annotation. |
+| `lombok.jacksonized.jacksonVersion += 2` | Remove `@Jacksonized` from the descriptor | Would change generated code; the config line changes nothing. |
+
+## What NOT to Use
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Pinning `gradle/actions` to `b9bee63e...` (the tag object) | Not a commit. The job fails to resolve the action. | The dereferenced commit `3f5f9ada...`. |
+| `actions/checkout@v6.1.0` / `v5.1.0` as "latest" | Backports of v7's breaking change, not newer lines. | `v7.0.1`. |
+| `lombok.jacksonized.jacksonVersion += 3` | Generates `tools.jackson` annotations. The code and runtime use Jackson 2. | `+= 2`. |
+| `configurations.all { exclude(group = "org.lz4") }` | Hides the working capability rule on shipped classpaths; touches production resolution. | Exclude on `testRuntimeClasspath` only. |
+| `permissions: write-all`, or `contents: write` "just in case" | Violates the purpose of T-14-16. Nothing needs it. | `contents: read`. |
+| `overwrite: true` on uploads | Behaviour change, outside the approved list. | Leave the defaults. |
+| A shell `nproc / 2` mirror | A second copy of the formula; drifts silently. | `printTestForks`. |
+
+## Stack Patterns by Variant
+
+**If the user later wants Ubuntu 26.04:**
+- Change only `runs-on` and run one branch build before merging.
+- Check Docker API compatibility with Testcontainers 2.0.5, JDK provisioning (default Java is 25, so keep `setup-java` 17), and the Python 3.14 requirement of `.github/scripts/jacoco_summary.py` (standard library only, so low risk).
+
+**If a second job is added:**
+- Set `permissions: {}` at workflow level and grant per job.
+
+## Version Compatibility
+
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| `actions/checkout@v7.0.1`, `upload-artifact@v7.0.2`, `setup-java@v6.0.1`, `setup-gradle@v6.4.0` | Any hosted runner >= 2.327.1 | Hosted runners auto-update. All four are node24. |
+| `ubuntu-24.04` (Docker 28.0.4) | Testcontainers 2.0.5, docker-java inside it | The suite already passed on this image (it is today's `ubuntu-latest`). |
+| Lombok 1.18.46 | `lombok.jacksonized.jacksonVersion` | Key exists from 1.18.44. |
+| Gradle 9.6.1 | `tasks.named<Test>().map`, `exclude` on a named configuration | Both exercised locally on 9.6.1. |
+| `exclude(org.lz4)` | `at.yawk.lz4:lz4-java:1.12.0` | Same `net.jpountz.lz4` package, so Confluent/Kafka 7.9.1 test classes keep working. |
+
+## Observations Not Acted On (need a user decision, per AGENTS.md)
+
+- **Newer versions exist.** Gradle `9.8.0` is the current release (we use 9.6.1). Lombok `1.18.48` (2026-09-01) exists (we use 1.18.46). Noted only. Neither is needed for this milestone.
+- **`.github/dependabot.yml` has only the `gradle` ecosystem.** After SHA pinning, nothing will propose action updates, so the pins would go stale silently. Adding a `package-ecosystem: "github-actions"` entry is the usual companion to pinning. It is not on the approved list, so ask first.
+- **Other workflows are untouched and out of scope.** `integrationTests.yaml`, `release.yaml`, `pre-release.yaml` and `increment-version.yml` still use `@v3` / `gradle-build-action@v2` / `actions/create-release@v1` (node16-era) on `ubuntu-latest`, and `release.yaml` is manual. They are upstream's, not the CI that gates `custom_build`.
+- **`test-head.yaml` appears dead.** It calls `./.github/workflows/tests.yaml` as a reusable workflow with `with:` inputs and `secrets: inherit`, but `tests.yaml` declares no `workflow_call` trigger or inputs. It is scheduled nightly. Check whether it fails or is disabled in the fork before the permissions block lands (reusable-workflow permissions can only narrow the caller's).
 
 ## Sources
 
-- Local: `git diff v1.6.0 v1.7.0 -- build.gradle.kts gradle/`, `git diff v1.6.0 HEAD -- build.gradle.kts gradle/`, `git log v1.6.0..v1.7.0`, `v1.7.0:CHANGELOG.md`, `git diff` for each `refs/remotes/upstream/dependabot/gradle/*`, and Gradle 9.6.1 output from the simulation clone (MEDIUM-HIGH).
-- [Jackson 2.22.3 release notes](https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.22.3) (MEDIUM)
-- [OkHttp CHANGELOG.md](https://raw.githubusercontent.com/square/okhttp/master/CHANGELOG.md) (MEDIUM)
-- [JSON-java releases 20260719](https://github.com/stleary/JSON-java/releases/tag/20260719) and [20260814](https://github.com/stleary/JSON-java/releases/tag/20260814) (MEDIUM / LOW)
-- [Mockito v5.24.0](https://github.com/mockito/mockito/releases/tag/v5.24.0) (MEDIUM)
-- [yawkat/lz4-java releases](https://github.com/yawkat/lz4-java/releases), [security advisories](https://github.com/yawkat/lz4-java/security/advisories), [GHSA-4v53-57pg-c464](https://github.com/yawkat/lz4-java/security/advisories/GHSA-4v53-57pg-c464), [GHSA-xx22-p4ch-683r](https://github.com/yawkat/lz4-java/security/advisories/GHSA-xx22-p4ch-683r), [Maven Central metadata](https://repo1.maven.org/maven2/at/yawk/lz4/lz4-java/maven-metadata.xml) (MEDIUM)
+- GitHub REST API, releases and `git/ref/tags` for `actions/checkout`, `actions/upload-artifact`, `actions/setup-java`, `gradle/actions`, read 2026-10-10 — versions and dates (HIGH)
+- `git ls-remote` against the four repos, including `^{}` dereference — commit SHAs (HIGH)
+- `action.yml` at each pinned tag (`raw.githubusercontent.com`) — `runs.using: node24`, input lists (HIGH)
+- Release notes for checkout v6.0.0/v6.1.0/v7.0.0/v7.0.1, upload-artifact v5/v6/v7/v7.0.2, setup-java v6.0.0/v6.0.1, gradle/actions v6.3.0/v6.4.0, and `CHANGELOG.md` of checkout — breaking changes (HIGH)
+- https://github.com/actions/runner-images/issues/14748 — `ubuntu-latest` to 26.04, 2026-10-19 to 2026-11-19 (HIGH)
+- https://github.com/actions/runner-images/issues/14747 — Ubuntu 26.04 GA, 2026-09-17 (HIGH)
+- https://github.com/actions/runner-images/issues/14254 — 22.04 deprecation 2026-09-17, retired 2027-04-17, "latest two stable versions" (HIGH)
+- https://github.com/actions/runner-images (README) — label table and "at most 2 GA images" policy (HIGH)
+- `Ubuntu2404-Readme.md` and `Ubuntu2604-Readme.md` in runner-images — Java, Docker, Node, Gradle versions per image (HIGH)
+- https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration — corroboration of GA and migration window (MEDIUM, search summary)
+- Docker 29 min-API / Testcontainers >= 2.0.2 reports (web search) — only for the "why not 26.04 yet" caveat (MEDIUM)
+- https://github.com/gradle/actions (`docs/setup-gradle.md` at v6.4.0) — token scopes, `dependency-graph` and `add-job-summary-as-pr-comment` defaults (HIGH)
+- https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions — unspecified scopes become `none` (HIGH)
+- https://projectlombok.org/changelog — 1.18.44 / 1.18.46 / 1.18.48 entries (HIGH)
+- `java -jar lombok-1.18.46.jar config -g --verbose` — exact key, type and default (HIGH)
+- Scratch-directory `javac` reproduction of the warning and its removal (HIGH, local)
+- `./gradlew dependencyInsight` / `dependencies` on `testRuntimeClasspath`, `runtimeClasspath`, `integrationTestRuntimeClasspath`, plus init-script trials of exclude, substitution and `printTestForks` (HIGH, local, Gradle 9.6.1)
+- `.planning/PROJECT.md`, `.planning/ROADMAP.md` (backlog 999.2), `.github/workflows/*.y*ml`, `build.gradle.kts`, `gradle/libs.versions.toml`, `lombok.config` — repo state (HIGH)
+
+---
+*Stack research for: CI hygiene and build hardening, `v1.7.0_gg2-hardening`*
+*Researched: 2026-10-10*

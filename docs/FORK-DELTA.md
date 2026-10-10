@@ -91,7 +91,7 @@ This is the claim the sync milestone exists to support: that the fork carries le
 
 ## The raw numbers
 
-The table gives files changed, insertions and deletions for the same two scopes at both endpoints. The wider scope is `src build.gradle.kts gradle .github`; the narrower scope is `src/main` alone. "Before" compares upstream `v1.6.0` with the pre-sync tip `pre-v1.7.0-sync`, the tree that `v1.6.0_gg1` was published from; "after" compares upstream `v1.7.0` with `v1.7.0_gg1`. The after figures were measured on `sync/v1.7.0` at the commit that carries this document, whose `src`, build and CI tree the publication gate keeps unchanged through publication, so they are the figures of the published tree. They can be refreshed by running the four commands shown beneath the table once the `v1.7.0_gg1` tag exists.
+The table gives files changed, insertions and deletions for the same two scopes at both endpoints. The wider scope is `src build.gradle.kts gradle .github`; the narrower scope is `src/main` alone. "Before" compares upstream `v1.6.0` with the pre-sync tip `pre-v1.7.0-sync`, the tree that `v1.6.0_gg1` was published from; "after" compares upstream `v1.7.0` with `v1.7.0_gg1`. The after figures were measured on `sync/v1.7.0` at the commit that carries this document, whose `src`, build and CI tree the publication gate keeps unchanged through publication, so they are the figures of the published tree. The four commands shown beneath the table reproduce them against the `v1.7.0_gg1` tag.
 
 | Scope | Endpoint | Files | Insertions | Deletions |
 |---|---|---|---|---|
@@ -131,7 +131,7 @@ Open items:
 
 - L-03: the upstream `bypassRowBinary=true` route without an explicit `insertFormat=json` keeps Jackson's defaults (epoch milliseconds read as seconds, base64 bytes), unlike the metadata-free route.
 - L-04: a Kafka `Date` written to a `DateTime` or `DateTime64` column on the metadata-free route lands its day count as seconds.
-- L-05, narrowed by L-20: of the Debezium time types only `ZonedTimestamp` strings still pass through unchanged, and they parse only while the server keeps `date_time_input_format=best_effort`.
+- L-05, narrowed by L-20: of the Debezium time types only `ZonedTimestamp` strings still pass through unchanged, and they parse only while the server's `date_time_input_format` is `best_effort` (the default on ClickHouse 26.9; older releases default to `basic`).
 - The `ByteBuffer` asymmetry: the metadata-free route writes the remaining bytes, RowBinary writes the whole backing array (L-02).
 - The non-nullable null outcomes depend on the server's `input_format_null_as_default` staying at 1 (L-08).
 - L-22: explicit `insertFormat=json` together with `bypassRowBinary=true` changed writer in this release. Only the routing is pinned by a test; no test pins the stored values for that exact combination.
@@ -151,8 +151,8 @@ Open items:
 The current suite skips 18 tests. The structural basis is measured by command rather than copied from a report:
 
 ```text
-grep -rc '@Disabled' src/test/java                -> 7 annotation sites, 7 test methods
-grep -rc 'Assumptions.assumeTrue' src/test/java   -> 1 site, in a parameterized test with 11 cases
+grep -rho '@Disabled' src/test/java | wc -l                -> 7 annotation sites, 7 test methods
+grep -rho 'Assumptions.assumeTrue' src/test/java | wc -l   -> 1 site, in a parameterized test with 11 cases
 ```
 
 Seven disabled methods plus the eleven parameterized cases behind the single standalone-mode assumption make 18.

@@ -7,16 +7,16 @@ before upgrading.
 
 ## Important Changes
 
-* R-01: with an explicit `insertFormat=json`, `Struct` and Debezium CDC records now land rows through the JSON writer.
+* With an explicit `insertFormat=json`, `Struct` and Debezium CDC records now land rows through the JSON writer.
   Previously they were routed to RowBinary against a column-less table and silently dropped while the offsets still
   advanced. The change is unconditional and one-way. Recovering rows lost under `exactlyOnce=true` needs a consumer
   offset reset and a KeeperMap state clear; the procedure is in the rollout checklist.
 * Explicit `insertFormat=json` together with `bypassRowBinary=true` and `Struct`/CDC records now goes through the
   metadata-free writer instead of the legacy Jackson path, so the stored Timestamp, Date, Time, Decimal and bytes values
   change for the same input. Under `exactlyOnce=true` run the pre-upgrade check in the rollout checklist first.
-* WR-02 strictness: a null in a nested non-nullable `Array` element, `Map` value or `Tuple` field now throws
-  `DataException` naming the column, and the whole batch fails (dead-lettered under `errors.tolerance=all`, task-stopping
-  under `errors.tolerance=none`). A null nested `Array` or `Map` is coerced to an empty container.
+* A null in a nested non-nullable `Array` element, `Map` value or `Tuple` field now throws `DataException` naming
+  the column, and the whole batch fails (dead-lettered under `errors.tolerance=all`, task-stopping under
+  `errors.tolerance=none`). A null nested `Array` or `Map` is coerced to an empty container.
 * `Int256` and `UInt256` columns now fail fast on RowBinary with an actionable message naming the column and the
   `insertFormat=json` and `bypassRowBinary=true` alternatives, replacing "Data schema validation failed.".
 * New startup WARN, once per column, for `Nullable(Enum8)`, `Nullable(Enum16)` and `Nullable(Tuple(...))` slots.
@@ -25,13 +25,16 @@ before upgrading.
   `setCompressionMethod` option (default `true`), and `compress=false` is always sent. A `compress=true` in
   `jdbcConnectionProperties` re-enables response compression on client V2 and must not be combined with
   `setCompressionMethod=false` against a ClickHouse 26.9+ server.
+* The JMX MBean name's `version=` segment changes from `v1.6.0_gg1` to `v1.7.0_gg1`, and the client name sent on every
+  request is now `clickhouse-kafka-connect/v1.7.0_gg1`. Dashboards, alerts and exporter rules that spell out the old
+  values stop matching; item 7 of the rollout checklist gives matcher examples that keep working across releases.
 
 ## Bug Fixes
 
 * Metadata-free JSON encodings: Timestamp as decimal seconds, Date as epoch days, Time as milliseconds, Decimal as a
   number and bytes as raw escaped bytes instead of base64.
 * Debezium `io.debezium.time.Timestamp` and `io.debezium.time.NanoTimestamp` are converted to decimal seconds on the
-  metadata-free JSON route (13-REVIEW WR-02). Previously the raw number was read as seconds.
+  metadata-free JSON route. Previously the raw number was read as seconds.
 * Empty CDC records are skipped on the metadata-free JSON route instead of writing an all-defaults row.
 * `DESCRIBE` rows below `JSON`/`Dynamic` columns are skipped at any depth.
 * `Array(Tuple)` element columns carry the parent's default and sub-column flags, so a missing tuple field without a
@@ -40,7 +43,9 @@ before upgrading.
 
 ## Dependencies
 
-* Bumped `at.yawk.lz4:lz4-java` from `1.10.2` to `1.12.0` (no known advisories at the time of the check).
+* Bumped `at.yawk.lz4:lz4-java` from `1.10.2` to `1.12.0`, past the advisory-free floor `1.11.4`: `1.11.2` and
+  `1.11.3` are still affected by three published advisories, all fixed in `1.11.4`. See
+  [docs/FORK-DELTA.md](docs/FORK-DELTA.md).
 * Bumped `com.fasterxml.jackson` from `2.22.2` to `2.22.3`.
 * Bumped `okhttp` from `5.4.0` to `5.5.0` (integration tests).
 * Bumped `org.json` from `20260522` to `20260814` (tests).

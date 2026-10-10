@@ -1,5 +1,47 @@
 # Milestones
 
+## v1.7.0_gg1-sync Upstream v1.7.0 Sync & Follow-up Hardening (Shipped: 2026-10-10)
+
+**Phases completed:** 4 phases (12–15), 25 plans, 55 tasks
+
+**Delivered:** Upstream `v1.7.0` was merged into `custom_build` and published as `v1.7.0_gg1`, with all 17 follow-ups carried from earlier milestones closed on the merged tree. The biggest change is that R-01's silent data loss is fixed: `Struct` and CDC records under `insertFormat=json` now land through a schema-aware JSON writer, and a live twin-table matrix proves parity with RowBinary. Nested nulls in RowBinary either round-trip or fail loudly. D-17 is retired onto upstream's `setCompressionMethod`, and five dependencies were bumped one commit at a time. CI now runs exactly once per published SHA. Operators get a rollout checklist (`docs/ROLLOUT-v1.7.0_gg1.md`) covering every behaviour change.
+
+**Stats:**
+
+- Git range: `94d98615` (milestone start) → `cb6918f9`. That is 153 first-parent commits, 175 including the merged upstream history.
+- Timeline: 2026-10-07 → 2026-10-10 (4 days)
+- Files changed (incl. the upstream merge): 161 total (+26,882 / −369). Of those, 49 are in `src/`, build, `gradle/` and `.github/` (+4,927 / −221).
+- Codebase: 10,119 LOC main Java; 29,523 LOC test Java (`src/test` 23,416, `src/testFixtures` 4,329, `src/integrationTest` 1,778)
+- Fork delta over upstream: files 84→95 (wide) and 30→31 (`src/main`). Insertions 9,476→13,587 (wide) and 1,368→1,826 (`src/main`). The growth is hardening and tests on top of the merge, not unretired debt.
+- Suite: 830 tests, 0 failures, 0 errors, 18 named skips on ClickHouse `latest` (26.9.14.10), passed twice (`clean test`, then `test --rerun`). `testUnit` runs 454 tests with Docker stopped.
+- Requirements: 39/39 complete
+- Published: `custom_build` = `--no-ff` merge `f328fd21` (of the rehearsed tree `ae8520ed`), with tags `v1.7.0_gg1` and `pre-v1.7.0-sync` (rollback → `c61d90ce`) on `origin`
+- CI: run [`38050860929`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/38050860929) on `f328fd21` is green in 389 s. It is the only run on that SHA, with no cancelled sibling, which proves CI-08 end to end.
+
+**Closeout type:** `override_closeout`
+
+**Known verification overrides:** 0 newly acknowledged, 0 carried forward from a prior close. The pre-close artifact audit was clear in every category. The override is for two other reasons, both accepted by the user at close:
+
+1. **Phases 12–13 verification reads stale.** Both `VERIFICATION.md` files have `status: passed`. Their covered-file digests no longer match because Phases 13–15 later edited the files they covered (`ClickHouseWriter`, `docs/FORK-DELTA.md` and others). That is ordinary sequential drift, not a failed or reversed check. Phases 14 and 15 verification are current and `passed`, and Phase 15 UAT was 1/1. Phase 15's two full-suite runs and the CI run on the published SHA cover the final tree.
+2. **No milestone audit was run.** There is no `v1.7.0_gg1-sync-MILESTONE-AUDIT.md`. Accepted because 39/39 requirements are checked and mapped, and Phase 15 verified the end-to-end result directly.
+
+**Known gaps:** none against requirements. TYPE-08 (`Int256`/`UInt256` only) and JSONP-08 (evaluation order only) were narrowed on the record. Eleven follow-ups are open under `PROJECT.md` → Requirements → Active:
+
+- **Most urgent:** the corrected rollout doc `505e4981` is not yet on `origin`. The published copy still offers `TRUNCATE` on the KeeperMap state table that exactly-once connectors share.
+- Backlog 999.1: `Nullable(Enum8|Enum16|Tuple)` is mis-mapped by `Column.extractColumn`. It is warned about at discovery.
+- Backlog 999.2: the test classpath carries a second lz4.
+
+**Key accomplishments:**
+
+- Merged upstream `v1.7.0` as one mechanical commit (`54e63648`, zero authored lines) behind a parameterised invariant script, every check of which was proven able to fail. A 33-verdict per-hunk checklist covers the auto-merged hunks in fork-touched files.
+- Retired D-17 onto upstream's `setCompressionMethod` for every client the connector builds, pinned Docker-free and proven live with the flag on and off. Made upstream #820's null-Map bytes reachable by scoping the fork's MAP guard to `Nullable`. Proved `KeeperStateProvider`'s new streamed-row read with a restart test that was seen to fail against the old code.
+- Fixed R-01 by routing. `Struct` and Debezium CDC records in metadata-free JSON mode go through a new `MetadataFreeJsonWriter`, which writes `Timestamp`, `Date`, `Time`, `Decimal`, `bytes` and Debezium `Timestamp`/`NanoTimestamp` as RowBinary would. A live twin-table matrix proves it.
+- Nested nulls in RowBinary now round-trip in `Nullable` slots, coerce to empty for `Array`/`Map`, or fail the batch with a data-free `DataException` naming the column. Metadata, config and test-debt findings were closed: DESCRIBE skip at any depth, `Int256` fail-fast, `extractColumn` argument order, the `USERNAME` default, typed read-back and attributable teardown.
+- Bumped lz4-java (1.10.4 → 1.12.0, advisory-free), okhttp, mockito, Jackson (two CVEs closed) and org.json, one catalog commit each, each gated by its own tests. `tests.yaml` now triggers on branch pushes only, compiles integration sources and reports its fork count.
+- Gated the exact tree twice (830 tests), rehearsed it on CI, and published it as `v1.7.0_gg1` after a recorded human approval. It shipped with a CHANGELOG section, a rewritten `FORK-DELTA.md` and an eight-item operator rollout checklist.
+
+---
+
 ## v1.6.0_gg1-sync Upstream v1.6.0 Sync (Shipped: 2026-10-07)
 
 **Phases completed:** 6 phases, 24 plans, 63 tasks

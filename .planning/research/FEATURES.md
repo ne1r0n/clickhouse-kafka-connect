@@ -1,293 +1,342 @@
 # Feature Research
 
-**Domain:** Brownfield fork maintenance of a Kafka Connect ClickHouse sink (Java 17). Milestone `v1.7.0_gg1-sync`: upstream `v1.7.0` sync plus 17 open follow-ups plus publication.
-**Researched:** 2026-10-07
-**Confidence:** HIGH for everything read from code at `HEAD` (`94d98615`) or `git show v1.7.0:<path>` (`379b8d01`). MEDIUM where marked (behaviour predicted from library defaults, not yet observed live).
+**Domain:** Follow-up hardening of a forked ClickHouse Kafka Connect sink (milestone `v1.7.0_gg2-hardening`). The "features" are the expected correct behaviour of eight carried-over follow-ups, written so each becomes one testable requirement.
+**Researched:** 2026-10-10
+**Confidence:** HIGH for behaviours I probed live or read in code; MEDIUM where marked. Live probes ran against `clickhouse/clickhouse-server:latest` = ClickHouse **26.9.14.10** (the same image the suite targets) through `clickhouse-local` and the HTTP interface. Code line numbers are at `sync/v1.7.0` HEAD `9ff1affc`.
 
-All `file:line` references are to the current tree (`custom_build` + v1.6.0 sync) unless prefixed `v1.7.0:`. "Writer" means `src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java`.
+Scope guard: existing validated features are not re-researched. Everything below is a delta on the published `v1.7.0_gg1` tree. Tests pin the target stack only: ClickHouse `latest` x client V2. No source file was modified; this file is the only artifact.
 
-## Findings that correct or sharpen the milestone brief
+## Overview: one row per follow-up
 
-The roadmap should treat these as inputs, because each changes scope or ordering.
-
-1. **#800 (Avro record unions) has no `src/main` change.** `git diff v1.6.0 v1.7.0 -- src/main` touches 10 files (CHANGELOG, VERSION, build, `AtLeastOnceBufferStrategy`, `ClickHouseSinkConfig`, `StructToJsonMap`, Writer, `ClickHouseHelperClient`, `KeeperStateProvider`, catalog). #800 landed as fixtures, an integration test and a CHANGELOG line (`git log --stat v1.6.0..v1.7.0`, commits `792efb11`, `f2956fb5`). Nothing to "not adopt" in code. The merge carries test fixtures only.
-2. **P3-WR-03 is narrower than recorded.** `INT128`/`UINT128` are now written by RowBinary (Writer:576-581 routes them to `doWritePrimitive`; Writer:916-925 writes them from `BigInteger` or `String`). Only `INT256`/`UINT256` still fall through `validateDataSchema`'s default branch (`colWidth == null`, so `validSchema = false`) and surface the bare `"Data schema validation failed."` (Writer:1139-1142, 1216-1219, 559-565). The fail-fast message applies to `INT256`/`UINT256` only. Telling users `INT128` is unsupported would be wrong.
-3. **The fork's own null guards in `case MAP` and `case TUPLE` collide with #820 and are semantically wrong.** Writer:613-621 (`MAP` null -> `writeNull`) sits in the same hunk as upstream's `if (mapTmp == null)` branch (`git diff v1.6.0 v1.7.0`, Writer `@@ -554`). The fork's guard writes byte `0x01` for a null `Map`. ClickHouse does not allow `Nullable(Map(...))` or `Nullable(Tuple(...))` (HIGH from ClickHouse type rules; confirm live in the WR-02 test), so a null `Map` or `Tuple` reaching `doWriteColValue` is always a non-nullable slot, where `0x01` is read as a length or tuple byte and desynchronises the stream. That is WR-02's exact bug class. Resolve `MAP` to upstream's branch; turn `TUPLE` into the WR-02 throw. The `VARIANT` guard (Writer:695-702, writes discriminator 255) is correct and stays.
-4. **P9-IN-01's operand swap is cosmetic.** `shouldSkipTableMetadata()` returns `false` for `csc == null` (Writer:1616-1618), so `shouldSkipTableMetadata() || csc.isBypassFieldCleanup()` still dereferences `csc` when it is null. The swap changes evaluation order only. Acceptance must be "behaviour-identical for all non-null `csc`" plus a Javadoc correction, not "null-safe".
-5. **`USERNAME` default and `Column.extractColumn` swap are upstream bugs too.** Both are present verbatim in `v1.7.0` (`ClickHouseSinkConfig` line 418-420, `Column.java` line 211). Fixing them grows the fork delta by two lines in upstream-owned files. They are still worth fixing (see below), and are candidates for an upstream PR so the delta shrinks again.
-6. **#841 is a larger behaviour change than "retire D-17".** Beyond `network_compression_method=lz4`, `v1.7.0` unconditionally sets V1 `COMPRESS=false` (`v1.7.0` helper client `getDefaultClientOptions`) and V1 node option `compress=false`, and V2 `.compressServerResponse(false)`, independent of the `setCompressionMethod` flag. Server response compression is therefore off for every operator. This is also why `NetworkCompressionPinLiveTest` (class Javadoc, lines 20-25: "answers `compress=1` requests with ZSTD") loses discriminating power: with `compress=false` the ZSTD response never occurs. See the D-17 row.
-7. **R-01 routing depends on #820's `StructToJsonMap` fix.** `SchemaRecordConvertor.doConvert` builds `StructToJsonMap.toJsonMap(struct)` eagerly for every `SCHEMA` record (`SchemaRecordConvertor.java:20`), including ones that will only be written as JSON. At `HEAD`, a Struct with a null optional `Map` field throws an NPE there (`StructToJsonMap.java:86`: `new HashMap<>(struct.getMap(fieldName))`). So rerouting Structs into the JSON writer would still lose those records until #820 is merged. This forces "sync before R-01" (already the ordering constraint) and justifies one null-Map case in the R-01 test matrix.
-8. **There is a pre-existing upstream asymmetry in nested null containers.** `doWriteColValue`'s `ARRAY` branch writes a marker only `if (defaultsSupport)` (Writer:641-645) and #820's `MAP` branch does the same. At the top level `doWriteCol` supplies the missing byte (Writer:965-966, 980-982), so top level is consistent. For a null `Array`/`Map` element nested inside another container, nothing supplies it when `defaultsSupport == false`. WR-02 has to handle this, not only scalar slots.
+| ID | Follow-up | Category | Complexity | Hard dependency |
+|----|-----------|----------|------------|-----------------|
+| F1a | 999.1 `Nullable(Enum8/Enum16)` keeps `Nullable` | Table stakes | LOW-MED (one-line root cause, wide test/doc fan-out) | none; gates F7 IN-01..05 |
+| F1b | 999.1 `Nullable(Tuple(...))` keeps `Nullable` | Table stakes (milestone goal) with a fallback | HIGH | F1a first; must not touch byte-identical `Table.java` |
+| F2 | 13-REVIEW WR-01 empty-CDC skip on `bypassRowBinary=true` JSON route | Table stakes | LOW | none |
+| F3 | 13-REVIEW WR-03 `doWriteCol` names the column | Table stakes | LOW | none; F4 shares the null-message class |
+| F4 | 13-REVIEW WR-04 null check before `getMessage().contains` | Table stakes | LOW | none |
+| F5 | 14-REVIEW WR-01 response-leg LZ4 assertion | Table stakes (test debt) | LOW-MED | none |
+| F6 | T-13-19 stop logging the raw DateTime string | Table stakes (security hygiene) | LOW | none; its log-capture helper is reusable by F7 IN-04 |
+| F7 | 15-02 review IN-01..IN-10 | Mixed: fix 5, close-with-reason up to 5 | LOW each, MED as a bundle | F1 decides IN-01..05 |
+| F8a | Early publication of `505e4981` | Table stakes (first phase) | LOW, but approval-gated | none; must precede all code |
+| F8b | `v1.7.0_gg2` release notes / rollout note | Table stakes | LOW-MED | F1..F6 behaviour final |
 
 ## Feature Landscape
 
-### Table Stakes (must ship for `v1.7.0_gg1` to be publishable)
+### Table Stakes (the milestone is incomplete without these)
 
-| # | Feature | Why expected | Complexity | Dependencies |
-|---|---------|--------------|------------|--------------|
-| T1 | Mechanical merge of upstream `v1.7.0` (ref `v1.7.0` = `379b8d01`; never bare `upstream/main`) in the `v1.6.0_gg1-sync` shape | Whole milestone premise. Collision files: Writer, `ClickHouseHelperClient`, `ClickHouseSinkConfig`, `ClickHouseTestHelpers` (+1 line), `build.gradle.kts`, `libs.versions.toml`, CHANGELOG, VERSION | MEDIUM | Must land first: v1.7.0 rewrites the lines that D-17, WR-01/02, P9-IN-01 and R-01 touch |
-| T2 | Retire D-17; take upstream's `setCompressionMethod` implementation | See "D-17 retirement" below | MEDIUM | T1 |
-| T3 | R-01 fixed by routing | See "R-01 routing" below. Only silent-data-loss item | MEDIUM | T1 (#820 `StructToJsonMap` fix), T2 not required |
-| T4 | WR-01 + WR-02 writer null-correctness, reconciled with #820 | See "Null semantics" below | MEDIUM-HIGH | T1 |
-| T5 | Metadata/config fixes: P3-WR-01, P3-WR-03 (narrowed), `extractColumn` swap, `USERNAME` default, P9-IN-01 | See follow-up table | LOW each | T1 for P9-IN-01 (adjacent hunk); others independent |
-| T6 | Test debt: WR-03, `JsonColumnTest` read-back, P4-WR-01, `ClickHouseBase.tearDown`, IN-01, P4-IN-01 | Core Value: every fork behaviour pinned by a test that actually asserts it | LOW-MEDIUM | T4 for nothing; independent |
-| T7 | CI: one `tests.yaml` run per published SHA; fork count read or recorded unmeasured | CI-06 had to filter `conclusion != cancelled` last time | LOW | None |
-| T8 | Dependency bumps already user-approved: jackson 2.22.3, okhttp 5.5.0, org.json 20260814, mockito 5.24.0; lz4-java 1.10.4 arrives with the merge | `AGENTS.md` forbids unapproved bumps; this list is the approval. Nothing else is bumped | LOW | T1 (catalog file). Jackson bump sits under the JSON writer, re-run R-01 matrix after it |
-| T9 | Publication: `VERSION=v1.7.0_gg1`, CHANGELOG, push, green CI on the published SHA, publish post-`c61d90ce` `.planning` history | Definition of done | LOW-MEDIUM | All |
-| T10 | Operator rollout checklist | Three operator-visible changes (MBean version segment, compression, R-01) | LOW | T2, T3 |
-| T11 | `docs/FORK-DELTA.md` brought to the new tree, each row re-grepped | The next syncer's only map; seven behaviours vanished silently last time | MEDIUM | All code items |
+---
 
-### R-01 routing: exact scope and observable output (Table stakes T3)
+#### F1a. 999.1, Enum: `Nullable(Enum8|Enum16)` keeps its nullability
 
-**Mechanism today.** `doInsert` -> `getTable` returns a synthetic, column-less `Table` under `shouldSkipTableMetadata()` (Writer:1620-1623: `new Table(database, mappedName, false, List.of(), 0)`). `doInsertBatch` sends `SCHEMA` and `DEBEZIUM_CDC` records to `doInsertRawBinary` unless `csc.isBypassRowBinary()` (Writer:235-241). `writeRecordsRowBinary` iterates `table.getRootColumnsList()` (Writer:1194), which is empty, so each record serialises to zero bytes. `validateDataSchema` is vacuous for the same reason (Writer:286). The client reports `Written Rows: [0]` and nothing throws.
+**Verified current behaviour (HIGH).** `Column.extractColumn` strips `Nullable(` and recurses with `isNull=true` (`Column.java:274`). The `Enum` branch (`Column.java:202-211`) builds the column without `.isNullable(isNull)`, so `isNullable()==false`. In `doWriteCol` (`ClickHouseWriter.java:~1030-1100`) no null-marker byte is written for the slot. ClickHouse then reads the first payload byte as the null flag. Replayed against 26.9.14.10 with `clickhouse-local --input-format RowBinary --structure "e Nullable(Enum8('a'=1,'b'=2))"`:
 
-**Routing rule (the whole change).** In `doInsertBatch`, `case SCHEMA` / `case DEBEZIUM_CDC`: take the JSON branch when `csc.isBypassRowBinary() || shouldSkipTableMetadata()`. One predicate already exists and is already null-safe (Writer:1616-1618); no new config key.
+| Bytes the connector writes today | Server stores |
+|---|---|
+| `01` (value `'a'`) | `NULL` (the value byte was consumed as the null flag) |
+| `02` (value `'b'`) | `NULL` |
+| `00 02` | `'b'` (only because the code is 0, which no real value uses first) |
+| Enum16 code 1000 = `E8 03` | low byte `E8` read as null flag, the `03` byte leaks into the next column: `UNKNOWN_ELEMENT_OF_ENUM` or silent shift |
 
-| Config | Record type | Before | After |
-|--------|-------------|--------|-------|
-| `insertFormat=json` (explicit), `bypassRowBinary=false` | `SCHEMA` (Struct) | RowBinary on empty table, **0 rows, no error** | `doInsertJson` -> `JSONEachRow`, rows land |
-| same | `DEBEZIUM_CDC` (only if `debeziumCDCEnabled=true`, which the fork does not use) | same loss | same reroute, for consistency |
-| `insertFormat=json`, `bypassRowBinary=true` | `SCHEMA` | JSON (already) | unchanged; **no test pins this combination in metadata-free mode today** (FORK-DELTA.md:120) |
-| `insertFormat=json` | `SCHEMA_LESS` (Map) | JSON | unchanged; this is the operator-confirmed production route (MERGE-CHECKLIST Fact 14, fact 2) |
-| `insertFormat=json` | `STRING_SCHEMA` | `doInsertString`, raw string as `JSONEachRow` (Writer:1424-1434) | unchanged |
-| `insertFormat` unset, `none`, `csv`, `tsv` | any | unchanged | unchanged. `jsonInsertFormatExplicit` is false even though `InsertFormats` resolves to `JSON` through the `"node"` default typo (ClickHouseSinkConfig.java:262-278), so the bypass never widens |
-| any, `auto.evolve=true` + explicit json | any | warn and skip evolve (Writer:222-226) | unchanged |
+So the damage is silent NULLs for Enum8 and stream corruption for Enum16. A null Enum8 entry in `Array`/`Map` slots currently throws `DataException` instead (13-REVIEW WR-05, ledger L-13), which makes legal schemas fail.
 
-Only the first two rows change behaviour. Per the operator facts, no known production pipeline is in them, so the routing is a no-op for the deployment that motivated the fork and a fix for everyone else.
+**Expected behaviour after the fix (testable acceptance criteria).**
+1. `Column.extractColumn("c", "Nullable(Enum8('a' = 1, 'b' = 2))", ...)` returns `Type.Enum8` with `isNullable()==true`; same for `Enum16`; a plain `Enum8(...)` stays `isNullable()==false`. This is a pure unit test, Docker-free (`ColumnTest` already has Enum cases at `ColumnTest.java:176`).
+2. `Array(Nullable(Enum8))` element column and the `Map(K, Nullable(Enum8))` value column report `isNullable()==true` (same one-line cause; the Map value arrives through `Table.updateParent` MAP case but is built by the same `extractColumn`).
+3. Wire format, top level: present value is `00 <code>` (Enum16: `00 <2 bytes>`), null is a single `01` with no payload. Under `RowBinaryWithDefaults` the leading default-flag byte precedes it exactly as for other nullable scalars (the existing `doWriteCol` defaults branch already writes it once `isNullable()` is true).
+4. Live round trip with typed read-back, in the style of `NestedNullRowBinaryLiveTest`: `Nullable(Enum8)` values `'a'`, `'b'`, null; `Nullable(Enum16)` including a code >= 256 (the case that corrupts today); `Array(Nullable(Enum8))` `['a', NULL]`; `Map(String, Nullable(Enum8))` `{a:'a', b:NULL}` reads back `{'a':'a','b':NULL}` (today it reads `{'a':NULL,'b':NULL}`). Next column in the same row must be correct (proves no shift).
+5. Unchanged guards: a null element in `Array(Enum8)` (non-nullable) still throws the nested-null `DataException` (L-10). A `DEFAULT`-carrying `Nullable(Enum8)` column behaves like other nullable-with-default scalars.
+6. `LowCardinality(Nullable(Enum8))` is **not a case to support**: ClickHouse rejects it on `latest` (`ILLEGAL_TYPE_OF_ARGUMENT: DataTypeLowCardinality is supported only for numbers, strings, Date or DateTime`, probed, and `allow_suspicious_low_cardinality_types=1` does not change it). Do not write a requirement or test for it.
+7. The metadata-free and `bypassRowBinary=true` JSON routes are untouched (no DESCRIBE; the JSON route lets the server parse `null`).
 
-**How Struct -> JSON works (answer to "via StructToJsonMap").** It does not use `StructToJsonMap`. `writeRecordsJson` reads the `Struct` directly: `for (Field field : struct.schema().fields()) data.put(field.name(), struct.get(field))` (Writer:1277-1283, comment "Doesn't handle multi-level object depth"). The `DEBEZIUM_CDC` branch reads `record.getJsonMap()` (Writer:1284-1287). Nested Structs are handled by Jackson via `JacksonStructSerializer` (`DataJson.java:36-58`), which recurses field by field and writes explicit nulls. `StructToJsonMap` only builds `Record.jsonMap`, used by RowBinary and by `Tuple`; for JSON it is pure eager overhead plus the null-Map NPE in finding 7. `cleanupExtraFields` returns the payload untouched in metadata-free mode (Writer:1404).
+**Blast radius (the real cost).** The one-line change reaches every reader of `isNullable()` for Enum: `renderColumnType` (`ClickHouseWriter.java:~586`, error text now says `Nullable(Enum8)`), `Utils.logDiffBetweenNewAndOldTable` comparison (`Utils.java:295`), the nested-null guards (`:685, :714, :721`). Pin tests that encode the defect must be **flipped with a rationale comment, not deleted** (AGENTS.md: never delete or weaken tests; precedent: the D-09 re-pins in Phase 13):
+- `NestedNullableCompositeWriteTest.java:264-268` asserts the Tuple premise "extractColumn drops Tuple nullability" (F1b).
+- L-13 has no dedicated test ("follows from the loop checks pinned in L-10"), so add the Enum pin as a new positive test.
+- The L-21 WARN and its tests become partly or fully obsolete: `ClickHouseHelperClient.java:490-525` (`NULLABLE_ENUM_OR_TUPLE` regex, `warnOnceIfNullableEnumOrTuple`, calls at `:579` and `:650`), `ClickHouseHelperClientForkUnitTest#nullableEnumOrTupleTypesAreFlagged` and `#warnOnceDedupesPerColumnAndRawType`, live `ClickHouseHelperClientForkLiveTest#describeTableWarnsOnceForNullableEnumOrTupleColumns`. Enum must leave the regex (or the whole WARN goes if F1b also lands). The anchor row `static boolean hasNullableEnumOrTuple(` in `.planning/scripts/fork-anchors.txt:57` must move in the same commit as the code (FORK-DELTA "for the next syncer" rule).
 
-**What the user observes after the change.** `{"id":1,"str":"row1"}` per record, `JSONEachRow`, into the `topic2TableMap`-resolved table, with `clickhouseSettings` applied (Writer:1381-1383) and `jsonInsertColumns` applied on client V2 (Writer:1391-1394; V1 ignores it, out of matrix). Differences from RowBinary that the test matrix must pin or document:
+**Docs that must change in the same phase.** FORK-DELTA: Known costs item 1 and the WARN row (`FORK-DELTA.md:43, :124`), the `Column` row (`:44`, new patch: Enum nullability), the new patch itself recorded because it is upstream-identical code fixed in the fork (the defect exists in upstream `v1.7.0`, so an upstream PR is possible but optional). ROLLOUT-v1.7.0_gg1 item 4 and its self-check query (`ROLLOUT:30-43, :167-183`) describe the limitation as current; the gg2 note supersedes it.
 
-| Aspect | JSON-route behaviour | Confidence |
-|--------|----------------------|------------|
-| Validation | No client-side schema validation (Writer:1328-1329 comment). Type errors come from the server as a `ServerException`, not a `DataException`. Unknown fields skipped by server (already pinned: `ExplicitJsonInsertPathLiveTest.metadataFreeModeInsertsUnknownFieldWithoutThrowing`) | HIGH |
-| Top-level nulls | `OBJECT_MAPPER` is `NON_NULL` (`DataJson.java:33`), so a null top-level field is **omitted**, not sent as `null`. Nullable column without `DEFAULT` -> NULL; column with a non-NULL `DEFAULT` -> the default. Nested Struct fields are written as explicit `null` (the Jackson serializer bypasses NON_NULL) | HIGH (code), MEDIUM (server result) |
-| `Timestamp` / `Date` / `Time` logical types | `struct.get(field)` yields `java.util.Date`; the default `ObjectMapper` writes epoch **milliseconds**. Correct for `DateTime64(3)`; wrong or erroring for `DateTime` and `Date`, which read a number as seconds or days | MEDIUM: derived from Jackson/ClickHouse defaults, not observed. The R-01 matrix must observe it live |
-| `Decimal` | `BigDecimal` -> JSON number; already round-trips (TYPE-05, `JsonDynamicRoundTripTest`) | HIGH |
-| `bytes` | `byte[]` -> base64 string | HIGH (Jackson default) |
-| Null optional `Map` | omitted, column default (empty map) | HIGH after #820 |
+**Complexity: LOW-MEDIUM.** Code change is one line; the cost is the live matrix, the WARN/anchor/doc fan-out and the flipped pins.
 
-**Done looks like.**
-- `ExplicitJsonInsertPathLiveTest.explicitJsonStructRecordWithDefaultBypassRowBinarySilentlyDropsBatch` (lines 278-343) is **renamed and flipped**: 5 records, `assertEquals(5, countRows)` and typed read-back of `id`/`str`. The "R-01 PIN - NOT AN ENDORSEMENT" Javadoc is replaced, not left stale.
-- A second test pins `explicit json + bypassRowBinary=true + Struct` (the unpinned combination).
-- A mixed-type live matrix under metadata-free mode that mirrors TYPE-05 (`JsonDynamicRoundTripTest` lines 230-410, which already does it with metadata on the `bypassRowBinary=true` route): String, UInt32, Float64, Decimal, Nullable-with-null, a null optional `Map` (ties to #820), `Array`, nested Struct, and `DateTime64(3)`. The `DateTime`/`Date` outcome is **recorded as observed**, not fixed (anti-feature below).
-- `MetadataFreeJsonInsertUnitTest` gains a Docker-free assertion that `doInsertBatch` takes the JSON branch under the predicate (the existing class is the canary for the guards, lines 98-250).
-- FORK-DELTA.md: Known costs item 1 (lines 114-120) is deleted; the metadata-free row (line 33) is amended; CHANGELOG states the behaviour change.
+---
 
-### D-17 retirement (Table stakes T2): expected end state
+#### F1b. 999.1, Tuple: `Nullable(Tuple(...))` keeps its nullability
 
-| Aspect | Fork D-17 (HEAD) | After taking upstream #841 |
-|--------|------------------|----------------------------|
-| V2 | `.serverSetting(lz4)` unconditional, before the jdbc-properties loop (`ClickHouseHelperClient.java:185-187`) | Same, but guarded by `setCompressionMethod`; plus `.compressServerResponse(false)` |
-| V1 | `CUSTOM_SETTINGS="network_compression_method=lz4"` unconditional (`:114-116`) | Same, guarded; plus `COMPRESS=false` and V1 node option `network_compression_method=lz4` |
-| Config | none | `setCompressionMethod`, default `true`, alias `set_compression_method` (`v1.7.0` `ClickHouseSinkConfig`) |
-| Escape hatch | operator's `jdbcConnectionProperties` value wins on V2 | same, plus `setCompressionMethod=false` |
-| `KeeperStateProvider` | not passed | `.setCompressionMethod(csc.isSetCompressionMethod())` |
-| Constants | package-private `NETWORK_COMPRESSION_METHOD_SETTING`/`_LZ4` (`:109-110`) | public `NETWORK_COMPRESSION_METHOD`, `LZ4` |
+**Verified current behaviour (HIGH).**
+- `Nullable(Tuple(...))` is **legal on `latest`**: `enable_nullable_tuple_type = 1`, tier Production (probed). Older servers needed an experimental setting, which is irrelevant to a `latest`-only suite but means the marker path is reachable only when the server accepts the type.
+- The Tuple branch (`Column.java:232-236`) ignores `isNull`. So the tuple is written without its marker (`ClickHouseWriter.java` TUPLE case `:731-770`).
+- **Why this is harder than Enum (the key finding).** `DESCRIBE ... describe_include_subcolumns=1` for `t Nullable(Tuple(a Int32, b String))` returns sub-columns `t.a Nullable(Int32)` and `t.b Nullable(String)` even though the elements are not nullable inside the tuple. The connector builds tuple fields from those sub-column rows (`Table.java: parent.getTupleFields().add(child)`), so every child reports `isNullable()==true` and writes its own marker byte. The wire format for `Nullable(Tuple(a Int32, b String))` is one marker, then the elements raw (probed bytes: value `(7,'xy')` = `00 07000000 02 7879`; NULL = `01`). Writing a per-child marker yields an extra byte per element: single-field tuples work by coincidence (the lone child marker doubles as the tuple flag, L-11), multi-field ones fail with `ATTEMPT_TO_READ_AFTER_EOF`.
+- A genuinely nullable element is wire-distinct: `Nullable(Tuple(a Nullable(Int32)))` for `(7)` is `00 00 07000000`, for `(NULL)` is `00 01`. DESCRIBE emits an extra `t.a.null` row only in that case, and `shouldSkipDescribeRow` currently drops `.null` rows, so the sub-column list alone cannot distinguish the two shapes.
 
-**Done looks like.** `ClickHouseHelperClient.java` is upstream's for these lines, with the fork comment block at `:106-110` deleted. `NetworkCompressionPinUnitTest` keeps passing: it asserts configuration values through `getClient().getConfiguration()` and `getDefaultClientOptions()`, not the private constant names, so it needs no edit and is retained as the fork's canary. `NetworkCompressionPinLiveTest` is **retained and extended**: add a `setCompressionMethod=false` case against `latest`. If it passes (likely, because `compress=false`), the Javadoc rationale (lines 20-25) must be rewritten, because D-17's ZSTD story is now only a second line of defence. If it fails, that is a rollout fact for the checklist. FORK-DELTA.md: the `network_compression_method` row (line 36) and the "eighth behaviour" paragraph (line 167) are replaced by a pointer to upstream's flag. The `at.yawk.lz4` capability resolution (FORK-DELTA.md:49) now duplicates upstream's identical block in `v1.7.0` `build.gradle.kts`; take upstream's, leaving five fork build additions, not six. The `0.9.6` row (line 51) shrinks to the Connect API pin.
+**Expected behaviour after the fix.**
+1. A DESCRIBE-derived `Nullable(Tuple(...))` column reports `isNullable()==true` (unit test via `Column.extractColumn`).
+2. The writer emits exactly one marker for the tuple and, for each element, a marker **only if the element is declared `Nullable` inside the tuple type**. Fixture matrix (live, typed read-back): `Nullable(Tuple(a Int32, b String))` with a value and with null; `Array(Nullable(Tuple(a Int32, b String)))` `[(1,'x'), NULL]`; the single-field `Array(Nullable(Tuple(a Int32)))` case that "worked by coincidence" must still read `[(5),NULL]`; `Nullable(Tuple(a Nullable(Int32), b String))` with `(NULL,'x')`.
+3. Unchanged: non-nullable `Tuple` slots still throw the nested-null `DataException` for a null (L-11 first half, L-10).
 
-### Null semantics: #820 vs WR-01 and WR-02 (Table stakes T4)
+**Design constraint (HIGH, read from the repo).** `Table.java` is listed as "Adopted wholesale, byte-identical to upstream v1.7.0" in FORK-DELTA and checked by `verify-merge-invariants.sh`. Fix in `Column.extractColumn` (fork-owned, already carries Dynamic and the Array-recursion order) and the writer TUPLE case, not in `Table.updateParent`. Concretely: parse the element list of the raw tuple type string in the Tuple branch (`splitUnlessInBrackets` already exists at `Column.java`, but element names can be backticked, unnamed (`Tuple(Int32, String)`), or contain parentheses), store per-element declared nullability on the tuple `Column`, and have the TUPLE writer case consult it instead of the child's over-reporting `isNullable()`.
 
-**What #820 changes** (`git diff v1.6.0 v1.7.0`):
-- `StructToJsonMap` MAP case: a null optional Map becomes `new Data(schema, null)` instead of an NPE.
-- Writer `case MAP`: `mapTmp == null` -> if `defaultsSupport`, write varint `0`; otherwise nothing.
-- `doWriteCol`: the non-nullable null rule now treats `ARRAY || MAP` alike, writing a non-null marker (both branches).
-- `cleanupExtraFields`: a null, non-nullable `MAP` column becomes `Collections.emptyMap()` on the JSON route.
+**Fallback if the planner judges the parse too risky (explicit, not hidden).** Ship F1a, keep the WARN narrowed to `Nullable(Tuple(`, and record Tuple in FORK-DELTA Known costs with the probe evidence above. The milestone goal names Tuple, so this fallback must be a conscious recorded decision, not a silent drop. Recommended ordering: F1a plan first (low risk, ships alone), F1b as a second plan with its own live matrix and its own `Done when`.
 
-Semantics: **a null value for a non-nullable top-level `Map` column is an empty map.** Lenient by design, same as `ARRAY`. Upstream tests `nullMapTypeTest`, `nullMapTypeJsonInsertTest`, `nullMapTypesTest` pin it.
+**Complexity: HIGH.** Type-string parsing, nested containers (`Map(K, Nullable(Tuple))`, `Array(Array(Nullable(Tuple)))`), RowBinary byte layout, and the exactly-once rule that the same batch must serialize byte-identically on retry (the change is deterministic per column metadata, so the invariant holds, but state it as an acceptance criterion: two serializations of one batch are byte-equal).
 
-**Verdict on overlap.**
+**Operator-visible value change for both F1a and F1b (goes in F8b).** (a) Previously silently stored NULLs or shifted bytes become correct values. (b) Batches that failed with `DataException` on a null entry in `Array/Map(Nullable(Enum|Tuple))` now succeed and store NULL. (c) Rows already written wrongly are **not** repaired. (d) The startup WARN text/frequency changes (log-based alerts).
 
-| Item | Subsumed by #820? | Relationship |
-|------|-------------------|--------------|
-| WR-01 (null **entry** inside `Map(K, Nullable(V))`) | **No.** #820 handles a null whole map only | Code reading says the path is correct: the MAP loop skips the non-null marker when `mapValue == null` (Writer:629-631) and `doWritePrimitive` writes `0x01` for null (Writer:800-803), which is the Nullable null marker. It has simply never been run. Needs a live read-back test |
-| WR-02 (null in a **non-nullable** element slot) | **No.** #820 is the lenient top-level case | WR-02 must carve out #820's top-level leniency, not contradict it |
-| Fork `MAP`/`TUPLE` null guards | Collide textually with #820 | See finding 3 |
-| P9-IN-01 | Adjacent hunk only | `cleanupExtraFields` body changes upstream, guard line changes in the fork; expect a clean merge, verify |
+---
 
-**"Fail loudly" consistent with `doWriteCol()`.** The existing contract at the top level is: null in a non-nullable column -> coerce for `ARRAY` (and now `MAP`) and `VARIANT` (discriminator 255), otherwise `RuntimeException("An attempt to write null into not nullable column '%s'")` (Writer:965-973, 980-988). WR-02 applies the same decision table to **element and value slots** of `ARRAY` and `MAP` (Writer:626-636, 648-657):
+#### F2. 13-REVIEW WR-01: empty-CDC skip on the `bypassRowBinary=true` JSON route
 
-| Element/value slot type | Slot nullable | Null value | Behaviour |
-|-------------------------|---------------|-----------|-----------|
-| scalar (String, Int, Date, Decimal, FixedString, UUID, Enum) | yes | null | write Nullable null marker (today) |
-| scalar | **no** | null | **throw**, same message shape, naming the column. Today `doWritePrimitive` writes `0x01`, desyncing the stream |
-| `ARRAY`, `MAP` | no (cannot be Nullable) | null | coerce to empty container, **always** emitting the size varint regardless of `defaultsSupport` when nested (finding 8). At top level keep the current marker arithmetic |
-| `VARIANT` | n/a | null | discriminator 255 (today) |
-| `TUPLE` | no (cannot be Nullable) | null | **throw** (replaces the fork's `writeNull` guard) |
+**Verified current behaviour (HIGH, code read).** `DebeziumRecordConvertor.doConvert` returns an empty `jsonMap` for `op=t` and for a null `before`/`after` struct (`DebeziumRecordConvertor.java:77-97`). `doInsertBatch` (`ClickHouseWriter.java:232-242`) sends `SCHEMA`/`DEBEZIUM_CDC` to `doInsertJson` when `isBypassRowBinary() || shouldSkipTableMetadata()`. In `writeRecordsJson` (`:1351-1405`) the empty-map `continue` exists only inside the `metadataFree && DEBEZIUM_CDC` branch (`:1365-1376`); the `else` branch's `case DEBEZIUM_CDC` (`:1387`) builds an empty `data` map, `cleanupExtraFields` returns `{}`, and the writer emits `{}`: an all-defaults row (id 0, `_version` 0, `is_deleted` 0).
 
-Recommended exception: `DataException` with `doWriteCol`'s wording. It is a `RuntimeException` subclass, so `assertThrows(RuntimeException.class, ...)` style assertions still hold, and `Utils.handleException` rethrows it as-is when tolerance is off (`Utils.java:106-108`) and it is DLQ-able when tolerance is on. Do not rewrite `doWriteCol`'s own `RuntimeException`; changing the top-level exception type is a behaviour change nobody asked for.
+**Population.** `DEBEZIUM_CDC` records exist only when `debeziumCDCEnabled=true` (`Record.java:61`), i.e. upstream's convertor, which the fork "deliberately did not adopt" (FORK-DELTA item 9). The affected pipeline is `debeziumCDCEnabled=true` + `bypassRowBinary=true` with `insertFormat` unset. Expect low production exposure; this is a consistency fix.
 
-**Done looks like.**
-- Byte-level Docker-free tests (a `ByteArrayOutputStream` through `doWriteColValue`) for: null element in `Array(String)` throws; null value in `Map(String,String)` throws; null element in `Array(Nullable(String))` writes `0x01`; null `Array(Map(...))` element writes exactly one `0x00` in both `defaultsSupport` modes; null `Tuple` element throws.
-- Live read-back: `Map(String, Nullable(String))` with `{"a": null, "b": "x"}` returns `a -> NULL`, `b -> x` (closes WR-01 with typed read-back, matching Core Value rule "never `countRows`").
-- Live: a top-level null optional `Map` still lands as an empty map on RowBinary, JSON (`bypassRowBinary=true`) and metadata-free routes, i.e. #820 is not weakened.
-- A stream-desync regression guard: a record after the failing one is not corrupted (the throw happens before any partial write is flushed, or the batch is rejected whole).
+**Expected behaviour.**
+1. A `DEBEZIUM_CDC` record whose `jsonMap` is null or empty writes **nothing** on every JSON route, explicit or bypass, with the same DEBUG line (topic, partition, offset only; no values).
+2. Recommended shape: hoist one guard ahead of the three-way `if` in `writeRecordsJson` (what 13-REVIEW WR-01 proposed) so both branches share one predicate. Do not adopt the wider IN-04 refactor (`serializeJsonRow`): it adds upstream-rebase churn for no behaviour change, and that is why it was deferred.
+3. Tests: mirror `ExplicitJsonInsertPathLiveTest#metadataFreeRouteLandsCdcRecordsAndSkipsEmptyOnes` (`:378-441`) with `BYPASS_ROW_BINARY=true` and `INSERT_FORMAT` unset: envelopes `c`, `t`, `u`-with-null-after, `d` yield exactly 2 rows. Add (i) a batch consisting only of empty CDC records (the metadata-free route sends an empty body that the server accepts as a zero-row insert per L-06; prove the same for the bypass route on V2), and (ii) a Docker-free routing/serialization test beside `MetadataFreeJsonInsertUnitTest`. Mutation-check as Phase 13 did.
+4. Exactly-once: skipping inside serialization does not change batch composition or offset ranges, and is deterministic on retry, so the `BEFORE`/`AFTER` invariant holds. State this in the plan.
 
-### Remaining follow-ups: expected behaviour and testable acceptance (Table stakes T5-T7)
+**Operator-visible behaviour change (F8b).** Truncate and null-struct events no longer insert a phantom all-defaults row on this route. Pipelines that already stored such rows (a `ReplacingMergeTree` row with key 0) keep them; the note should give a find query, not an automatic cleanup.
 
-| Follow-up | Expected behaviour | Acceptance (testable) | Complexity |
-|-----------|--------------------|-----------------------|------------|
-| **P3-WR-01** `shouldSkipDescribeRow` at any depth (`ClickHouseHelperClient.java:461-476`) | Walk every dot-boundary ancestor of the row name, not only `lastIndexOf('.')`; skip when any ancestor present in `columnsSoFar` is `JSON` or `DYNAMIC`. Column names may contain dots, so test every prefix, not just the first segment. `Map`/`Tuple` ancestors alone still do not skip (Table's parent routing needs them) | Docker-free unit in `ClickHouseHelperClientForkUnitTest`: `j.a.b` with `{j: JSON}` -> skip; `j.a.b.c` -> skip; `t.x.y` with `{t: TUPLE}` -> no skip; `t.j.a.b` with `{t: TUPLE, t.j: JSON}` -> skip. Live: DESCRIBE a table with a typed JSON path if `latest` emits one | LOW |
-| **P3-WR-03** fail-fast message (narrowed: `INT256`/`UINT256` only) | `validateDataSchema` throws the same `DataException` as `DYNAMIC`/`UNKNOWN` (Writer:331-336) for `INT256`/`UINT256`, via `buildRowBinaryUnsupportedTypeMessage` (Writer:543-548). **Do not** include `INT128`/`UINT128` | `RowBinaryUnsupportedTypeGateTest` gains `INT256` and `UINT256` cases asserting the message names the column, type and the two escape hatches; a negative case proves `INT128` is *not* rejected (existing coverage at `ClickHouseSinkTaskWithSchemaTest:1880`). Implementing 256-bit serialization is out of scope | LOW |
-| **WR-03** `HeaderToValue` collision contract | Pin, do not change: schema path with `fields` naming a pre-existing non-STRING field throws `DataException` (wrapped "Failed to transform record", `HeaderToValue.java:94-97`) **only when the header is present**; header absent -> record passes through; pre-existing STRING field -> header value overwrites; schemaless path -> overwritten, no exception | Four tests in `HeaderToValueTest` mirroring `HeadersToValueTest` HDRS-05 (lines 377-415) | LOW |
-| **P4-WR-01** `ClickHouseSinkTaskJsonInsertFormatTest` try/finally | Both tests (lines 78-130) stop the task in `finally`, as every sibling does | After a forced `put()` failure no MBean remains (the `@AfterEach` sweep logs nothing at WARN) | LOW |
-| **P4-IN-01** `AsyncInsertLiveTest` Javadoc | State plainly that bare `async_insert=1` is **not** pinned (the class pins `async_insert=1` + `wait_for_async_insert=1` only) | Comment-only; reviewer read | LOW |
-| **IN-01** `ClickHouseVersionDefaultUnitTest` Javadoc | Replace "CI pins `CLICKHOUSE_VERSION: latest`" (line 12) with the D-09 fact: CI sets no version env var, so the code default is the single source of truth | Comment-only; the assertion itself is untouched | LOW |
-| **`Column.extractColumn` swap** (`Column.java:213`) | Pass `(…, false, hasDefaultValue, isSubColumn, arrayDepth + 1)` in the right order | `ColumnTest` Docker-free: `Array(String)` with `hasDefault=true,isSub=false` yields an array child with `hasDefault()==true`, `isSubColumn()==false`; and the inverse. Array children are never fed to `Table.addColumn` (`Table.java:85` reads root columns only), so no behaviour moves; run `TableTest` + the full `ColumnTest` to confirm | LOW |
-| **`USERNAME` ConfigDef default** (`ClickHouseSinkConfig.java:433-435`) | `usernameDefault` (`"default"`), not `passwordDefault` | `ClickHouseSinkConfig.CONFIG.configKeys().get("username").defaultValue` equals `"default"` (Docker-free). Runtime unchanged: `username = props.getOrDefault(USERNAME, usernameDefault)` (`:218`) and tasks receive raw props, not parsed defaults | LOW |
-| **P9-IN-01** guard order (`Writer:1404`) | `shouldSkipTableMetadata() \|\| csc.isBypassFieldCleanup()`; correct the `shouldSkipTableMetadata()` Javadoc so it no longer implies call sites are null-safe (finding 4) | Existing `MetadataFreeJsonInsertUnitTest` JSON-03 test (line 98) stays green; behaviour identical for non-null `csc` | LOW |
-| **JsonColumnTest read-back** | The five enabled configs read back `json_data.nested_str`, `json_data.nested_int`, and `nested_bytes` per config (base64 string when stringified, otherwise the observed shape) with aggregate queries, e.g. `countIf(json_data.nested_str = concat('test', toString(id))) = RECORDS` | Replace the `assertEquals(RECORDS, countRows)` at line 82 with the aggregate assertions; the disabled `compareAllConfigurations` stays disabled | LOW-MEDIUM (bytes shape per config must be observed) |
-| **`ClickHouseBase.tearDown` drop failure** (`ClickHouseBase.java:142-146`) | Retry the drop (small bounded retry), then **fail the class** with an attributable message ("database X not dropped; later classes in this fork lose isolation") instead of logging and carrying on | A Docker-free test over an extracted drop helper (or overridable hook) proving: success on retry passes, exhaustion throws with the database name. The non-shared path (`ch.stop()`) is untouched | LOW-MEDIUM |
-| **CI concurrency** (`tests.yaml:11-13`) | Today the group is `github.sha`, so a tag at the branch SHA cancels the branch run. Restrict the trigger so a tag push starts no run (`on: push: branches: ['**']` or `tags-ignore`) **and** key the group on `github.ref`. Keying on `ref` alone would yield two completed runs per SHA, which is still not "exactly one" | Push branch and tag at one SHA; the Actions API shows exactly one run, none `cancelled` | LOW |
-| **CI fork count** (`build.gradle.kts:192-194`: `availableProcessors()/2`) | Record the measured value, not the inferred one. Cheapest durable fix: write `nproc` and the resolved `maxParallelForks` to `$GITHUB_STEP_SUMMARY` so every run self-documents; otherwise record "unmeasured" in FORK-DELTA/verification. Public `ubuntu-latest` is believed to be 4 vCPU (so 2 forks), MEDIUM | Either a summary line in a green run, or an explicit "unmeasured" sentence with the inference stated | LOW |
+**Adjacent gap, explicitly not in scope (record, do not fix).** The default RowBinary route with `debeziumCDCEnabled=true` has no skip either: `writeRecordsRowBinary` (`:1292-1308`) runs each table column with `fieldExists=false`, so it writes defaults where every column has a default or is nullable, and otherwise fails the batch through the message-less exception of F3. Fixing it touches a hot path of upstream code; list it in FORK-DELTA Known costs item 2 as the residual.
 
-### Upstream v1.7.0 features for fork users
+**Complexity: LOW.**
 
-| Upstream change | Fork users get it? | Table stakes to carry | Not adopted / no action |
-|-----------------|--------------------|-----------------------|--------------------------|
-| #841 `setCompressionMethod` (and `compress=false`) | Yes, default on | Carry; document flag, alias and the response-compression side effect in CHANGELOG and rollout checklist | Do not default it to `false` in the fork |
-| #820 null optional Map -> empty map | Yes | Carry; extend with WR-01/02 on top | Do not make top-level null Map throw |
-| `KeeperStateProvider` counts streamed rows (`response.stream().collect`, `v1.7.0` diff) | Yes, only affects `exactlyOnce=true` | Take byte-identical to `v1.7.0` (no fork edits exist in this file). It replaces `getSummary().getResultRows()` by materialising the stream, so memory cost is one state row. The embedded Keeper in `ClickHouseBase` (lines 117-121) lets upstream's exactly-once tests run on standalone, so the suite does exercise it; confirm those tests are in the executed set, since 11 `exactlyOnceStateMismatchTest` cases skip standalone | Do not touch. AGENTS.md rates this file consistency-critical |
-| #801 buffered-sink duplicate | Yes, only if `bufferCount > 0` (the fork does not use buffering) | Carry silently | Buffering stays un-adopted (FORK-DELTA §5) |
-| #800 Avro record unions as JSON | Fixtures and an integration test only (finding 1) | Nothing in `src/main` to carry | Do not adopt the Avro/Debezium paths |
-| Client `0.9.5` -> `0.9.6`, `lz4-java 1.10.4`, `clickhouse-jdbc` dropped from catalog | Yes | The fork's `0.9.6` FORK OVERRIDE becomes upstream's value; `lz4-java` bump and capability resolution come with the merge | Client `0.10.0` stays out |
-| Shaded `org.lz4` in the Confluent archive | Yes, packaging only | Verify the shadow jar still builds (`shadowJar`), since the fork pins Connect API 4.1.1 and keeps its own LZ4 handling | n/a |
+---
 
-### Rollout checklist contents (Table stakes T10)
+#### F3. 13-REVIEW WR-03: `doWriteCol` "not nullable and no value" names the column
 
-The checklist is an operator-facing document, one section per change, each with "what changed", "how to check you are affected", "what to do". It must contain:
+**Verified current behaviour (HIGH).** `ClickHouseWriter.java:1093-1094`: `LOGGER.error("Column {} is not nullable and no value is provided", name); throw new RuntimeException();`. Since COLS-07 (`Column.java` Array recursion argument order) an `Array(Tuple)` record that lacks a no-default tuple field reaches it. `Processing.doInsert` wraps every failure as `new RuntimeException(queryId.toString(), e)` (`Processing.java:72, :96`), so the Connect status and DLQ stack trace show `Caused by: java.lang.RuntimeException` with no text. The column name exists only in the connector's own log.
 
-1. **JMX MBean name (D-07, repeats every release).** Names are `com.clickhouse:type=ClickHouseKafkaConnector,connector=<name>,name=SinkTask<id>,version=<VERSION>[,topic=<t>]`; `version=` is `Version.ARTIFACT_VERSION`, which becomes `v1.7.0_gg1` and **changes again on every `VERSION` bump** (MERGE-CHECKLIST Fact 11). Scrapers or dashboards keyed on `v1.6.0_gg1` or on the pre-fork `0.9.6` go blank. Fix: wildcard the `version` and `connector` attributes in the exporter pattern.
-2. **Compression.** `setCompressionMethod` defaults on and forces `network_compression_method=lz4`; **server response compression is now off regardless**. Check: no server profile or constraint forbids changing `network_compression_method` (T-11-38; a constraint violation fails every request). Escape hatch: `setCompressionMethod=false`. Check `jdbcConnectionProperties` does not set `compress`/`network_compression_method` expecting different behaviour. Expect slightly larger responses for `DESCRIBE` and state reads.
-3. **R-01 behaviour change.** Who is affected: connectors with `insertFormat=json` set explicitly **and** Struct values (Avro, Protobuf, or JSON converter with `schemas.enable=true`). Before: zero rows, no error. After: rows land, and failures are now server-side parse errors. Actions: (a) identify affected connectors by config; (b) compare `count()` with the committed Kafka offsets to measure the gap; (c) decide on an offset reset to backfill, remembering that replays duplicate under `exactlyOnce=false`; (d) review the JSON-route caveats (null fields omitted so non-NULL `DEFAULT`s apply; Timestamp logical types as epoch millis, so use `DateTime64(3)`; bytes as base64). Connectors that produce schemaless `Map` values are unaffected.
-4. **Null `Map` semantics (#820).** A null optional `Map` now lands as `{}` instead of failing the task with an NPE. Affects downstream queries that distinguished "failed" from "empty".
-5. **WR-02 strictness.** A null in a non-nullable `Array`/`Map` element now raises a `DataException` (DLQ-able under `errors.tolerance=all`) instead of silently corrupting the insert. Tell operators what the message looks like.
-6. **Config UI default for `username`** now reads `default` (cosmetic).
-7. **Rollback.** Name the rollback tag for this sync (pattern: `pre-v1.7.0-sync`) and the `git revert -m 1` route for the single `--no-ff` merge.
-8. **Publication facts.** `custom_build` is protected, so the post-`c61d90ce` `.planning` history goes out by the route the branch rules allow; tag pushes must not start a second CI run (see T7).
+**Expected behaviour.**
+1. The branch throws `org.apache.kafka.connect.errors.DataException` (already imported and used throughout this file) with a message built from `Column` metadata only: column name (for a tuple child this is the dotted path such as `at.a`, which already names the field) and rendered type via the existing `renderColumnType` (`:~580-590`). Suggested text in the style of the sibling nested-null message: `column '<name>' (<type>): no value provided for a non-nullable column without a default`. It must not contain record data.
+2. Keep the existing ERROR log line (ROLLOUT-v1.7.0_gg1 L-17 paragraph tells operators to grep it); the log line text can stay identical, only the thrown exception changes.
+3. Retry/DLQ classification is unchanged: `Utils.handleException` treats `RuntimeException` and `DataException` both as non-retriable once wrapped by `Processing`. The gain is visibility of the cause, not a routing change. State that precisely in the requirement to avoid over-promising "visible in DLQ headers" (the exception-message header carries the wrapper's queryId text; the cause appears in the stack-trace header and the task status trace). MEDIUM confidence on DLQ header specifics; the writer-level type and message are what the test pins.
+4. Test: Docker-free, drive `doWriteCol` (protected) with `fieldExists=false` for a non-nullable, no-default column and for an `Array(Tuple)` child built as in `ColumnArrayRecursionTest`; `assertThrows(DataException.class)`, assert the message names the column and type and contains no sentinel value. No existing test pins the message-less form (`ColumnArrayRecursionTest` has no `assertThrows`).
+5. Top-level null into a non-nullable column (`:1056, :1067`, upstream's `RuntimeException("An attempt to write null...")`) is a different branch and stays as is (D-11).
 
-### Differentiators (valuable, not required)
+**Docs:** remove FORK-DELTA Known costs item 3 (`:128`) and the "without a message" clause in ROLLOUT L-17 (`:209`).
 
-| Feature | Value | Complexity | Notes |
-|---------|-------|------------|-------|
-| One INFO log at start when metadata-free mode routes schema'd records to JSON | Makes the R-01 behaviour change visible in the operator's own logs on first run after upgrade | LOW | Mirror the existing start-up log at Writer:126 |
-| `NetworkCompressionPinLiveTest` case for `setCompressionMethod=false` on `latest` | Turns "is D-17's rationale still true?" into a recorded fact; informs removal of the flag's relevance | LOW | See D-17 section |
-| Upstream PRs for `USERNAME` default and `extractColumn` swap | Shrinks the fork delta back by two lines; next sync is cheaper | LOW | Both bugs exist in `v1.7.0` |
-| A tiny `FORK-DELTA.md` consistency script (grep each "Where it lives" claim) | Seven behaviours vanished silently in the last sync; a mechanical check is cheaper than a human re-grep | MEDIUM | `MERGE-CHECKLIST` already has a self-testing invariant script; extend, do not invent a second tool |
-| Summary-line fork count in CI (see CI follow-up) | Removes a recurring "unmeasured" caveat permanently | LOW | Preferred over a one-off log read |
+**Complexity: LOW.**
 
-### Anti-Features (explicitly do NOT build)
+---
 
-| Anti-feature | Why requested | Why problematic | Do instead |
-|--------------|---------------|-----------------|-----------|
-| Adopt client `0.10.0` | Upstream dependabot branch exists; ZSTD might decode | A client bump is a wire-behaviour change on a fork with no production soak; explicitly out of scope in PROJECT.md | Stay on `0.9.6`; `setCompressionMethod` covers ZSTD |
-| Revisit the KEEP decision for the metadata-free JSON path | R-01 was KEEP's accepted cost; fixing it might tempt removal | Removal needs production grants or table pre-creation (Fact 14); the missing `DESCRIBE`/`SHOW` grant is unreachable by any upstream option | Route, as decided |
-| Throw (fail-fast) for Struct + explicit JSON | The earlier suggested fix | Breaks loudly any pipeline that is running; user chose routing | Route Structs to the JSON writer |
-| Convert `Timestamp`/`Date` logical types for the JSON route, or build a custom Struct-to-JSON serializer | The JSON route has date caveats | New capability on a rebase-sensitive file; widens the delta; the same caveat already exists for `bypassRowBinary=true` | Pin the observed behaviour, document `DateTime64(3)` |
-| Implement 256-bit integer serialization | P3-WR-03 mentions the types | New feature, not a bug fix | Fail-fast message only |
-| Make top-level null `Map` throw, or revert #820's leniency | "Fail loudly" read too broadly | Contradicts upstream's tests and #820's stated semantics | Throw only in non-nullable element slots |
-| Rewrite `doWriteCol`'s `RuntimeException` to `DataException` | Consistency | Changes existing error classification for everyone | Use `DataException` only on the new paths |
-| Refactor `ClickHouseWriter` null handling wholesale | WR-02 touches several branches | Writer is already the main conflict surface (±1,289 lines last sync) | Smallest hunks, one shared helper for the null decision table |
-| Adopt `DebeziumRecordConvertor`, `auto.evolve`, buffering, `retryOnSocketException` | They arrive with the merge | Not fork features; unpinned; FORK-DELTA §5 | Leave un-adopted; keep the written note |
-| Modify `KeeperStateProvider` or `Processing` | Exactly-once code arrived in the merge | Consistency-critical (AGENTS.md); fork has no edits there | Byte-identical to `v1.7.0` |
-| Default `setCompressionMethod=false` in the fork | Avoid a behaviour change | Brings back the exact ZSTD risk on 26.9+ if anything else asks for compressed responses | Keep upstream's default |
-| Bump any dependency beyond the approved list | `dependencyUpdates` plugin will list more | AGENTS.md: ask first | Approved: jackson 2.22.3, okhttp 5.5.0, org.json 20260814, mockito 5.24.0, lz4-java 1.10.4 |
-| Force `async_insert` or add a client-side `jsonInsertColumns` filter | "Hardening" | Both are recorded KEEP/behaviour-preserving decisions (ASYNC-01..03, JSONP D-06) | Leave as pinned |
-| Re-add a V1 or older-server test matrix | A new `ClickHouseHelperClient` V1 line (`COMPRESS`) tempts it | Out of scope per Constraints; V1 is only config-asserted | Docker-free assertions on V1 options |
+#### F4. 13-REVIEW WR-04: null check before `getMessage().contains(code)`
+
+**Verified current behaviour (HIGH).** `ClickHouseWriter.java:1177-1178`: the stream `filter(code -> e.getMessage().contains(code))` runs before `e.getMessage() != null`. An exception with a null message reaching the generic `catch (Exception e)` throws an NPE from the handler and replaces the real error. The branch is the deprecated V1 error-string table (`UPDATE_TABLE_EXCEPTION_STR_TO_ERROR_CODE`, `:66`), reached for any non-`ServerException`.
+
+**Reachability.** F3's `new RuntimeException()` is one null-message source, and on V1 `writeRecordsRowBinary` runs on the calling thread so it propagates unwrapped. On V2 the writer lambda's exception is wrapped by the client/`ExecutionException`, which gives a non-null message, so V2 reachability is unproven (MEDIUM). Other null-message exceptions exist (explicit `new NullPointerException()`), so the guard is justified independently of F3.
+
+**Expected behaviour.**
+1. Read the message once into a local; if null, treat as "no matching code" and fall to the `else` branch that logs and rethrows the **original** exception instance.
+2. Behaviour for a non-null message containing a known code and `retry==true` is unchanged (table-mapping refresh, single retry).
+3. Test (Docker-free): subclass or spy the writer so protected `doInsertRawBinaryV2` throws `new RuntimeException()` (null message); assert the same instance propagates, no NPE. Add the positive twin: message containing `"ClickHouseException: Code: 33"` triggers one retry. Pattern: the unit tests that already override `doInsertJson`/count calls (`MetadataFreeJsonInsertUnitTest`).
+
+**Adjacent, same bug class, NOT in scope (list, do not fix):** `Utils.handleException` IOException branch does `msg.indexOf(...)` on `rootCause.getMessage()` with no null check (`Utils.java`, byte-identical to upstream except imports). Note it in FORK-DELTA Known costs so the reviewer does not rediscover it.
+
+**Complexity: LOW.**
+
+---
+
+#### F5. 14-REVIEW WR-01: standing response-leg LZ4 assertion in `Lz4RoundTripLiveTest`
+
+**Verified current state (HIGH).** The test asserts the request leg only (`CompressedReadBufferBlocks > 0`, `Lz4RoundTripLiveTest.java:~170-173`) and then reads data back; read-back passes even if the server answers uncompressed. The response leg was proven once by an uncommitted zstd probe (`Invalid LZ4 magic byte: '-112'`, MERGE-CHECKLIST-v1.7.0 Recorded Fact 32). The `@DisplayName` and Javadoc say "both legs".
+
+**Probe result that decides the mechanism (HIGH, live on 26.9.14.10).** A SELECT of 24 MB of repetitive RowBinary over the HTTP interface, same `result_bytes` in `system.query_log` (24,000,415):
+
+| Request | `ProfileEvents['NetworkSendBytes']` | `CompressedWriteBufferBlocks` |
+|---|---|---|
+| `?compress=1&network_compression_method=lz4` | **96,434** | 0 |
+| no `compress` | **24,001,170** | 0 |
+
+So: **`CompressedWriteBufferBlocks` is the wrong counter for the response leg (it stays 0 even when compressed)**, and `Content-Encoding` is not applicable because the test client uses native compression (`compressServerResponse(true)`, `useHttpCompression(false)`). The reliable server-side signal is `NetworkSendBytes` against `result_bytes` for the SELECT's own `query_id`.
+
+**Expected behaviour.**
+1. After the existing read-back, run a large SELECT on the same LZ4 client with an explicit query id (`QuerySettings.setQueryId`), `SYSTEM FLUSH LOGS`, then read `result_bytes` and `toInt64(ProfileEvents['NetworkSendBytes'])` from `system.query_log` (`type='QueryFinish'`, exactly one row, as the request-leg assertion already does).
+2. Assert `NetworkSendBytes * 4 < result_bytes` (the 2000 rows x ~2.4 KB repeated payload compresses far better than 4x; probe ratio on similar data was ~250x). Also assert `result_bytes` is above a floor so a tiny result cannot pass vacuously.
+3. Optional hardening (differentiator): a negative control, same SELECT through a client with `compressServerResponse(false)`, asserting `NetworkSendBytes` is within a few percent of `result_bytes`. It self-validates the threshold and catches a server that stops compressing; cost is one extra query.
+4. Rename/clarify: keep "both legs" in the display name only once the assertion exists.
+
+**Rejected alternatives (anti-feature):** asserting the `Invalid LZ4 magic byte` error under `network_compression_method=zstd` (depends on client error wording and server defaults); a counting proxy (new Toxiproxy wiring for no extra signal).
+
+**Dependencies/risks.** None in `src/main`. Test-only; same colima/ClickHouse container. `latest` drift could in theory change accounting, which the negative control would expose.
+
+**Complexity: LOW-MEDIUM.**
+
+---
+
+#### F6. T-13-19: mask the raw DateTime value in upstream's two ERROR logs
+
+**Verified current behaviour (HIGH).** `ClickHouseWriter.java:461` logs `"Error parsing date time string: {}", value.getObject()` (DateTime branch) and `:515` logs `"Error parsing date time string: {}, exception: {}", value.getObject(), e.getMessage()` (DateTime64 branch). Both are unchanged from upstream `v1.7.0` and contradict AGENTS.md ("Do not log secrets or data in plaintext... records").
+
+**Two traps the requirement must name.**
+1. Masking only `value.getObject()` is **not enough at `:515`**: `e` is a `DateTimeParseException` whose message is `Text '<the raw string>' could not be parsed at index N`, so `e.getMessage()` leaks the same value. Log the exception class name (and nothing from its message), or drop it.
+2. **`util/Mask` is not the right tool and must not be reused.** It contains only `passwordMask` (`Mask.java`), which returns `"***" + middle + "***"`, i.e. it hides the ends and **shows the middle** of the string. Use no content-derived masking at all.
+
+**Expected behaviour.**
+1. Both lines log only catalog metadata: column name (`doWriteDates` already receives `columnName`, `:412`), ClickHouse type, source Kafka field type, and the exception class. Same discipline as `buildNestedNullMessage` (built from `Column` metadata only). No substring, length-derived or hashed value.
+2. The thrown `DataException` ("(Potentially) Not implemented conversion from STRING to DateTime", `:523-526`) keeps working; adding the column name to its text is an optional improvement (no test pins the string; `grep "Potentially" src/test` is empty).
+3. Test: Docker-free. Prefer extracting the message into a small package-private builder and asserting a sentinel string (`"SECRET-2026"`) is absent from the result for both the DateTime and DateTime64 branches. To prove the logger actually uses it, attach a log4j (`org.apache.log4j.AppenderSkeleton`, the test classpath logs through `slf4j-reload4j`, MEDIUM: confirm the class is on the test compile classpath) appender and assert no event contains the sentinel. This is the first log-capture test in the repo (`grep Appender src/test` finds only `log4j.properties`).
+4. Record the patch in FORK-DELTA as upstream-identical code fixed in the fork, with the two lines added to `.planning/scripts/fork-anchors.txt` so a future upstream sync that overwrites them is detected; remove FORK-DELTA Known costs item 6 (T-13-19 half).
+
+**Adjacent leaks, explicitly out of scope, list in the security note (MEDIUM, from Java semantics, not exercised):** the generic `catch (Exception e)` at `:855` logs the exception with its message, and `UUID.fromString` throws `Invalid UUID string: <value>` and `NumberFormatException` messages can embed the input. Different sites, different threat; do not widen T-13-19.
+
+**Complexity: LOW.**
+
+---
+
+#### F7. 15-02 review IN-01..IN-10: each fixed or closed with a written reason
+
+Source: `15-REVIEW.md` and `15-REVIEW-DISPOSITION.md`. IN-01..IN-06 are the code review of commits `981a89d6`/`4a91b92c` (disposition `deferred`). IN-07..IN-10 are the incremental docs review (disposition `open`; WR-01..03 were fixed by `505e4981`). The milestone rule is "fixed or closed with a written reason", so every row must end with one of the two, recorded in the disposition file.
+
+**Key structural fact:** IN-01 to IN-05 are all about the L-21 WARN (`ClickHouseHelperClient.java:490-525`, `:579`, `:650`). F1 decides their fate, so sequence F7 after F1.
+
+| ID | Finding | Recommended disposition | Complexity |
+|----|---------|------------------------|------------|
+| IN-01 | WARN fires on routes where the defect cannot occur (schemaless JSON, String, `bypassRowBinary`) | If F1 removes the WARN: **close, obsolete (removed)**. If only Enum is fixed: WARN narrows to Tuple and the imprecision remains for Tuple; **close with reason "FORK-DELTA states the route restriction"** (already stated in Known costs item 1, `FORK-DELTA.md:124`) rather than plumbing route into the helper client | LOW |
+| IN-02 | V1 describe hook only exercised under `CLIENT_VERSION=V1` | **Close**: V1 is out of the test matrix by project constraint; obsolete if the WARN is removed | none |
+| IN-03 | Warned-key set never evicts; key joined with `.`/`:` is ambiguous | If WARN removed: **close, obsolete**. Otherwise **fix cheaply** while the file is open (join with a non-printing separator or a record key) or close with "bounded by schema size, collision only suppresses one WARN" | LOW |
+| IN-04 | WARN wording is not pinned by a test | If WARN removed: **close, obsolete**. If it survives for Tuple: **fix**, F6's log-capture helper makes this a few lines | LOW (reuses F6) |
+| IN-05 | Constants sit mid-class | **Close**: style-only, adds rebase churn (same reasoning as 13 IN-03). Obsolete if WARN removed | none |
+| IN-06 | Edge pins cover only mantissa-less scientific form | **Fix**: add one `@CsvSource` row to `MetadataFreeJsonWriterTest.java:~325-336`, e.g. `io.debezium.time.NanoTimestamp, 123, 1.23E-7`; the server was already shown to accept it in the review | LOW |
+| IN-07 | Rollout item 2 recovery steps not qualified by `exactlyOnce`; closing sentence loose | **Fix** in `docs/ROLLOUT-v1.7.0_gg1.md` (`~:94-113`): "step 1 always, step 2 only with `exactlyOnce=true`"; end with the only real condition (explicit `insertFormat=json` with schema'd records) | LOW |
+| IN-08 | Item 8 omits the re-merge consequence of `git revert -m 1` | **Fix** (`ROLLOUT:~318`): add that going forward again requires reverting the revert first | LOW |
+| IN-09 | FORK-DELTA says tag "once it exists"; `grep -rc` prints per-file counts, not totals | **Fix** `FORK-DELTA.md:94` and `:154-155` (use `grep -rho ... \| wc -l`) | LOW |
+| IN-10 | Planning IDs (`R-01`, `WR-02 strictness`, `13-REVIEW WR-02`) unexplained in published CHANGELOG/ROLLOUT; item 6 grep pattern broader than its text; MBean `version=` and client-name changes absent from CHANGELOG; lz4 advisory reason missing | **Fix**: plain-language CHANGELOG entries (`CHANGELOG.md:10, :17, :34`), ledger path in `ROLLOUT:13`, drop the bare `set_compression_method` alternative at `ROLLOUT:246`, add the MBean/client-name and advisory lines | LOW-MED |
+
+Process constraints (from project memory): appended review/disposition findings must keep `### ID: title` headings or the disposition step silently drops them (6 of 13 were lost once); docs get a code review **before** the publication gate (the gg1 rollout shipped a `TRUNCATE` hazard because its first docs review came after publication). IN-07..IN-10 and every new gg2 doc must go through that review before F8b's merge.
+
+---
+
+#### F8a. Early publication of `505e4981` (first phase, before any code)
+
+**Verified state (HIGH).** `origin/custom_build` = `f328fd21` (`v1.7.0_gg1`). `sync/v1.7.0` is 20 commits ahead. The diff of the shipped surface is exactly two docs files: `git diff --stat origin/custom_build sync/v1.7.0 -- src build.gradle.kts gradle .github VERSION CHANGELOG.md docs` = `docs/FORK-DELTA.md` (1 line) and `docs/ROLLOUT-v1.7.0_gg1.md` (+18/-8). The published text still tells operators to `TRUNCATE TABLE` the shared KeeperMap state table (15-REVIEW WR-01), the wrong `version=*` regex advice (WR-03) and an unqualified `best_effort` default (WR-02).
+
+**Expected behaviour (acceptance criteria).**
+1. Before the merge, a recorded check that `git diff origin/custom_build sync/v1.7.0 -- src build.gradle.kts gradle .github VERSION` is empty (docs-only in the shipped sense; `.planning/` history is expected to ride along, as it did for gg1).
+2. Merge by non-force `--no-ff` into `custom_build`, after the **user's own** explicit approval. `custom_build` is protected (GSD base branch) and executors refuse relayed approvals, so the orchestrator performs this step inline (project memory, Phase 11).
+3. Push **one branch only**. CI triggers on branch push, not tags (CI-08); two branches at one SHA cancel each other. Do not push `.planning/.gsd-ws-arg` (untracked) or local-only milestone tags; keep `.planning/state.json` out of the commit.
+4. Exactly one `tests.yaml` run on the published SHA, `conclusion=success`, none cancelled (re-use the CI-06 locator). Expect the suite to be unchanged (no code differs), so the run is a hygiene check, not a test of new behaviour.
+5. Post-publication: the corrected `ROLLOUT-v1.7.0_gg1.md` is readable on `origin/custom_build`; update PROJECT.md's "knowingly open" paragraph (the unpublished-doc warning at `PROJECT.md:343` becomes history).
+
+**Complexity: LOW, approval-gated.** Risk is procedural (wrong branch pushed, tag pushed first, stale approval), not technical.
+
+---
+
+#### F8b. `v1.7.0_gg2` release notes and rollout note
+
+**Expected behaviour.**
+1. `VERSION` = `v1.7.0_gg2`. The `VERSION` row of `.planning/scripts/fork-anchors.txt` moves in the **same commit**, and a `clean` build is needed because the generated `Version.java` is not an input of `generateVersionFile` (FORK-DELTA "For the next syncer"). `MBeanNameUnitTest` and any exact-version assertion re-run green.
+2. `CHANGELOG.md` gets a `1.7.0_gg2` section above `1.7.0_gg1`, in plain language (see IN-10 for the identifier-opacity problem), covering: Nullable(Enum8/16) fix (and Tuple per F1b outcome), CDC-skip on `bypassRowBinary`, DataException naming the column, null-message guard, masked DateTime logs, and the CI/build items the other research files own.
+3. Rollout note: recommend a **new, short `docs/ROLLOUT-v1.7.0_gg2.md`** in the gg1 format (each item: what changed, "Am I affected?" self-check, action) rather than appending to the gg1 doc, because gg1's item 4 currently documents the limitation as open. Items: (a) 999.1 value change on `Nullable(Enum)`/`Nullable(Tuple)`: reuse the gg1 item 4 discovery query (`system.columns ... type LIKE '%Nullable(Enum%' OR type LIKE '%Nullable(Tuple%'`, `ROLLOUT:183`), state the three effects listed under F1, state that already-stored wrong rows are not repaired and give a verification query shape; (b) the `bypassRowBinary` phantom-row change with a find query for key-0 rows; (c) the MBean `version=` segment changes again, so exact `version=` matchers break (same advice as gg1 item 7, which now has the regex-correct text); (d) log-text changes for log-based alerting (WARN narrowed/removed; new DataException text; masked DateTime logs).
+4. Second `--no-ff` merge into `custom_build` with the same gate as F8a, exactly one green `tests.yaml` run on the published SHA, tag `v1.7.0_gg2` pushed **after** the branch run (or relying on CI-08, which makes tag pushes harmless).
+5. FORK-DELTA is updated as the single source of truth: the patched-lines rows for F1/F2/F3/F4/F6, the Known-costs items 1, 2, 3, 5, 6 removed or rewritten, the raw-numbers table remeasured with the four `git diff --shortstat` commands, anchor inventory updated, `verify-merge-invariants.sh` run green.
+
+**Complexity: LOW-MEDIUM** (mostly writing and review discipline; docs review before the gate).
+
+---
+
+### Differentiators (valuable, not required for the milestone to be correct)
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| F5 negative control (`compressServerResponse(false)` => `NetworkSendBytes` ~ `result_bytes`) | Self-validating threshold; catches a server that silently stops compressing | LOW | One extra query in the same test |
+| F6 column name in the "(Potentially) Not implemented conversion" `DataException` (`ClickHouseWriter.java:523-526`) | The actionable message AGENTS.md asks for; today the DataException names no column | LOW | No existing test pins the text; keep metadata-only |
+| F1 upstream PR for `Column.extractColumn` Enum/Tuple nullability | Shrinks the fork delta at the next sync; the defect exists in upstream `v1.7.0` | LOW (writing) | Only after the fix is live-proven; do not block the release on it |
+| F2 also applied to the RowBinary route | Removes the last empty-CDC inconsistency | MEDIUM | Touches the upstream hot path `writeRecordsRowBinary`; see anti-features |
+| IN-04 wording pin using F6's log-capture helper | Closes a review item for ~5 lines | LOW | Only if the WARN survives for Tuple |
+
+### Anti-Features (do not build)
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Support or test `LowCardinality(Nullable(Enum))` | Named in the research question | ClickHouse `latest` rejects it, probed, even with `allow_suspicious_low_cardinality_types=1` | One sentence in FORK-DELTA/gg2 note: not a legal column type |
+| Masking the DateTime string with `Mask.passwordMask` | "Consistent with the util Mask class" | It reveals the middle of the string; any content-derived masking still leaks | Log column name, type and exception class only |
+| Logging `e.getMessage()` of `DateTimeParseException` "masked" | Keeps the diagnostic detail | The message embeds the input verbatim | Exception class name only |
+| Per-record skip of a batch with a null in a non-nullable slot | Avoids failing the whole batch (13-REVIEW WR-05 thinking) | Changes batch composition; breaks the exactly-once identical-block invariant | Fix nullability metadata (F1) so legal slots stop throwing |
+| Fixing `Table.updateParent` for Nullable(Tuple) children | It is where the children are attached | `Table.java` is byte-identical to upstream and checked by the merge-invariant script | Carry per-element nullability on the tuple `Column`, consult it in the writer |
+| IN-04 (13) refactor `serializeJsonRow` / IN-01 (13) shared nested-null helper | DRY, readability | Diff churn against upstream in a high-risk file; deferred for that reason | Keep F2 as a hoisted guard only |
+| Fixing `Utils.handleException`'s null-`msg` IOException branch, `UUID.fromString` message leak, `convertEnumValues` returning null for unknown member | Same bug family as F3/F4/F6 | Different sites and threats; milestone scope creep; `Utils.java` is upstream-identical | Record in FORK-DELTA Known costs; one line each |
+| Asserting response compression via the `zstd` negative probe or a Toxiproxy byte counter | Avoids touching `system.query_log` | Depends on client error text / adds infrastructure | `NetworkSendBytes` vs `result_bytes` |
+| Appending IN-07..IN-10 fixes to the early-publication merge | "Publish docs once" | Early publication exists to remove a data-loss hazard fast; widening it delays it | Publish `505e4981` as is (F8a), fix IN-07..10 in the gg2 docs pass with a pre-gate docs review |
 
 ## Feature Dependencies
 
 ```
-T1 merge v1.7.0
-    ├──required by──> T2 retire D-17 (same lines as #841)
-    ├──required by──> T3 R-01 routing (needs #820 StructToJsonMap fix, finding 7)
-    ├──required by──> T4 WR-01/WR-02 (same hunks as #820; resolve fork MAP/TUPLE guards)
-    ├──required by──> P9-IN-01 (adjacent hunk in cleanupExtraFields)
-    └──required by──> T8 dependency bumps (catalog + lz4 block merge)
+F8a (early publish 505e4981)  --must precede-->  every code phase (milestone rule)
 
-T3 R-01 routing ──enhanced by──> T4 (null-Map case in R-01 matrix)
-T3 ──requires──> FORK-DELTA/CHANGELOG/rollout (T9-T11) to record a deliberate behaviour change
-T2 ──requires──> rollout item "compression" + live pin extension
-T8 jackson bump ──touches──> JSON writer used by T3: re-run the R-01 matrix after the bump
+F1a (Enum nullability)
+    |--requires--> flip/retire L-21 WARN Enum half  (ClickHouseHelperClient.java:490-525, anchor row 57)
+    |--enables---> F7 IN-01..IN-05 disposition (obsolete if WARN removed)
+    |--then------> F1b (Tuple nullability; Column.java + writer TUPLE case; NOT Table.java)
 
-P3-WR-01, P3-WR-03, extractColumn, USERNAME, WR-03, P4-WR-01, P4-IN-01, IN-01, JsonColumnTest,
-tearDown, CI x2 ──independent of each other──> any order after T1 (no src/main overlap with v1.7.0)
-
-T9 publish ──requires──> CI concurrency fix (else the tag push re-cancels the branch run)
-T11 FORK-DELTA ──requires──> every code item landed (rows are grep-confirmed against the final tree)
+F3 (DataException w/ column) --shares null-message class with--> F4 (guard in catch)
+F6 (log-capture test helper) --reused by--> F7 IN-04 (if WARN survives)
+F1..F6 behaviour final       --feeds-->     F8b (CHANGELOG, ROLLOUT-v1.7.0_gg2, FORK-DELTA, VERSION bump + anchor)
+F7 IN-07..IN-10 (docs)       --requires-->  docs code review BEFORE F8b gate
+F8b                          --requires-->  F8a done, one green CI run per published SHA
+F2 (CDC skip)                --independent; documents residual RowBinary gap in FORK-DELTA
+F5 (response-leg assertion)  --independent; test-only
 ```
 
-### Dependency Notes
+### Dependency notes
 
-- **T1 before everything:** unchanged from the brief. The additional reason is the Writer hunk collision in `case MAP`.
-- **Mechanical merge discipline:** the sync should repeat the v1.6.0 shape (scratch branch, rollback tag, one mechanical merge commit, fork behaviour re-applied by intent). Every fork behaviour that can vanish silently must have a canary before the merge: `NetworkCompressionPin*`, `ClickHouseVersionDefaultUnitTest`, `MetadataFreeJsonInsertUnitTest`, `MBeanNameUnitTest`, `RowBinaryUnsupportedTypeGateTest` already exist; confirm each fails when its guard is deleted.
-- **Test-tree merge hazard:** upstream changed `ClickHouseTestHelpers` by one line (and `SchemaTestData`, `SchemalessTestData` by +40/+31). The fork carries UTF-8 and `CLICKHOUSE_VERSION_DEFAULT` edits in that file. The `latest` -> pinned reversion happened silently there last time; check `ClickHouseVersionDefaultUnitTest` first after the merge.
-- **R-01 and WR-02 share `writeRecordsJson` only through #820**; they do not need to be in the same phase, but R-01's null-Map case must wait for T1.
+- **F1b must not touch `Table.java`.** The fork records `Table.java` as byte-identical to upstream `v1.7.0` and `verify-merge-invariants.sh` enforces it. The fix lives in `Column.java` and the `ClickHouseWriter` TUPLE case.
+- **F7 waits for F1.** Five of the six code-review INs are about the WARN that F1 may delete.
+- **F8b waits for everything user-visible.** The rollout note describes final behaviour; writing it first guarantees a rewrite.
+- **F3 before or with F4 is cleaner** because the F3 fix removes the most likely null-message exception, but F4 stands alone and should still be tested with an artificial null-message exception.
+- Files with high-risk status (AGENTS.md): `ClickHouseWriter.java` (F1, F2, F3, F4, F6 all edit it). Keep the edits as separate small commits per follow-up so each is revertable and each FORK-DELTA row maps to one commit.
 
 ## MVP Definition
 
-### Launch With (everything below is `v1.7.0_gg1`)
+### Launch With (the milestone is not shippable without these)
 
-- [ ] T1 mechanical merge, fork behaviour re-applied by intent, `FORK-DELTA` rows re-grepped
-- [ ] T2 D-17 retired onto upstream's flag, pins retained
-- [ ] T3 R-01 routed, pin flipped to typed read-back, matrix and `bypassRowBinary=true` combination pinned
-- [ ] T4 WR-01 live read-back and WR-02 loud failure, reconciled with #820
-- [ ] T5 and T6 the nine small fixes and test-debt items
-- [ ] T7 CI concurrency and fork-count outcome
-- [ ] T8 approved dependency bumps
-- [ ] T9-T11 publication, CHANGELOG, rollout checklist, FORK-DELTA
+- [ ] F8a early publication (first phase; removes the published `TRUNCATE` hazard)
+- [ ] F1a Enum nullability, with live matrix, flipped pins, WARN narrowed, docs
+- [ ] F2, F3, F4 (small writer fixes, each with a Docker-free test)
+- [ ] F6 mask the two DateTime logs (security hygiene; zero risk to data path)
+- [ ] F5 response-leg assertion
+- [ ] F7 every IN dispositioned in `15-REVIEW-DISPOSITION.md`
+- [ ] F8b VERSION, CHANGELOG, ROLLOUT-v1.7.0_gg2, FORK-DELTA, second merge, one green CI run
 
-### Suggested phase grouping
+### Include but gated (decision at plan time)
 
-1. **Sync** (T1, T8 catalog parts): mechanical merge, suite as acceptance gate.
-2. **Re-apply and retire** (T2, finding 3's MAP-guard resolution, P9-IN-01): small, `ClickHouseHelperClient` and Writer guards.
-3. **Writer correctness** (T3, T4): shares Writer and the live matrix; do R-01 first (no dependency on WR-02), then WR-01/02.
-4. **Metadata/config and test debt** (T5, T6): parallel-safe, mostly Docker-free.
-5. **CI, docs, publication** (T7, T9-T11).
+- [ ] F1b Tuple nullability: do it as its own plan after F1a. If the per-element parse proves unsafe, take the recorded fallback (WARN stays for Tuple, FORK-DELTA Known cost with the probe evidence) and say so in the gg2 note. Do not let it block F1a or the release.
 
-### Future Consideration (defer)
+### Defer (record in FORK-DELTA Known costs)
 
-- Upstream PRs for the two upstream bugs (nice, not blocking).
-- Removing the `setCompressionMethod` dependency entirely once a client that decodes ZSTD is adopted (needs its own milestone; `0.10.0` is currently out of scope).
-- A fork-owned `Struct`-to-JSON date/bytes converter (anti-feature now; revisit only if an operator needs `DateTime` columns on the metadata-free route).
+- [ ] Empty-CDC skip on the default RowBinary route (upstream hot path)
+- [ ] `Utils.handleException` null-message IOException branch; other raw-value exception messages (`UUID.fromString`)
+- [ ] Upstream PR for the Enum/Tuple nullability fix
 
 ## Feature Prioritization Matrix
 
-| Feature | User value | Cost | Priority |
-|---------|-----------|------|----------|
-| T1 merge | HIGH | MEDIUM | P1 |
-| T3 R-01 routing | HIGH (silent data loss) | MEDIUM | P1 |
-| T2 D-17 retirement | MEDIUM (smaller delta) | MEDIUM | P1 (same lines as T1) |
-| T4 WR-02 loud failure | HIGH (silent stream corruption) | MEDIUM-HIGH | P1 |
-| T4 WR-01 live test | MEDIUM | LOW | P1 |
-| T10 rollout checklist | HIGH | LOW | P1 |
-| T11 FORK-DELTA | HIGH (next sync) | MEDIUM | P1 |
-| T7 CI concurrency | MEDIUM | LOW | P1 |
-| P3-WR-01, P3-WR-03, `extractColumn`, `USERNAME`, P9-IN-01 | LOW-MEDIUM | LOW | P2 |
-| WR-03, `JsonColumnTest`, P4-WR-01, `tearDown` | MEDIUM (test trust) | LOW-MEDIUM | P2 |
-| IN-01, P4-IN-01 | LOW | LOW | P3 |
-| CI fork count | LOW | LOW | P3 |
-| Differentiators above | LOW-MEDIUM | LOW-MEDIUM | P3 |
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| F8a early publication | HIGH (removes published data-loss advice) | LOW | P1 |
+| F1a Enum nullability | HIGH (silent wrong values / corruption today) | LOW-MED | P1 |
+| F1b Tuple nullability | MEDIUM (rarer type, multi-field case hard-fails) | HIGH | P2 (gated, fallback defined) |
+| F2 CDC skip on bypass route | MEDIUM (phantom row; narrow population) | LOW | P1 |
+| F3 DataException names column | MEDIUM (diagnosability) | LOW | P1 |
+| F4 null-message guard | LOW-MED (masks real errors on V1 / odd paths) | LOW | P1 |
+| F6 DateTime log masking | MEDIUM (audit finding, privacy) | LOW | P1 |
+| F5 response-leg LZ4 assertion | MEDIUM (guards future lz4/client bumps) | LOW-MED | P2 |
+| F7 IN-01..IN-10 | LOW each, closes audit trail | LOW each | P2 |
+| F8b release notes and rollout | HIGH (operators need the value-change note) | LOW-MED | P1 |
 
-**Priority key:** P1 must ship for publication; P2 should ship, all 17 are in scope; P3 comment-level or optional.
+**Priority key:** P1 must have for launch, P2 should have, P3 future.
 
-## Code-backed risk notes for the roadmap
+## Competitor Feature Analysis
 
-- **Exactly-once is not touched** by any item, but `KeeperStateProvider` changes in the merge; keep it byte-identical to `v1.7.0` and verify by `git diff v1.7.0 -- src/main/.../KeeperStateProvider.java` being empty.
-- **Batch-composition rule (AGENTS.md):** none of the routing or null changes alter a batch after `BEFORE` is set; they decide serialisation of a given batch deterministically from its records, so retries still rebuild identical blocks. Worth a one-line assertion in the plan.
-- **R-01 hot path:** the new condition runs once per batch (`doInsertBatch`), not per record; no allocation concern.
-- **`doInsertBatch` inspects only the first record's `SchemaType`** (Writer:234). Mixed batches already route by the first record; unchanged and not in scope.
+Not applicable: this is a fork-hardening milestone, not a market comparison. The relevant reference is upstream `ClickHouse/clickhouse-kafka-connect` `v1.7.0`: it has the same `Column.extractColumn` Enum/Tuple defect, the same message-less `RuntimeException`, the same two DateTime ERROR logs and the same `getMessage()` ordering, so each fix is a fork patch that must be recorded in `docs/FORK-DELTA.md` and anchored.
 
 ## Sources
 
-- `.planning/PROJECT.md` (Current Milestone, Requirements -> Active, Key Decisions); `docs/FORK-DELTA.md`; `.planning/MERGE-CHECKLIST.md` Facts 9, 11, 14 (HIGH, project records).
-- Source reads at `HEAD`: `ClickHouseWriter.java` (lines cited inline), `ClickHouseSinkConfig.java`, `ClickHouseHelperClient.java`, `Column.java`, `StructToJsonMap.java`, `SchemaRecordConvertor.java`, `DataJson.java`, `HeaderToValue.java`, `ClickHouseBase.java`, `.github/workflows/tests.yaml`, `build.gradle.kts` (HIGH).
-- Upstream: `git diff v1.6.0 v1.7.0` over `src/main`, `src/test`, `src/testFixtures`, `CHANGELOG.md`, `build.gradle.kts`, `gradle/libs.versions.toml`; `git log --stat v1.6.0..v1.7.0` (HIGH).
-- Tests read: `ExplicitJsonInsertPathLiveTest`, `MetadataFreeJsonInsertUnitTest`, `JsonDynamicRoundTripTest`, `NetworkCompressionPinUnitTest`, `NetworkCompressionPinLiveTest`, `JsonColumnTest`, `ClickHouseSinkTaskJsonInsertFormatTest`, `AsyncInsertLiveTest`, `ClickHouseVersionDefaultUnitTest`.
-- No external web research was needed; every claim is about this repository or its upstream tag. Jackson date serialisation, `NON_NULL` effects on server defaults, `Nullable(Map|Tuple)` being illegal, and the 4 vCPU public-runner size are domain knowledge (MEDIUM until confirmed by the live tests named above).
+- Repository (HIGH): `src/main/java/.../sink/db/mapping/Column.java:189-290`; `.../sink/db/mapping/Table.java` (tuple children attach at `updateParent` TUPLE case); `.../sink/db/ClickHouseWriter.java:232-242, :412-526, :540-590, :660-770, :1030-1100, :1160-1210, :1215-1308, :1351-1405, :1521-1540`; `.../sink/db/helper/ClickHouseHelperClient.java:490-525, :579, :650`; `.../sink/data/convert/DebeziumRecordConvertor.java:77-110`; `.../util/Mask.java`; `.../util/Utils.java` (`handleException`); `.../sink/processing/Processing.java:70-96`.
+- Planning (HIGH): `.planning/PROJECT.md` (Active list, Current Milestone); `.planning/ROADMAP.md` backlog 999.1/999.2; `docs/FORK-DELTA.md` (rows `:35-45`, Known costs `:118-147`); `docs/ROLLOUT-v1.7.0_gg1.md`; `.planning/milestones/v1.7.0_gg1-sync-phases/13-*/13-REVIEW.md`, `13-REVIEW-DISPOSITION.md`, `13-BEHAVIOUR-LEDGER.md` (L-03, L-06, L-11, L-13, L-17, L-21, L-22), `13-RESEARCH.md` (Spike b2/b3, Pitfall 8), `13-SECURITY.md` (T-13-19); `14-*/14-REVIEW.md`, `14-REVIEW-DISPOSITION.md`; `15-*/15-REVIEW.md`, `15-REVIEW-DISPOSITION.md`; `.planning/MERGE-CHECKLIST-v1.7.0.md` Recorded Fact 32; `git diff --stat origin/custom_build sync/v1.7.0`.
+- Live probes (HIGH, ClickHouse 26.9.14.10 from the local `clickhouse/clickhouse-server:latest` image, throwaway containers removed): `DESCRIBE ... describe_include_subcolumns=1` for `Nullable(Enum8|Enum16|Tuple)` (sub-columns report `Nullable(...)` regardless of element declaration, `t.a.null` only for truly nullable elements); `FORMAT RowBinary` bytes for `Nullable(Enum8)`, `Nullable(Enum16)`, `Nullable(Tuple)` and nested-nullable-element tuples; `RowBinary` input replay showing today's mis-reads; `LowCardinality(Nullable(Enum8))` rejection; `system.settings` (`enable_nullable_tuple_type=1`, `input_format_null_as_default=1`, `date_time_input_format=best_effort`); HTTP `compress=1` vs uncompressed `NetworkSendBytes` (96,434 vs 24,001,170 for an identical 24,000,415-byte result).
+- Project memory (MEDIUM, process): publication gotchas (protected `custom_build`, relayed approvals refused, tag/branch CI cancellation, appended-review heading rule, docs review before the gate).
+- No web search was needed; all answers came from the code, the planning archive and live probes. Not performed: running the Gradle suite, verifying that reload4j is on the test compile classpath (F6), and V2 reachability of the F4 NPE.
 
 ---
-*Feature research for: `v1.7.0_gg1-sync` (ClickHouse Kafka Connect fork)*
-*Researched: 2026-10-07*
+*Feature research for: v1.7.0_gg2-hardening follow-ups*
+*Researched: 2026-10-10*

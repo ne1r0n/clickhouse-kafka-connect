@@ -1,46 +1,46 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg1-sync
-milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
-current_phase: 15
-current_phase_name: Suite Gate, Publication & Rollout
+milestone: v1.7.0_gg2-hardening
+milestone_name: Follow-up Hardening & CI Hygiene
+current_phase: 16
+current_phase_name: Early Docs Publication
 status: executing
-stopped_at: Completed 15-06-PLAN.md
-last_updated: "2026-10-10T11:10:10.201Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-10-10T17:52:49.946Z"
 last_activity: 2026-10-10
-last_activity_desc: Phase 15 execution started
-state_head: 88067155bda2e4591c4e590178a8673f3e65838a
+last_activity_desc: Phase 16 execution started
+state_head: e45c6387fd1d4b01f0506196f91bbaa895074280
 progress:
-  total_phases: 4
-  completed_phases: 3
-  total_plans: 25
-  completed_plans: 23
-  percent: 75
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 2
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-10 after Phase 14)
+See: .planning/PROJECT.md (updated 2026-10-10 after v1.7.0_gg1-sync milestone)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 15 — Suite Gate, Publication & Rollout
+**Current focus:** Phase 16 — Early Docs Publication
 
 ## Current Position
 
-Phase: 15 (Suite Gate, Publication & Rollout) — EXECUTING
-Plan: 7 of 8
+Phase: 16 (Early Docs Publication) — EXECUTING
+Plan: 3 of 3
 Status: Ready to execute
-Last activity: 2026-10-10 — Phase 15 execution started
+Last activity: 2026-10-10 — Phase 16 execution started
 
-Progress: [████████░░] 75%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed this milestone: 0 (`v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16)
+- Total plans completed: `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -51,7 +51,7 @@ Progress: [████████░░] 75%
 | 12 | 5 | - | - |
 | 13 | 8 | - | - |
 | 14 | 4 | - | - |
-| 15 | TBD | - | - |
+| 15 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -105,15 +105,19 @@ Progress: [████████░░] 75%
 | Phase 15 P04 | 35 min | 2 tasks | 2 files |
 | Phase 15 P05 | 9 min | 2 tasks | 2 files |
 | Phase 15 P06 | 35min | 2 tasks | 1 files |
+| Phase 15 P07 | 21 min | 3 tasks | 1 files |
+| Phase 16 P01 | 4 min | 3 tasks | 4 files |
+| Phase 16 P02 | 7 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-The full decision log is in `PROJECT.md` → Key Decisions. The per-phase decision log for `v1.6.0_gg1-sync` is archived with the phase artifacts in `milestones/v1.6.0_gg1-sync-phases/`. Carried forward because they still constrain how work must be done:
+The full decision log is in `PROJECT.md` → Key Decisions. Per-phase decision logs are archived with each milestone's phase artifacts under `milestones/`. Carried forward because they still constrain how work must be done:
 
 - Prefer upstream wherever its implementation passes the fork's tests. Deliberate exceptions, each recorded in `docs/FORK-DELTA.md`: JMX `connector=<name>`, `Type.DYNAMIC` and its fail-fast, `targetTableFilter`, the describe sub-column skip, the metadata-free JSON path (KEEP), and the fork-only pins (ClickHouse client `0.9.6`, Kafka Connect API `4.1.1`).
-- Any future upstream sync follows the `v1.6.0_gg1-sync` shape: scratch branch, rollback tag, one mechanical merge commit, re-apply by intent, and a non-force `--no-ff` merge into `custom_build` after human approval. Start it from `docs/FORK-DELTA.md` and `.planning/MERGE-CHECKLIST.md`.
+- Any future upstream sync follows the `v1.6.0_gg1-sync`/`v1.7.0_gg1-sync` shape. Work on a scratch branch with a rollback tag. Land one mechanical merge commit behind `verify-merge-invariants.sh` (`PRE_TAG`, `UPSTREAM_REF`), re-apply by intent, and gate on two full runs. Publish as a non-force `--no-ff` merge into `custom_build` after human approval. Start from `docs/FORK-DELTA.md` and `.planning/MERGE-CHECKLIST-v1.7.0.md`.
+- Publish a SHA on one branch only, and push tags only after that SHA's own CI run is green.
 - Bug fixes live in the phase whose tests expose them; there is no separate bug-fix phase.
 - A main-code change reaching outside a phase's declared scope stops for a user decision. The fork runs in production.
 - Type coverage asserts typed SQL read-back, never `countRows`.
@@ -122,53 +126,16 @@ The full decision log is in `PROJECT.md` → Key Decisions. The per-phase decisi
 - New sink-task tests must create their tables before `start()`, because `ClickHouseWriter.start()` fails against an empty database.
 - A two-run acceptance gate must bust Gradle's cache (`--rerun`). A bare second `./gradlew test` echoes the first run's results.
 
-`v1.7.0_gg1-sync` locked decisions live in `REQUIREMENTS.md` (decisions table at the top), and plans do not re-open them: sync by `git merge v1.7.0` (tag `379b8d01`, never bare `upstream/main`); D-17 retired onto upstream's `setCompressionMethod`, including its unconditional `compress=false`; R-01 fixed by **routing**, not by throwing, with wrong logical-type values fixed; CR-02 pins may be re-pinned to the correct bytes; the five dependency bumps, with lz4-java targeting 1.12.0; publication in scope; sync first, hardening on top.
+The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifacts (`milestones/v1.7.0_gg1-sync-phases/`), and its locked decisions with its requirements (`milestones/v1.7.0_gg1-sync-REQUIREMENTS.md`).
 
-Roadmap decisions (2026-10-07):
+**`v1.7.0_gg2-hardening` roadmap decisions (2026-10-10):**
 
-- Four phases (12-15), coarse, in the research's order.
-- The merge-line decisions (CMP, WRT-06/09, BLD-09/13, EOS-01) live in Phase 12 rather than in hardening.
-- Phase 13 is kept whole despite owning 15 requirements, because its writer items serialise on `ClickHouseWriter.java` anyway.
-- CI-08 lands in Phase 14 and is proven end to end by Phase 15's published-SHA run.
-- [Phase 12]: 12-01: invariant 0 accepts a merge-commit rollback tag whose every parent is an ancestor of MERGE^1 (pre-v1.7.0-sync = c61d90ce is the --no-ff merge, not an ancestor of sync/v1.6.0-derived branches)
-- [Phase 12]: 12-01: merge commit M = 54e63648 (v1.7.0 into sync/v1.7.0), zero authored lines; fork-anchors.txt (39 rows) authored after M from measured counts
-- [Phase 12]: WRT-09 delivered as evidence plus new pins: the only MAP CR-02 pin is nullable and keeps {0x01}; non-nullable #820 pins ({0x00}, {0x00,0x00}) added beside it; awaiting user confirmation of the interpretation
-- [Phase 12]: MAP null guard scoped to Nullable columns (WRT-06); nested null Maps fall to upstream's mapTmp == null branch and are left to Phase 13 WR-02
-- [Phase 12]: Fork LZ4 capability rule deleted (BLD-09); lz4-java stays at upstream's 1.10.4 on runtimeClasspath and clickhouseDependencies, bumps remain Phase 14
-- [Phase 12]: 12-03: D-17 retired onto setCompressionMethod; compress=false alone suffices on V2 and V1 against 26.9.12.8, V1 ?compress=true is a no-observation (does not reach node options)
-- [Phase 12]: 12-04: EOS-01 restart-read test seen RED (4 of 6, expected BEFORE_PROCESSING but was NONE) against the pre-v1.7.0 summary-count read; KeeperStateProvider.java restored byte-identical to v1.7.0; D-16 hunt not needed
-- [Phase 12]: 12-05: D-17 load-bearing-control sentence derived only from the D-12 probe rows (Recorded Fact 26), keeping the V1 'not observed' clause
-- [Phase 12]: 12-05: full suite on latest 26.9.12.8 x V2 green (61 classes, 691 tests, 18 named skips); #800/cluster buildFromClause tests are compile-only
-- [Phase 12]: UAT 8/8 (2026-10-08): user accepted the additive WRT-09 pins, the compile-only SYNC-10 reading, the D-17 FORK-DELTA wording, and one full-suite ordering as sufficient for now (Phase 15 still requires two clean runs)
-- [Phase 13]: 13-01: R-01 fixed by routing keyed on shouldSkipTableMetadata(), unconditional, no opt-out flag; metadata-free route uses a private MetadataFreeJsonWriter (mapper copy), shared DataJson.OBJECT_MAPPER untouched
-- [Phase 13]: 13-01: metadata-free JSON encodings are Timestamp decimal seconds, Date epoch days, Time ms, Decimal BigDecimal, bytes raw via writeUTF8String; empty CDC records skipped (D-19); behaviour ledger L-01..L-07 in 13-01-SUMMARY.md
-- [Phase 13]: 13-05: DESC-05 skips DESCRIBE rows below a JSON/Dynamic ancestor at any depth via an ancestor-prefix walk; Tuple/Map/Array(JSON) rows stay un-skipped
-- [Phase 13]: 13-05: COLS-07 Array recursion passes hasDefaultValue, isSubColumn in signature order; CFG-04 USERNAME ConfigDef default is usernameDefault; ledger L-16..L-18 in 13-05-SUMMARY.md
-- [Phase 13]: 13-07: ClickHouseBase.dropSharedDatabaseOrAttribute is package-private static with a nested DatabaseDrop action, so a shared-container drop failure is attributed (IllegalStateException with class, database, cause) and pinned Docker-free (DEBT-04, D-14)
-- [Phase 13]: 13-02: MetadataFreeJsonWriter needed no fix; all D-04 parity cells, boundaries and D-07 nested cells already match RowBinary — Live twin-table matrix passed on first run; Timestamp-encoding mutation made it fail, so the matrix is not vacuous
-- [Phase 13]: 13-03: WRT-07 needed no writer change (pinned live with a seen-RED mutation); WRT-08/D-09/D-10/D-16 implemented in doWriteColValue container loops, nested null scalar/Tuple slots throw a data-free DataException (root cause of Processing's RuntimeException), nested null Array/Map coerce to empty; ledger L-09..L-13 in 13-03-SUMMARY.md
-- [Phase 13]: 13-06: HeaderToValue non-STRING target pinned as current behaviour (schema path throws DataException, schemaless overwrites with String); no main change per D-15
-- [Phase 13]: 13-06: JsonColumnTest asserts Base64 String for four configs and signed-byte Array(Nullable(Int64)) for the two Gson configs (bytes.to.base64 only affects Struct input)
-- [Phase 13]: 13-04: JSONP-08 delivers evaluation order only (metadata-free predicate first, no csc==null short-circuit, NPE on null config preserved); dated D-13 correction in REQUIREMENTS.md
-- [Phase 13]: 13-04: TYPE-08 gate narrowed to INT256/UINT256 by sharing the DYNAMIC/UNKNOWN case block in validateDataSchema; Int128/UInt128 unchanged; ledger L-14, L-15 in 13-04-SUMMARY.md
-- [Phase 13]: 13-08: Phase 13 gate green on ClickHouse latest (26.9.13.15) x V2: 803 tests, 0 failures, 18 named skips; behaviour ledger L-01..L-19 consolidated; Enum8/Enum16/Tuple nullability defect logged as backlog 999.1
-- [Phase 14]: 14-01: read DateTime64 back with getZonedDateTime().toInstant(); client-v2 0.9.6 getInstant() throws ClassCastException for tz-bearing DateTime64
-- [Phase 14]: 14-01: tests.yaml fork count is read from a ::notice annotation (job logs return 403 unauthenticated); LZ4 response leg proven by uncommitted zstd probe
-- [Phase 14]: 14-02: lz4-java 1.12.0 chosen (passed every gate; 1.11.4 rung unused). Advisory-free floor is 1.11.4; 1.11.2 and 1.11.3 are still affected.
-- [Phase 14]: 14-02: test-classpath org.lz4:lz4-java 1.8.0 duplicate not fixed (needs build.gradle.kts change); recorded as ROADMAP backlog 999.2.
-- [Phase 14]: 14-03: jacksonAnnotations stays 2.22 because jackson-bom 2.22.3 pairs databind 2.22.3 with annotations 2.22 and no 2.22.3 annotations artifact exists
-- [Phase 14]: D-13: sync/v1.7.0 pushed to origin once (branch only, 54b5ce2f); tests.yaml run 38037397969 green, compile step before Run tests, CI fork count nproc=4 -> maxParallelForks=2 — User answered "push" at the blocking-human gate; orchestrator ran Task 3 inline. Evidence commit 97d03f10 stays local until Phase 15 (PUB-04).
-- [Phase 15]: 15-01: Debezium Timestamp/NanoTimestamp written as BigDecimal.valueOf(v,3|9) on the metadata-free JSON route (13-REVIEW WR-02 closed); NanoTimestamp small values render as 0E-9/1E-9/-1E-9 and ClickHouse accepts them (A7 closed)
-- [Phase 15]: 15-01: Nullable(Enum8|Enum16|Tuple) discovery WARN is process-wide deduped on database.table.column:rawType, hooked once per describe loop; Column.java untouched (backlog 999.1 stays)
-- [Phase 15]: 15-02: code review of the D-01/D-02 commits found 0 Critical, 0 Warning, 6 Info (all deferred); no fix(15-02) commit, src/main stays at the two D-04 files
-- [Phase 15]: 15-03: L-22 states honestly that no test pins stored values for explicit insertFormat=json plus bypassRowBinary=true with Struct/CDC; only routing is pinned
-- [Phase 15]: 15-03: only 13-REVIEW WR-02 is marked fixed (981a89d6); all other Phase 13 and 14 review findings deferred with reasons (D-03)
-- [Phase 15]: 15-04: T-13-19 (upstream ERROR log of an unparseable DateTime string) and T-14-16 (tests.yaml has no permissions block, tag-pinned actions) left open below the high block threshold, not accepted; carried to the 15-07 approval bundle
-- [Phase 15]: 15-04: retroactive audits ran inline (no sub-agent tool); 13-SECURITY.md and 14-SECURITY.md both threats_open 0; OSV re-queried 2026-10-10T10:51Z, all five bumped coordinates clean
-- [Phase 15]: 15-05: CHANGELOG 1.7.0_gg1 dated 2026-10-10; 15-07 re-checks the date before the rehearsal push and it must not change after
-- [Phase 15]: 15-05: exactly-once pre-upgrade check is required only for explicit insertFormat=json plus bypassRowBinary=true with Struct/CDC records under exactlyOnce=true (L-22), precautionary elsewhere; dedup-hashes-parsed-data inference stated in the rollout doc
-- [Phase 15]: 15-06: FORK-DELTA raw-numbers prose states the delta against upstream grew in v1.7.0_gg1 (84 to 95 files, 9476 to 13587 insertions at the wider scope); the smaller-delta claim rests on the retired rows
-- [Phase 15]: 15-06: Known costs lists audit threats T-13-19 and T-14-16 as open below the block threshold, beyond the plan's list
+- Phase order: 16 → 17 → 18 → 19 → 20, sequential on one working tree. Phase 16 (docs-only publication, PUB-05/PUB-06) comes first by user decision. Phase 20 (release) comes last.
+- Phase 16's merge gate is a path allow-list diff (`.planning/`, `docs/`, `CHANGELOG.md`) plus a tree-equality check. The upstream-sync script `verify-merge-invariants.sh` does not apply to a docs-only merge and must not be "fixed". The same holds for the Phase 20 release merge's parent checks; the anchors invariant still runs on the branch tip.
+- CI/build/test hygiene (Phase 17) runs before code because `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19. CI-17 is proven by an approved branch-only scratch push in Phase 17, so the release merge's run is not the new workflow's first.
+- Writer fixes (Phase 18) come before 999.1 (Phase 19), because both edit `ClickHouseWriter.java` and Phase 19's flipped pins rely on Phase 18's column-naming `DataException`. The Phase 19 Tuple spike (COLS-09) runs first in its phase. Its go/no-go cannot hold the release, and the Enum fix ships either way. DEBT-09 follows the COLS-10 outcome.
+- Every approval gate (Phase 16 merge, Phase 17 scratch push, Phase 20 rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
+- [Phase 16]: 16-02: IN-01 fixed by naming 'git merge <merge-commit>^2' in rollout item 8 instead of the unpublished sync/v1.7.0 branch; refines D-05 wording only
 
 ### Pending Todos
 
@@ -179,10 +146,10 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: ⚠ **Planning history after publication is local only.** Every `.planning/` commit after `c61d90ce` lives only on local `sync/v1.6.0`. That covers 11-07 bookkeeping, review, verification, UAT, security, and this milestone's archive commits. `custom_build` is protected and equals `origin`. Decide how and whether to publish them; pushing a tag or branch also triggers `tests.yaml`. **Scheduled:** PUB-04 (Phase 15), published via merge. Phase 14 D-13 pushed `sync/v1.7.0` to `origin` once at `54b5ce2f` (branch only); every later commit on it is local.
-- [CI]: Resolved in Phase 14 (CI-08): `tests.yaml` triggers on branch pushes only, so a tag push starts no run. Residuals for Phase 15: two *branches* pushed at one SHA still cancel each other (push the published SHA on one branch only), and the pre-fix tag `pre-v1.7.0-sync` (c61d90ce) still runs the old workflow when pushed. Also: `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.
-- [Prod]: R-01 fixed by routing in Phase 13 (JSONP-05..07) — a deliberate behaviour change for explicit-JSON + Struct pipelines (rows now land). Rollout must cover it, the MBean rename (D-07), the compression setting (CMP), the nested-null `DataException` (WRT-08) and the `Int256`/`UInt256` fail-fast (TYPE-08). Source for the prose: `phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md` (L-01..L-19). **Scheduled:** ROLL-01, CHANGELOG/FORK-DELTA (Phase 15).
-- [Phase 13]: ⚠ `io.debezium.time.Timestamp` (epoch millis) is not converted on the metadata-free JSON route — ClickHouse reads it as seconds (13-REVIEW WR-02, ledger L-05). Five other review findings (WR-01, WR-03..05) are open in `13-REVIEW-DISPOSITION.md`; WR-05 is backlog 999.1. None blocks Phase 14; decide before Phase 15 publication whether WR-02 is fixed or documented as a rollout caveat.
+- [Publish]: ⚠ The published `docs/ROLLOUT-v1.7.0_gg1.md` (at `f328fd21`) still offers `TRUNCATE TABLE` on the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14), plus the WR-02/WR-03 wording defects. The local docs-only commit `505e4981` fixes them, but it is not on origin. **Scheduled: Phase 16** (PUB-05, PUB-06).
+- [Publish]: Local `sync/v1.7.0` is 20+ commits past `f328fd21` (the Phase 15 tail and milestone bookkeeping). They stay local until Phase 16's docs-only `--no-ff` merge. Its diff outside `.planning/` is today exactly `docs/FORK-DELTA.md` and `docs/ROLLOUT-v1.7.0_gg1.md`. `.planning/state.json` is modified and `.planning/.gsd-ws-arg` is untracked; neither may ride into the merge. Milestone tags such as `v1.7.0_gg1-sync` stay local.
+- [CI]: ⏰ `ubuntu-latest` moves to Ubuntu 26 from **2026-10-19**. Phase 16's docs-only run should land before then, on the unchanged workflow. Phase 17 pins `ubuntu-24.04`. Two branches pushed at one SHA still cancel each other. Node 20 deprecation warnings affect `checkout@v4` and `upload-artifact@v4` (Phase 17).
+- [CI]: `test-head.yaml` calls `tests.yaml` as a reusable workflow, but `tests.yaml` declares no `workflow_call`. Its nightly schedule runs from the default branch `custom_build` and very likely fails every night. The fix (CI-16) lands in Phase 17 and takes effect on the schedule only once Phase 20 publishes it.
 
 ## Deferred Items
 
@@ -192,15 +159,17 @@ Items acknowledged and deferred at milestone close, most recent first:
 |----------|------|--------|-------------|-----------|
 | *(none)* | | | | |
 
-`v1.6.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. Its 17 review and verification follow-ups are all in scope for `v1.7.0_gg1-sync` (see `REQUIREMENTS.md`).
+`v1.7.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. The close was an override closeout, because the Phase 12/13 verification digests had gone stale and no milestone audit was run (see `MILESTONES.md`). Its eleven open follow-ups are now scheduled as this milestone's 26 requirements (`REQUIREMENTS.md` → Traceability).
+
+`v1.6.0_gg1-sync` also closed with a clear audit. All 17 of its follow-ups were closed in `v1.7.0_gg1-sync`.
 
 ## Session Continuity
 
-Last session: 2026-10-10T11:10:10.156Z
-Stopped at: Completed 15-06-PLAN.md
+Last session: 2026-10-10T17:52:49.926Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
 
-- Plan Phase 15 with `/gsd-discuss-phase 15` or `/gsd-plan-phase 15`
-- Optional before Phase 15: `/gsd-code-review 13 --fix` / `/gsd-code-review 14 --fix` for the open review warnings (Phase 13: five; Phase 14: WR-01, WR-02), and `/gsd-map-codebase` (the codebase map predates the v1.7.0 merge; drift gate advisory)
+- Review `.planning/ROADMAP.md` (Phases 16-20) and approve or request revisions
+- Plan Phase 16 (`/gsd-discuss-phase 16` or `/gsd-plan-phase 16`). Its CI run should land before 2026-10-19
