@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 15
 current_phase_name: Suite Gate, Publication & Rollout
 status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-10-10T10:42:30.111Z"
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-10-10T10:48:17.360Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 15 execution started
-state_head: 5c31ea2f9f83b4ad939171edbcaae7396f362c11
+state_head: d428c6b4cc4a3456e3717dde24a2af0030de99a6
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 25
-  completed_plans: 19
+  completed_plans: 20
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-10 after Phase 14)
 ## Current Position
 
 Phase: 15 (Suite Gate, Publication & Rollout) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-10-10 — Phase 15 execution started
 
@@ -101,6 +101,7 @@ Progress: [████████░░] 75%
 | Phase 14 P03 | 25 min | 2 tasks | 2 files |
 | Phase 15 P01 | 10 min | 2 tasks | 7 files |
 | Phase 15 P02 | 5 min | 2 tasks | 1 files |
+| Phase 15 P03 | 14 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 15]: 15-01: Debezium Timestamp/NanoTimestamp written as BigDecimal.valueOf(v,3|9) on the metadata-free JSON route (13-REVIEW WR-02 closed); NanoTimestamp small values render as 0E-9/1E-9/-1E-9 and ClickHouse accepts them (A7 closed)
 - [Phase 15]: 15-01: Nullable(Enum8|Enum16|Tuple) discovery WARN is process-wide deduped on database.table.column:rawType, hooked once per describe loop; Column.java untouched (backlog 999.1 stays)
 - [Phase 15]: 15-02: code review of the D-01/D-02 commits found 0 Critical, 0 Warning, 6 Info (all deferred); no fix(15-02) commit, src/main stays at the two D-04 files
+- [Phase 15]: 15-03: L-22 states honestly that no test pins stored values for explicit insertFormat=json plus bypassRowBinary=true with Struct/CDC; only routing is pinned
+- [Phase 15]: 15-03: only 13-REVIEW WR-02 is marked fixed (981a89d6); all other Phase 13 and 14 review findings deferred with reasons (D-03)
 
 ### Pending Todos
 
@@ -184,8 +187,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T10:42:30.065Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-10-10T10:48:17.315Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
