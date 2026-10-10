@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 status: planning
-last_updated: "2026-10-10T14:38:48.935Z"
+last_updated: "2026-10-10T15:05:57.000Z"
 last_activity: 2026-10-10
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-10 after v1.7.0_gg1-sync milestone)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Planning next milestone (`/gsd-new-milestone`)
+**Current focus:** Phase 16 — Early Docs Publication (docs-only `--no-ff` merge of `sync/v1.7.0` into `custom_build`, before any code work)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-10 — Milestone v1.7.0_gg2-hardening started
+Phase: 16 of 20 (Early Docs Publication)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-10 — Roadmap created for v1.7.0_gg2-hardening (Phases 16-20, 26/26 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -119,6 +121,14 @@ The full decision log is in `PROJECT.md` → Key Decisions. Per-phase decision l
 
 The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifacts (`milestones/v1.7.0_gg1-sync-phases/`), and its locked decisions with its requirements (`milestones/v1.7.0_gg1-sync-REQUIREMENTS.md`).
 
+**`v1.7.0_gg2-hardening` roadmap decisions (2026-10-10):**
+
+- Phase order: 16 → 17 → 18 → 19 → 20, sequential on one working tree. Phase 16 (docs-only publication, PUB-05/PUB-06) comes first by user decision. Phase 20 (release) comes last.
+- Phase 16's merge gate is a path allow-list diff (`.planning/`, `docs/`, `CHANGELOG.md`) plus a tree-equality check. The upstream-sync script `verify-merge-invariants.sh` does not apply to a docs-only merge and must not be "fixed". The same holds for the Phase 20 release merge's parent checks; the anchors invariant still runs on the branch tip.
+- CI/build/test hygiene (Phase 17) runs before code because `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19. CI-17 is proven by an approved branch-only scratch push in Phase 17, so the release merge's run is not the new workflow's first.
+- Writer fixes (Phase 18) come before 999.1 (Phase 19), because both edit `ClickHouseWriter.java` and Phase 19's flipped pins rely on Phase 18's column-naming `DataException`. The Phase 19 Tuple spike (COLS-09) runs first in its phase. Its go/no-go cannot hold the release, and the Enum fix ships either way. DEBT-09 follows the COLS-10 outcome.
+- Every approval gate (Phase 16 merge, Phase 17 scratch push, Phase 20 rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
+
 ### Pending Todos
 
 None.
@@ -128,9 +138,10 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: ⚠ The published `docs/ROLLOUT-v1.7.0_gg1.md` (at `f328fd21`) still offers `TRUNCATE TABLE` on the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14), plus the WR-02/WR-03 wording defects. They are fixed by the local docs-only commit `505e4981`, which is not on origin. Push it, or let the next milestone's `--no-ff` merge carry it.
-- [Publish]: Local `sync/v1.7.0` is 17+ commits past `f328fd21` (Phase 15 tail and milestone bookkeeping). These commits are local-only until the next `--no-ff` merge into `custom_build`. Milestone tags such as `v1.7.0_gg1-sync` stay local.
-- [CI]: Two branches pushed at one SHA still cancel each other. `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19, and Node 20 deprecation warnings affect `checkout@v4` and `upload-artifact@v4`.
+- [Publish]: ⚠ The published `docs/ROLLOUT-v1.7.0_gg1.md` (at `f328fd21`) still offers `TRUNCATE TABLE` on the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14), plus the WR-02/WR-03 wording defects. The local docs-only commit `505e4981` fixes them, but it is not on origin. **Scheduled: Phase 16** (PUB-05, PUB-06).
+- [Publish]: Local `sync/v1.7.0` is 20+ commits past `f328fd21` (the Phase 15 tail and milestone bookkeeping). They stay local until Phase 16's docs-only `--no-ff` merge. Its diff outside `.planning/` is today exactly `docs/FORK-DELTA.md` and `docs/ROLLOUT-v1.7.0_gg1.md`. `.planning/state.json` is modified and `.planning/.gsd-ws-arg` is untracked; neither may ride into the merge. Milestone tags such as `v1.7.0_gg1-sync` stay local.
+- [CI]: ⏰ `ubuntu-latest` moves to Ubuntu 26 from **2026-10-19**. Phase 16's docs-only run should land before then, on the unchanged workflow. Phase 17 pins `ubuntu-24.04`. Two branches pushed at one SHA still cancel each other. Node 20 deprecation warnings affect `checkout@v4` and `upload-artifact@v4` (Phase 17).
+- [CI]: `test-head.yaml` calls `tests.yaml` as a reusable workflow, but `tests.yaml` declares no `workflow_call`. Its nightly schedule runs from the default branch `custom_build` and very likely fails every night. The fix (CI-16) lands in Phase 17 and takes effect on the schedule only once Phase 20 publishes it.
 
 ## Deferred Items
 
@@ -140,17 +151,17 @@ Items acknowledged and deferred at milestone close, most recent first:
 |----------|------|--------|-------------|-----------|
 | *(none)* | | | | |
 
-`v1.7.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. The close was an override closeout because the Phase 12/13 verification digests had gone stale and no milestone audit was run (see `MILESTONES.md`). Its eleven open follow-ups are under `PROJECT.md` → Requirements → Active.
+`v1.7.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. The close was an override closeout, because the Phase 12/13 verification digests had gone stale and no milestone audit was run (see `MILESTONES.md`). Its eleven open follow-ups are now scheduled as this milestone's 26 requirements (`REQUIREMENTS.md` → Traceability).
 
 `v1.6.0_gg1-sync` also closed with a clear audit. All 17 of its follow-ups were closed in `v1.7.0_gg1-sync`.
 
 ## Session Continuity
 
-Last session: 2026-10-10T11:31:21.703Z
-Stopped at: Milestone v1.7.0_gg1-sync archived
+Last session: 2026-10-10T15:05:57.000Z
+Stopped at: Roadmap created for v1.7.0_gg2-hardening (Phases 16-20)
 Resume file: None
 
 ## Operator Next Steps
 
-- Decide when `505e4981` reaches `origin` (the published rollout doc still has the `TRUNCATE` example)
-- Start the next milestone with `/gsd-new-milestone`
+- Review `.planning/ROADMAP.md` (Phases 16-20) and approve or request revisions
+- Plan Phase 16 (`/gsd-discuss-phase 16` or `/gsd-plan-phase 16`). Its CI run should land before 2026-10-19

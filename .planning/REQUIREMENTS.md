@@ -73,11 +73,46 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| PUB-05 | Phase 16 | Pending |
+| PUB-06 | Phase 16 | Pending |
+| COLS-08 | Phase 19 | Pending |
+| COLS-09 | Phase 19 | Pending |
+| COLS-10 | Phase 19 | Pending |
+| COLS-11 | Phase 19 | Pending |
+| JSONP-09 | Phase 18 | Pending |
+| WRT-10 | Phase 18 | Pending |
+| WRT-11 | Phase 18 | Pending |
+| WRT-12 | Phase 18 | Pending |
+| DEBT-06 | Phase 17 | Pending |
+| DEBT-07 | Phase 17 | Pending |
+| DEBT-08 | Phase 17 | Pending |
+| DEBT-09 | Phase 19 | Pending |
+| BLD-14 | Phase 17 | Pending |
+| CI-11 | Phase 17 | Pending |
+| CI-12 | Phase 17 | Pending |
+| CI-13 | Phase 17 | Pending |
+| CI-14 | Phase 17 | Pending |
+| CI-15 | Phase 17 | Pending |
+| CI-16 | Phase 17 | Pending |
+| CI-17 | Phase 17 | Pending |
+| ROLL-02 | Phase 20 | Pending |
+| PUB-07 | Phase 20 | Pending |
+| SUITE-05 | Phase 20 | Pending |
+| PUB-08 | Phase 20 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 0 (filled by roadmap)
+- Mapped to phases: 26 ✓
+- Unmapped: 0
+
+| Phase | Requirements | Count |
+|-------|--------------|-------|
+| 16. Early Docs Publication | PUB-05, PUB-06 | 2 |
+| 17. CI, Build & Test Hygiene | CI-11, CI-12, CI-13, CI-14, CI-15, CI-16, CI-17, BLD-14, DEBT-06, DEBT-07, DEBT-08 | 11 |
+| 18. Writer Correctness | JSONP-09, WRT-10, WRT-11, WRT-12 | 4 |
+| 19. Nullable Enum & Tuple Mapping | COLS-08, COLS-09, COLS-10, COLS-11, DEBT-09 | 5 |
+| 20. Release & Publication | ROLL-02, PUB-07, SUITE-05, PUB-08 | 4 |
 
 ---
 *Requirements defined: 2026-10-10*
-*Last updated: 2026-10-10 after initial definition*
+*Last updated: 2026-10-10 after roadmap creation (Phases 16-20, 26/26 mapped)*
