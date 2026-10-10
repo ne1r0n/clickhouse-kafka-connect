@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 15
 current_phase_name: Suite Gate, Publication & Rollout
 status: executing
-stopped_at: Completed 15-04-PLAN.md
-last_updated: "2026-10-10T10:58:05.194Z"
+stopped_at: Completed 15-05-PLAN.md
+last_updated: "2026-10-10T11:02:36.666Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 15 execution started
-state_head: 7f3639644bd532060e1b8844549cc8092041652f
+state_head: d9e01e57f10de3e866b632d31ab4db283ef6e664
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 25
-  completed_plans: 21
+  completed_plans: 22
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-10 after Phase 14)
 ## Current Position
 
 Phase: 15 (Suite Gate, Publication & Rollout) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-10-10 — Phase 15 execution started
 
@@ -103,6 +103,7 @@ Progress: [████████░░] 75%
 | Phase 15 P02 | 5 min | 2 tasks | 1 files |
 | Phase 15 P03 | 14 min | 2 tasks | 6 files |
 | Phase 15 P04 | 35 min | 2 tasks | 2 files |
+| Phase 15 P05 | 9 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 15]: 15-03: only 13-REVIEW WR-02 is marked fixed (981a89d6); all other Phase 13 and 14 review findings deferred with reasons (D-03)
 - [Phase 15]: 15-04: T-13-19 (upstream ERROR log of an unparseable DateTime string) and T-14-16 (tests.yaml has no permissions block, tag-pinned actions) left open below the high block threshold, not accepted; carried to the 15-07 approval bundle
 - [Phase 15]: 15-04: retroactive audits ran inline (no sub-agent tool); 13-SECURITY.md and 14-SECURITY.md both threats_open 0; OSV re-queried 2026-10-10T10:51Z, all five bumped coordinates clean
+- [Phase 15]: 15-05: CHANGELOG 1.7.0_gg1 dated 2026-10-10; 15-07 re-checks the date before the rehearsal push and it must not change after
+- [Phase 15]: 15-05: exactly-once pre-upgrade check is required only for explicit insertFormat=json plus bypassRowBinary=true with Struct/CDC records under exactlyOnce=true (L-22), precautionary elsewhere; dedup-hashes-parsed-data inference stated in the rollout doc
 
 ### Pending Todos
 
@@ -190,8 +193,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T10:58:05.149Z
-Stopped at: Completed 15-04-PLAN.md
+Last session: 2026-10-10T11:02:36.606Z
+Stopped at: Completed 15-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

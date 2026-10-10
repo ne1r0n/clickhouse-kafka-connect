@@ -102,7 +102,7 @@
 
 ### Rollout (ROLL)
 
-- [ ] **ROLL-01**: An operator rollout checklist exists covering: JMX MBean name before/after (`connector=` and the per-release `version=` segment); compression semantics, the `compress=true`-in-`jdbcConnectionProperties` caveat and the server-profile check; R-01's behavior change and the exactly-once backfill procedure (offset reset + KeeperMap state clear); JSON-route type notes; the new `DataException` (DLQ-able) for nested nulls; the rollback tag
+- [x] **ROLL-01**: An operator rollout checklist exists covering: JMX MBean name before/after (`connector=` and the per-release `version=` segment); compression semantics, the `compress=true`-in-`jdbcConnectionProperties` caveat and the server-profile check; R-01's behavior change and the exactly-once backfill procedure (offset reset + KeeperMap state clear); JSON-route type notes; the new `DataException` (DLQ-able) for nested nulls; the rollback tag
 
 ## Future Requirements
 
@@ -164,7 +164,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | PUB-02 | Phase 15 | Pending |
 | PUB-03 | Phase 15 | Pending |
 | PUB-04 | Phase 15 | Pending |
-| ROLL-01 | Phase 15 | Pending |
+| ROLL-01 | Phase 15 | Complete |
 
 **Coverage:**
 - v1 requirements: 39 total

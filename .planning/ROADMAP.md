@@ -192,7 +192,7 @@ Plans:
   4. After a recorded human approval, `custom_build` on `origin` is a non-force `--no-ff` merge, and tags `v1.7.0_gg1` and `pre-v1.7.0-sync` are on `origin`. The published SHA has exactly one completed `tests.yaml` run, located by `head_sha` plus workflow path, with no cancelled sibling. That run is green, which proves CI-08 end to end.
   5. The `.planning/` history after `c61d90ce` is on `origin` through a merge, not a fast-forward. It carries neither `.planning/.gsd-ws-arg` nor any local-only tag.
 
-**Plans**: 4/8 plans executed (waves 1-6; wave 3 has three independent plans)
+**Plans**: 5/8 plans executed (waves 1-6; wave 3 has three independent plans)
 
 Plans:
 **Wave 1** *(Phase 15: code first, D-10 step 1)*
@@ -204,7 +204,7 @@ Plans:
 **Wave 3** *(Phase 15: blocked on 15-02, D-10 steps 3-4)*
 - [x] 15-03-PLAN.md — VERSION v1.7.0_gg1 with its anchor row; ledger L-20..L-22, closed review dispositions, zero pending MERGE-CHECKLIST rows (PUB-01, PUB-02, PUB-03)
 - [x] 15-04-PLAN.md — Retroactive security audits of Phases 13 and 14 (D-09) (PUB-03)
-- [ ] 15-05-PLAN.md — docs/ROLLOUT-v1.7.0_gg1.md operator checklist and the CHANGELOG 1.7.0_gg1 section (ROLL-01, PUB-01)
+- [x] 15-05-PLAN.md — docs/ROLLOUT-v1.7.0_gg1.md operator checklist and the CHANGELOG 1.7.0_gg1 section (ROLL-01, PUB-01)
 
 **Wave 4** *(Phase 15: blocked on 15-03, 15-04 and 15-05)*
 - [ ] 15-06-PLAN.md — docs/FORK-DELTA.md rewritten for the v1.7.0 tree and grep-confirmed (PUB-02)
@@ -246,7 +246,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
 | 13. Fork Hardening on the Merged Tree | 8/8 | Complete    | 2026-10-08 |
 | 14. Dependency Bumps & CI | 4/4 | Complete    | 2026-10-10 |
-| 15. Suite Gate, Publication & Rollout | 4/8 | In Progress | - |
+| 15. Suite Gate, Publication & Rollout | 5/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg1-sync` created: 2026-10-07*
