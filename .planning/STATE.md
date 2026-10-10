@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-08 after Phase 13)
+See: .planning/PROJECT.md (updated 2026-10-10 after Phase 14)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 14 — Dependency Bumps & CI
+**Current focus:** Phase 15 — Suite Gate, Publication & Rollout
 
 ## Current Position
 
@@ -162,8 +162,8 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: ⚠ **Planning history after publication is local only.** Every `.planning/` commit after `c61d90ce` lives only on local `sync/v1.6.0`. That covers 11-07 bookkeeping, review, verification, UAT, security, and this milestone's archive commits. `custom_build` is protected and equals `origin`. Decide how and whether to publish them; pushing a tag or branch also triggers `tests.yaml`. **Scheduled:** PUB-04 (Phase 15), published via merge.
-- [CI]: Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group and cancels the branch run. This happened on `c61d90ce`. **Scheduled:** CI-08 (Phase 14), which must land before any tag push.
+- [Publish]: ⚠ **Planning history after publication is local only.** Every `.planning/` commit after `c61d90ce` lives only on local `sync/v1.6.0`. That covers 11-07 bookkeeping, review, verification, UAT, security, and this milestone's archive commits. `custom_build` is protected and equals `origin`. Decide how and whether to publish them; pushing a tag or branch also triggers `tests.yaml`. **Scheduled:** PUB-04 (Phase 15), published via merge. Phase 14 D-13 pushed `sync/v1.7.0` to `origin` once at `54b5ce2f` (branch only); every later commit on it is local.
+- [CI]: Resolved in Phase 14 (CI-08): `tests.yaml` triggers on branch pushes only, so a tag push starts no run. Residuals for Phase 15: two *branches* pushed at one SHA still cancel each other (push the published SHA on one branch only), and the pre-fix tag `pre-v1.7.0-sync` (c61d90ce) still runs the old workflow when pushed. Also: `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.
 - [Prod]: R-01 fixed by routing in Phase 13 (JSONP-05..07) — a deliberate behaviour change for explicit-JSON + Struct pipelines (rows now land). Rollout must cover it, the MBean rename (D-07), the compression setting (CMP), the nested-null `DataException` (WRT-08) and the `Int256`/`UInt256` fail-fast (TYPE-08). Source for the prose: `phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md` (L-01..L-19). **Scheduled:** ROLL-01, CHANGELOG/FORK-DELTA (Phase 15).
 - [Phase 13]: ⚠ `io.debezium.time.Timestamp` (epoch millis) is not converted on the metadata-free JSON route — ClickHouse reads it as seconds (13-REVIEW WR-02, ledger L-05). Five other review findings (WR-01, WR-03..05) are open in `13-REVIEW-DISPOSITION.md`; WR-05 is backlog 999.1. None blocks Phase 14; decide before Phase 15 publication whether WR-02 is fixed or documented as a rollout caveat.
 
@@ -179,11 +179,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-09T19:29:40.812Z
+Last session: 2026-10-10T08:34:47.000Z
 Stopped at: Phase 14 complete, ready to plan Phase 15
 Resume file: None
 
 ## Operator Next Steps
 
-- Plan Phase 14 with `/gsd-discuss-phase 14` or `/gsd-plan-phase 14`
-- Optional before Phase 15: `/gsd-code-review 13 --fix` for the five open Phase 13 review warnings, and `/gsd-map-codebase` (the codebase map predates the v1.7.0 merge; drift gate advisory)
+- Plan Phase 15 with `/gsd-discuss-phase 15` or `/gsd-plan-phase 15`
+- Optional before Phase 15: `/gsd-code-review 13 --fix` / `/gsd-code-review 14 --fix` for the open review warnings (Phase 13: five; Phase 14: WR-01, WR-02), and `/gsd-map-codebase` (the codebase map predates the v1.7.0 merge; drift gate advisory)

@@ -223,6 +223,8 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ RowBinary nested nulls either round-trip or fail loudly: `Map(K, Nullable(V))`/`Array(Nullable(V))` nulls pinned live as `NULL`; a nested null in a non-nullable scalar/Tuple slot throws a data-free `DataException` naming the column (no row written, DLQ-routable); a nested null `Array`/`Map` is written empty — Phase 13 (WRT-07, WRT-08)
 - ✓ Metadata/config findings fixed and pinned: DESCRIBE skip at any depth below JSON/Dynamic, `Int256`/`UInt256` fail fast, `Column.extractColumn` Array-recursion argument order, `USERNAME` ConfigDef default — Phase 13 (DESC-05, TYPE-08, COLS-07, CFG-04)
 - ✓ Test debt closed: `HeaderToValue` non-STRING target pinned, `JsonColumnTest` typed read-back, try/finally lifecycle, attributable `ClickHouseBase` teardown failures, four stale Javadocs; full suite green on `latest` 26.9.13.15 × V2 (cache-busted, 803 tests, 18 named skips); behaviour ledger L-01..L-19 in `13-BEHAVIOUR-LEDGER.md` for Phase 15 — Phase 13 (DEBT-01..05)
+- ✓ Dependency bumps landed one attributable one-line catalog commit each, gated in order: lz4-java `1.10.4` → `1.12.0` (advisory-free; floor is 1.11.4; live `Lz4RoundTripLiveTest` proves client `0.9.6` exercises it), okhttp `5.5.0`, mockito `5.24.0`, Jackson `2.22.3` (closes CVE-2026-91776/91777) and org.json `20260814`; Jackson and org.json each gated by a full live suite on `latest` 26.9.14.10 × V2 (805 tests, 18 named skips, 152 wide-integer/Decimal256 outcomes unchanged) — Phase 14 (BLD-10, BLD-11, BLD-12)
+- ✓ `tests.yaml` checks what a local run checks: branch-push-only trigger (a tag push starts no run), a "Compile integration-test sources" step before "Run tests", and a "Test fork count" step; observed on CI as run `38037397969` on the pushed `sync/v1.7.0` HEAD `54b5ce2f` — exactly one run, green, `nproc=4, derived maxParallelForks=2` — Phase 14 (CI-08, CI-09, CI-10)
 
 ### Active
 
@@ -235,9 +237,9 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 **Publication & client follow-ups (emerged in Phase 11, not yet scheduled):**
 
 - ~~`ClickHouseVersionDefaultUnitTest`'s class Javadoc still says "CI pins `CLICKHOUSE_VERSION: latest`" in the published tree. D-09 corrected the same sentence only in `ClickHouseTestHelpers`. Comment-only (Phase 11 review IN-01)~~ **Closed in Phase 13 (DEBT-05)** — Javadoc rewritten to describe the code as it is
-- [ ] The CI fork count was never read from a log. The local gate ran 6 forks; CI's was inferred from a 2-core runner assumption, and public `ubuntu-latest` runners are usually 4 vCPU. Read it from an authenticated log, or accept the topology as unmeasured (Phase 11 verification backstop)
+- ~~The CI fork count was never read from a log. The local gate ran 6 forks; CI's was inferred from a 2-core runner assumption, and public `ubuntu-latest` runners are usually 4 vCPU. Read it from an authenticated log, or accept the topology as unmeasured (Phase 11 verification backstop)~~ **Closed in Phase 14 (CI-09)** — a "Test fork count" notice annotation, readable without a token, reported `nproc=4, derived maxParallelForks=2` on run `38037397969`
 
-- [ ] Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group, which cancels the branch run. CI-06 had to narrow its locator to `conclusion != cancelled`. Either key the concurrency group on `github.ref` too, or push tags separately, so a published SHA has exactly one run again
+- ~~Pushing a tag onto the same SHA as a branch push starts a second `tests.yaml` run in the `github.sha` concurrency group, which cancels the branch run. CI-06 had to narrow its locator to `conclusion != cancelled`. Either key the concurrency group on `github.ref` too, or push tags separately, so a published SHA has exactly one run again~~ **Closed in Phase 14 (CI-08)** — `tests.yaml` now triggers on branch pushes only, so a tag push starts no run. Residual: two *branches* pushed at one SHA still cancel each other, and the pre-fix tag `pre-v1.7.0-sync` (c61d90ce) still runs the old workflow when pushed — Phase 15 pushes the published SHA on one branch only
 - ~~The forced `network_compression_method=lz4` (D-17) is a workaround for client `0.9.6`. Remove it once the client decodes ZSTD, under the removal condition recorded in `docs/FORK-DELTA.md`~~ **Closed in Phase 12 (CMP-01..03)** — D-17 retired onto upstream's `setCompressionMethod`. The pre-rollout check that no server profile constrains the compression setting (T-11-38) moves to the rollout checklist (ROLL-01)
 
 **Transform follow-ups (emerged in Phase 2 code review, not yet scheduled):**
@@ -278,6 +280,13 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - [ ] `doWriteCol` throws a message-less `RuntimeException` for a missing non-nullable value, now reachable for `Array(Tuple)` after COLS-07, so Connect status and the DLQ show no column name (13-REVIEW WR-03)
 - [ ] `e.getMessage().contains(code)` runs before its null check in `ClickHouseWriter`'s error path; pre-existing, but new exception types flow through it (13-REVIEW WR-04)
 - [ ] Non-nullable null outcomes on the metadata-free JSON route rely on the server default `input_format_null_as_default=1` — belongs in the rollout checklist (ledger L-08)
+
+**Phase 14 review & CI follow-ups (emerged 2026-10-10, not yet scheduled — open in `14-REVIEW-DISPOSITION.md` / ROADMAP backlog):**
+
+- [ ] `Lz4RoundTripLiveTest` asserts LZ4 on the request leg only (`CompressedReadBufferBlocks > 0`); the response leg was proven once by an uncommitted zstd probe, not by a standing assertion (14-REVIEW WR-01)
+- [ ] The "Test fork count" step recomputes `maxParallelForks` in shell from `nproc` rather than reading Gradle's container-aware value, duplicating the `build.gradle.kts` formula (14-REVIEW WR-02)
+- [ ] `testRuntimeClasspath` carries `org.lz4:lz4-java:1.8.0` beside `at.yawk.lz4:lz4-java` via the Confluent 7.9.1 test stack — test-only, not shipped, needs a `build.gradle.kts` change — ROADMAP backlog 999.2
+- [ ] CI annotations on run `38037397969`: Node.js 20 deprecation for `actions/checkout@v4`/`upload-artifact@v4`; `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning under Jackson 2.22.3
 
 **Quality gates:** all three met — moved to Validated at the Phase 5 transition.
 
@@ -343,7 +352,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - **Baseline — established.** Phase 1 found the untouched suite already green on `latest` × V2 once a sandbox environment artifact was neutralized: 187 tests / 0 failed / 7 skipped, rising to 194 / 0 / 7 after the harness work. The final milestone run is 371 / 0 failures / 0 errors / 7 skipped.
 - **CI after v1.6.0_gg1-sync:** same single `latest` × V2 job, now with no `CLICKHOUSE_VERSION`/`CLIENT_VERSION` in the job environment, so CI runs the code defaults that `ClickHouseVersionDefaultUnitTest` pins. Last verified run: `37619434848` on `c61d90ce`, 386 s. The concurrency group is keyed on `github.sha` with `cancel-in-progress`, so pushing a branch and a tag at one SHA produces a cancelled run beside the green one (Active follow-up).
 - **Research:** each milestone's research is archived with it — `milestones/v1.2.9_gg4-tests-research/` (per-feature test inventories, 10 pitfalls) and `milestones/v1.6.0_gg1-sync-research/` (merge strategy, conflict map, upgrade pitfalls).
-- **Open follow-ups:** after Phase 13, the 15 hardening items are closed; open are the CI/publication items (Phases 14-15) and six Phase 13 review/research follow-ups under Requirements → Active. R-01 is fixed; the Debezium `io.debezium.time.Timestamp` gap on the metadata-free JSON route is now the only known silent wrong value.
+- **Open follow-ups:** after Phase 14, the hardening, dependency and CI items are closed; open are the publication items (Phase 15), six Phase 13 and four Phase 14 review/CI follow-ups under Requirements → Active. R-01 is fixed; the Debezium `io.debezium.time.Timestamp` gap on the metadata-free JSON route is now the only known silent wrong value.
 
 ## Constraints
 
@@ -365,6 +374,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| D-13: push the scratch branch `sync/v1.7.0` to `origin` once (branch only, explicit refspec, no tags) before Phase 15, amending Phase 12 D-01 | CI-09 needs a measurement on CI hardware and D-11(b) needs to see the new trigger produce exactly one run before publication relies on it; a CI failure is cheapest here | ✓ Phase 14 (user answered "push" 2026-10-10) — `54b5ce2f` pushed, run `38037397969` green, `custom_build` and origin tags untouched; later planning commits stay local until PUB-04 |
 | R-01 fixed by **routing** on `shouldSkipTableMetadata()`, unconditional, no opt-out flag; logical types encoded by a private route-scoped `MetadataFreeJsonWriter` (shared `DataJson.OBJECT_MAPPER` untouched) | Throwing would break any pipeline already on explicit JSON behind a Struct converter; a private mapper keeps the upstream JSON paths byte-identical | ✓ Phase 13 (JSONP-05..07, D-05/D-06) — R-01 pin flipped to typed read-back; parity matrix seen red under a Timestamp-encoding mutation. Debezium `io.debezium.time.Timestamp` left as a known gap (follow-up) |
 | Nested nulls in non-nullable RowBinary slots: scalar/Tuple **throw**, Array/Map **coerce to empty** | A throw on an empty-able container would break pipelines that legitimately send null lists; a scalar null has no faithful encoding | ✓ Phase 13 (WRT-08, D-09/D-10/D-16) — `Nullable(Enum)`/`Nullable(Tuple)` slots now throw because of the pre-existing `Column` nullability defect (backlog 999.1), accepted as a rollout cost |
 | WRT-09's "re-pin" delivered **additively**: three new pins beside the unchanged nullable CR-02 pins, no existing assertion edited | All three CR-02 pins sit on nullable columns and stay correct after #820; the 12-02 plan forbade editing existing assertions, so the literal "re-pin" reading conflicted with the plan | ✓ Phase 12 — accepted at UAT test 5 |
@@ -431,4 +441,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-08 after Phase 13*
+*Last updated: 2026-10-10 after Phase 14*
