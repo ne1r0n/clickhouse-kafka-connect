@@ -93,8 +93,13 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
 - [ ] 16-01-PLAN.md — Fix IN-07..IN-10 in the rollout doc, FORK-DELTA and CHANGELOG (D-01..D-06), with every quoted command recorded in 16-COMMAND-EVIDENCE.md; tracer dry-runs the publication gate
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 16-02-PLAN.md — Pre-gate review of the Phase 16 docs diff with every finding dispositioned, IN-07..IN-10 closed in 15-REVIEW-DISPOSITION (D-09, D-10), and the measured approval bundle on X0
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 16-03-PLAN.md — Blocking-human gate, then the docs-only `--no-ff` merge in a throwaway worktree, push of `custom_build` alone (no tag), and its single green `tests.yaml` run (D-11, D-12)
 
 **Note**: `verify-merge-invariants.sh` is the upstream-sync gate. It requires the second parent to be an upstream release tag, so it does not apply here and must not be "fixed". The gate for this merge is the path allow-list diff plus a tree-equality check. No full suite is needed, because the tree outside `docs/`, `CHANGELOG.md` and `.planning/` is identical to the gated `f328fd21` tree; assert that by command.
