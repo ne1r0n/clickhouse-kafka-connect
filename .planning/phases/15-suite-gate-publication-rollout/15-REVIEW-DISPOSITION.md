@@ -5,27 +5,27 @@ titles: json
 findings:
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: deferred
     title: "The WARN fires on routes where the defect cannot occur"
   - id: IN-02
     severity: info
-    disposition: open
+    disposition: deferred
     title: "The V1 describe hook is not exercised by the V2-only target run"
   - id: IN-03
     severity: info
-    disposition: open
+    disposition: deferred
     title: "The warned-key set never evicts and its key is delimiter-ambiguous"
   - id: IN-04
     severity: info
-    disposition: open
+    disposition: deferred
     title: "The WARN wording is not pinned by a test"
   - id: IN-05
     severity: info
-    disposition: open
+    disposition: deferred
     title: "New constants sit in the middle of the class"
   - id: IN-06
     severity: info
-    disposition: open
+    disposition: deferred
     title: "Edge-value pins cover the mantissa-less scientific form only"
   - id: WR-01
     severity: warning
@@ -55,7 +55,7 @@ findings:
     severity: info
     disposition: open
     title: "Planning-internal identifiers appear in operator-facing text without a path, and the item 6 self-check pattern is broader than its explanation"
-open: 13
+open: 7
 total: 13
 recorded: 2026-10-10T12:29:38.081Z
 ---
@@ -64,12 +64,12 @@ recorded: 2026-10-10T12:29:38.081Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
-| IN-06 | info | open | - |
+| IN-01 | info | deferred | deferred in 15-02: D-15 locks the WARN's firing condition and wording; route restriction stated in FORK-DELTA Known costs |
+| IN-02 | info | deferred | deferred in 15-02: V1 describe hook exercised only under CLIENT_VERSION=V1; suite target is V2 only |
+| IN-03 | info | deferred | deferred in 15-02: set is bounded by schema size and the key collision is harmless in practice |
+| IN-04 | info | deferred | deferred in 15-02: WARN mechanism is pinned; wording stays a read-by-human deliverable |
+| IN-05 | info | deferred | deferred in 15-02: moving constants adds churn against upstream rebasing for no behaviour change |
+| IN-06 | info | deferred | deferred in 15-02: mantissa-with-fraction form verified against the server in review, no committed test |
 | WR-01 | warning | open | - |
 | WR-02 | warning | open | - |
 | WR-03 | warning | open | - |
