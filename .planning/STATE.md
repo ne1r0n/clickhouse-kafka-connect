@@ -5,11 +5,11 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 15
 current_phase_name: Suite Gate, Publication & Rollout
 status: planning
-stopped_at: Phase 14 complete, ready to plan Phase 15
-last_updated: "2026-10-10T08:33:57.855Z"
+stopped_at: Phase 15 context gathered
+last_updated: "2026-10-10T09:20:47.732Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 14 complete, transitioned to Phase 15
-state_head: ddba9aca839bacb6d9222444ca0293b18a37815f
+state_head: 1a59e1a254513397fbc8dd620483c95a81db80f3
 progress:
   total_phases: 4
   completed_phases: 3
@@ -179,9 +179,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T08:34:47.000Z
-Stopped at: Phase 14 complete, ready to plan Phase 15
-Resume file: None
+Last session: 2026-10-10T09:20:47.666Z
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-suite-gate-publication-rollout/15-CONTEXT.md
 
 ## Operator Next Steps
 
