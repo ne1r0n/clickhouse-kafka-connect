@@ -5,16 +5,16 @@ milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 15
 current_phase_name: Suite Gate, Publication & Rollout
 status: executing
-stopped_at: Completed 15-06-PLAN.md
-last_updated: "2026-10-10T11:10:10.201Z"
+stopped_at: Completed 15-07-PLAN.md
+last_updated: "2026-10-10T11:31:21.751Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 15 execution started
-state_head: 88067155bda2e4591c4e590178a8673f3e65838a
+state_head: 07f35839590573274945fadd2d6677e804aa1dfd
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 25
-  completed_plans: 23
+  completed_plans: 24
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-10 after Phase 14)
 ## Current Position
 
 Phase: 15 (Suite Gate, Publication & Rollout) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-10-10 — Phase 15 execution started
 
@@ -105,6 +105,7 @@ Progress: [████████░░] 75%
 | Phase 15 P04 | 35 min | 2 tasks | 2 files |
 | Phase 15 P05 | 9 min | 2 tasks | 2 files |
 | Phase 15 P06 | 35min | 2 tasks | 1 files |
+| Phase 15 P07 | 21 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 15]: 15-05: exactly-once pre-upgrade check is required only for explicit insertFormat=json plus bypassRowBinary=true with Struct/CDC records under exactlyOnce=true (L-22), precautionary elsewhere; dedup-hashes-parsed-data inference stated in the rollout doc
 - [Phase 15]: 15-06: FORK-DELTA raw-numbers prose states the delta against upstream grew in v1.7.0_gg1 (84 to 95 files, 9476 to 13587 insertions at the wider scope); the smaller-delta claim rests on the retired rows
 - [Phase 15]: 15-06: Known costs lists audit threats T-13-19 and T-14-16 as open below the block threshold, beyond the plan's list
+- [Phase 15]: 15-07: gated tree T0 6e25bb1b passed two full runs (830 tests, 18 named skips) and was pushed as X ae8520ed; Fact 38 is in X, Fact 39 and the SUMMARY stay on the local tail (D-14)
+- [Phase 15]: 15-07: rehearsal run 38048114845 green in 391 s against the 1350 s threshold; origin custom_build and tags unchanged
 
 ### Pending Todos
 
@@ -196,8 +199,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T11:10:10.156Z
-Stopped at: Completed 15-06-PLAN.md
+Last session: 2026-10-10T11:31:21.703Z
+Stopped at: Completed 15-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
