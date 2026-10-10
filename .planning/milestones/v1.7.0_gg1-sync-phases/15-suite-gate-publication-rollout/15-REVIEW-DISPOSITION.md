@@ -41,21 +41,21 @@ findings:
     title: "The `version=*` wildcard advice is wrong for the regex-based consumers the same sentence names"
   - id: IN-07
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Item 2's recovery steps are not qualified by `exactlyOnce`, and the closing sentence is logically loose"
   - id: IN-08
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Item 8 omits the re-merge consequence of `git revert -m 1`"
   - id: IN-09
     severity: info
-    disposition: open
+    disposition: fixed
     title: "FORK-DELTA still speaks of the `v1.7.0_gg1` tag as future, and the skip-count command does not print the totals it claims"
   - id: IN-10
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Planning-internal identifiers appear in operator-facing text without a path, and the item 6 self-check pattern is broader than its explanation"
-open: 4
+open: 0
 total: 13
 recorded: 2026-10-10T12:29:38.081Z
 ---
@@ -73,10 +73,10 @@ recorded: 2026-10-10T12:29:38.081Z
 | WR-01 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
 | WR-02 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
 | WR-03 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
-| IN-07 | info | open | - |
-| IN-08 | info | open | - |
-| IN-09 | info | open | - |
-| IN-10 | info | open | - |
+| IN-07 | info | fixed | fad6f7f9 (docs only, Phase 16) |
+| IN-08 | info | fixed | fad6f7f9 (docs only, Phase 16) |
+| IN-09 | info | fixed | 65582a31 (docs only, Phase 16) |
+| IN-10 | info | fixed | fad6f7f9 (rollout), 8c1f0bc1 (CHANGELOG) (docs only, Phase 16) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
