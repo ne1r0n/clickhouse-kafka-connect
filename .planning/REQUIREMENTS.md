@@ -11,7 +11,7 @@
 ### Publication — early docs fix
 
 - [x] **PUB-05**: 15-REVIEW docs findings IN-07..IN-10 are fixed in `docs/ROLLOUT-v1.7.0_gg1.md`, `docs/FORK-DELTA.md` and `CHANGELOG.md` — rollout item 2 recovery steps qualified by `exactlyOnce`, item 8 states that going forward again after `git revert -m 1` requires reverting the revert, FORK-DELTA grep commands print totals, CHANGELOG/ROLLOUT entries are plain language (no bare planning IDs) and mention the MBean `version=`/client-name change and the lz4 advisory reason — and the changed docs pass a code review **before** the merge gate
-- [ ] **PUB-06**: An operator reading `origin/custom_build` sees the corrected rollout doc: a docs-only non-force `--no-ff` merge of `sync/v1.7.0` into `custom_build`, made only after the user's own explicit approval, whose diff against `origin/custom_build` is limited to `.planning/` and `docs/` (plus `CHANGELOG.md` if PUB-05 touches it); one branch pushed, no tag, exactly one green `tests.yaml` run on that SHA
+- [x] **PUB-06**: An operator reading `origin/custom_build` sees the corrected rollout doc: a docs-only non-force `--no-ff` merge of `sync/v1.7.0` into `custom_build`, made only after the user's own explicit approval, whose diff against `origin/custom_build` is limited to `.planning/` and `docs/` (plus `CHANGELOG.md` if PUB-05 touches it); one branch pushed, no tag, exactly one green `tests.yaml` run on that SHA
 
 ### Column mapping — 999.1
 
@@ -74,7 +74,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PUB-05 | Phase 16 | Complete |
-| PUB-06 | Phase 16 | Pending |
+| PUB-06 | Phase 16 | Complete |
 | COLS-08 | Phase 19 | Pending |
 | COLS-09 | Phase 19 | Pending |
 | COLS-10 | Phase 19 | Pending |

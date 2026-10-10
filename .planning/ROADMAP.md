@@ -90,7 +90,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
      - only `custom_build` was pushed, and no tag
   5. That merge SHA has exactly one `tests.yaml` run, located by `head_sha` plus workflow path. The run is green and has no cancelled sibling.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -100,7 +100,7 @@ Plans:
 - [x] 16-02-PLAN.md — Pre-gate review of the Phase 16 docs diff with every finding dispositioned, IN-07..IN-10 closed in 15-REVIEW-DISPOSITION (D-09, D-10), and the measured approval bundle on X0
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 16-03-PLAN.md — Blocking-human gate, then the docs-only `--no-ff` merge in a throwaway worktree, push of `custom_build` alone (no tag), and its single green `tests.yaml` run (D-11, D-12)
+- [x] 16-03-PLAN.md — Blocking-human gate, then the docs-only `--no-ff` merge in a throwaway worktree, push of `custom_build` alone (no tag), and its single green `tests.yaml` run (D-11, D-12)
 
 **Note**: `verify-merge-invariants.sh` is the upstream-sync gate. It requires the second parent to be an upstream release tag, so it does not apply here and must not be "fixed". The gate for this merge is the path allow-list diff plus a tree-equality check. No full suite is needed, because the tree outside `docs/`, `CHANGELOG.md` and `.planning/` is identical to the gated `f328fd21` tree; assert that by command.
 
@@ -313,7 +313,7 @@ After publication, check once that `test-head.yaml`'s nightly schedule no longer
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 16. Early Docs Publication | v1.7.0_gg2-hardening | 2/3 | In Progress | - |
+| 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | In Progress | - |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |

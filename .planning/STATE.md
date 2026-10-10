@@ -4,17 +4,17 @@ milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 16
 current_phase_name: Early Docs Publication
-status: executing
+status: verifying
 stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-10-10T17:52:49.946Z"
+last_updated: "2026-10-10T18:11:33.709Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 16 execution started
-state_head: e45c6387fd1d4b01f0506196f91bbaa895074280
+state_head: 82c291f7cc085948cda2bf08525ee03df0a2d540
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-10 after v1.7.0_gg1-sync milestone)
 
 Phase: 16 (Early Docs Publication) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-10 — Phase 16 execution started
 
 Progress: [░░░░░░░░░░] 0%
