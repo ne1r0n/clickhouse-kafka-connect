@@ -3,6 +3,7 @@ phase: 16-early-docs-publication
 reviewed: 2026-10-10T17:55:00Z
 depth: standard
 diff_base: 505e49819fba7b2ba980a718d9ec6b66b55027b0
+diff_base_incremental: 9207ec019358f7e88db4727237b7505e59bb396a
 files_reviewed: 3
 files_reviewed_list:
   - CHANGELOG.md
@@ -10,9 +11,9 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 0
+  warning: 1
   info: 1
-  total: 1
+  total: 2
 status: issues_found
 ---
 
@@ -64,3 +65,23 @@ Explicit checks, beyond the standard list:
 _Reviewed: 2026-10-10T17:55:00Z_
 _Reviewer: Claude (gsd-code-reviewer procedure, run inline)_
 _Depth: standard_
+
+## Incremental review: post-fix (diff base 9207ec01)
+
+**Reviewed:** 2026-10-10
+**Scope:** `git diff 9207ec01 HEAD -- docs/ROLLOUT-v1.7.0_gg1.md` (one line, `docs/ROLLOUT-v1.7.0_gg1.md:322`, commit `fd99a476`). Surrounding item 8 text and `16-COMMAND-EVIDENCE.md` E-14 read for context.
+
+**The IN-01 fix is correct.** The sentence now reads "merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back."
+
+- `<merge-commit>` is defined two lines above as the merge tagged `v1.7.0_gg1`. That is `f328fd21` (`git tag --points-at` confirms; the tag is on origin). Its second parent, `f328fd21^2`, is `ae8520ed`, the released history. It resolves for a `--no-ff` merge because both parents are recorded.
+- `ae8520ed` is an ancestor of the published tip `537beb1f` (checked with `merge-base --is-ancestor`), so the ref the operator types is reachable from `origin/custom_build`. The unpublished `sync/v1.7.0` name is gone from the checklist.
+- It reads consistently with the revert text. After `git revert -m 1 <merge-commit>`, git treats `^2` as already merged and prints "Already up to date.", which is what "brings nothing back" says. Reverting the revert is what restores the release. I reproduced both on a throwaway worktree at `537beb1f`: merge prints "Already up to date.", the revert-of-revert restores the tree of `537beb1f`.
+- No new defect in the changed line: no secret, hostname, planning ID or sync-branch name was added.
+
+One issue found in the neighbouring step the fix sits beside. It is not caused by the one-line diff, but the publication merge the fix was written for makes it reachable.
+
+### WR-01: Item 8 step 1 `git revert -m 1 <merge-commit>` conflicts on the published `custom_build` tip, and E-14 does not cover that state
+
+**File:** `docs/ROLLOUT-v1.7.0_gg1.md:318`
+**Issue:** Step 1 says "On `custom_build`, back out the whole release in one commit: `git revert -m 1 <merge-commit>`". The release merge `f328fd21` is no longer the tip of `custom_build`. The docs-only publication merge `537beb1f` (parents `f328fd21` and `1e0eefde`) sits on top and changed `CHANGELOG.md`, `docs/FORK-DELTA.md` and `docs/ROLLOUT-v1.7.0_gg1.md` after the release. I ran step 1 on a detached worktree at `537beb1f`. It stops with conflicts: `UU CHANGELOG.md`, `UU docs/FORK-DELTA.md`, `UD docs/ROLLOUT-v1.7.0_gg1.md` (modify/delete, because the pre-release tree has no rollout file), and many `.planning/` files. The operator does not get "one commit"; they get a stopped revert in the middle of an incident. E-06 and E-14 both demonstrate on `f328fd21`, the pre-publication state, so their "Matches text: yes" does not describe what an operator will see on the published branch. The go-forward sentence this fix touches only holds if the revert actually completed.
+**Fix:** Give step 1 a path that works on the published tip, and re-run E-06/E-14 at `537beb1f`. A sequence that worked in the same throwaway worktree: `git revert --no-commit -m 1 <merge-commit>`, then `git read-tree -u --reset pre-v1.7.0-sync`, then `git commit`. The resulting tree equals the `pre-v1.7.0-sync` tree, `git merge <merge-commit>^2` then prints "Already up to date.", and `git revert <revert-commit>` restores the tree of `537beb1f`. Alternatively state in step 1 that conflicts in the three docs files and `.planning/` are expected and are resolved by taking the `pre-v1.7.0-sync` side.
