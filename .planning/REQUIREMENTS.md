@@ -1,0 +1,83 @@
+# Requirements: ClickHouse Kafka Connect — `custom_build` Fork
+
+**Defined:** 2026-10-10
+**Milestone:** `v1.7.0_gg2-hardening` Follow-up Hardening & CI Hygiene
+**Core Value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
+
+**Sources:** the 11 open follow-ups in PROJECT.md → Active; research in `.planning/research/` (SUMMARY, STACK, FEATURES, ARCHITECTURE, PITFALLS). Scope decisions made by the user on 2026-10-10: early docs-only publication first; release as `v1.7.0_gg2`; CI changes approved (Node 24 action majors, `ubuntu-24.04` pin, SHA pinning + `permissions:`, Lombok warning); upstream-identical code fixed in the fork with each patch recorded in FORK-DELTA; Tuple handled by spike then go/no-go; empty-CDC skip on all routes; IN-07..IN-10 folded into the early publication; Dependabot for actions and the `test-head.yaml` fix in scope.
+
+## v1 Requirements
+
+### Publication — early docs fix
+
+- [ ] **PUB-05**: 15-REVIEW docs findings IN-07..IN-10 are fixed in `docs/ROLLOUT-v1.7.0_gg1.md`, `docs/FORK-DELTA.md` and `CHANGELOG.md` — rollout item 2 recovery steps qualified by `exactlyOnce`, item 8 states that going forward again after `git revert -m 1` requires reverting the revert, FORK-DELTA grep commands print totals, CHANGELOG/ROLLOUT entries are plain language (no bare planning IDs) and mention the MBean `version=`/client-name change and the lz4 advisory reason — and the changed docs pass a code review **before** the merge gate
+- [ ] **PUB-06**: An operator reading `origin/custom_build` sees the corrected rollout doc: a docs-only non-force `--no-ff` merge of `sync/v1.7.0` into `custom_build`, made only after the user's own explicit approval, whose diff against `origin/custom_build` is limited to `.planning/` and `docs/` (plus `CHANGELOG.md` if PUB-05 touches it); one branch pushed, no tag, exactly one green `tests.yaml` run on that SHA
+
+### Column mapping — 999.1
+
+- [ ] **COLS-08**: `Nullable(Enum8)` and `Nullable(Enum16)` columns round-trip through RowBinary for NULL and non-NULL values, top-level and nested (`Array(Nullable(Enum))`, `Map(K, Nullable(Enum))`), checked by typed read-back; the D-16/L-13 pin tests that asserted the old behavior are flipped with a written rationale, not deleted
+- [ ] **COLS-09**: A Tuple spike runs a live twin-table matrix on ClickHouse `latest` — `Nullable(Tuple(...))` with nullable and non-nullable elements, and `Array(Nullable(Tuple(...)))` — and records a go/no-go decision (with the type-string parsing approach) before any Tuple production code lands
+- [ ] **COLS-10**: On go, `Nullable(Tuple(...))` round-trips with element nullability taken from the declared type string (not DESCRIBE's all-`Nullable` sub-columns, not `Table.java`), and `Array(Nullable(Tuple(...)))` still round-trips; on no-go, the discovery WARN narrows to Tuple and FORK-DELTA records a Known cost with the 999.1 backlog entry updated
+- [ ] **COLS-11**: The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` change in the same commit as the code they describe, and the merge-invariant script stays green
+
+### Writer correctness
+
+- [ ] **JSONP-09**: An empty Debezium record (`op=t`, or null `before` and `after`) inserts no row on all three routes — explicit `insertFormat=json`, upstream `bypassRowBinary=true` JSON, and RowBinary — while offsets and exactly-once state still advance; the skip is decided inside the writer so the batch sent on retry stays byte-identical; one live test per route
+- [ ] **WRT-10**: A missing value for a non-nullable column, including inside `Array(Tuple(...))`, raises a `DataException` naming the column and its ClickHouse type, so Connect status and the DLQ show which column failed (13-REVIEW WR-03)
+- [ ] **WRT-11**: `ClickHouseWriter`'s error path handles an exception whose message is null without a `NullPointerException`, and retriable vs non-retriable classification is unchanged; pinned by a Docker-free test (13-REVIEW WR-04)
+- [ ] **WRT-12**: A DateTime parse failure logs the column name, ClickHouse and Kafka types, exception class and value length — never the raw value, directly or via the parse exception's message; pinned by a log-capture test; the patch to upstream-identical lines is recorded in FORK-DELTA (T-13-19)
+
+### Test & build debt
+
+- [ ] **DEBT-06**: `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion (`ProfileEvents['NetworkSendBytes']` vs `result_bytes` for the read's query id), seen red with server-response compression disabled (14-REVIEW WR-01)
+- [ ] **DEBT-07**: `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java` — the `org.lz4:lz4-java:1.8.0` duplicate from the Confluent 7.9.1 stack is gone — and the `runtimeClasspath`/`integrationTestRuntimeClasspath` resolution is unchanged (backlog 999.2)
+- [ ] **DEBT-08**: A pin row covers the mantissa-with-fraction scientific form for Debezium `NanoTimestamp` in `MetadataFreeJsonWriterTest` (15-REVIEW IN-06)
+- [ ] **DEBT-09**: 15-REVIEW IN-01..IN-05 are each fixed or closed with a written reason in the disposition file, consistent with the COLS-10 outcome
+- [ ] **BLD-14**: The Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning no longer appears in the build, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code is unchanged
+
+### CI hygiene
+
+- [ ] **CI-11**: `tests.yaml` uses Node 24 action majors (`actions/checkout` v7.x, `actions/upload-artifact` v7.x) and every action is pinned by full commit SHA (the peeled commit for annotated tags) with a `# vX.Y.Z` comment (T-14-16)
+- [ ] **CI-12**: `tests.yaml` runs on `ubuntu-24.04` instead of `ubuntu-latest`
+- [ ] **CI-13**: `tests.yaml` declares a least-privilege `permissions: contents: read` block and checkout uses `persist-credentials: false` (T-14-16)
+- [ ] **CI-14**: The "Test fork count" step reads the effective `maxParallelForks` from a Gradle task instead of recomputing the formula in shell (14-REVIEW WR-02)
+- [ ] **CI-15**: `.github/dependabot.yml` includes the `github-actions` ecosystem so the SHA-pinned actions still get update PRs
+- [ ] **CI-16**: `test-head.yaml` is fixed or disabled in the fork so no scheduled run fails because `tests.yaml` is not a reusable workflow
+- [ ] **CI-17**: One green CI run on a pushed SHA proves CI-11..CI-16 together — job summary, fork-count notice and both artifact uploads present
+
+### Release
+
+- [ ] **ROLL-02**: `docs/ROLLOUT-v1.7.0_gg2.md` gives operators the 999.1 value change (rows already stored wrongly are not repaired), the dedup-token retry consequence verified on `latest`, the empty-CDC skip change, and the MBean `version=` change — reviewed before the publication gate
+- [ ] **PUB-07**: `VERSION` is `v1.7.0_gg2`, `CHANGELOG.md` has a plain-language `1.7.0_gg2` section, and `docs/FORK-DELTA.md` has a row for every new fork-side patch
+- [ ] **SUITE-05**: The full suite is green twice on ClickHouse `latest` × client V2 (0 failures, 0 errors, every skip named) and `testUnit` is green with Docker stopped
+- [ ] **PUB-08**: The release lands on `custom_build` as a non-force `--no-ff` merge after the user's own explicit approval, the published SHA has exactly one green CI run, the `v1.7.0_gg2` tag is pushed only after that run is green, and the rollback tag points at a commit that already carries the branch-only trigger
+
+## Future Requirements
+
+- Next upstream sync once upstream tags past `v1.7.0` — same shape as `v1.7.0_gg1-sync`
+- Upgrading the other upstream workflows (`integrationTests.yaml`, `release.yaml`, `pre-release.yaml`, `increment-version.yml`) off `@v3`-era actions
+- Gradle 9.8.0 and Lombok 1.18.48 — noted by research, not approved
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Upstream sync | `upstream/main` = `v1.7.0`; nothing to merge |
+| ClickHouse client `0.10.0` | Not approved; same exclusion as the last milestone |
+| `serializeJsonRow` refactor (13 IN-04) / shared nested-null helper (13 IN-01) | Rebase churn in a high-risk file for no behavior change |
+| Moving to Ubuntu 26.04 runners | Docker 29 / Java 25 image; pinning 24.04 is the approved choice |
+| Repairing rows already stored wrongly by 999.1 | Operator data; documented in the rollout note instead |
+| Running the upgrade on production connectors | Stays with operators, as in previous milestones |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+
+**Coverage:**
+- v1 requirements: 26 total
+- Mapped to phases: 0 (filled by roadmap)
+
+---
+*Requirements defined: 2026-10-10*
+*Last updated: 2026-10-10 after initial definition*
