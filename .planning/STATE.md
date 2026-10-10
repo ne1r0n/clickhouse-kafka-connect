@@ -3,38 +3,37 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg1-sync
 milestone_name: Upstream v1.7.0 Sync & Follow-up Hardening
 current_phase: 15
-current_phase_name: Suite Gate, Publication & Rollout
-status: executing
-stopped_at: Completed 15-07-PLAN.md
-last_updated: "2026-10-10T11:31:21.751Z"
+status: completed
+stopped_at: Phase 15 complete — all phases complete
+last_updated: "2026-10-10T13:23:23.309Z"
 last_activity: 2026-10-10
-last_activity_desc: Phase 15 execution started
-state_head: 07f35839590573274945fadd2d6677e804aa1dfd
+last_activity_desc: Phase 15 complete
+state_head: c6bf1c7e0450b74b24e8a51568aef97831a2be3c
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 25
-  completed_plans: 24
-  percent: 75
+  completed_plans: 25
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-10 after Phase 14)
+See: .planning/PROJECT.md (updated 2026-10-10 after Phase 15)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 15 — Suite Gate, Publication & Rollout
+**Current focus:** Milestone `v1.7.0_gg1-sync` complete — ready for `/gsd-complete-milestone`
 
 ## Current Position
 
-Phase: 15 (Suite Gate, Publication & Rollout) — EXECUTING
-Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-10-10 — Phase 15 execution started
+Phase: 15
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-10-10 — Phase 15 complete
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -51,7 +50,7 @@ Progress: [████████░░] 75%
 | 12 | 5 | - | - |
 | 13 | 8 | - | - |
 | 14 | 4 | - | - |
-| 15 | TBD | - | - |
+| 15 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -172,6 +171,8 @@ Roadmap decisions (2026-10-07):
 - [Phase 15]: 15-06: Known costs lists audit threats T-13-19 and T-14-16 as open below the block threshold, beyond the plan's list
 - [Phase 15]: 15-07: gated tree T0 6e25bb1b passed two full runs (830 tests, 18 named skips) and was pushed as X ae8520ed; Fact 38 is in X, Fact 39 and the SUMMARY stay on the local tail (D-14)
 - [Phase 15]: 15-07: rehearsal run 38048114845 green in 391 s against the 1350 s threshold; origin custom_build and tags unchanged
+- [Phase 15]: 15-08: v1.7.0_gg1 published at f328fd21 (approved verbatim "publish"); run 38050860929 the only run on that SHA, green
+- [Phase 15]: UAT 1/1 (2026-10-10): docs-only 505e4981 (15-REVIEW WR-01..03) left unpublished for now; the published ROLLOUT keeps the TRUNCATE example until it is pushed (PROJECT.md Active)
 
 ### Pending Todos
 
@@ -184,8 +185,9 @@ None.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
 - [Publish]: **2026-10-10 (D-14): `v1.7.0_gg1` is published** at M = `f328fd21` on origin's `custom_build` (forced `--no-ff` merge of the rehearsed X = `ae8520ed`, approved verbatim "publish"; rollback `git revert -m 1 f328fd21`). Origin tags: `pre-v1.6.0-sync`, `v1.6.0_gg1`, `pre-v1.7.0-sync` (`c61d90ce`), `v1.7.0_gg1` (`f328fd21`); `origin/sync/v1.7.0` deleted, local `sync/v1.6.0` deleted. PUB-04: the `.planning/` history through X is now public. The Phase 15 commits after X (Recorded Facts 39-40, the 15-07/15-08 SUMMARYs, STATE/ROADMAP) and any later verification, UAT and milestone bookkeeping live on local `sync/v1.7.0` only; the next milestone's `--no-ff` merge publishes them, as PUB-04 did now. Recorded Fact 40.
 - [CI]: CI-08 proven end to end on the published SHA (2026-10-10, Recorded Fact 40): M = `f328fd21` has exactly one `tests.yaml` run (`38050860929`, push on `custom_build`, success, 389 s), none cancelled and none tag-triggered after the `v1.7.0_gg1` tag push. As expected, pushing `pre-v1.7.0-sync` started run `38051333950` on `c61d90ce` under its pre-CI-08 workflow (different SHA and concurrency group; noise, not a gate). Still open: two branches pushed at one SHA cancel each other (push a published SHA on one branch only); `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.
-- [Prod]: R-01 fixed by routing in Phase 13 (JSONP-05..07) — a deliberate behaviour change for explicit-JSON + Struct pipelines (rows now land). Rollout must cover it, the MBean rename (D-07), the compression setting (CMP), the nested-null `DataException` (WRT-08) and the `Int256`/`UInt256` fail-fast (TYPE-08). Source for the prose: `phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md` (L-01..L-19). **Scheduled:** ROLL-01, CHANGELOG/FORK-DELTA (Phase 15).
-- [Phase 13]: ⚠ `io.debezium.time.Timestamp` (epoch millis) is not converted on the metadata-free JSON route — ClickHouse reads it as seconds (13-REVIEW WR-02, ledger L-05). Five other review findings (WR-01, WR-03..05) are open in `13-REVIEW-DISPOSITION.md`; WR-05 is backlog 999.1. None blocks Phase 14; decide before Phase 15 publication whether WR-02 is fixed or documented as a rollout caveat.
+- [Prod]: Rollout coverage delivered in Phase 15 (ROLL-01, `docs/ROLLOUT-v1.7.0_gg1.md`): R-01 behaviour change, MBean rename (D-07), compression setting (CMP), nested-null `DataException` (WRT-08), `Int256`/`UInt256` fail-fast (TYPE-08).
+- [Phase 13]: WR-02 (Debezium `Timestamp` on the metadata-free JSON route) fixed in 15-01. Four other review findings (WR-01, WR-03..05) stay open in `13-REVIEW-DISPOSITION.md`; WR-05 is backlog 999.1.
+- [Phase 15]: ⚠ The published `docs/ROLLOUT-v1.7.0_gg1.md` (f328fd21) still offers `TRUNCATE TABLE` on the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14) plus the WR-02/WR-03 wording defects. Fixed by local docs-only `505e4981`; not on origin. Push it, or let the next milestone's `--no-ff` merge carry it.
 
 ## Deferred Items
 
@@ -200,10 +202,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-10T11:31:21.703Z
-Stopped at: Completed 15-07-PLAN.md
+Stopped at: Phase 15 complete (UAT 1/1, verification passed) — all milestone phases complete
 Resume file: None
 
 ## Operator Next Steps
 
-- Plan Phase 15 with `/gsd-discuss-phase 15` or `/gsd-plan-phase 15`
-- Optional before Phase 15: `/gsd-code-review 13 --fix` / `/gsd-code-review 14 --fix` for the open review warnings (Phase 13: five; Phase 14: WR-01, WR-02), and `/gsd-map-codebase` (the codebase map predates the v1.7.0 merge; drift gate advisory)
+- Close the milestone: `/gsd-complete-milestone v1.7.0_gg1-sync`
+- Decide when `505e4981` reaches `origin` (the published rollout doc still has the `TRUNCATE` example)

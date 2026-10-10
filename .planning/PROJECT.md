@@ -225,6 +225,10 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ Test debt closed: `HeaderToValue` non-STRING target pinned, `JsonColumnTest` typed read-back, try/finally lifecycle, attributable `ClickHouseBase` teardown failures, four stale Javadocs; full suite green on `latest` 26.9.13.15 × V2 (cache-busted, 803 tests, 18 named skips); behaviour ledger L-01..L-19 in `13-BEHAVIOUR-LEDGER.md` for Phase 15 — Phase 13 (DEBT-01..05)
 - ✓ Dependency bumps landed one attributable one-line catalog commit each, gated in order: lz4-java `1.10.4` → `1.12.0` (advisory-free; floor is 1.11.4; live `Lz4RoundTripLiveTest` proves client `0.9.6` exercises it), okhttp `5.5.0`, mockito `5.24.0`, Jackson `2.22.3` (closes CVE-2026-91776/91777) and org.json `20260814`; Jackson and org.json each gated by a full live suite on `latest` 26.9.14.10 × V2 (805 tests, 18 named skips, 152 wide-integer/Decimal256 outcomes unchanged) — Phase 14 (BLD-10, BLD-11, BLD-12)
 - ✓ `tests.yaml` checks what a local run checks: branch-push-only trigger (a tag push starts no run), a "Compile integration-test sources" step before "Run tests", and a "Test fork count" step; observed on CI as run `38037397969` on the pushed `sync/v1.7.0` HEAD `54b5ce2f` — exactly one run, green, `nproc=4, derived maxParallelForks=2` — Phase 14 (CI-08, CI-09, CI-10)
+- ✓ Gated tree passed the full suite twice on `latest` 26.9.14.10 × V2 (`clean test`, then `test --rerun`): 830 tests, 0 failures, 0 errors, 18 skips identical across runs and equal to FORK-DELTA's named skips; `testUnit` green with Docker stopped — Phase 15 (SUITE-04)
+- ✓ `VERSION` = `v1.7.0_gg1` with a `1.7.0_gg1` CHANGELOG section (R-01 routing, WR-02 strictness, compression, lz4-java 1.12.0); FORK-DELTA rewritten for the v1.7.0 tree (D-17 retired, R-01 closed, single LZ4 rule, Nullable-only MAP guard, L-20..L-22, Nullable Enum/Tuple WARN) — Phase 15 (PUB-01, PUB-02)
+- ✓ `v1.7.0_gg1` published: `custom_build` on `origin` = two-parent `--no-ff` merge `f328fd21` (approved verbatim "publish", no force), tags `v1.7.0_gg1` and `pre-v1.7.0-sync` (`c61d90ce`) on `origin`; exactly one `tests.yaml` run on the published SHA (`38050860929`, green, none cancelled), proving CI-08 end to end; the post-`c61d90ce` `.planning/` history published through the merge without `.gsd-ws-arg` or local-only tags — Phase 15 (PUB-03, PUB-04)
+- ✓ Operator rollout checklist `docs/ROLLOUT-v1.7.0_gg1.md`: 8 items, each with what changed, an "Am I affected?" self-check and an action — MBean `version=` rename, compression and `compress=true` caveat with the server-profile check, R-01 behaviour change with the exactly-once backfill, JSON-route type notes (incl. L-08 `input_format_null_as_default`), nested-null `DataException`, rollback tag `pre-v1.7.0-sync` — Phase 15 (ROLL-01)
 
 ### Active
 
@@ -274,12 +278,12 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 **Phase 13 review & research follow-ups (emerged 2026-10-08, not yet scheduled — all open in `13-REVIEW-DISPOSITION.md` / ROADMAP backlog):**
 
-- [ ] ⚠ `io.debezium.time.Timestamp` (epoch-millis long, Debezium's default MySQL `datetime` mapping) goes through the metadata-free JSON route unconverted, so ClickHouse reads milliseconds as seconds — a silent wrong value. Known gap in `13-BEHAVIOUR-LEDGER.md` (L-05); RowBinary stores it correctly (13-REVIEW WR-02)
+- ~~⚠ `io.debezium.time.Timestamp` (epoch-millis long, Debezium's default MySQL `datetime` mapping) goes through the metadata-free JSON route unconverted, so ClickHouse reads milliseconds as seconds — a silent wrong value. Known gap in `13-BEHAVIOUR-LEDGER.md` (L-05); RowBinary stores it correctly (13-REVIEW WR-02)~~ **Closed in Phase 15 (15-01, `981a89d6`)** — Debezium `Timestamp`/`NanoTimestamp` written as decimal seconds on the metadata-free JSON route
 - [ ] The empty-CDC-record skip (op=`t`, null before/after) applies only to the explicit `insertFormat=json` route; the upstream `bypassRowBinary=true` JSON route still writes a `{}` all-defaults row (13-REVIEW WR-01, ledger L-03)
 - [ ] `Column.extractColumn` drops `Nullable` for `Enum8`/`Enum16` and `Tuple`, so values are mis-stored and the new nested-null guards throw on legal `Nullable(Enum)`/`Nullable(Tuple)` slots — ROADMAP backlog 999.1 (13-REVIEW WR-05, ledger L-13)
 - [ ] `doWriteCol` throws a message-less `RuntimeException` for a missing non-nullable value, now reachable for `Array(Tuple)` after COLS-07, so Connect status and the DLQ show no column name (13-REVIEW WR-03)
 - [ ] `e.getMessage().contains(code)` runs before its null check in `ClickHouseWriter`'s error path; pre-existing, but new exception types flow through it (13-REVIEW WR-04)
-- [ ] Non-nullable null outcomes on the metadata-free JSON route rely on the server default `input_format_null_as_default=1` — belongs in the rollout checklist (ledger L-08)
+- ~~Non-nullable null outcomes on the metadata-free JSON route rely on the server default `input_format_null_as_default=1` — belongs in the rollout checklist (ledger L-08)~~ **Closed in Phase 15 (ROLL-01)** — rollout item 3 states the dependency and gives the `system.settings` self-check
 
 **Phase 14 review & CI follow-ups (emerged 2026-10-10, not yet scheduled — open in `14-REVIEW-DISPOSITION.md` / ROADMAP backlog):**
 
@@ -287,6 +291,12 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - [ ] The "Test fork count" step recomputes `maxParallelForks` in shell from `nproc` rather than reading Gradle's container-aware value, duplicating the `build.gradle.kts` formula (14-REVIEW WR-02)
 - [ ] `testRuntimeClasspath` carries `org.lz4:lz4-java:1.8.0` beside `at.yawk.lz4:lz4-java` via the Confluent 7.9.1 test stack — test-only, not shipped, needs a `build.gradle.kts` change — ROADMAP backlog 999.2
 - [ ] CI annotations on run `38037397969`: Node.js 20 deprecation for `actions/checkout@v4`/`upload-artifact@v4`; `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning under Jackson 2.22.3
+
+**Phase 15 publication follow-ups (emerged 2026-10-10, not yet scheduled):**
+
+- [ ] ⚠ The published `docs/ROLLOUT-v1.7.0_gg1.md` (at `f328fd21`) still has the pre-review text: item 2 offers `TRUNCATE TABLE` on the KeeperMap state table, which every `exactlyOnce` connector with the same `zkDatabase`/`zkPath` shares, so following it erases other connectors' state (15-REVIEW WR-01 / T-15-14); item 7's `version=*` advice is wrong for regex matchers (WR-03); FORK-DELTA L-05 states `best_effort` as the default without a version (WR-02). Fixed locally by docs-only `505e4981` on `sync/v1.7.0`; at Phase 15 UAT the user chose to leave it unpublished for now, so it reaches `origin` with the next `--no-ff` merge unless pushed earlier. Operators reading the published copy should be pointed at the corrected text
+- [ ] Audit threats T-13-19 (upstream ERROR log of an unparseable DateTime string) and T-14-16 (`tests.yaml` has no `permissions` block; tag-pinned actions) open below the `high` block threshold, listed in FORK-DELTA Known costs
+- [ ] 15-02 code review of the D-01/D-02 commits: 6 Info findings deferred (`15-REVIEW-DISPOSITION.md`)
 
 **Quality gates:** all three met — moved to Validated at the Phase 5 transition.
 
@@ -352,7 +362,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - **Baseline — established.** Phase 1 found the untouched suite already green on `latest` × V2 once a sandbox environment artifact was neutralized: 187 tests / 0 failed / 7 skipped, rising to 194 / 0 / 7 after the harness work. The final milestone run is 371 / 0 failures / 0 errors / 7 skipped.
 - **CI after v1.6.0_gg1-sync:** same single `latest` × V2 job, now with no `CLICKHOUSE_VERSION`/`CLIENT_VERSION` in the job environment, so CI runs the code defaults that `ClickHouseVersionDefaultUnitTest` pins. Last verified run: `37619434848` on `c61d90ce`, 386 s. The concurrency group is keyed on `github.sha` with `cancel-in-progress`, so pushing a branch and a tag at one SHA produces a cancelled run beside the green one (Active follow-up).
 - **Research:** each milestone's research is archived with it — `milestones/v1.2.9_gg4-tests-research/` (per-feature test inventories, 10 pitfalls) and `milestones/v1.6.0_gg1-sync-research/` (merge strategy, conflict map, upgrade pitfalls).
-- **Open follow-ups:** after Phase 14, the hardening, dependency and CI items are closed; open are the publication items (Phase 15), six Phase 13 and four Phase 14 review/CI follow-ups under Requirements → Active. R-01 is fixed; the Debezium `io.debezium.time.Timestamp` gap on the metadata-free JSON route is now the only known silent wrong value.
+- **Open follow-ups:** after Phase 15, every scoped requirement is shipped and `v1.7.0_gg1` is published at `f328fd21`. Open under Requirements → Active: four Phase 13 and four Phase 14 review/CI follow-ups, and three Phase 15 items — the most urgent being the unpublished `505e4981` fix for the published rollout doc's `TRUNCATE` example. R-01 and the Debezium `Timestamp` gap are both fixed; no known silent wrong value remains on the metadata-free JSON route.
 
 ## Constraints
 
@@ -374,6 +384,8 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| D-14: publish `v1.7.0_gg1` as a non-force `--no-ff` merge of the rehearsed tree X (`ae8520ed`) into `custom_build`; Phase 15 commits after X stay on local `sync/v1.7.0` until the next milestone's merge | One revertible commit (`git revert -m 1 f328fd21`) for the whole sync; a rehearsal run on X proved CI before the protected branch moved; publishing the bookkeeping tail separately would cost a second CI run on `custom_build` | ✓ Phase 15 (user approved verbatim "publish") — `f328fd21`, run `38050860929` green, the only run on that SHA |
+| Leave docs-only `505e4981` (15-REVIEW WR-01..03 fixes to ROLLOUT and FORK-DELTA) unpublished after release | Publishing needs a new push to protected `custom_build` and another CI run; the user accepted the published copy keeping the old text for now | ⚠ Phase 15 UAT (2026-10-10, test 1 passed) — the published rollout doc keeps the `TRUNCATE` example until the fix is pushed; tracked under Active |
 | D-13: push the scratch branch `sync/v1.7.0` to `origin` once (branch only, explicit refspec, no tags) before Phase 15, amending Phase 12 D-01 | CI-09 needs a measurement on CI hardware and D-11(b) needs to see the new trigger produce exactly one run before publication relies on it; a CI failure is cheapest here | ✓ Phase 14 (user answered "push" 2026-10-10) — `54b5ce2f` pushed, run `38037397969` green, `custom_build` and origin tags untouched; later planning commits stay local until PUB-04 |
 | R-01 fixed by **routing** on `shouldSkipTableMetadata()`, unconditional, no opt-out flag; logical types encoded by a private route-scoped `MetadataFreeJsonWriter` (shared `DataJson.OBJECT_MAPPER` untouched) | Throwing would break any pipeline already on explicit JSON behind a Struct converter; a private mapper keeps the upstream JSON paths byte-identical | ✓ Phase 13 (JSONP-05..07, D-05/D-06) — R-01 pin flipped to typed read-back; parity matrix seen red under a Timestamp-encoding mutation. Debezium `io.debezium.time.Timestamp` left as a known gap (follow-up) |
 | Nested nulls in non-nullable RowBinary slots: scalar/Tuple **throw**, Array/Map **coerce to empty** | A throw on an empty-able container would break pipelines that legitimately send null lists; a scalar null has no faithful encoding | ✓ Phase 13 (WRT-08, D-09/D-10/D-16) — `Nullable(Enum)`/`Nullable(Tuple)` slots now throw because of the pre-existing `Column` nullability defect (backlog 999.1), accepted as a rollout cost |
@@ -441,4 +453,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-10 after Phase 14*
+*Last updated: 2026-10-10 after Phase 15*

@@ -16,18 +16,18 @@
     {
       "number": "14",
       "name": "Dependency Bumps & CI",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "15",
       "name": "Suite Gate, Publication & Rollout",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 14 of 4 · 50% · executing"
+    "command": "/gsd:new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
   },
-  "updated_at": "2026-10-09T13:29:38.483Z"
+  "updated_at": "2026-10-10T13:23:23.328Z"
 }

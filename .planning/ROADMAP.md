@@ -46,7 +46,7 @@ Phase artifacts: `milestones/v1.6.0_gg1-sync-phases/`
 - [x] **Phase 12: Upstream v1.7.0 Merge & Reconcile** - `v1.7.0` merged mechanically on a scratch branch with every fork feature proven intact, D-17 retired onto upstream's `setCompressionMethod`, #820's null-Map fix made reachable, and exactly-once state reads proven across a restart (completed 2026-10-08)
 - [x] **Phase 13: Fork Hardening on the Merged Tree** - R-01's silent data loss fixed by routing, nulls in Map/Array/Tuple slots either round-trip or fail loudly, and the metadata, config and test-debt follow-ups closed (completed 2026-10-08)
 - [x] **Phase 14: Dependency Bumps & CI** - lz4-java, Jackson, okhttp, org.json and mockito bumped one attributable commit at a time; CI compiles integration sources, reports its fork count, and runs once per SHA (completed 2026-10-10)
-- [ ] **Phase 15: Suite Gate, Publication & Rollout** - Two clean full-suite runs, `v1.7.0_gg1` published to `custom_build` with green CI on the published SHA, planning history on `origin`, operator rollout checklist written
+- [x] **Phase 15: Suite Gate, Publication & Rollout** - Two clean full-suite runs, `v1.7.0_gg1` published to `custom_build` with green CI on the published SHA, planning history on `origin`, operator rollout checklist written (completed 2026-10-10)
 
 ## Phase Details
 
@@ -192,7 +192,7 @@ Plans:
   4. After a recorded human approval, `custom_build` on `origin` is a non-force `--no-ff` merge, and tags `v1.7.0_gg1` and `pre-v1.7.0-sync` are on `origin`. The published SHA has exactly one completed `tests.yaml` run, located by `head_sha` plus workflow path, with no cancelled sibling. That run is green, which proves CI-08 end to end.
   5. The `.planning/` history after `c61d90ce` is on `origin` through a merge, not a fast-forward. It carries neither `.planning/.gsd-ws-arg` nor any local-only tag.
 
-**Plans**: 8/8 plans executed (waves 1-6; wave 3 has three independent plans)
+**Plans**: 8/8 plans complete (waves 1-6; wave 3 has three independent plans)
 
 Plans:
 **Wave 1** *(Phase 15: code first, D-10 step 1)*
@@ -246,7 +246,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
 | 13. Fork Hardening on the Merged Tree | 8/8 | Complete    | 2026-10-08 |
 | 14. Dependency Bumps & CI | 4/4 | Complete    | 2026-10-10 |
-| 15. Suite Gate, Publication & Rollout | 8/8 | In Progress | - |
+| 15. Suite Gate, Publication & Rollout | 8/8 | Complete    | 2026-10-10 |
 
 ---
 *Roadmap for milestone `v1.7.0_gg1-sync` created: 2026-10-07*
