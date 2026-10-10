@@ -85,9 +85,9 @@
 
 ### CI (CI)
 
-- [ ] **CI-08**: A published SHA gets exactly one completed `tests.yaml` run — the tag/branch trigger and concurrency group are fixed **before** any tag is pushed
-- [ ] **CI-09**: CI's test fork count is read from a job log or summary (e.g. `nproc` / `maxParallelForks`), or explicitly recorded as unmeasured
-- [ ] **CI-10**: CI compiles the integration-test source set (`compileIntegrationTestJava`), so integration-only dependencies like okhttp are checked on every push
+- [x] **CI-08**: A published SHA gets exactly one completed `tests.yaml` run — the tag/branch trigger and concurrency group are fixed **before** any tag is pushed
+- [x] **CI-09**: CI's test fork count is read from a job log or summary (e.g. `nproc` / `maxParallelForks`), or explicitly recorded as unmeasured
+- [x] **CI-10**: CI compiles the integration-test source set (`compileIntegrationTestJava`), so integration-only dependencies like okhttp are checked on every push
 
 ### Suite Gate (SUITE)
 
@@ -156,9 +156,9 @@ Which phases cover which requirements. Filled during roadmap creation.
 | BLD-11 | Phase 14 | Complete |
 | BLD-12 | Phase 14 | Complete |
 | BLD-13 | Phase 12 | Complete |
-| CI-08 | Phase 14 | Pending |
-| CI-09 | Phase 14 | Pending |
-| CI-10 | Phase 14 | Pending |
+| CI-08 | Phase 14 | Complete |
+| CI-09 | Phase 14 | Complete |
+| CI-10 | Phase 14 | Complete |
 | SUITE-04 | Phase 15 | Pending |
 | PUB-01 | Phase 15 | Pending |
 | PUB-02 | Phase 15 | Pending |
