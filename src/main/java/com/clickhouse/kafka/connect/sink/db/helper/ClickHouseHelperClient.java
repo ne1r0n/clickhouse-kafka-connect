@@ -39,6 +39,7 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
@@ -486,6 +487,45 @@ public class ClickHouseHelperClient implements AutoCloseable {
         return false;
     }
 
+    private static final Pattern NULLABLE_ENUM_OR_TUPLE = Pattern.compile("Nullable\\((?:Enum8|Enum16|Tuple)\\(");
+
+    private static final String NULLABLE_ENUM_OR_TUPLE_WARNING = "Column {}.{}.{} has type {}, which contains "
+            + "Nullable(Enum8), Nullable(Enum16) or Nullable(Tuple(...)). The connector writes such slots without "
+            + "their null marker, so values in that slot may be stored as NULL or shifted with no error, and a null "
+            + "entry fails the batch with DataException. See Known costs in docs/FORK-DELTA.md (backlog 999.1).";
+
+    // Process-wide so every task and every table-mapping refresh cycle warns once per column.
+    private static final Set<String> WARNED_NULLABLE_ENUM_OR_TUPLE = ConcurrentHashMap.newKeySet();
+
+    /**
+     * True when the raw DESCRIBE type contains {@code Nullable(Enum8(}, {@code Nullable(Enum16(} or
+     * {@code Nullable(Tuple(} at any depth. It reads the raw string because {@link
+     * Column#extractColumn} drops exactly this nullability.
+     */
+    static boolean hasNullableEnumOrTuple(String rawType) {
+        return rawType != null && NULLABLE_ENUM_OR_TUPLE.matcher(rawType).find();
+    }
+
+    /**
+     * Logs one WARN per database, table, column and raw type for a root column that {@link
+     * #hasNullableEnumOrTuple} flags. Carries catalog metadata only, never record data.
+     *
+     * @return true when this call logged the warning
+     */
+    static boolean warnOnceIfNullableEnumOrTuple(
+            String database, String tableName, ClickHouseFieldDescriptor fieldDescriptor) {
+        String rawType = fieldDescriptor.getType();
+        if (fieldDescriptor.isSubcolumn() || !hasNullableEnumOrTuple(rawType)) {
+            return false;
+        }
+        String name = fieldDescriptor.getName();
+        if (!WARNED_NULLABLE_ENUM_OR_TUPLE.add(database + "." + tableName + "." + name + ":" + rawType)) {
+            return false;
+        }
+        LOGGER.warn(NULLABLE_ENUM_OR_TUPLE_WARNING, database, tableName, name, rawType);
+        return true;
+    }
+
     public Table describeTableV1(String database, String tableName) {
         if (tableName.startsWith(".inner"))
             return null;
@@ -535,6 +575,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
                     skippedCols.add(fieldDescriptor.getName());
                     continue;
                 }
+
+                warnOnceIfNullableEnumOrTuple(database, tableName, fieldDescriptor);
 
                 if (fieldDescriptor.hasDefault()) {
                     hasDefaults = true;
@@ -604,6 +646,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
                         skippedCols.add(fieldDescriptor.getName());
                         continue;
                     }
+
+                    warnOnceIfNullableEnumOrTuple(database, tableName, fieldDescriptor);
 
                     if (fieldDescriptor.hasDefault()) {
                         hasDefaults = true;

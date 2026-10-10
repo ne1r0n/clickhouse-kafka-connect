@@ -9,6 +9,7 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -259,5 +260,65 @@ class ClickHouseHelperClientForkUnitTest {
                 "t", "Tuple(a Int32)");
 
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor(rowName, "Int32"), columns));
+    }
+
+    @ParameterizedTest(name = "D-02: {0} is flagged")
+    @ValueSource(
+            strings = {
+                "Array(Nullable(Enum8('x' = 1)))",
+                "Map(String, Nullable(Enum16('y' = 1)))",
+                "Nullable(Tuple(a Int32))",
+                "Nullable(Enum8('z' = 1))",
+                "Array(Nullable(Tuple(a Int32, b String)))",
+                "Tuple(a Nullable(Enum8('q' = 1)))"
+            })
+    @DisplayName("D-02: a raw type containing Nullable(Enum8(, Nullable(Enum16( or Nullable(Tuple( at any depth is flagged")
+    void nullableEnumOrTupleTypesAreFlagged(String rawType) {
+        assertTrue(ClickHouseHelperClient.hasNullableEnumOrTuple(rawType));
+    }
+
+    @ParameterizedTest(name = "D-02: {0} is not flagged")
+    @ValueSource(
+            strings = {
+                "Array(Nullable(Int32))",
+                "Enum8('a' = 1)",
+                "Tuple(a Nullable(Int32))",
+                "Nullable(String)",
+                "Map(String, Enum16('b' = 2))",
+                "LowCardinality(Nullable(String))"
+            })
+    @DisplayName("D-02: nullable scalars and non-nullable Enum or Tuple types are not flagged")
+    void otherTypesAreNotFlagged(String rawType) {
+        assertFalse(ClickHouseHelperClient.hasNullableEnumOrTuple(rawType));
+    }
+
+    @Test
+    @DisplayName("D-02: a null raw type is not flagged")
+    void nullRawTypeIsNotFlagged() {
+        assertFalse(ClickHouseHelperClient.hasNullableEnumOrTuple(null));
+    }
+
+    @Test
+    @DisplayName("D-02: the warning fires once per database, table, column and raw type, and again when the raw type changes")
+    void warnOnceDedupesPerColumnAndRawType() {
+        String table = "d02_" + UUID.randomUUID();
+
+        assertTrue(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
+        assertTrue(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("e", "Nullable(Enum16('a' = 1))")));
+    }
+
+    @Test
+    @DisplayName("D-02: sub-column rows and root columns with an unflagged type never warn")
+    void subColumnsAndUnflaggedTypesNeverWarn() {
+        String table = "d02_" + UUID.randomUUID();
+
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("m.values", "Array(Nullable(Enum16('y' = 1)))")));
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+                "db", table, newDescriptor("n", "Array(Nullable(Int32))")));
     }
 }

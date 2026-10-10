@@ -54,3 +54,4 @@ src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHel
 src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.java	"io.debezium.time.Timestamp"	1	PUB-02
 src/main/java/com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.java	"io.debezium.time.NanoTimestamp"	1	PUB-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	static boolean hasNullableEnumOrTuple(	1	PUB-02
