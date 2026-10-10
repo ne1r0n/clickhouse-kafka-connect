@@ -45,7 +45,7 @@ Phase artifacts: `milestones/v1.6.0_gg1-sync-phases/`
 
 - [x] **Phase 12: Upstream v1.7.0 Merge & Reconcile** - `v1.7.0` merged mechanically on a scratch branch with every fork feature proven intact, D-17 retired onto upstream's `setCompressionMethod`, #820's null-Map fix made reachable, and exactly-once state reads proven across a restart (completed 2026-10-08)
 - [x] **Phase 13: Fork Hardening on the Merged Tree** - R-01's silent data loss fixed by routing, nulls in Map/Array/Tuple slots either round-trip or fail loudly, and the metadata, config and test-debt follow-ups closed (completed 2026-10-08)
-- [ ] **Phase 14: Dependency Bumps & CI** - lz4-java, Jackson, okhttp, org.json and mockito bumped one attributable commit at a time; CI compiles integration sources, reports its fork count, and runs once per SHA
+- [x] **Phase 14: Dependency Bumps & CI** - lz4-java, Jackson, okhttp, org.json and mockito bumped one attributable commit at a time; CI compiles integration sources, reports its fork count, and runs once per SHA (completed 2026-10-10)
 - [ ] **Phase 15: Suite Gate, Publication & Rollout** - Two clean full-suite runs, `v1.7.0_gg1` published to `custom_build` with green CI on the published SHA, planning history on `origin`, operator rollout checklist written
 
 ## Phase Details
@@ -148,7 +148,7 @@ Plans:
   3. `tests.yaml` compiles the integration-test source set (`compileIntegrationTestJava`) on every push. CI's test fork count is read from a job log or summary of a run on this tree, or is explicitly recorded as unmeasured with the reason.
   4. `tests.yaml`'s trigger and concurrency group are fixed so that a branch push and a tag push on the same SHA produce exactly one completed run. The fix is committed before any tag reaches `origin`.
 
-**Plans**: 4/4 plans executed (sequential waves 1-4)
+**Plans**: 4/4 plans complete (sequential waves 1-4)
 
 Plans:
 **Wave 1**
@@ -224,7 +224,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 |-------|----------------|--------|-----------|
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
 | 13. Fork Hardening on the Merged Tree | 8/8 | Complete    | 2026-10-08 |
-| 14. Dependency Bumps & CI | 4/4 | In Progress | - |
+| 14. Dependency Bumps & CI | 4/4 | Complete    | 2026-10-10 |
 | 15. Suite Gate, Publication & Rollout | 0/TBD | Not started | - |
 
 ---
