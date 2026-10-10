@@ -192,7 +192,7 @@ Plans:
   4. After a recorded human approval, `custom_build` on `origin` is a non-force `--no-ff` merge, and tags `v1.7.0_gg1` and `pre-v1.7.0-sync` are on `origin`. The published SHA has exactly one completed `tests.yaml` run, located by `head_sha` plus workflow path, with no cancelled sibling. That run is green, which proves CI-08 end to end.
   5. The `.planning/` history after `c61d90ce` is on `origin` through a merge, not a fast-forward. It carries neither `.planning/.gsd-ws-arg` nor any local-only tag.
 
-**Plans**: 7/8 plans executed (waves 1-6; wave 3 has three independent plans)
+**Plans**: 8/8 plans executed (waves 1-6; wave 3 has three independent plans)
 
 Plans:
 **Wave 1** *(Phase 15: code first, D-10 step 1)*
@@ -213,7 +213,7 @@ Plans:
 - [x] 15-07-PLAN.md — Local gate (two full runs, Docker-down testUnit, invariants), branch-only rehearsal push of sync/v1.7.0 with one green CI run, and the measured approval bundle (SUITE-04, PUB-01, PUB-03, PUB-04)
 
 **Wave 6** *(Phase 15: blocked on 15-07, the blocking-human gate)*
-- [ ] 15-08-PLAN.md — Blocking-human approval, then orchestrator-inline publication: --no-ff merge of the rehearsed SHA, custom_build push, CI-08 proof, named tags, cleanup, local-only records (PUB-03, PUB-04)
+- [x] 15-08-PLAN.md — Blocking-human approval, then orchestrator-inline publication: --no-ff merge of the rehearsed SHA, custom_build push, CI-08 proof, named tags, cleanup, local-only records (PUB-03, PUB-04)
 
 **Note**: this phase mirrors Phase 11's shape: rehearse, measure, approve, publish. The human approval is a blocking-human gate. `gsd-executor` refuses approvals relayed through the orchestrator, so the orchestrator runs post-gate tasks inline. `custom_build` is GSD's protected base branch.
 
@@ -246,7 +246,7 @@ This roadmap follows the research's four-phase order (sync → hardening → dep
 | 12. Upstream v1.7.0 Merge & Reconcile | 5/5 | Complete    | 2026-10-08 |
 | 13. Fork Hardening on the Merged Tree | 8/8 | Complete    | 2026-10-08 |
 | 14. Dependency Bumps & CI | 4/4 | Complete    | 2026-10-10 |
-| 15. Suite Gate, Publication & Rollout | 7/8 | In Progress | - |
+| 15. Suite Gate, Publication & Rollout | 8/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg1-sync` created: 2026-10-07*
