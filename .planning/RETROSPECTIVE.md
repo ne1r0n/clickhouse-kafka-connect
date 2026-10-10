@@ -110,6 +110,66 @@
 
 ---
 
+## Milestone: v1.7.0_gg1-sync — Upstream v1.7.0 Sync & Follow-up Hardening
+
+**Shipped:** 2026-10-10
+**Phases:** 4 | **Plans:** 25 | **Tasks:** 55 | **Commits:** 153 first-parent (175 with the merged upstream history) | **Timeline:** 4 days (2026-10-07 → 2026-10-10)
+
+### What Was Built
+
+- Upstream `v1.7.0` was merged as one mechanical commit (`54e63648`, zero authored lines), behind an invariant script now parameterised by `PRE_TAG`/`UPSTREAM_REF` and a 39-row fork-anchor grep. A per-hunk checklist covers the auto-merged hunks in fork-touched files.
+- Three silent merge hazards were resolved by intent:
+  - D-17 is retired onto upstream's `setCompressionMethod`.
+  - Upstream #820's null-Map bytes are reachable, because the fork's MAP guard is now scoped to `Nullable`.
+  - The build has a single LZ4 rule.
+
+  `KeeperStateProvider`'s new state read is proven by a restart test.
+- R-01's silent data loss is fixed by routing through a new `MetadataFreeJsonWriter`, which a live twin-table matrix proves at parity with RowBinary. Debezium `Timestamp`/`NanoTimestamp` are fixed on that route too.
+- RowBinary nested-null rules: values round-trip, coerce to empty, or fail loudly with a data-free `DataException`. Plus 13 further metadata, config and test-debt fixes.
+- Five dependency bumps, each in its own commit. lz4-java went to `1.12.0`, past the advisory floor. CI runs once per SHA, compiles integration sources and reports its fork count.
+- `v1.7.0_gg1` was published after two full runs (830 tests) and a CI rehearsal. It shipped with a CHANGELOG section, a rewritten `FORK-DELTA.md` and an eight-item operator rollout checklist.
+
+### What Worked
+
+- **The sync recipe repeated at a fraction of the cost.** It took 4 days against 20 for v1.6.0. The mechanical-merge invariant, rollback tag, scratch-branch rehearsal and human-gated `--no-ff` publication all carried over unchanged. Parameterising the invariant script (`PRE_TAG`, `UPSTREAM_REF`) is what made it reusable.
+- **Merge-line decisions were placed in the merge phase.** CMP, WRT-06/09, BLD-09/13 and EOS-01 lived in Phase 12 rather than in hardening. The hazards no conflict marker reveals were fixed before anything was built on top of them: the shadowed MAP guard, the duplicate LZ4 rule and the D-17 pin beside upstream's flag.
+- **Mutation checks made pins trustworthy.** The EOS-01 restart test was seen red against the old read, the WRT-07 pin was seen red under a mutation, and the parity matrix was seen red under a Timestamp-encoding mutation. A pin that has never failed proves little.
+- **Parity tests instead of hand-written expectations.** The twin-table matrix compares the JSON route to RowBinary on a live server. That removed a whole class of "what should it store?" debates and found the Debezium `Timestamp` gap.
+- **Behaviour ledger as the source for release docs.** Phase 13 recorded every operator-visible change as it landed (L-01..L-22). Phase 15 wrote the CHANGELOG, FORK-DELTA and rollout prose from the ledger, without reconstructing anything.
+- **CI hygiene fixed before it was needed.** CI-08 (branch-only trigger) landed in Phase 14. Phase 15's publication then produced exactly one run on the published SHA without any locator narrowing.
+
+### What Was Inefficient
+
+- **Review found a safety defect in the release docs after publication.** 15-REVIEW WR-01 showed that the rollout doc's `TRUNCATE` example erases other connectors' exactly-once state. The fix (`505e4981`) landed after `f328fd21` and was left unpublished. Release docs were reviewed after the publish gate rather than before it.
+- **Verification staleness, third time.** Phases 12–13 read stale at close for the same structural reason as before. This was a third `override_closeout`.
+- **A known defect was surfaced but not fixed.** The `Column` nullability defect (999.1) was found in Phase 13 research. It makes the new nested-null guards throw on legal `Nullable(Enum)`/`Nullable(Tuple)` slots. It shipped as a documented cost with a discovery WARN rather than a fix.
+- **Requirements were narrowed mid-flight.** TYPE-08 (Int256 only) and JSONP-08 (evaluation order only) needed dated corrections in REQUIREMENTS.md. The requirement wording ran ahead of what was safe to change.
+
+### Patterns Established
+
+- **Parameterised invariant script.** `verify-merge-invariants.sh` takes `PRE_TAG`/`UPSTREAM_REF` and self-tests every check, so the next sync reuses it unchanged.
+- **Behaviour ledger.** Every operator-visible change is numbered as it lands. Release docs are written from the ledger, not from memory.
+- **Twin-table parity tests** for any alternative write route, checked against the reference route on a live server.
+- **Seen-red mutation check** for every pin that guards a fix.
+- **One attributable commit per dependency bump**, each with its own gate. Live-path bumps (Jackson, org.json) each get a full live run.
+- **Publish on one branch, then push tags.** Push tags only after the published SHA's own run is green, then re-check that SHA for extra runs.
+
+### Key Lessons
+
+1. **Review release docs before the publish gate, not after.** Operator instructions can destroy state just as code can. Give them the same pre-publication review as code.
+2. **The second sync is cheap only if the first one left tools behind.** The invariant script, merge checklist, FORK-DELTA and sync mechanics made a 4-day sync possible. Keep them current at every close.
+3. **Write requirements as outcomes, with explicit scope boundaries.** Two narrowings would have been avoided if TYPE-08 and JSONP-08 had named their safe scope up front.
+4. **A fix that routes around a defect should name what it doesn't cover.** The empty-CDC skip and the Nullable Enum/Tuple gap were recorded as knowingly open, which kept the release honest. Keep doing that.
+
+### Quality Observations
+
+- Code review ran on all four phases with **0 critical findings**: 13 warnings and 23 info in total. One warning was fixed in the milestone (13-REVIEW WR-02, Debezium Timestamp). The 15-REVIEW warnings were fixed locally in `505e4981` but are unpublished. The rest are deferred with reasons in each `REVIEW-DISPOSITION.md`.
+- Security audits passed for all four phases with 0 open threats at or above the block threshold. T-13-19 and T-14-16 stay open below it.
+- Final suite: 830 tests, 0 failures, 0 errors, 18 named skips. It was green twice locally and once in CI on the published SHA (run `38050860929`).
+- `src/main` changes were all within decided scope: the R-01 routing and new writer, the nested-null rules, Int256 fail-fast, the DESCRIBE depth fix, `extractColumn` argument order, the `USERNAME` default, the operand swap, the Debezium Timestamp fix and the Nullable Enum/Tuple WARN. The fork delta grew (84→95 files wide) because of these changes.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -118,6 +178,7 @@
 |-----------|--------|-------|------------|
 | v1.2.9_gg4-tests | 5 | 16 | First GSD milestone on this repo. Established parallel independent test tracks, blocking-human checkpoints for out-of-scope production changes, and real test/build commands in `config.json`. |
 | v1.6.0_gg1-sync | 6 | 24 | First upstream sync. Mechanical-merge-then-intent with a byte-identity invariant, a generated per-path merge checklist, scratch-branch CI rehearsal, and human-gated one-way publication. |
+| v1.7.0_gg1-sync | 4 | 25 | Second sync, 4 days against 20, because the recipe was reused with a parameterised invariant script. Hardening went on top of the merged tree. Behaviour ledger, twin-table parity tests and seen-red mutation checks; one commit per dependency bump. |
 
 ### Cumulative Quality
 
@@ -125,9 +186,11 @@
 |-----------|-------|--------------------------|----------------------|--------------------|
 | v1.2.9_gg4-tests | 187 → 371 | 0 | 7 (+1 pinned by decision) | 9 |
 | v1.6.0_gg1-sync | 371 → 663 (incl. upstream's) | 4 (all fixed) | 2 silent merge reversions + D-17 + CR-01 auto.evolve (R-01 still pinned) | 17 |
+| v1.7.0_gg1-sync | 663 → 830 | 0 | R-01 data loss, Debezium Timestamp, nested-null desync, #820 shadowing, DESCRIBE depth, Int256, 3 config/metadata | 11 (all 17 carried closed) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. **Verification goes stale in sequential phases.** Both milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. Re-verify at close, or plan for the override.
-2. **Blocking-human checkpoints on irreversible or production-affecting calls pay off.** They fired 3 times in each milestone and were right each time. Examples: R-01 pinned rather than fixed, KEEP over DROP, and both one-way publications.
+1. **Verification goes stale in sequential phases.** All three milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. Re-verify at close, or plan for the override.
+2. **Blocking-human checkpoints on irreversible or production-affecting calls pay off.** They fired at least twice in every milestone and were right each time. Examples: R-01 pinned rather than fixed, KEEP over DROP, and every one-way publication.
 3. **Check the environment and the gate before trusting a result.** In v1.2.9_gg4-tests a red baseline turned out to be an environment artifact (`TESTCONTAINERS_HOST_OVERRIDE`). In v1.6.0_gg1-sync a green run turned out to be against the wrong server (`CLICKHOUSE_VERSION_DEFAULT`).
+4. **Reuse compounds.** Each milestone's tools made the next one cheaper: the suite (v1.2.9) gated the first sync, and the first sync's invariant script and checklist made the second take 4 days. Keep those tools current at every close.
