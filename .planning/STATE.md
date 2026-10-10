@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 16
 current_phase_name: Early Docs Publication
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-10-10T17:37:19.160Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-10-10T17:44:38.637Z"
 last_activity: 2026-10-10
-last_activity_desc: Roadmap created for v1.7.0_gg2-hardening (Phases 16-20, 26/26 requirements mapped)
-state_head: 98218ca919f3a624069e13f9e8d377408bf0c297
+last_activity_desc: Phase 16 execution started
+state_head: 2a4f85f2ce20a3b0e28b4ec61657ffdfb77cb4a4
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-10 after v1.7.0_gg1-sync milestone)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 16 — Early Docs Publication (docs-only `--no-ff` merge of `sync/v1.7.0` into `custom_build`, before any code work)
+**Current focus:** Phase 16 — Early Docs Publication
 
 ## Current Position
 
-Phase: 16 (Early Docs Publication) — READY TO EXECUTE
-Plan: Not started
+Phase: 16 (Early Docs Publication) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-10-10 — Roadmap created for v1.7.0_gg2-hardening (Phases 16-20, 26/26 requirements mapped)
+Last activity: 2026-10-10 — Phase 16 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -106,6 +106,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 15 P05 | 9 min | 2 tasks | 2 files |
 | Phase 15 P06 | 35min | 2 tasks | 1 files |
 | Phase 15 P07 | 21 min | 3 tasks | 1 files |
+| Phase 16 P01 | 4 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -162,9 +163,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T16:53:21.530Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-early-docs-publication/16-CONTEXT.md
+Last session: 2026-10-10T17:44:38.618Z
+Stopped at: Completed 16-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
