@@ -315,10 +315,10 @@ You are affected if you need to go back after upgrading, or you want to know in 
 
 ### What to do
 
-1. On `custom_build`, back out the whole release in one commit: `git revert -m 1 <merge-commit>`, where `<merge-commit>` is the `v1.7.0_gg1` merge commit, tagged `v1.7.0_gg1`.
+1. On a clean checkout of `custom_build`, back out the whole release in one commit by restoring the tree of tag `pre-v1.7.0-sync`: `git read-tree -u --reset pre-v1.7.0-sync`, then `git commit -m "Roll back v1.7.0_gg1"`. Do not use `git revert -m 1 <merge-commit>`, where `<merge-commit>` is the `v1.7.0_gg1` merge commit, tagged `v1.7.0_gg1`: documentation merged on top of it edits the same files, so that revert stops with conflicts.
 2. Redeploy the `v1.6.0_gg1` artifact.
 3. Run the exactly-once check of item 1 in reverse: stop cleanly, run the same query, and go back only when no row is outside `AFTER_PROCESSING`. A batch the new jar left in `BEFORE_PROCESSING` is then retried by the old jar.
 
-To go forward again after `git revert -m 1`, revert the revert commit first (`git revert <revert-commit>`); merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back.
+To go forward again, revert the rollback commit first (`git revert <rollback-commit>`); merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back.
 
 Rolling back re-introduces the silent loss of item 2 (explicit `insertFormat=json` with `Struct`/CDC records writes no rows while the offsets still advance) and the Debezium Timestamp mis-storage of item 3 (millisecond values read as seconds). It also brings back the old error message for `Int256`/`UInt256` columns and the less strict nested-null handling.
