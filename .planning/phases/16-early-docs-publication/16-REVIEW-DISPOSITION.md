@@ -11,8 +11,16 @@ findings:
     severity: warning
     disposition: fixed
     title: "Item 8 step 1 `git revert -m 1 <merge-commit>` conflicts on the published `custom_build` tip, and E-14 does not cover that state"
+  - id: WR-02
+    severity: warning
+    disposition: fixed
+    title: "Step 1 relies on \"a clean checkout\" but `git read-tree -u --reset` silently destroys local changes"
+  - id: IN-02
+    severity: info
+    disposition: fixed
+    title: "Step 1 defines `<merge-commit>` inside the \"do not\" command and the go-forward sentence leans on it; `<rollback-commit>` is not defined"
 open: 0
-total: 2
+total: 4
 recorded: 2026-10-10T18:14:08.382Z
 ---
 
@@ -22,6 +30,8 @@ recorded: 2026-10-10T18:14:08.382Z
 |---------|----------|-------------|--------|
 | IN-01 | info | fixed | fd99a476 (docs only, Phase 16) |
 | WR-01 | warning | fixed | cf8cfc04 (docs only, Phase 16; evidence E-15; not yet published) |
+| WR-02 | warning | fixed | c2b7c49d (docs only, Phase 16; evidence E-16; not yet published) |
+| IN-02 | info | fixed | c2b7c49d (docs only, Phase 16; evidence E-16; not yet published) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.

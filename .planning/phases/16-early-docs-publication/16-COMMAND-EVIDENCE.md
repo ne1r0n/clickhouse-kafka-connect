@@ -388,6 +388,73 @@ The old step 1 stops with 97 unmerged paths on both tips, so the warning holds. 
 
 Matches text: yes
 
+### E-16: item 8 step 1 as written after WR-02/IN-02, from a stale local branch (16-REVIEW WR-02, IN-02)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md`, item 8 step 1.1 (fetch, fast-forward to the published tip, `git status --porcelain` prints nothing), step 1.2 (`git read-tree -u --reset pre-v1.7.0-sync`, `git commit -m "Roll back v1.7.0_gg1"`, `git diff --quiet HEAD pre-v1.7.0-sync && echo ok` prints `ok`), and the go-forward paragraph (`git merge <merge-commit>^2` brings nothing back, `git revert <rollback-commit>` restores the release, the document is gone from the branch and `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg1.md` reads it). Each run uses a throwaway branch that starts at the release merge `f328fd21`, standing in for a stale local `custom_build` (a linked worktree cannot check out `custom_build` itself, so `git checkout custom_build` is the one command not run verbatim). It first shows that an uncommitted edit makes `git status --porcelain` print a line, then reverts it. Targets: the published tip `537beb1f` (date UTC 2026-10-11), and a dry-run `--no-ff` merge of `sync/v1.7.0` at `c2b7c49d` into `537beb1f` (`117829bc`, never pushed), which is the tip a republication creates. The script lives outside the repository (`/tmp/gsd16-wr01/demo2.sh <repo> <target> <worktree>`). The `-c user.name/user.email` options only give the throwaway commits an identity.
+
+```sh
+#!/bin/bash
+# usage: demo2.sh <repo> <target-tip> <worktree-path>
+# Runs item 8 step 1 as written, on a throwaway branch standing in for a stale local custom_build
+# (starts at the release merge v1.7.0_gg1, then fast-forwards to <target-tip>).
+set -u
+REPO=$1; TARGET=$2; WT=$3; BR=wr02-demo-$$
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+git -C "$REPO" worktree add --quiet -b "$BR" "$WT" 'v1.7.0_gg1^{commit}'
+g() { git -C "$WT" "$@"; }
+echo "target=$(git -C "$REPO" rev-parse "$TARGET") stale-start=$(g rev-parse --short HEAD)"
+echo "x" >> "$WT/README.md"; echo "dirty: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"; g checkout -q -- README.md
+g fetch -q --tags origin && echo "fetch --tags exit=0"
+g merge -q --ff-only "$TARGET" && echo "merge --ff-only exit=0, HEAD==target: $([ "$(g rev-parse HEAD)" = "$(git -C "$REPO" rev-parse "$TARGET")" ] && echo yes)"
+echo "clean: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"
+g read-tree -u --reset pre-v1.7.0-sync && g "${ID[@]}" commit -q -m "Roll back v1.7.0_gg1" && echo "read-tree + commit exit=0"
+RB=$(g rev-parse HEAD); echo "rollback-commit parent==target: $([ "$(g rev-parse HEAD^)" = "$(git -C "$REPO" rev-parse "$TARGET")" ] && echo yes)"
+g diff --quiet HEAD pre-v1.7.0-sync && echo ok
+[ -z "$(g status --porcelain)" ] && echo "worktree clean after commit"
+g ls-files --error-unmatch docs/ROLLOUT-v1.7.0_gg1.md >/dev/null 2>&1 || echo "rollout doc gone from branch"
+g show "$RB^:docs/ROLLOUT-v1.7.0_gg1.md" | grep -c '^## Item 8: Rollback' | sed 's/^/git show <rollback-commit>^:docs\/ROLLOUT... item-8 headings: /'
+g "${ID[@]}" merge --no-edit 'v1.7.0_gg1^2'
+[ "$(g rev-parse HEAD)" = "$RB" ] && echo "HEAD unchanged after: git merge <merge-commit>^2"
+g "${ID[@]}" revert --no-edit "$RB" >/dev/null && g diff --quiet HEAD "$TARGET" && echo "after git revert <rollback-commit>: tree(HEAD)==tree(target)"
+git -C "$REPO" worktree remove --force "$WT" && git -C "$REPO" worktree prune && git -C "$REPO" branch -q -D "$BR"
+```
+
+```text
+target=537beb1fcf23b987c8b340006f4f74f7c5229d00 stale-start=f328fd21
+dirty: status --porcelain lines=1
+fetch --tags exit=0
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=0
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+worktree clean after commit
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-8 headings: 1
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+
+target=117829bcafd0ae3a8fc17a3fbb40716312fa954e stale-start=f328fd21
+dirty: status --porcelain lines=1
+fetch --tags exit=0
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=0
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+worktree clean after commit
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-8 headings: 1
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+On both targets the fast-forward lands on the target, the rollback commit's parent is the target and its tree is the `pre-v1.7.0-sync` tree (`ok`). The rollout document is gone from the branch and readable from `<rollback-commit>^`. Merging `<merge-commit>^2` changes nothing, and reverting the rollback commit restores the target's tree. Afterwards `git worktree list` shows only the main working tree and no `wr02-demo-*` branch is left. E-07's check re-run on `c2b7c49d` prints `ROLLOUT-PLAIN-LANGUAGE-OK`. This supersedes E-15 for item 8's wording.
+
+Matches text: yes
+
 ## Finding map
 
 | Finding | Changed text | Evidence entries |
@@ -400,3 +467,5 @@ Matches text: yes
 Phase 16 review finding (16-REVIEW.md): IN-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 (commit `fd99a476`), backed by E-14.
 
 Phase 16 review finding (16-REVIEW.md): WR-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1 and the go-forward sentence (commit `cf8cfc04`), backed by E-15.
+
+Phase 16 review findings (16-REVIEW.md, incremental 28bcc7b1): WR-02 and IN-02 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1 and the go-forward paragraph (commit `c2b7c49d`), backed by E-16.
