@@ -12,6 +12,7 @@
 | E-01 | CI-14 | pass |
 | E-02 | CI-11 | pass |
 | E-03 | CI-11, CI-12, CI-13, CI-15, D-06 | pass |
+| E-04 | CI-16, D-02 | pass |
 
 ### E-01: CI-14 tracer, reportTestForks read by the fork-count step
 
@@ -123,5 +124,33 @@ gradle-prefix-identical True header-lines 18 timeout-anchor-lines 1
 The parse confirms: trigger unchanged, `permissions` is exactly `contents: read` with no job-level block, runner `ubuntu-24.04`, `timeout-minutes: 45`, checkout `with: persist-credentials: false`, and Dependabot ecosystems `["gradle", "github-actions"]` with the D-03/D-04 fields. Results: `PIN-GUARD-GREEN`, `PINS-MATCH-TAGS-NODE24`, `WORKFLOW-AND-DEPENDABOT-OK`.
 
 Timestamp: 2026-10-11T20:17Z
+
+Verdict: pass
+
+### E-04: CI-16 static proof and the Phase 17 CI docs rows
+
+CI-16 can be proven statically only: the file is gone from the tree and the index, nothing under `.github` mentions it, `tests.yaml` has no reusable-workflow trigger, and the other four workflows, `.github/actions` and `.github/scripts` are byte-identical to the phase start `e0017d69`.
+
+```text
+$ test ! -e .github/workflows/test-head.yaml && test -z "$(git ls-files .github/workflows/test-head.yaml)" && test -z "$(git grep -n -e test-head -- .github)" && test -z "$(git grep -n -e workflow_call -- .github/workflows/tests.yaml)" && [workflow list is exactly the five expected files] && git diff --quiet e0017d69 HEAD -- <four workflows> .github/actions .github/scripts
+CI-16-STATIC-OK
+$ git show --first-parent --diff-filter=D --name-only --pretty=format: c3171c97
+.github/workflows/test-head.yaml
+```
+
+Registered-workflow note (research F1): the fork's default branch is `main`, a 2025 upstream mirror on which `test-head.yaml` is registered as disabled for inactivity with no runs. GitHub runs schedules from the default branch only, so deleting the file on `custom_build` has no observable effect on any schedule until `custom_build` becomes the default branch. No repository setting was changed (D-05).
+
+FORK-DELTA region check (only the Build/CI section and Known costs items 5 to 7 may differ from `e0017d69`):
+
+```text
+outside-identical True ci True test-head True dependabot True untouched-line True item6 True item5 True
+FORK-DELTA-17-01-OK
+appended 1   (MERGE-CHECKLIST-v1.7.0.md gained exactly Recorded Fact 41, with "git rm")
+CHECKLIST-LINE-OK
+SRC-MAIN-UNCHANGED, ANCHORS-FILE-UNCHANGED
+anchor mismatches: []   (every row of fork-anchors.txt re-counted on the tip)
+```
+
+Timestamp: 2026-10-11T20:25Z
 
 Verdict: pass
