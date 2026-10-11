@@ -243,6 +243,16 @@ tasks.withType<Test> {
     })
 }
 
+// CI reads the fork count from this task instead of recomputing the formula in shell (CI-14, 14-REVIEW WR-02).
+tasks.register("reportTestForks") {
+    group = "verification"
+    description = "Prints the effective maxParallelForks of the test task, one line (read by CI)"
+    val forks = tasks.named<Test>("test").map { it.maxParallelForks }
+    doLast {
+        println(forks.get())
+    }
+}
+
 // INFRA-04, D-12: runs every test not tagged @Tag("clickhouse"); no Docker required.
 // Inherits fork-count parallelism, windows-1252 file.encoding, test logging, the Java 17
 // launcher, and the summary listener from the withType<Test> block above.
