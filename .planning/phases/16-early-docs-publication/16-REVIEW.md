@@ -1,9 +1,9 @@
 ---
 phase: 16-early-docs-publication
-reviewed: 2026-10-11T16:27:56Z
+reviewed: 2026-10-11T16:31:09Z
 depth: standard
 diff_base: 505e49819fba7b2ba980a718d9ec6b66b55027b0
-diff_base_incremental: 28bcc7b184d90cb2b46d45bc87fd90e6b9f3f51a
+diff_base_incremental: 050f60b5
 files_reviewed: 3
 files_reviewed_list:
   - CHANGELOG.md
@@ -11,8 +11,8 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 1
-  info: 1
+  warning: 0
+  info: 2
   total: 2
 status: issues_found
 ---
@@ -117,5 +117,40 @@ Two new findings in the changed text.
 ---
 
 _Reviewed: 2026-10-11T16:27:56Z (incremental)_
+_Reviewer: Claude (gsd-code-reviewer procedure, run inline)_
+_Depth: standard_
+
+## Incremental review: WR-02/IN-02 fix (diff base 050f60b5)
+
+**Reviewed:** 2026-10-11
+**Scope:** `git diff 050f60b5 HEAD -- docs/ROLLOUT-v1.7.0_gg1.md` (item 8 step 1 and the go-forward paragraph, commit `c2b7c49d`). Item 8 "What changed", the rest of the document and `16-COMMAND-EVIDENCE.md` E-16 read for context.
+
+**WR-02 and IN-02 are confirmed fixed and are not counted as open.** I reproduced the changed text in throwaway local clones under `/tmp` (not the main tree; both removed afterwards, `git worktree list` and `git status` of the main tree unchanged, no branch, tag or remote touched; only `git fetch --tags origin` ran against the real repository). Using a clone instead of a linked worktree let me run every command verbatim, including `git checkout custom_build`, which E-16 could not run.
+
+- Step 1.1 verbatim: `git fetch --tags origin`, `git checkout custom_build` (a fresh clone creates the tracking branch although origin's HEAD is `main`), `git merge --ff-only origin/custom_build` all exit 0 and land on `537beb1f`; `git status --porcelain` prints nothing. `pre-v1.7.0-sync` and `v1.7.0_gg1` are both on origin, so the fetch brings them.
+- Step 1.2: `git read-tree -u --reset pre-v1.7.0-sync` and `git commit -m "Roll back v1.7.0_gg1"` exit 0; `git diff --quiet HEAD pre-v1.7.0-sync && echo ok` prints `ok`; the working tree is clean afterwards. `git rev-parse HEAD` right after the commit is the rollback commit, so the placeholder definition is usable as written.
+- Go-forward paragraph: `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg1.md` prints the document; `git merge 'v1.7.0_gg1^2'` prints "Already up to date."; `git revert <rollback-commit>` restores the `537beb1f` tree.
+- The warning text is accurate (WR-02 Fix line satisfied): with an edit to `README.md`, a staged edit to `CHANGELOG.md` and an untracked file at a path the tag adds, `read-tree -u --reset` exits 0 and the edits are gone; the untracked file at the tag path is replaced by the tag's content; an unrelated untracked file survives and is not committed.
+- IN-02 Fix line satisfied: the "do not" sentence no longer carries a definition; `<rollback-commit>` is defined in step 1.2 ("below" is the go-forward paragraph); `<merge-commit>` is defined where the go-forward paragraph uses it; the paragraph says the rollback removes this document and gives the `show` command.
+- Markdown: sub-steps 1.1 and 1.2 are an ordered list nested with three spaces under "1."; the "Do not use" paragraph is indented three spaces after a blank line, so it stays inside item 1; "2." and "3." continue the outer list. Renders sensibly.
+- Operator text: no secret, hostname, planning ID, ledger ID or unpublished branch name in the changed lines. Names used are `custom_build`, `origin`, tags `pre-v1.7.0-sync` and `v1.7.0_gg1`.
+
+No defect an operator would hit in the commands. Two Info findings remain.
+
+### IN-03: E-16 does not back the destructive-behaviour claims in step 1.1 yet says "Matches text: yes"
+
+**File:** `.planning/phases/16-early-docs-publication/16-COMMAND-EVIDENCE.md:391-456` (E-16), backing `docs/ROLLOUT-v1.7.0_gg1.md:319`
+**Issue:** Step 1.1 asserts that the next command "discards uncommitted and staged changes to tracked files without asking, and overwrites untracked files at paths the tag contains". E-16 only shows that an uncommitted edit makes `git status --porcelain` print one line, then reverts the edit before the rollback; it never runs `read-tree -u --reset` on a dirty tree. E-15 does not cover it either (it has no staged, untracked or discard case). The claim is true (I reproduced it, see above), but the evidence file does not show it, and the WR-02 Fix line asked to extend the evidence with the dirty-checkout case. E-16 also states that `git checkout custom_build` was not run verbatim; it works verbatim in a clone.
+**Fix:** Add a dirty-tree run to E-16 (or a short E-17): modify a tracked file, stage another, create an untracked file at a path the tag adds, run `git read-tree -u --reset pre-v1.7.0-sync`, and record that the edits are gone and the untracked file now holds the tag's content. Note that `git checkout custom_build` was run verbatim in a throwaway clone.
+
+### IN-04: "Commit or stash anything it lists" cannot clear untracked entries from `git status --porcelain`
+
+**File:** `docs/ROLLOUT-v1.7.0_gg1.md:319`
+**Issue:** `git status --porcelain` also lists untracked files (`?? name`). Plain `git stash` does not stash them, so an operator with an unrelated scratch file (an IDE folder, a local config) follows "stash" and still sees output, with no instruction for that case. Those files are in fact safe: they survive the command unless they sit at a path the tag contains, which the sentence already says.
+**Fix:** Say what to do with untracked entries, for example: "...Commit or stash anything it lists (`git stash -u` also stashes untracked files), or move an untracked file that sits at a path the tag contains; other untracked files are left alone."
+
+---
+
+_Reviewed: 2026-10-11T16:31:09Z (incremental, WR-02/IN-02 fix)_
 _Reviewer: Claude (gsd-code-reviewer procedure, run inline)_
 _Depth: standard_
