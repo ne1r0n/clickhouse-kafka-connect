@@ -14,6 +14,7 @@
 | E-03 | CI-11, CI-12, CI-13, CI-15, D-06 | pass |
 | E-04 | CI-16, D-02 | pass |
 | E-05 | DEBT-07 | pass |
+| E-06 | DEBT-06 | pass |
 
 ### E-01: CI-14 tracer, reportTestForks read by the fork-count step
 
@@ -200,6 +201,37 @@ before and after clickhouseDependencies: only at.yawk.lz4:lz4-java is reported
 ```
 
 GREEN run: `TestRuntimeClasspathLz4UnitTest` 1 test, 0 failures (BUILD SUCCESSFUL).
+
+Timestamp: 2026-10-11T20:22Z
+
+Verdict: pass
+
+### E-06: DEBT-06 response leg, green and seen red
+
+D-07 path used: primary (the read's own `system.query_log` QueryFinish row under a client-chosen query id). No fallback was needed. Server: ClickHouse `26.9.16.11` (`clickhouse/clickhouse-server:latest`), client-v2 0.9.6.
+
+Commands as run:
+
+1. Green: `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests '*Lz4RoundTripLiveTest' --rerun > /tmp/gsd17/exec/debt06-green.log 2>&1` (commit `4bbe32f9`). BUILD SUCCESSFUL, 2 tests, 0 failures.
+2. Red (D-09, local only, never committed): `sed -i '' 's/\.compressServerResponse(true)/.compressServerResponse(false)/'` on `Lz4RoundTripLiveTest.java`, then the same Gradle command into `/tmp/gsd17/exec/debt06-red.log`. BUILD FAILED, 2 tests, 1 failure.
+3. Revert: the inverse `sed`, then `git diff --quiet -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/Lz4RoundTripLiveTest.java`.
+
+Green run log lines:
+
+```text
+network_compression_method=lz4, server version 26.9.16.11
+CompressedReadBufferBlocks for the insert: 75
+Response leg: NetworkSendBytes=61864 result_bytes=4790219 ratio=0.012914649622491163 method=lz4
+```
+
+Red run (`compressServerResponse(false)`):
+
+```text
+response not compressed: NetworkSendBytes=4778633 result_bytes=4790219 ==> expected: <true> but was: <false>
+Response leg: NetworkSendBytes=4778633 result_bytes=4790219 ratio=0.9975813214385396 method=lz4
+```
+
+Post-revert `git diff --quiet -- <file>`: exit 0 (REVERT-CLEAN). The bound is a tenth of `result_bytes`; green sat at 0.0129, red at 0.9976, so the margin on both sides is wide. The log line carries byte counts, a ratio and a setting name only.
 
 Timestamp: 2026-10-11T20:22Z
 
