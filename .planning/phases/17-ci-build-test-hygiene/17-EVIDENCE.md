@@ -17,6 +17,7 @@
 | E-06 | DEBT-06 | pass |
 | E-07 | BLD-14 | pass |
 | E-08 | DEBT-08 | pass |
+| E-09 | CI-17 (D-10 local gate) | pass |
 
 ### E-01: CI-14 tracer, reportTestForks read by the fork-count step
 
@@ -279,5 +280,35 @@ D-01: io.debezium.time.NanoTimestamp value 1000 is written as 0.000001000
 ```
 
 Timestamp: 2026-10-11T20:23Z
+
+Verdict: pass
+
+### E-09: D-10 local gate
+
+Final Phase 17 code, last non-`.planning` commit `2be1db6cda6ef983a693414ac4f0a6461bd32171` (2026-10-11T23:24:02+03:00). Commands as run (repo root, branch `sync/v1.7.0`, ClickHouse `latest` x client V2 defaults):
+
+1. `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew testUnit --rerun > /tmp/gsd17/exec/gate-testunit.log 2>&1` (rc 0, BUILD SUCCESSFUL in 4s; Docker-free).
+2. `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --rerun > /tmp/gsd17/exec/gate-test.log 2>&1` in the background, rc file `/tmp/gsd17/exec/gate-test.rc` = 0 (BUILD SUCCESSFUL in 2m 42s).
+3. `/opt/homebrew/opt/docker/bin/docker image inspect clickhouse/clickhouse-server:latest --format '{{index .Config.Labels "com.clickhouse.build.version"}} {{.Created}}'`.
+
+```text
+testUnit  classes 37  tests 464  failures 0  errors 0  skipped 2
+test      classes 71  tests 840  failures 0  errors 0  skipped 18 (7 named methods + 11 bracketed exactlyOnceStateMismatchTest cases)
+stale result files: 0 in both; Phase 17 classes present in both: TestsWorkflowPinGuardUnitTest, TestRuntimeClasspathLz4UnitTest, MetadataFreeJsonWriterTest; in test also Lz4RoundTripLiveTest
+server image: 26.9.16.11  created 2026-10-11T16:49:40.783693619Z
+LOCAL-GATE-GREEN
+```
+
+Anchors invariant (`/tmp/gsd17/exec/anchors.log`, zero `INVARIANT` lines):
+
+```text
+invariants: provenance_paths=21 anchor_commits=212 anchor_rows=43 marker_commits=259 result=PASS
+```
+
+Spotless IDE hook on the four touched Java files: `TestsWorkflowPinGuardUnitTest`, `TestRuntimeClasspathLz4UnitTest`, `Lz4RoundTripLiveTest` and `MetadataFreeJsonWriterTest` each answered `IS CLEAN`.
+
+Phase scope outside `.planning` (`git diff --name-only e0017d69 HEAD`), exactly ten paths, no extra and none missing: `.github/dependabot.yml`, `.github/workflows/test-head.yaml` (deleted), `.github/workflows/tests.yaml`, `build.gradle.kts`, `docs/FORK-DELTA.md`, `lombok.config`, and the four test files above. `git diff --quiet e0017d69 HEAD -- src/main .planning/scripts/fork-anchors.txt` exit 0. `ANCHORS-SPOTLESS-SCOPE-OK`.
+
+Timestamp: 2026-10-11T20:34Z
 
 Verdict: pass
