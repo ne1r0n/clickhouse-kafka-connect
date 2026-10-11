@@ -1,9 +1,9 @@
 ---
 phase: 16-early-docs-publication
-reviewed: 2026-10-10T17:55:00Z
+reviewed: 2026-10-11T16:27:56Z
 depth: standard
 diff_base: 505e49819fba7b2ba980a718d9ec6b66b55027b0
-diff_base_incremental: 9207ec019358f7e88db4727237b7505e59bb396a
+diff_base_incremental: 28bcc7b184d90cb2b46d45bc87fd90e6b9f3f51a
 files_reviewed: 3
 files_reviewed_list:
   - CHANGELOG.md
@@ -85,3 +85,37 @@ One issue found in the neighbouring step the fix sits beside. It is not caused b
 **File:** `docs/ROLLOUT-v1.7.0_gg1.md:318`
 **Issue:** Step 1 says "On `custom_build`, back out the whole release in one commit: `git revert -m 1 <merge-commit>`". The release merge `f328fd21` is no longer the tip of `custom_build`. The docs-only publication merge `537beb1f` (parents `f328fd21` and `1e0eefde`) sits on top and changed `CHANGELOG.md`, `docs/FORK-DELTA.md` and `docs/ROLLOUT-v1.7.0_gg1.md` after the release. I ran step 1 on a detached worktree at `537beb1f`. It stops with conflicts: `UU CHANGELOG.md`, `UU docs/FORK-DELTA.md`, `UD docs/ROLLOUT-v1.7.0_gg1.md` (modify/delete, because the pre-release tree has no rollout file), and many `.planning/` files. The operator does not get "one commit"; they get a stopped revert in the middle of an incident. E-06 and E-14 both demonstrate on `f328fd21`, the pre-publication state, so their "Matches text: yes" does not describe what an operator will see on the published branch. The go-forward sentence this fix touches only holds if the revert actually completed.
 **Fix:** Give step 1 a path that works on the published tip, and re-run E-06/E-14 at `537beb1f`. A sequence that worked in the same throwaway worktree: `git revert --no-commit -m 1 <merge-commit>`, then `git read-tree -u --reset pre-v1.7.0-sync`, then `git commit`. The resulting tree equals the `pre-v1.7.0-sync` tree, `git merge <merge-commit>^2` then prints "Already up to date.", and `git revert <revert-commit>` restores the tree of `537beb1f`. Alternatively state in step 1 that conflicts in the three docs files and `.planning/` are expected and are resolved by taking the `pre-v1.7.0-sync` side.
+
+## Incremental review: WR-01 fix (diff base 28bcc7b1)
+
+**Reviewed:** 2026-10-11
+**Scope:** `git diff 28bcc7b1 HEAD -- docs/ROLLOUT-v1.7.0_gg1.md` (item 8 step 1 and the go-forward sentence, `docs/ROLLOUT-v1.7.0_gg1.md:318` and `:322`, commit `cf8cfc04`). Item 8 "What changed", the rest of the document and `16-COMMAND-EVIDENCE.md` E-15 read for context.
+
+**The WR-01 fix is confirmed; WR-01 is closed and not counted as open.** I reproduced step 1 in three detached throwaway worktrees at `origin/custom_build` (`537beb1f`), each removed afterwards (`git worktree remove --force` + `git worktree prune`; `git worktree list` shows only the main tree, and the main tree, branches, tags and remote were untouched).
+
+- `git read-tree -u --reset pre-v1.7.0-sync` then `git commit -m "Roll back v1.7.0_gg1"` exits 0 with no conflicts. The commit's tree is `94f041da`, equal to the tree of tag `pre-v1.7.0-sync` (`c61d90ce`), and its single parent is the tip `537beb1f`. The file set changes as expected: 143 tip-only paths are removed, target-only paths are added, renames come out as renames.
+- Go-forward sentence holds: `git merge 'v1.7.0_gg1^2'` after the rollback prints "Already up to date." and leaves HEAD unchanged; `git revert <rollback-commit>` exits 0 and the resulting tree equals the `537beb1f` tree.
+- The old step 1 failing on the published tip (97 unmerged paths) is as E-15 records. `pre-v1.7.0-sync` and `v1.7.0_gg1` are both on origin, so the operator can fetch them.
+- `<merge-commit>` is still defined (tag `v1.7.0_gg1`, `f328fd21`) before its use in the go-forward sentence. Item 8 "What changed" says nothing about `git revert`, so it does not contradict step 1.
+- E-15 backs every claim in the changed text: the conflict warning, the one-commit rollback to the `pre-v1.7.0-sync` tree on two tips, "merge `^2` brings nothing back", and "revert the rollback commit restores the tip". "Matches text: yes" is justified for those claims. E-15 does not cover the clean-checkout precondition (WR-02).
+- No secret, hostname, planning ID or unpublished branch name was introduced. The new text names only `custom_build`, tag `pre-v1.7.0-sync`, tag `v1.7.0_gg1` and the two git commands.
+
+Two new findings in the changed text.
+
+### WR-02: Step 1 relies on "a clean checkout" but `git read-tree -u --reset` silently destroys local changes
+
+**File:** `docs/ROLLOUT-v1.7.0_gg1.md:318`
+**Issue:** "On a clean checkout of `custom_build`" is not defined, and `read-tree -u --reset` has no safety check. In the throwaway worktree: (1) an uncommitted edit to a tracked file (`README.md`) was discarded with exit 0 and no message; (2) a change staged with `git add` was discarded the same way; (3) an untracked file sitting at a path that the `pre-v1.7.0-sync` tree adds was overwritten with the tag's content (exit 0). Unrelated untracked files are left alone and are not committed. An operator rolling back mid-incident on a working checkout (hotfix edits, local config, scratch files) loses that work without warning, unlike `git checkout`/`git revert`, which refuse. Nothing in the text says to confirm the checkout is on the current published tip either: on a stale local `custom_build` the rollback commit has the wrong parent and its tree still equals the old release, so a later push is rejected or, after a forced update, drops commits.
+**Fix:** Make the precondition a command and put the sync step first, for example: "Use a fresh clone, or check that `git status --porcelain` prints nothing (commit or stash anything it lists), `git fetch --tags origin`, and `git checkout custom_build && git merge --ff-only origin/custom_build`. Then run `git read-tree -u --reset pre-v1.7.0-sync` and `git commit -m "Roll back v1.7.0_gg1"`." Optionally add a verification line: `git diff --quiet HEAD pre-v1.7.0-sync && echo ok` after the commit. Extend E-15 with the dirty-checkout case.
+
+### IN-02: Step 1 defines `<merge-commit>` inside the "do not" command and the go-forward sentence leans on it; `<rollback-commit>` is not defined
+
+**File:** `docs/ROLLOUT-v1.7.0_gg1.md:318`, `:322`
+**Issue:** The only definition of `<merge-commit>` ("the `v1.7.0_gg1` merge commit, tagged `v1.7.0_gg1`") now sits inside the sentence telling the operator not to run the command that uses it, and the go-forward sentence reuses it two paragraphs later. It reads as a definition of a placeholder the operator is told to avoid. `<rollback-commit>` in the go-forward sentence is the commit made in step 1 but is never named. The rollback commit also deletes this rollout document (and `docs/FORK-DELTA.md` additions) from the branch, so the go-forward advice is only readable from the published copy or another ref; the text does not say so.
+**Fix:** Split the sentence and define both placeholders where they are used, for example: "Do not use `git revert -m 1 <merge-commit>`: documentation merged on top of the release edits the same files, so that revert stops with conflicts." and, in the go-forward paragraph: "`<merge-commit>` is the merge commit tagged `v1.7.0_gg1`; `<rollback-commit>` is the commit created in step 1 (`git log -1` right after it)." Optionally note that the rollback removes this document from the branch, so read the go-forward note from the tag `v1.7.0_gg1`.
+
+---
+
+_Reviewed: 2026-10-11T16:27:56Z (incremental)_
+_Reviewer: Claude (gsd-code-reviewer procedure, run inline)_
+_Depth: standard_
