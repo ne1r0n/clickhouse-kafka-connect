@@ -5,11 +5,11 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 17
 current_phase_name: CI, Build & Test Hygiene
 status: planning
-stopped_at: Phase 16 complete, ready to plan Phase 17
-last_updated: "2026-10-11T16:41:42.646Z"
+stopped_at: Phase 17 context gathered
+last_updated: "2026-10-11T19:15:38.235Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 7964802310eadcba820724ef048ac699073f3a26
+state_head: ac82e3e6f9ae5a75265bad8f0aca5c28c2f81788
 progress:
   total_phases: 5
   completed_phases: 1
@@ -167,9 +167,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T16:45:00Z
-Stopped at: Phase 16 complete, ready to plan Phase 17
-Resume file: None
+Last session: 2026-10-11T19:15:38.202Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-ci-build-test-hygiene/17-CONTEXT.md
 
 ## Operator Next Steps
 
