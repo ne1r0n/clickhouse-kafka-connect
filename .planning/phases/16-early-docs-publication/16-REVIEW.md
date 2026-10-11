@@ -12,9 +12,9 @@ files_reviewed_list:
 findings:
   critical: 0
   warning: 0
-  info: 2
-  total: 2
-status: issues_found
+  info: 0
+  total: 0
+status: clean
 ---
 
 # Phase 16: Code Review Report
@@ -154,3 +154,10 @@ No defect an operator would hit in the commands. Two Info findings remain.
 _Reviewed: 2026-10-11T16:31:09Z (incremental, WR-02/IN-02 fix)_
 _Reviewer: Claude (gsd-code-reviewer procedure, run inline)_
 _Depth: standard_
+
+## Disposition of IN-03 and IN-04 (orchestrator, 2026-10-11)
+
+- IN-04: fixed in `35baed27`. Step 1.1 now reads "Commit anything it lists or stash it with `git stash -u` (plain `git stash` leaves untracked files behind)". E-17 shows plain `git stash` leaving untracked entries and `git stash -u` clearing them.
+- IN-03: closed by E-17 in `16-COMMAND-EVIDENCE.md`. In a throwaway clone it runs `git checkout custom_build` verbatim, then `read-tree -u --reset` on a tree that is dirty four ways. The tracked and staged edits are discarded, the untracked file at a tag path is overwritten, and the unrelated untracked file is kept.
+
+No finding is open.

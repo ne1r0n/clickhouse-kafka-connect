@@ -455,6 +455,65 @@ On both targets the fast-forward lands on the target, the rollback commit's pare
 
 Matches text: yes
 
+### E-17: item 8 step 1.1 verbatim in a clone, and what step 1.2 does to a dirty tree (16-REVIEW IN-03, IN-04)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md`, item 8 step 1.1: the commands `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build` run verbatim; "Commit anything it lists or stash it with `git stash -u` (plain `git stash` leaves untracked files behind)"; and "the next command discards uncommitted and staged changes to tracked files without asking, and overwrites untracked files at paths the tag contains". Run in a throwaway clone of `origin` (date UTC 2026-10-11) whose local `custom_build` is first set to the release merge `f328fd21` to stand in for a stale branch. The tree is then made dirty four ways: a tracked edit (`README.md`), a staged edit (`VERSION`), an untracked file at a path the `pre-v1.7.0-sync` tree adds, and an unrelated untracked file. The script lives outside the repository (`/tmp/gsd16-wr01/demo3.sh <origin-url> <clone-path>`).
+
+```sh
+#!/bin/bash
+# usage: demo3.sh <repo-url-or-path> <clone-path>
+# Item 8 step 1 verbatim in a throwaway clone, plus what read-tree -u --reset does to a dirty tree.
+set -u
+SRC=$1; C=$2
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+git clone -q --no-checkout "$SRC" "$C"; g() { git -C "$C" "$@"; }
+g checkout -q -B custom_build 'v1.7.0_gg1^{commit}'   # stale local custom_build
+echo "stale custom_build=$(g rev-parse --short HEAD)"
+g fetch -q --tags origin && echo "git fetch --tags origin: exit=0"
+g checkout -q custom_build && echo "git checkout custom_build: exit=0"
+g merge -q --ff-only origin/custom_build && echo "git merge --ff-only origin/custom_build: HEAD=$(g rev-parse --short HEAD)"
+# dirty tree: tracked edit, staged edit, untracked file at a path the tag contains, unrelated untracked file
+NEWPATH=$(git -C "$C" diff --name-only --diff-filter=A HEAD pre-v1.7.0-sync | head -1)
+echo edit >> "$C/README.md"; echo staged >> "$C/VERSION"; g add VERSION
+mkdir -p "$C/$(dirname "$NEWPATH")"; echo untracked > "$C/$NEWPATH"; echo scratch > "$C/scratch.tmp"
+echo "porcelain before: $(g status --porcelain | tr '\n' ';')"
+g stash -q && echo "after plain git stash: $(g status --porcelain | tr '\n' ';')"
+g stash pop -q; g add VERSION
+g read-tree -u --reset pre-v1.7.0-sync; echo "read-tree -u --reset exit=$?"
+[ "$(cat "$C/README.md")" = "$(g show pre-v1.7.0-sync:README.md)" ] && echo "tracked edit discarded"
+[ "$(cat "$C/VERSION")" = "$(g show pre-v1.7.0-sync:VERSION)" ] && echo "staged edit discarded"
+[ "$(cat "$C/$NEWPATH")" = "$(g show "pre-v1.7.0-sync:$NEWPATH")" ] && echo "untracked file at tag path overwritten ($NEWPATH)"
+[ "$(cat "$C/scratch.tmp")" = scratch ] && echo "unrelated untracked file kept"
+rm -rf "$C"; echo "clone removed"
+```
+
+```text
+stale custom_build=f328fd21
+git fetch --tags origin: exit=0
+git checkout custom_build: exit=0
+git merge --ff-only origin/custom_build: HEAD=537beb1f
+porcelain before:  M README.md;M  VERSION;?? scratch.tmp;?? src/testFixtures/avro/schemas/incompatible/;
+after plain git stash: ?? scratch.tmp;?? src/testFixtures/avro/schemas/incompatible/;
+read-tree -u --reset exit=0
+tracked edit discarded
+staged edit discarded
+untracked file at tag path overwritten (src/testFixtures/avro/schemas/incompatible/union_two_records.json)
+unrelated untracked file kept
+clone removed
+```
+
+A second throwaway clone at `origin/custom_build`, with a tracked edit and an untracked file, shows `git stash -u` clearing both:
+
+```text
+before:  M README.md;?? scratch.tmp;
+after git stash -u: lines=0
+removed
+```
+
+Plain `git stash` leaves the untracked entries listed. `read-tree -u --reset` exits 0 without a prompt, discards the tracked and staged edits, overwrites the untracked file at a tag path with the tag's content, and keeps the unrelated untracked file. `git stash -u` leaves `git status --porcelain` empty.
+
+Matches text: yes
+
 ## Finding map
 
 | Finding | Changed text | Evidence entries |
@@ -469,3 +528,5 @@ Phase 16 review finding (16-REVIEW.md): IN-01 changed `docs/ROLLOUT-v1.7.0_gg1.m
 Phase 16 review finding (16-REVIEW.md): WR-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1 and the go-forward sentence (commit `cf8cfc04`), backed by E-15.
 
 Phase 16 review findings (16-REVIEW.md, incremental 28bcc7b1): WR-02 and IN-02 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1 and the go-forward paragraph (commit `c2b7c49d`), backed by E-16.
+
+Phase 16 review findings (16-REVIEW.md, incremental 050f60b5): IN-04 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1.1 (commit `35baed27`); IN-03 (evidence gap in E-16) is closed by E-17, which backs the step 1.1 commands and the destructive-behaviour sentence.
