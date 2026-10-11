@@ -8,6 +8,7 @@ import com.clickhouse.client.api.Client;
 import com.clickhouse.client.api.insert.InsertResponse;
 import com.clickhouse.client.api.insert.InsertSettings;
 import com.clickhouse.client.api.query.GenericRecord;
+import com.clickhouse.client.api.query.QuerySettings;
 import com.clickhouse.data.ClickHouseFormat;
 import com.clickhouse.kafka.connect.sink.ClickHouseBase;
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
@@ -34,9 +35,10 @@ import org.slf4j.LoggerFactory;
  *
  * <p>It sets {@code network_compression_method=lz4} because ClickHouse 26.9 answers {@code
  * compress=1} with ZSTD (Recorded Facts 25 and 26). It names no lz4-java version, so it guards
- * every later lz4 or client bump unchanged. It pins the jar origin because {@code
- * testRuntimeClasspath} also carries the old {@code org.lz4} artifact, which provides the same
- * {@code net.jpountz.lz4} classes (14-RESEARCH Pitfall 2).
+ * every later lz4 or client bump unchanged. It still pins the jar origin; since DEBT-07 the test
+ * classpath carries only the maintained jar, which {@code TestRuntimeClasspathLz4UnitTest} pins
+ * without Docker. The response leg is proven from {@code system.query_log}, where the read's own
+ * {@code NetworkSendBytes} must stay below a tenth of its {@code result_bytes} (14-REVIEW WR-01).
  */
 class Lz4RoundTripLiveTest extends ClickHouseBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(Lz4RoundTripLiveTest.class);
@@ -44,6 +46,12 @@ class Lz4RoundTripLiveTest extends ClickHouseBase {
     private static final String NETWORK_COMPRESSION_METHOD = "network_compression_method";
     private static final String LZ4 = "lz4";
     private static final String MAINTAINED_LZ4_JAR_MARKER = "at.yawk.lz4";
+    private static final int RESPONSE_COMPRESSION_MIN_RATIO = 10;
+    private static final String READ_BACK_QUERY = "SELECT id, payload, amount, ts FROM `%s` ORDER BY id";
+    private static final String RESPONSE_LEG_LOG_QUERY =
+            "SELECT toInt64(ProfileEvents['NetworkSendBytes']) AS wire, toInt64(result_bytes) AS result, "
+                    + "Settings['network_compression_method'] AS method "
+                    + "FROM system.query_log WHERE query_id = '%s' AND type = 'QueryFinish'";
     private static final int ROWS = 2000;
     private static final int PAYLOAD_REPEATS = 60;
     private static final long MIN_BODY_BYTES = 2L * 1024 * 1024;
@@ -144,8 +152,9 @@ class Lz4RoundTripLiveTest extends ClickHouseBase {
                 // inserted
             }
 
+            String readQueryId = UUID.randomUUID().toString();
             List<GenericRecord> rows = client.queryAll(
-                    String.format("SELECT id, payload, amount, ts FROM `%s` ORDER BY id", table));
+                    String.format(READ_BACK_QUERY, table), new QuerySettings().setQueryId(readQueryId));
             assertEquals(ROWS, rows.size());
             for (int i = 0; i < ROWS; i++) {
                 int id = i + 1;
@@ -171,6 +180,23 @@ class Lz4RoundTripLiveTest extends ClickHouseBase {
             long blocks = logRows.get(0).getLong("blocks");
             LOGGER.info("CompressedReadBufferBlocks for the insert: {}", blocks);
             assertTrue(blocks > 0, "the insert request body was not read as natively compressed blocks");
+
+            List<GenericRecord> responseLogRows =
+                    client.queryAll(String.format(RESPONSE_LEG_LOG_QUERY, readQueryId));
+            assertEquals(1, responseLogRows.size());
+            long wire = responseLogRows.get(0).getLong("wire");
+            long result = responseLogRows.get(0).getLong("result");
+            String method = responseLogRows.get(0).getString("method");
+            LOGGER.info(
+                    "Response leg: NetworkSendBytes={} result_bytes={} ratio={} method={}",
+                    wire,
+                    result,
+                    result > 0 ? (double) wire / result : Double.NaN,
+                    method);
+            assertEquals(LZ4, method, "the read did not run with " + NETWORK_COMPRESSION_METHOD + "=" + LZ4);
+            assertTrue(
+                    result > 0 && wire < result / RESPONSE_COMPRESSION_MIN_RATIO,
+                    "response not compressed: NetworkSendBytes=" + wire + " result_bytes=" + result);
         } finally {
             ClickHouseTestHelpers.dropTable(chc, table);
             chc.close();
