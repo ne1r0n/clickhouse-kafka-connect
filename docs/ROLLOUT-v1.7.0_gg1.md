@@ -316,7 +316,7 @@ You are affected if you need to go back after upgrading, or you want to know in 
 ### What to do
 
 1. Back out the whole release in one commit on `custom_build`, by restoring the tree of tag `pre-v1.7.0-sync`:
-   1. Start from the published tip with nothing uncommitted: `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build`, then check that `git status --porcelain` prints nothing. Commit or stash anything it lists, or use a fresh clone: the next command discards uncommitted and staged changes to tracked files without asking, and overwrites untracked files at paths the tag contains.
+   1. Start from the published tip with nothing uncommitted: `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build`, then check that `git status --porcelain` prints nothing. Commit anything it lists or stash it with `git stash -u` (plain `git stash` leaves untracked files behind), or use a fresh clone: the next command discards uncommitted and staged changes to tracked files without asking, and overwrites untracked files at paths the tag contains.
    2. Run `git read-tree -u --reset pre-v1.7.0-sync`, then `git commit -m "Roll back v1.7.0_gg1"`. This commit is `<rollback-commit>` below (`git rev-parse HEAD` right after it). `git diff --quiet HEAD pre-v1.7.0-sync && echo ok` prints `ok`.
 
    Do not use `git revert -m 1` on the release merge: documentation merged on top of the release edits the same files, so that revert stops with conflicts.
