@@ -331,6 +331,189 @@ after revert-of-revert: tree(HEAD)==tree(f328fd21)
 
 Matches text: yes
 
+### E-15: item 8 step 1 rollback on the published tip and on the republication tip (16-REVIEW WR-01)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md`, item 8, the new step 1 "`git read-tree -u --reset pre-v1.7.0-sync`, then `git commit -m "Roll back v1.7.0_gg1"`", its warning that `git revert -m 1 <merge-commit>` stops with conflicts, and the go-forward sentence "revert the rollback commit first (`git revert <rollback-commit>`); merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back." Run on two tips, each in a detached throwaway worktree: the published `custom_build` tip `537beb1f` (date UTC 2026-10-11), and a dry-run `--no-ff` merge of `sync/v1.7.0` at `cf8cfc04` into `537beb1f` (`ea94d28c`, never pushed), which is the tip a republication creates. The script lives outside the repository (`/tmp/gsd16-wr01/demo.sh <repo> <tip> <worktree>`). The `-c user.name/user.email` options only give the throwaway commits an identity.
+
+```sh
+#!/bin/bash
+# usage: demo.sh <repo> <tip-sha> <worktree-path>
+set -u
+REPO=$1; TIP=$2; WT=$3
+G1=$(git -C "$REPO" rev-parse 'v1.7.0_gg1^{commit}')
+P1=$(git -C "$REPO" rev-parse 'pre-v1.7.0-sync^{commit}')
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+echo "tip=$TIP G1=$G1 P1=$P1"
+git -C "$REPO" worktree add --quiet --detach "$WT" "$TIP"
+g() { git -C "$WT" "$@"; }
+# old text, for contrast
+g "${ID[@]}" revert --no-edit -m 1 "$G1" >/dev/null 2>&1; echo "old step 1 (git revert -m 1) exit=$? unmerged=$(g diff --name-only --diff-filter=U | wc -l | tr -d ' ')"
+g revert --abort; g diff --quiet HEAD "$TIP" && echo "aborted, HEAD back at tip"
+# new text, step 1
+g read-tree -u --reset pre-v1.7.0-sync && g "${ID[@]}" commit -q -m "Roll back v1.7.0_gg1" && echo "new step 1: exit=0"
+RB=$(g rev-parse HEAD); echo "rollback-commit=$RB parent==tip: $([ "$(g rev-parse HEAD^)" = "$(git -C "$REPO" rev-parse "$TIP")" ] && echo yes)"
+g diff --quiet HEAD "$P1" && echo "after rollback: tree(HEAD)==tree(pre-v1.7.0-sync)"
+[ -z "$(g status --porcelain)" ] && echo "worktree clean"
+g "${ID[@]}" merge --no-edit "$G1^2"
+[ "$(g rev-parse HEAD)" = "$RB" ] && g diff --quiet HEAD "$P1" && echo "HEAD unchanged after: git merge <merge-commit>^2; tree still == pre-v1.7.0-sync"
+g "${ID[@]}" revert --no-edit "$RB" >/dev/null && g diff --quiet HEAD "$TIP" && echo "after revert of rollback commit: tree(HEAD)==tree(tip)"
+git -C "$REPO" worktree remove --force "$WT" && git -C "$REPO" worktree prune
+```
+
+```text
+tip=537beb1fcf23b987c8b340006f4f74f7c5229d00 G1=f328fd218dce5b9c652f8872042e922f9686b87f P1=c61d90ce5dfb32ea5876dffacc8bb54d8846739a
+old step 1 (git revert -m 1) exit=1 unmerged=97
+aborted, HEAD back at tip
+new step 1: exit=0
+rollback-commit=c117fa74d6f057845130a9d69acaeb2d741ed6dc parent==tip: yes
+after rollback: tree(HEAD)==tree(pre-v1.7.0-sync)
+worktree clean
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2; tree still == pre-v1.7.0-sync
+after revert of rollback commit: tree(HEAD)==tree(tip)
+
+tip=ea94d28c9ddf6645afdd588f34d3faa2eaa15ac3 G1=f328fd218dce5b9c652f8872042e922f9686b87f P1=c61d90ce5dfb32ea5876dffacc8bb54d8846739a
+old step 1 (git revert -m 1) exit=1 unmerged=97
+aborted, HEAD back at tip
+new step 1: exit=0
+rollback-commit=e43bbaf30a11e648d410f407ba552463fcac2d18 parent==tip: yes
+after rollback: tree(HEAD)==tree(pre-v1.7.0-sync)
+worktree clean
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2; tree still == pre-v1.7.0-sync
+after revert of rollback commit: tree(HEAD)==tree(tip)
+```
+
+The old step 1 stops with 97 unmerged paths on both tips, so the warning holds. The new step 1 completes in one commit on both tips and leaves the tree of `pre-v1.7.0-sync`. Merging `<merge-commit>^2` afterwards changes nothing, and reverting the rollback commit restores the tip's tree. `git worktree list` afterwards shows only the main working tree. This supersedes E-06 and E-14 for item 8, which ran on `f328fd21` only.
+
+Matches text: yes
+
+### E-16: item 8 step 1 as written after WR-02/IN-02, from a stale local branch (16-REVIEW WR-02, IN-02)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md`, item 8 step 1.1 (fetch, fast-forward to the published tip, `git status --porcelain` prints nothing), step 1.2 (`git read-tree -u --reset pre-v1.7.0-sync`, `git commit -m "Roll back v1.7.0_gg1"`, `git diff --quiet HEAD pre-v1.7.0-sync && echo ok` prints `ok`), and the go-forward paragraph (`git merge <merge-commit>^2` brings nothing back, `git revert <rollback-commit>` restores the release, the document is gone from the branch and `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg1.md` reads it). Each run uses a throwaway branch that starts at the release merge `f328fd21`, standing in for a stale local `custom_build` (a linked worktree cannot check out `custom_build` itself, so `git checkout custom_build` is the one command not run verbatim). It first shows that an uncommitted edit makes `git status --porcelain` print a line, then reverts it. Targets: the published tip `537beb1f` (date UTC 2026-10-11), and a dry-run `--no-ff` merge of `sync/v1.7.0` at `c2b7c49d` into `537beb1f` (`117829bc`, never pushed), which is the tip a republication creates. The script lives outside the repository (`/tmp/gsd16-wr01/demo2.sh <repo> <target> <worktree>`). The `-c user.name/user.email` options only give the throwaway commits an identity.
+
+```sh
+#!/bin/bash
+# usage: demo2.sh <repo> <target-tip> <worktree-path>
+# Runs item 8 step 1 as written, on a throwaway branch standing in for a stale local custom_build
+# (starts at the release merge v1.7.0_gg1, then fast-forwards to <target-tip>).
+set -u
+REPO=$1; TARGET=$2; WT=$3; BR=wr02-demo-$$
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+git -C "$REPO" worktree add --quiet -b "$BR" "$WT" 'v1.7.0_gg1^{commit}'
+g() { git -C "$WT" "$@"; }
+echo "target=$(git -C "$REPO" rev-parse "$TARGET") stale-start=$(g rev-parse --short HEAD)"
+echo "x" >> "$WT/README.md"; echo "dirty: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"; g checkout -q -- README.md
+g fetch -q --tags origin && echo "fetch --tags exit=0"
+g merge -q --ff-only "$TARGET" && echo "merge --ff-only exit=0, HEAD==target: $([ "$(g rev-parse HEAD)" = "$(git -C "$REPO" rev-parse "$TARGET")" ] && echo yes)"
+echo "clean: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"
+g read-tree -u --reset pre-v1.7.0-sync && g "${ID[@]}" commit -q -m "Roll back v1.7.0_gg1" && echo "read-tree + commit exit=0"
+RB=$(g rev-parse HEAD); echo "rollback-commit parent==target: $([ "$(g rev-parse HEAD^)" = "$(git -C "$REPO" rev-parse "$TARGET")" ] && echo yes)"
+g diff --quiet HEAD pre-v1.7.0-sync && echo ok
+[ -z "$(g status --porcelain)" ] && echo "worktree clean after commit"
+g ls-files --error-unmatch docs/ROLLOUT-v1.7.0_gg1.md >/dev/null 2>&1 || echo "rollout doc gone from branch"
+g show "$RB^:docs/ROLLOUT-v1.7.0_gg1.md" | grep -c '^## Item 8: Rollback' | sed 's/^/git show <rollback-commit>^:docs\/ROLLOUT... item-8 headings: /'
+g "${ID[@]}" merge --no-edit 'v1.7.0_gg1^2'
+[ "$(g rev-parse HEAD)" = "$RB" ] && echo "HEAD unchanged after: git merge <merge-commit>^2"
+g "${ID[@]}" revert --no-edit "$RB" >/dev/null && g diff --quiet HEAD "$TARGET" && echo "after git revert <rollback-commit>: tree(HEAD)==tree(target)"
+git -C "$REPO" worktree remove --force "$WT" && git -C "$REPO" worktree prune && git -C "$REPO" branch -q -D "$BR"
+```
+
+```text
+target=537beb1fcf23b987c8b340006f4f74f7c5229d00 stale-start=f328fd21
+dirty: status --porcelain lines=1
+fetch --tags exit=0
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=0
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+worktree clean after commit
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-8 headings: 1
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+
+target=117829bcafd0ae3a8fc17a3fbb40716312fa954e stale-start=f328fd21
+dirty: status --porcelain lines=1
+fetch --tags exit=0
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=0
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+worktree clean after commit
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-8 headings: 1
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+On both targets the fast-forward lands on the target, the rollback commit's parent is the target and its tree is the `pre-v1.7.0-sync` tree (`ok`). The rollout document is gone from the branch and readable from `<rollback-commit>^`. Merging `<merge-commit>^2` changes nothing, and reverting the rollback commit restores the target's tree. Afterwards `git worktree list` shows only the main working tree and no `wr02-demo-*` branch is left. E-07's check re-run on `c2b7c49d` prints `ROLLOUT-PLAIN-LANGUAGE-OK`. This supersedes E-15 for item 8's wording.
+
+Matches text: yes
+
+### E-17: item 8 step 1.1 verbatim in a clone, and what step 1.2 does to a dirty tree (16-REVIEW IN-03, IN-04)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md`, item 8 step 1.1: the commands `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build` run verbatim; "Commit anything it lists or stash it with `git stash -u` (plain `git stash` leaves untracked files behind)"; and "the next command discards uncommitted and staged changes to tracked files without asking, and overwrites untracked files at paths the tag contains". Run in a throwaway clone of `origin` (date UTC 2026-10-11) whose local `custom_build` is first set to the release merge `f328fd21` to stand in for a stale branch. The tree is then made dirty four ways: a tracked edit (`README.md`), a staged edit (`VERSION`), an untracked file at a path the `pre-v1.7.0-sync` tree adds, and an unrelated untracked file. The script lives outside the repository (`/tmp/gsd16-wr01/demo3.sh <origin-url> <clone-path>`).
+
+```sh
+#!/bin/bash
+# usage: demo3.sh <repo-url-or-path> <clone-path>
+# Item 8 step 1 verbatim in a throwaway clone, plus what read-tree -u --reset does to a dirty tree.
+set -u
+SRC=$1; C=$2
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+git clone -q --no-checkout "$SRC" "$C"; g() { git -C "$C" "$@"; }
+g checkout -q -B custom_build 'v1.7.0_gg1^{commit}'   # stale local custom_build
+echo "stale custom_build=$(g rev-parse --short HEAD)"
+g fetch -q --tags origin && echo "git fetch --tags origin: exit=0"
+g checkout -q custom_build && echo "git checkout custom_build: exit=0"
+g merge -q --ff-only origin/custom_build && echo "git merge --ff-only origin/custom_build: HEAD=$(g rev-parse --short HEAD)"
+# dirty tree: tracked edit, staged edit, untracked file at a path the tag contains, unrelated untracked file
+NEWPATH=$(git -C "$C" diff --name-only --diff-filter=A HEAD pre-v1.7.0-sync | head -1)
+echo edit >> "$C/README.md"; echo staged >> "$C/VERSION"; g add VERSION
+mkdir -p "$C/$(dirname "$NEWPATH")"; echo untracked > "$C/$NEWPATH"; echo scratch > "$C/scratch.tmp"
+echo "porcelain before: $(g status --porcelain | tr '\n' ';')"
+g stash -q && echo "after plain git stash: $(g status --porcelain | tr '\n' ';')"
+g stash pop -q; g add VERSION
+g read-tree -u --reset pre-v1.7.0-sync; echo "read-tree -u --reset exit=$?"
+[ "$(cat "$C/README.md")" = "$(g show pre-v1.7.0-sync:README.md)" ] && echo "tracked edit discarded"
+[ "$(cat "$C/VERSION")" = "$(g show pre-v1.7.0-sync:VERSION)" ] && echo "staged edit discarded"
+[ "$(cat "$C/$NEWPATH")" = "$(g show "pre-v1.7.0-sync:$NEWPATH")" ] && echo "untracked file at tag path overwritten ($NEWPATH)"
+[ "$(cat "$C/scratch.tmp")" = scratch ] && echo "unrelated untracked file kept"
+rm -rf "$C"; echo "clone removed"
+```
+
+```text
+stale custom_build=f328fd21
+git fetch --tags origin: exit=0
+git checkout custom_build: exit=0
+git merge --ff-only origin/custom_build: HEAD=537beb1f
+porcelain before:  M README.md;M  VERSION;?? scratch.tmp;?? src/testFixtures/avro/schemas/incompatible/;
+after plain git stash: ?? scratch.tmp;?? src/testFixtures/avro/schemas/incompatible/;
+read-tree -u --reset exit=0
+tracked edit discarded
+staged edit discarded
+untracked file at tag path overwritten (src/testFixtures/avro/schemas/incompatible/union_two_records.json)
+unrelated untracked file kept
+clone removed
+```
+
+A second throwaway clone at `origin/custom_build`, with a tracked edit and an untracked file, shows `git stash -u` clearing both:
+
+```text
+before:  M README.md;?? scratch.tmp;
+after git stash -u: lines=0
+removed
+```
+
+Plain `git stash` leaves the untracked entries listed. `read-tree -u --reset` exits 0 without a prompt, discards the tracked and staged edits, overwrites the untracked file at a tag path with the tag's content, and keeps the unrelated untracked file. `git stash -u` leaves `git status --porcelain` empty.
+
+Matches text: yes
+
 ## Finding map
 
 | Finding | Changed text | Evidence entries |
@@ -341,3 +524,9 @@ Matches text: yes
 | IN-10 | `docs/ROLLOUT-v1.7.0_gg1.md` preface ledger link, item 2 and 5 headings and TOC, ledger tags, item 6 grep (commit `fad6f7f9`); `CHANGELOG.md` `1.7.0_gg1` section (commit `8c1f0bc1`) | E-05, E-07, E-10, E-12, E-13 |
 
 Phase 16 review finding (16-REVIEW.md): IN-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 (commit `fd99a476`), backed by E-14.
+
+Phase 16 review finding (16-REVIEW.md): WR-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1 and the go-forward sentence (commit `cf8cfc04`), backed by E-15.
+
+Phase 16 review findings (16-REVIEW.md, incremental 28bcc7b1): WR-02 and IN-02 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1 and the go-forward paragraph (commit `c2b7c49d`), backed by E-16.
+
+Phase 16 review findings (16-REVIEW.md, incremental 050f60b5): IN-04 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1.1 (commit `35baed27`); IN-03 (evidence gap in E-16) is closed by E-17, which backs the step 1.1 commands and the destructive-behaviour sentence.

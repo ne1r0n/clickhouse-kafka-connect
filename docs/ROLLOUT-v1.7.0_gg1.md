@@ -315,10 +315,14 @@ You are affected if you need to go back after upgrading, or you want to know in 
 
 ### What to do
 
-1. On `custom_build`, back out the whole release in one commit: `git revert -m 1 <merge-commit>`, where `<merge-commit>` is the `v1.7.0_gg1` merge commit, tagged `v1.7.0_gg1`.
+1. Back out the whole release in one commit on `custom_build`, by restoring the tree of tag `pre-v1.7.0-sync`:
+   1. Start from the published tip with nothing uncommitted: `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build`, then check that `git status --porcelain` prints nothing. Commit anything it lists or stash it with `git stash -u` (plain `git stash` leaves untracked files behind), or use a fresh clone: the next command discards uncommitted and staged changes to tracked files without asking, and overwrites untracked files at paths the tag contains.
+   2. Run `git read-tree -u --reset pre-v1.7.0-sync`, then `git commit -m "Roll back v1.7.0_gg1"`. This commit is `<rollback-commit>` below (`git rev-parse HEAD` right after it). `git diff --quiet HEAD pre-v1.7.0-sync && echo ok` prints `ok`.
+
+   Do not use `git revert -m 1` on the release merge: documentation merged on top of the release edits the same files, so that revert stops with conflicts.
 2. Redeploy the `v1.6.0_gg1` artifact.
 3. Run the exactly-once check of item 1 in reverse: stop cleanly, run the same query, and go back only when no row is outside `AFTER_PROCESSING`. A batch the new jar left in `BEFORE_PROCESSING` is then retried by the old jar.
 
-To go forward again after `git revert -m 1`, revert the revert commit first (`git revert <revert-commit>`); merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back.
+To go forward again, revert the rollback commit first (`git revert <rollback-commit>`); merging the released history again (`git merge <merge-commit>^2`, where `<merge-commit>` is the merge commit tagged `v1.7.0_gg1`) without that brings nothing back. The rollback removes this document from the branch; read it again with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg1.md`.
 
 Rolling back re-introduces the silent loss of item 2 (explicit `insertFormat=json` with `Struct`/CDC records writes no rows while the offsets still advance) and the Debezium Timestamp mis-storage of item 3 (millisecond values read as seconds). It also brings back the old error message for `Int256`/`UInt256` columns and the less strict nested-null handling.

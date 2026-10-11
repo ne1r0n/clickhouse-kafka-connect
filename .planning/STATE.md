@@ -4,17 +4,17 @@ milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 16
 current_phase_name: Early Docs Publication
-status: executing
+status: verifying
 stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-10-10T17:52:49.946Z"
+last_updated: "2026-10-10T18:11:33.709Z"
 last_activity: 2026-10-10
 last_activity_desc: Phase 16 execution started
-state_head: e45c6387fd1d4b01f0506196f91bbaa895074280
+state_head: 82c291f7cc085948cda2bf08525ee03df0a2d540
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-10 after v1.7.0_gg1-sync milestone)
 
 Phase: 16 (Early Docs Publication) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-10 — Phase 16 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -146,9 +146,9 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: ⚠ The published `docs/ROLLOUT-v1.7.0_gg1.md` (at `f328fd21`) still offers `TRUNCATE TABLE` on the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14), plus the WR-02/WR-03 wording defects. The local docs-only commit `505e4981` fixes them, but it is not on origin. **Scheduled: Phase 16** (PUB-05, PUB-06).
-- [Publish]: Local `sync/v1.7.0` is 20+ commits past `f328fd21` (the Phase 15 tail and milestone bookkeeping). They stay local until Phase 16's docs-only `--no-ff` merge. Its diff outside `.planning/` is today exactly `docs/FORK-DELTA.md` and `docs/ROLLOUT-v1.7.0_gg1.md`. `.planning/state.json` is modified and `.planning/.gsd-ws-arg` is untracked; neither may ride into the merge. Milestone tags such as `v1.7.0_gg1-sync` stay local.
-- [CI]: ⏰ `ubuntu-latest` moves to Ubuntu 26 from **2026-10-19**. Phase 16's docs-only run should land before then, on the unchanged workflow. Phase 17 pins `ubuntu-24.04`. Two branches pushed at one SHA still cancel each other. Node 20 deprecation warnings affect `checkout@v4` and `upload-artifact@v4` (Phase 17).
+- [Publish]: ✓ 2026-10-10: the corrected docs are on `origin/custom_build` at `537beb1f`, published by Phase 16's docs-only `--no-ff` merge of `sync/v1.7.0` (`1e0eefde`) onto `f328fd21`. `tests.yaml` run 38074050935 was green. The rollout doc no longer instructs a `TRUNCATE` of the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14). WR-02, WR-03 and IN-07..IN-10 (plus 16-REVIEW IN-01) are fixed on origin.
+- [Publish]: Everything up to `1e0eefde` is published through `537beb1f`. Commits after it (the 16-03 SUMMARY, verification, review gate and bookkeeping) are a local tail on `sync/v1.7.0` that Phase 20's merge publishes. `.planning/.gsd-ws-arg` was absent. `.planning/state.json` is tracked, with uncommitted local edits that did not ride the merge (CONTEXT's "untracked" note was stale). Milestone tags such as `v1.7.0_gg1-sync` stay local.
+- [CI]: ⏰ `ubuntu-latest` moves to Ubuntu 26 from **2026-10-19**. Phase 16's docs-only run landed on 2026-10-10 as run 38074050935 (green, 6 m 29 s, unchanged workflow on `ubuntu-latest`). Phase 17 pins `ubuntu-24.04`. Two branches pushed at one SHA still cancel each other. Node 20 deprecation warnings affect `checkout@v4` and `upload-artifact@v4` (Phase 17).
 - [CI]: `test-head.yaml` calls `tests.yaml` as a reusable workflow, but `tests.yaml` declares no `workflow_call`. Its nightly schedule runs from the default branch `custom_build` and very likely fails every night. The fix (CI-16) lands in Phase 17 and takes effect on the schedule only once Phase 20 publishes it.
 
 ## Deferred Items
