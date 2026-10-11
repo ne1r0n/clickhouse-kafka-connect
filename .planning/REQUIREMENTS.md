@@ -37,12 +37,12 @@
 
 ### CI hygiene
 
-- [ ] **CI-11**: `tests.yaml` uses Node 24 action majors (`actions/checkout` v7.x, `actions/upload-artifact` v7.x) and every action is pinned by full commit SHA (the peeled commit for annotated tags) with a `# vX.Y.Z` comment (T-14-16)
-- [ ] **CI-12**: `tests.yaml` runs on `ubuntu-24.04` instead of `ubuntu-latest`
-- [ ] **CI-13**: `tests.yaml` declares a least-privilege `permissions: contents: read` block and checkout uses `persist-credentials: false` (T-14-16)
-- [ ] **CI-14**: The "Test fork count" step reads the effective `maxParallelForks` from a Gradle task instead of recomputing the formula in shell (14-REVIEW WR-02)
-- [ ] **CI-15**: `.github/dependabot.yml` includes the `github-actions` ecosystem so the SHA-pinned actions still get update PRs
-- [ ] **CI-16**: `test-head.yaml` is fixed or disabled in the fork so no scheduled run fails because `tests.yaml` is not a reusable workflow
+- [x] **CI-11**: `tests.yaml` uses Node 24 action majors (`actions/checkout` v7.x, `actions/upload-artifact` v7.x) and every action is pinned by full commit SHA (the peeled commit for annotated tags) with a `# vX.Y.Z` comment (T-14-16)
+- [x] **CI-12**: `tests.yaml` runs on `ubuntu-24.04` instead of `ubuntu-latest`
+- [x] **CI-13**: `tests.yaml` declares a least-privilege `permissions: contents: read` block and checkout uses `persist-credentials: false` (T-14-16)
+- [x] **CI-14**: The "Test fork count" step reads the effective `maxParallelForks` from a Gradle task instead of recomputing the formula in shell (14-REVIEW WR-02)
+- [x] **CI-15**: `.github/dependabot.yml` includes the `github-actions` ecosystem so the SHA-pinned actions still get update PRs
+- [x] **CI-16**: `test-head.yaml` is fixed or disabled in the fork so no scheduled run fails because `tests.yaml` is not a reusable workflow
 - [ ] **CI-17**: One green CI run on a pushed SHA proves CI-11..CI-16 together — job summary, fork-count notice and both artifact uploads present
 
 ### Release
@@ -88,12 +88,12 @@
 | DEBT-08 | Phase 17 | Pending |
 | DEBT-09 | Phase 19 | Pending |
 | BLD-14 | Phase 17 | Pending |
-| CI-11 | Phase 17 | Pending |
-| CI-12 | Phase 17 | Pending |
-| CI-13 | Phase 17 | Pending |
-| CI-14 | Phase 17 | Pending |
-| CI-15 | Phase 17 | Pending |
-| CI-16 | Phase 17 | Pending |
+| CI-11 | Phase 17 | Complete |
+| CI-12 | Phase 17 | Complete |
+| CI-13 | Phase 17 | Complete |
+| CI-14 | Phase 17 | Complete |
+| CI-15 | Phase 17 | Complete |
+| CI-16 | Phase 17 | Complete |
 | CI-17 | Phase 17 | Pending |
 | ROLL-02 | Phase 20 | Pending |
 | PUB-07 | Phase 20 | Pending |

@@ -130,11 +130,11 @@ Whether IN-10 corrects the published `1.7.0_gg1` CHANGELOG section in place or a
   4. The build prints no Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code unchanged. `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java`, pinned by a Docker-free test. `runtimeClasspath` and `integrationTestRuntimeClasspath` resolve exactly as before.
   5. `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion, and that assertion has been seen red with server-response compression disabled. `MetadataFreeJsonWriterTest` pins Debezium `NanoTimestamp` in mantissa-with-fraction scientific notation.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 17-01-PLAN.md — Tracer: `reportTestForks` read by the fork-count step (CI-14); SHA pins, `ubuntu-24.04`, read-only token and the github-actions Dependabot entry behind a red-first Docker-free guard (CI-11..CI-13, CI-15); `test-head.yaml` deleted with FORK-DELTA rows and Recorded Fact 41 (CI-16, D-01, D-02)
+- [x] 17-01-PLAN.md — Tracer: `reportTestForks` read by the fork-count step (CI-14); SHA pins, `ubuntu-24.04`, read-only token and the github-actions Dependabot entry behind a red-first Docker-free guard (CI-11..CI-13, CI-15); `test-head.yaml` deleted with FORK-DELTA rows and Recorded Fact 41 (CI-16, D-01, D-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 17-02-PLAN.md — Test-scoped lz4 exclude with a single-`LZ4Factory` pin (DEBT-07); response-leg LZ4 assertion seen red (DEBT-06); Lombok Jackson 2 line with a `javap` no-change proof (BLD-14); NanoTimestamp scientific-form rows (DEBT-08)
@@ -327,7 +327,7 @@ After publication, check once that `test-head.yaml`'s nightly schedule no longer
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
-| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
+| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 1/4 | In Progress | - |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
