@@ -4,16 +4,16 @@ milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 17
 current_phase_name: CI, Build & Test Hygiene
-status: planning
+status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-10-11T19:15:38.235Z"
+last_updated: "2026-10-11T20:12:11.795Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: ac82e3e6f9ae5a75265bad8f0aca5c28c2f81788
+state_head: e0017d6901c57153f065377a55842ceaf795b270
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 3
+  total_plans: 7
   completed_plans: 3
   percent: 20
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-11 after Phase 16)
 
 ## Current Position
 
-Phase: 17 — CI, Build & Test Hygiene
+Phase: 17 (CI, Build & Test Hygiene) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-10-11 — Phase 16 complete, transitioned to Phase 17
 
 Progress: [██░░░░░░░░] 20%

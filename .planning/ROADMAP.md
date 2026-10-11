@@ -130,7 +130,20 @@ Whether IN-10 corrects the published `1.7.0_gg1` CHANGELOG section in place or a
   4. The build prints no Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code unchanged. `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java`, pinned by a Docker-free test. `runtimeClasspath` and `integrationTestRuntimeClasspath` resolve exactly as before.
   5. `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion, and that assertion has been seen red with server-response compression disabled. `MetadataFreeJsonWriterTest` pins Debezium `NanoTimestamp` in mantissa-with-fraction scientific notation.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 17-01-PLAN.md — Tracer: `reportTestForks` read by the fork-count step (CI-14); SHA pins, `ubuntu-24.04`, read-only token and the github-actions Dependabot entry behind a red-first Docker-free guard (CI-11..CI-13, CI-15); `test-head.yaml` deleted with FORK-DELTA rows and Recorded Fact 41 (CI-16, D-01, D-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 17-02-PLAN.md — Test-scoped lz4 exclude with a single-`LZ4Factory` pin (DEBT-07); response-leg LZ4 assertion seen red (DEBT-06); Lombok Jackson 2 line with a `javap` no-change proof (BLD-14); NanoTimestamp scientific-form rows (DEBT-08)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 17-03-PLAN.md — D-10 local gate and measured bundle, blocking-human push decision (D-11, surfacing F1: default branch is `main`), then one branch-only push with its single green `tests.yaml` run read through the API and the scratch branch deleted (CI-17)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 17-04-PLAN.md — User-pasted "Set up job" and job summary as E-11 (CI-17, D-13); STATE and ROADMAP record the outcome and carry the Dependabot and default-branch checks to Phase 20 (D-05)
 
 **Note**: This phase changes no `src/main` code, so it cannot regress connector behaviour. Files shared within the phase:
 - `tests.yaml` (CI-11..CI-14). The `timeout-minutes: 45` anchor in `fork-anchors.txt` must survive.
