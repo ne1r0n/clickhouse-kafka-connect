@@ -15,6 +15,8 @@
 | E-04 | CI-16, D-02 | pass |
 | E-05 | DEBT-07 | pass |
 | E-06 | DEBT-06 | pass |
+| E-07 | BLD-14 | pass |
+| E-08 | DEBT-08 | pass |
 
 ### E-01: CI-14 tracer, reportTestForks read by the fork-count step
 
@@ -234,5 +236,48 @@ Response leg: NetworkSendBytes=4778633 result_bytes=4790219 ratio=0.997581321438
 Post-revert `git diff --quiet -- <file>`: exit 0 (REVERT-CLEAN). The bound is a tenth of `result_bytes`; green sat at 0.0129, red at 0.9976, so the margin on both sides is wide. The log line carries byte counts, a ratio and a setting name only.
 
 Timestamp: 2026-10-11T20:22Z
+
+Verdict: pass
+
+### E-07: BLD-14 Lombok warning gone, javap unchanged
+
+Commands as run (repo root, `javap` from `/opt/homebrew/bin`, the same binary for both captures):
+
+1. Before any edit to `lombok.config`: `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew clean compileJava compileTestFixturesJava compileTestJava compileIntegrationTestJava > /tmp/gsd17/exec/bld14-before.log 2>&1`, then `javap -v -p -cp build/classes/java/main <class> | grep -v -E '^(Classfile|  Last modified|  SHA-256 checksum)'` for `ClickHouseFieldDescriptor` and `ClickHouseFieldDescriptor$ClickHouseFieldDescriptorBuilder` into `/tmp/gsd17/exec/javap/before-*.txt`.
+2. Append `lombok.jacksonized.jacksonVersion += 2` to `lombok.config` (commit `ac349085`, one added line, none removed), repeat the compile into `bld14-after.log` and the two captures into `after-*.txt`.
+
+```text
+Ambiguous: Jackson2 warning lines   before: 1   after: 0
+  before: src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java:18: warning: Ambiguous: Jackson2 and Jackson3 exist; define which variant(s) you want in 'lombok.config'. See https://projectlombok.org/features/experimental/Jacksonized
+all other warning lines: identical set (the [deprecation] ClickHouseClient line at ClickHouseHelperClient.java:687 is reported once or twice per run by javac and is unrelated)
+javap descriptor: 1193 lines before, 1193 after, cmp identical
+javap builder:     420 lines before,  420 after, cmp identical
+lombok.Generated occurrences in the builder javap: 21 before, 21 after
+lombok.config: config.stopBubbling = true / lombok.addLombokGeneratedAnnotation = true / lombok.jacksonized.jacksonVersion += 2
+```
+
+`+= 3` was not tried (it does not compile here), and no Lombok or Gradle version was changed.
+
+Timestamp: 2026-10-11T20:23Z
+
+Verdict: pass
+
+### E-08: DEBT-08 NanoTimestamp scientific-notation rows
+
+Four rows added to `MetadataFreeJsonWriterTest`'s D-01 `@CsvSource` after `-1, -1E-9` (commit `6379fb9d`), each checked against `BigDecimal.valueOf(v, 9).toString()`; the `@DisplayName` was extended additively (15-REVIEW IN-06).
+
+Command: `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew testUnit --tests '*MetadataFreeJsonWriterTest'` (BUILD SUCCESSFUL, class 45 tests, 0 failures, 0 errors). The seven NanoTimestamp cases, as JUnit reported them:
+
+```text
+D-01: io.debezium.time.NanoTimestamp value 0 is written as 0E-9
+D-01: io.debezium.time.NanoTimestamp value 1 is written as 1E-9
+D-01: io.debezium.time.NanoTimestamp value -1 is written as -1E-9
+D-01: io.debezium.time.NanoTimestamp value 123 is written as 1.23E-7
+D-01: io.debezium.time.NanoTimestamp value -123 is written as -1.23E-7
+D-01: io.debezium.time.NanoTimestamp value 999 is written as 9.99E-7
+D-01: io.debezium.time.NanoTimestamp value 1000 is written as 0.000001000
+```
+
+Timestamp: 2026-10-11T20:23Z
 
 Verdict: pass
