@@ -73,6 +73,14 @@ configurations.all {
     }
 }
 
+// Backlog 999.2 (DEBT-07): the rule above does not fire on the test runtime classpath, so the
+// Confluent test stack's original lz4-java rides there beside the maintained fork. The fork is a
+// drop-in (same `net.jpountz.lz4` package) and already arrives through client-v2, so the original
+// is dropped for tests only; runtimeClasspath and integrationTestRuntimeClasspath are untouched.
+configurations.named("testRuntimeClasspath") {
+    exclude(group = "org.lz4", module = "lz4-java")
+}
+
 dependencies {
     // Exposed as `api` because they leak into the connector's public signatures
     // (e.g. ClickHouseHelperClient returns ClickHouseResponse/Records, ClickHouseSinkTask
