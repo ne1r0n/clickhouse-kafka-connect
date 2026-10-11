@@ -18,6 +18,7 @@
 | E-07 | BLD-14 | pass |
 | E-08 | DEBT-08 | pass |
 | E-09 | CI-17 (D-10 local gate) | pass |
+| E-10 | CI-17 (push and run) | pass |
 
 ### E-01: CI-14 tracer, reportTestForks read by the fork-count step
 
@@ -310,5 +311,68 @@ Spotless IDE hook on the four touched Java files: `TestsWorkflowPinGuardUnitTest
 Phase scope outside `.planning` (`git diff --name-only e0017d69 HEAD`), exactly ten paths, no extra and none missing: `.github/dependabot.yml`, `.github/workflows/test-head.yaml` (deleted), `.github/workflows/tests.yaml`, `build.gradle.kts`, `docs/FORK-DELTA.md`, `lombok.config`, and the four test files above. `git diff --quiet e0017d69 HEAD -- src/main .planning/scripts/fork-anchors.txt` exit 0. `ANCHORS-SPOTLESS-SCOPE-OK`.
 
 Timestamp: 2026-10-11T20:34Z
+
+Verdict: pass
+
+### E-10: CI-17 push and run
+
+X=0c90d3314c1cf96cb68aed0fe3788c869341e7cd
+
+Approval (D-11): the user answered `push`, verbatim, directly to the orchestrator at 2026-10-11T20:34:36Z, in reply to the Task 2 checkpoint that presented `/tmp/gsd17/exec/approval-bundle.md` items 1-8. Default-branch intent (F1): not stated. Phase 20's operator checks carry F1 as undecided.
+
+Ground truth before the push: HEAD = X = the bundle's X, and `PUSH-READY` passed again (`X=0c90d3314c1cf96cb68aed0fe3788c869341e7cd rate=60`).
+
+Commands as run (orchestrator, inline):
+
+1. 2026-10-11T20:34:51Z: `git push origin refs/heads/sync/v1.7.0:refs/heads/sync/v1.7.0` (rc 0, `* [new branch] sync/v1.7.0 -> sync/v1.7.0`). Then `git ls-remote --heads origin sync/v1.7.0` = X; `custom_build` = `be6b8861c25f3d7611194e7150b18362c5c75e32`; `git ls-remote --tags origin` byte-identical to `/tmp/gsd17/exec/origin-tags-before.txt`.
+2. Located by `actions/runs?head_sha=X` on the first poll (20:35:04Z), then polled `/actions/runs/38172811430` every 90 s until it completed.
+3. 2026-10-11T20:41:30Z, after green: `git push origin --delete refs/heads/sync/v1.7.0` (rc 0, `- [deleted] sync/v1.7.0`).
+
+Run:
+
+```text
+run id 38172811430  https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/38172811430
+workflow .github/workflows/tests.yaml  event push  head_branch sync/v1.7.0  head_sha X  run_attempt 1
+created 2026-10-11T20:34:56Z  updated 2026-10-11T20:40:22Z  (about 5m26s)  status completed  conclusion success
+runs on X (any workflow): 1
+```
+
+Job (`/actions/runs/38172811430/jobs`):
+
+```text
+job 114568815601 "ClickHouse latest Client version V2 tests"  runner "GitHub Actions 1000000187"  labels ["ubuntu-24.04"]  conclusion success
+1 Set up job: success
+2 Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1: success
+3 Set up JDK 17: success
+4 Set up Gradle: success
+5 Report test fork count: success
+6 Compile integration-test sources: success
+7 Run tests: success
+8 Generate coverage summary: success
+9 Upload JaCoCo coverage reports: success
+10 Upload test reports: success
+18 Post Set up Gradle: success
+19 Post Set up JDK 17: success
+20 Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1: success
+21 Complete job: success
+```
+
+`Set up Gradle` succeeding under the top-level `permissions: contents: read` is the CI-13 proof that 17-01 left open.
+
+Annotations (`/check-runs/114568815601/annotations?per_page=100`, 21 entries):
+
+- One notice, title `Test fork count`, message verbatim: `runner nproc=4, Gradle maxParallelForks=2 (read from the test task in build.gradle.kts)` (CI-14).
+- 20 javac warnings, all pre-existing source warnings: `[deprecation]` on `BinaryStreamUtils`, `ClickHouseClientOption` and `ClickHouseProxyType`, and `[unchecked]` on `KafkaProtobufSerializer`.
+- No `Node.js 20 is deprecated`, no `Ambiguous: Jackson2` (Lombok, BLD-14) and no `ubuntu-latest label will migrate` annotation.
+
+Artifacts (`/actions/runs/38172811430/artifacts`): `gradle-test-reports` (27704420 bytes) and `jacoco-coverage-reports` (839599 bytes).
+
+API budget: 60 remaining before the push, 50 after the evidence reads (unauthenticated core limit).
+
+Refs after the delete: origin heads are exactly `refs/heads/custom_build` (`be6b8861c25f3d7611194e7150b18362c5c75e32`) and `refs/heads/main` (`bec167d85918e77c11621063000acc6e031ae2fa`); `git ls-remote --tags origin` is byte-identical to the before-snapshot (`/tmp/gsd17/exec/origin-tags-after.txt`). The main tree stays on `sync/v1.7.0`. This E-10 commit is local and is published in Phase 20.
+
+Not readable without a token (job logs return 403): the runner image version, the `GITHUB_TOKEN` permissions block and the job summary. Plan 17-04 collects them from the web UI.
+
+Timestamp: 2026-10-11T20:42Z
 
 Verdict: pass
