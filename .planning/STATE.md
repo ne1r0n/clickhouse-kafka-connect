@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 17
 current_phase_name: CI, Build & Test Hygiene
 status: executing
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-10-11T20:19:08.691Z"
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-10-11T20:25:02.982Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 17 execution started
-state_head: ac38ffdfb3cc1d08bafa1873610b11aadb36914b
+state_head: 2d0ec34849defb6f4bac23236c9abf8fcdc0ae07
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-11 after Phase 16)
 ## Current Position
 
 Phase: 17 (CI, Build & Test Hygiene) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-10-11 — Phase 17 execution started
 
@@ -110,6 +110,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 16 P01 | 4 min | 3 tasks | 4 files |
 | Phase 16 P02 | 7 min | 3 tasks | 5 files |
 | Phase 17 P01 | 5 min | 3 tasks | 8 files |
+| Phase 17 P02 | 4 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,9 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 16]: UAT (2026-10-11): 16-REVIEW WR-01 was fixed and republished, not deferred. Item 8 step 1 is now `git read-tree -u --reset pre-v1.7.0-sync` from a clean, fast-forwarded `custom_build`. `git revert -m 1` on the release merge hits 97 conflicts once docs merges sit on top, and Phase 20's release merge will add another. ROADMAP criterion 1b's "after `git revert -m 1`" wording is superseded by "after the rollback commit".
 - [Phase 17]: 17-01: gradle/actions is pinned to the peeled commit 3f5f9adaf7d9fecd50b5935e54106014257a94e6 (v6.4.0), never the tag object; all four action SHAs were re-resolved with git ls-remote and matched the planning-time values — A tag object is not a commit on the action history, and an unchecked SHA is the impostor-commit risk (T-14-16)
 - [Phase 17]: 17-01: the workflow fork-count step reads the reportTestForks Gradle task and fails on a non-integer; test-head.yaml is deleted and future syncs keep it deleted (Recorded Fact 41) — Removes the formula copy (14-REVIEW WR-02); both test-head jobs called tests.yaml as a reusable workflow it does not declare
+- [Phase 17]: 17-02: duplicate org.lz4 is excluded from testRuntimeClasspath only (not configurations.all); shipped classpaths proven byte-identical
+- [Phase 17]: 17-02: DEBT-06 response leg proven from the read's own system.query_log row (lz4 setting, NetworkSendBytes < result_bytes/10); green 0.0129, red 0.9976 on 26.9.16.11
+- [Phase 17]: 17-02: lombok.config selects Jackson 2 via 'lombok.jacksonized.jacksonVersion += 2'; javap of ClickHouseFieldDescriptor and builder byte-identical
 
 ### Pending Todos
 
@@ -170,8 +174,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T20:19:08.663Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-10-11T20:25:02.953Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
