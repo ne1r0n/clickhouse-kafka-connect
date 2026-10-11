@@ -13,6 +13,7 @@
 | E-02 | CI-11 | pass |
 | E-03 | CI-11, CI-12, CI-13, CI-15, D-06 | pass |
 | E-04 | CI-16, D-02 | pass |
+| E-05 | DEBT-07 | pass |
 
 ### E-01: CI-14 tracer, reportTestForks read by the fork-count step
 
@@ -152,5 +153,54 @@ anchor mismatches: []   (every row of fork-anchors.txt re-counted on the tip)
 ```
 
 Timestamp: 2026-10-11T20:18Z
+
+Verdict: pass
+
+### E-05: DEBT-07 test classpath de-duplicated
+
+Commands as run (repo root, `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`):
+
+1. Before the exclude, for each of `testRuntimeClasspath`, `runtimeClasspath`, `integrationTestRuntimeClasspath`, `clickhouseDependencies`: `./gradlew -q dependencies --configuration <c>` into `/tmp/gsd17/exec/deps-before/<c>.txt` and `./gradlew -q dependencyInsight --dependency lz4-java --configuration <c>` into `/tmp/gsd17/exec/insight-before/<c>.txt`.
+2. RED: `./gradlew testUnit --tests '*TestRuntimeClasspathLz4UnitTest'` (commit `7993bea2`, before any build change).
+3. GREEN: the same command after the `configurations.named("testRuntimeClasspath")` exclude (commit `e50712a0`).
+4. After the exclude, the same `dependencies` and `dependencyInsight` runs into the `-after` directories.
+
+RED message (test failed, BUILD FAILED):
+
+```text
+LZ4Factory must be on the test classpath once, but was found at
+[jar:file:/Users/alexandr.chashnikov/.gradle/caches/modules-2/files-2.1/at.yawk.lz4/lz4-java/1.12.0/4aeb33effcf8f9e29f4a2e206c224afebd2621d/lz4-java-1.12.0.jar!/net/jpountz/lz4/LZ4Factory.class,
+ jar:file:/Users/alexandr.chashnikov/.gradle/caches/modules-2/files-2.1/org.lz4/lz4-java/1.8.0/4b986a99445e49ea5fbf5d149c4b63f6ed6c6780/lz4-java-1.8.0.jar!/net/jpountz/lz4/LZ4Factory.class]
+==> expected: <1> but was: <2>
+```
+
+The lz4 lines of each configuration (`grep lz4 deps-<when>/<c>.txt`):
+
+```text
+testRuntimeClasspath before:  |         +--- org.lz4:lz4-java:1.8.0
+                              |    +--- at.yawk.lz4:lz4-java:1.10.2 -> 1.12.0
+                              +--- at.yawk.lz4:lz4-java:1.12.0
+testRuntimeClasspath after:   |    +--- at.yawk.lz4:lz4-java:1.10.2 -> 1.12.0
+                              +--- at.yawk.lz4:lz4-java:1.12.0
+runtimeClasspath (both):      |         +--- org.lz4:lz4-java:1.8.0 -> at.yawk.lz4:lz4-java:1.12.0   (plus the two at.yawk.lz4 lines)
+integrationTestRuntimeClasspath (both): same redirected line plus the two at.yawk.lz4 lines
+clickhouseDependencies (both): the two at.yawk.lz4 lines only
+```
+
+Byte-identity of the shipped configurations (`cmp before after`): `identical runtimeClasspath`, `identical integrationTestRuntimeClasspath`, `identical clickhouseDependencies`. `diff` of `testRuntimeClasspath` is exactly one removed line: `12d11 < |         +--- org.lz4:lz4-java:1.8.0`.
+
+`dependencyInsight --dependency lz4-java`, two-line summaries:
+
+```text
+before/testRuntimeClasspath: org.lz4:lz4-java:1.8.0 resolved plain (no selection reason), beside at.yawk.lz4:lz4-java:1.12.0
+after/testRuntimeClasspath:  only at.yawk.lz4:lz4-java:1.12.0 is reported
+before/runtimeClasspath and integrationTestRuntimeClasspath, unchanged after:
+                             "By conflict resolution: On capability org.lz4:lz4-java ..." org.lz4:lz4-java:1.8.0 -> at.yawk.lz4:lz4-java:1.12.0
+before and after clickhouseDependencies: only at.yawk.lz4:lz4-java is reported
+```
+
+GREEN run: `TestRuntimeClasspathLz4UnitTest` 1 test, 0 failures (BUILD SUCCESSFUL).
+
+Timestamp: 2026-10-11T20:22Z
 
 Verdict: pass
