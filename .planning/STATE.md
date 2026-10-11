@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 17
 current_phase_name: CI, Build & Test Hygiene
 status: executing
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-10-11T20:25:02.982Z"
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-10-11T20:43:44.325Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 17 execution started
-state_head: 2d0ec34849defb6f4bac23236c9abf8fcdc0ae07
+state_head: 7e799308c3816390b475876af01e787a0372d110
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-11 after Phase 16)
 ## Current Position
 
 Phase: 17 (CI, Build & Test Hygiene) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-11 — Phase 17 execution started
 
@@ -111,6 +111,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 16 P02 | 7 min | 3 tasks | 5 files |
 | Phase 17 P01 | 5 min | 3 tasks | 8 files |
 | Phase 17 P02 | 4 min | 3 tasks | 7 files |
+| Phase 17 P03 | 17 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,9 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 17]: 17-02: duplicate org.lz4 is excluded from testRuntimeClasspath only (not configurations.all); shipped classpaths proven byte-identical
 - [Phase 17]: 17-02: DEBT-06 response leg proven from the read's own system.query_log row (lz4 setting, NetworkSendBytes < result_bytes/10); green 0.0129, red 0.9976 on 26.9.16.11
 - [Phase 17]: 17-02: lombok.config selects Jackson 2 via 'lombok.jacksonized.jacksonVersion += 2'; javap of ClickHouseFieldDescriptor and builder byte-identical
+- [Phase 17]: 17-03: CI-17 proof push taken on the user's direct 'push' to the orchestrator; one green tests.yaml run 38172811430 on X=0c90d331, scratch branch deleted, origin heads/tags/custom_build unchanged — D-11 gate satisfied; push shape was one explicit refspec, no tag
+- [Phase 17]: 17-03: finding F1 (fork default branch is main) recorded as undecided; no repository setting changed; carried to Phase 20 operator checks — User gave no default-branch intent at the D-11 gate
+- [Phase 17]: 17-03: CI-17 left in progress; plan 17-04 also declares it and owns the web-UI items (runner image, token permissions, job summary) — requirements.ready-ids reported 0/1 ready (shared-ID gate)
 
 ### Pending Todos
 
@@ -174,8 +178,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T20:25:02.953Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-10-11T20:43:44.296Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
