@@ -326,8 +326,12 @@ public class MetadataFreeJsonWriterTest {
         "io.debezium.time.NanoTimestamp, 0, 0E-9",
         "io.debezium.time.NanoTimestamp, 1, 1E-9",
         "io.debezium.time.NanoTimestamp, -1, -1E-9",
+        "io.debezium.time.NanoTimestamp, 123, 1.23E-7",
+        "io.debezium.time.NanoTimestamp, -123, -1.23E-7",
+        "io.debezium.time.NanoTimestamp, 999, 9.99E-7",
+        "io.debezium.time.NanoTimestamp, 1000, 0.000001000",
     })
-    @DisplayName("D-01: Timestamp and NanoTimestamp zero, sub-unit and pre-1970 values are the exact BigDecimal.valueOf(v, scale) rendering")
+    @DisplayName("D-01: Timestamp and NanoTimestamp zero, sub-unit and pre-1970 values are the exact BigDecimal.valueOf(v, scale) rendering; NanoTimestamp 123, -123 and 999 use the mantissa-with-fraction scientific form and 1000 is the first plain form (15-REVIEW IN-06)")
     void debeziumTimestampEdgeValuesAreExactDecimalSeconds(String logicalName, long value, String expectedNumber)
             throws Exception {
         Map<String, Data> values = new LinkedHashMap<>();
