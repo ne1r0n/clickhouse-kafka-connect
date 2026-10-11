@@ -58,7 +58,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
 
 **Milestone Goal:** Close all 11 follow-ups left open by `v1.7.0_gg1-sync`, getting the corrected rollout doc onto `origin` first, and publish `v1.7.0_gg2` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
-- [ ] **Phase 16: Early Docs Publication** - Fix the 15-REVIEW docs findings and publish the corrected rollout doc to `custom_build` as a docs-only `--no-ff` merge, before any code work
+- [x] **Phase 16: Early Docs Publication** - Fix the 15-REVIEW docs findings and publish the corrected rollout doc to `custom_build` as a docs-only `--no-ff` merge, before any code work (completed 2026-10-11)
 - [ ] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed
 - [ ] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data
 - [ ] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release
@@ -90,7 +90,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
      - only `custom_build` was pushed, and no tag
   5. That merge SHA has exactly one `tests.yaml` run, located by `head_sha` plus workflow path. The run is green and has no cancelled sibling.
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -313,7 +313,7 @@ After publication, check once that `test-head.yaml`'s nightly schedule no longer
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | In Progress | - |
+| 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |

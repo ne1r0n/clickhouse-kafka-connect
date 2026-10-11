@@ -2,39 +2,39 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
-current_phase: 16
-current_phase_name: Early Docs Publication
-status: verifying
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-10-10T18:11:33.709Z"
-last_activity: 2026-10-10
-last_activity_desc: Phase 16 execution started
-state_head: 82c291f7cc085948cda2bf08525ee03df0a2d540
+current_phase: 17
+current_phase_name: CI, Build & Test Hygiene
+status: planning
+stopped_at: Phase 16 complete, ready to plan Phase 17
+last_updated: "2026-10-11T16:41:42.646Z"
+last_activity: 2026-10-11
+last_activity_desc: Phase 16 complete, transitioned to Phase 17
+state_head: 7964802310eadcba820724ef048ac699073f3a26
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 0
+  percent: 20
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-10 after v1.7.0_gg1-sync milestone)
+See: .planning/PROJECT.md (updated 2026-10-11 after Phase 16)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 16 — Early Docs Publication
+**Current focus:** Phase 17 — CI, Build & Test Hygiene
 
 ## Current Position
 
-Phase: 16 (Early Docs Publication) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-10-10 — Phase 16 execution started
+Phase: 17 — CI, Build & Test Hygiene
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-11 — Phase 16 complete, transitioned to Phase 17
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 | 13 | 8 | - | - |
 | 14 | 4 | - | - |
 | 15 | 8 | - | - |
+| 16 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -136,6 +137,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - Writer fixes (Phase 18) come before 999.1 (Phase 19), because both edit `ClickHouseWriter.java` and Phase 19's flipped pins rely on Phase 18's column-naming `DataException`. The Phase 19 Tuple spike (COLS-09) runs first in its phase. Its go/no-go cannot hold the release, and the Enum fix ships either way. DEBT-09 follows the COLS-10 outcome.
 - Every approval gate (Phase 16 merge, Phase 17 scratch push, Phase 20 rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
 - [Phase 16]: 16-02: IN-01 fixed by naming 'git merge <merge-commit>^2' in rollout item 8 instead of the unpublished sync/v1.7.0 branch; refines D-05 wording only
+- [Phase 16]: UAT (2026-10-11): 16-REVIEW WR-01 was fixed and republished, not deferred. Item 8 step 1 is now `git read-tree -u --reset pre-v1.7.0-sync` from a clean, fast-forwarded `custom_build`. `git revert -m 1` on the release merge hits 97 conflicts once docs merges sit on top, and Phase 20's release merge will add another. ROADMAP criterion 1b's "after `git revert -m 1`" wording is superseded by "after the rollback commit".
 
 ### Pending Todos
 
@@ -147,7 +149,7 @@ None.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
 - [Publish]: ✓ 2026-10-10: the corrected docs are on `origin/custom_build` at `537beb1f`, published by Phase 16's docs-only `--no-ff` merge of `sync/v1.7.0` (`1e0eefde`) onto `f328fd21`. `tests.yaml` run 38074050935 was green. The rollout doc no longer instructs a `TRUNCATE` of the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14). WR-02, WR-03 and IN-07..IN-10 (plus 16-REVIEW IN-01) are fixed on origin.
-- [Publish]: Everything up to `1e0eefde` is published through `537beb1f`. Commits after it (the 16-03 SUMMARY, verification, review gate and bookkeeping) are a local tail on `sync/v1.7.0` that Phase 20's merge publishes. `.planning/.gsd-ws-arg` was absent. `.planning/state.json` is tracked, with uncommitted local edits that did not ride the merge (CONTEXT's "untracked" note was stale). Milestone tags such as `v1.7.0_gg1-sync` stay local.
+- [Publish]: ✓ 2026-10-11: second docs-only `--no-ff` merge `be6b8861` (parents `537beb1f`, `8497dc1d`), approved by the user in the Phase 16 UAT. It publishes the corrected item 8 rollback (16-REVIEW WR-01/WR-02, IN-02..IN-04). Its single `tests.yaml` run, 38156040416, is green. Everything up to `8497dc1d` is published. Later commits (Phase 16 transition bookkeeping) are a local tail on `sync/v1.7.0` that Phase 20's merge publishes. Before any merge on top of `custom_build`, re-run E-16's rollback check (`docs/ROLLOUT-v1.7.0_gg1.md` item 8) against the merge commit before pushing. `.planning/.gsd-ws-arg` was absent. `.planning/state.json` is tracked, with uncommitted local edits that did not ride the merge (CONTEXT's "untracked" note was stale). Milestone tags such as `v1.7.0_gg1-sync` stay local.
 - [CI]: ⏰ `ubuntu-latest` moves to Ubuntu 26 from **2026-10-19**. Phase 16's docs-only run landed on 2026-10-10 as run 38074050935 (green, 6 m 29 s, unchanged workflow on `ubuntu-latest`). Phase 17 pins `ubuntu-24.04`. Two branches pushed at one SHA still cancel each other. Node 20 deprecation warnings affect `checkout@v4` and `upload-artifact@v4` (Phase 17).
 - [CI]: `test-head.yaml` calls `tests.yaml` as a reusable workflow, but `tests.yaml` declares no `workflow_call`. Its nightly schedule runs from the default branch `custom_build` and very likely fails every night. The fix (CI-16) lands in Phase 17 and takes effect on the schedule only once Phase 20 publishes it.
 
@@ -165,11 +167,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-10T17:52:49.926Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-10-11T16:45:00Z
+Stopped at: Phase 16 complete, ready to plan Phase 17
 Resume file: None
 
 ## Operator Next Steps
 
-- Review `.planning/ROADMAP.md` (Phases 16-20) and approve or request revisions
-- Plan Phase 16 (`/gsd-discuss-phase 16` or `/gsd-plan-phase 16`). Its CI run should land before 2026-10-19
+- Phase 16 is complete. `origin/custom_build` is `be6b8861` (green).
+- Plan Phase 17 (`/gsd-discuss-phase 17` or `/gsd-plan-phase 17`). It pins `ubuntu-24.04` before `ubuntu-latest` moves on 2026-10-19.
