@@ -1,1 +1,1 @@
-No external API integration: the only API in Phase 16 is a read-only, unauthenticated GitHub REST status lookup (`actions/runs?head_sha=`, `/jobs`, `/rate_limit`), used to observe the publication's CI run; the phase ships documentation only and integrates no product API, SDK or service.
+No external API integration: Phase 16 ships docs only; its only API use is a read-only, unauthenticated GitHub REST lookup (`actions/runs`, `/jobs`, `/rate_limit`) to watch the publication CI run.

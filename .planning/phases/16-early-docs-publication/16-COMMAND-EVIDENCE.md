@@ -331,6 +331,63 @@ after revert-of-revert: tree(HEAD)==tree(f328fd21)
 
 Matches text: yes
 
+### E-15: item 8 step 1 rollback on the published tip and on the republication tip (16-REVIEW WR-01)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md`, item 8, the new step 1 "`git read-tree -u --reset pre-v1.7.0-sync`, then `git commit -m "Roll back v1.7.0_gg1"`", its warning that `git revert -m 1 <merge-commit>` stops with conflicts, and the go-forward sentence "revert the rollback commit first (`git revert <rollback-commit>`); merging the released history again (`git merge <merge-commit>^2`) without that brings nothing back." Run on two tips, each in a detached throwaway worktree: the published `custom_build` tip `537beb1f` (date UTC 2026-10-11), and a dry-run `--no-ff` merge of `sync/v1.7.0` at `cf8cfc04` into `537beb1f` (`ea94d28c`, never pushed), which is the tip a republication creates. The script lives outside the repository (`/tmp/gsd16-wr01/demo.sh <repo> <tip> <worktree>`). The `-c user.name/user.email` options only give the throwaway commits an identity.
+
+```sh
+#!/bin/bash
+# usage: demo.sh <repo> <tip-sha> <worktree-path>
+set -u
+REPO=$1; TIP=$2; WT=$3
+G1=$(git -C "$REPO" rev-parse 'v1.7.0_gg1^{commit}')
+P1=$(git -C "$REPO" rev-parse 'pre-v1.7.0-sync^{commit}')
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+echo "tip=$TIP G1=$G1 P1=$P1"
+git -C "$REPO" worktree add --quiet --detach "$WT" "$TIP"
+g() { git -C "$WT" "$@"; }
+# old text, for contrast
+g "${ID[@]}" revert --no-edit -m 1 "$G1" >/dev/null 2>&1; echo "old step 1 (git revert -m 1) exit=$? unmerged=$(g diff --name-only --diff-filter=U | wc -l | tr -d ' ')"
+g revert --abort; g diff --quiet HEAD "$TIP" && echo "aborted, HEAD back at tip"
+# new text, step 1
+g read-tree -u --reset pre-v1.7.0-sync && g "${ID[@]}" commit -q -m "Roll back v1.7.0_gg1" && echo "new step 1: exit=0"
+RB=$(g rev-parse HEAD); echo "rollback-commit=$RB parent==tip: $([ "$(g rev-parse HEAD^)" = "$(git -C "$REPO" rev-parse "$TIP")" ] && echo yes)"
+g diff --quiet HEAD "$P1" && echo "after rollback: tree(HEAD)==tree(pre-v1.7.0-sync)"
+[ -z "$(g status --porcelain)" ] && echo "worktree clean"
+g "${ID[@]}" merge --no-edit "$G1^2"
+[ "$(g rev-parse HEAD)" = "$RB" ] && g diff --quiet HEAD "$P1" && echo "HEAD unchanged after: git merge <merge-commit>^2; tree still == pre-v1.7.0-sync"
+g "${ID[@]}" revert --no-edit "$RB" >/dev/null && g diff --quiet HEAD "$TIP" && echo "after revert of rollback commit: tree(HEAD)==tree(tip)"
+git -C "$REPO" worktree remove --force "$WT" && git -C "$REPO" worktree prune
+```
+
+```text
+tip=537beb1fcf23b987c8b340006f4f74f7c5229d00 G1=f328fd218dce5b9c652f8872042e922f9686b87f P1=c61d90ce5dfb32ea5876dffacc8bb54d8846739a
+old step 1 (git revert -m 1) exit=1 unmerged=97
+aborted, HEAD back at tip
+new step 1: exit=0
+rollback-commit=c117fa74d6f057845130a9d69acaeb2d741ed6dc parent==tip: yes
+after rollback: tree(HEAD)==tree(pre-v1.7.0-sync)
+worktree clean
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2; tree still == pre-v1.7.0-sync
+after revert of rollback commit: tree(HEAD)==tree(tip)
+
+tip=ea94d28c9ddf6645afdd588f34d3faa2eaa15ac3 G1=f328fd218dce5b9c652f8872042e922f9686b87f P1=c61d90ce5dfb32ea5876dffacc8bb54d8846739a
+old step 1 (git revert -m 1) exit=1 unmerged=97
+aborted, HEAD back at tip
+new step 1: exit=0
+rollback-commit=e43bbaf30a11e648d410f407ba552463fcac2d18 parent==tip: yes
+after rollback: tree(HEAD)==tree(pre-v1.7.0-sync)
+worktree clean
+Already up to date.
+HEAD unchanged after: git merge <merge-commit>^2; tree still == pre-v1.7.0-sync
+after revert of rollback commit: tree(HEAD)==tree(tip)
+```
+
+The old step 1 stops with 97 unmerged paths on both tips, so the warning holds. The new step 1 completes in one commit on both tips and leaves the tree of `pre-v1.7.0-sync`. Merging `<merge-commit>^2` afterwards changes nothing, and reverting the rollback commit restores the tip's tree. `git worktree list` afterwards shows only the main working tree. This supersedes E-06 and E-14 for item 8, which ran on `f328fd21` only.
+
+Matches text: yes
+
 ## Finding map
 
 | Finding | Changed text | Evidence entries |
@@ -341,3 +398,5 @@ Matches text: yes
 | IN-10 | `docs/ROLLOUT-v1.7.0_gg1.md` preface ledger link, item 2 and 5 headings and TOC, ledger tags, item 6 grep (commit `fad6f7f9`); `CHANGELOG.md` `1.7.0_gg1` section (commit `8c1f0bc1`) | E-05, E-07, E-10, E-12, E-13 |
 
 Phase 16 review finding (16-REVIEW.md): IN-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 (commit `fd99a476`), backed by E-14.
+
+Phase 16 review finding (16-REVIEW.md): WR-01 changed `docs/ROLLOUT-v1.7.0_gg1.md` item 8 step 1 and the go-forward sentence (commit `cf8cfc04`), backed by E-15.

@@ -9,9 +9,9 @@ findings:
     title: "Item 8 tells the operator to merge `sync/v1.7.0`, a branch that is not published"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Item 8 step 1 `git revert -m 1 <merge-commit>` conflicts on the published `custom_build` tip, and E-14 does not cover that state"
-open: 1
+open: 0
 total: 2
 recorded: 2026-10-10T18:14:08.382Z
 ---
@@ -21,7 +21,7 @@ recorded: 2026-10-10T18:14:08.382Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | IN-01 | info | fixed | fd99a476 (docs only, Phase 16) |
-| WR-01 | warning | open | - |
+| WR-01 | warning | fixed | cf8cfc04 (docs only, Phase 16; evidence E-15; not yet published) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
