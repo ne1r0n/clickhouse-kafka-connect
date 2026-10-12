@@ -176,14 +176,14 @@ CI-17's push follows the D-13 precedent:
   3. An exception with a null message that reaches `ClickHouseWriter`'s error path surfaces as itself, not as a `NullPointerException`. Retriable vs non-retriable classification is unchanged. A Docker-free test pins both.
   4. An unparseable `DateTime` or `DateTime64` string logs the column name, the ClickHouse and Kafka types, the exception class and the value length. A log-capture test proves the raw value appears neither directly nor through the parse exception's message. `docs/FORK-DELTA.md` has a row for this patch to upstream-identical lines.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1**
 - [x] 18-01-PLAN.md — Tracer: null-safe failure-message lookup in `doInsertRawBinary`, pinned Docker-free and through `put()` (WRT-11, D-06/D-07); `Utils.handleException` null-message IOException guard (D-05); the column-naming `DataException` for a missing non-nullable value, flat and `Array(Tuple)`, ERROR line dropped (WRT-10, D-10/D-11). Three commits, each with its anchors, FORK-DELTA and ledger rows
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 18-02-PLAN.md — Tracer: `LogCapture` helper and masked DateTime/DateTime64 parse logs plus the column-naming conversion exception (WRT-12, D-08/D-12); throwable-free generic write-failure log with the rethrow residual recorded in FORK-DELTA and backlog 999.3 (D-09)
+- [x] 18-02-PLAN.md — Tracer: `LogCapture` helper and masked DateTime/DateTime64 parse logs plus the column-naming conversion exception (WRT-12, D-08/D-12); throwable-free generic write-failure log with the rethrow residual recorded in FORK-DELTA and backlog 999.3 (D-09)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 18-03-PLAN.md — Tracer: one shared empty-CDC skip in both serialization loops, proven live on RowBinary (JSONP-09); bypass, explicit and plain-table routes live on V1/V2; `ExplicitJsonInsertPathLiveTest` moved onto shared CDC fixtures
@@ -354,7 +354,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
-| 18. Writer Correctness | v1.7.0_gg2-hardening | 1/4 | In Progress | - |
+| 18. Writer Correctness | v1.7.0_gg2-hardening | 2/4 | In Progress | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 
