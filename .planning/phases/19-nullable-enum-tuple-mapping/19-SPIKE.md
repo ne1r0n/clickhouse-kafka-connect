@@ -240,4 +240,10 @@ The double-flag control and the approach test (`declaredTupleTypesParseWithDdlNu
 
 ## Decision
 
-Pending: the user answers at the 19-03 gate.
+**Answer:** go
+**Date:** 2026-10-12 21:04 UTC
+**Received:** received directly by the orchestrator
+**Runs next:** 19-04
+**Superseded:** 19-05
+
+The answer accepts the approach (C) and the failure policy (fail open) as recorded above, unchanged.
