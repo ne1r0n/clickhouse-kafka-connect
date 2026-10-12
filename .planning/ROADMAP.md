@@ -234,7 +234,7 @@ Plans:
 - [ ] 19-03-PLAN.md — Gate: bundle refreshed on that day's latest, blocking-human go/no-go answered directly by the user, decision recorded and the alternative plan retired (D-01..D-03)
 
 **Wave 4** *(blocked on Wave 3; runs only on go)*
-- [ ] 19-04-PLAN.md — Tracer: Tuple element nullability from the declared type (DeclaredNullability after Table, Table.java untouched), WARN machinery deleted with its anchors and FORK-DELTA rows, D-16 and WARN pins flipped (COLS-10, D-10, D-11); edge pins, mutation, client V1 run
+- [ ] 19-04-PLAN.md — Tracer: Tuple element nullability from the declared type (DeclaredNullability after Table, Table.java untouched), WARN machinery deleted with its anchors and FORK-DELTA rows, D-16 and WARN pins flipped (COLS-10, D-10, D-11); edge pins, mutation; tests on client V2 only, V1 coverage structural (both describe loops return through one shared helper)
 
 **Wave 5** *(blocked on Wave 4 being resolved; runs only on no-go)*
 - [ ] 19-05-PLAN.md — Tracer: route-qualified, record-keyed, text-pinned Tuple WARN (IN-01, IN-03, IN-04), Tuple Known cost in FORK-DELTA, 999.1 entry updated (COLS-10, D-12)
