@@ -188,4 +188,126 @@ class DeclaredNullabilityTest {
                 row("c.values", "Array(Nullable(Tuple(a Int32)))"),
                 row("c.values.a", "Array(Nullable(Int32))")))));
     }
+
+    @Test
+    @DisplayName("COLS-10: unnamed Tuple elements pair by 1-based position")
+    void unnamedTupleElementsPairByPosition() throws Exception {
+        String type = "Nullable(Tuple(Int32, Nullable(String)))";
+        Column column = root(describe(row("c", type), row("c.1", "Nullable(Int32)"), row("c.2", "Nullable(String)")));
+
+        assertTrue(DeclaredNullability.apply(column, type));
+
+        assertEquals(Map.of("c", true, "c.1", false, "c.2", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: backtick element names holding a space or a comma pair by name")
+    void backtickElementNamesPairByName() throws Exception {
+        String type = "Nullable(Tuple(`a b` Int32, `c,d` Nullable(String)))";
+        Column column = root(describe(row("c", type), row("c.a b", "Nullable(Int32)"), row("c.c,d", "Nullable(String)")));
+
+        assertTrue(DeclaredNullability.apply(column, type));
+
+        assertEquals(Map.of("c", true, "c.a b", false, "c.c,d", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: a Tuple Column that lacks one declared element still pairs the others by name")
+    void missingDeclaredElementDoesNotShiftPairing() throws Exception {
+        String type = "Nullable(Tuple(a Int32, b Nullable(String)))";
+        Column column = root(describe(row("c", type), row("c.b", "Nullable(String)")));
+
+        assertTrue(DeclaredNullability.apply(column, type));
+
+        assertEquals(Map.of("c", true, "c.b", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: a declared type that does not parse fails open with one metadata-only WARN")
+    void unparsableDeclaredTypeFailsOpenWithOneMetadataWarning() throws Exception {
+        String sentinel = "SENTINEL_ELEMENT_NAME";
+        String type = "Nullable(Tuple(" + sentinel + " NoSuchType))";
+        Column column = root(describe(
+                row("c", "Nullable(Tuple(a Int32))"), row("c.a", "Nullable(Int32)")));
+        Map<String, Boolean> before = nullabilityByPath(column);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type));
+
+            List<LogCapture.CapturedEvent> warnings = log.events("WARN");
+            assertEquals(1, warnings.size());
+            String message = warnings.get(0).message();
+            assertTrue(message.contains(ROOT), message);
+            assertTrue(message.contains(type), message);
+            assertFalse(warnings.get(0).hasThrowable(), "the exception text can echo the type and is never logged");
+            assertEquals(1, log.events().size());
+        }
+        assertEquals(before, nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: a Tuple Column whose declared type is not a Tuple fails open and changes nothing")
+    void structureMismatchFailsOpenWithOneWarning() throws Exception {
+        String type = "Array(Int32)";
+        Column column = root(describe(
+                row("c", "Nullable(Tuple(a Int32))"), row("c.a", "Nullable(Int32)")));
+        Map<String, Boolean> before = nullabilityByPath(column);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type));
+
+            List<LogCapture.CapturedEvent> warnings = log.events("WARN");
+            assertEquals(1, warnings.size());
+            assertTrue(warnings.get(0).message().contains(ROOT), warnings.get(0).message());
+            assertTrue(warnings.get(0).message().contains(type), warnings.get(0).message());
+            assertFalse(warnings.get(0).hasThrowable());
+        }
+        assertEquals(before, nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: one unmatched element leaves the whole root untouched, the elements that did pair included")
+    void unmatchedElementAppliesNothing() throws Exception {
+        String declared = "Tuple(a Nullable(Int32), z String)";
+        Column column = root(describe(
+                row("c", "Nullable(Tuple(a Int32, b String))"),
+                row("c.a", "Nullable(Int32)"),
+                row("c.b", "Nullable(String)")));
+        Map<String, Boolean> before = nullabilityByPath(column);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, declared));
+
+            assertEquals(1, log.events("WARN").size());
+        }
+        assertEquals(before, nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: containsTuple is false for a Map or Array root of Enum values and for a null Column")
+    void containsTupleIsFalseWithoutATupleAnywhere() throws Exception {
+        assertFalse(DeclaredNullability.containsTuple(root(describe(
+                row("c", "Map(String, Nullable(Enum8('a' = 1)))"),
+                row("c.keys", "Array(String)"),
+                row("c.values", "Array(Nullable(Enum8('a' = 1)))")))));
+        assertFalse(DeclaredNullability.containsTuple(null));
+    }
+
+    @Test
+    @DisplayName("COLS-10: no declared type returns false, changes nothing and logs nothing; normalise leaves other text alone")
+    void nullDeclaredTypeIsANoOpAndNormaliseKeepsPlainText() throws Exception {
+        Column column = root(describe(
+                row("c", "Nullable(Tuple(a Int32))"), row("c.a", "Nullable(Int32)")));
+        Map<String, Boolean> before = nullabilityByPath(column);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, null));
+
+            assertEquals(List.of(), log.events());
+        }
+        assertEquals(before, nullabilityByPath(column));
+        String plain = "Nullable(Tuple(a Int32, b String))";
+        assertEquals(plain, DeclaredNullability.normalise(plain));
+        assertEquals("Tuple( a Int32, b String)", DeclaredNullability.normalise("Tuple(" + SERVER_NEWLINE + "a Int32, b String)"));
+    }
 }

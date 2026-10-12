@@ -769,6 +769,35 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         }
     }
 
+    @ParameterizedTest(name = "COLS-10 omitted Nullable(Tuple) field stores NULL {0}")
+    @EnumSource(Twin.class)
+    void omittedNullableTupleFieldStoresNull(Twin twin, TestInfo testInfo) throws Exception {
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        String tableName = createTopicName(TABLE_PREFIX + "omitted_" + twin);
+        ClickHouseTestHelpers.dropTable(chc, tableName);
+        NullableRoundTrip.createTable(chc, tableName, twin.ddl(CELL_COLUMN + " " + C1_DDL_TYPE));
+        props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
+        try {
+            Schema schema = SchemaBuilder.struct()
+                    .field(ROW_ID_COLUMN, Schema.INT32_SCHEMA)
+                    .build();
+            int id = 1;
+            SinkRecord record = new SinkRecord(
+                    tableName, 0, null, null, schema, new Struct(schema).put(ROW_ID_COLUMN, id), id);
+
+            NullableRoundTrip.putAndStop(props, List.of(record));
+
+            NullableRoundTrip.selectAndAssert(
+                    chc,
+                    tableName,
+                    id,
+                    withDefaultColumn(List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT)), twin));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, tableName);
+        }
+    }
+
     @Test
     @DisplayName("COLS-09: server version is recorded")
     void serverVersionIsRecorded() throws Exception {
