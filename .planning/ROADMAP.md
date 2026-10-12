@@ -60,7 +60,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
 
 - [x] **Phase 16: Early Docs Publication** - Fix the 15-REVIEW docs findings and publish the corrected rollout doc to `custom_build` as a docs-only `--no-ff` merge, before any code work (completed 2026-10-11)
 - [x] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed (completed 2026-10-12)
-- [ ] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data
+- [x] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data (completed 2026-10-12)
 - [ ] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release
 - [ ] **Phase 20: Release & Publication** - `v1.7.0_gg2` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
 
@@ -176,7 +176,7 @@ CI-17's push follows the D-13 precedent:
   3. An exception with a null message that reaches `ClickHouseWriter`'s error path surfaces as itself, not as a `NullPointerException`. Retriable vs non-retriable classification is unchanged. A Docker-free test pins both.
   4. An unparseable `DateTime` or `DateTime64` string logs the column name, the ClickHouse and Kafka types, the exception class and the value length. A log-capture test proves the raw value appears neither directly nor through the parse exception's message. `docs/FORK-DELTA.md` has a row for this patch to upstream-identical lines.
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -354,7 +354,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
-| 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | In Progress | - |
+| 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 

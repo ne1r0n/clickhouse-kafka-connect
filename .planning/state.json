@@ -1,12 +1,38 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg2-hardening",
-  "phases": [],
+  "milestone": "v1.7.0_gg2-hardening — Follow-up Hardening & CI Hygiene",
+  "phases": [
+    {
+      "number": "16",
+      "name": "Early Docs Publication",
+      "status": "complete"
+    },
+    {
+      "number": "17",
+      "name": "CI, Build & Test Hygiene",
+      "status": "complete"
+    },
+    {
+      "number": "18",
+      "name": "Writer Correctness",
+      "status": "complete"
+    },
+    {
+      "number": "19",
+      "name": "Nullable Enum & Tuple Mapping",
+      "status": "pending"
+    },
+    {
+      "number": "20",
+      "name": "Release & Publication",
+      "status": "pending"
+    }
+  ],
   "next": {
-    "command": "/gsd:discuss-phase",
-    "label": "Discuss the first phase",
-    "reason": "Project initialized — plan your first phase"
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step (plan phase 19)",
+    "reason": "Phase 19 of 5 — needs a plan"
   },
-  "updated_at": "2026-10-10T14:38:48.937Z"
+  "updated_at": "2026-10-12T15:19:26.982Z"
 }

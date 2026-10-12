@@ -2,39 +2,39 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
-current_phase: 18
-current_phase_name: Writer Correctness
-status: verifying
-stopped_at: Completed 18-04-PLAN.md
-last_updated: "2026-10-12T14:34:57.934Z"
+current_phase: 19
+current_phase_name: Nullable Enum & Tuple Mapping
+status: planning
+stopped_at: Phase 18 complete, ready to plan Phase 19
+last_updated: "2026-10-12T15:19:26.965Z"
 last_activity: 2026-10-12
-last_activity_desc: Phase 18 execution started
-state_head: dc4890196e54067213988bf05ef7216544db6b23
+last_activity_desc: Phase 18 complete, transitioned to Phase 19
+state_head: 86210e99dacc5970eb6b3704f9b20f7cd506a467
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
   completed_plans: 11
-  percent: 40
+  percent: 60
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-12 after Phase 17)
+See: .planning/PROJECT.md (updated 2026-10-12 after Phase 18)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 18 — Writer Correctness
+**Current focus:** Phase 19 — Nullable Enum & Tuple Mapping
 
 ## Current Position
 
-Phase: 18 (Writer Correctness) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-10-12 — Phase 18 execution started
+Phase: 19 — Nullable Enum & Tuple Mapping
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-12 — Phase 18 complete, transitioned to Phase 19
 
-Progress: [████░░░░░░] 40%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [████░░░░░░] 40%
 | 15 | 8 | - | - |
 | 16 | 3 | - | - |
 | 17 | 4 | - | - |
+| 18 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -193,11 +194,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T14:34:52.387Z
-Stopped at: Completed 18-04-PLAN.md
+Last session: 2026-10-12T15:19:26Z
+Stopped at: Phase 18 complete, ready to plan Phase 19
 Resume file: None
 
 ## Operator Next Steps
 
-- Phase 17 is complete (verification passed). `origin/custom_build` is still `be6b8861`; the Phase 17 commits after `0c90d331` are local on `sync/v1.7.0` and publish in Phase 20.
-- Plan Phase 18 (`/gsd-discuss-phase 18` or `/gsd-plan-phase 18`).
+- Phase 18 is complete (UAT 2/2 passed, verification passed, security threats_open: 0). `origin/custom_build` is still `be6b8861`; the Phase 17 and 18 commits are local on `sync/v1.7.0` and publish in Phase 20.
+- Plan Phase 19 (`/gsd-discuss-phase 19` or `/gsd-plan-phase 19`). Note: Phase 19's flipped pins rely on Phase 18's column-naming `DataException` (WRT-10), and the Tuple spike (COLS-09) runs first in the phase.
