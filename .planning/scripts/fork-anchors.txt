@@ -61,3 +61,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	e.getMe
 src/main/java/com/clickhouse/kafka/connect/util/Utils.java	if (msg != null && (msg.indexOf(	1	WRT-11
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	MISSING_NON_NULLABLE_MESSAGE_FORMAT	2	WRT-10
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	is not nullable and no value is provided	0	WRT-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	logDateTimeParseFailure(	3	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Error parsing date time string: {}	0	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT	2	WRT-12

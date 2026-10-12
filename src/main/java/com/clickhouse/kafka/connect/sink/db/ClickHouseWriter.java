@@ -458,7 +458,7 @@ public class ClickHouseWriter implements DBWriter {
                         ZonedDateTime zonedDateTime = ZonedDateTime.parse((String) value.getObject());
                         BinaryStreamUtils.writeUnsignedInt32(stream, zonedDateTime.toInstant().getEpochSecond());
                     } catch (Exception e) {
-                        LOGGER.error("Error parsing date time string: {}", value.getObject());
+                        logDateTimeParseFailure(columnName, type, value, e);
                         unsupported = true;
                     }
                 } else {
@@ -512,7 +512,7 @@ public class ClickHouseWriter implements DBWriter {
                             BinaryStreamUtils.writeInt64(stream, seconds);
                         }
                     } catch (Exception e) {
-                        LOGGER.error("Error parsing date time string: {}, exception: {}", value.getObject(), e.getMessage());
+                        logDateTimeParseFailure(columnName, type, value, e);
                         unsupported = true;
                     }
                 } else {
@@ -521,10 +521,20 @@ public class ClickHouseWriter implements DBWriter {
                 break;
         }
         if (unsupported) {
-            String msg = String.format("(Potentially) Not implemented conversion from %s to %s", value.getFieldType(), type);
+            String msg = String.format(DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT, value.getFieldType(), type, columnName);
             LOGGER.error(msg);
             throw new DataException(msg);
         }
+    }
+
+    /**
+     * Logs an unparseable date-time string from its metadata alone: the column, the two types, the
+     * exception class and the length of the value in UTF-16 code units. The exception is reduced to its
+     * class name before it reaches the logger, because its message embeds the record value.
+     */
+    private static void logDateTimeParseFailure(String columnName, Type type, Data value, Exception e) {
+        LOGGER.error(DATETIME_PARSE_FAILURE_LOG_FORMAT, columnName, type, value.getFieldType(), e.getClass().getName(),
+                String.valueOf(value.getObject()).length());
     }
 
     private void doWriteDate(OutputStream stream, Date date, int precision ) throws IOException {
@@ -552,6 +562,9 @@ public class ClickHouseWriter implements DBWriter {
 
     // Slot kinds name the position of a nested null in the schema; none of them carries record data.
     private static final String NESTED_NULL_MESSAGE_FORMAT = "column '%s' (%s) %s: null in non-nullable slot";
+    private static final String DATETIME_PARSE_FAILURE_LOG_FORMAT = "Error parsing date time string for column '{}' "
+            + "(ClickHouse type {}, Kafka type {}): exception {}, value length {}";
+    private static final String DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT = "(Potentially) Not implemented conversion from %s to %s for column '%s'";
     private static final String MISSING_NON_NULLABLE_MESSAGE_FORMAT = "column '%s' (%s): no value provided for a non-nullable column without a default; "
             + "add the field, make the column Nullable, or give it a DEFAULT";
     private static final String NESTED_NULL_SLOT_ELEMENT = "element";
