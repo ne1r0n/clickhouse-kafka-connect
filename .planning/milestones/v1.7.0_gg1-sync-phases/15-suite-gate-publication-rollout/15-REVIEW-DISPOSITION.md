@@ -5,23 +5,23 @@ titles: json
 findings:
   - id: IN-01
     severity: info
-    disposition: deferred
+    disposition: fixed
     title: "The WARN fires on routes where the defect cannot occur"
   - id: IN-02
     severity: info
-    disposition: deferred
+    disposition: fixed
     title: "The V1 describe hook is not exercised by the V2-only target run"
   - id: IN-03
     severity: info
-    disposition: deferred
+    disposition: fixed
     title: "The warned-key set never evicts and its key is delimiter-ambiguous"
   - id: IN-04
     severity: info
-    disposition: deferred
+    disposition: fixed
     title: "The WARN wording is not pinned by a test"
   - id: IN-05
     severity: info
-    disposition: deferred
+    disposition: fixed
     title: "New constants sit in the middle of the class"
   - id: IN-06
     severity: info
@@ -64,11 +64,11 @@ recorded: 2026-10-10T12:29:38.081Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-01 | info | deferred | deferred in 15-02: D-15 locks the WARN's firing condition and wording; route restriction stated in FORK-DELTA Known costs |
-| IN-02 | info | deferred | deferred in 15-02: V1 describe hook exercised only under CLIENT_VERSION=V1; suite target is V2 only |
-| IN-03 | info | deferred | deferred in 15-02: set is bounded by schema size and the key collision is harmless in practice |
-| IN-04 | info | deferred | deferred in 15-02: WARN mechanism is pinned; wording stays a read-by-human deliverable |
-| IN-05 | info | deferred | deferred in 15-02: moving constants adds churn against upstream rebasing for no behaviour change |
+| IN-01 | info | fixed | 2a94e045 (Phase 19, COLS-10: the discovery WARN was removed when Nullable(Tuple) was fixed; superseded) |
+| IN-02 | info | fixed | 2a94e045 (Phase 19, COLS-10: both describe-loop WARN hooks were removed; superseded. Both loops now return through one shared Table-building helper, so the V1 loop cannot drift from the V2 one) |
+| IN-03 | info | fixed | 2a94e045 (Phase 19, COLS-10: the warned-key set was removed with the WARN; superseded) |
+| IN-04 | info | fixed | 2a94e045 (Phase 19, COLS-10: the WARN text was removed; superseded by the flipped negative pins, which assert that discovery logs no warning) |
+| IN-05 | info | fixed | 2a94e045 (Phase 19, COLS-10: the constants were removed with the WARN; superseded) |
 | IN-06 | info | deferred | deferred in 15-02: mantissa-with-fraction form verified against the server in review, no committed test |
 | WR-01 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
 | WR-02 | warning | fixed | 505e4981 (docs only, local sync/v1.7.0; not yet published) |
