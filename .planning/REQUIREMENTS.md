@@ -15,10 +15,10 @@
 
 ### Column mapping — 999.1
 
-- [x] **COLS-08**: `Nullable(Enum8)` and `Nullable(Enum16)` columns round-trip through RowBinary for NULL and non-NULL values, top-level and nested (`Array(Nullable(Enum))`, `Map(K, Nullable(Enum))`), checked by typed read-back; the D-16/L-13 pin tests that asserted the old behavior are flipped with a written rationale, not deleted
-- [x] **COLS-09**: A Tuple spike runs a live twin-table matrix on ClickHouse `latest` — `Nullable(Tuple(...))` with nullable and non-nullable elements, and `Array(Nullable(Tuple(...)))` — and records a go/no-go decision (with the type-string parsing approach) before any Tuple production code lands
-- [x] **COLS-10**: On go, `Nullable(Tuple(...))` round-trips with element nullability taken from the declared type string (not DESCRIBE's all-`Nullable` sub-columns, not `Table.java`), and `Array(Nullable(Tuple(...)))` still round-trips; on no-go, the discovery WARN narrows to Tuple and FORK-DELTA records a Known cost with the 999.1 backlog entry updated
-- [x] **COLS-11**: The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` change in the same commit as the code they describe, and the merge-invariant script stays green
+- [ ] **COLS-08**: `Nullable(Enum8)` and `Nullable(Enum16)` columns round-trip through RowBinary for NULL and non-NULL values, top-level and nested (`Array(Nullable(Enum))`, `Map(K, Nullable(Enum))`), checked by typed read-back; the D-16/L-13 pin tests that asserted the old behavior are flipped with a written rationale, not deleted
+- [ ] **COLS-09**: A Tuple spike runs a live twin-table matrix on ClickHouse `latest` — `Nullable(Tuple(...))` with nullable and non-nullable elements, and `Array(Nullable(Tuple(...)))` — and records a go/no-go decision (with the type-string parsing approach) before any Tuple production code lands
+- [ ] **COLS-10**: On go, `Nullable(Tuple(...))` round-trips with element nullability taken from the declared type string (not DESCRIBE's all-`Nullable` sub-columns, not `Table.java`), and `Array(Nullable(Tuple(...)))` still round-trips; on no-go, the discovery WARN narrows to Tuple and FORK-DELTA records a Known cost with the 999.1 backlog entry updated
+- [ ] **COLS-11**: The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` change in the same commit as the code they describe, and the merge-invariant script stays green
 
 ### Writer correctness
 
@@ -32,7 +32,7 @@
 - [x] **DEBT-06**: `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion (`ProfileEvents['NetworkSendBytes']` vs `result_bytes` for the read's query id), seen red with server-response compression disabled (14-REVIEW WR-01)
 - [x] **DEBT-07**: `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java` — the `org.lz4:lz4-java:1.8.0` duplicate from the Confluent 7.9.1 stack is gone — and the `runtimeClasspath`/`integrationTestRuntimeClasspath` resolution is unchanged (backlog 999.2)
 - [x] **DEBT-08**: A pin row covers the mantissa-with-fraction scientific form for Debezium `NanoTimestamp` in `MetadataFreeJsonWriterTest` (15-REVIEW IN-06)
-- [x] **DEBT-09**: 15-REVIEW IN-01..IN-05 are each fixed or closed with a written reason in the disposition file, consistent with the COLS-10 outcome
+- [ ] **DEBT-09**: 15-REVIEW IN-01..IN-05 are each fixed or closed with a written reason in the disposition file, consistent with the COLS-10 outcome
 - [x] **BLD-14**: The Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning no longer appears in the build, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code is unchanged
 
 ### CI hygiene
@@ -75,10 +75,10 @@
 |-------------|-------|--------|
 | PUB-05 | Phase 16 | Complete |
 | PUB-06 | Phase 16 | Complete |
-| COLS-08 | Phase 19 | Complete |
-| COLS-09 | Phase 19 | Complete |
-| COLS-10 | Phase 19 | Complete |
-| COLS-11 | Phase 19 | Complete |
+| COLS-08 | Phase 19 | Gaps Found |
+| COLS-09 | Phase 19 | Gaps Found |
+| COLS-10 | Phase 19 | Gaps Found |
+| COLS-11 | Phase 19 | Gaps Found |
 | JSONP-09 | Phase 18 | Complete |
 | WRT-10 | Phase 18 | Complete |
 | WRT-11 | Phase 18 | Complete |
@@ -86,7 +86,7 @@
 | DEBT-06 | Phase 17 | Complete |
 | DEBT-07 | Phase 17 | Complete |
 | DEBT-08 | Phase 17 | Complete |
-| DEBT-09 | Phase 19 | Complete |
+| DEBT-09 | Phase 19 | Gaps Found |
 | BLD-14 | Phase 17 | Complete |
 | CI-11 | Phase 17 | Complete |
 | CI-12 | Phase 17 | Complete |
