@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 19
 current_phase_name: Nullable Enum & Tuple Mapping
 status: executing
-stopped_at: "Completed 19-03-PLAN.md (gate: go)"
-last_updated: "2026-10-12T21:05:48.700Z"
+stopped_at: Completed 19-04-PLAN.md
+last_updated: "2026-10-12T21:26:17.007Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 19 execution started
-state_head: 12f225cf9c3fadd154b92e6ebc32da136c601c45
+state_head: ea90af7d8b02288eaefa14c3b134c6e93195123f
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-12 after Phase 18)
 ## Current Position
 
 Phase: 19 (Nullable Enum & Tuple Mapping) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 19 execution started
 
@@ -122,6 +122,7 @@ Progress: [██████░░░░] 60%
 | Phase 19 P01 | 14 min | 3 tasks | 3 files |
 | Phase 19 P02 | 15min | 2 tasks | 9 files |
 | Phase 19 P03 | 8 min | 3 tasks | 2 files |
+| Phase 19 P04 | 17min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 19]: 19-01 side (a) pins observed behaviour: CANNOT_READ_ALL_DATA (not ATTEMPT_TO_READ_AFTER_EOF), and C2 id 1 on the plain twin silently stores a wrong row plus a phantom row — Observed by probe before pinning; flips on go in plan 19-04
 - [Phase 19]: Enum fix is a single .isNullable(isNull) in Column.extractColumn; writer, Table and state classes untouched so retried batches stay byte-identical
 - [Phase 19]: Discovery WARN narrowed to Nullable(Tuple( in the Enum commit (D-09); ledger L-33 is the written rationale reversing L-13 (no existing pin asserted it)
+- [Phase 19]: Tuple element nullability comes from the declared type (approach C, fail open per root); the Nullable(Tuple) discovery WARN is deleted — Upstream drops Tuple nullability and DESCRIBE marks every element of a Nullable(Tuple) Nullable, so the declared type string is the only correct source; Table.java stays upstream-identical and the pass runs once per DESCRIBE, never per record
 
 ### Pending Todos
 
@@ -201,8 +203,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T21:05:48.659Z
-Stopped at: Completed 19-03-PLAN.md (gate: go)
+Last session: 2026-10-12T21:26:13.849Z
+Stopped at: Completed 19-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

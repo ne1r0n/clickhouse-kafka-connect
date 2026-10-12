@@ -249,3 +249,10 @@ None.
 ---
 *Phase: 19-nullable-enum-tuple-mapping*
 *Completed: 2026-10-13*
+
+## Self-Check: PASSED
+
+- Key files exist: DeclaredNullability.java, DeclaredNullabilityTest.java, this SUMMARY.
+- Commits `2a94e045` and `ea5b856d` are ancestors of HEAD; `evaluation-scope --commits-only` lists both.
+- Task 2 gates re-run in this context: GO-T2-TESTS-GREEN, GO-T2-COMMIT-OK, ANCHORS-19-04-PASS. Task 1 markers were printed in the prior context at its commit.
+- Plan verification: one fix commit and one expansion commit; seen red by mutation; both describe loops route through `buildDescribedTable`; anchors invariant PASS; Table.java and the exactly-once code untouched.

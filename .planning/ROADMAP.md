@@ -221,7 +221,7 @@ Phase gate: a cache-busted full suite on `latest` × V2, plus the anchors invari
   4. The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` each change in the same commit as the code they describe. The merge-invariant script passes at every commit in the phase.
   5. Each of 15-REVIEW IN-01..IN-05 is fixed, or closed with a written reason in the disposition file, consistently with the Tuple outcome.
 
-**Plans**: 4/6 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one)
+**Plans**: 5/6 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one)
 
 Plans:
 **Wave 1**
@@ -234,7 +234,7 @@ Plans:
 - [x] 19-03-PLAN.md — Gate: bundle refreshed on that day's latest, blocking-human go/no-go answered directly by the user, decision recorded and the alternative plan retired (D-01..D-03)
 
 **Wave 4** *(blocked on Wave 3; runs only on go)*
-- [ ] 19-04-PLAN.md — Tracer: Tuple element nullability from the declared type (DeclaredNullability after Table, Table.java untouched), WARN machinery deleted with its anchors and FORK-DELTA rows, D-16 and WARN pins flipped (COLS-10, D-10, D-11); edge pins, mutation; tests on client V2 only, V1 coverage structural (both describe loops return through one shared helper)
+- [x] 19-04-PLAN.md — Tracer: Tuple element nullability from the declared type (DeclaredNullability after Table, Table.java untouched), WARN machinery deleted with its anchors and FORK-DELTA rows, D-16 and WARN pins flipped (COLS-10, D-10, D-11); edge pins, mutation; tests on client V2 only, V1 coverage structural (both describe loops return through one shared helper)
 
 **Wave 5** *(blocked on Wave 4 being resolved; runs only on no-go)*
 - [x] 19-05-PLAN.md — Tracer: route-qualified, record-keyed, text-pinned Tuple WARN (IN-01, IN-03, IN-04), Tuple Known cost in FORK-DELTA, 999.1 entry updated (COLS-10, D-12)
@@ -374,7 +374,7 @@ Plans:
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
-| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 4/6 | In Progress | - |
+| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 5/6 | In Progress | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 
 ---
