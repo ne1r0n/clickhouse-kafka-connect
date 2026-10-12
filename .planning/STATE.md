@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 19
 current_phase_name: Nullable Enum & Tuple Mapping
 status: executing
-stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-10-12T20:34:52.906Z"
+stopped_at: Completed 19-02-PLAN.md
+last_updated: "2026-10-12T20:55:38.078Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 19 execution started
-state_head: b53afc0200fde6b81fb04a0a8a798168c6ecf486
+state_head: a8501693203237358136a60ba77a94e156d56014
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 17
-  completed_plans: 12
+  completed_plans: 13
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-12 after Phase 18)
 ## Current Position
 
 Phase: 19 (Nullable Enum & Tuple Mapping) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 19 execution started
 
@@ -120,6 +120,7 @@ Progress: [██████░░░░] 60%
 | Phase 18 P03 | 5min | 2 tasks | 7 files |
 | Phase 18 P04 | 29min | 2 tasks | 5 files |
 | Phase 19 P01 | 14 min | 3 tasks | 3 files |
+| Phase 19 P02 | 15min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,8 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 18]: 18-04: CapturingClickHouseWriter overrides doInsertJson and doInsertRawBinary instead of the V2 hooks plus a mocked ClickHouseHelperClient — Inline-mocking ClickHouseHelperClient crashed the Semeru/OpenJ9 test JVM natively in retransformClasses during the full suite (intermittent); overriding one level up needs no helper client and keeps every pin intact.
 - [Phase 19]: 19-01 spike recommends GO for Nullable(Tuple): every deciding cell (C1-C3) round-trips on side (b) on both twins and the approach test passes; the user answers at the 19-03 gate — Measured on ClickHouse 26.9.17.8 with client V2; 19-SPIKE.md holds the bundle
 - [Phase 19]: 19-01 side (a) pins observed behaviour: CANNOT_READ_ALL_DATA (not ATTEMPT_TO_READ_AFTER_EOF), and C2 id 1 on the plain twin silently stores a wrong row plus a phantom row — Observed by probe before pinning; flips on go in plan 19-04
+- [Phase 19]: Enum fix is a single .isNullable(isNull) in Column.extractColumn; writer, Table and state classes untouched so retried batches stay byte-identical
+- [Phase 19]: Discovery WARN narrowed to Nullable(Tuple( in the Enum commit (D-09); ledger L-33 is the written rationale reversing L-13 (no existing pin asserted it)
 
 ### Pending Todos
 
@@ -197,8 +200,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T20:34:52.863Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-10-12T20:55:31.305Z
+Stopped at: Completed 19-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

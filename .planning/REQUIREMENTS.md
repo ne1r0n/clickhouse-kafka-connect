@@ -15,7 +15,7 @@
 
 ### Column mapping — 999.1
 
-- [ ] **COLS-08**: `Nullable(Enum8)` and `Nullable(Enum16)` columns round-trip through RowBinary for NULL and non-NULL values, top-level and nested (`Array(Nullable(Enum))`, `Map(K, Nullable(Enum))`), checked by typed read-back; the D-16/L-13 pin tests that asserted the old behavior are flipped with a written rationale, not deleted
+- [x] **COLS-08**: `Nullable(Enum8)` and `Nullable(Enum16)` columns round-trip through RowBinary for NULL and non-NULL values, top-level and nested (`Array(Nullable(Enum))`, `Map(K, Nullable(Enum))`), checked by typed read-back; the D-16/L-13 pin tests that asserted the old behavior are flipped with a written rationale, not deleted
 - [ ] **COLS-09**: A Tuple spike runs a live twin-table matrix on ClickHouse `latest` — `Nullable(Tuple(...))` with nullable and non-nullable elements, and `Array(Nullable(Tuple(...)))` — and records a go/no-go decision (with the type-string parsing approach) before any Tuple production code lands
 - [ ] **COLS-10**: On go, `Nullable(Tuple(...))` round-trips with element nullability taken from the declared type string (not DESCRIBE's all-`Nullable` sub-columns, not `Table.java`), and `Array(Nullable(Tuple(...)))` still round-trips; on no-go, the discovery WARN narrows to Tuple and FORK-DELTA records a Known cost with the 999.1 backlog entry updated
 - [ ] **COLS-11**: The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` change in the same commit as the code they describe, and the merge-invariant script stays green
@@ -75,7 +75,7 @@
 |-------------|-------|--------|
 | PUB-05 | Phase 16 | Complete |
 | PUB-06 | Phase 16 | Complete |
-| COLS-08 | Phase 19 | Pending |
+| COLS-08 | Phase 19 | Complete |
 | COLS-09 | Phase 19 | Pending |
 | COLS-10 | Phase 19 | Pending |
 | COLS-11 | Phase 19 | Pending |
