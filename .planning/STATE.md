@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 18
 current_phase_name: Writer Correctness
 status: executing
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-10-12T13:56:32.141Z"
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-10-12T14:04:24.358Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 18 execution started
-state_head: 9f070f98a516c3e536155396a5061065abe27839
+state_head: b28fc520a706186f0a2df7699f4f2b188cf66d3d
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 40
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-12 after Phase 17)
 ## Current Position
 
 Phase: 18 (Writer Correctness) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 18 execution started
 
@@ -116,6 +116,7 @@ Progress: [████░░░░░░] 40%
 | Phase 17 P04 | 9 min | 2 tasks | 3 files |
 | Phase 18 P01 | 15 min | 3 tasks | 9 files |
 | Phase 18 P02 | 8min | 2 tasks | 7 files |
+| Phase 18 P03 | 5min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -158,6 +159,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 18]: 18-01: WRT-11, D-05 and WRT-10 are three separate fix commits, each carrying its own fork-anchors rows, FORK-DELTA row and ledger rows (D-13) — Keeps every commit self-contained for the per-commit anchors gate and a future upstream sync
 - [Phase 18]: 18-01: ClickHouseWriter.java stays IS DIRTY under the Spotless IDE hook (upstream-identical import order); not reformatted — Reordering its imports would churn the file against upstream; the hook diff is imports-only so new edits add no formatting debt
 - [Phase 18]: WRT-12: date-time parse-failure logs report the value length as String.length() in UTF-16 code units; the rethrown-message residual of the generic catch is recorded (FORK-DELTA item 6, backlog 999.3) and pinned by a test, not fixed — Accepted per D-09 and T-18-07; changing the rethrown type or message must not change retry classification
+- [Phase 18]: JSONP-09: one shared skipEmptyCdcRecord in the writer loops, no short-circuit for an all-empty batch (empty insert body accepted by clients V1 and V2) — Offsets, exactly-once state and the dedup token must cover the whole batch, so the skip lives only in the serialization loops; both clients accepted a zero-row body on 26.9.16.11 (D-01..D-04).
 
 ### Pending Todos
 
@@ -189,8 +191,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T13:56:21.628Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-10-12T14:04:17.871Z
+Stopped at: Completed 18-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
