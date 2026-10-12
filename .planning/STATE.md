@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 18
 current_phase_name: Writer Correctness
 status: executing
-stopped_at: Phase 18 context gathered
-last_updated: "2026-10-12T12:50:23.477Z"
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-10-12T13:43:35.814Z"
 last_activity: 2026-10-12
-last_activity_desc: Phase 17 complete, transitioned to Phase 18
-state_head: f74a26c176faa330c18100df356a9fb256786877
+last_activity_desc: Phase 18 execution started
+state_head: 69b3c1b92b6d424fb31a3f57abd443721d6462b8
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 7
+  completed_plans: 8
   percent: 40
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-12 after Phase 17)
 
 ## Current Position
 
-Phase: 18 (Writer Correctness) — READY TO EXECUTE
-Plan: Not started
+Phase: 18 (Writer Correctness) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-10-12 — Phase 17 complete, transitioned to Phase 18
+Last activity: 2026-10-12 — Phase 18 execution started
 
 Progress: [████░░░░░░] 40%
 
@@ -114,6 +114,7 @@ Progress: [████░░░░░░] 40%
 | Phase 17 P02 | 4 min | 3 tasks | 7 files |
 | Phase 17 P03 | 17 min | 3 tasks | 1 files |
 | Phase 17 P04 | 9 min | 2 tasks | 3 files |
+| Phase 18 P01 | 15 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,8 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 17]: 17-03: CI-17 left in progress; plan 17-04 also declares it and owns the web-UI items (runner image, token permissions, job summary) — requirements.ready-ids reported 0/1 ready (shared-ID gate)
 - [Phase 17]: CI-17 web-UI evidence (E-11) comes from the job log downloaded through the API with a user-created read-only token, not a web-UI paste; token never printed, written or committed — Job logs return 403 without a token; the user chose to create a one-repository Actions read-only token. Provenance is recorded in E-11 with file hashes and flagged for the verifier.
 - [Phase 17]: Default-branch intent stays undecided; Phase 20 operator checks list Dependabot enablement and the default branch (main at Phase 17) as manual checks — Research F1: the fork's default is main, so schedules and Dependabot read main. The user stated no intent (E-10) and D-05 forbids agent changes to repository settings.
+- [Phase 18]: 18-01: WRT-11, D-05 and WRT-10 are three separate fix commits, each carrying its own fork-anchors rows, FORK-DELTA row and ledger rows (D-13) — Keeps every commit self-contained for the per-commit anchors gate and a future upstream sync
+- [Phase 18]: 18-01: ClickHouseWriter.java stays IS DIRTY under the Spotless IDE hook (upstream-identical import order); not reformatted — Reordering its imports would churn the file against upstream; the hook diff is imports-only so new edits add no formatting debt
 
 ### Pending Todos
 
@@ -184,9 +187,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T10:22:00.523Z
-Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-writer-correctness/18-CONTEXT.md
+Last session: 2026-10-12T13:43:30.694Z
+Stopped at: Completed 18-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
