@@ -215,6 +215,29 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
     }
 
     @Test
+    @DisplayName("D-05: errors.tolerance=none keeps a message-less IOException from the writer in the chain, with no NullPointerException")
+    void messageLessIoExceptionFailsPutUnderToleranceNone(TestInfo testInfo) throws Exception {
+        IOException failure = new IOException();
+
+        Throwable thrown = putWithInjectedFailure(testInfo, false, failure, null);
+
+        assertNotNull(thrown, "put must fail when errors.tolerance=none");
+        assertTrue(chainContainsInstance(thrown, failure), "the injected instance must be in the cause chain");
+        assertFalse(chainContainsType(thrown, NullPointerException.class), "no NullPointerException may replace it");
+    }
+
+    @Test
+    @DisplayName("D-05: errors.tolerance=all sends the whole batch to the DLQ for a message-less IOException")
+    void messageLessIoExceptionUnderToleranceAllGoesToDlq(TestInfo testInfo) throws Exception {
+        InMemoryDLQ dlq = new InMemoryDLQ();
+
+        Throwable thrown = putWithInjectedFailure(testInfo, true, new IOException(), dlq);
+
+        assertNull(thrown, "put must return when errors.tolerance=all");
+        assertEquals(BATCH_SIZE, dlq.size(), "the whole batch must reach the DLQ");
+    }
+
+    @Test
     @DisplayName("WRT-11: a message-less SocketTimeoutException from the writer makes put throw RetriableException")
     void messageLessSocketTimeoutIsRetriable(TestInfo testInfo) throws Exception {
         SocketTimeoutException failure = new SocketTimeoutException();

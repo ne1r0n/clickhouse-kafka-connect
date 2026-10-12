@@ -58,3 +58,4 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 # Phase 18 (v1.7.0_gg2): rows for patches to upstream-identical lines; a 0 count pins that the upstream text stays gone.
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	String failureMessage = e.getMessage();	1	WRT-11
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	e.getMessage().contains(code)	0	WRT-11
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	if (msg != null && (msg.indexOf(	1	WRT-11
