@@ -221,11 +221,11 @@ Phase gate: a cache-busted full suite on `latest` × V2, plus the anchors invari
   4. The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` each change in the same commit as the code they describe. The merge-invariant script passes at every commit in the phase.
   5. Each of 15-REVIEW IN-01..IN-05 is fixed, or closed with a written reason in the disposition file, consistently with the Tuple outcome.
 
-**Plans**: 6 plans (19-04 and 19-05 are alternatives; the 19-03 gate retires one)
+**Plans**: 1/6 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one)
 
 Plans:
 **Wave 1**
-- [ ] 19-01-PLAN.md — Tracer: committed live twin-table Nullable(Tuple) matrix (C1-C3 deciding, X1-X3 informational), both sides per cell, control and parsing-approach evidence; writes the go/no-go bundle 19-SPIKE.md (COLS-09, D-04..D-08)
+- [x] 19-01-PLAN.md — Tracer: committed live twin-table Nullable(Tuple) matrix (C1-C3 deciding, X1-X3 informational), both sides per cell, control and parsing-approach evidence; writes the go/no-go bundle 19-SPIKE.md (COLS-09, D-04..D-08)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 19-02-PLAN.md — Tracer: Enum branch carries Nullable (COLS-08), discovery WARN narrowed to Tuple in the same commit with flipped pins, anchors, FORK-DELTA and the new behaviour ledger (D-09, D-11, COLS-11); full Enum8/Enum16 matrix on both twins, Docker-free bytes, mutation-checked
@@ -374,7 +374,7 @@ Plans:
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
-| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
+| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 1/6 | In Progress | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 
 ---

@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 19
 current_phase_name: Nullable Enum & Tuple Mapping
 status: executing
-stopped_at: Phase 19 context gathered
-last_updated: "2026-10-12T20:04:00.969Z"
+stopped_at: Completed 19-01-PLAN.md
+last_updated: "2026-10-12T20:34:52.906Z"
 last_activity: 2026-10-12
-last_activity_desc: Phase 18 complete, transitioned to Phase 19
-state_head: 588ffdccfda86e5b269e542ca1257720cb9a1a71
+last_activity_desc: Phase 19 execution started
+state_head: b53afc0200fde6b81fb04a0a8a798168c6ecf486
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 17
-  completed_plans: 11
+  completed_plans: 12
   percent: 60
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-12 after Phase 18)
 
 ## Current Position
 
-Phase: 19 (Nullable Enum & Tuple Mapping) — READY TO EXECUTE
-Plan: Not started
+Phase: 19 (Nullable Enum & Tuple Mapping) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-10-12 — Phase 18 complete, transitioned to Phase 19
+Last activity: 2026-10-12 — Phase 19 execution started
 
 Progress: [██████░░░░] 60%
 
@@ -119,6 +119,7 @@ Progress: [██████░░░░] 60%
 | Phase 18 P02 | 8min | 2 tasks | 7 files |
 | Phase 18 P03 | 5min | 2 tasks | 7 files |
 | Phase 18 P04 | 29min | 2 tasks | 5 files |
+| Phase 19 P01 | 14 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,8 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 18]: WRT-12: date-time parse-failure logs report the value length as String.length() in UTF-16 code units; the rethrown-message residual of the generic catch is recorded (FORK-DELTA item 6, backlog 999.3) and pinned by a test, not fixed — Accepted per D-09 and T-18-07; changing the rethrown type or message must not change retry classification
 - [Phase 18]: JSONP-09: one shared skipEmptyCdcRecord in the writer loops, no short-circuit for an all-empty batch (empty insert body accepted by clients V1 and V2) — Offsets, exactly-once state and the dedup token must cover the whole batch, so the skip lives only in the serialization loops; both clients accepted a zero-row body on 26.9.16.11 (D-01..D-04).
 - [Phase 18]: 18-04: CapturingClickHouseWriter overrides doInsertJson and doInsertRawBinary instead of the V2 hooks plus a mocked ClickHouseHelperClient — Inline-mocking ClickHouseHelperClient crashed the Semeru/OpenJ9 test JVM natively in retransformClasses during the full suite (intermittent); overriding one level up needs no helper client and keeps every pin intact.
+- [Phase 19]: 19-01 spike recommends GO for Nullable(Tuple): every deciding cell (C1-C3) round-trips on side (b) on both twins and the approach test passes; the user answers at the 19-03 gate — Measured on ClickHouse 26.9.17.8 with client V2; 19-SPIKE.md holds the bundle
+- [Phase 19]: 19-01 side (a) pins observed behaviour: CANNOT_READ_ALL_DATA (not ATTEMPT_TO_READ_AFTER_EOF), and C2 id 1 on the plain twin silently stores a wrong row plus a phantom row — Observed by probe before pinning; flips on go in plan 19-04
 
 ### Pending Todos
 
@@ -194,9 +197,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T18:43:37.315Z
-Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-nullable-enum-tuple-mapping/19-CONTEXT.md
+Last session: 2026-10-12T20:34:52.863Z
+Stopped at: Completed 19-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
