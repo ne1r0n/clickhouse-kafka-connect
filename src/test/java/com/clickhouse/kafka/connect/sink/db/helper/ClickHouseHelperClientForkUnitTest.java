@@ -262,22 +262,19 @@ class ClickHouseHelperClientForkUnitTest {
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor(rowName, "Int32"), columns));
     }
 
-    @ParameterizedTest(name = "D-02: {0} is flagged")
+    @ParameterizedTest(name = "COLS-11: {0} is flagged")
     @ValueSource(
             strings = {
-                "Array(Nullable(Enum8('x' = 1)))",
-                "Map(String, Nullable(Enum16('y' = 1)))",
                 "Nullable(Tuple(a Int32))",
-                "Nullable(Enum8('z' = 1))",
-                "Array(Nullable(Tuple(a Int32, b String)))",
-                "Tuple(a Nullable(Enum8('q' = 1)))"
+                "Array(Nullable(Tuple(a Int32, b String)))"
             })
-    @DisplayName("D-02: a raw type containing Nullable(Enum8(, Nullable(Enum16( or Nullable(Tuple( at any depth is flagged")
-    void nullableEnumOrTupleTypesAreFlagged(String rawType) {
-        assertTrue(ClickHouseHelperClient.hasNullableEnumOrTuple(rawType));
+    @DisplayName("COLS-11: a raw type containing Nullable(Tuple( at any depth is flagged")
+    void nullableTupleTypesAreFlagged(String rawType) {
+        assertTrue(ClickHouseHelperClient.hasNullableTuple(rawType));
     }
 
-    @ParameterizedTest(name = "D-02: {0} is not flagged")
+    // COLS-08 flip (Phase 19, D-09/D-11): these four Enum types moved here from the flagged list because Column.extractColumn now carries Nullable for Enum8 and Enum16, so the discovery WARN names Tuple only.
+    @ParameterizedTest(name = "COLS-11: {0} is not flagged")
     @ValueSource(
             strings = {
                 "Array(Nullable(Int32))",
@@ -285,17 +282,21 @@ class ClickHouseHelperClientForkUnitTest {
                 "Tuple(a Nullable(Int32))",
                 "Nullable(String)",
                 "Map(String, Enum16('b' = 2))",
-                "LowCardinality(Nullable(String))"
+                "LowCardinality(Nullable(String))",
+                "Array(Nullable(Enum8('x' = 1)))",
+                "Map(String, Nullable(Enum16('y' = 1)))",
+                "Nullable(Enum8('z' = 1))",
+                "Tuple(a Nullable(Enum8('q' = 1)))"
             })
-    @DisplayName("D-02: nullable scalars and non-nullable Enum or Tuple types are not flagged")
+    @DisplayName("COLS-11: nullable scalars, nullable Enum types and non-nullable Enum or Tuple types are not flagged")
     void otherTypesAreNotFlagged(String rawType) {
-        assertFalse(ClickHouseHelperClient.hasNullableEnumOrTuple(rawType));
+        assertFalse(ClickHouseHelperClient.hasNullableTuple(rawType));
     }
 
     @Test
     @DisplayName("D-02: a null raw type is not flagged")
     void nullRawTypeIsNotFlagged() {
-        assertFalse(ClickHouseHelperClient.hasNullableEnumOrTuple(null));
+        assertFalse(ClickHouseHelperClient.hasNullableTuple(null));
     }
 
     @Test
@@ -303,12 +304,13 @@ class ClickHouseHelperClientForkUnitTest {
     void warnOnceDedupesPerColumnAndRawType() {
         String table = "d02_" + UUID.randomUUID();
 
-        assertTrue(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
-                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
-        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
-                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
-        assertTrue(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
-                "db", table, newDescriptor("e", "Nullable(Enum16('a' = 1))")));
+        // D-11 flip: inputs retargeted from Enum to Tuple (Enum no longer warns), same dedup contract.
+        assertTrue(ClickHouseHelperClient.warnOnceIfNullableTuple(
+                "db", table, newDescriptor("t", "Nullable(Tuple(a Int32))")));
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
+                "db", table, newDescriptor("t", "Nullable(Tuple(a Int32))")));
+        assertTrue(ClickHouseHelperClient.warnOnceIfNullableTuple(
+                "db", table, newDescriptor("t", "Nullable(Tuple(a Int64))")));
     }
 
     @Test
@@ -316,9 +318,12 @@ class ClickHouseHelperClientForkUnitTest {
     void subColumnsAndUnflaggedTypesNeverWarn() {
         String table = "d02_" + UUID.randomUUID();
 
-        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
-                "db", table, newDescriptor("m.values", "Array(Nullable(Enum16('y' = 1)))")));
-        assertFalse(ClickHouseHelperClient.warnOnceIfNullableEnumOrTuple(
+        // D-11 flip: the sub-column is now of a Tuple type, which the predicate does flag at the root.
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
+                "db", table, newDescriptor("m.values", "Array(Nullable(Tuple(a Int32)))")));
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
                 "db", table, newDescriptor("n", "Array(Nullable(Int32))")));
+        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
+                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
     }
 }

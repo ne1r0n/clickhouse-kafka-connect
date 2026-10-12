@@ -1,0 +1,18 @@
+# Phase 19 Behaviour Ledger
+
+**Purpose:** one place that lists every operator-visible behaviour change made in Phase 19 (Nullable Enum and Tuple Mapping), so that Phase 20 can write the `1.7.0_gg2` CHANGELOG section, complete FORK-DELTA and write `docs/ROLLOUT-v1.7.0_gg2.md` (ROLL-02). Phase 19 writes no CHANGELOG, VERSION or ROLLOUT text.
+
+**Source plans:** 19-02 (L-31..L-34)
+
+**How to read it:** IDs continue after the Phase 18 ledger's L-30. Test references are `Class` or display-name prefixes. The ledger holds test names, decision IDs and message formats only, never record data.
+
+**Destination key:** CHANGELOG = the `1.7.0_gg2` section of `CHANGELOG.md` (PUB-07); FORK-DELTA = a row or Known costs item (PUB-07); ROLL-02 = an item in `docs/ROLLOUT-v1.7.0_gg2.md`.
+
+## Ledger
+
+| ID | Source plan | Behaviour change (route or setting, before -> after) | Decisions | Pinned by | Operator-visible | How an operator notices | Phase 20 destination |
+|----|-------------|------------------------------------------------------|-----------|-----------|------------------|-------------------------|----------------------|
+| L-31 | 19-02 | RowBinary route (`bypassRowBinary=false`, schema records), `Nullable(Enum8)` and `Nullable(Enum16)` slots at the top level, as `Array` elements and as `Map` values: the stored label and code now equal the record and NULL stays NULL. Before (observed in the Task 1 red run on both twin tables, RowBinary and RowBinaryWithDefaults): a batch holding a NULL for a top-level `Nullable(Enum8)` column failed with the RuntimeException `An attempt to write null into not nullable column '<column>'` and left no row behind. Rows already stored by earlier releases are not repaired (REQUIREMENTS Out of Scope). | COLS-08 | `NullableEnumRoundTripLiveTest` | yes | New rows in those columns match the source records; batches that used to fail on a NULL stop failing. | CHANGELOG; FORK-DELTA (row, item 1); ROLL-02 |
+| L-32 | 19-02 | Schema validation on the RowBinary route (`bypassSchemaValidation=false`): a record that omits a `Nullable(Enum8)` or `Nullable(Enum16)` column without a DEFAULT now passes validation and stores NULL. Before: the batch failed with the schema-validation RuntimeException after the ERROR `Table column name [<column>] was not found.`. | COLS-08 | `NullableEnumRoundTripLiveTest` (omitted-field case, added by 19-02 Task 2) | yes | Such batches stop failing and the column holds NULL. | CHANGELOG; ROLL-02 |
+| L-33 | 19-02 | A null entry in `Array(Nullable(Enum8))`, `Array(Nullable(Enum16))`, `Map(K, Nullable(Enum8))` or `Map(K, Nullable(Enum16))` now stores NULL; before, ledger L-13's nested `DataException` (`... null in non-nullable slot`) failed the whole batch. Reverses L-13. L-13 had no dedicated test (it followed from the L-10 loop checks, which cover no Enum type), so no existing pin flips for it; this row is its written rationale (COLS-08). | COLS-08 | `NullableEnumRoundTripLiveTest` | yes | Those batches stop failing; `isNull(col[i])` is 1 for the null entries. | CHANGELOG; FORK-DELTA (item 1); ROLL-02 |
+| L-34 | 19-02 | The discovery WARN of L-21 no longer fires for columns whose only flagged part is `Nullable(Enum8)` or `Nullable(Enum16)`, and its text names `Nullable(Tuple(...))` only. | D-09, COLS-11 | `ClickHouseHelperClientForkUnitTest`, `ClickHouseHelperClientForkLiveTest` | yes | WARN lines for Enum columns stop; log alerts keyed on the old text `contains Nullable(Enum8), Nullable(Enum16) or Nullable(Tuple(...))` must move to `contains Nullable(Tuple(...))`. | CHANGELOG; ROLL-02 |
