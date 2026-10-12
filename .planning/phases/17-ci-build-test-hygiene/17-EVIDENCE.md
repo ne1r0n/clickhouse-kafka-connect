@@ -19,6 +19,7 @@
 | E-08 | DEBT-08 | pass |
 | E-09 | CI-17 (D-10 local gate) | pass |
 | E-10 | CI-17 (push and run) | pass |
+| E-11 | CI-17 (web-UI evidence: runner image, token permissions, action downloads, job summary) | pass |
 
 ### E-01: CI-14 tracer, reportTestForks read by the fork-count step
 
@@ -374,5 +375,65 @@ Refs after the delete: origin heads are exactly `refs/heads/custom_build` (`be6b
 Not readable without a token (job logs return 403): the runner image version, the `GITHUB_TOKEN` permissions block and the job summary. Plan 17-04 collects them from the web UI.
 
 Timestamp: 2026-10-11T20:42Z
+
+Verdict: pass
+
+### E-11: CI-17 web-UI evidence
+
+Run: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/38172811430, job "ClickHouse latest Client version V2 tests" (id 114568815601), X=0c90d3314c1cf96cb68aed0fe3788c869341e7cd (E-10).
+
+How the text was obtained (differs from the plan's paste mechanism, D-13): job logs return 403 without a token, so the plan asked the user to paste the "Set up job" section and the job summary from the web UI. Instead, at the user's own request to the orchestrator, the user created a fine-grained read-only token (one repository, Actions: Read-only) and stored it in the macOS Keychain. The orchestrator then downloaded the job log through the API (`GET /repos/ne1r0n/clickhouse-kafka-connect/actions/jobs/114568815601/logs`, HTTP 200, 2817 lines). The token was never printed, written to a file or committed, and this executor did not use it. The text below is the log's own text, not a web-UI paste.
+
+Scratch files (untracked, `/tmp/gsd17/exec/`):
+
+```text
+job-114568815601.log   sha256 8e25a2e5a9d9605f9ae49179fabf7bf3a36c3da4874103891557db5a99f50eb6  (full raw log; begins with a UTF-8 BOM)
+setup-job.raw.txt      sha256 a1660e95327caf51dc575c2ef6e78bac78ddab7f91eee6570ba31d227c52cdd7  (log lines 1-35, "Current runner version" to "Complete job name", byte-identical to the log modulo the BOM)
+setup-job.txt          sha256 60797bddc7d915b4f2b4f620b00026ea058bf02ac9f6fd11ee1592a06bb7f721  (setup-job.raw.txt with the raw-log workflow-command markers removed, see below)
+job-summary.txt        sha256 3190c504ebc7deed61f92778d0169a93fc32dc639edc14432ede148ee62c2262
+```
+
+Marker normalization: the raw API log wraps each block in `##[group]<title>` and `##[endgroup]` lines, which the web UI renders as collapsible headings and never shows. The plan's checker looks for a bare `GITHUB_TOKEN Permissions` heading line (assumption A9: do not loosen the check). So `setup-job.txt` was derived once from `setup-job.raw.txt` with `sed` by deleting `##[endgroup]` lines and dropping the `##[group]` prefix, keeping every timestamp and every other character. `diff` shows only those marker lines changed (4 headings, 4 end markers). The check itself is unchanged.
+
+Job summary provenance: GitHub has no REST endpoint for the rendered Summary page, so `job-summary.txt` was reconstructed from the job log, not copied from the rendered page: the `### Test fork count` heading that the "Report test fork count" step writes to `GITHUB_STEP_SUMMARY` (step script in the log), the step's echoed message, and the `## Coverage Summary` block that `.github/scripts/jacoco_summary.py` prints in the "Generate coverage summary" step.
+
+Runner Image block, verbatim (log lines 16-20):
+
+```text
+Image: ubuntu-24.04
+Version: 20261004.327.1
+```
+
+Operating system lines: `Ubuntu`, `24.04.5`, `LTS`. Runner version `2.337.0`.
+
+GITHUB_TOKEN Permissions block, verbatim (exactly two lines):
+
+```text
+Contents: read
+Metadata: read
+```
+
+Download action repository lines, verbatim (one per action; all four SHAs are the ones pinned in `.github/workflows/tests.yaml`, E-02/E-03):
+
+```text
+Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Download action repository 'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6' (SHA:de7274f081f381c8f8158605e0321c36c376e2e6)
+Download action repository 'gradle/actions@3f5f9adaf7d9fecd50b5935e54106014257a94e6' (SHA:3f5f9adaf7d9fecd50b5935e54106014257a94e6)
+Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+```
+
+Job summary, verbatim lines (CI-14 and the coverage report). The first line of the summary is the heading `### Test fork count`, quoted inline here because a line-leading `### ` would split this entry for the plan's section scan; the rest follows verbatim:
+
+```text
+runner nproc=4, Gradle maxParallelForks=2 (read from the test task in build.gradle.kts)
+
+## Coverage Summary
+| Full suite | 84.7% | 84.5% | 75.4% |
+| Fork-changed classes | 88.3% | 87.3% | 80.8% |
+```
+
+Checks (the plan's verify block 1, run on the normalized file): `Image: ubuntu-24.04` present; permissions set equals `{Contents: read, Metadata: read}`; the four download lines name all four pinned SHAs; the summary holds `Test fork count`, `Gradle maxParallelForks=` and `Coverage Summary`.
+
+Timestamp: 2026-10-12T08:12Z
 
 Verdict: pass

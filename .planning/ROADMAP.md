@@ -157,7 +157,7 @@ CI-17's push follows the D-13 precedent:
 - never at the SHA `custom_build` already sits on
 - the scratch branch is deleted from `origin` once the run is green
 
-`test-head.yaml` runs on a nightly schedule from the default branch, `custom_build`. The effect of CI-16 on scheduled runs is therefore only observable after Phase 20 publishes it. This phase proves the fix statically.
+`test-head.yaml` is deleted (D-01) and CI-16 is proven statically. The fork's default branch is `main`, not `custom_build` (research F1), so no schedule on `custom_build` ever ran it and publishing the deletion changes no observable schedule.
 
 **Research flag**: DEBT-06 needs a short spike. It must confirm that `ProfileEvents['NetworkSendBytes']` against `result_bytes` can be read through client-v2 for the read's own query id. The fallback is the raw-HTTP LZ4 method-byte check from ARCHITECTURE.md. If neither works, narrow the test's claim; never leave "both legs" unbacked.
 
@@ -266,7 +266,11 @@ The approval gate runs orchestrator-inline. The upstream-sync merge-parent check
 
 The rollback point is the Phase 16 merge commit, which already carries the branch-only trigger. The `VERSION` anchor row moves in the bump commit. Docs must be inside the merged tree, written and reviewed before the gate, so nothing is stranded locally the way `505e4981` was. Refresh FORK-DELTA's raw numbers here only.
 
-After publication, check once that `test-head.yaml`'s nightly schedule no longer fails (CI-16, landed in Phase 17).
+Manual checks for the user, by hand, after publication (D-05, F1). No agent changes repository settings.
+
+- Whether Dependabot version updates are enabled in the fork's settings.
+- Which branch is the GitHub default: `main` at Phase 17; the user's intent is undecided (E-10). Dependabot (CI-15) and scheduled workflows read only the default branch.
+- There is no `test-head.yaml` nightly run to check, since CI-16 was proven statically in Phase 17.
 
 ## Structure Notes
 
@@ -275,7 +279,7 @@ After publication, check once that `test-head.yaml`'s nightly schedule no longer
 **Placement choices worth recording:**
 
 - **CI, build and test debt share one phase (17).** None of it touches `src/main`. CI-14 and DEBT-07 both edit `build.gradle.kts`, and DEBT-06/DEBT-07 are both lz4 test-infra items. The 2026-10-19 runner switch time-boxes the phase. DEBT-08 is a single test row in a file no other phase edits, so it rides here rather than forming its own phase. The research files disagreed on placement: PITFALLS put CI last before release, while ARCHITECTURE and SUMMARY put it early. The user's ordering and the runner deadline settle it as early.
-- **CI-17 is proven in Phase 17, not by the release run.** The release merge's run should not be the first run of the new workflow. CI-16 is the exception: its effect on the nightly schedule shows only once the file reaches the default branch, in Phase 20.
+- **CI-17 is proven in Phase 17, not by the release run.** The release merge's run should not be the first run of the new workflow. CI-16 is proven statically in Phase 17; the fork's default branch is `main`, so no schedule observes it (F1).
 - **JSONP-09 covers all three routes**, including RowBinary, per the user's scope decision. The skip stays inside the writer.
 - **DEBT-09 sits in Phase 19, not with the other debt.** IN-01..IN-05 are all about the WARN block that 999.1 narrows or deletes, and their disposition depends on the COLS-10 outcome.
 - **IN-07..IN-10 (PUB-05) ride the early publication** by user decision. They touch the same files, and the docs get their review before the gate.
