@@ -22,14 +22,17 @@ import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,16 +72,40 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
     private static final String QUERY_ID_PREFIX = "tm-";
     private static final String C1_DDL_TYPE = "Nullable(Tuple(a Int32, b String))";
     private static final String P1_DDL_TYPE = "Tuple(a Int32, b String)";
+    private static final String P2_DDL_TYPE = "Tuple(a Int32, n Tuple(d String, e Nullable(Int32)))";
+    // Unnamed elements, matched by 1-based position.
+    private static final String P6_DDL_TYPE = "Nullable(Tuple(Int32, Nullable(String)))";
+    // Backtick-quoted element names holding a space and a comma.
+    private static final String P8_DDL_TYPE = "Nullable(Tuple(`a b` Int32, `c,d` Nullable(String)))";
+    // The two characters backslash and n that fromJsonRow leaves for the server's escaped newline.
+    private static final String ESCAPED_NEWLINE = "\\n";
     private static final String PATH_SEPARATOR = ".";
     // Server error name when the bytes of a doubly flagged tuple run short of what the type reads.
     private static final String SERVER_CANNOT_READ_ALL_DATA = "CANNOT_READ_ALL_DATA";
     private static final String WRITER_NULL_INTO_NOT_NULLABLE = "An attempt to write null into not nullable column";
+    private static final String WRITER_NULL_ARRAY_ELEMENT =
+            "column 'c' (Array(Tuple(...))) element: null in non-nullable slot";
+    private static final String WRITER_NULL_MAP_VALUE =
+            "column 'c' (Map(STRING, Tuple(...))) map value: null in non-nullable slot";
 
-    /** One record of a cell: the Kafka value of column {@code c} and what a correct read-back shows. */
-    private record RowCase(int id, Object value, List<Cell> readBack) {}
+    /**
+     * One record of a cell: the Kafka value of column {@code c} and what a correct read-back shows.
+     * {@code declaredWriterRejects} is non-null only for a row the writer must refuse before any
+     * insert once the declared nullability is right; it holds a substring of the refusal message.
+     */
+    private record RowCase(int id, Object value, List<Cell> readBack, String declaredWriterRejects) {
 
-    /** The pinned outcome of one row put through today's DESCRIBE-derived mapping. */
-    private record Expect(Kind kind, List<String> causeSubstrings, List<Cell> observed) {
+        RowCase(int id, Object value, List<Cell> readBack) {
+            this(id, value, readBack, null);
+        }
+    }
+
+    /**
+     * The pinned outcome of one row put through today's DESCRIBE-derived mapping. {@code
+     * phantomRows} counts rows that appear in the table under ids no record of the cell carries
+     * (misaligned bytes read as further rows).
+     */
+    private record Expect(Kind kind, List<String> causeSubstrings, List<Cell> observed, int phantomRows) {
 
         enum Kind {
             ROUND_TRIPS,
@@ -87,22 +114,26 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         }
 
         static Expect roundTrips() {
-            return new Expect(Kind.ROUND_TRIPS, List.of(), List.of());
+            return new Expect(Kind.ROUND_TRIPS, List.of(), List.of(), 0);
         }
 
         static Expect fails(String... causeSubstrings) {
-            return new Expect(Kind.FAILS, List.of(causeSubstrings), List.of());
+            return new Expect(Kind.FAILS, List.of(causeSubstrings), List.of(), 0);
         }
 
         static Expect storesWrong(List<Cell> observed) {
-            return new Expect(Kind.STORES_WRONG, List.of(), observed);
+            return storesWrong(observed, 0);
+        }
+
+        static Expect storesWrong(List<Cell> observed, int phantomRows) {
+            return new Expect(Kind.STORES_WRONG, List.of(), observed, phantomRows);
         }
     }
 
     /**
      * One matrix cell. {@code declaredColumn} builds the hand-built root Column named by its argument,
-     * carrying the nullability the DDL declares; {@code currentOutcome} maps each row id to side
-     * (a)'s pinned expectation.
+     * carrying the nullability the DDL declares; {@code currentOutcome} maps each twin and row id to
+     * side (a)'s pinned expectation.
      */
     private record MatrixCell(
             String key,
@@ -111,7 +142,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
             Schema fieldSchema,
             Function<String, Column> declaredColumn,
             List<RowCase> rows,
-            Map<Integer, Expect> currentOutcome) {}
+            Map<Twin, Map<Integer, Expect>> currentOutcome) {}
 
     // ---- cells ----
 
@@ -125,6 +156,10 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
 
     private static Cell cell(String alias, String sqlExpression, String expected) {
         return new Cell(alias, sqlExpression, expected);
+    }
+
+    private static Map<Twin, Map<Integer, Expect>> onBothTwins(Map<Integer, Expect> outcome) {
+        return Map.of(Twin.PLAIN, outcome, Twin.DEFAULT, outcome);
     }
 
     /** C1 {@code Nullable(Tuple(a Int32, b String))}: the plain nullable tuple of ROADMAP criterion 1. */
@@ -143,9 +178,9 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                                 cell("c_a", "tupleElement(c, 'a')", "7"),
                                 cell("c_b", "tupleElement(c, 'b')", "x"))),
                 new RowCase(2, null, List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT))));
-        Map<Integer, Expect> currentOutcome = Map.of(
+        Map<Twin, Map<Integer, Expect>> currentOutcome = onBothTwins(Map.of(
                 1, Expect.fails(SERVER_CANNOT_READ_ALL_DATA),
-                2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE));
+                2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE)));
         return new MatrixCell(
                 "c1",
                 true,
@@ -162,8 +197,248 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                 currentOutcome);
     }
 
+    /** C2 {@code Nullable(Tuple(a Nullable(Int32), b String))}: a nullable element beside a plain one. */
+    private static MatrixCell c2() {
+        Schema fieldSchema = SchemaBuilder.struct()
+                .optional()
+                .field("a", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("b", Schema.STRING_SCHEMA)
+                .build();
+        List<RowCase> rows = List.of(
+                new RowCase(
+                        1,
+                        new Struct(fieldSchema).put("a", 5).put("b", "y"),
+                        List.of(
+                                cell("c_is_null", "isNull(c)", FALSE_TEXT),
+                                cell("c_a", "tupleElement(c, 'a')", "5"),
+                                cell("c_b", "tupleElement(c, 'b')", "y"))),
+                new RowCase(2, null, List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT))),
+                new RowCase(
+                        3,
+                        new Struct(fieldSchema).put("a", null).put("b", "z"),
+                        List.of(
+                                cell("c_is_null", "isNull(c)", FALSE_TEXT),
+                                cell("c_a_is_null", "isNull(tupleElement(c, 'a'))", TRUE_TEXT),
+                                cell("c_b", "tupleElement(c, 'b')", "z"))));
+        return new MatrixCell(
+                "c2",
+                true,
+                "Nullable(Tuple(a Nullable(Int32), b String))",
+                fieldSchema,
+                name -> Column.builder()
+                        .name(name)
+                        .type(Type.TUPLE)
+                        .isNullable(true)
+                        .tupleFields(List.of(
+                                element(name, "a", Type.INT32, true), element(name, "b", Type.STRING, false)))
+                        .build(),
+                rows,
+                Map.of(
+                        Twin.PLAIN,
+                        Map.of(
+                                // Misaligned bytes: a wrong row and a phantom second row, no failure.
+                                1,
+                                Expect.storesWrong(
+                                        List.of(
+                                                cell("c_is_null", "isNull(c)", FALSE_TEXT),
+                                                cell("c_a_is_null", "isNull(tupleElement(c, 'a'))", TRUE_TEXT),
+                                                cell("c_b", "tupleElement(c, 'b')", "")),
+                                        1),
+                                2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE),
+                                3, Expect.fails(SERVER_CANNOT_READ_ALL_DATA)),
+                        Twin.DEFAULT,
+                        Map.of(
+                                1, Expect.fails(SERVER_CANNOT_READ_ALL_DATA),
+                                2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE),
+                                3, Expect.fails(SERVER_CANNOT_READ_ALL_DATA))));
+    }
+
+    /** C3 {@code Array(Nullable(Tuple(a Int32, b Nullable(String))))}: a tuple as a nullable array element. */
+    private static MatrixCell c3() {
+        Schema elementSchema = SchemaBuilder.struct()
+                .optional()
+                .field("a", Schema.INT32_SCHEMA)
+                .field("b", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        Schema fieldSchema = SchemaBuilder.array(elementSchema).build();
+        List<RowCase> rows = List.of(
+                new RowCase(
+                        1,
+                        Arrays.asList(
+                                new Struct(elementSchema).put("a", 1).put("b", "p"),
+                                null,
+                                new Struct(elementSchema).put("a", 2).put("b", null)),
+                        List.of(
+                                cell("c_len", "length(c)", "3"),
+                                cell("c1_a", "tupleElement(c[1], 'a')", "1"),
+                                cell("c1_b", "tupleElement(c[1], 'b')", "p"),
+                                cell("c2_is_null", "isNull(c[2])", TRUE_TEXT),
+                                cell("c3_a", "tupleElement(c[3], 'a')", "2"),
+                                cell("c3_b_is_null", "isNull(tupleElement(c[3], 'b'))", TRUE_TEXT))),
+                new RowCase(2, List.of(), List.of(cell("c_len", "length(c)", "0"))),
+                new RowCase(
+                        3,
+                        Arrays.asList((Struct) null),
+                        List.of(cell("c_len", "length(c)", "1"), cell("c1_is_null", "isNull(c[1])", TRUE_TEXT))));
+        return new MatrixCell(
+                "c3",
+                true,
+                "Array(Nullable(Tuple(a Int32, b Nullable(String))))",
+                fieldSchema,
+                name -> {
+                    Column tuple = Column.builder()
+                            .name(name)
+                            .type(Type.TUPLE)
+                            .isNullable(true)
+                            .tupleFields(List.of(
+                                    element(name, "a", Type.INT32, false), element(name, "b", Type.STRING, true)))
+                            .build();
+                    Column array =
+                            Column.builder().name(name).type(Type.ARRAY).arrayType(tuple).build();
+                    tuple.setParent(array);
+                    return array;
+                },
+                rows,
+                onBothTwins(Map.of(
+                        1, Expect.fails(WRITER_NULL_ARRAY_ELEMENT),
+                        2, Expect.roundTrips(),
+                        3, Expect.fails(WRITER_NULL_ARRAY_ELEMENT))));
+    }
+
+    /** X1 (informational) {@code Nullable(Tuple(a Int32))}: the single-field tuple. */
+    private static MatrixCell x1() {
+        Schema fieldSchema = SchemaBuilder.struct()
+                .optional()
+                .field("a", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
+        List<RowCase> rows = List.of(
+                new RowCase(
+                        1,
+                        new Struct(fieldSchema).put("a", 7),
+                        List.of(cell("c_is_null", "isNull(c)", FALSE_TEXT), cell("c_a", "tupleElement(c, 'a')", "7"))),
+                new RowCase(2, null, List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT))),
+                // The DDL declares `a` non-nullable, so no read-back exists: the declared writer refuses it.
+                new RowCase(3, new Struct(fieldSchema).put("a", null), List.of(), "tuple field 'a'"));
+        return new MatrixCell(
+                "x1",
+                false,
+                "Nullable(Tuple(a Int32))",
+                fieldSchema,
+                name -> Column.builder()
+                        .name(name)
+                        .type(Type.TUPLE)
+                        .isNullable(true)
+                        .tupleFields(List.of(element(name, "a", Type.INT32, false)))
+                        .build(),
+                rows,
+                onBothTwins(Map.of(
+                        1, Expect.roundTrips(),
+                        2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE),
+                        // The single field is read as the whole tuple: a NULL element lands as a NULL tuple.
+                        3, Expect.storesWrong(List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT))))));
+    }
+
+    /** X2 (informational) {@code Map(String, Nullable(Tuple(a Int32, b String)))}: a tuple as a map value. */
+    private static MatrixCell x2() {
+        Schema valueSchema = SchemaBuilder.struct()
+                .optional()
+                .field("a", Schema.INT32_SCHEMA)
+                .field("b", Schema.STRING_SCHEMA)
+                .build();
+        Schema fieldSchema = SchemaBuilder.map(Schema.STRING_SCHEMA, valueSchema).build();
+        Map<String, Struct> entries = new LinkedHashMap<>();
+        entries.put("k1", new Struct(valueSchema).put("a", 1).put("b", "m"));
+        entries.put("k2", null);
+        List<RowCase> rows = List.of(
+                new RowCase(
+                        1,
+                        entries,
+                        List.of(
+                                cell("c_len", "length(mapKeys(c))", "2"),
+                                cell("k1_a", "tupleElement(c['k1'], 'a')", "1"),
+                                cell("k1_b", "tupleElement(c['k1'], 'b')", "m"),
+                                cell("k2_is_null", "isNull(c['k2'])", TRUE_TEXT))),
+                new RowCase(2, new LinkedHashMap<String, Struct>(), List.of(cell("c_len", "length(mapKeys(c))", "0"))));
+        return new MatrixCell(
+                "x2",
+                false,
+                "Map(String, Nullable(Tuple(a Int32, b String)))",
+                fieldSchema,
+                name -> {
+                    String valueName = name + PATH_SEPARATOR + "values";
+                    Column value = Column.builder()
+                            .name(valueName)
+                            .type(Type.TUPLE)
+                            .isNullable(true)
+                            .tupleFields(List.of(
+                                    element(valueName, "a", Type.INT32, false),
+                                    element(valueName, "b", Type.STRING, false)))
+                            .build();
+                    return Column.builder()
+                            .name(name)
+                            .type(Type.MAP)
+                            .mapKeyType(Type.STRING)
+                            .mapValueType(value)
+                            .build();
+                },
+                rows,
+                onBothTwins(Map.of(
+                        1, Expect.fails(WRITER_NULL_MAP_VALUE),
+                        2, Expect.roundTrips())));
+    }
+
+    /** X3 (informational) {@code Nullable(Tuple(a Int32, n Tuple(d String, e Nullable(Int32))))}: a tuple in a tuple. */
+    private static MatrixCell x3() {
+        Schema innerSchema = SchemaBuilder.struct()
+                .field("d", Schema.STRING_SCHEMA)
+                .field("e", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
+        Schema fieldSchema = SchemaBuilder.struct()
+                .optional()
+                .field("a", Schema.INT32_SCHEMA)
+                .field("n", innerSchema)
+                .build();
+        List<RowCase> rows = List.of(
+                new RowCase(
+                        1,
+                        new Struct(fieldSchema)
+                                .put("a", 1)
+                                .put("n", new Struct(innerSchema).put("d", "q").put("e", null)),
+                        List.of(
+                                cell("c_a", "tupleElement(c, 'a')", "1"),
+                                cell("n_d", "tupleElement(tupleElement(c, 'n'), 'd')", "q"),
+                                cell("n_e_is_null", "isNull(tupleElement(tupleElement(c, 'n'), 'e'))", TRUE_TEXT))),
+                new RowCase(2, null, List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT))));
+        return new MatrixCell(
+                "x3",
+                false,
+                "Nullable(Tuple(a Int32, n Tuple(d String, e Nullable(Int32))))",
+                fieldSchema,
+                name -> {
+                    String innerName = name + PATH_SEPARATOR + "n";
+                    Column inner = Column.builder()
+                            .name(innerName)
+                            .type(Type.TUPLE)
+                            .tupleFields(List.of(
+                                    element(innerName, "d", Type.STRING, false),
+                                    element(innerName, "e", Type.INT32, true)))
+                            .build();
+                    return Column.builder()
+                            .name(name)
+                            .type(Type.TUPLE)
+                            .isNullable(true)
+                            .tupleFields(List.of(element(name, "a", Type.INT32, false), inner))
+                            .build();
+                },
+                rows,
+                onBothTwins(Map.of(
+                        1, Expect.fails(SERVER_CANNOT_READ_ALL_DATA),
+                        2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE))));
+    }
+
+    /** Deciding cells first, then the informational extras. */
     private static List<MatrixCell> cells() {
-        return List.of(c1());
+        return List.of(c1(), c2(), c3(), x1(), x2(), x3());
     }
 
     static Stream<Arguments> cellTwins() {
@@ -237,6 +512,40 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         return writer.captures().get(0);
     }
 
+    /** Rows in the table whose id belongs to no record of the cell. */
+    private static int phantomRowCount(ClickHouseHelperClient chc, String tableName, MatrixCell matrixCell)
+            throws Exception {
+        String ids = matrixCell.rows().stream()
+                .map(row -> String.valueOf(row.id()))
+                .collect(Collectors.joining(","));
+        String count = RowSnapshots.select(
+                        chc,
+                        "SELECT count() AS n FROM " + tableName + " WHERE id NOT IN (" + ids + ")",
+                        "n")
+                .get(0)
+                .get("n");
+        return Integer.parseInt(count);
+    }
+
+    /** The declared writer must refuse the row before any insert reaches the capture seam. */
+    private static void assertWriterRejects(
+            Table table, ClickHouseSinkConfig config, List<SinkRecord> records, RowCase row) {
+        CapturingClickHouseWriter writer = new CapturingClickHouseWriter(table, config);
+        RuntimeException failure = assertThrows(
+                RuntimeException.class,
+                () -> writer.doInsert(
+                        CapturingClickHouseWriter.convertAll(records),
+                        new QueryIdentifier(table.getCleanName(), 0, row.id(), row.id(), QUERY_ID_PREFIX + "rejects")));
+        boolean refused = false;
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            refused |= cause instanceof DataException
+                    && cause.getMessage() != null
+                    && cause.getMessage().contains(row.declaredWriterRejects());
+        }
+        assertTrue(refused, "expected a DataException naming '" + row.declaredWriterRejects() + "' in: " + failure);
+        assertEquals(List.of(), writer.captures(), "a refused row must not reach the insert");
+    }
+
     // ---- tests ----
 
     @ParameterizedTest(name = "COLS-09 side (a) {0}")
@@ -266,7 +575,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
             }
             for (RowCase row : matrixCell.rows()) {
                 List<SinkRecord> records = sinkRecords(tableName, matrixCell, List.of(row));
-                Expect expect = matrixCell.currentOutcome().get(row.id());
+                Expect expect = matrixCell.currentOutcome().get(twin).get(row.id());
                 assertNotNull(expect, "no pinned outcome for row id=" + row.id());
                 switch (expect.kind()) {
                     case ROUND_TRIPS -> {
@@ -278,7 +587,12 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                             props, records, chc, tableName, expect.causeSubstrings().toArray(new String[0]));
                     case STORES_WRONG -> {
                         NullableRoundTrip.putAndStop(props, records);
-                        NullableRoundTrip.selectAndAssert(chc, tableName, row.id(), expect.observed());
+                        NullableRoundTrip.selectAndAssert(
+                                chc, tableName, row.id(), withDefaultColumn(expect.observed(), twin));
+                        assertEquals(
+                                expect.phantomRows(),
+                                phantomRowCount(chc, tableName, matrixCell),
+                                "rows under ids no record of the cell carries");
                     }
                 }
             }
@@ -298,16 +612,22 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         try {
             Table table = handBuiltTable(
                     chc.getDatabase(), tableName, twin, matrixCell.declaredColumn().apply(CELL_COLUMN));
-            CapturingClickHouseWriter.Capture capture = captureBatch(
-                    table,
-                    new ClickHouseSinkConfig(getBaseProps()),
-                    sinkRecords(tableName, matrixCell, matrixCell.rows()),
-                    matrixCell.key());
+            ClickHouseSinkConfig config = new ClickHouseSinkConfig(getBaseProps());
+            List<RowCase> accepted = matrixCell.rows().stream()
+                    .filter(row -> row.declaredWriterRejects() == null)
+                    .toList();
+            CapturingClickHouseWriter.Capture capture =
+                    captureBatch(table, config, sinkRecords(tableName, matrixCell, accepted), matrixCell.key());
             assertEquals(twin.hasDefaults(), capture.supportDefaults(), "the writer must take the twin's format");
             NullableRoundTrip.insertCaptured(chc, tableName, capture);
-            for (RowCase row : matrixCell.rows()) {
+            for (RowCase row : accepted) {
                 NullableRoundTrip.selectAndAssert(
                         chc, tableName, row.id(), withDefaultColumn(row.readBack(), twin));
+            }
+            for (RowCase row : matrixCell.rows()) {
+                if (row.declaredWriterRejects() != null) {
+                    assertWriterRejects(table, config, sinkRecords(tableName, matrixCell, List.of(row)), row);
+                }
             }
         } finally {
             ClickHouseTestHelpers.dropTable(chc, tableName);
@@ -368,6 +688,14 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         }
     }
 
+    private static Map<String, Boolean> nullability(Object... pathsAndFlags) {
+        Map<String, Boolean> expected = new LinkedHashMap<>();
+        for (int i = 0; i < pathsAndFlags.length; i += 2) {
+            expected.put((String) pathsAndFlags[i], (Boolean) pathsAndFlags[i + 1]);
+        }
+        return expected;
+    }
+
     @Test
     @DisplayName(
             "COLS-09 approach: declared Tuple types parse with ClickHouseColumn.of after normalisation and carry the DDL's element nullability")
@@ -375,13 +703,34 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
         String tableName = createTopicName(TABLE_PREFIX + "approach");
         ClickHouseTestHelpers.dropTable(chc, tableName);
+        // Root column -> DDL type, then the nullability the DDL declares for every node of that type.
+        Map<String, String> ddlTypes = new LinkedHashMap<>();
         Map<String, Map<String, Boolean>> expected = new LinkedHashMap<>();
-        expected.put("c1", Map.of("c1", true, "c1.a", false, "c1.b", false));
-        expected.put("p1", Map.of("p1", false, "p1.a", false, "p1.b", false));
-        NullableRoundTrip.createTable(
-                chc, tableName, Twin.PLAIN.ddl("c1 " + C1_DDL_TYPE + ", p1 " + P1_DDL_TYPE));
+        for (MatrixCell matrixCell : cells()) {
+            ddlTypes.put(matrixCell.key(), matrixCell.ddlType());
+        }
+        expected.put("c1", nullability("c1", true, "c1.a", false, "c1.b", false));
+        expected.put("c2", nullability("c2", true, "c2.a", true, "c2.b", false));
+        expected.put("c3", nullability("c3", false, "c3.1", true, "c3.1.a", false, "c3.1.b", true));
+        expected.put("x1", nullability("x1", true, "x1.a", false));
+        expected.put("x2", nullability("x2", false, "x2.1", false, "x2.2", true, "x2.2.a", false, "x2.2.b", false));
+        expected.put(
+                "x3", nullability("x3", true, "x3.a", false, "x3.n", false, "x3.n.d", false, "x3.n.e", true));
+        ddlTypes.put("p1", P1_DDL_TYPE);
+        expected.put("p1", nullability("p1", false, "p1.a", false, "p1.b", false));
+        ddlTypes.put("p2", P2_DDL_TYPE);
+        expected.put("p2", nullability("p2", false, "p2.a", false, "p2.n", false, "p2.n.d", false, "p2.n.e", true));
+        ddlTypes.put("p6", P6_DDL_TYPE);
+        expected.put("p6", nullability("p6", true, "p6.1", false, "p6.2", true));
+        ddlTypes.put("p8", P8_DDL_TYPE);
+        expected.put("p8", nullability("p8", true, "p8.a b", false, "p8.c,d", true));
+        String columnsDdl = ddlTypes.entrySet().stream()
+                .map(entry -> entry.getKey() + " " + entry.getValue())
+                .collect(Collectors.joining(", "));
+        NullableRoundTrip.createTable(chc, tableName, Twin.PLAIN.ddl(columnsDdl));
         try {
             Map<String, Map<String, Boolean>> parsed = new LinkedHashMap<>();
+            Map<String, String> rawTypes = new LinkedHashMap<>();
             for (ClickHouseFieldDescriptor row : NullableRoundTrip.describeRows(chc, tableName)) {
                 if (row.isSubcolumn() || !expected.containsKey(row.getName())) {
                     continue;
@@ -393,11 +742,17 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                         row.getName(),
                         row.getType(),
                         normalised);
+                rawTypes.put(row.getName(), row.getType());
                 Map<String, Boolean> flat = new LinkedHashMap<>();
                 flatten(row.getName(), ClickHouseColumn.of(row.getName(), normalised), flat);
                 parsed.put(row.getName(), flat);
             }
             assertEquals(expected, parsed, "parsed declared nullability must equal the DDL's");
+            for (String multiLine : List.of("p1", "p2")) {
+                assertTrue(
+                        rawTypes.get(multiLine).contains(ESCAPED_NEWLINE),
+                        "the non-nullable " + multiLine + " must reach the parser as the escaped multi-line form");
+            }
         } finally {
             ClickHouseTestHelpers.dropTable(chc, tableName);
         }
