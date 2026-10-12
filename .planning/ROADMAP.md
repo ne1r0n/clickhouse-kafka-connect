@@ -176,7 +176,17 @@ CI-17's push follows the D-13 precedent:
   3. An exception with a null message that reaches `ClickHouseWriter`'s error path surfaces as itself, not as a `NullPointerException`. Retriable vs non-retriable classification is unchanged. A Docker-free test pins both.
   4. An unparseable `DateTime` or `DateTime64` string logs the column name, the ClickHouse and Kafka types, the exception class and the value length. A log-capture test proves the raw value appears neither directly nor through the parse exception's message. `docs/FORK-DELTA.md` has a row for this patch to upstream-identical lines.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 18-01-PLAN.md — Tracer: null-safe failure-message lookup in `doInsertRawBinary`, pinned Docker-free and through `put()` (WRT-11, D-06/D-07); `Utils.handleException` null-message IOException guard (D-05); the column-naming `DataException` for a missing non-nullable value, flat and `Array(Tuple)`, ERROR line dropped (WRT-10, D-10/D-11). Three commits, each with its anchors, FORK-DELTA and ledger rows
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 18-02-PLAN.md — Tracer: `LogCapture` helper and masked DateTime/DateTime64 parse logs plus the column-naming conversion exception (WRT-12, D-08/D-12); throwable-free generic write-failure log with the rethrow residual recorded in FORK-DELTA and backlog 999.3 (D-09)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 18-03-PLAN.md — Tracer: one shared empty-CDC skip in both serialization loops, proven live on RowBinary (JSONP-09); bypass, explicit and plain-table routes live on V1/V2; Docker-free byte-identity, log-line and exactly-once state pins; phase gate (cache-busted full suite on `latest` x V2, `verify-merge-invariants.sh 54e63648 HEAD`)
 
 **Note**: All four items edit `ClickHouseWriter.java`, a high-risk file (AGENTS.md), in disjoint regions. Land them as separate commits.
 
