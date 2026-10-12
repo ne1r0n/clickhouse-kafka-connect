@@ -66,3 +66,5 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Error p
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT	2	WRT-12
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WRITE_VALUE_FAILURE_LOG_FORMAT	2	WRT-12
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	of type " + columnType, e);	0	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	skipEmptyCdcRecord(	3	JSONP-09
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]	1	JSONP-09

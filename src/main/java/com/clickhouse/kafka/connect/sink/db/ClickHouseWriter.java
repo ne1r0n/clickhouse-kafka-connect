@@ -1281,6 +1281,33 @@ public class ClickHouseWriter implements DBWriter {
 
     }
 
+    private static final String SKIP_EMPTY_CDC_LOG_FORMAT = "Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]";
+
+    /**
+     * Decides whether a Debezium record is left out of the insert body on every write route.
+     * op=t and a null before/after struct convert to an empty value map, which would otherwise
+     * land as an all-defaults row (or fail the batch on a table without defaults).
+     *
+     * <p>A pure function of the record, so a retried batch serializes byte-identically. It runs
+     * before field cleanup: a record whose fields are all unknown is not empty and still writes a
+     * defaults-only row. Records are never filtered before the writer, so offsets, exactly-once
+     * state and the dedup token cover the whole batch.
+     */
+    private static boolean skipEmptyCdcRecord(Record record) {
+        if (record.getSchemaType() != SchemaType.DEBEZIUM_CDC) {
+            return false;
+        }
+        Map<String, Data> values = record.getJsonMap();
+        if (values != null && !values.isEmpty()) {
+            return false;
+        }
+        LOGGER.debug(SKIP_EMPTY_CDC_LOG_FORMAT,
+                record.getTopic(),
+                record.getRecordOffsetContainer().getPartition(),
+                record.getRecordOffsetContainer().getOffset());
+        return true;
+    }
+
     /**
      * Serializes records into the given stream in RowBinary(WithDefaults) format.
      * Shared by the V1 and V2 raw binary insert paths.
@@ -1291,6 +1318,9 @@ public class ClickHouseWriter implements DBWriter {
         long pushStreamTime = 0;
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
+                if (skipEmptyCdcRecord(record)) {
+                    continue;
+                }
                 for (Column col : table.getRootColumnsList()) {
                     LOGGER.debug("Writing column: {}", col.getName());
                     long beforePushStream = System.currentTimeMillis();
@@ -1372,6 +1402,9 @@ public class ClickHouseWriter implements DBWriter {
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
                 LOGGER.trace("Record: {}", record.getTopicAndPartition());
+                if (skipEmptyCdcRecord(record)) {
+                    continue;
+                }
 
                 long beforeSerialize;
                 byte[] bytes;
@@ -1379,15 +1412,6 @@ public class ClickHouseWriter implements DBWriter {
                     beforeSerialize = System.currentTimeMillis();
                     bytes = MetadataFreeJsonWriter.structRow((Struct) record.getSinkRecord().value());
                 } else if (metadataFree && record.getSchemaType() == SchemaType.DEBEZIUM_CDC) {
-                    // op=t and a null before/after struct convert to an empty map, which would
-                    // otherwise land as an all-defaults row.
-                    if (record.getJsonMap() == null || record.getJsonMap().isEmpty()) {
-                        LOGGER.debug("Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]",
-                                record.getTopic(),
-                                record.getRecordOffsetContainer().getPartition(),
-                                record.getRecordOffsetContainer().getOffset());
-                        continue;
-                    }
                     beforeSerialize = System.currentTimeMillis();
                     bytes = MetadataFreeJsonWriter.cdcRow(record.getJsonMap());
                 } else {
