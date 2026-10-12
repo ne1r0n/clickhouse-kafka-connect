@@ -5,11 +5,11 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 18
 current_phase_name: Writer Correctness
 status: planning
-stopped_at: Phase 17 complete, ready to plan Phase 18
-last_updated: "2026-10-12T08:31:51.190Z"
+stopped_at: Phase 18 context gathered
+last_updated: "2026-10-12T10:22:00.598Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 17 complete, transitioned to Phase 18
-state_head: d20f63c9dbc1c3e298a7bd044b38bf6813bbb384
+state_head: 15e7a73a2c2e0fee5bb90e1f61d2994103919fe1
 progress:
   total_phases: 5
   completed_phases: 2
@@ -184,9 +184,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T08:32:56.000Z
-Stopped at: Phase 17 complete, ready to plan Phase 18
-Resume file: None
+Last session: 2026-10-12T10:22:00.523Z
+Stopped at: Phase 18 context gathered
+Resume file: .planning/phases/18-writer-correctness/18-CONTEXT.md
 
 ## Operator Next Steps
 
