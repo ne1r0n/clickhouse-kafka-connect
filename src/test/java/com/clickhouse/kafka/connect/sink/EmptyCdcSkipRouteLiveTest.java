@@ -52,6 +52,26 @@ public class EmptyCdcSkipRouteLiveTest extends ClickHouseBase {
         assertRouteSkipsEmptyCdcRecords(testInfo, "jsonp09_rowbinary_defaults", Map.of(), DDL_DEFAULTS, true);
     }
 
+    @Test
+    @DisplayName("JSONP-09: bypassRowBinary JSON route lands only the real rows of a Debezium batch and accepts an all-empty batch")
+    void bypassJsonRouteSkipsEmptyCdcRecords(TestInfo testInfo) throws Exception {
+        assertRouteSkipsEmptyCdcRecords(
+                testInfo, "jsonp09_bypass", Map.of("bypassRowBinary", "true"), DDL_PLAIN, false);
+    }
+
+    @Test
+    @DisplayName("JSONP-09: explicit insertFormat=json route lands only the real rows of a Debezium batch and accepts an all-empty batch")
+    void explicitJsonRouteSkipsEmptyCdcRecords(TestInfo testInfo) throws Exception {
+        assertRouteSkipsEmptyCdcRecords(
+                testInfo, "jsonp09_explicit", Map.of(ClickHouseSinkConfig.INSERT_FORMAT, "json"), DDL_PLAIN, true);
+    }
+
+    @Test
+    @DisplayName("JSONP-09: RowBinary route on a plain non-null table lands the real rows of a Debezium batch instead of failing the whole batch")
+    void rowBinaryRouteOnPlainTableSkipsEmptyCdcRecords(TestInfo testInfo) throws Exception {
+        assertRouteSkipsEmptyCdcRecords(testInfo, "jsonp09_rowbinary_plain", Map.of(), DDL_PLAIN, true);
+    }
+
     private void assertRouteSkipsEmptyCdcRecords(
             TestInfo testInfo, String topicPrefix, Map<String, String> routeProps, String ddl, boolean assertTs)
             throws Exception {
