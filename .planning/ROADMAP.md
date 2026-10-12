@@ -59,7 +59,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
 **Milestone Goal:** Close all 11 follow-ups left open by `v1.7.0_gg1-sync`, getting the corrected rollout doc onto `origin` first, and publish `v1.7.0_gg2` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
 - [x] **Phase 16: Early Docs Publication** - Fix the 15-REVIEW docs findings and publish the corrected rollout doc to `custom_build` as a docs-only `--no-ff` merge, before any code work (completed 2026-10-11)
-- [ ] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed
+- [x] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed (completed 2026-10-12)
 - [ ] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data
 - [ ] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release
 - [ ] **Phase 20: Release & Publication** - `v1.7.0_gg2` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
@@ -130,7 +130,7 @@ Whether IN-10 corrects the published `1.7.0_gg1` CHANGELOG section in place or a
   4. The build prints no Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code unchanged. `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java`, pinned by a Docker-free test. `runtimeClasspath` and `integrationTestRuntimeClasspath` resolve exactly as before.
   5. `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion, and that assertion has been seen red with server-response compression disabled. `MetadataFreeJsonWriterTest` pins Debezium `NanoTimestamp` in mantissa-with-fraction scientific notation.
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -331,7 +331,7 @@ Manual checks for the user, by hand, after publication (D-05, F1). No agent chan
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
-| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | In Progress | - |
+| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
