@@ -436,4 +436,6 @@ Checks (the plan's verify block 1, run on the normalized file): `Image: ubuntu-2
 
 Timestamp: 2026-10-12T08:12Z
 
+A9 sign-off: the orchestrator showed the user the `##[group]`/`##[endgroup]` marker strip (a `diff` against `setup-job.raw.txt` shows no other change), and the user answered `approved`, verbatim, directly to the orchestrator at 2026-10-12T08:25:21Z.
+
 Verdict: pass
