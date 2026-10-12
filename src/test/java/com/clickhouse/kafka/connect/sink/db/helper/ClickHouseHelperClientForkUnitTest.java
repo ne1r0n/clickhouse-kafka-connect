@@ -6,13 +6,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
+import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
+import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -262,19 +269,88 @@ class ClickHouseHelperClientForkUnitTest {
         assertFalse(ClickHouseHelperClient.shouldSkipDescribeRow(newDescriptor(rowName, "Int32"), columns));
     }
 
-    @ParameterizedTest(name = "COLS-11: {0} is flagged")
-    @ValueSource(
-            strings = {
-                "Nullable(Tuple(a Int32))",
-                "Array(Nullable(Tuple(a Int32, b String)))"
-            })
-    @DisplayName("COLS-11: a raw type containing Nullable(Tuple( at any depth is flagged")
-    void nullableTupleTypesAreFlagged(String rawType) {
-        assertTrue(ClickHouseHelperClient.hasNullableTuple(rawType));
+    // ---- COLS-10 (D-11 flips): the discovery WARN is gone, the same inputs now assert the new truth ----
+
+    private static final String WARN_LEVEL = "WARN";
+
+    /**
+     * Discovery as {@code describeTableV2} runs it for the given rows: one Column per row, the raw
+     * type of each root row recorded, then {@code buildDescribedTable}.
+     */
+    private static Table discover(Map<String, String> declaredTypes, String... nameAndTypePairs) {
+        List<Column> columns = new ArrayList<>();
+        int numColumns = 0;
+        for (int i = 0; i < nameAndTypePairs.length; i += 2) {
+            ClickHouseFieldDescriptor descriptor = newDescriptor(nameAndTypePairs[i], nameAndTypePairs[i + 1]);
+            columns.add(Column.extractColumn(descriptor));
+            if (!descriptor.isSubcolumn()) {
+                numColumns++;
+            }
+        }
+        return ClickHouseHelperClient.buildDescribedTable("db", "t", false, columns, numColumns, declaredTypes);
     }
 
-    // COLS-08 flip (Phase 19, D-09/D-11): these four Enum types moved here from the flagged list because Column.extractColumn now carries Nullable for Enum8 and Enum16, so the discovery WARN names Tuple only.
-    @ParameterizedTest(name = "COLS-11: {0} is not flagged")
+    /** Discovery where every root row's own type is its declared type, as DESCRIBE reports it. */
+    private static Table discover(String... nameAndTypePairs) {
+        Map<String, String> declaredTypes = new HashMap<>();
+        for (int i = 0; i < nameAndTypePairs.length; i += 2) {
+            if (!nameAndTypePairs[i].contains(".")) {
+                declaredTypes.put(nameAndTypePairs[i], nameAndTypePairs[i + 1]);
+            }
+        }
+        return discover(declaredTypes, nameAndTypePairs);
+    }
+
+    private static int warnCount(LogCapture... captures) {
+        int count = 0;
+        for (LogCapture capture : captures) {
+            count += capture.events(WARN_LEVEL).size();
+        }
+        return count;
+    }
+
+    static Stream<Arguments> formerlyFlaggedTypes() {
+        return Stream.of(
+                Arguments.of(
+                        "Nullable(Tuple(a Int32))", false, new String[] {"c", "Nullable(Tuple(a Int32))", "c.a", "Nullable(Int32)"}),
+                Arguments.of(
+                        "Array(Nullable(Tuple(a Int32, b String)))",
+                        true,
+                        new String[] {
+                            "c", "Array(Nullable(Tuple(a Int32, b String)))",
+                            "c.a", "Array(Nullable(Int32))",
+                            "c.b", "Array(Nullable(String))"
+                        }));
+    }
+
+    // COLS-10 flip (D-11): this case asserted that these two raw types were flagged for the discovery
+    // WARN. The WARN was deleted with the Tuple fix (D-10); the inputs are kept and now assert that
+    // discovery stays silent and the Columns carry the declared nullability: the Tuple nullable, its
+    // elements not, although DESCRIBE reported the sub-columns as Nullable.
+    @ParameterizedTest(name = "COLS-10 (D-11 flip): {0} discovers with declared nullability and no warning")
+    @MethodSource("formerlyFlaggedTypes")
+    @DisplayName("COLS-10 (D-11 flip): formerly flagged Nullable(Tuple) types discover with declared nullability and no warning")
+    void formerlyFlaggedTupleTypesDiscoverWithDeclaredNullabilityAndNoWarning(
+            String rawType, boolean arrayWrapped, String[] rows) {
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            Column root = discover(rows).getRootColumnsMap().get("c");
+
+            assertEquals(0, warnCount(helperLog, nullabilityLog), rawType);
+            Column tuple = arrayWrapped ? root.getArrayType() : root;
+            assertEquals(Type.TUPLE, tuple.getType());
+            assertTrue(tuple.isNullable(), "the Tuple is declared Nullable");
+            assertFalse(tuple.getTupleFields().isEmpty());
+            for (Column field : tuple.getTupleFields()) {
+                assertFalse(field.isNullable(), field.getName() + " is declared non-nullable");
+            }
+        }
+    }
+
+    // COLS-10 flip (D-11): this case asserted that these ten raw types were not flagged. With the
+    // WARN gone the inputs are kept and assert that a root row alone discovers silently, with the
+    // root nullability exactly as Column.extractColumn gives it.
+    @ParameterizedTest(name = "COLS-10 (D-11 flip): {0} discovers without a warning")
     @ValueSource(
             strings = {
                 "Array(Nullable(Int32))",
@@ -288,42 +364,83 @@ class ClickHouseHelperClientForkUnitTest {
                 "Nullable(Enum8('z' = 1))",
                 "Tuple(a Nullable(Enum8('q' = 1)))"
             })
-    @DisplayName("COLS-11: nullable scalars, nullable Enum types and non-nullable Enum or Tuple types are not flagged")
-    void otherTypesAreNotFlagged(String rawType) {
-        assertFalse(ClickHouseHelperClient.hasNullableTuple(rawType));
+    @DisplayName("COLS-10 (D-11 flip): formerly unflagged types discover without a warning and keep the root nullability")
+    void otherTypesDiscoverWithoutWarningAndUnchangedRootNullability(String rawType) {
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            Column root = discover("c", rawType).getRootColumnsMap().get("c");
+
+            assertEquals(0, warnCount(helperLog, nullabilityLog), rawType);
+            assertEquals(
+                    Column.extractColumn(newDescriptor("c", rawType)).isNullable(), root.isNullable(), rawType);
+        }
     }
 
+    // COLS-10 flip (D-11): this case asserted that a null raw type is not flagged. The input is kept
+    // as a root with no declared type: discovery keeps the nullability DESCRIBE reported, logs
+    // nothing and does not throw.
     @Test
-    @DisplayName("D-02: a null raw type is not flagged")
-    void nullRawTypeIsNotFlagged() {
-        assertFalse(ClickHouseHelperClient.hasNullableTuple(null));
+    @DisplayName("COLS-10 (D-11 flip): a root with no declared type keeps the DESCRIBE nullability and logs nothing")
+    void missingDeclaredTypeKeepsDescribeNullabilityWithoutWarning() {
+        String[] rows = {"c", "Nullable(Tuple(a Int32))", "c.a", "Nullable(Int32)"};
+        Table reference = discover(Map.of("c", "Nullable(Tuple(a Int32))"), rows);
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            Column root = discover(new HashMap<>(), rows).getRootColumnsMap().get("c");
+
+            assertEquals(0, helperLog.events().size() + nullabilityLog.events().size());
+            assertTrue(root.isNullable(), "extractColumn carries the Tuple's Nullable");
+            assertEquals(1, root.getTupleFields().size());
+            assertTrue(
+                    root.getTupleFields().get(0).isNullable(),
+                    "the element keeps the Nullable DESCRIBE reported, since no declared type was recorded");
+            assertFalse(
+                    reference.getRootColumnsMap().get("c").getTupleFields().get(0).isNullable(),
+                    "control: with the declared type the same element is non-nullable");
+        }
     }
 
+    // COLS-10 flip (D-11): this case asserted a once-per-column-and-type dedup of the WARN. There is
+    // no WARN left to dedup; the three identical inputs now assert that repeated discovery of the
+    // same table, and of the same column with another type, never warns and always maps the Tuple
+    // nullable.
     @Test
-    @DisplayName("D-02: the warning fires once per database, table, column and raw type, and again when the raw type changes")
-    void warnOnceDedupesPerColumnAndRawType() {
-        String table = "d02_" + UUID.randomUUID();
+    @DisplayName("COLS-10 (D-11 flip): repeated discovery never warns")
+    void repeatedDiscoveryNeverWarns() {
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            for (String rawType : new String[] {
+                "Nullable(Tuple(a Int32))", "Nullable(Tuple(a Int32))", "Nullable(Tuple(a Int64))"
+            }) {
+                Column root = discover("t", rawType).getRootColumnsMap().get("t");
+                assertTrue(root.isNullable(), rawType);
+            }
 
-        // D-11 flip: inputs retargeted from Enum to Tuple (Enum no longer warns), same dedup contract.
-        assertTrue(ClickHouseHelperClient.warnOnceIfNullableTuple(
-                "db", table, newDescriptor("t", "Nullable(Tuple(a Int32))")));
-        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
-                "db", table, newDescriptor("t", "Nullable(Tuple(a Int32))")));
-        assertTrue(ClickHouseHelperClient.warnOnceIfNullableTuple(
-                "db", table, newDescriptor("t", "Nullable(Tuple(a Int64))")));
+            assertEquals(0, warnCount(helperLog, nullabilityLog));
+        }
     }
 
+    // COLS-10 flip (D-11): this case asserted that sub-column rows and unflagged roots never warn.
+    // The rows are kept; it now asserts the same silence and the declared nullability of the map
+    // value Tuple and of the Enum root.
     @Test
-    @DisplayName("D-02: sub-column rows and root columns with an unflagged type never warn")
-    void subColumnsAndUnflaggedTypesNeverWarn() {
-        String table = "d02_" + UUID.randomUUID();
+    @DisplayName("COLS-10 (D-11 flip): sub-column rows never warn and the map value Tuple takes its declared nullability")
+    void subColumnRowsNeverWarn() {
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            Table table = discover(
+                    "m", "Map(String, Nullable(Tuple(a Int32)))",
+                    "m.values", "Array(Nullable(Tuple(a Int32)))",
+                    "m.values.a", "Array(Nullable(Int32))",
+                    "n", "Array(Nullable(Int32))",
+                    "e", "Nullable(Enum8('a' = 1))");
 
-        // D-11 flip: the sub-column is now of a Tuple type, which the predicate does flag at the root.
-        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
-                "db", table, newDescriptor("m.values", "Array(Nullable(Tuple(a Int32)))")));
-        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
-                "db", table, newDescriptor("n", "Array(Nullable(Int32))")));
-        assertFalse(ClickHouseHelperClient.warnOnceIfNullableTuple(
-                "db", table, newDescriptor("e", "Nullable(Enum8('a' = 1))")));
+            assertEquals(0, warnCount(helperLog, nullabilityLog));
+            Column valueTuple = table.getRootColumnsMap().get("m").getMapValueType();
+            assertTrue(valueTuple.isNullable(), "the map value is a declared Nullable(Tuple)");
+            assertEquals(1, valueTuple.getTupleFields().size());
+            assertFalse(valueTuple.getTupleFields().get(0).isNullable());
+            assertTrue(table.getRootColumnsMap().get("e").isNullable());
+        }
     }
 }

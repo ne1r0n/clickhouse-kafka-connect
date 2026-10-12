@@ -25,6 +25,7 @@ import com.clickhouse.data.ClickHouseValue;
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.Version;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,7 +40,6 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
@@ -487,43 +487,29 @@ public class ClickHouseHelperClient implements AutoCloseable {
         return false;
     }
 
-    private static final Pattern NULLABLE_TUPLE = Pattern.compile("Nullable\\(Tuple\\(");
-
-    private static final String NULLABLE_TUPLE_WARNING = "Column {}.{}.{} has type {}, which contains "
-            + "Nullable(Tuple(...)). The connector writes such slots without their null marker, so values in "
-            + "that slot may be stored as NULL or shifted with no error, and a null entry fails the batch with "
-            + "DataException. See Known costs in docs/FORK-DELTA.md (backlog 999.1).";
-
-    // Process-wide so every task and every table-mapping refresh cycle warns once per column.
-    private static final Set<String> WARNED_NULLABLE_TUPLE = ConcurrentHashMap.newKeySet();
-
     /**
-     * True when the raw DESCRIBE type contains {@code Nullable(Tuple(} at any depth. It reads the raw
-     * string because {@link Column#extractColumn} drops exactly this nullability. Nullable Enum8 and
-     * Enum16 types are not flagged: since COLS-08 the Enum branch carries their nullability.
-     */
-    static boolean hasNullableTuple(String rawType) {
-        return rawType != null && NULLABLE_TUPLE.matcher(rawType).find();
-    }
-
-    /**
-     * Logs one WARN per database, table, column and raw type for a root column that {@link
-     * #hasNullableTuple} flags. Carries catalog metadata only, never record data.
+     * Builds the {@link Table} for one DESCRIBE pass, then takes the nullability of every root column
+     * that contains a Tuple from its declared type (COLS-10). It runs once per DESCRIBE, before the
+     * Table is published and never per record, so a retried batch sees the same Table as the first
+     * attempt. The Table itself is upstream-identical.
      *
-     * @return true when this call logged the warning
+     * @param declaredTypes the raw DESCRIBE type of each root column, keyed by column name; a root
+     *     with no entry keeps the nullability DESCRIBE reported for it
      */
-    static boolean warnOnceIfNullableTuple(
-            String database, String tableName, ClickHouseFieldDescriptor fieldDescriptor) {
-        String rawType = fieldDescriptor.getType();
-        if (fieldDescriptor.isSubcolumn() || !hasNullableTuple(rawType)) {
-            return false;
+    static Table buildDescribedTable(
+            String database,
+            String tableName,
+            boolean hasDefaults,
+            List<Column> columns,
+            int numColumns,
+            Map<String, String> declaredTypes) {
+        Table table = new Table(database, tableName, hasDefaults, columns, numColumns);
+        for (Column root : table.getRootColumnsList()) {
+            if (DeclaredNullability.containsTuple(root)) {
+                DeclaredNullability.apply(root, declaredTypes.get(root.getName()));
+            }
         }
-        String name = fieldDescriptor.getName();
-        if (!WARNED_NULLABLE_TUPLE.add(database + "." + tableName + "." + name + ":" + rawType)) {
-            return false;
-        }
-        LOGGER.warn(NULLABLE_TUPLE_WARNING, database, tableName, name, rawType);
-        return true;
+        return table;
     }
 
     public Table describeTableV1(String database, String tableName) {
@@ -547,6 +533,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
             int numColumns = 0;
             List<Column> columns = new ArrayList<>();
             Map<String, Column> columnsByName = new HashMap<>();
+            Map<String, String> declaredTypes = new HashMap<>();
             for (ClickHouseRecord r : response.records()) {
                 ClickHouseValue v = r.getValue(0);
 
@@ -576,7 +563,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
                     continue;
                 }
 
-                warnOnceIfNullableTuple(database, tableName, fieldDescriptor);
+                if (!fieldDescriptor.isSubcolumn()) {
+                    declaredTypes.put(fieldDescriptor.getName(), fieldDescriptor.getType());
+                }
 
                 if (fieldDescriptor.hasDefault()) {
                     hasDefaults = true;
@@ -592,7 +581,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
                 columnsByName.put(column.getName(), column);
             }
 
-            return new Table(database, tableName, hasDefaults, columns, numColumns);
+            return buildDescribedTable(database, tableName, hasDefaults, columns, numColumns, declaredTypes);
         } catch (ClickHouseException | JsonProcessingException e) {
             LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
             return null;
@@ -615,6 +604,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
             int numColumns = 0;
             List<Column> columns = new ArrayList<>();
             Map<String, Column> columnsByName = new HashMap<>();
+            Map<String, String> declaredTypes = new HashMap<>();
             try (QueryResponse queryResponse = client.query(describeQuery, settings).get();
                  InputStream describeStream = queryResponse.getInputStream();
                  BufferedReader br = new BufferedReader(new InputStreamReader(describeStream, StandardCharsets.UTF_8))) {
@@ -647,7 +637,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
                         continue;
                     }
 
-                    warnOnceIfNullableTuple(database, tableName, fieldDescriptor);
+                    if (!fieldDescriptor.isSubcolumn()) {
+                        declaredTypes.put(fieldDescriptor.getName(), fieldDescriptor.getType());
+                    }
 
                     if (fieldDescriptor.hasDefault()) {
                         hasDefaults = true;
@@ -663,7 +655,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
                     columnsByName.put(column.getName(), column);
                 }
             }
-            return new Table(database, tableName, hasDefaults, columns, numColumns);
+            return buildDescribedTable(database, tableName, hasDefaults, columns, numColumns, declaredTypes);
         } catch (Exception e) {
             LOGGER.error("describeTableV2 failed", e);
             return null;

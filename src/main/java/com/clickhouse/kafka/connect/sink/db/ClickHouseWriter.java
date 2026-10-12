@@ -746,8 +746,8 @@ public class ClickHouseWriter implements DBWriter {
                     break;
                 case TUPLE:
                     if (value.getObject() == null) {
-                        // Column reports a Tuple non-nullable even for Nullable(Tuple(...)) (D-16),
-                        // so only a slot it does report nullable may take the marker (D-10).
+                        // A slot takes the null marker only when its Column reports it nullable (D-10);
+                        // since COLS-10 that flag follows the declared type, Nullable(Tuple(...)) included.
                         if (!col.isNullable()) {
                             throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_TUPLE));
                         }

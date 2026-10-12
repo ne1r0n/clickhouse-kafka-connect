@@ -45,11 +45,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * COLS-09 spike for backlog 999.1 (D-05..D-07): which {@code Nullable(Tuple(...))} shapes the
- * connector maps correctly. Side (a) pins what the DESCRIBE-derived mapping does today; side (b)
- * proves the unchanged writer round-trips once the declared element nullability is right. On go
- * (plan 19-04) side (a)'s expectations flip to round-trips and the class becomes COLS-10 coverage;
- * on no-go it stays as the record of what fails. Deciding cells are C1-C3, X cells are
+ * COLS-09 spike for backlog 999.1 (D-05..D-07), COLS-10 coverage since plan 19-04: which {@code
+ * Nullable(Tuple(...))} shapes the connector maps correctly. Since COLS-10 side (a) asserts that
+ * every deciding row (C1-C3) round-trips through the real sink task against the table as DESCRIBE
+ * describes it, and that the DESCRIBE-derived Column tree carries the same per-node nullability as
+ * the hand-built declared tree. The X cells are pinned as observed after the fix: X2 and X3
+ * round-trip, and X1's NULL element is refused with a DataException. Side (b) and the control stay
+ * as the byte-level evidence that the unchanged writer round-trips once the declared element
+ * nullability is right and fails when it is doubled. Deciding cells are C1-C3, X cells are
  * informational. The DDL deliberately sets no server setting.
  *
  * <p>Records hold synthetic ASCII literals only and the class logs catalog metadata (table key,
@@ -80,13 +83,8 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
     // The two characters backslash and n that fromJsonRow leaves for the server's escaped newline.
     private static final String ESCAPED_NEWLINE = "\\n";
     private static final String PATH_SEPARATOR = ".";
-    // Server error name when the bytes of a doubly flagged tuple run short of what the type reads.
-    private static final String SERVER_CANNOT_READ_ALL_DATA = "CANNOT_READ_ALL_DATA";
-    private static final String WRITER_NULL_INTO_NOT_NULLABLE = "An attempt to write null into not nullable column";
-    private static final String WRITER_NULL_ARRAY_ELEMENT =
-            "column 'c' (Array(Tuple(...))) element: null in non-nullable slot";
-    private static final String WRITER_NULL_MAP_VALUE =
-            "column 'c' (Map(STRING, Tuple(...))) map value: null in non-nullable slot";
+    private static final String ARRAY_ELEMENT_PATH = "[]";
+    private static final String MAP_VALUE_PATH = "{}";
 
     /**
      * One record of a cell: the Kafka value of column {@code c} and what a correct read-back shows.
@@ -178,9 +176,8 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                                 cell("c_a", "tupleElement(c, 'a')", "7"),
                                 cell("c_b", "tupleElement(c, 'b')", "x"))),
                 new RowCase(2, null, List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT))));
-        Map<Twin, Map<Integer, Expect>> currentOutcome = onBothTwins(Map.of(
-                1, Expect.fails(SERVER_CANNOT_READ_ALL_DATA),
-                2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE)));
+        Map<Twin, Map<Integer, Expect>> currentOutcome =
+                onBothTwins(Map.of(1, Expect.roundTrips(), 2, Expect.roundTrips()));
         return new MatrixCell(
                 "c1",
                 true,
@@ -233,24 +230,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                                 element(name, "a", Type.INT32, true), element(name, "b", Type.STRING, false)))
                         .build(),
                 rows,
-                Map.of(
-                        Twin.PLAIN,
-                        Map.of(
-                                // Misaligned bytes: a wrong row and a phantom second row, no failure.
-                                1,
-                                Expect.storesWrong(
-                                        List.of(
-                                                cell("c_is_null", "isNull(c)", FALSE_TEXT),
-                                                cell("c_a_is_null", "isNull(tupleElement(c, 'a'))", TRUE_TEXT),
-                                                cell("c_b", "tupleElement(c, 'b')", "")),
-                                        1),
-                                2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE),
-                                3, Expect.fails(SERVER_CANNOT_READ_ALL_DATA)),
-                        Twin.DEFAULT,
-                        Map.of(
-                                1, Expect.fails(SERVER_CANNOT_READ_ALL_DATA),
-                                2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE),
-                                3, Expect.fails(SERVER_CANNOT_READ_ALL_DATA))));
+                onBothTwins(Map.of(1, Expect.roundTrips(), 2, Expect.roundTrips(), 3, Expect.roundTrips())));
     }
 
     /** C3 {@code Array(Nullable(Tuple(a Int32, b Nullable(String))))}: a tuple as a nullable array element. */
@@ -299,10 +279,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                     return array;
                 },
                 rows,
-                onBothTwins(Map.of(
-                        1, Expect.fails(WRITER_NULL_ARRAY_ELEMENT),
-                        2, Expect.roundTrips(),
-                        3, Expect.fails(WRITER_NULL_ARRAY_ELEMENT))));
+                onBothTwins(Map.of(1, Expect.roundTrips(), 2, Expect.roundTrips(), 3, Expect.roundTrips())));
     }
 
     /** X1 (informational) {@code Nullable(Tuple(a Int32))}: the single-field tuple. */
@@ -333,9 +310,10 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                 rows,
                 onBothTwins(Map.of(
                         1, Expect.roundTrips(),
-                        2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE),
-                        // The single field is read as the whole tuple: a NULL element lands as a NULL tuple.
-                        3, Expect.storesWrong(List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT))))));
+                        2, Expect.roundTrips(),
+                        // Before COLS-10 a NULL `a` landed silently as a NULL tuple; the declared `a` is
+                        // non-nullable, so the writer now refuses the batch (ledger L-38).
+                        3, Expect.fails("tuple field 'a'"))));
     }
 
     /** X2 (informational) {@code Map(String, Nullable(Tuple(a Int32, b String)))}: a tuple as a map value. */
@@ -382,9 +360,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                             .build();
                 },
                 rows,
-                onBothTwins(Map.of(
-                        1, Expect.fails(WRITER_NULL_MAP_VALUE),
-                        2, Expect.roundTrips())));
+                onBothTwins(Map.of(1, Expect.roundTrips(), 2, Expect.roundTrips())));
     }
 
     /** X3 (informational) {@code Nullable(Tuple(a Int32, n Tuple(d String, e Nullable(Int32))))}: a tuple in a tuple. */
@@ -431,9 +407,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                             .build();
                 },
                 rows,
-                onBothTwins(Map.of(
-                        1, Expect.fails(SERVER_CANNOT_READ_ALL_DATA),
-                        2, Expect.fails(WRITER_NULL_INTO_NOT_NULLABLE))));
+                onBothTwins(Map.of(1, Expect.roundTrips(), 2, Expect.roundTrips())));
     }
 
     /** Deciding cells first, then the informational extras. */
@@ -546,6 +520,35 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         assertEquals(List.of(), writer.captures(), "a refused row must not reach the insert");
     }
 
+    /**
+     * Flattens a Column tree into {@code path -> isNullable}: tuple fields by the element name left
+     * after the tuple's own name, the array element and the map value by a fixed marker.
+     */
+    private static Map<String, Boolean> nullabilityByPath(String path, Column column) {
+        Map<String, Boolean> into = new LinkedHashMap<>();
+        collectNullability(path, column, into);
+        return into;
+    }
+
+    private static void collectNullability(String path, Column column, Map<String, Boolean> into) {
+        into.put(path, column.isNullable());
+        switch (column.getType()) {
+            case TUPLE -> {
+                for (Column field : column.getTupleFields()) {
+                    String element = field.getName().substring(column.getName().length() + 1);
+                    collectNullability(path + PATH_SEPARATOR + element, field, into);
+                }
+            }
+            case ARRAY -> collectNullability(path + ARRAY_ELEMENT_PATH, column.getArrayType(), into);
+            case MAP -> {
+                if (column.getMapValueType() != null) {
+                    collectNullability(path + MAP_VALUE_PATH, column.getMapValueType(), into);
+                }
+            }
+            default -> {}
+        }
+    }
+
     // ---- tests ----
 
     @ParameterizedTest(name = "COLS-09 side (a) {0}")
@@ -564,6 +567,14 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                     twin.hasDefaults(),
                     chc.describeTable(chc.getDatabase(), tableName).hasDefaults(),
                     "twin precondition: DESCRIBE must report a default exactly on the DEFAULT twin");
+            assertEquals(
+                    nullabilityByPath(CELL_COLUMN, matrixCell.declaredColumn().apply(CELL_COLUMN)),
+                    nullabilityByPath(
+                            CELL_COLUMN,
+                            chc.describeTable(chc.getDatabase(), tableName)
+                                    .getRootColumnsMap()
+                                    .get(CELL_COLUMN)),
+                    "COLS-10: the DESCRIBE-derived Column tree must carry the declared per-node nullability");
             for (ClickHouseFieldDescriptor row : NullableRoundTrip.describeRows(chc, tableName)) {
                 LOGGER.info(
                         "{} describe {} {} | {} | subcolumn={}",

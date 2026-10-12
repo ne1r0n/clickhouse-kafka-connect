@@ -12,9 +12,9 @@ import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkTask;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
-import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
 import com.clickhouse.kafka.connect.sink.helper.SchemalessTestData;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import java.util.Collection;
@@ -393,10 +393,13 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
         }
     }
 
-    // COLS-11 / D-11 flip (Phase 19): this pin used to expect a WARN for the Enum columns e and m. Column.extractColumn now carries Nullable for Enum8 and Enum16 (COLS-08), so those columns map correctly and no longer warn; the WARN stays for the Nullable(Tuple) column t.
+    // COLS-10 flip (D-11): this pin used to expect one WARN for the Nullable(Tuple) column t (and, before
+    // COLS-08, for the Enum columns e and m). The discovery WARN was deleted with the Tuple fix (D-10);
+    // the DDL is kept and the case now asserts that discovery logs no WARN for e, m and t and maps each
+    // to its declared nullability, the Tuple element of t included.
     @Test
-    @DisplayName("COLS-11 (D-11 flip): describeTable warns once for the Nullable(Tuple) column t and no longer for the Nullable(Enum8|Enum16) columns e and m, which map to nullable Columns")
-    void describeTableWarnsOnceForNullableTupleColumnsOnly() throws Exception {
+    @DisplayName("COLS-10 (D-11 flip): describeTable logs no Nullable warning and maps e, m and t to their declared nullability")
+    void describeTableNoLongerWarnsAndCarriesDeclaredNullability() throws Exception {
         String topic = createTopicName("d02_nullable_enum_tuple");
         createTable(chc, topic,
                 "CREATE TABLE %s ( `id` UInt32, `e` Nullable(Enum8('a' = 1)), "
@@ -404,55 +407,20 @@ class ClickHouseHelperClientForkLiveTest extends ClickHouseBase {
                         + "`n` Array(Nullable(Int32)) ) Engine = MergeTree ORDER BY id");
         try {
             Table table;
-            try (LogCapture capture = LogCapture.attach(ClickHouseHelperClient.class)) {
+            try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                    LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
                 table = chc.describeTable(chc.getDatabase(), topic);
                 assertNotNull(table);
-                List<LogCapture.CapturedEvent> warnings = capture.events("WARN");
-                List<LogCapture.CapturedEvent> tupleWarnings = warnings.stream()
-                        .filter(event -> event.message().contains("." + topic + ".t has type "))
-                        .collect(Collectors.toList());
-                assertEquals(1, tupleWarnings.size(), "exactly one WARN for the Nullable(Tuple) column t");
-                assertTrue(tupleWarnings.get(0).message().contains("Nullable(Tuple(...))"));
-                assertFalse(tupleWarnings.get(0).message().contains("Enum"), "the WARN text names Tuple only");
-                for (String enumColumn : List.of("e", "m")) {
-                    assertTrue(
-                            warnings.stream().noneMatch(
-                                    event -> event.message().contains("." + topic + "." + enumColumn + " has type ")),
-                            "no WARN for the Nullable(Enum) column " + enumColumn);
-                }
+                assertNotNull(chc.describeTable(chc.getDatabase(), topic), "a second describeTable still succeeds");
+                assertEquals(List.of(), helperLog.events("WARN"), "no discovery WARN from the helper client");
+                assertEquals(List.of(), nullabilityLog.events("WARN"), "no fallback WARN from the declared-nullability pass");
             }
             assertTrue(table.getRootColumnsMap().get("e").isNullable());
             assertTrue(table.getRootColumnsMap().get("m").getMapValueType().isNullable());
-
-            Map<String, String> rawTypes = new java.util.HashMap<>();
-            for (Map<String, String> row : RowSnapshots.select(
-                    chc,
-                    String.format(
-                            "SELECT name, type FROM system.columns WHERE database = '%s' AND table = '%s'",
-                            chc.getDatabase(), topic),
-                    "name",
-                    "type")) {
-                rawTypes.put(row.get("name"), row.get("type"));
-            }
-            String undescribedTable = topic + "_undescribed";
-            for (String column : List.of("e", "m", "t")) {
-                String rawType = rawTypes.get(column);
-                if (!"t".equals(column)) {
-                    assertFalse(ClickHouseHelperClient.hasNullableTuple(rawType), column + " raw type " + rawType);
-                    continue;
-                }
-                assertTrue(ClickHouseHelperClient.hasNullableTuple(rawType), column + " raw type " + rawType);
-                assertFalse(
-                        ClickHouseHelperClient.warnOnceIfNullableTuple(
-                                chc.getDatabase(), topic, ClickHouseTestHelpers.newDescriptor(column, rawType)),
-                        "describeTable did not register the warning for " + column);
-                assertTrue(
-                        ClickHouseHelperClient.warnOnceIfNullableTuple(
-                                chc.getDatabase(), undescribedTable, ClickHouseTestHelpers.newDescriptor(column, rawType)),
-                        "an undescribed table must still warn for " + column);
-            }
-
-            assertNotNull(chc.describeTable(chc.getDatabase(), topic), "a second describeTable still succeeds");
+            Column tuple = table.getRootColumnsMap().get("t").getArrayType();
+            assertTrue(tuple.isNullable(), "the array element is a declared Nullable(Tuple)");
+            assertEquals(1, tuple.getTupleFields().size());
+            assertFalse(tuple.getTupleFields().get(0).isNullable(), "t.a is declared non-nullable");
         } finally {
             ClickHouseTestHelpers.dropTable(chc, topic);
         }

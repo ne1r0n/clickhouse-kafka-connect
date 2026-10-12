@@ -413,9 +413,13 @@ public class NestedNullRowBinaryLiveTest extends ClickHouseBase {
         assertNestedNullFailure(ex, "c", "tuple field 'b'");
     }
 
+    // COLS-10 (D-16 flip): before COLS-10 Column.extractColumn dropped the Tuple's nullability, so this
+    // case asserted a DataException for the null element. The premise is inverted now that element
+    // nullability comes from the declared type: the same table and record write the null marker and
+    // read back as SQL NULL with the neighbour intact. The input is unchanged.
     @Test
-    @DisplayName("D-16: a null element in Array(Nullable(Tuple(a Int32))) now fails with a DataException, because Column reports the Tuple non-nullable")
-    void nullElementInArrayOfNullableTupleFailsWithDataException(TestInfo testInfo) throws Exception {
+    @DisplayName("COLS-10 (D-16 flip): a null element in Array(Nullable(Tuple(a Int32))) reads back as SQL NULL with its neighbour intact")
+    void nullElementInArrayOfNullableTupleReadsBackAsSqlNull(TestInfo testInfo) throws Exception {
         Schema elementSchema = SchemaBuilder.struct()
                 .optional()
                 .field("a", Schema.OPTIONAL_INT32_SCHEMA)
@@ -424,18 +428,33 @@ public class NestedNullRowBinaryLiveTest extends ClickHouseBase {
                 .field(ROW_ID_COLUMN, Schema.INT32_SCHEMA)
                 .field("at", SchemaBuilder.array(elementSchema).build())
                 .build();
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        String tableName = createTopicName("nested_null_array_tuple");
+        ClickHouseTestHelpers.dropTable(chc, tableName);
+        // Create the table BEFORE start() - ClickHouseWriter.start() fails against an empty database.
+        createTable(
+                chc,
+                tableName,
+                "CREATE TABLE %s (id UInt32, at Array(Nullable(Tuple(a Int32)))) ENGINE = MergeTree ORDER BY id");
+        props.put("name", uniqueConnectorName(testInfo));
+        try {
+            putAndStop(
+                    props,
+                    List.of(new SinkRecord(
+                            tableName, 0, null, null, schema,
+                            new Struct(schema)
+                                    .put(ROW_ID_COLUMN, 1)
+                                    .put("at", Arrays.asList(new Struct(elementSchema).put("a", 5), null)),
+                            1)));
 
-        RuntimeException ex = putExpectingFailure(
-                testInfo, "nested_null_array_tuple", "at Array(Nullable(Tuple(a Int32)))",
-                topic -> List.of(new SinkRecord(
-                        topic, 0, null, null, schema,
-                        new Struct(schema)
-                                .put(ROW_ID_COLUMN, 1)
-                                .put("at", Arrays.asList(new Struct(elementSchema).put("a", 5), null)),
-                        1)),
-                Map.of());
-
-        assertNestedNullFailure(ex, "at", "element");
+            selectAndAssert(chc, tableName, 1, List.of(
+                    new Cell("at_len", "length(at)", "2"),
+                    new Cell("at_first_a", "tupleElement(at[1], 'a')", "5"),
+                    new Cell("at_second_is_null", "isNull(at[2])", TRUE_TEXT)));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, tableName);
+        }
     }
 
     private static List<SinkRecord> tagsBatchWithNestedNullInLastRecord(String topic) {
