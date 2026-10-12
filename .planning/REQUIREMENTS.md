@@ -43,7 +43,7 @@
 - [x] **CI-14**: The "Test fork count" step reads the effective `maxParallelForks` from a Gradle task instead of recomputing the formula in shell (14-REVIEW WR-02)
 - [x] **CI-15**: `.github/dependabot.yml` includes the `github-actions` ecosystem so the SHA-pinned actions still get update PRs
 - [x] **CI-16**: `test-head.yaml` is fixed or disabled in the fork so no scheduled run fails because `tests.yaml` is not a reusable workflow
-- [ ] **CI-17**: One green CI run on a pushed SHA proves CI-11..CI-16 together — job summary, fork-count notice and both artifact uploads present
+- [x] **CI-17**: One green CI run on a pushed SHA proves CI-11..CI-16 together — job summary, fork-count notice and both artifact uploads present
 
 ### Release
 
@@ -94,7 +94,7 @@
 | CI-14 | Phase 17 | Complete |
 | CI-15 | Phase 17 | Complete |
 | CI-16 | Phase 17 | Complete |
-| CI-17 | Phase 17 | Pending |
+| CI-17 | Phase 17 | Complete |
 | ROLL-02 | Phase 20 | Pending |
 | PUB-07 | Phase 20 | Pending |
 | SUITE-05 | Phase 20 | Pending |

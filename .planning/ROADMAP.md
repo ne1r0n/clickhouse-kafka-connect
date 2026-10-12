@@ -130,7 +130,7 @@ Whether IN-10 corrects the published `1.7.0_gg1` CHANGELOG section in place or a
   4. The build prints no Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code unchanged. `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java`, pinned by a Docker-free test. `runtimeClasspath` and `integrationTestRuntimeClasspath` resolve exactly as before.
   5. `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion, and that assertion has been seen red with server-response compression disabled. `MetadataFreeJsonWriterTest` pins Debezium `NanoTimestamp` in mantissa-with-fraction scientific notation.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -143,7 +143,7 @@ Plans:
 - [x] 17-03-PLAN.md — D-10 local gate and measured bundle, blocking-human push decision (D-11, surfacing F1: default branch is `main`), then one branch-only push with its single green `tests.yaml` run read through the API and the scratch branch deleted (CI-17)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 17-04-PLAN.md — User-pasted "Set up job" and job summary as E-11 (CI-17, D-13); STATE and ROADMAP record the outcome and carry the Dependabot and default-branch checks to Phase 20 (D-05)
+- [x] 17-04-PLAN.md — User-pasted "Set up job" and job summary as E-11 (CI-17, D-13); STATE and ROADMAP record the outcome and carry the Dependabot and default-branch checks to Phase 20 (D-05)
 
 **Note**: This phase changes no `src/main` code, so it cannot regress connector behaviour. Files shared within the phase:
 - `tests.yaml` (CI-11..CI-14). The `timeout-minutes: 45` anchor in `fork-anchors.txt` must survive.
@@ -331,7 +331,7 @@ Manual checks for the user, by hand, after publication (D-05, F1). No agent chan
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
-| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 3/4 | In Progress | - |
+| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | In Progress | - |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |

@@ -4,17 +4,17 @@ milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 17
 current_phase_name: CI, Build & Test Hygiene
-status: executing
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-10-11T20:43:44.325Z"
+status: verifying
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-10-12T08:14:09.859Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 17 execution started
-state_head: 7e799308c3816390b475876af01e787a0372d110
+state_head: 640488956f28e4be59c6da9fe1472892470d858f
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 20
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-11 after Phase 16)
 
 Phase: 17 (CI, Build & Test Hygiene) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-11 — Phase 17 execution started
 
 Progress: [██░░░░░░░░] 20%
@@ -112,6 +112,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 17 P01 | 5 min | 3 tasks | 8 files |
 | Phase 17 P02 | 4 min | 3 tasks | 7 files |
 | Phase 17 P03 | 17 min | 3 tasks | 1 files |
+| Phase 17 P04 | 9 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,8 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 17]: 17-03: CI-17 proof push taken on the user's direct 'push' to the orchestrator; one green tests.yaml run 38172811430 on X=0c90d331, scratch branch deleted, origin heads/tags/custom_build unchanged — D-11 gate satisfied; push shape was one explicit refspec, no tag
 - [Phase 17]: 17-03: finding F1 (fork default branch is main) recorded as undecided; no repository setting changed; carried to Phase 20 operator checks — User gave no default-branch intent at the D-11 gate
 - [Phase 17]: 17-03: CI-17 left in progress; plan 17-04 also declares it and owns the web-UI items (runner image, token permissions, job summary) — requirements.ready-ids reported 0/1 ready (shared-ID gate)
+- [Phase 17]: CI-17 web-UI evidence (E-11) comes from the job log downloaded through the API with a user-created read-only token, not a web-UI paste; token never printed, written or committed — Job logs return 403 without a token; the user chose to create a one-repository Actions read-only token. Provenance is recorded in E-11 with file hashes and flagged for the verifier.
+- [Phase 17]: Default-branch intent stays undecided; Phase 20 operator checks list Dependabot enablement and the default branch (main at Phase 17) as manual checks — Research F1: the fork's default is main, so schedules and Dependabot read main. The user stated no intent (E-10) and D-05 forbids agent changes to repository settings.
 
 ### Pending Todos
 
@@ -178,8 +181,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T20:43:44.296Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-10-12T08:14:09.829Z
+Stopped at: Completed 17-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
