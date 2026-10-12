@@ -221,7 +221,7 @@ Phase gate: a cache-busted full suite on `latest` × V2, plus the anchors invari
   4. The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` each change in the same commit as the code they describe. The merge-invariant script passes at every commit in the phase.
   5. Each of 15-REVIEW IN-01..IN-05 is fixed, or closed with a written reason in the disposition file, consistently with the Tuple outcome.
 
-**Plans**: 5/6 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one)
+**Plans**: 6/6 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one)
 
 Plans:
 **Wave 1**
@@ -240,7 +240,7 @@ Plans:
 - [x] 19-05-PLAN.md — Tracer: route-qualified, record-keyed, text-pinned Tuple WARN (IN-01, IN-03, IN-04), Tuple Known cost in FORK-DELTA, 999.1 entry updated (COLS-10, D-12)
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 19-06-PLAN.md — DEBT-09: IN-01..IN-05 dispositioned per the outcome (D-12, D-13); phase gate (cache-busted testUnit plus two full runs on latest x V2, anchors invariant, scope)
+- [x] 19-06-PLAN.md — DEBT-09: IN-01..IN-05 dispositioned per the outcome (D-12, D-13); phase gate (cache-busted testUnit plus two full runs on latest x V2, anchors invariant, scope)
 
 **Note**: Order inside the phase:
 1. Spike (COLS-09).
@@ -374,7 +374,7 @@ Plans:
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
-| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 5/6 | In Progress | - |
+| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 6/6 | In Progress | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 
 ---

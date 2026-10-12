@@ -32,7 +32,7 @@
 - [x] **DEBT-06**: `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion (`ProfileEvents['NetworkSendBytes']` vs `result_bytes` for the read's query id), seen red with server-response compression disabled (14-REVIEW WR-01)
 - [x] **DEBT-07**: `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java` — the `org.lz4:lz4-java:1.8.0` duplicate from the Confluent 7.9.1 stack is gone — and the `runtimeClasspath`/`integrationTestRuntimeClasspath` resolution is unchanged (backlog 999.2)
 - [x] **DEBT-08**: A pin row covers the mantissa-with-fraction scientific form for Debezium `NanoTimestamp` in `MetadataFreeJsonWriterTest` (15-REVIEW IN-06)
-- [ ] **DEBT-09**: 15-REVIEW IN-01..IN-05 are each fixed or closed with a written reason in the disposition file, consistent with the COLS-10 outcome
+- [x] **DEBT-09**: 15-REVIEW IN-01..IN-05 are each fixed or closed with a written reason in the disposition file, consistent with the COLS-10 outcome
 - [x] **BLD-14**: The Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning no longer appears in the build, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code is unchanged
 
 ### CI hygiene
@@ -86,7 +86,7 @@
 | DEBT-06 | Phase 17 | Complete |
 | DEBT-07 | Phase 17 | Complete |
 | DEBT-08 | Phase 17 | Complete |
-| DEBT-09 | Phase 19 | Pending |
+| DEBT-09 | Phase 19 | Complete |
 | BLD-14 | Phase 17 | Complete |
 | CI-11 | Phase 17 | Complete |
 | CI-12 | Phase 17 | Complete |
