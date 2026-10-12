@@ -477,20 +477,23 @@ Positive twin: hook throws `new RuntimeException("ClickHouseException: Code: 33"
 | A4 | Setting `ProxySinkTask`'s private final `processing`/`dbWriter` by reflection works on the JDK 17 toolchain (non-static final instance field of a normal class) | Open Question 1 | If it does not, fall back to the Docker-free `Processing` + `Utils.handleException` pairing |
 | A5 | `Mockito.mock(ClickHouseHelperClient.class)` returns `false` for `isUseClientV2()` and an empty list for `extractTablesMapping(...)` by default | Code Examples | Test setup needs explicit stubbing; trivial |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How is a null-message exception injected into a `ClickHouseSinkTask.put()`-level pin (D-07)?**
    - What we know: `ProxySinkTask` is `final` and builds its own `ClickHouseWriter` and `Processing` in its constructor (`ProxySinkTask.java` L40-51); `ClickHouseSinkTask.setErrorReporter` is the only seam. After WRT-10 no natural live path produces a null-message exception. `Utils.handleException` is called from `ProxySinkTask.put` (L100) and `ChunkFlusher` (L72).
    - What's unclear: the least-invasive injection.
    - Recommendation: a live `ClickHouseBase` test that starts a real task (the writer needs a reachable server to start) and then swaps `ProxySinkTask.processing` by reflection for `new Processing(new InMemoryState(), throwingDbWriter, reporter, csc, statistics)` where the `DBWriter` throws `new RuntimeException()` / `new SocketTimeoutException()` (A4). Assert on the cause chain, DLQ size via an `InMemoryDLQ` accessor, and `RetriableException` for the timeout. If reflection is rejected, cover classification Docker-free by driving `Processing.doLogic` with a throwing `DBWriter` and passing the thrown exception to `Utils.handleException` (this reproduces `ProxySinkTask.put`'s catch exactly). `InMemoryDLQ` keeps its `Throwable` private with no accessor (`InMemoryDLQ.java`), so add an additive getter (test-only file).
+   - RESOLVED (18-01 Task 1): `WriterErrorPathLiveTest` reflectively replaces the non-final `Processing.dbWriter` inside a started task with a started `ClickHouseWriter` subclass whose protected RowBinary hooks throw, so the real `doInsertRawBinary` catch, `Processing.doInsert`, `ProxySinkTask`/`ChunkFlusher` and `Utils.handleException` all run. The fallback (drive `Processing.doLogic` and pass the exception to `Utils.handleException`) is assumption A4 in 18-01's Flagged assumptions. The tests need only `InMemoryDLQ.size()`, so `InMemoryDLQ` gets no accessor and is not edited.
 
 2. **Should the 999.x backlog entry and the FORK-DELTA residual name the two extra log lines (Pitfall 11)?**
    - What we know: `doInsertRawBinary` logs the same throwable at L1172/L1188.
    - What's unclear: whether the user wants that stated now. It does not change scope; it corrects the claim.
    - Recommendation: state it in the residual and the backlog entry; no code change.
+   - RESOLVED (18-02 Task 2): yes, with no code change. The FORK-DELTA Known costs item 6 sentence and the `### Phase 999.3:` backlog Goal line both name `doInsertRawBinary`'s two `Error inserting records` ERROR logs, and 18-02's objective flags the residual as accepted (T-18-07) for acknowledgement at plan approval.
 
 3. **Closing FORK-DELTA Known costs items 3 and 5 (Pitfall 12).**
    - Recommendation: include both in the doc updates of the WRT-10 and WRT-11 commits, even though CONTEXT's D-13 list does not name them.
+   - RESOLVED (18-01): Task 1 rewrites item 5 so that 13-REVIEW WR-04 is closed by WRT-11, and Task 3 replaces item 3 with its closure (13-REVIEW WR-03 closed by WRT-10).
 
 ## Environment Availability
 
