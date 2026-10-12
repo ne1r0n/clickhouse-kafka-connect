@@ -337,6 +337,15 @@ Manual checks for the user, by hand, after publication (D-05, F1). No agent chan
 **Requirements:** mapped under Phase 17
 **Plans:** planned under Phase 17
 
+### Phase 999.3: Rethrown write-failure messages can carry record values (BACKLOG)
+
+**Goal:** `ClickHouseWriter.doWriteColValue`'s generic catch rethrows the original exception (kept by Phase 18 D-09 so classification cannot change). For some failures its message embeds the record value (`UUID.fromString`: `Invalid UUID string: <value>`; number parsing: `For input string: ...`), which reaches the Connect task status, the DLQ headers and `doInsertRawBinary`'s two `Error inserting records` ERROR logs. Fixing it means changing the rethrown type or message without changing retriable classification. Found 2026-10-12 in the Phase 18 discussion (D-09)
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ## Progress
 
 **Execution Order:** 16 → 17 → 18 → 19 → 20, sequential on one working tree.

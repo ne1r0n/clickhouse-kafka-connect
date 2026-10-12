@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.data.Data;
+import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
@@ -20,6 +21,7 @@ import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.DataException;
@@ -49,6 +51,8 @@ public class WriterLogMaskingUnitTest {
             "Error parsing date time string for column '%s' (ClickHouse type %s, Kafka type STRING): exception %s, value length %d";
     private static final String CONVERSION_MESSAGE_FORMAT =
             "(Potentially) Not implemented conversion from STRING to %s for column '%s'";
+    private static final String WRITE_FAILURE_LINE_FORMAT =
+            "Error writing value of STRING to the column `%s` of type %s: exception %s";
     private static final String GRIN_EMOJI = "😀";
 
     private static final class Captured {
@@ -218,5 +222,58 @@ public class WriterLogMaskingUnitTest {
         assertNull(captured.thrown);
         assertArrayEquals(new byte[] {0x01}, out.toByteArray());
         assertTrue(captured.errorMessages().isEmpty(), captured.errorMessages().toString());
+    }
+
+    private static Captured writeColValue(Column column, String value) throws Exception {
+        ClickHouseWriter writer = newWriter();
+        return capture(() -> writer.doWriteColValue(column, new ByteArrayOutputStream(), stringData(value), false));
+    }
+
+    private static Column column(String name, Type type) {
+        return Column.builder().name(name).type(type).build();
+    }
+
+    @Test
+    @DisplayName("WRT-12: an invalid UUID string logs one generic-catch line with the column, types and exception class, and no throwable")
+    void uuidWriteFailureLogsMetadataWithoutThrowable() throws Exception {
+        Captured captured = writeColValue(column(UUID_COLUMN, Type.UUID), SENTINEL);
+
+        String expected = String.format(WRITE_FAILURE_LINE_FORMAT, UUID_COLUMN, Type.UUID, IllegalArgumentException.class.getName());
+        assertEquals(1, captured.errorCount(expected), captured.errorMessages().toString());
+        for (LogCapture.CapturedEvent event : captured.events) {
+            assertFalse(event.hasThrowable(), "no log event may carry a throwable: " + event.message());
+        }
+        assertNoSentinel(captured);
+        IllegalArgumentException raw = assertThrows(IllegalArgumentException.class, () -> UUID.fromString(SENTINEL));
+        assertTrue(raw.getMessage().contains(SENTINEL), "self-check: the JDK UUID message embeds the value");
+    }
+
+    @Test
+    @DisplayName("WRT-12: the generic catch still rethrows the original IllegalArgumentException, whose message embeds the value (accepted residual, backlog 999.3)")
+    void uuidWriteFailureRethrowsOriginalWithValueInMessage() throws Exception {
+        ClickHouseWriter writer = newWriter();
+        Column uuid = column(UUID_COLUMN, Type.UUID);
+
+        // Residual pinned on purpose: the rethrown message carries the record value into Connect status,
+        // the DLQ headers and the Error inserting records logs. A later fix (backlog 999.3) must flip this.
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> writer.doWriteColValue(uuid, new ByteArrayOutputStream(), stringData(SENTINEL), false));
+
+        assertTrue(ex.getMessage().contains(SENTINEL));
+    }
+
+    @Test
+    @DisplayName("WRT-12: a DateTime failure reached through doWriteColValue logs only data-free ERROR events and none carries a throwable")
+    void dateTimeFailureThroughWriteColValueLogsNoValueAndNoThrowable() throws Exception {
+        Captured captured = writeColValue(column(COLUMN, Type.DateTime), SENTINEL);
+
+        assertEquals(1, captured.errorCount(parseFailureLine(Type.DateTime, SENTINEL.length())), captured.errorMessages().toString());
+        String generic = String.format(WRITE_FAILURE_LINE_FORMAT, COLUMN, Type.DateTime, DataException.class.getName());
+        assertEquals(1, captured.errorCount(generic), captured.errorMessages().toString());
+        for (LogCapture.CapturedEvent event : captured.events) {
+            assertFalse(event.hasThrowable(), "no log event may carry a throwable: " + event.message());
+        }
+        assertNoSentinel(captured);
     }
 }

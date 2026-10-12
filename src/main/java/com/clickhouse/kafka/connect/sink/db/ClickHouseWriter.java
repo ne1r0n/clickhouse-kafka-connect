@@ -564,6 +564,7 @@ public class ClickHouseWriter implements DBWriter {
     private static final String NESTED_NULL_MESSAGE_FORMAT = "column '%s' (%s) %s: null in non-nullable slot";
     private static final String DATETIME_PARSE_FAILURE_LOG_FORMAT = "Error parsing date time string for column '{}' "
             + "(ClickHouse type {}, Kafka type {}): exception {}, value length {}";
+    private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
     private static final String DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT = "(Potentially) Not implemented conversion from %s to %s for column '%s'";
     private static final String MISSING_NON_NULLABLE_MESSAGE_FORMAT = "column '%s' (%s): no value provided for a non-nullable column without a default; "
             + "add the field, make the column Nullable, or give it a DEFAULT";
@@ -867,7 +868,8 @@ public class ClickHouseWriter implements DBWriter {
             LOGGER.error(message, e);
             throw new DataException(message, e);
         } catch (Exception e) {
-            LOGGER.error("Error writing value of " + (value == null ? "<value null>" : value.getFieldType() ) + " to the column `" + col.getName() + "` of type " + columnType, e);
+            LOGGER.error(WRITE_VALUE_FAILURE_LOG_FORMAT, value == null ? "<value null>" : value.getFieldType(), col.getName(), columnType,
+                    e.getClass().getName());
             throw e;
         }
     }
