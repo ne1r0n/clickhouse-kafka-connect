@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-11 after Phase 16)
+See: .planning/PROJECT.md (updated 2026-10-12 after Phase 17)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 17 — CI, Build & Test Hygiene
+**Current focus:** Phase 18 — Writer Correctness
 
 ## Current Position
 
@@ -167,6 +167,8 @@ None.
 - [Publish]: ✓ 2026-10-11: second docs-only `--no-ff` merge `be6b8861` (parents `537beb1f`, `8497dc1d`), approved by the user in the Phase 16 UAT. It publishes the corrected item 8 rollback (16-REVIEW WR-01/WR-02, IN-02..IN-04). Its single `tests.yaml` run, 38156040416, is green. Everything up to `8497dc1d` is published. Later commits (Phase 16 transition bookkeeping) are a local tail on `sync/v1.7.0` that Phase 20's merge publishes. Before any merge on top of `custom_build`, re-run E-16's rollback check (`docs/ROLLOUT-v1.7.0_gg1.md` item 8) against the merge commit before pushing. `.planning/.gsd-ws-arg` was absent. `.planning/state.json` is tracked, with uncommitted local edits that did not ride the merge (CONTEXT's "untracked" note was stale). Milestone tags such as `v1.7.0_gg1-sync` stay local.
 - [CI]: ✓ 2026-10-12: Phase 17 pinned `tests.yaml` to `ubuntu-24.04` (ahead of `ubuntu-latest` moving to Ubuntu 26 on 2026-10-19), with SHA-pinned Node 24 actions, a read-only token (`permissions: contents: read`) and `persist-credentials: false`. CI-17 run 38172811430 on `0c90d331` was green: job label `ubuntu-24.04`, token permissions exactly `Contents: read` / `Metadata: read`, no Node 20 or Lombok-ambiguity annotation (E-10, E-11). Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule still holds.
 - [CI]: `test-head.yaml` is deleted (CI-16, proven statically in Phase 17, E-04). The fork's GitHub default branch is `main`, not `custom_build` (Phase 17 research F1), so scheduled workflows and Dependabot read `main` and no schedule on `custom_build` ever ran it. The user stated no intent for the default branch (E-10), so it is carried as undecided. Phase 20 carries the manual checks: Dependabot enablement and the default-branch choice.
+- [CI]: 17-REVIEW WR-01: the `github-actions` Dependabot entry's `exclude-paths` key is unobserved; if Dependabot rejects it the whole `dependabot.yml` could be invalid and stall the `gradle` entry. Add "no Dependabot config error, gradle entry still runs" to Phase 20's manual checks (with F1 and Dependabot enablement).
+- [Env]: The user created a fine-grained read-only GitHub token (Actions: Read, single repo, 1-day expiry) in the macOS Keychain item `gsd17-gh-actions-read` for E-11. Revoke it on GitHub and run `security delete-generic-password -s gsd17-gh-actions-read` once no longer needed.
 
 ## Deferred Items
 
@@ -182,11 +184,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T08:14:09.829Z
+Last session: 2026-10-12T08:32:56.000Z
 Stopped at: Phase 17 complete, ready to plan Phase 18
 Resume file: None
 
 ## Operator Next Steps
 
-- Phase 16 is complete. `origin/custom_build` is `be6b8861` (green).
-- Plan Phase 17 (`/gsd-discuss-phase 17` or `/gsd-plan-phase 17`). It pins `ubuntu-24.04` before `ubuntu-latest` moves on 2026-10-19.
+- Phase 17 is complete (verification passed). `origin/custom_build` is still `be6b8861`; the Phase 17 commits after `0c90d331` are local on `sync/v1.7.0` and publish in Phase 20.
+- Plan Phase 18 (`/gsd-discuss-phase 18` or `/gsd-plan-phase 18`).
