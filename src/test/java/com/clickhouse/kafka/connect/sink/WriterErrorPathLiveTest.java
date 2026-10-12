@@ -23,9 +23,11 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +53,11 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
     private static final String ERRORS_TOLERANCE_ALL = "all";
     private static final String CONNECTOR_NAME_PROP = "name";
     private static final String TOPIC_PREFIX = "wrt11_null_message";
+    private static final String TUPLE_TABLE_DDL =
+            "CREATE TABLE %s (id Int32, at Array(Tuple(a Int32, b String))) ENGINE = MergeTree ORDER BY id";
+    private static final String SENTINEL = "SENTINELq7Zx41kV";
+    private static final String MISSING_VALUE_HINT =
+            "): no value provided for a non-nullable column without a default; add the field, make the column Nullable, or give it a DEFAULT";
 
     /**
      * Throws the stored instance itself from both RowBinary hooks, never a wrapper, so the instance
@@ -116,6 +123,17 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
         return records;
     }
 
+    private static List<SinkRecord> tupleBatchMissingField(String topic) {
+        Schema elementSchema = SchemaBuilder.struct().field("b", Schema.STRING_SCHEMA).build();
+        Schema schema = SchemaBuilder.struct()
+                .field("id", Schema.INT32_SCHEMA)
+                .field("at", SchemaBuilder.array(elementSchema).build())
+                .build();
+        Struct element = new Struct(elementSchema).put("b", SENTINEL);
+        Struct struct = new Struct(schema).put("id", 1).put("at", List.of(element));
+        return List.of(new SinkRecord(topic, 0, null, null, schema, struct, 0));
+    }
+
     private static Object readField(Object target, String fieldName) throws Exception {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
@@ -152,6 +170,23 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
      */
     private Throwable putWithInjectedFailure(
             TestInfo testInfo, boolean toleranceAll, Exception failure, ErrorReporter reporter) throws Exception {
+        return putBatch(testInfo, TABLE_DDL, toleranceAll, reporter, failure, WriterErrorPathLiveTest::batch);
+    }
+
+    /**
+     * Creates the table, starts a task, optionally swaps in a writer that always fails with {@code
+     * failure} (null keeps the real writer), puts the batch and checks that no row landed.
+     *
+     * @return the Throwable thrown by put, or null when put returned
+     */
+    private Throwable putBatch(
+            TestInfo testInfo,
+            String tableDdl,
+            boolean toleranceAll,
+            ErrorReporter reporter,
+            Exception failure,
+            Function<String, List<SinkRecord>> batchForTopic)
+            throws Exception {
         Map<String, String> props = getBaseProps();
         props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
         if (toleranceAll) {
@@ -160,27 +195,32 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String topic = createTopicName(TOPIC_PREFIX);
         ClickHouseTestHelpers.dropTable(chc, topic);
-        createTable(chc, topic, TABLE_DDL);
+        createTable(chc, topic, tableDdl);
 
         ClickHouseSinkTask task = new ClickHouseSinkTask();
         if (reporter != null) {
             task.setErrorReporter(reporter);
         }
-        FailingInsertWriter writer = new FailingInsertWriter(new SinkTaskStatistics(null, 0), failure);
+        FailingInsertWriter writer =
+                failure == null ? null : new FailingInsertWriter(new SinkTaskStatistics(null, 0), failure);
         try {
             task.start(props);
-            assertTrue(writer.start(new ClickHouseSinkConfig(props)), "the injected writer must start");
-            Object proxySinkTask = readField(task, PROXY_SINK_TASK_FIELD);
-            Object processing = readField(proxySinkTask, PROCESSING_FIELD);
-            writeField(processing, DB_WRITER_FIELD, writer);
+            if (writer != null) {
+                assertTrue(writer.start(new ClickHouseSinkConfig(props)), "the injected writer must start");
+                Object proxySinkTask = readField(task, PROXY_SINK_TASK_FIELD);
+                Object processing = readField(proxySinkTask, PROCESSING_FIELD);
+                writeField(processing, DB_WRITER_FIELD, writer);
+            }
             try {
-                task.put(batch(topic));
+                task.put(batchForTopic.apply(topic));
                 return null;
             } catch (Exception thrown) {
                 return thrown;
             }
         } finally {
-            writer.stop();
+            if (writer != null) {
+                writer.stop();
+            }
             task.stop();
             try {
                 assertEquals(0, ClickHouseTestHelpers.countRows(chc, topic), "a failed batch must write no rows");
@@ -247,5 +287,26 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
         assertNotNull(thrown, "put must fail with a retriable exception");
         assertInstanceOf(RetriableException.class, thrown);
         assertTrue(chainContainsInstance(thrown, failure), "the injected instance must be in the cause chain");
+    }
+
+    @Test
+    @DisplayName("WRT-10: a record whose Array(Tuple) element lacks a non-nullable field fails put with a DataException that names the dotted column and carries no record value")
+    void missingTupleFieldFailsPutWithColumnNamingDataException(TestInfo testInfo) throws Exception {
+        Throwable thrown = putBatch(
+                testInfo, TUPLE_TABLE_DDL, false, null, null, WriterErrorPathLiveTest::tupleBatchMissingField);
+
+        assertNotNull(thrown, "put must fail when errors.tolerance=none");
+        List<Throwable> chain = causeChain(thrown);
+        DataException dataException = chain.stream()
+                .filter(DataException.class::isInstance)
+                .map(DataException.class::cast)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no DataException in the cause chain: " + chain));
+        assertTrue(
+                dataException.getMessage().startsWith("column 'at.a' ("),
+                "the dotted path of the field must be named: " + dataException.getMessage());
+        assertTrue(dataException.getMessage().endsWith(MISSING_VALUE_HINT), dataException.getMessage());
+        chain.forEach(t -> assertFalse(
+                String.valueOf(t.getMessage()).contains(SENTINEL), "no chain message may carry a record value"));
     }
 }

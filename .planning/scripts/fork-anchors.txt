@@ -59,3 +59,5 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	String failureMessage = e.getMessage();	1	WRT-11
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	e.getMessage().contains(code)	0	WRT-11
 src/main/java/com/clickhouse/kafka/connect/util/Utils.java	if (msg != null && (msg.indexOf(	1	WRT-11
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	MISSING_NON_NULLABLE_MESSAGE_FORMAT	2	WRT-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	is not nullable and no value is provided	0	WRT-10

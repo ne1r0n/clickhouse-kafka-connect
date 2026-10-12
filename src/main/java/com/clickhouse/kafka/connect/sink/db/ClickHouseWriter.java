@@ -552,6 +552,8 @@ public class ClickHouseWriter implements DBWriter {
 
     // Slot kinds name the position of a nested null in the schema; none of them carries record data.
     private static final String NESTED_NULL_MESSAGE_FORMAT = "column '%s' (%s) %s: null in non-nullable slot";
+    private static final String MISSING_NON_NULLABLE_MESSAGE_FORMAT = "column '%s' (%s): no value provided for a non-nullable column without a default; "
+            + "add the field, make the column Nullable, or give it a DEFAULT";
     private static final String NESTED_NULL_SLOT_ELEMENT = "element";
     private static final String NESTED_NULL_SLOT_MAP_VALUE = "map value";
     private static final String NESTED_NULL_SLOT_TUPLE = "tuple";
@@ -1089,9 +1091,7 @@ public class ClickHouseWriter implements DBWriter {
                 }
                 BinaryStreamUtils.writeUnsignedInt8(stream, 255);
             } else {
-                // no filled and not nullable
-                LOGGER.error("Column {} is not nullable and no value is provided", name);
-                throw new RuntimeException();
+                throw new DataException(String.format(MISSING_NON_NULLABLE_MESSAGE_FORMAT, name, renderColumnType(col)));
             }
         }
     }
