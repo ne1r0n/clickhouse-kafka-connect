@@ -22,10 +22,10 @@
 
 ### Writer correctness
 
-- [ ] **JSONP-09**: An empty Debezium record (`op=t`, or null `before` and `after`) inserts no row on all three routes — explicit `insertFormat=json`, upstream `bypassRowBinary=true` JSON, and RowBinary — while offsets and exactly-once state still advance; the skip is decided inside the writer so the batch sent on retry stays byte-identical; one live test per route
-- [ ] **WRT-10**: A missing value for a non-nullable column, including inside `Array(Tuple(...))`, raises a `DataException` naming the column and its ClickHouse type, so Connect status and the DLQ show which column failed (13-REVIEW WR-03)
-- [ ] **WRT-11**: `ClickHouseWriter`'s error path handles an exception whose message is null without a `NullPointerException`, and retriable vs non-retriable classification is unchanged; pinned by a Docker-free test (13-REVIEW WR-04)
-- [ ] **WRT-12**: A DateTime parse failure logs the column name, ClickHouse and Kafka types, exception class and value length — never the raw value, directly or via the parse exception's message; pinned by a log-capture test; the patch to upstream-identical lines is recorded in FORK-DELTA (T-13-19)
+- [x] **JSONP-09**: An empty Debezium record (`op=t`, or null `before` and `after`) inserts no row on all three routes — explicit `insertFormat=json`, upstream `bypassRowBinary=true` JSON, and RowBinary — while offsets and exactly-once state still advance; the skip is decided inside the writer so the batch sent on retry stays byte-identical; one live test per route
+- [x] **WRT-10**: A missing value for a non-nullable column, including inside `Array(Tuple(...))`, raises a `DataException` naming the column and its ClickHouse type, so Connect status and the DLQ show which column failed (13-REVIEW WR-03)
+- [x] **WRT-11**: `ClickHouseWriter`'s error path handles an exception whose message is null without a `NullPointerException`, and retriable vs non-retriable classification is unchanged; pinned by a Docker-free test (13-REVIEW WR-04)
+- [x] **WRT-12**: A DateTime parse failure logs the column name, ClickHouse and Kafka types, exception class and value length — never the raw value, directly or via the parse exception's message; pinned by a log-capture test; the patch to upstream-identical lines is recorded in FORK-DELTA (T-13-19)
 
 ### Test & build debt
 
@@ -79,10 +79,10 @@
 | COLS-09 | Phase 19 | Pending |
 | COLS-10 | Phase 19 | Pending |
 | COLS-11 | Phase 19 | Pending |
-| JSONP-09 | Phase 18 | Pending |
-| WRT-10 | Phase 18 | Pending |
-| WRT-11 | Phase 18 | Pending |
-| WRT-12 | Phase 18 | Pending |
+| JSONP-09 | Phase 18 | Complete |
+| WRT-10 | Phase 18 | Complete |
+| WRT-11 | Phase 18 | Complete |
+| WRT-12 | Phase 18 | Complete |
 | DEBT-06 | Phase 17 | Complete |
 | DEBT-07 | Phase 17 | Complete |
 | DEBT-08 | Phase 17 | Complete |

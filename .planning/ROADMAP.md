@@ -176,7 +176,7 @@ CI-17's push follows the D-13 precedent:
   3. An exception with a null message that reaches `ClickHouseWriter`'s error path surfaces as itself, not as a `NullPointerException`. Retriable vs non-retriable classification is unchanged. A Docker-free test pins both.
   4. An unparseable `DateTime` or `DateTime64` string logs the column name, the ClickHouse and Kafka types, the exception class and the value length. A log-capture test proves the raw value appears neither directly nor through the parse exception's message. `docs/FORK-DELTA.md` has a row for this patch to upstream-identical lines.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -189,7 +189,7 @@ Plans:
 - [x] 18-03-PLAN.md — Tracer: one shared empty-CDC skip in both serialization loops, proven live on RowBinary (JSONP-09); bypass, explicit and plain-table routes live on V1/V2; `ExplicitJsonInsertPathLiveTest` moved onto shared CDC fixtures
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 18-04-PLAN.md — Docker-free byte-identity, edge, log-line and exactly-once state pins for the empty-CDC skip, mutation-checked (JSONP-09, D-02/D-03/D-04); phase gate (cache-busted testUnit and full suite on `latest` x V2 run by the gate command itself, `verify-merge-invariants.sh 54e63648 HEAD`, phase scope)
+- [x] 18-04-PLAN.md — Docker-free byte-identity, edge, log-line and exactly-once state pins for the empty-CDC skip, mutation-checked (JSONP-09, D-02/D-03/D-04); phase gate (cache-busted testUnit and full suite on `latest` x V2 run by the gate command itself, `verify-merge-invariants.sh 54e63648 HEAD`, phase scope)
 
 **Note**: All four items edit `ClickHouseWriter.java`, a high-risk file (AGENTS.md), in disjoint regions. Land them as separate commits.
 
@@ -354,7 +354,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
-| 18. Writer Correctness | v1.7.0_gg2-hardening | 3/4 | In Progress | - |
+| 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | In Progress | - |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 
