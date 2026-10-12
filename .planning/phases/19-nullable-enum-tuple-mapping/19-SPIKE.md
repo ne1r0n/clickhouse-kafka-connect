@@ -217,6 +217,27 @@ Every deciding cell (C1, C2, C3) round-trips on side (b) on both twins and the a
 
 Extras never veto (D-07), and none failed on side (b). Edges FORK-DELTA must state once the fix lands: X1 `Nullable(Tuple(a Int32))` with a NULL `a` is silently stored as a NULL tuple today and becomes a writer `DataException` after the fix (the declared element is not nullable, so the refusal is the correct behaviour, but it is a visible change); and a record that omits a `Nullable(Tuple)` field will pass schema validation and write NULL, as noted in RESEARCH.
 
+## Gate refresh
+
+Re-run for the 19-03 gate, after the Enum fix (19-02: commits `598f2caf`, `a8501693`, `108f8a95`), as the D-04 rule requires ("record `SELECT version()` at each gate").
+
+**Gate server version:** 26.9.17.8
+
+Run date (UTC): 2026-10-12, 21:00. Image `clickhouse/clickhouse-server:latest`, digest `sha256:387ebbcca253026def04dc79e83d2323ac7d97bf309ddd090a8a3c702573e01a`; `docker pull` immediately after the run reported the local image up to date, so this is the registry's `latest` on the gate day. The version is the one `NULLABLE_TUPLE_MATRIX server version=` logged in the run itself. It matches the 19-01 measurement (26.9.17.8), so the floating `latest` did not move between 19-01 and the gate.
+
+Class result: `NullableTupleMatrixLiveTest` 28 tests, 0 failures, 0 errors, 0 skipped (client V2). Every side (a) pin held as written, so no matrix row changed and no pinned expectation was edited. Production state at the gate: `git diff --name-only ede0a45d HEAD -- src/main` names only `Column.java` and `ClickHouseHelperClient.java` (the Enum fix), and the Tuple branch of `Column.extractColumn` still builds without the nullability call.
+
+| Cell | Role | Plain twin, side (a) | Plain twin, side (b) | DEFAULT twin, side (a) | DEFAULT twin, side (b) |
+|------|------|----------------------|----------------------|------------------------|------------------------|
+| C1 | deciding | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 |
+| C2 | deciding | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 |
+| C3 | deciding | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 |
+| X1 | extra (informational) | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 |
+| X2 | extra (informational) | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 |
+| X3 | extra (informational) | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 | unchanged since 19-01 |
+
+The double-flag control and the approach test (`declaredTupleTypesParseWithDdlNullability`) also passed in this run, so `**Approach test:**` stays `pass`. Every deciding side (b) cell still round-trips on both twins, so the recommendation below is unchanged: GO.
+
 ## Decision
 
 Pending: the user answers at the 19-03 gate.
