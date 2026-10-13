@@ -294,6 +294,42 @@ class DeclaredNullabilityTest {
     }
 
     @Test
+    @DisplayName("COLS-10 CR-01: a Tuple element declared SimpleAggregateFunction(f, Nullable(T)) keeps its nullable flag")
+    void simpleAggregateFunctionNullableElementKeepsItsNullability() throws Exception {
+        String type = "Tuple(a SimpleAggregateFunction(sum, Nullable(Int64)), b Nullable(Int32))";
+        Column column = root(describe(
+                row("c", type),
+                row("c.a", "SimpleAggregateFunction(sum, Nullable(Int64))"),
+                row("c.b", "Nullable(Int32)")));
+        assertTrue(
+                nullabilityByPath(column).get("c.a"),
+                "premise: Column.extractColumn reads through the wrapper to the nullable argument type");
+
+        assertTrue(DeclaredNullability.apply(column, type));
+
+        assertEquals(Map.of("c", false, "c.a", true, "c.b", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10 CR-01: a root SimpleAggregateFunction over a Tuple pairs through the pass and flips no flag")
+    void rootSimpleAggregateFunctionOverTuplePairsWithoutFlippingFlags() throws Exception {
+        String type = "SimpleAggregateFunction(anyLast, Tuple(a Nullable(Int32), b Int32))";
+        Column column = root(describe(
+                row("c", type), row("c.a", "Nullable(Int32)"), row("c.b", "Int32")));
+        Map<String, Boolean> before = nullabilityByPath(column);
+        assertEquals(Type.TUPLE, column.getType(), "premise: the wrapper root is a TUPLE Column");
+        assertTrue(DeclaredNullability.containsTuple(column), "premise: discovery routes the root into the pass");
+        assertEquals(Map.of("c", false, "c.a", true, "c.b", false), before);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, type));
+
+            assertEquals(List.of(), log.events("WARN"));
+        }
+        assertEquals(before, nullabilityByPath(column));
+    }
+
+    @Test
     @DisplayName("COLS-10: no declared type returns false, changes nothing and logs nothing; normalise leaves other text alone")
     void nullDeclaredTypeIsANoOpAndNormaliseKeepsPlainText() throws Exception {
         Column column = root(describe(

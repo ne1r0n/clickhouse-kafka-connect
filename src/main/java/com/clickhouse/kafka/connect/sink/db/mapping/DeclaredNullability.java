@@ -1,6 +1,7 @@
 package com.clickhouse.kafka.connect.sink.db.mapping;
 
 import com.clickhouse.data.ClickHouseColumn;
+import com.clickhouse.data.ClickHouseDataType;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -94,7 +95,22 @@ public final class DeclaredNullability {
         return true;
     }
 
-    private static boolean collect(Column column, ClickHouseColumn parsed, List<Assignment> into) {
+    /**
+     * {@link Column#extractColumn} reads through {@code SimpleAggregateFunction} to the type it holds
+     * at every depth, so the declared tree has to be read the same way: the wrapper node itself
+     * reports non-nullable even when the type it holds is {@code Nullable(T)}.
+     */
+    private static ClickHouseColumn unwrapSimpleAggregate(ClickHouseColumn parsed) {
+        ClickHouseColumn node = parsed;
+        while (node.getDataType() == ClickHouseDataType.SimpleAggregateFunction
+                && !node.getNestedColumns().isEmpty()) {
+            node = node.getNestedColumns().get(0);
+        }
+        return node;
+    }
+
+    private static boolean collect(Column column, ClickHouseColumn declared, List<Assignment> into) {
+        ClickHouseColumn parsed = unwrapSimpleAggregate(declared);
         switch (column.getType()) {
             case TUPLE:
                 return collectTuple(column, parsed, into);

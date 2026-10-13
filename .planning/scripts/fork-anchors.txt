@@ -72,3 +72,4 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	.isNullab
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	@Setter(AccessLevel.PACKAGE) private boolean isNullable;	1	COLS-10
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	DeclaredNullability.apply(	1	COLS-10
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	buildDescribedTable(	3	COLS-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	unwrapSimpleAggregate(	2	COLS-10
