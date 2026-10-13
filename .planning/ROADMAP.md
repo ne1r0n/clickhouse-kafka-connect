@@ -296,6 +296,12 @@ The Enum fix changes stored values. It also lets a record that omits a `Nullable
   3. The full suite passes twice on ClickHouse `latest` × client V2, the second run with `--rerun`. Both runs have 0 failures, 0 errors and every skip named. `testUnit` passes with the Docker daemon stopped.
   4. After the user's own explicit approval, `custom_build` on `origin` is a non-force `--no-ff` merge, and its SHA has exactly one green `tests.yaml` run. The `v1.7.0_gg2` tag reaches `origin` only after that run is green. The rollback tag points at a commit that already carries the branch-only trigger.
 
+**Carried from Phase 19** (19-REVIEW dispositions, recorded by 19-10; Phase 20 planning covers each item):
+
+- WR-02 (deferred to ROLL-02 and PUB-07): `docs/ROLLOUT-v1.7.0_gg2.md` and the `1.7.0_gg2` CHANGELOG section must state that the `Nullable(Tuple)` limitation is closed and its discovery WARN is gone, and that rows stored by earlier releases are not repaired; they must carry ledger L-38: a single-field `Nullable(Tuple)` with a null field now throws a `DataException`, which stops the task under `errors.tolerance=none`. The published gg1 rollout and CHANGELOG text stays as released.
+- PUB-07 owns the AGENTS.md pre-PR obligation: this covers the `VERSION` bump and the `CHANGELOG.md` entry, and Phase 19 left both untouched on purpose.
+- IN-04 (deferred): a Tuple Column that lacks a declared element still applies. Owner: Phase 20 copies the item into the milestone close record so the next milestone inherits it. Trigger: a clickhouse-data version change, or any DESCRIBE shape observed to drop a declared Tuple element. Until then `missingDeclaredElementDoesNotShiftPairing` pins the current behaviour.
+
 **Plans**: TBD
 
 **Note**: This phase follows the Phase 11/15 recipe: rehearse, measure, approve, publish. The steps:
