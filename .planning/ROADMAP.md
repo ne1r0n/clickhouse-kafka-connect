@@ -221,7 +221,7 @@ Phase gate: a cache-busted full suite on `latest` × V2, plus the anchors invari
   4. The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` each change in the same commit as the code they describe. The merge-invariant script passes at every commit in the phase.
   5. Each of 15-REVIEW IN-01..IN-05 is fixed, or closed with a written reason in the disposition file, consistently with the Tuple outcome.
 
-**Plans**: 6/6 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one)
+**Plans**: 6/8 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one; 19-07 and 19-08 close the verification gaps)
 
 Plans:
 **Wave 1**
@@ -241,6 +241,12 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [x] 19-06-PLAN.md — DEBT-09: IN-01..IN-05 dispositioned per the outcome (D-12, D-13); phase gate (cache-busted testUnit plus two full runs on latest x V2, anchors invariant, scope)
+
+**Wave 7** *(gap closure; blocked on 19-06 completion)*
+- [ ] 19-07-PLAN.md — Gap closure, tracer: CR-01 (SC3 / COLS-10) SimpleAggregateFunction unwrap in DeclaredNullability.collect with a seen-red Docker-free pin and a live twin round trip, anchors row, FORK-DELTA clause and ledger L-41 in one commit; LowCardinality and wrapper-boundary pins, mutation, adjacent-suite regression with the matrix held at 30, anchors gate
+
+**Wave 8** *(gap closure; blocked on 19-07 completion)*
+- [ ] 19-08-PLAN.md — Gap closure: WR-01 (total pass) and IN-01 (table context in the fallback WARN), WR-03 (control asserts the read-past-end code) and IN-03 (production normalisation, one shared flattener); all eight 19-REVIEW findings dispositioned (open 0, WR-02 deferred to Phase 20); phase gate (cache-busted testUnit plus two full runs, anchors invariant, scope, ledger L-31..L-41)
 
 **Note**: Order inside the phase:
 1. Spike (COLS-09).
