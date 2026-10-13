@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -29,8 +28,6 @@ class DeclaredNullabilityTest {
     private static final String TABLE = "t";
     private static final String QUALIFIED_TABLE = "db.t";
     private static final String PATH_SEPARATOR = ".";
-    private static final String ARRAY_ELEMENT_PATH = "[]";
-    private static final String MAP_VALUE_PATH = "{}";
     // The two characters backslash and n that the server's escaped newline becomes in a JSON line.
     private static final String SERVER_NEWLINE = "\\n";
 
@@ -57,33 +54,8 @@ class DeclaredNullabilityTest {
         return table.getRootColumnsMap().get(ROOT);
     }
 
-    /**
-     * Flattens a Column tree into {@code path -> isNullable}: tuple fields by the element name left
-     * after the tuple's own name, the array element and the map value by a fixed marker.
-     */
     private static Map<String, Boolean> nullabilityByPath(Column column) {
-        Map<String, Boolean> into = new LinkedHashMap<>();
-        collect(column.getName(), column, into);
-        return into;
-    }
-
-    private static void collect(String path, Column column, Map<String, Boolean> into) {
-        into.put(path, column.isNullable());
-        switch (column.getType()) {
-            case TUPLE -> {
-                for (Column field : column.getTupleFields()) {
-                    String element = field.getName().substring(column.getName().length() + 1);
-                    collect(path + PATH_SEPARATOR + element, field, into);
-                }
-            }
-            case ARRAY -> collect(path + ARRAY_ELEMENT_PATH, column.getArrayType(), into);
-            case MAP -> {
-                if (column.getMapValueType() != null) {
-                    collect(path + MAP_VALUE_PATH, column.getMapValueType(), into);
-                }
-            }
-            default -> {}
-        }
+        return ColumnNullabilityPaths.byPath(column.getName(), column);
     }
 
     @Test

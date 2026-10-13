@@ -13,6 +13,7 @@ import com.clickhouse.data.ClickHouseFormat;
 import com.clickhouse.kafka.connect.sink.db.CapturingClickHouseWriter;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -43,8 +44,6 @@ final class NullableRoundTrip {
     private static final String DESCRIBE_QUERY_FORMAT = "DESCRIBE TABLE `%s`.`%s`";
     private static final String DESCRIBE_INCLUDE_SUBCOLUMNS = "describe_include_subcolumns";
     private static final String CAUSE_SEPARATOR = " | ";
-    // The two characters backslash and n that fromJsonRow leaves where the server escaped a newline.
-    private static final String ESCAPED_NEWLINE = "\\n";
     private static final String SERVER_VERSION_QUERY = "SELECT version() AS v";
     private static final String SERVER_VERSION_ALIAS = "v";
 
@@ -192,13 +191,9 @@ final class NullableRoundTrip {
         return rows;
     }
 
-    /**
-     * Replaces every backslash-n pair with a space. {@code fromJsonRow} produces that two-character
-     * sequence from the server's escaped newline in pretty-printed non-nullable {@code Tuple(...)}
-     * types, which {@code ClickHouseColumn.of} cannot parse as it stands.
-     */
+    /** Production's normalisation, so the approach test exercises the code discovery runs. */
     static String normaliseDeclaredType(String rawType) {
-        return rawType.replace(ESCAPED_NEWLINE, " ");
+        return DeclaredNullability.normalise(rawType);
     }
 
     static String serverVersion(ClickHouseHelperClient chc) throws Exception {

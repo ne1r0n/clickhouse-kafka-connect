@@ -16,6 +16,7 @@ import com.clickhouse.kafka.connect.sink.db.CapturingClickHouseWriter;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
+import com.clickhouse.kafka.connect.sink.db.mapping.ColumnNullabilityPaths;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
@@ -83,8 +84,9 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
     // The two characters backslash and n that fromJsonRow leaves for the server's escaped newline.
     private static final String ESCAPED_NEWLINE = "\\n";
     private static final String PATH_SEPARATOR = ".";
-    private static final String ARRAY_ELEMENT_PATH = "[]";
-    private static final String MAP_VALUE_PATH = "{}";
+    // The server errors for a body that is shorter than the doubled null flags make it read.
+    private static final List<String> READ_PAST_END_CODES =
+            List.of("ATTEMPT_TO_READ_AFTER_EOF", "CANNOT_READ_ALL_DATA");
 
     /**
      * One record of a cell: the Kafka value of column {@code c} and what a correct read-back shows.
@@ -520,35 +522,6 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         assertEquals(List.of(), writer.captures(), "a refused row must not reach the insert");
     }
 
-    /**
-     * Flattens a Column tree into {@code path -> isNullable}: tuple fields by the element name left
-     * after the tuple's own name, the array element and the map value by a fixed marker.
-     */
-    private static Map<String, Boolean> nullabilityByPath(String path, Column column) {
-        Map<String, Boolean> into = new LinkedHashMap<>();
-        collectNullability(path, column, into);
-        return into;
-    }
-
-    private static void collectNullability(String path, Column column, Map<String, Boolean> into) {
-        into.put(path, column.isNullable());
-        switch (column.getType()) {
-            case TUPLE -> {
-                for (Column field : column.getTupleFields()) {
-                    String element = field.getName().substring(column.getName().length() + 1);
-                    collectNullability(path + PATH_SEPARATOR + element, field, into);
-                }
-            }
-            case ARRAY -> collectNullability(path + ARRAY_ELEMENT_PATH, column.getArrayType(), into);
-            case MAP -> {
-                if (column.getMapValueType() != null) {
-                    collectNullability(path + MAP_VALUE_PATH, column.getMapValueType(), into);
-                }
-            }
-            default -> {}
-        }
-    }
-
     // ---- tests ----
 
     @ParameterizedTest(name = "COLS-09 side (a) {0}")
@@ -568,8 +541,8 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                     chc.describeTable(chc.getDatabase(), tableName).hasDefaults(),
                     "twin precondition: DESCRIBE must report a default exactly on the DEFAULT twin");
             assertEquals(
-                    nullabilityByPath(CELL_COLUMN, matrixCell.declaredColumn().apply(CELL_COLUMN)),
-                    nullabilityByPath(
+                    ColumnNullabilityPaths.byPath(CELL_COLUMN, matrixCell.declaredColumn().apply(CELL_COLUMN)),
+                    ColumnNullabilityPaths.byPath(
                             CELL_COLUMN,
                             chc.describeTable(chc.getDatabase(), tableName)
                                     .getRootColumnsMap()
@@ -672,8 +645,16 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
 
             Exception failure =
                     assertThrows(Exception.class, () -> NullableRoundTrip.insertCaptured(chc, tableName, capture));
-            LOGGER.info("{} control {} failed as expected", MATRIX_LOG_PREFIX, twin);
-            assertNotNull(failure);
+            String causeChain = NullableRoundTrip.causeChainMessages(failure);
+            String matchedCode = READ_PAST_END_CODES.stream()
+                    .filter(causeChain::contains)
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(
+                    matchedCode,
+                    "the doubled null flags must fail with a read-past-end server code " + READ_PAST_END_CODES
+                            + " but the cause chain was: " + causeChain);
+            LOGGER.info("{} control {} failed with {}", MATRIX_LOG_PREFIX, twin, matchedCode);
             assertEquals(
                     List.of(),
                     RowSnapshots.select(chc, String.format(SELECT_IDS_FORMAT, tableName), ROW_ID_COLUMN),
