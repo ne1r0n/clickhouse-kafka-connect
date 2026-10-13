@@ -61,7 +61,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
 - [x] **Phase 16: Early Docs Publication** - Fix the 15-REVIEW docs findings and publish the corrected rollout doc to `custom_build` as a docs-only `--no-ff` merge, before any code work (completed 2026-10-11)
 - [x] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed (completed 2026-10-12)
 - [x] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data (completed 2026-10-12)
-- [ ] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release
+- [x] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release (completed 2026-10-13)
 - [ ] **Phase 20: Release & Publication** - `v1.7.0_gg2` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
 
 ## Phase Details
@@ -221,7 +221,7 @@ Phase gate: a cache-busted full suite on `latest` × V2, plus the anchors invari
   4. The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` each change in the same commit as the code they describe. The merge-invariant script passes at every commit in the phase.
   5. Each of 15-REVIEW IN-01..IN-05 is fixed, or closed with a written reason in the disposition file, consistently with the Tuple outcome.
 
-**Plans**: 10/10 plans executed (19-04 and 19-05 are alternatives; the 19-03 gate retires one; 19-07 to 19-10 close the verification gaps)
+**Plans**: 10/10 plans complete (19-04 and 19-05 are alternatives; the 19-03 gate retires one; 19-07 to 19-10 close the verification gaps)
 
 Plans:
 **Wave 1**
@@ -392,7 +392,7 @@ Plans:
 | 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
-| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 10/10 | In Progress | - |
+| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 10/10 | Complete    | 2026-10-13 |
 | 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
 
 ---

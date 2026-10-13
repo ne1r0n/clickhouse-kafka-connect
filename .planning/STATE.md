@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
-current_phase: 19
-current_phase_name: Nullable Enum & Tuple Mapping
-status: executing
-stopped_at: Completed 19-10-PLAN.md
-last_updated: "2026-10-13T10:31:39.314Z"
+current_phase: 20
+current_phase_name: Release & Publication
+status: planning
+stopped_at: Phase 19 complete, ready to plan Phase 20
+last_updated: "2026-10-13T10:45:14.739Z"
 last_activity: 2026-10-13
-last_activity_desc: Phase 19 execution started
-state_head: 310f9990ea2a18f8a4cfa9bc7aad3d51a427a33d
+last_activity_desc: Phase 19 complete, transitioned to Phase 20
+state_head: 05e08796bf425ea76e4e312dbb8d826d4010fdbd
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 21
   completed_plans: 21
-  percent: 60
+  percent: 80
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-12 after Phase 18)
 
 ## Current Position
 
-Phase: 19 (Nullable Enum & Tuple Mapping) — EXECUTING
-Plan: 5 of 10
-Status: Ready to execute
-Last activity: 2026-10-13 — Phase 19 execution started
+Phase: 20 — Release & Publication
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-13 — Phase 19 complete, transitioned to Phase 20
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [██████░░░░] 60%
 | 16 | 3 | - | - |
 | 17 | 4 | - | - |
 | 18 | 4 | - | - |
+| 19 | 10 | - | - |
 
 **Recent Trend:**
 
@@ -212,7 +213,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-13T10:31:39.268Z
-Stopped at: Completed 19-10-PLAN.md
+Stopped at: Phase 19 complete, ready to plan Phase 20
 Resume file: None
 
 ## Operator Next Steps

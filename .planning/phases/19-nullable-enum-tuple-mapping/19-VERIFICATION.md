@@ -1,8 +1,8 @@
 ---
 phase: 19-nullable-enum-tuple-mapping
-verified: 2026-10-13T00:00:00Z
-status: gaps_found
-score: 5/6 must-haves verified
+verified: 2026-10-13T11:00:00Z
+status: passed
+score: 6/6 must-haves verified
 covered_files:
   - ".planning/phases/19-nullable-enum-tuple-mapping/19-01-PLAN.md"
   - ".planning/phases/19-nullable-enum-tuple-mapping/19-01-SUMMARY.md"
@@ -16,48 +16,69 @@ covered_files:
   - ".planning/phases/19-nullable-enum-tuple-mapping/19-05-SUMMARY.md"
   - ".planning/phases/19-nullable-enum-tuple-mapping/19-06-PLAN.md"
   - ".planning/phases/19-nullable-enum-tuple-mapping/19-06-SUMMARY.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-07-PLAN.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-07-SUMMARY.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-08-PLAN.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-08-SUMMARY.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-09-PLAN.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-09-SUMMARY.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-10-PLAN.md"
+  - ".planning/phases/19-nullable-enum-tuple-mapping/19-10-SUMMARY.md"
   - ".planning/scripts/fork-anchors.txt"
   - "docs/FORK-DELTA.md"
   - "src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java"
   - "src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java"
   - "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java"
   - "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/NestedNullRowBinaryLiveTest.java"
   - "src/test/java/com/clickhouse/kafka/connect/sink/NullableEnumRoundTripLiveTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/NullableRoundTrip.java"
   - "src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/SimpleAggregateTupleRoundTripLiveTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/db/NestedNullableCompositeWriteTest.java"
   - "src/test/java/com/clickhouse/kafka/connect/sink/db/NullableEnumWriteTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkLiveTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java"
   - "src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java"
-covered_digest: "v3:sha256:dadeddd793f5d735a5e3de0fee38605835b11e92c1875e64df4a7971f4e8b4e4"
+covered_digest: "v3:sha256:aac3bfc0dabdca8fc1870b3c35532cd9e5acb6f66e48e842610d9963a6ebd86d"
 behavior_unverified: 0
 overrides_applied: 0
-gaps:
-  - truth: "Nullable(Tuple(...)) round-trips with element nullability taken from the declared type string, without breaking tuple schemas that wrote correctly before the phase (SC3 / COLS-10; the phase research flag names this exact regression class: a nullability change that silently corrupts tuples that work today)"
-    status: failed
-    reason: "DeclaredNullability's leaf rule records parsed.isNullable(). For a Tuple element declared SimpleAggregateFunction(f, Nullable(T)), ClickHouseColumn.of leaves the SimpleAggregateFunction node non-nullable and puts the flag on its nested column, so apply() flips the correct nullable=true that Column.extractColumn produced to false. The writer then omits the null marker for that element and the RowBinary stream misaligns for the rest of the row. This schema wrote correctly before Phase 19, so this is a silent-corruption regression in the high-risk write path. Reproduced independently by the verifier (production Column/Table/DeclaredNullability classes; real DESCRIBE on ClickHouse 26.9.17.8). Review finding CR-01 is still disposition: open."
-    artifacts:
-      - path: "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java"
-        issue: "collect() default branch (lines ~111-116) uses parsed.isNullable() without unwrapping SimpleAggregateFunction the way Column.extractColumn does"
-      - path: "src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java"
-        issue: "No case for a SimpleAggregateFunction(..., Nullable(...)) element (grep for SimpleAggregate and LowCardinality in the file returns nothing), and the live matrix has none either"
-    missing:
-      - "Unwrap SimpleAggregateFunction (nested column 0, repeated) when reading the declared leaf nullability in DeclaredNullability.collect (review CR-01 gives the fix)"
-      - "DeclaredNullabilityTest case: Tuple(a SimpleAggregateFunction(sum, Nullable(Int64)), b Nullable(Int32)) expects c.a=true and c.b=true; add LowCardinality(Nullable(String)) pins as Tuple element, Array element and Map value (they already behave, nothing pins them)"
-      - "Disposition CR-01 in 19-REVIEW-DISPOSITION.md (all 8 findings are still open)"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 5/6
+  gaps_closed:
+    - "SC3 / COLS-10: Tuple element declared SimpleAggregateFunction(f, Nullable(T)) was flipped to non-nullable by DeclaredNullability (review CR-01)"
+  gaps_remaining: []
+  regressions: []
+gaps: []
 deferred: []
-human_verification: []
+advisory:
+  - finding: "19-REVIEW WR-01: apply's catch handler dereferences root.getName(), and buildDescribedTable calls containsTuple outside any guard; both paths need a Column with a null name or null type, which Column.extractColumn never produces"
+    category: other
+    reason: "Unreachable from production callers; no trigger found. Totality of the pass is otherwise pinned by the catch-all and its WARN test."
+    evidence_status: "none provided (no reproduction)"
+  - finding: "19-REVIEW WR-02: the WARN column-name assertions use the one-letter name c, which also appears in the fixed text (Could), so they cannot fail on a dropped column argument"
+    category: other
+    reason: "Test-quality weakness, not a behaviour defect; the table-name half of the assertion is real."
+    evidence_status: "none provided"
+  - finding: "19-REVIEW WR-03: FORK-DELTA names a per-twin server error code (CANNOT_READ_ALL_DATA plain, ATTEMPT_TO_READ_AFTER_EOF defaults) that the control test accepts as either code"
+    category: other
+    reason: "Documentation precision; the control still fails closed on read-past-end."
+    evidence_status: "none provided"
 ---
 
 # Phase 19: Nullable Enum & Tuple Mapping Verification Report
 
 **Phase Goal:** `Nullable(Enum8)`/`Nullable(Enum16)` columns store exactly what the record says. `Nullable(Tuple)` either round-trips or stays explicitly warned, with a recorded Known cost. A spike decides which, so a no-go cannot hold the release.
 **Verified:** 2026-10-13
-**Status:** gaps_found
-**Re-verification:** No, initial verification
+**Status:** passed
+**Re-verification:** Yes, after gap closure (plans 19-07..19-10). The previous report was `gaps_found` on SC3 / COLS-10 (review CR-01).
 
 ## Summary
 
-The phase delivered what it set out to. The spike ran before any Tuple production code and recorded `go`. `Nullable(Enum8|Enum16)` round-trips. `Nullable(Tuple)` and `Array(Nullable(Tuple))` round-trip on the live matrix. The anchors invariant passes, DEBT-09 is closed, and `Table.java` is untouched.
+The one blocker from the previous report is closed. `DeclaredNullability` now reads through `SimpleAggregateFunction` the same way `Column.extractColumn` does, so a Tuple element declared `SimpleAggregateFunction(f, Nullable(T))` keeps its null marker. I confirmed this three ways rather than from the summaries. I read the code, I reran the Phase 19 test classes against a live ClickHouse, and I broke the fix on purpose to check that the pins fail. The other five roadmap success criteria were re-checked for regression and still hold.
 
-One thing stands between this phase and a clean pass. The new `DeclaredNullability` pass introduces a data-corruption regression for one valid schema shape. The verifier reproduced it, so it is a BLOCKER under the project rule "No data loss is acceptable". The fix is small and the review already specifies it. The gap is not a goal failure in the main path. The rest of the phase is sound, so a narrow closure plan is enough.
+The new 19-REVIEW (0 critical, 3 warning, 3 info) was weighed. Its findings concern unreachable paths and test or documentation precision. None changes stored data, so they are recorded as advisory and do not hold the phase.
 
 ## Goal Achievement
 
@@ -65,52 +86,53 @@ One thing stands between this phase and a clean pass. The new `DeclaredNullabili
 
 | # | Truth (ROADMAP SC) | Status | Evidence |
 |---|--------------------|--------|----------|
-| 1 | SC1: A live twin-table spike on `latest` ran before any Tuple production code, covering `Nullable(Tuple)` with nullable and non-nullable elements and `Array(Nullable(Tuple))`, and recorded go/no-go plus the type-string parsing approach | VERIFIED | `19-SPIKE.md` holds the C1-C3 deciding and X1-X3 extra cells on plain (RowBinary) and DEFAULT (RowBinaryWithDefaults) twins, both sides each, a double-flag control, and DESCRIBE rows. Server 26.9.17.8. `## Decision: go` with approach C and fail-open policy. Commit order: spike `fc44b1f6`/`5d4424c7` and gate `12f225cf` precede the Tuple fix `2a94e045`. `enable_nullable_tuple_type` is not set in any test (19-06 scope check). |
-| 2 | SC2: `Nullable(Enum8)`/`Nullable(Enum16)` NULL and non-NULL round-trip through RowBinary, top level and in `Array(Nullable(Enum))` and `Map(K, Nullable(Enum))`; D-16/L-13 pins flipped with rationale, none deleted | VERIFIED | `Column.extractColumn` Enum branch carries `.isNullable(isNull)` (diff `598f2caf`). Verifier reran `NullableEnumRoundTripLiveTest` (6 passed) and read `NullableEnumWriteTest` and the adjacent unit tests in the earlier run (14 and 18 passed, Docker-free). Pin flips are renames with the input unchanged and a written rationale comment, not deletions: `nullElementInArrayOfNullableTupleFailsWithDataException` became `...ReadsBackAsSqlNull` and `...ThrowsBecauseColumnDropsTupleNullability` became `...WritesNullMarker`. |
-| 3 | SC3 (go): `Nullable(Tuple(...))` round-trips with element nullability from the declared type string, `Table.java` untouched, `Array(Nullable(Tuple))` still round-trips | FAILED (BLOCKER) | Main path verified: `NullableTupleMatrixLiveTest` 30 passed on 26.9.17.8 (C1, C2, C3, X1-X3 on both twins), `DeclaredNullabilityTest` 15 passed, `git diff` of `Table.java`, `ColumnTest`, `TableTest` is empty. But the pass flips `SimpleAggregateFunction(f, Nullable(T))` Tuple elements from correct `nullable=true` to `false` (see Gaps). Previously-correct schemas now misalign. |
-| 4 | SC4: Discovery WARN, `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `FORK-DELTA.md` change in the same commit as the code; merge-invariant script passes at every commit | VERIFIED | `598f2caf` and `2a94e045` each touch code, `fork-anchors.txt` and `FORK-DELTA.md` together; the `hasNullableEnumOrTuple` row is removed and COLS-10 rows added. `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD` rerun by the verifier: `result=PASS` (anchor_commits=279, anchor_rows=58). No remaining source references to `hasNullableEnumOrTuple`, `warnOnceIfNullable` or `NULLABLE_ENUM_OR_TUPLE`. |
-| 5 | SC5: 15-REVIEW IN-01..IN-05 each fixed or closed with a written reason, consistent with the Tuple outcome (DEBT-09) | VERIFIED | `15-REVIEW-DISPOSITION.md` (archived under `.planning/milestones/v1.7.0_gg1-sync-phases/15-...`) shows IN-01..IN-05 `fixed`, each Source cell citing `2a94e045` and the word superseded; `open: 0`. Consistent with the go outcome, since the WARN block they concern is deleted. |
-| 6 | The Decision path: a no-go cannot hold the release (19-05 retired) | VERIFIED | `19-05-SUMMARY.md` is `status: superseded`, matching `## Decision` ("Superseded: 19-05"). The user's `go` is recorded in `19-SPIKE.md`. This is correct behaviour, not a gap. |
+| 1 | SC1: A live twin-table spike on `latest` ran before any Tuple production code, covering `Nullable(Tuple)` with nullable and non-nullable elements and `Array(Nullable(Tuple))`, and recorded go/no-go plus the parsing approach | VERIFIED | `19-SPIKE.md` holds the C1-C3 deciding and X1-X3 extra cells on a plain (RowBinary) and a DEFAULT (RowBinaryWithDefaults) twin, both sides each, a double-flag control, DESCRIBE rows, and a gate refresh on server 26.9.17.8. `## Decision` is `go` with approach C and the fail-open policy. Commit order is spike `fc44b1f6` before the Tuple fix. No test sets `enable_nullable_tuple_type` (grep over `src/test` is empty). |
+| 2 | SC2: `Nullable(Enum8)`/`Nullable(Enum16)` NULL and non-NULL round-trip through RowBinary by typed read-back, top level and in `Array(Nullable(Enum))` and `Map(K, Nullable(Enum))`; D-16/L-13 pins flipped with rationale, none deleted | VERIFIED | `Column.extractColumn` Enum branch carries `.isNullable(isNull)` (diff against `ede0a45d`). I reran `NullableEnumRoundTripLiveTest` (6 passed, live) and `NullableEnumWriteTest` (14 passed, Docker-free). The flipped pins exist under their new names (`nullElementInArrayOfNullableTupleReadsBackAsSqlNull`, `nullElementInArrayOfNullableTupleWritesNullMarker`). The only removed test methods are the eight that pinned the deleted WARN machinery, which SC4 requires gone; the WARN is covered by negative-form pins (`formerlyFlaggedTupleTypesDiscoverWithDeclaredNullabilityAndNoWarning`, `otherTypesDiscoverWithoutWarningAndUnchangedRootNullability`, `repeatedDiscoveryNeverWarns`). |
+| 3 | SC3 (go): `Nullable(Tuple(...))` round-trips with element nullability from the declared type string, `Table.java` untouched, `Array(Nullable(Tuple))` still round-trips | VERIFIED | `NullableTupleMatrixLiveTest` 30 passed live (C1-C3, X1-X3, both twins, control). `SimpleAggregateTupleRoundTripLiveTest` 2 passed live (the CR-01 shape, both twins). `DeclaredNullabilityTest` 25 passed. `git diff ede0a45d HEAD` over `Table.java`, `TableTest.java` and `ColumnTest.java` is empty. The CR-01 defect is gone in the code: `collect` now starts with `unwrapSimpleAggregate(declared)` (`DeclaredNullability.java` lines 109-120), and `collectTuple` recurses through `collect`, so tuple elements, array elements and map values all unwrap. |
+| 4 | SC4: Discovery WARN, `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `FORK-DELTA.md` change in the same commit as the code; merge-invariant script passes at every commit | VERIFIED | `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD`: `invariants: provenance_paths=21 anchor_commits=301 anchor_rows=59 marker_commits=348 result=PASS`. No remaining reference to `hasNullableEnumOrTuple`, `warnOnceIfNullable` or `NULLABLE_ENUM_OR_TUPLE` in `src`, `docs` or `.planning/scripts`. `fork-anchors.txt` carries the COLS-10 rows including the new `unwrapSimpleAggregate(` anchor (count 2), added with the 19-07 fix. FORK-DELTA line 50 describes the declared-type pass. |
+| 5 | SC5: 15-REVIEW IN-01..IN-05 each fixed or closed with a written reason, consistent with the Tuple outcome (DEBT-09) | VERIFIED | The archived `15-REVIEW-DISPOSITION.md` lists IN-01..IN-05 as `fixed`. This is consistent with the go outcome, because the WARN block those findings concern is deleted. The Phase 19 review dispositions are also recorded in `19-REVIEW-DISPOSITION.md`. |
+| 6 | The decision path: a no-go cannot hold the release | VERIFIED | The user's `go` is recorded in `19-SPIKE.md`; `19-05` (no-go alternative) is superseded. The spike gated the work and the release is not held. |
 
-**Score:** 5/6 truths verified (0 present, behavior-unverified)
+**Score:** 6/6 truths verified (0 present, behavior-unverified)
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `19-SPIKE.md` | Go/no-go bundle with matrix, approach test and Decision | VERIFIED | Plain and DEFAULT twin matrices (C1-C3 deciding, X1-X3 extra), control, DESCRIBE rows, gate refresh, `## Decision` go |
-| `Column.java` | Enum and Tuple branches carry `Nullable`; package setter | VERIFIED | `.isNullable(isNull)` count 3; `@Setter(AccessLevel.PACKAGE)` present |
-| `DeclaredNullability.java` | Pairing pass after `Table`, fail open | PARTIAL | Exists, substantive, wired. Leaf nullability rule wrong for `SimpleAggregateFunction` |
-| `ClickHouseHelperClient.java` | WARN deleted; shared `buildDescribedTable` used by both describe loops | VERIFIED | V1 and V2 both return through `buildDescribedTable`; `DeclaredNullability.apply(` appears once |
-| `ClickHouseWriter.java` | Stale comment only | VERIFIED | Comment-only change |
-| `fork-anchors.txt`, `FORK-DELTA.md` | Rows updated in step with code | VERIFIED | Four COLS-10 anchor rows; Known cost item 1 rewritten as "999.1 is closed" |
-| `19-BEHAVIOUR-LEDGER.md` | L-31..L-40 | VERIFIED | Ten rows, including L-38 (single-field tuple now `DataException`) |
+| `19-SPIKE.md` | Go/no-go bundle with matrix, approach test, Decision | VERIFIED | Both twin matrices, control, DESCRIBE rows, `## Decision` go |
+| `Column.java` | Enum and Tuple branches carry `Nullable`; package setter | VERIFIED | `.isNullable(isNull)` on Enum and Tuple builders; `@Setter(AccessLevel.PACKAGE) private boolean isNullable` |
+| `DeclaredNullability.java` | Pairing pass after `Table`, fail open, SimpleAggregateFunction unwrap | VERIFIED | 168 lines. All-or-none via the `Assignment` list. Catch-all `RuntimeException` fallback with one metadata-only WARN naming column, database, table, raw type and exception class |
+| `ClickHouseHelperClient.java` | WARN deleted; shared `buildDescribedTable` used by both describe loops | VERIFIED | V1 and V2 both collect `declaredTypes` for non-subcolumn rows and return through `buildDescribedTable` |
+| `ClickHouseWriter.java` | Stale comment only | VERIFIED | Comment-only change (diff 2 lines) |
+| `fork-anchors.txt`, `FORK-DELTA.md` | Rows updated in step with code | VERIFIED | Anchor rows present; invariant script PASS |
+| `19-BEHAVIOUR-LEDGER.md` | L-31..L-41 | VERIFIED | Eleven rows; L-41 is the SimpleAggregateFunction fix |
+| `19-REVIEW-DISPOSITION.md` | Findings triaged | VERIFIED | CR-01 `fixed` (4e133d4e); IN-04 `deferred` with owner and trigger; six advisory items from the newest review recorded `open` |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| `describeTableV1` / `describeTableV2` | `DeclaredNullability.apply` | `buildDescribedTable` | WIRED | Both loops collect root raw types and return via the shared helper |
-| `buildDescribedTable` | upstream `Table` | `new Table(...)` before the pass | WIRED | Pass runs after the Table has paired sub-columns; Table unchanged |
-| `DeclaredNullability` | `ClickHouseWriter` null-marker decisions | `Column.isNullable()` | WIRED, WRONG for one shape | Writer emits marker per `isNullable()`; the flipped flag drops the marker |
+| `describeTableV1` / `describeTableV2` | `DeclaredNullability.apply` | `buildDescribedTable` | WIRED | Both loops return through the shared helper; `DeclaredNullability.apply(` anchor count 1 |
+| `buildDescribedTable` | upstream `Table` | `new Table(...)` before the pass | WIRED | Table is built first, then the pass runs per root that `containsTuple` |
+| `DeclaredNullability.collect` | `Column.extractColumn` leaf rule | `unwrapSimpleAggregate` | WIRED | Declared tree is read through the wrapper at every depth, matching the mapper |
+| `Column.isNullable()` | writer null-marker decisions | `ClickHouseWriter` slots | WIRED | Marker follows the flag; the live round trips confirm the bytes align |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 |----------|---------------|--------|--------------------|--------|
-| `DeclaredNullability.apply` | declared type per root | raw DESCRIBE type of non-subcolumn rows | Yes (live DESCRIBE, re-observed) | FLOWING |
+| `DeclaredNullability.apply` | declared type per root | raw DESCRIBE type of non-subcolumn rows (live DESCRIBE, re-observed in the matrix logs) | Yes | FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Live Nullable Enum/Tuple round-trips on `latest` x V2 | `gradlew test --rerun` over `NullableEnumRoundTripLiveTest`, `NullableTupleMatrixLiveTest`, `NestedNullRowBinaryLiveTest`, `ClickHouseHelperClientForkLiveTest` (server 26.9.17.8) | 6 + 30 + 10 + 12 passed, 0 failed, 0 skipped | PASS |
-| Docker-free Phase 19 classes | same command over `DeclaredNullabilityTest`, `NullableEnumWriteTest`, `NestedNullableCompositeWriteTest`, `ClickHouseHelperClientForkUnitTest` | all passed (15, 14, 18, 44) | PASS |
-| SimpleAggregateFunction Tuple element keeps its nullability | verifier probe: production `Column.extractColumn`, `Table`, `DeclaredNullability.apply` on `Tuple(a SimpleAggregateFunction(sum, Nullable(Int64)), b Nullable(Int32))` | `before: c.a=true`, `after apply: c.a=false` | FAIL |
-| Same probe, other leaf wrappers | `LowCardinality(Nullable(String))`, `Nullable(Decimal)`, `Nullable(DateTime64)`, `Nullable(Enum8)`, `Nullable(FixedString)`, `Nullable(UUID)`, `Array(Nullable(Int32))`, `Map(String, Nullable(Int32))`, `SimpleAggregateFunction(sum, Int64)` | unchanged before/after | PASS |
-| Wire format requires the marker | ClickHouse 26.9.17.8: `Tuple(a SimpleAggregateFunction(sum, Nullable(Int64)), b Nullable(Int32))`, `SELECT ... FORMAT RowBinary` of `(5,7)` | `01000000 00 0500000000000000 00 07000000`, i.e. a marker byte precedes `a` | confirms the corruption mechanism |
+| Phase 19 classes, live and Docker-free, ClickHouse 26.9.17.8 x client V2 | `TESTCONTAINERS_HOST_OVERRIDE=localhost ./gradlew test --rerun --offline --tests` over `NullableEnumRoundTripLiveTest`, `NullableTupleMatrixLiveTest`, `SimpleAggregateTupleRoundTripLiveTest`, `DeclaredNullabilityTest`, `NullableEnumWriteTest`, `NestedNullableCompositeWriteTest`, `ClickHouseHelperClientForkUnitTest`, `ClickHouseHelperClientForkLiveTest`, `NestedNullRowBinaryLiveTest` | 6 + 30 + 2 + 25 + 14 + 18 + 45 + 12 + 10 = 162 tests, 0 failures, 0 errors, 0 skipped. Server version logged as `26.9.17.8` | PASS |
+| CR-01 fix has teeth (verifier mutation) | Temporarily replaced `unwrapSimpleAggregate(declared)` with `declared` in `collect`, reran `DeclaredNullabilityTest`, restored the file | 4 of 25 failed: the CR-01 element case, the CR-01 root-wrapper case, `SimpleAggregateFunction(anyLast, Array(Nullable(Int32)))`, and `SimpleAggregateFunction(anyLast, LowCardinality(Nullable(String)))`. Source restored; `git status --short src` is clean | PASS |
+| Anchors invariant | `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD` | `result=PASS` | PASS |
+| Protected files untouched | `git diff ede0a45d HEAD` over `Table.java`, `TableTest.java`, `ColumnTest.java` | empty | PASS |
 
-The live tests needed `TESTCONTAINERS_HOST_OVERRIDE=localhost` in the verifier's shell (the inherited value was the string `null`). That is a local environment quirk, not a phase defect.
+The live tests needed `TESTCONTAINERS_HOST_OVERRIDE=localhost` in the verifier's shell because the inherited value was the string `null`. That is a local environment quirk, not a phase defect. I did not repeat the two full-suite runs (84 classes, 980 tests) that 19-10 reports; the Phase 19 classes above are the ones that exercise the changed code.
 
 ### Probe Execution
 
@@ -120,44 +142,39 @@ Step 7c: SKIPPED. The phase declares no `probe-*.sh` scripts.
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| COLS-08 | 19-02 | `Nullable(Enum8|Enum16)` round-trip, top level and nested, D-16/L-13 pins flipped | SATISFIED | Truth 2 |
-| COLS-09 | 19-01 (19-03 gate) | Live Tuple spike, go/no-go with parsing approach, before Tuple production code | SATISFIED | Truth 1 |
-| COLS-10 | 19-04 (19-05 superseded) | On go, `Nullable(Tuple)` round-trips with declared nullability, `Array(Nullable(Tuple))` still round-trips | BLOCKED (partial) | Main matrix round-trips; regression for `SimpleAggregateFunction(..., Nullable(...))` elements (Truth 3). REQUIREMENTS.md already marks it Complete; that mark should be held until CR-01 is closed |
-| COLS-11 | 19-02, 19-04 | WARN, anchors row and FORK-DELTA change in the same commit; invariant script green | SATISFIED | Truth 4 |
+| COLS-08 | 19-02 | `Nullable(Enum8|Enum16)` round-trip, top level and nested; D-16/L-13 pins flipped | SATISFIED | Truth 2 |
+| COLS-09 | 19-01 (19-03 gate) | Live Tuple spike with go/no-go and parsing approach before Tuple production code | SATISFIED | Truth 1 |
+| COLS-10 | 19-04, 19-07..19-10 (19-05 superseded) | On go, `Nullable(Tuple)` round-trips with declared nullability; `Array(Nullable(Tuple))` still round-trips | SATISFIED | Truth 3, including the closed CR-01 shape |
+| COLS-11 | 19-02, 19-04, 19-07..19-10 | WARN, anchors row and FORK-DELTA change in the same commit; invariant green | SATISFIED | Truth 4 |
 | DEBT-09 | 19-06 | 15-REVIEW IN-01..IN-05 fixed or closed with reason | SATISFIED | Truth 5 |
 
-All five IDs in the phase's PLAN frontmatter appear in REQUIREMENTS.md (traceability table maps each to Phase 19). No orphaned requirements: the Phase 19 row of the coverage table lists exactly COLS-08..COLS-11 and DEBT-09.
+Every ID in the PLAN frontmatter (COLS-08, COLS-09, COLS-10, COLS-11, DEBT-09) appears in REQUIREMENTS.md and maps to Phase 19. No orphaned requirements: the Phase 19 row lists exactly these five.
+
+Bookkeeping for the orchestrator: REQUIREMENTS.md still shows COLS-08, COLS-09 and DEBT-09 as unchecked and `Gaps Found` in the traceability table (COLS-10 and COLS-11 are already `Complete`). That reflects the earlier `gaps_found` result and should be updated now that the gap is closed.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `DeclaredNullability.java` | ~111-116 | Leaf rule `parsed.isNullable()` without `SimpleAggregateFunction` unwrap | BLOCKER | Silent byte misalignment for Tuple elements wrapped in `SimpleAggregateFunction(..., Nullable(...))` (CR-01) |
-| `DeclaredNullability.java` | 86-90 | Only the parse sits in `try/catch`; `collect` unguarded, and `describeTableV1` catches only `ClickHouseException | JsonProcessingException` | WARNING | No current trigger; contradicts the fail-open intent (WR-01) |
-| `NullableTupleMatrixLiveTest.java` | 673-676 | `assertThrows(Exception.class)` control test | WARNING | Control passes on any failure (WR-03) |
-| `NullableTupleMatrixLiveTest.java` | 106-129 and others | Dead `STORES_WRONG` machinery | INFO | IN-02 |
-| `DeclaredNullability.java` | 33-34 | Fallback WARN lacks database/table | INFO | IN-01 |
-| `NullableRoundTrip.java` and tests | 46-47, 200-202 | Test copy of `normalise`; duplicated helpers | INFO | IN-03 |
-| `DeclaredNullability.java` | 133-143 | Declared element with no Column still "applies" | INFO | IN-04 |
+| `DeclaredNullability.java` | 95-100 | Handler dereferences `root.getName()` | Advisory (WR-01) | Only a null `root` reaches it, and the sole caller never passes one |
+| `ClickHouseHelperClient.java` | `buildDescribedTable` | `containsTuple` called outside a guard | Advisory (WR-01) | Needs a Column with a null type, which `extractColumn` never builds |
+| `ClickHouseHelperClientForkUnitTest.java`, `DeclaredNullabilityTest.java` | 418; 216, 238, 278 | Column-name WARN assertions use `c` | Advisory (WR-02) | Assertions cannot fail on a dropped column argument |
+| `FORK-DELTA.md` | 50 | Per-twin error code not pinned by the control test | Advisory (WR-03) | Documentation precision only |
+| `Column.java` | 169 | `FIXME: Map keys doesn't support Decimal` | Info | Upstream comment; the phase diff against `ede0a45d` does not touch the line. Not a phase-introduced debt marker |
 
-No `TBD`, `FIXME` or `XXX` markers in the files this phase changed.
-
-### Review Findings Weighed
-
-- **CR-01 (critical): confirmed by the verifier and treated as the gap above.** Reasons it blocks despite the narrow trigger: it is a regression (the schema worked before), it fails silently with misaligned bytes and no exception, it sits in a file the project lists as high risk, the project rule is "No data loss is acceptable", and the phase's own research flag names this class of defect. The exposure is limited to Tuples with a `SimpleAggregateFunction` over a `Nullable` element. That is rare but valid, and a CDC fork cannot rule it out from outside.
-- **WR-01, WR-03, IN-01..IN-04:** real but not goal-blocking. No trigger for WR-01 was found. WR-03 weakens one control test. They can ride along in the closure plan or be dispositioned.
-- **WR-02 (rollout and CHANGELOG still describe the removed WARN):** the cited text is in the already-published `1.7.0_gg1` documents, where it is historically accurate. Phase 20 (ROLL-02, PUB-07) owns the `1.7.0_gg2` rollout note and CHANGELOG section, and Phase 19 recorded the needed behaviour changes (ledger L-31..L-40, FORK-DELTA item 1). So this is a Phase 20 input, not a Phase 19 gap. Phase 20 must carry the L-38 single-field-tuple `DataException`, which matters under `errors.tolerance=none`.
-- `19-REVIEW-DISPOSITION.md` still lists all 8 findings as `open`. Triage is outstanding.
+No `TBD`, `FIXME` or `XXX` marker was added by this phase.
 
 ### Human Verification Required
 
-None. Every truth resolved to VERIFIED or FAILED from code and live evidence.
+None. Every truth resolved to VERIFIED from code, live test runs and a mutation check.
 
 ### Gaps Summary
 
-One gap, one root cause: `DeclaredNullability.collect` reads the declared leaf nullability from the parsed node without unwrapping `SimpleAggregateFunction`, so a Tuple element declared `SimpleAggregateFunction(f, Nullable(T))` loses its null marker. `Column.extractColumn` already unwraps this wrapper, so the pass disagrees with the mapper it is meant to correct. The fix is a loop that follows nested column 0 while the node is a `SimpleAggregateFunction`, plus the missing unit pins. Closing it should not change any matrix result, since none of the matrix cells contain the wrapper. After the fix, re-run `DeclaredNullabilityTest` and the live matrix, add the live or Docker-free pin, and set CR-01 to `fixed` in the disposition file. The other seven review findings can be dispositioned in the same pass.
+No gaps. The previous blocker (CR-01) is fixed in `4e133d4e`, hardened by 19-08 and 19-09, and pinned by Docker-free unit cases, a live round trip on both twins, and a mutation that I reproduced. The fix does not change any matrix result: the matrix still passes at exactly 30 cases.
 
-Phase 20 must not publish `v1.7.0_gg2` with CR-01 open.
+Carry-forward items for Phase 20 (already recorded in the ROADMAP Phase 20 entry by 19-10): the `1.7.0_gg2` rollout note and CHANGELOG must state that the `Nullable(Tuple)` limitation is closed and the WARN is gone, and must carry the L-38 single-field-tuple `DataException`, which matters under `errors.tolerance=none`. PUB-07 owns the `VERSION` bump and CHANGELOG entry, which Phase 19 left untouched on purpose. IN-04 is deferred with an owner and a re-open trigger.
+
+The three advisory review warnings could be tidied in a later pass (use a column name that cannot appear in the WARN text, widen the guard around `apply`, soften or pin the per-twin code claim), but none blocks the phase goal.
 
 ---
 
