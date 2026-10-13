@@ -506,7 +506,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         Table table = new Table(database, tableName, hasDefaults, columns, numColumns);
         for (Column root : table.getRootColumnsList()) {
             if (DeclaredNullability.containsTuple(root)) {
-                DeclaredNullability.apply(root, declaredTypes.get(root.getName()));
+                DeclaredNullability.apply(root, declaredTypes.get(root.getName()), database, tableName);
             }
         }
         return table;

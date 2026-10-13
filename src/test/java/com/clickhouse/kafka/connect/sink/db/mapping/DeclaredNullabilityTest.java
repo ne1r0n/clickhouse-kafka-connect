@@ -25,6 +25,9 @@ class DeclaredNullabilityTest {
             + "\"default_expression\":\"\",\"comment\":\"\",\"codec_expression\":\"\","
             + "\"ttl_expression\":\"\",\"is_subcolumn\":%s}";
     private static final String ROOT = "c";
+    private static final String DATABASE = "db";
+    private static final String TABLE = "t";
+    private static final String QUALIFIED_TABLE = "db.t";
     private static final String PATH_SEPARATOR = ".";
     private static final String ARRAY_ELEMENT_PATH = "[]";
     private static final String MAP_VALUE_PATH = "{}";
@@ -47,7 +50,7 @@ class DeclaredNullabilityTest {
                 numColumns++;
             }
         }
-        return new Table("db", "t", false, columns, numColumns);
+        return new Table(DATABASE, TABLE, false, columns, numColumns);
     }
 
     private static Column root(Table table) {
@@ -90,7 +93,7 @@ class DeclaredNullabilityTest {
         Column column = root(describe(
                 row("c", type), row("c.a", "Nullable(Int32)"), row("c.b", "Nullable(String)")));
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(Map.of("c", true, "c.a", false, "c.b", false), nullabilityByPath(column));
     }
@@ -102,7 +105,7 @@ class DeclaredNullabilityTest {
         Column column = root(describe(
                 row("c", type), row("c.a", "Nullable(Int32)"), row("c.b", "Nullable(String)")));
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(Map.of("c", true, "c.a", true, "c.b", false), nullabilityByPath(column));
     }
@@ -116,7 +119,7 @@ class DeclaredNullabilityTest {
                 row("c.a", "Array(Nullable(Int32))"),
                 row("c.b", "Array(Nullable(String))")));
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(
                 Map.of("c", false, "c[]", true, "c[].a", false, "c[].b", true), nullabilityByPath(column));
@@ -133,7 +136,7 @@ class DeclaredNullabilityTest {
                 row("c.values.a", "Array(Nullable(Int32))"),
                 row("c.values.b", "Array(Nullable(String))")));
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(
                 Map.of("c", false, "c{}", true, "c{}.a", false, "c{}.b", false), nullabilityByPath(column));
@@ -151,7 +154,7 @@ class DeclaredNullabilityTest {
                 row("c.n.e", "Nullable(Int32)")));
         assertTrue(nullabilityByPath(column).get("c.n"), "premise: DESCRIBE reports the nested tuple as Nullable");
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(
                 Map.of("c", true, "c.a", false, "c.n", false, "c.n.d", false, "c.n.e", true),
@@ -167,7 +170,7 @@ class DeclaredNullabilityTest {
         Column column = root(describe(row("c", serverType), row("c.a", "Int32"), row("c.b", "Nullable(String)")));
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
-            assertTrue(DeclaredNullability.apply(column, rawType));
+            assertTrue(DeclaredNullability.apply(column, rawType, DATABASE, TABLE));
 
             assertEquals(List.of(), log.events("WARN"));
         }
@@ -195,7 +198,7 @@ class DeclaredNullabilityTest {
         String type = "Nullable(Tuple(Int32, Nullable(String)))";
         Column column = root(describe(row("c", type), row("c.1", "Nullable(Int32)"), row("c.2", "Nullable(String)")));
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(Map.of("c", true, "c.1", false, "c.2", true), nullabilityByPath(column));
     }
@@ -206,7 +209,7 @@ class DeclaredNullabilityTest {
         String type = "Nullable(Tuple(`a b` Int32, `c,d` Nullable(String)))";
         Column column = root(describe(row("c", type), row("c.a b", "Nullable(Int32)"), row("c.c,d", "Nullable(String)")));
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(Map.of("c", true, "c.a b", false, "c.c,d", true), nullabilityByPath(column));
     }
@@ -217,7 +220,7 @@ class DeclaredNullabilityTest {
         String type = "Nullable(Tuple(a Int32, b Nullable(String)))";
         Column column = root(describe(row("c", type), row("c.b", "Nullable(String)")));
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(Map.of("c", true, "c.b", true), nullabilityByPath(column));
     }
@@ -232,13 +235,14 @@ class DeclaredNullabilityTest {
         Map<String, Boolean> before = nullabilityByPath(column);
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
-            assertFalse(DeclaredNullability.apply(column, type));
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
             List<LogCapture.CapturedEvent> warnings = log.events("WARN");
             assertEquals(1, warnings.size());
             String message = warnings.get(0).message();
             assertTrue(message.contains(ROOT), message);
             assertTrue(message.contains(type), message);
+            assertTrue(message.contains(QUALIFIED_TABLE), message);
             assertFalse(warnings.get(0).hasThrowable(), "the exception text can echo the type and is never logged");
             assertEquals(1, log.events().size());
         }
@@ -254,12 +258,13 @@ class DeclaredNullabilityTest {
         Map<String, Boolean> before = nullabilityByPath(column);
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
-            assertFalse(DeclaredNullability.apply(column, type));
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
             List<LogCapture.CapturedEvent> warnings = log.events("WARN");
             assertEquals(1, warnings.size());
             assertTrue(warnings.get(0).message().contains(ROOT), warnings.get(0).message());
             assertTrue(warnings.get(0).message().contains(type), warnings.get(0).message());
+            assertTrue(warnings.get(0).message().contains(QUALIFIED_TABLE), warnings.get(0).message());
             assertFalse(warnings.get(0).hasThrowable());
         }
         assertEquals(before, nullabilityByPath(column));
@@ -276,11 +281,34 @@ class DeclaredNullabilityTest {
         Map<String, Boolean> before = nullabilityByPath(column);
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
-            assertFalse(DeclaredNullability.apply(column, declared));
+            assertFalse(DeclaredNullability.apply(column, declared, DATABASE, TABLE));
 
-            assertEquals(1, log.events("WARN").size());
+            List<LogCapture.CapturedEvent> warnings = log.events("WARN");
+            assertEquals(1, warnings.size());
+            assertTrue(warnings.get(0).message().contains(QUALIFIED_TABLE), warnings.get(0).message());
         }
         assertEquals(before, nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10 WR-01: an unexpected exception in the pass falls back with one metadata-only WARN naming the table")
+    void unexpectedExceptionInThePassFailsOpenWithOneMetadataWarning() throws Exception {
+        String type = "Tuple(a Int32)";
+        Column column = Column.builder().name(ROOT).build();
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            List<LogCapture.CapturedEvent> warnings = log.events("WARN");
+            assertEquals(1, warnings.size());
+            String message = warnings.get(0).message();
+            assertTrue(message.contains(ROOT), message);
+            assertTrue(message.contains(QUALIFIED_TABLE), message);
+            assertTrue(message.contains(type), message);
+            assertTrue(message.contains(NullPointerException.class.getSimpleName()), message);
+            assertFalse(warnings.get(0).hasThrowable(), "the exception message is never logged");
+            assertEquals(1, log.events().size());
+        }
     }
 
     @Test
@@ -305,7 +333,7 @@ class DeclaredNullabilityTest {
                 nullabilityByPath(column).get("c.a"),
                 "premise: Column.extractColumn reads through the wrapper to the nullable argument type");
 
-        assertTrue(DeclaredNullability.apply(column, type));
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
         assertEquals(Map.of("c", false, "c.a", true, "c.b", true), nullabilityByPath(column));
     }
@@ -322,7 +350,7 @@ class DeclaredNullabilityTest {
         assertEquals(Map.of("c", false, "c.a", true, "c.b", false), before);
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
-            assertTrue(DeclaredNullability.apply(column, type));
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
             assertEquals(List.of(), log.events("WARN"));
         }
@@ -337,7 +365,7 @@ class DeclaredNullabilityTest {
         Map<String, Boolean> before = nullabilityByPath(column);
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
-            assertFalse(DeclaredNullability.apply(column, null));
+            assertFalse(DeclaredNullability.apply(column, null, DATABASE, TABLE));
 
             assertEquals(List.of(), log.events());
         }

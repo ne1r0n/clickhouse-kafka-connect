@@ -400,6 +400,25 @@ class ClickHouseHelperClientForkUnitTest {
         }
     }
 
+    private static final String DISCOVERED_TABLE = "db.t";
+
+    @Test
+    @DisplayName("COLS-10 IN-01: the fallback WARN raised during discovery names the database and the table")
+    void fallbackWarningNamesDatabaseAndTable() {
+        try (LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            discover(
+                    Map.of("c", "Nullable(Tuple(a NoSuchType))"),
+                    "c", "Nullable(Tuple(a Int32))",
+                    "c.a", "Nullable(Int32)");
+
+            List<LogCapture.CapturedEvent> warnings = nullabilityLog.events(WARN_LEVEL);
+            assertEquals(1, warnings.size());
+            String message = warnings.get(0).message();
+            assertTrue(message.contains(DISCOVERED_TABLE), message);
+            assertTrue(message.contains("c"), message);
+        }
+    }
+
     // COLS-10 flip (D-11): this case asserted a once-per-column-and-type dedup of the WARN. There is
     // no WARN left to dedup; the three identical inputs now assert that repeated discovery of the
     // same table, and of the same column with another type, never warns and always maps the Tuple

@@ -20,9 +20,10 @@ import org.slf4j.LoggerFactory;
  * correct source. {@link Table} stays upstream-identical, so this pass runs after the Table has
  * paired the sub-columns with their parents, once per root column per DESCRIBE and never per record.
  *
- * <p>It fails open: a declared type that {@link ClickHouseColumn#of} rejects, or a Column tree that
- * does not pair with the parsed tree, leaves the root exactly as DESCRIBE reported it and logs one
- * WARN with metadata only.
+ * <p>It fails open: a declared type that {@link ClickHouseColumn#of} rejects, a Column tree that
+ * does not pair with the parsed tree, or any other unexpected exception in the pass leaves the root
+ * exactly as DESCRIBE reported it and logs one WARN with metadata only (column, database, table, raw
+ * type and, for an exception, its class name).
  */
 public final class DeclaredNullability {
 
@@ -31,8 +32,8 @@ public final class DeclaredNullability {
     /** The two characters backslash and n that {@code fromJsonRow} leaves for a server-escaped newline. */
     static final String ESCAPED_NEWLINE = "\\n";
 
-    static final String FALLBACK_WARNING = "Could not take element nullability for column {} from its declared "
-            + "type {} ({}); keeping the nullability DESCRIBE reported for it";
+    static final String FALLBACK_WARNING = "Could not take element nullability for column {} of table {}.{} from its "
+            + "declared type {} ({}); keeping the nullability DESCRIBE reported for it";
 
     private static final String SPACE = " ";
     private static final String NAME_SEPARATOR = ".";
@@ -43,8 +44,11 @@ public final class DeclaredNullability {
     /** One nullability decision, applied only when the whole root pairs. */
     private record Assignment(Column column, boolean nullable) {}
 
-    /** The multi-line form of a non-nullable Tuple type does not parse until the escape is a space. */
-    static String normalise(String declaredType) {
+    /**
+     * The multi-line form of a non-nullable Tuple type does not parse until the escape is a space.
+     * Public so tests normalise exactly as production does.
+     */
+    public static String normalise(String declaredType) {
         return declaredType.replace(ESCAPED_NEWLINE, SPACE);
     }
 
@@ -70,29 +74,31 @@ public final class DeclaredNullability {
      * declaredType}, all or none.
      *
      * @return true when the nullability was applied; false when it was left as DESCRIBE reported it
-     *     (no declared type, a type that does not parse, or trees that do not pair)
+     *     (no declared type, a type that does not parse, trees that do not pair, or an
+     *     unexpected exception)
      */
-    public static boolean apply(Column root, String declaredType) {
+    public static boolean apply(Column root, String declaredType, String database, String table) {
         if (declaredType == null) {
             return false;
         }
-        ClickHouseColumn parsed;
         try {
-            parsed = ClickHouseColumn.of(root.getName(), normalise(declaredType));
+            ClickHouseColumn parsed = ClickHouseColumn.of(root.getName(), normalise(declaredType));
+            List<Assignment> assignments = new ArrayList<>();
+            if (!collect(root, parsed, assignments)) {
+                LOGGER.warn(FALLBACK_WARNING, root.getName(), database, table, declaredType, STRUCTURE_MISMATCH);
+                return false;
+            }
+            for (Assignment assignment : assignments) {
+                assignment.column().setNullable(assignment.nullable());
+            }
+            return true;
         } catch (RuntimeException e) {
-            // The exception text can echo the type, so only its class name is logged.
-            LOGGER.warn(FALLBACK_WARNING, root.getName(), declaredType, e.getClass().getSimpleName());
+            // The exception text can echo the type, so only its class name is logged. The assignments
+            // are applied only after collect succeeded, so the root is never left half-updated.
+            LOGGER.warn(
+                    FALLBACK_WARNING, root.getName(), database, table, declaredType, e.getClass().getSimpleName());
             return false;
         }
-        List<Assignment> assignments = new ArrayList<>();
-        if (!collect(root, parsed, assignments)) {
-            LOGGER.warn(FALLBACK_WARNING, root.getName(), declaredType, STRUCTURE_MISMATCH);
-            return false;
-        }
-        for (Assignment assignment : assignments) {
-            assignment.column().setNullable(assignment.nullable());
-        }
-        return true;
     }
 
     /**

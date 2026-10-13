@@ -270,7 +270,7 @@ class NestedNullableCompositeWriteTest {
     void nullElementInArrayOfNullableTupleWritesNullMarker() throws Exception {
         Column arrayColumn = Column.extractColumn(newDescriptor("at", "Array(Nullable(Tuple(a Int32)))"));
         arrayColumn.getArrayType().getTupleFields().add(Column.extractColumn(newDescriptor("at.a", "Nullable(Int32)")));
-        assertTrue(DeclaredNullability.apply(arrayColumn, "Array(Nullable(Tuple(a Int32)))"));
+        assertTrue(DeclaredNullability.apply(arrayColumn, "Array(Nullable(Tuple(a Int32)))", "db", "t"));
         assertTrue(arrayColumn.getArrayType().isNullable(), "the declared element is a Nullable(Tuple)");
         assertFalse(arrayColumn.getArrayType().getTupleFields().get(0).isNullable(), "at.a is declared non-nullable");
         Schema elementSchema = SchemaBuilder.struct()
