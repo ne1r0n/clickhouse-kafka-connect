@@ -6,10 +6,10 @@ current_phase: 20
 current_phase_name: Release & Publication
 status: planning
 stopped_at: Phase 19 complete, ready to plan Phase 20
-last_updated: "2026-10-13T10:45:14.739Z"
+last_updated: "2026-10-13T10:47:38.925Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 19 complete, transitioned to Phase 20
-state_head: 05e08796bf425ea76e4e312dbb8d826d4010fdbd
+state_head: 81cb4f74eafc86d8f542203e8c4e76bde41b2520
 progress:
   total_phases: 5
   completed_phases: 4
@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-12 after Phase 18)
+See: .planning/PROJECT.md (updated 2026-10-13 after Phase 19)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 19 — Nullable Enum & Tuple Mapping
+**Current focus:** Phase 20 — Release & Publication
 
 ## Current Position
 
@@ -212,11 +212,13 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T10:31:39.268Z
+Last session: 2026-10-13T10:47:38.848Z
 Stopped at: Phase 19 complete, ready to plan Phase 20
 Resume file: None
 
 ## Operator Next Steps
 
-- Phase 18 is complete (UAT 2/2 passed, verification passed, security threats_open: 0). `origin/custom_build` is still `be6b8861`; the Phase 17 and 18 commits are local on `sync/v1.7.0` and publish in Phase 20.
-- Plan Phase 19 (`/gsd-discuss-phase 19` or `/gsd-plan-phase 19`). Note: Phase 19's flipped pins rely on Phase 18's column-naming `DataException` (WRT-10), and the Tuple spike (COLS-09) runs first in the phase.
+- Phase 19 is complete (verification passed 6/6; suite gate 2× green, 980 tests; 19-REVIEW dispositioned `open: 0`; gap closure 19-07..19-10 re-verified with a fresh passed VERIFICATION.md). `origin/custom_build` is still `be6b8861`; the Phase 17–19 commits are local on `sync/v1.7.0` and publish in Phase 20.
+- A fresh post-gap-closure 19-REVIEW (commit `7d50944b`) carries 3 warning / 3 info advisory findings, all open in `19-REVIEW-DISPOSITION.md` — triage or carry them during Phase 20 (none blocks: the warnings concern unreachable totality paths, vacuous test assertions, and FORK-DELTA per-twin wording).
+- `19-SECURITY.md` does not exist and the security capability is active — run `/gsd-secure-phase 19` before advancing if the phase should carry a threat check (prior phases did).
+- Plan Phase 20 (`/gsd-discuss-phase 20` or `/gsd-plan-phase 20`). Carried from Phase 19 (recorded in ROADMAP Phase 20 entry): WR-02 with ledger L-38 (single-field-tuple `DataException` under `errors.tolerance=none`), PUB-07's `VERSION`/`CHANGELOG.md` obligation (rollout note must state the `Nullable(Tuple)` limitation is closed and the WARN is gone), and IN-04 (deferred, owner + re-open trigger recorded). Phase 20 manual checks also carry: Dependabot enablement, default-branch intent (main), and the `exclude-paths` Dependabot key (17-REVIEW WR-01).
