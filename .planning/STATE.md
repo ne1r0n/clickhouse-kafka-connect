@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 19
 current_phase_name: Nullable Enum & Tuple Mapping
 status: executing
-stopped_at: Completed 19-07-PLAN.md
-last_updated: "2026-10-13T10:03:57.540Z"
+stopped_at: Completed 19-08-PLAN.md
+last_updated: "2026-10-13T10:10:00.105Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 19 execution started
-state_head: ae00bf6ad4de01341b6c559ec4c0661232d21677
+state_head: 2e4e7cb9dcd7dec1cd6c36567876838b19700693
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 21
-  completed_plans: 18
+  completed_plans: 19
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-12 after Phase 18)
 ## Current Position
 
 Phase: 19 (Nullable Enum & Tuple Mapping) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-10-13 — Phase 19 execution started
 
@@ -125,6 +125,7 @@ Progress: [██████░░░░] 60%
 | Phase 19 P04 | 17min | 2 tasks | 13 files |
 | Phase 19 P06 | 10min | 2 tasks | 1 files |
 | Phase 19 P07 | 4 min | 1 tasks | 6 files |
+| Phase 19 P08 | 9 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 19]: Tuple element nullability comes from the declared type (approach C, fail open per root); the Nullable(Tuple) discovery WARN is deleted — Upstream drops Tuple nullability and DESCRIBE marks every element of a Nullable(Tuple) Nullable, so the declared type string is the only correct source; Table.java stays upstream-identical and the pass runs once per DESCRIBE, never per record
 - [Phase 19]: Phase 19 DEBT-09: IN-01..IN-05 closed as fixed (superseded) citing 2a94e045, consistent with the recorded go; IN-06 left deferred (outside D-12 scope, for Phase 20) — Branch read from 19-SPIKE.md Decision (go); the cited commit removes the code each finding concerns; D-12 limits the plan to IN-01..IN-05
 - [Phase 19]: 19-07: unwrap SimpleAggregateFunction at the entry of DeclaredNullability.collect (all branches), not only the leaf; a root wrapper over a Tuple pairs and flips no flag
+- [Phase 19]: 19-08: DeclaredNullability.apply is total (one try over parse, pairing, assignment) and its fallback WARN names database and table; the matrix control asserts a read-past-end code (CANNOT_READ_ALL_DATA plain, ATTEMPT_TO_READ_AFTER_EOF defaults) — Closes 19-REVIEW WR-01, IN-01, WR-03, IN-03; assignments apply only after the whole root pairs, so a caught exception never leaves a partial root
 
 ### Pending Todos
 
@@ -207,8 +209,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T10:03:57.494Z
-Stopped at: Completed 19-07-PLAN.md
+Last session: 2026-10-13T10:09:55.999Z
+Stopped at: Completed 19-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
