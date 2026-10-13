@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.clickhouse.data.ClickHouseColumn;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import java.util.ArrayList;
@@ -345,5 +346,107 @@ class DeclaredNullabilityTest {
         String plain = "Nullable(Tuple(a Int32, b String))";
         assertEquals(plain, DeclaredNullability.normalise(plain));
         assertEquals("Tuple( a Int32, b String)", DeclaredNullability.normalise("Tuple(" + SERVER_NEWLINE + "a Int32, b String)"));
+    }
+
+    @Test
+    @DisplayName("COLS-10: the parser reads LowCardinality(Nullable(T)) as nullable and LowCardinality(T) as non-nullable, also as the SimpleAggregateFunction argument")
+    void parserReadsLowCardinalityNullableAsNullable() {
+        ClickHouseColumn nullable = ClickHouseColumn.of("p", "LowCardinality(Nullable(String))");
+        assertTrue(nullable.isNullable());
+        assertTrue(nullable.isLowCardinality());
+        assertFalse(ClickHouseColumn.of("p", "LowCardinality(String)").isNullable());
+        ClickHouseColumn wrapped =
+                ClickHouseColumn.of("p", "SimpleAggregateFunction(anyLast, LowCardinality(Nullable(String)))");
+        assertTrue(wrapped.getNestedColumns().get(0).isNullable());
+    }
+
+    @Test
+    @DisplayName("COLS-10: a LowCardinality(Nullable(String)) Tuple element stays nullable beside a LowCardinality(String) element DESCRIBE wrapped in Nullable")
+    void lowCardinalityNullableTupleElementKeepsDeclaredFlags() throws Exception {
+        String type = "Nullable(Tuple(a LowCardinality(Nullable(String)), b LowCardinality(String)))";
+        Column column = root(describe(
+                row("c", type),
+                row("c.a", "LowCardinality(Nullable(String))"),
+                row("c.b", "LowCardinality(Nullable(String))")));
+        assertTrue(nullabilityByPath(column).get("c.b"), "premise: DESCRIBE reports the plain element as nullable");
+
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+        assertEquals(Map.of("c", true, "c.a", true, "c.b", false), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: an Array element LowCardinality(Nullable(String)) is nullable and LowCardinality(String) is not")
+    void lowCardinalityNullableArrayElementIsNullable() throws Exception {
+        String nullableType = "Array(LowCardinality(Nullable(String)))";
+        Column nullableElement = root(describe(row("c", nullableType)));
+        String plainType = "Array(LowCardinality(String))";
+        Column plainElement = root(describe(row("c", plainType)));
+
+        assertTrue(DeclaredNullability.apply(nullableElement, nullableType, DATABASE, TABLE));
+        assertTrue(DeclaredNullability.apply(plainElement, plainType, DATABASE, TABLE));
+
+        assertEquals(Map.of("c", false, "c[]", true), nullabilityByPath(nullableElement));
+        assertEquals(Map.of("c", false, "c[]", false), nullabilityByPath(plainElement));
+    }
+
+    @Test
+    @DisplayName("COLS-10: a Map value LowCardinality(Nullable(String)) is nullable")
+    void lowCardinalityNullableMapValueIsNullable() throws Exception {
+        String type = "Map(String, LowCardinality(Nullable(String)))";
+        Column column = root(describe(
+                row("c", type),
+                row("c.keys", "Array(String)"),
+                row("c.values", "Array(LowCardinality(Nullable(String)))")));
+
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+        assertEquals(Map.of("c", false, "c{}", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: a Tuple element SimpleAggregateFunction(sum, Int64) stays non-nullable")
+    void simpleAggregateFunctionNonNullableElementStaysNonNullable() throws Exception {
+        String type = "Tuple(a SimpleAggregateFunction(sum, Int64), b Nullable(Int32))";
+        Column column = root(describe(
+                row("c", type),
+                row("c.a", "SimpleAggregateFunction(sum, Int64)"),
+                row("c.b", "Nullable(Int32)")));
+
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+        assertEquals(Map.of("c", false, "c.a", false, "c.b", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: a Tuple element SimpleAggregateFunction(anyLast, LowCardinality(Nullable(String))) is nullable")
+    void simpleAggregateFunctionOverLowCardinalityNullableIsNullable() throws Exception {
+        String type = "Tuple(a SimpleAggregateFunction(anyLast, LowCardinality(Nullable(String))), b Int32)";
+        Column column = root(describe(
+                row("c", type),
+                row("c.a", "SimpleAggregateFunction(anyLast, LowCardinality(Nullable(String)))"),
+                row("c.b", "Int32")));
+
+        assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+        assertEquals(Map.of("c", false, "c.a", true, "c.b", false), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-10: a Tuple element SimpleAggregateFunction(anyLast, Array(Nullable(Int32))) pairs without a fallback WARN")
+    void simpleAggregateFunctionOverArrayElementPairsWithoutFallback() throws Exception {
+        String type = "Tuple(a SimpleAggregateFunction(anyLast, Array(Nullable(Int32))), b Int32)";
+        Column column = root(describe(
+                row("c", type),
+                row("c.a", "SimpleAggregateFunction(anyLast, Array(Nullable(Int32)))"),
+                row("c.b", "Int32")));
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            assertEquals(List.of(), log.events("WARN"));
+        }
+        assertEquals(
+                Map.of("c", false, "c.a", false, "c.a[]", true, "c.b", false), nullabilityByPath(column));
     }
 }
