@@ -2,27 +2,23 @@
 phase: 19-nullable-enum-tuple-mapping
 reviewed: 2026-10-13T00:00:00Z
 depth: standard
-files_reviewed: 14
+files_reviewed: 10
 files_reviewed_list:
   - docs/FORK-DELTA.md
-  - src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
   - src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
-  - src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java
   - src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java
-  - src/test/java/com/clickhouse/kafka/connect/sink/NestedNullRowBinaryLiveTest.java
-  - src/test/java/com/clickhouse/kafka/connect/sink/NullableEnumRoundTripLiveTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/NullableRoundTrip.java
   - src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java
+  - src/test/java/com/clickhouse/kafka/connect/sink/SimpleAggregateTupleRoundTripLiveTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/NestedNullableCompositeWriteTest.java
-  - src/test/java/com/clickhouse/kafka/connect/sink/db/NullableEnumWriteTest.java
-  - src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkLiveTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java
+  - src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/ColumnNullabilityPaths.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java
 findings:
-  critical: 1
+  critical: 0
   warning: 3
-  info: 4
-  total: 8
+  info: 3
+  total: 6
 status: issues_found
 ---
 
@@ -30,126 +26,144 @@ status: issues_found
 
 **Reviewed:** 2026-10-13
 **Depth:** standard
-**Files Reviewed:** 14
+**Files Reviewed:** 10
 **Status:** issues_found
 
 ## Summary
 
-Phase 19 carries `Nullable` through the Enum and Tuple branches of `Column.extractColumn` and adds `DeclaredNullability`, a post-`Table` pass that overwrites `isNullable` on Tuple nodes and their leaves from the declared type string.
+Reviewed the Phase 19 gap-closure changes (plans 19-07..19-10) since diff base 68355de6: the
+`SimpleAggregateFunction` unwrap in `DeclaredNullability.collect`, the catch-all `RuntimeException`
+fallback in `apply`, the database/table-aware fallback WARN, the shared test helpers, and the new
+live and unit pins.
 
-The pairing walk is sound for the shapes the tests cover. I checked nested Tuples, Array and Map wrappers, unnamed elements, and backtick names with spaces, commas, dots and quotes. Parse failures and structure mismatches fail open, and the all-or-none assignment list works as designed. The pass runs once per root per DESCRIBE and mutates Columns only before the `Table` is published, so there is no thread-safety problem. Logging carries metadata only, and the DESCRIBE reader uses explicit UTF-8.
+The production change is correct for what it targets. I checked the new unwrap against the
+`ClickHouseColumn` 0.9.6 parser directly. `SimpleAggregateFunction(f, T)` parses with exactly one
+nested column holding `T` (including `Nullable(T)`, `LowCardinality(Nullable(T))`, `Tuple`, `Array`,
+`Map` and `DateTime64(3, 'UTC')` arguments). The wrapper node itself always reports non-nullable.
+So the unwrap fixes the flipped-flag defect and does not skip a level. The assignments are applied
+only after `collect` succeeds, so the root is never left half-updated. The WARN carries metadata
+only and never the exception text.
 
-One regression is a blocker. The leaf rule `parsed.isNullable()` is wrong for a leaf wrapped in `SimpleAggregateFunction`. For such an element it silently flips a correct nullable flag to non-nullable on a schema that worked before this phase. The writer then omits the null marker and the RowBinary stream misaligns.
-
-I confirmed this by running the production `Column.extractColumn`, `Table` and `DeclaredNullability` classes on DESCRIBE rows. The type string and row shape come from ClickHouse 26.9.17, where `Tuple(a SimpleAggregateFunction(sum, Nullable(Int64)), b Nullable(Int32))` is accepted. The other findings are a fail-open gap, stale operator documentation, and test-quality issues.
-
-## Critical Issues
-
-### CR-01: Tuple element wrapped in SimpleAggregateFunction(Nullable(...)) is flipped to non-nullable
-
-**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java:111-116`
-**Issue:** The leaf branch records `parsed.isNullable()` for the paired node. `ClickHouseColumn.of` does not put the flag on a `SimpleAggregateFunction` node. It leaves the node non-nullable and puts it on the nested column. For `SimpleAggregateFunction(sum, Nullable(Int64))` the parsed node reports `nullable=false` and `getNestedColumns().get(0)` reports `nullable=true`.
-
-`Column.extractColumn` unwraps `SimpleAggregateFunction` and correctly yields `nullable=true`, and DESCRIBE reports `c.a` as `SimpleAggregateFunction(sum, Nullable(Int64))`. For `Tuple(a SimpleAggregateFunction(sum, Nullable(Int64)), b Nullable(Int32))`:
-
-- Before `apply`, `c.a` is `nullable=true`, which is correct.
-- After `apply` returns `true`, `c.a` is `nullable=false`. The writer then drops the null marker for that element, and every later byte in the row shifts.
-
-Before Phase 19 this schema wrote correctly, because the tuple element nullability came from DESCRIBE. So this is a silent data-corruption regression in the fork's high-risk binary path. It only triggers for tuples that contain a `SimpleAggregateFunction` over a `Nullable` type, which ClickHouse accepts. `DeclaredNullabilityTest` and the live matrix have no case for it.
-
-**Fix:** Unwrap `SimpleAggregateFunction` in the leaf branch the way `extractColumn` does:
-```java
-default:
-    if (parsed.isTuple() || parsed.isArray() || parsed.isMap()) {
-        return false;
-    }
-    into.add(new Assignment(column, leafNullable(parsed)));
-    return true;
-
-private static boolean leafNullable(ClickHouseColumn parsed) {
-    ClickHouseColumn current = parsed;
-    while (current.getDataType() == ClickHouseDataType.SimpleAggregateFunction
-            && !current.getNestedColumns().isEmpty()) {
-        current = current.getNestedColumns().get(0);
-    }
-    return current.isNullable();
-}
-```
-Add a `DeclaredNullabilityTest` case for `Tuple(a SimpleAggregateFunction(sum, Nullable(Int64)), b Nullable(Int32))`. It should expect `c.a=true` and `c.b=true`. Also add cases for `LowCardinality(Nullable(String))` as a Tuple element, an Array element and a Map value. I probed `LowCardinality` and it parses correctly, but nothing pins it.
+No critical defects found. The remaining issues are a gap in the "pass must stay total" guarantee
+and three test or documentation weaknesses that let a regression through silently.
 
 ## Warnings
 
-### WR-01: "No exception may escape" holds only for the parse; `collect` is unguarded and describeTableV1 does not catch RuntimeException
+### WR-01: The totality guarantee covers only the body of `apply`, not its handler or its caller
 
-**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java:86-90`, `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java:507-511` and `585`
-**Issue:** Only `ClickHouseColumn.of` sits inside `try/catch (RuntimeException)`. `collect` and `collectTuple` can still throw unchecked exceptions on input I did not manage to construct today: a null `Column.getType()`, a `getNestedColumns().get(n)` on an unexpected parse shape, or a future parser change.
+**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java:80-102` and `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java:507-511`
+**Issue:** The class contract (javadoc lines 23-27, and the project rule that any `RuntimeException`
+must degrade to WARN plus fallback) is not met on two paths.
+1. The `catch (RuntimeException e)` handler dereferences `root.getName()` (line 99). If `root` is
+   null, the NPE is thrown at line 85 inside the `try`, and the handler then throws a second NPE
+   that escapes `apply`. `apply` is `public`, so the guarantee should not depend on the one caller
+   that happens to null-check first.
+2. `buildDescribedTable` calls `DeclaredNullability.containsTuple(root)` outside any guard.
+   `containsTuple` does `switch (column.getType())` and throws an NPE for a Column whose type is
+   null. That is unreachable today because `extractColumn` always sets a type. The test at
+   `DeclaredNullabilityTest.java:268-285` builds exactly such a Column (`Column.builder().name(ROOT).build()`)
+   to provoke the NPE, which shows the shape is constructible. In `describeTableV1` only
+   `ClickHouseException | JsonProcessingException` are caught, so a RuntimeException from this
+   loop would escape the DESCRIBE path. V2's `catch (Exception)` would instead drop the whole table
+   from the mapping.
 
-`describeTableV2` catches `Exception` and drops the table. `describeTableV1` catches only `ClickHouseException | JsonProcessingException`, so a `RuntimeException` from the pass escapes `extractTablesMapping`. That loop calls `describeTable` for every table, so one bad column aborts discovery for the whole database. That is the failure the fail-open policy exists to prevent. I found no current trigger, so this is a robustness gap rather than a live bug.
-
-**Fix:** Make `apply` total by wrapping the whole body:
+**Fix:** Make the guard cover the whole per-root step, and compute the log arguments before the
+`try`:
 ```java
-try {
-    parsed = ClickHouseColumn.of(root.getName(), normalise(declaredType));
-    List<Assignment> assignments = new ArrayList<>();
-    if (!collect(root, parsed, assignments)) {
-        LOGGER.warn(FALLBACK_WARNING, root.getName(), declaredType, STRUCTURE_MISMATCH);
+public static boolean apply(Column root, String declaredType, String database, String table) {
+    if (root == null || declaredType == null) {
         return false;
     }
-    assignments.forEach(a -> a.column().setNullable(a.nullable()));
-    return true;
-} catch (RuntimeException e) {
-    LOGGER.warn(FALLBACK_WARNING, root.getName(), declaredType, e.getClass().getSimpleName());
-    return false;
+    String columnName = root.getName();
+    try {
+        ...
+    } catch (RuntimeException e) {
+        LOGGER.warn(FALLBACK_WARNING, columnName, database, table, declaredType, e.getClass().getSimpleName());
+        return false;
+    }
 }
 ```
-Add a test that feeds a Column whose `getType()` is null and asserts `false`.
+In `buildDescribedTable`, either move the `containsTuple` check inside `apply`, or make
+`containsTuple` null-safe on `getType()`.
 
-### WR-02: Operator-facing release documents still describe the removed WARN and the unfixed limitation
+### WR-02: Several WARN-content assertions are vacuous and cannot fail
 
-**File:** `docs/ROLLOUT-v1.7.0_gg1.md:159-190` (Item 4), `CHANGELOG.md:22-23`
-**Issue:** Phase 19 removed the discovery WARN and fixed `Nullable(Enum)` and `Nullable(Tuple)`. `docs/FORK-DELTA.md` was updated, but the two documents operators read were not.
+**File:** `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java:418`; `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java:216, 238, 278`
+**Issue:** The fallback message is "Could not take element nullability for column ...". It contains
+the letter `c` in "Could". The assertions `message.contains("c")` (ForkUnitTest line 418) and
+`message.contains(ROOT)` with `ROOT = "c"` (DeclaredNullabilityTest lines 216, 238 and 278) pass
+whether or not the column name is in the message. These are the assertions that are supposed to
+pin the IN-01 and WR-01 requirement that the WARN names the column. If the column argument were
+dropped from `FALLBACK_WARNING`, all four would still pass. The table name check (`db.t`) is real;
+the column check is not.
 
-- Item 4 of the rollout checklist still says "Known limitation, not fixed in this release". It tells operators to expect the removed WARN, with its full text, and to change the column type or move to the JSON route for every column the query lists.
-- `CHANGELOG.md` still announces "New startup WARN ... The root cause is not fixed in this release."
+**Fix:** Use a column name that cannot appear in the fixed text, for example a unique
+`sentinel_col`, and assert on a delimited form of it:
+```java
+private static final String ROOT = "nullability_root";
+...
+assertTrue(message.contains("column " + ROOT + " of table"), message);
+```
+Apply the same change to the `discover(...)` fixture in ForkUnitTest, whose column is also `"c"`.
 
-Operators will look for a log line that no longer exists and may rework schemas that now write correctly.
+### WR-03: FORK-DELTA states per-twin server error codes that the test does not pin
 
-A new behaviour change is also missing from both documents, and it matters for a CDC fork run with `errors.tolerance=none`. `FORK-DELTA.md` item 1 notes that a single-field `Nullable(Tuple(a T))` whose `a` is null now throws a `DataException` naming the tuple field, where earlier releases stored a NULL tuple. Under `errors.tolerance=none` that stops the task, and it stops again on every retry because the batch is rebuilt identically. This belongs in the upgrade notes.
+**File:** `docs/FORK-DELTA.md:50` and `src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java:87-89, 648-657`
+**Issue:** The doc row now says the doubled-null-flag control fails with `CANNOT_READ_ALL_DATA` on
+the plain twin and `ATTEMPT_TO_READ_AFTER_EOF` on the defaults twin. The test only requires that
+the cause chain contain either code (`READ_PAST_END_CODES`), for both twins. The documented
+twin-to-code mapping is therefore unenforced. If it is wrong, or the server changes which path
+reports which code, the doc silently goes stale while the suite stays green. The fork's contract
+is to pin behaviour with tests, and FORK-DELTA is where a rebaser looks first.
 
-**Fix:** Rewrite Item 4's "Known limitation" and "Am I affected?" sections and the CHANGELOG bullet. They should say the limitation is closed and the WARN is gone. They should also note that rows written by earlier releases are not repaired, and add the new single-field-tuple `DataException`. The rollout document must not be published with the old text.
-
-### WR-03: Control test passes on any exception
-
-**File:** `src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java:673-676`
-**Issue:** `controlWithBothFieldsNullableFailsToInsert` is the byte-level evidence that doubled null flags fail on the server. It uses `assertThrows(Exception.class, ...)` and only asserts `assertNotNull(failure)`. A connection problem, a missing table or a typo in the insert would also pass it. The claim recorded in `FORK-DELTA.md` ("the Tuple flag alone double-flags the elements (`ATTEMPT_TO_READ_AFTER_EOF`)") is never checked.
-
-**Fix:** Assert the server code through the cause chain, for example `NullableRoundTrip.causeChainMessages(failure).contains("ATTEMPT_TO_READ_AFTER_EOF")` or the numeric code. Match the code the server returns for this input on the CI ClickHouse version. If the code can vary, assert that the message names a read or parse failure rather than accepting any exception.
+**Fix:** Either assert the documented code per twin, for example by adding the expected code to the
+`Twin` enum or a map keyed by twin, or soften the doc to "a read-past-end code (`CANNOT_READ_ALL_DATA`
+or `ATTEMPT_TO_READ_AFTER_EOF`)". Confirm the per-twin mapping against a live run before keeping the
+specific claim.
 
 ## Info
 
-### IN-01: Fallback WARN has no database or table context
+### IN-01: The backslash-n constant is copied into three test classes
 
-**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java:33-34`, called from `ClickHouseHelperClient.java:509`
-**Issue:** The WARN names the column and raw type but not the database or table. The same column name (`payload`, `meta`) is common across tables, so the line is not actionable. AGENTS.md asks for context in error messages. The deleted WARN carried `database.table.column`, and `buildDescribedTable` already has both values. The old once-per-process dedup is also gone, so the line repeats on every re-describe of an affected table.
-**Fix:** Pass a context string into `apply(root, declaredType, context)` and log it. Alternatively log from `buildDescribedTable` on a `false` return.
+**File:** `src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java:85`, `src/test/java/com/clickhouse/kafka/connect/sink/SimpleAggregateTupleRoundTripLiveTest.java:52`, `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java:33`
+**Issue:** `DeclaredNullability.ESCAPED_NEWLINE` is package-private, and each test outside
+`...db.mapping` re-declares `"\\n"` under its own name (`ESCAPED_NEWLINE` twice, `SERVER_NEWLINE`
+once). Plan 19-08 deduplicated `normalise` through production for exactly this reason, but the
+constant the premise assertions use was not given the same treatment.
+**Fix:** Make `DeclaredNullability.ESCAPED_NEWLINE` public and reference it from the tests, or
+expose a `NullableRoundTrip` constant for the two live classes.
 
-### IN-02: Dead STORES_WRONG machinery in the matrix test
+### IN-02: Brittle and indirect test pins
 
-**File:** `src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java:106-129`, `489-502`, `599-607`
-**Issue:** No cell pins `STORES_WRONG` any more, because every `currentOutcome` is `roundTrips` or `fails`. `Expect.Kind.STORES_WRONG`, `storesWrong(...)`, the `observed` and `phantomRows` fields, `phantomRowCount` and the switch arm are all unreachable. `phantomRowCount` is also the `count()` style that the phase rules out for assertions.
-**Fix:** Remove the unused kind, factories, fields and helper, or keep one cell that exercises them.
+**File:** `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java:268-285`; `src/test/java/com/clickhouse/kafka/connect/sink/NullableRoundTrip.java:194-197`; `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java:403`
+**Issue:**
+- The WR-01 test asserts that the WARN names `NullPointerException`. It provokes the NPE through a
+  Column with a null `type`, so it is coupled to an accident of `switch (column.getType())`. If
+  `collect` ever gains a defensive null check, the test fails although the contract (fail open
+  with one WARN) still holds. Prefer an input that is invalid by design, or assert only that the
+  class name is present.
+- `NullableRoundTrip.normaliseDeclaredType` is now a one-line pass-through to
+  `DeclaredNullability.normalise`, with a single call site (`NullableTupleMatrixLiveTest:730`).
+  Call `DeclaredNullability.normalise` directly and drop the wrapper.
+- `DISCOVERED_TABLE` is declared in the middle of the class, between test methods, and duplicates
+  the literals `"db"` and `"t"` in `discover(...)`. Move it to the constants block and derive it
+  from shared database and table constants.
 
-### IN-03: Test re-implements production normalisation and duplicates helpers
+**Fix:** As described above.
 
-**File:** `src/test/java/com/clickhouse/kafka/connect/sink/NullableRoundTrip.java:46-47` and `200-202`, `NullableTupleMatrixLiveTest.java:83-84` and `523-550`, `DeclaredNullabilityTest.java:57-84`
-**Issue:** `NullableRoundTrip.normaliseDeclaredType` is a private copy of `DeclaredNullability.normalise`. The "approach" test therefore proves the copy parses, not the production code. If one changes, nothing fails. `nullabilityByPath` and `collectNullability` are duplicated almost verbatim between `DeclaredNullabilityTest` and the matrix test.
-**Fix:** Make `DeclaredNullability.normalise` public, or reach it from the test, and call it from `NullableRoundTrip`. Move the Column-tree flattening into one shared test helper.
+### IN-03: `normalise` rewrites every backslash-n pair, including ones inside names and enum labels
 
-### IN-04: A Tuple Column that lacks a declared element still "applies"
-
-**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java:133-143`, pinned by `DeclaredNullabilityTest.java:215-223`
-**Issue:** `collectTuple` iterates only the Column's own `tupleFields`. A declared element with no Column (for example one whose dotted name `Table` cannot route to its parent) is silently ignored and `apply` returns `true`. The test pins that as correct. The writer also emits only the fields in `tupleFields`, so the stream is short for that element, and that is a Table-pairing bug the pass cannot see. The pass already has both element lists, so it could at least log it.
-**Fix:** After the loop, compare the count of paired declared elements with `elements.size()`. Log a metadata-only WARN on a shortfall. Optionally fail open, which needs a decision on whether legitimately skipped elements exist.
+**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java:51-53`
+**Issue:** `declaredType.replace("\\n", " ")` cannot tell the server's newline between Tuple
+elements from a literal backslash-n inside a backtick-quoted element name or an enum label
+(`fromJsonRow` doubles every backslash, so both look the same afterwards). For an element named
+with an escaped newline, the parsed name becomes `a b` while the DESCRIBE sub-column name keeps
+the backslash-n. Pairing then fails and the root falls back, with a WARN, to DESCRIBE's nullability
+(the behaviour this pass exists to replace). This fails open and is rare, so it is informational.
+The case is not covered by a test.
+**Fix:** Add a regression test that documents the fallback for such a name, or restrict the
+replacement to whitespace positions (a backslash-n directly after `(` or `,`, or directly before
+the closing `)`).
 
 ---
 
