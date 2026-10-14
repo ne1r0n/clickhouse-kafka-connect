@@ -117,7 +117,7 @@ Earlier observations in the ledger add that `v1.7.0_gg1` failed a NULL in a top-
 
 **One shape now fails where it used to store silently.** For a single-field `Nullable(Tuple(a T))`, a record that sends a null for the one field `a` now fails the batch with a `DataException`. Its text is `column '<column>' (Nullable(Tuple(...))) tuple field '<field>': null in non-nullable slot`. It names the column and the tuple field and never a value. With `errors.tolerance=none` the task stops, and stops again on every retry because the batch is rebuilt identically. With `errors.tolerance=all` the whole batch goes to the dead letter queue. The `DataException` is the root cause of a wrapping `RuntimeException`, so read the cause chain. A NULL for the whole tuple still stores NULL. `v1.7.0_gg1` stored a NULL tuple in this case and raised no error (ledger L-38).
 
-**A new WARN.** When the declared type of a column that contains a Tuple cannot be parsed, or does not line up with the column's structure, the connector logs this line once per describe of that table:
+**A new WARN.** When the declared type of a column that contains a Tuple cannot be parsed, or does not line up with the column's structure, the connector logs this line once per affected column each time it describes the table:
 
 ```text
 Could not take element nullability for column <column> of table <db>.<table> from its declared type <type> (<reason>); keeping the nullability DESCRIBE reported for it

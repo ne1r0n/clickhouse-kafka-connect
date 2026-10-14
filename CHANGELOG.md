@@ -18,9 +18,10 @@ checklist.
   tuple field, where the earlier release silently stored a NULL tuple. Under `errors.tolerance=none` the task stops, and
   stops again on every retry because the batch is rebuilt identically; under `errors.tolerance=all` the batch goes to
   the dead letter queue. A NULL for the whole tuple still stores NULL.
-* New WARN, once per describe of a table, when the declared type of a column that contains a `Tuple` cannot be parsed or
-  does not match the column structure. The column then keeps the nullability that `DESCRIBE` reported, so it is still
-  exposed to the old behaviour. The line names the database, table, column and type and carries no value.
+* New WARN, once per affected column each time a table is described, when the declared type of a column that contains a
+  `Tuple` cannot be parsed or does not match the column structure. The column then keeps the nullability that
+  `DESCRIBE` reported, so it is still exposed to the old behaviour. The line names the database, table, column and type
+  and carries no value.
 * With `debeziumCDCEnabled=true`, empty Debezium records (a truncate event, or an event whose value struct is null) no
   longer insert a row on the `bypassRowBinary=true` JSON route and on RowBinary, as they already did not on the explicit
   `insertFormat=json` route. Offsets, the exactly-once state and the deduplication token still cover the whole batch.
