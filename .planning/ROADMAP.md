@@ -302,7 +302,7 @@ The Enum fix changes stored values. It also lets a record that omits a `Nullable
 - PUB-07 owns the AGENTS.md pre-PR obligation: this covers the `VERSION` bump and the `CHANGELOG.md` entry, and Phase 19 left both untouched on purpose.
 - IN-04 (deferred): a Tuple Column that lacks a declared element still applies. Owner: Phase 20 copies the item into the milestone close record so the next milestone inherits it. Trigger: a clickhouse-data version change, or any DESCRIBE shape observed to drop a declared Tuple element. Until then `missingDeclaredElementDoesNotShiftPairing` pins the current behaviour.
 
-**Plans**: 6/8 plans executed
+**Plans**: 7/8 plans executed
 
 Plans:
 **Wave 1**
@@ -324,7 +324,7 @@ Plans:
 - [x] 20-06-PLAN.md — Suite gate on the frozen tree (clean, Docker-stopped testUnit, two cache-busted full runs, anchors), blocking-human rehearsal gate, scratch push of `sync/v1.7.0` and its single green run, measured release bundle (SUITE-05, PUB-08)
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 20-07-PLAN.md — Blocking-human release gate; rollback tag pushed first, `--no-ff` merge in a worktree with shape, no-TRUNCATE and rollback re-checks on M, `custom_build` pushed alone, single green run, `v1.7.0_gg2` tag after green, scratch branch deleted (PUB-08, D-15)
+- [x] 20-07-PLAN.md — Blocking-human release gate; rollback tag pushed first, `--no-ff` merge in a worktree with shape, no-TRUNCATE and rollback re-checks on M, `custom_build` pushed alone, single green run, `v1.7.0_gg2` tag after green, scratch branch deleted (PUB-08, D-15)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 20-08-PLAN.md — The three manual checks answered by the user and recorded; STATE points at the milestone audit and close (D-11, D-12)
@@ -418,7 +418,7 @@ Plans:
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 10/10 | Complete    | 2026-10-13 |
-| 20. Release & Publication | v1.7.0_gg2-hardening | 6/8 | In Progress | - |
+| 20. Release & Publication | v1.7.0_gg2-hardening | 7/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg2-hardening` created: 2026-10-10*
