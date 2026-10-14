@@ -38,7 +38,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg1	1	BLD-07
+VERSION	v1.7.0_gg2	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
 build.gradle.kts	slf4j-reload4j:2.0.17	1	BLD-08
 build.gradle.kts	jacocoForkReport	3	BLD-03
