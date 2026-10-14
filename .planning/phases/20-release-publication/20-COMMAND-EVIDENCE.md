@@ -742,3 +742,24 @@ OK   .planning/scripts/verify-merge-invariants.sh
 Before the fix the same command printed `DEAD` for exactly those three paths (the Phase 13 ledger, the Phase 13 disposition and the Phase 14 disposition). A9 held: the archived files exist under the same names.
 
 Matches text: n/a (gate check)
+
+### E-50: re-run of the owning plans' checks after the plan 20-05 review fixes
+
+Backs: the changed text of `docs/ROLLOUT-v1.7.0_gg2.md` (IN-02, IN-04), `CHANGELOG.md` (WR-01, IN-02) and `docs/FORK-DELTA.md` (WR-02, IN-01, IN-03) after the review of plan 20-05. Date (UTC) 2026-10-14. The fixes are commits `54474bf5` (WR-01), `32a06bcf` (WR-02), `e6682d9a` (IN-01), `aef8d39d` (IN-03), `a15c3887` (IN-02) and `02adff03` (IN-04), all prose; no quoted `sql` or `sh` block and no test changed, so `DedupTokenRetryLiveTest` was not re-run and the evidence entries above stay as they were. The six verify commands below are extracted from the plans of the owning tasks (20-03 Task 1 to 3, 20-04 Task 1 and 2) and run verbatim from the repository root.
+
+```sh
+bash /tmp/gsd20-05/runall.sh "$PWD"
+```
+
+```text
+ROLLOUT-T3-OK            (6 items, TOC matches, no bare planning ID, every quoted block in the evidence, no non-read-only SQL)
+ITEM1-CONTENT-OK         (server version 26.9.18.11 cited, 2 sql blocks, gg1 note unchanged)
+ITEMS2-5-CONTENT-OK      (item 2 has 5 sql blocks, item 3 has 1, E-30 present)
+ROLLOUT-FINAL-OK         (item 6 commands, E-31 lines, no TRUNCATE instruction, no secret, tag only local, gg1 note unchanged)
+CHANGELOG-GG2-OK         (gg2 heading first, gg1 tail equal to P20_BASE, no planning ID)
+FORK-DELTA-GG2-OK        (raw numbers 119/18802/529 and 32/2042/143 equal git, 38 of 63 identical, no dead path, read-past-end wording)
+```
+
+What the changed sentences rest on: the IN-04 sentence says the earlier gg1 attempt is simulated, which is how E-03 describes the two `eo-true` cases (two real rows plus two all-defaults phantom rows inserted under the connector's token for offsets 1 to 4, then the task retries the range); the WR-02 sentence restates E-03's rows for `REPLICATED` and `NON_REPLICATED_WINDOW` (a same-token retry dropped) against `PLAIN` (every insert stored); the IN-02 sentence matches `DeclaredNullability.apply`, which logs the WARN per root column on every describe; the IN-01 ledger ranges `L-23` to `L-30` and `L-31` to `L-41` are the row ranges of the Phase 18 and Phase 19 ledgers.
+
+Matches text: yes
