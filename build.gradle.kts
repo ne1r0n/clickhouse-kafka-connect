@@ -103,7 +103,7 @@ dependencies {
     implementation(libs.jackson.annotations)
 
     // FORK OVERRIDE (D-16): no upstream catalog entry for this coordinate.
-    implementation("org.slf4j:slf4j-reload4j:2.0.17")
+    implementation("org.slf4j:slf4j-reload4j:2.0.20")
 
     /*
         Will in side the Confluent Archive
