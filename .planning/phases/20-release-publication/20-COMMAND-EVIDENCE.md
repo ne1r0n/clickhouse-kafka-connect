@@ -908,3 +908,79 @@ d316bc454f99615e2d9c49a7e9632ec94eed80e5  refs/heads/sync/v1.7.0
 ```
 
 Matches text: n/a (gate check)
+
+### E-70: rollback tag pushed before the merge
+
+Backs: PUB-08 and D-15 (the rollback point is on origin before anything else moves). Date (UTC) 2026-10-14.
+
+**The user's answer, verbatim:** `publish` — given directly to the orchestrator in the main session at the Task 1 `blocking-human` checkpoint, after 20-06-SUMMARY.md's `## Approval bundle` (items 1-8) was presented verbatim. Received by: the orchestrator, directly. Tasks 2 and 3 ran inline in the orchestrator.
+
+**Ground truth before anything was pushed:** X = `3879b883b4c25312b414b3dc470e7fdac8951e73` (local `sync/v1.7.0`); X0 = `d316bc454f99615e2d9c49a7e9632ec94eed80e5`, an ancestor of X with X0..X planning-only; origin and local `custom_build` both `be6b8861`; rate limit 60; runs on `be6b8861` before: 1. Snapshots: `origin-tags-before-release.txt`, `origin-heads-before-release.txt`, `runs-be6b8861-before.txt`.
+
+**The push, as run** (the tag points at `be6b8861`, whose `tests.yaml` carries `branches: ['**']`, a branch-only trigger):
+
+```sh
+git push origin refs/tags/pre-v1.7.0_gg2:refs/tags/pre-v1.7.0_gg2
+```
+
+```text
+ * [new tag]           pre-v1.7.0_gg2 -> pre-v1.7.0_gg2
+```
+
+After a 62 s wait the run count on `be6b8861` was unchanged (still 1):
+
+```text
+ROLLBACK-TAG-PUSHED-NO-RUN
+```
+
+Matches text: n/a (gate check)
+
+### E-71: release merge, checks on M and the rollback re-check
+
+Backs: PUB-08 (the published tree is the rehearsed, approved tree). Date (UTC) 2026-10-14.
+
+**The merge**, in the throwaway worktree `/tmp/gsd20/cb` (added on `custom_build` at `be6b8861`, clean):
+
+```sh
+git -C /tmp/gsd20/cb merge --no-ff -F /tmp/gsd20/merge-msg.txt 3879b883b4c25312b414b3dc470e7fdac8951e73
+```
+
+M = `a246ca01b073faae86e2e92bb0288c07dd7eb0d7`, subject `Merge sync/v1.7.0: release v1.7.0_gg2`. The body names VERSION, the rollout note, the CHANGELOG section, the FORK-DELTA refresh, the shipped changes, the published `.planning/` history and the `pre-v1.7.0_gg2` read-tree rollback.
+
+**Checks on M, before the push** (all printed):
+
+```text
+M=a246ca01b073faae86e2e92bb0288c07dd7eb0d7 X=3879b883b4c25312b414b3dc470e7fdac8951e73 X0=d316bc454f99615e2d9c49a7e9632ec94eed80e5
+MERGE-SHAPE-OK
+files 6 bad []
+MERGED-TREE-NO-TRUNCATE-INSTRUCTION
+ok-line True missing []
+ROLLBACK-RECHECK-ON-M-OK
+```
+
+MERGE-SHAPE-OK asserted: M has exactly two parents, M^1 = `be6b8861`, M^2 = X, `git diff --quiet M X` holds, X0..X planning-only, `.gsd-ws-arg` absent from M's tree, worktree clean. The rollback script from E-31 ran against M itself (`rollback-on-M.log`): ok, the doc-gone line and the revert-restores line all present; its demo worktree removed.
+
+**The publish push, as run:**
+
+```sh
+git -C /tmp/gsd20/cb push origin refs/heads/custom_build:refs/heads/custom_build
+```
+
+```text
+   be6b8861..a246ca01  custom_build -> custom_build
+CUSTOM-BUILD-PUBLISHED-ONLY
+```
+
+Only `custom_build` moved; `main` unchanged; the only tag added so far is `pre-v1.7.0_gg2` at `be6b8861` (byte-diff of the before/after snapshots).
+
+**CI on M** (exactly one run, zero cancelled):
+
+```text
+id=38587062864 path=.github/workflows/tests.yaml event=push head_branch=custom_build status=completed conclusion=success
+run_started_at=2026-10-14T15:10:54Z updated_at=2026-10-14T15:17:42Z (about 7 min; X0's run 38578966373 was also about 7 min)
+url=https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/38587062864
+job="ClickHouse latest Client version V2 tests" runner_name="GitHub Actions 1000000189" labels=ubuntu-24.04 completed/success
+PUBLISHED-SHA-RUN-GREEN
+```
+
+Matches text: n/a (gate check)
