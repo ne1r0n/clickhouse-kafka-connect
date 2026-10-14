@@ -49,7 +49,7 @@
 
 - [x] **ROLL-02**: `docs/ROLLOUT-v1.7.0_gg2.md` gives operators the 999.1 value change (rows already stored wrongly are not repaired), the dedup-token retry consequence verified on `latest`, the empty-CDC skip change, and the MBean `version=` change — reviewed before the publication gate
 - [x] **PUB-07**: `VERSION` is `v1.7.0_gg2`, `CHANGELOG.md` has a plain-language `1.7.0_gg2` section, and `docs/FORK-DELTA.md` has a row for every new fork-side patch
-- [ ] **SUITE-05**: The full suite is green twice on ClickHouse `latest` × client V2 (0 failures, 0 errors, every skip named) and `testUnit` is green with Docker stopped
+- [x] **SUITE-05**: The full suite is green twice on ClickHouse `latest` × client V2 (0 failures, 0 errors, every skip named) and `testUnit` is green with Docker stopped
 - [ ] **PUB-08**: The release lands on `custom_build` as a non-force `--no-ff` merge after the user's own explicit approval, the published SHA has exactly one green CI run, the `v1.7.0_gg2` tag is pushed only after that run is green, and the rollback tag points at a commit that already carries the branch-only trigger
 
 ## Future Requirements
@@ -97,7 +97,7 @@
 | CI-17 | Phase 17 | Complete |
 | ROLL-02 | Phase 20 | Complete |
 | PUB-07 | Phase 20 | Complete |
-| SUITE-05 | Phase 20 | Pending |
+| SUITE-05 | Phase 20 | Complete |
 | PUB-08 | Phase 20 | Pending |
 
 **Coverage:**
