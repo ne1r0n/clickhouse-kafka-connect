@@ -4,11 +4,11 @@ milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 20
 status: completed
-stopped_at: Phase 20 complete — all phases complete
-last_updated: "2026-10-14T18:54:41.925Z"
+stopped_at: Phase 20 complete, verification passed; next /gsd-audit-milestone
+last_updated: "2026-10-14T18:57:18.929Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 20 complete
-state_head: 69e7ba27df29f0bfa3d4d8be3c23c165930c91d5
+state_head: ab587b2f02b81d30d0bcf322c57909d2c61626cd
 progress:
   total_phases: 5
   completed_phases: 5
@@ -21,10 +21,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-13 after Phase 19)
+See: .planning/PROJECT.md (updated 2026-10-14 after Phase 20)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 20 — Release & Publication
+**Current focus:** Milestone close — `/gsd-audit-milestone`, then `/gsd-complete-milestone` (all 5 phases complete, Phase 20 verification passed)
 
 ## Current Position
 
@@ -193,6 +193,8 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 20]: 20-03: the gg2 rollout note corrects gg1 item 1's dedup reasoning in the gg2 note only; the in-flight check is required only for connectors writing Nullable Enum/Tuple columns or Debezium records under exactlyOnce=true
 - [Phase 20]: 20-04: gg2 CHANGELOG, FORK-DELTA refresh and 19-REVIEW dispositions committed; the close record heads advisories '19-REVIEW <ID>' and records the L-38 obligation as fulfilled under its own heading — A second Phase 19 review reused IDs of the first, so ROADMAP's WR-02 (L-38) and 19-REVIEW WR-02 (vacuous assertions) are different items; the deferred one must not be read as the fulfilled one
 - [Phase 20]: Phase 19 threat audit closed 32 of 34 threats; T-19-12 and T-19-26 stay open at medium (below the high block threshold) because 19-REVIEW WR-01 and IN-04 limit their totality and pairing claims; threats_open 0 — The auditor checks presence, not correctness; a finding that limits a mitigation keeps the threat open
+- [Phase 20]: 20-06/20-07: publication ran as rehearse-then-merge — scratch push of X0 for one green CI run, `--no-ff` merge of X into `be6b8861` with the rollback tag pushed first, release tag only after the merge's own run was green, scratch branch deleted last; both gates answered by the user verbatim ("push", "publish") directly to the orchestrator
+- [Phase 20]: 20-08: the user enabled Dependabot version updates and switched the default branch to `custom_build` themselves; no agent touched a setting (origin refs byte-identical before/after, CLOSE-STEPS-RECORDED) — outcomes verbatim in `20-MILESTONE-CLOSE-RECORD.md`
 
 ### Pending Todos
 
@@ -225,14 +227,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-14T18:39:19.283Z
-Stopped at: Phase 20 complete — all phases complete
+Last session: 2026-10-14T18:57:18.847Z
+Stopped at: Phase 20 complete, verification passed; next /gsd-audit-milestone
 Resume file: None
 
 ## Operator Next Steps
 
 - `v1.7.0_gg2` is published: merge `a246ca01` on `origin/custom_build`, tags `v1.7.0_gg2` and `pre-v1.7.0_gg2` on origin, CI run 38587062864 green, `origin/sync/v1.7.0` deleted. The three post-publication manual checks are answered and recorded in `20-MILESTONE-CLOSE-RECORD.md` (Dependabot enabled; default branch changed to `custom_build` by the user; no Dependabot config error). In order:
-- Verify Phase 20 (the execute-phase verifier runs next in this session; if resuming, `/gsd-execute-phase 20` resumes at verification).
+- Phase 20 verification passed (8/8 must-haves, `20-VERIFICATION.md`, status `passed`). Advisory: the security capability is active and Phase 20 has no `20-SECURITY.md` (its plans carried per-plan threat models and 20-05 audited Phase 19 to `threats_open: 0`); run `/gsd-secure-phase 20` first if the phase should carry its own threat check.
 - Run `/gsd-audit-milestone` (D-12). It replaces the stale, untracked `.planning/v1.7.0_gg2-hardening-MILESTONE-AUDIT.md` snapshot of 2026-10-10 — do not commit that snapshot — so `v1.7.0_gg2-hardening` closes on a fresh audit instead of a third override closeout.
 - Run `/gsd-complete-milestone`, carrying `20-MILESTONE-CLOSE-RECORD.md` into MILESTONES.md Known gaps and PROJECT.md Active: the five 19-REVIEW advisories (WR-01, WR-02, IN-01, IN-02, IN-03), IN-04 with its pin, backlog 999.3, and the three manual-check outcomes (including the `gradle` "Last checked" residue).
 - Revoke the read-only GitHub token if it was used: on GitHub under Settings, Developer settings, Personal access tokens, then `security delete-generic-password -s gsd17-gh-actions-read`. (It was not needed this session — both CI runs were read unauthenticated.)
