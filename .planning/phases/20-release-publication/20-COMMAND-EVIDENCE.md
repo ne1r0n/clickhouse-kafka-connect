@@ -21,7 +21,7 @@ python3 -I -c 'import sys,xml.etree.ElementTree as E;r=E.parse(sys.argv[1]).getr
 
 The research phase measured `26.9.17.8` with the same three values; `latest` moved to `26.9.18.11` between the research and this run, and the windows did not change.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-02: re-delivered range on ReplicatedMergeTree, exactlyOnce=false (tracer)
 
@@ -39,7 +39,7 @@ python3 -I -c 'import sys,xml.etree.ElementTree as E;r=E.parse(sys.argv[1]).getr
 
 Assertion summary: after step 2 the table still reads back as step 1's three rows (the changed-bytes retry was dropped, not stored), and after step 3 it is unchanged. The research premise (same token, changed bytes, dropped) holds on today's `latest`, so the plan continued.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-03: dedup outcome table
 
@@ -91,7 +91,7 @@ No cell of this table records "rows written twice because the bytes differ": a c
 
 For the two `eo-true` connector cases the read-back leaves out the `ts` column, as `EmptyCdcSkipRouteLiveTest` does for the `bypassRowBinary` route (the first run of those cases showed that route storing a different `ts` than the source instant; that is existing behaviour of the metadata-free JSON path and not what this class pins). The compared columns are `id`, `amount`, `name`, `_version` and `is_deleted`. The simulated earlier attempt of the landed case inserts those same columns and leaves `ts` at its column default.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-04: seen-red without the connector's token
 
@@ -437,7 +437,7 @@ PROBE-KEEPER-ROWS case=in-flight rows=orders-1,10,19,BEFORE_PROCESSING
 PROBE-KEEPER case=all-after keys=
 ```
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-18: table classification for the deduplication item
 
@@ -492,7 +492,7 @@ PROBE-DEDUP-TABLE kind=plain deduplicates=0
 PROBE-DEDUP-TABLE kind=replicated-off deduplicates=0
 ```
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-19: MBean name and client name, gg1 versus gg2
 
