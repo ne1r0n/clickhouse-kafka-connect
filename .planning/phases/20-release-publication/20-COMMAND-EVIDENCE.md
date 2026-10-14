@@ -984,3 +984,32 @@ PUBLISHED-SHA-RUN-GREEN
 ```
 
 Matches text: n/a (gate check)
+
+### E-72: release run, tag and final refs
+
+Backs: PUB-08 (the tag names a SHA CI already passed; origin's final refs are exactly the expected set). Date (UTC) 2026-10-14.
+
+**Late re-check** (148 s after the green result): `actions/runs?head_sha=M` still held exactly one run, green, none cancelled.
+
+**The tag pushes and the deletion, as run and in order:**
+
+```sh
+git tag v1.7.0_gg2 a246ca01b073faae86e2e92bb0288c07dd7eb0d7
+git push origin refs/tags/v1.7.0_gg2:refs/tags/v1.7.0_gg2    # 15:21Z, after the late re-check
+# 62 s wait — M still has exactly one run (the tag started none)
+git push origin --delete refs/heads/sync/v1.7.0              # only after the tag
+```
+
+```text
+ * [new tag]           v1.7.0_gg2 -> v1.7.0_gg2
+ - [deleted]           sync/v1.7.0
+FINAL-REFS-OK
+```
+
+**Final origin refs:** heads exactly `custom_build` at `a246ca01` and `main` (unchanged); tags exactly `pre-v1.6.0-sync` (6ac2d20c), `pre-v1.7.0-sync` (c61d90ce), `v1.6.0_gg1` (c61d90ce), `v1.7.0_gg1` (f328fd21), `pre-v1.7.0_gg2` (be6b8861) and `v1.7.0_gg2` (a246ca01).
+
+**Cleanup:** `/tmp/gsd20/cb` removed and pruned; `git fetch origin --no-tags` shows `origin/custom_build` = `a246ca01`; the main tree stayed on `sync/v1.7.0`; `release.yaml` and `pre-release.yaml` were not dispatched.
+
+**Raw numbers on the tag:** see RAW-NUMBERS-AND-TAIL-OK below in this entry's verify record — `git diff --shortstat v1.7.0 v1.7.0_gg2` for both scopes equals FORK-DELTA's gg2 rows as published in M.
+
+Matches text: n/a (gate check)
