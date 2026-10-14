@@ -62,19 +62,26 @@ These three checks are for the user in the GitHub web UI of `ne1r0n/clickhouse-k
 
 - **Steps:** open the repository on GitHub, then Settings, then Code security (called "Code security and analysis" or "Advanced Security" in some versions of the interface). Find "Dependabot version updates" and read whether it is Enabled or Disabled.
 - **Why it matters:** version updates on a fork stay off until someone enables them here, so the `github-actions` entry that keeps the SHA pins current (and the `gradle` entry) does nothing while it is off.
-- Outcome: pending (plan 20-08)
+
+Outcome: enabled (recorded 2026-10-14, given directly to the orchestrator)
 
 ### 2. The default branch
 
 - **Steps:** Settings, then General. Under "Default branch" read the branch name. It was `main` at Phase 17 (a 2025 upstream mirror), not `custom_build`. Record the user's intent: keep `main`, switch to `custom_build`, or undecided.
 - **Why it matters:** Dependabot reads `.github/dependabot.yml` from the default branch only, and scheduled workflows also run from the default branch, so on `main` neither sees the fork's files.
-- Outcome: pending (plan 20-08)
+
+Outcome: changed to custom_build (recorded 2026-10-14, given directly to the orchestrator)
+
+- **Consequence for the next milestone:** with `custom_build` the default branch, Dependabot reads the fork's `.github/dependabot.yml` and scheduled workflows run from `custom_build`, so the Phase 17 F1 concern ("neither sees the fork's files on `main`") is closed. The one-branch-per-SHA CI rule and the branch-triggered `tests.yaml` are unaffected. The user made this change themselves in the web UI; no agent touched a setting.
 
 ### 3. `dependabot.yml`'s `exclude-paths` key did not invalidate the configuration
 
 - **Steps:** Insights, then Dependency graph, then the Dependabot tab. Check that no configuration error is shown and that the `gradle` entry still shows a recent "Last checked" time. This can only be observed once the default branch carries the file, so if check 2 says `main` stays the default and `main` has no `dependabot.yml` with the `github-actions` entry, record "not observable" and why.
 - **Why it matters:** the `github-actions` entry's `exclude-paths` support was confirmed from Dependabot's source and never observed in a run (17-REVIEW WR-01). If Dependabot rejects the key, the whole file could be invalid and stall the `gradle` entry as well.
-- Outcome: pending (plan 20-08)
+
+Outcome: no errors, I see only [screenshot: Insights > Dependency graph > Dependabot showing the actions entry "Running version update job now" and Recent jobs "Version update 1627650108, Running now"] (recorded 2026-10-14, given directly to the orchestrator)
+
+- **Reading of the screenshot (orchestrator's annotation, not the user's words):** check 2's switch to `custom_build` made this check observable at once (assumption A18's "not observable yet" path did not apply). The Dependabot tab shows no configuration error, so `exclude-paths` did not invalidate the file. At the moment of the check the first version-update job on the fork's config was still running, so the `gradle` entry's "Last checked" time was not yet visible — only the `actions` entry was listed. Carried forward: next milestone, glance at the same tab to confirm the `gradle` entry appears with a recent "Last checked" time once job 1627650108 and its successors finish (closes 17-REVIEW WR-01 fully).
 
 ## Milestone audit
 
