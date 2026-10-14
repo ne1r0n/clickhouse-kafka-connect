@@ -21,6 +21,7 @@ The items, in the order to work through them:
 3. [Empty Debezium records](#item-3-empty-debezium-records)
 4. [Error messages and log lines](#item-4-error-messages-and-log-lines)
 5. [JMX MBean name and client name](#item-5-jmx-mbean-name-and-client-name)
+6. [Rollback](#item-6-rollback)
 
 ---
 
@@ -322,3 +323,35 @@ Search your dashboards, alert rules and JMX exporter rules for matchers that spe
 ### What to do
 
 Change matchers that spell out the old value. If you already use the wildcard forms from item 7 of the gg1 note, they keep working across releases and nothing needs to change.
+
+---
+
+## Item 6: Rollback
+
+### What changed
+
+Nothing in the data format is migrated, so a rollback is a code rollback. Tag `pre-v1.7.0_gg2` names commit `be6b8861`, the published `v1.7.0_gg1` tree with its corrected documents, and it is published together with this release. Item 8 of the gg1 note still describes the older rollback, to `pre-v1.7.0-sync`, which goes back to `v1.6.0_gg1`. The rollback in this item goes back to `v1.7.0_gg1`.
+
+### Am I affected?
+
+You are affected if you need to go back after upgrading, or if you want to know in advance what going back costs.
+
+### What to do
+
+1. Back out the whole release in one commit on `custom_build`, by restoring the tree of tag `pre-v1.7.0_gg2`:
+   1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing. Commit whatever it lists, or set it aside with `git stash -u` (a plain `git stash` leaves untracked files behind), or work in a fresh clone. The next command discards uncommitted and staged changes to tracked files without asking, and it overwrites untracked files at paths that the tag contains.
+   2. Run `git read-tree -u --reset pre-v1.7.0_gg2`, then `git commit -m "Roll back v1.7.0_gg2"`. This commit is `<rollback-commit>` below; `git rev-parse HEAD` right after the commit prints it. `git diff --quiet HEAD pre-v1.7.0_gg2 && echo ok` prints `ok`.
+
+   Use this form rather than `git revert -m 1` on the release merge. It restores a known tree and works on whatever tip `custom_build` has reached, including after later commits.
+2. Redeploy the `v1.7.0_gg1` artifact.
+3. Run the check of item 1 in reverse: stop cleanly, run the same KeeperMap query, and go back only when it returns nothing. This is the mirror image of item 1. A batch that `v1.7.0_gg2` left in `BEFORE_PROCESSING` is retried by `v1.7.0_gg1` under the same `insert_deduplication_token`. By the rule measured in item 1, a retry under the same token is dropped on a table that deduplicates. So if the `v1.7.0_gg2` attempt landed, the `v1.7.0_gg1` retry is dropped and the rows of `v1.7.0_gg2` stay. If it did not land, the `v1.7.0_gg1` block lands once with the old encoding, which brings back the wrong values of item 2 and the phantom rows of item 3 for that range.
+
+To go forward again, revert the rollback commit with `git revert <rollback-commit>`. The rollback removes this document from the branch; read it again with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg2.md`.
+
+Rolling back brings back:
+
+- the `Nullable(Enum8)`, `Nullable(Enum16)` and `Nullable(Tuple(...))` defects of item 2, together with their startup WARN;
+- the all-defaults rows from empty Debezium records on the `bypassRowBinary=true` route and on RowBinary (item 3);
+- the `NullPointerException` that masks failures without a message, and DateTime parse logs that carry the value (item 4);
+- the `v1.7.0_gg1` MBean version and client name (item 5);
+- on the branch, the CI workflow as it was before its hardening: the floating `ubuntu-latest` runner label and actions pinned by tag instead of by commit.
