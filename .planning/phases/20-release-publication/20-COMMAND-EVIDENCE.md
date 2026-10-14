@@ -190,3 +190,357 @@ PROBE-RESULT tree=gg2 shape=tuple-c2-plain flagged=0
 An empty result of this query means no row of the column matches the shape, not that the column is healthy: a wrongly stored tuple whose elements are not all NULL or empty is not found by it.
 
 Matches text: pending (20-03)
+
+### E-12: Nullable(Enum8) and Nullable(Enum16) at the top level, gg1 versus gg2
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the 999.1 item, the `Nullable(Enum)` detection query (written in plan 20-03). Fixtures, each a plain `MergeTree ORDER BY id` table with no DEFAULT column and three schema'd `Struct` records (ids 1 to 3, column `c` holding the string label `a`, `b`, `a`, never NULL) put in one batch through `ClickHouseSinkTask` on the RowBinary route: `c Nullable(Enum8('a' = 1, 'b' = 2))` (shape `enum8-top`) and `c Nullable(Enum16('a' = 1, 'b' = 1000))` (shape `enum16-top`). Typed read-back is `id, ifNull(toString(c), 'NULL')`.
+
+What each tree did: the gg1 code stored the three Enum8 rows with `c` NULL and raised no error (every label lost, silently); on the Enum16 table it failed the batch with the server error `CANNOT_READ_ALL_DATA` and left no row. The gg2 code stored both tables exactly as sent. Because the gg1 code failed the Enum16 batch, no Enum16 row was ever stored by it, so the query has nothing to find for Enum16 columns written by gg1; the Enum16 run only shows that the same query flags nothing on gg2 rows.
+
+Final-run versions (both runs, same fixture records):
+
+```text
+PROBE-VERSION tree=gg1 server=26.9.18.11 artifact=v1.7.0_gg1
+PROBE-VERSION tree=gg2 server=26.9.18.11 artifact=v1.7.0_gg2
+```
+
+Doc-form query (SELECT only; one text serves both Enum widths; the probe reads it from `/tmp/gsd20/probe/sql/enum-top.sql`, replaces the placeholders and runs it otherwise unchanged):
+
+```sql
+SELECT
+    <key_column> AS row_key,
+    _part AS part,
+    'Nullable(Enum) column holds NULL' AS reason
+FROM `<db>`.`<table>`
+WHERE <column> IS NULL
+ORDER BY part, row_key;
+```
+
+Substitution map: `<column>` = `c`, `<key_column>` = `id`. gg1 run: `<db>` = `kafka_connect_test_1254766197_1791983592900`, `<table>` = `p20_enum8_top_1791983593467` (Enum8) and `p20_enum16_top_1791983593912` (Enum16). gg2 run: `<db>` = `kafka_connect_test_696237895_1791983608390`, `<table>` = `p20_enum8_top_1791983608922` and `p20_enum16_top_1791983609863`.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-OBSERVED tree=gg1 shape=enum8-top outcome=stored match=no detail=1,NULL;2,NULL;3,NULL
+PROBE-RESULT tree=gg1 shape=enum8-top flagged=3
+PROBE-SUSPECTS tree=gg1 shape=enum8-top rows=1,all_1_1_0,Nullable(Enum) column holds NULL;2,all_1_1_0,Nullable(Enum) column holds NULL;3,all_1_1_0,Nullable(Enum) column holds NULL
+PROBE-OBSERVED tree=gg1 shape=enum16-top outcome=failed match=n/a detail=ServerException: Code: 33. DB::Exception: Cannot read all data. Bytes read: 1. Bytes expected: 4: (at row 4) : While executing WaitForAsyncInsert. (CANNOT_READ_ALL_DATA) (version 26.9.18.11 (official build))  rowsLeft=0 chain=RuntimeException: Number of records: 3 | RuntimeException: Number of records: 3 | RuntimeException: Topic: [p20_enum16_top_1791983593912], Partition: [0], MinOffset: [0], MaxOffset: [2], (QueryId: [78da0eb9-5c95-44ef-bc3
+PROBE-RESULT tree=gg1 shape=enum16-top flagged=0
+PROBE-OBSERVED tree=gg2 shape=enum8-top outcome=stored match=yes detail=1,a;2,b;3,a
+PROBE-RESULT tree=gg2 shape=enum8-top flagged=0
+PROBE-OBSERVED tree=gg2 shape=enum16-top outcome=stored match=yes detail=1,a;2,b;3,a
+PROBE-RESULT tree=gg2 shape=enum16-top flagged=0
+```
+
+A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
+
+Matches text: pending (20-03)
+
+### E-13: Array(Nullable(Enum8)), gg1 versus gg2
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the 999.1 item, the Enum array detection query (written in plan 20-03). Fixture: a plain `MergeTree ORDER BY id` table `(id Int32, c Array(Nullable(Enum8('a' = 1, 'b' = 2))))`, two schema'd `Struct` records (ids 1 and 2) each with the array `['a', 'b']` and no NULL element, one batch, RowBinary route. Typed read-back is `id, toString(c)`. The gg1 code stored both arrays as `[NULL,NULL]` with no error; the gg2 code stored `['a','b']`.
+
+Doc-form query (SELECT only; `/tmp/gsd20/probe/sql/enum-array.sql`):
+
+```sql
+SELECT
+    <key_column> AS row_key,
+    _part AS part,
+    'array holds a NULL element' AS reason
+FROM `<db>`.`<table>`
+WHERE arrayExists(x -> x IS NULL, <column>)
+ORDER BY part, row_key;
+```
+
+Substitution map: `<column>` = `c`, `<key_column>` = `id`. gg1 run: `<db>` = `kafka_connect_test_1254766197_1791983592900`, `<table>` = `p20_enum8_array_1791983592975`. gg2 run: `<db>` = `kafka_connect_test_696237895_1791983608390`, `<table>` = `p20_enum8_array_1791983608463`.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-OBSERVED tree=gg1 shape=enum8-array outcome=stored match=no detail=1,[NULL,NULL];2,[NULL,NULL]
+PROBE-RESULT tree=gg1 shape=enum8-array flagged=2
+PROBE-SUSPECTS tree=gg1 shape=enum8-array rows=1,all_1_1_0,array holds a NULL element;2,all_1_1_0,array holds a NULL element
+PROBE-OBSERVED tree=gg2 shape=enum8-array outcome=stored match=yes detail=1,['a','b'];2,['a','b']
+PROBE-RESULT tree=gg2 shape=enum8-array flagged=0
+```
+
+A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
+
+Matches text: pending (20-03)
+
+### E-14: Map(String, Nullable(Enum8)), gg1 versus gg2
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the 999.1 item, the Enum map detection query (written in plan 20-03). Fixture: a plain `MergeTree ORDER BY id` table `(id Int32, c Map(String, Nullable(Enum8('a' = 1, 'b' = 2))))`, two schema'd `Struct` records (ids 1 and 2) each with the map `{k1: a, k2: b}` and no NULL value, one batch, RowBinary route. Typed read-back is `id, toString(c)`. The gg1 code stored both maps as `{'k1':NULL,'k2':NULL}` with no error; the gg2 code stored `{'k1':'a','k2':'b'}`.
+
+Doc-form query (SELECT only; `/tmp/gsd20/probe/sql/enum-map.sql`):
+
+```sql
+SELECT
+    <key_column> AS row_key,
+    _part AS part,
+    'map holds a NULL value' AS reason
+FROM `<db>`.`<table>`
+WHERE arrayExists(x -> x IS NULL, mapValues(<column>))
+ORDER BY part, row_key;
+```
+
+Substitution map: `<column>` = `c`, `<key_column>` = `id`. gg1 run: `<db>` = `kafka_connect_test_1254766197_1791983592900`, `<table>` = `p20_enum8_map_1791983593364`. gg2 run: `<db>` = `kafka_connect_test_696237895_1791983608390`, `<table>` = `p20_enum8_map_1791983608815`.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-OBSERVED tree=gg1 shape=enum8-map outcome=stored match=no detail=1,{'k1':NULL,'k2':NULL};2,{'k1':NULL,'k2':NULL}
+PROBE-RESULT tree=gg1 shape=enum8-map flagged=2
+PROBE-SUSPECTS tree=gg1 shape=enum8-map rows=1,all_1_1_0,map holds a NULL value;2,all_1_1_0,map holds a NULL value
+PROBE-OBSERVED tree=gg2 shape=enum8-map outcome=stored match=yes detail=1,{'k1':'a','k2':'b'};2,{'k1':'a','k2':'b'}
+PROBE-RESULT tree=gg2 shape=enum8-map flagged=0
+```
+
+A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
+
+Matches text: pending (20-03)
+
+### E-15: single-field Nullable(Tuple) with a NULL field, gg1 versus gg2
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the 999.1 item, the single-field tuple detection query, and the "what changed" text for ledger L-38 (written in plan 20-03). Fixture: a plain `MergeTree ORDER BY id` table `(id Int32, c Nullable(Tuple(a Int32)))` and one schema'd `Struct` record (id 1) whose tuple has `a` = null, RowBinary route. Typed read-back is `id, isNull(c), tupleElement(c, 'a')`.
+
+What each tree did: the gg1 code stored the row with a NULL tuple (`c` is NULL), silently. The gg2 code refused the batch with a `DataException` whose message is `column 'c' (Nullable(Tuple(...))) tuple field 'a': null in non-nullable slot`, under `errors.tolerance=none`, and left no row (ledger L-38). Since gg2 stores nothing, the query returns nothing there.
+
+Doc-form query (SELECT only; `/tmp/gsd20/probe/sql/tuple-x1-null-field.sql`):
+
+```sql
+SELECT
+    <key_column> AS row_key,
+    _part AS part,
+    'single-field Nullable(Tuple) holds a NULL tuple' AS reason
+FROM `<db>`.`<table>`
+WHERE <column> IS NULL
+ORDER BY part, row_key;
+```
+
+Substitution map: `<column>` = `c`, `<key_column>` = `id`. gg1 run: `<db>` = `kafka_connect_test_1254766197_1791983592900`, `<table>` = `p20_tuple_x1_1791983593567`. gg2 run: `<db>` = `kafka_connect_test_696237895_1791983608390`, `<table>` = `p20_tuple_x1_1791983609212`.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-OBSERVED tree=gg1 shape=tuple-x1-null-field outcome=stored match=no detail=1,1,NULL
+PROBE-RESULT tree=gg1 shape=tuple-x1-null-field flagged=1
+PROBE-SUSPECTS tree=gg1 shape=tuple-x1-null-field rows=1,all_1_1_0,single-field Nullable(Tuple) holds a NULL tuple
+PROBE-OBSERVED tree=gg2 shape=tuple-x1-null-field outcome=failed match=n/a detail=DataException: column 'c' (Nullable(Tuple(...))) tuple field 'a': null in non-nullable slot rowsLeft=0 chain=RuntimeException: Number of records: 1 | RuntimeException: Number of records: 1 | RuntimeException: Topic: [p20_tuple_x1_1791983609212], Partition: [0], MinOffset: [0], MaxOffset: [0], (QueryId: [1ece109c-d744-4487-a6da-
+PROBE-RESULT tree=gg2 shape=tuple-x1-null-field flagged=0
+```
+
+A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
+
+Matches text: pending (20-03)
+
+### E-16: empty CDC records on the bypassRowBinary JSON route, gg1 versus gg2
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the empty-CDC (phantom row) item, ledger L-30 (written in plan 20-03). Fixture: `bypassRowBinary=true` and `debeziumCDCEnabled=true`, a plain `MergeTree ORDER BY id` table `(id Int32, ts DateTime64(3, 'UTC'), amount Decimal(18,4), name String, _version UInt64, is_deleted UInt8)`, and one batch of four Debezium envelopes: `op=c` (after: id 1, `created`, lsn 100), `op=t`, `op=u` with a null `after`, and `op=d` (before: id 2, `deleted`, lsn 101). Typed read-back is `id, amount, name, _version, is_deleted` (`ts` is left out: this route does not store the source instant, see E-03).
+
+What each tree did: the gg1 code stored the two real rows plus two all-defaults phantom rows (`id` 0, `amount` 0, empty `name`, `_version` 0, `is_deleted` 0), one per empty record. The gg2 code stored only the two real rows (ledger L-30). The query lists rows whose key and `_version` are both 0; on a real table a row can have key 0 legitimately, so the hits are suspects to compare with the source.
+
+Doc-form query (SELECT only; `/tmp/gsd20/probe/sql/empty-cdc-bypass.sql`):
+
+```sql
+SELECT
+    <key_column> AS row_key,
+    _part AS part,
+    'key and version are both 0 (possible phantom row of an empty CDC record)' AS reason
+FROM `<db>`.`<table>`
+WHERE <key_column> = 0
+  AND <version_column> = 0
+ORDER BY part, row_key;
+```
+
+Substitution map: `<key_column>` = `id`, `<version_column>` = `_version`. gg1 run: `<db>` = `kafka_connect_test_1254766197_1791983592900`, `<table>` = `p20_empty_cdc_1791983593674`. gg2 run: `<db>` = `kafka_connect_test_696237895_1791983608390`, `<table>` = `p20_empty_cdc_1791983609618`.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-OBSERVED tree=gg1 shape=empty-cdc-bypass outcome=stored match=no detail=0,0,,0,0;0,0,,0,0;1,12.3456,created,100,0;2,12.3456,deleted,101,1
+PROBE-RESULT tree=gg1 shape=empty-cdc-bypass flagged=2
+PROBE-SUSPECTS tree=gg1 shape=empty-cdc-bypass rows=0,all_1_1_0,key and version are both 0 (possible phantom row of an empty CDC record);0,all_1_1_0,key and version are both 0 (possible phantom row of an empty CDC record)
+PROBE-OBSERVED tree=gg2 shape=empty-cdc-bypass outcome=stored match=yes detail=1,12.3456,created,100,0;2,12.3456,deleted,101,1
+PROBE-RESULT tree=gg2 shape=empty-cdc-bypass flagged=0
+```
+
+A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
+
+Matches text: pending (20-03)
+
+### E-17: topic-scoped KeeperMap self-check on a connector-created state table
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the exactly-once item's state-table self-check (written in plan 20-03); it is the gg1 note's item 1 query, now run live. The probe (gg2 run only) creates the state table through the connector's own code, `new KeeperStateProvider(new ClickHouseSinkConfig(props))` with `zkPath` `/kafka-connect` and `zkDatabase` `connect_state` against the server's embedded Keeper, then writes three state records through that provider: `orders` partition 0 `AFTER_PROCESSING` (offsets 0 to 9), `orders` partition 1 `BEFORE_PROCESSING` (10 to 19) and `orders-v2` partition 0 `BEFORE_PROCESSING` (0 to 4). It runs the query for topic `orders`, then sets `orders` partition 1 to `AFTER_PROCESSING` and runs it again.
+
+Result: the first run returns exactly the one in-flight key of the listed topic, `orders-1`; it does not return `orders-0` (already `AFTER_PROCESSING`) and does not return `orders-v2-0`, which is `BEFORE_PROCESSING` under a topic that merely shares the prefix. The second run returns nothing.
+
+Doc-form query (SELECT only; `/tmp/gsd20/probe/sql/keeper-self-check.sql`; the two `<topic>` placeholders are replaced by the same topic here, an operator replaces each with one of their topics):
+
+```sql
+SELECT `key`, minOffset, maxOffset, state
+FROM `<zkDatabase>`
+WHERE state != 'AFTER_PROCESSING'
+  AND arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>', '<topic>')
+ORDER BY `key`;
+```
+
+Substitution map: `<zkDatabase>` = `connect_state`, `<topic>` = `orders` (both occurrences). The query runs in the database the state table lives in (the probe's connection database).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-KEEPER case=in-flight keys=orders-1
+PROBE-KEEPER-ROWS case=in-flight rows=orders-1,10,19,BEFORE_PROCESSING
+PROBE-KEEPER case=all-after keys=
+```
+
+Matches text: pending (20-03)
+
+### E-18: table classification for the deduplication item
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the dedup item, the "does my table deduplicate" self-check (written in plan 20-03). The probe (gg2 run only) creates four tables in its database: a default `ReplicatedMergeTree`, a `MergeTree` with `SETTINGS non_replicated_deduplication_window = 100`, a plain `MergeTree`, and a `ReplicatedMergeTree` with `SETTINGS replicated_deduplication_window = 0`. The query reads `engine` and `engine_full` from `system.tables`; a table-level `SETTINGS` value wins, otherwise the server default from `system.merge_tree_settings` applies (10000 for the replicated window and 0 for the non-replicated window on this server, E-01). A table deduplicates only if its window is above 0.
+
+Result: the replicated default table and the table with a non-replicated window return 1; the plain `MergeTree` and the `ReplicatedMergeTree` with window 0 return 0. This agrees with E-03 (the same four cases measured by inserts: replicated and window dropped a same-token retry, plain and window 0 stored every insert).
+
+Limits the note must state: the query does not evaluate `replicated_deduplication_window_seconds`, does not know server-level overrides set through a user profile, and was not run on an engine other than `MergeTree` and `ReplicatedMergeTree` (for example `SharedMergeTree` on ClickHouse Cloud is not covered).
+
+Doc-form query (SELECT only; `/tmp/gsd20/probe/sql/dedup-tables.sql`; the `\\s` and `\\d` are written exactly as the probe sent them, so the server receives the regular expressions `\s` and `\d` after its own string unescaping):
+
+```sql
+SELECT
+    name AS table_name,
+    engine,
+    toUInt8(
+        if(engine LIKE 'Replicated%MergeTree',
+           coalesce(
+               toUInt64OrNull(extract(engine_full, 'replicated_deduplication_window\\s*=\\s*(\\d+)')),
+               (SELECT toUInt64(value) FROM system.merge_tree_settings WHERE name = 'replicated_deduplication_window')
+           ) > 0,
+           coalesce(
+               toUInt64OrNull(extract(engine_full, 'non_replicated_deduplication_window\\s*=\\s*(\\d+)')),
+               (SELECT toUInt64(value) FROM system.merge_tree_settings WHERE name = 'non_replicated_deduplication_window')
+           ) > 0)
+    ) AS deduplicates
+FROM system.tables
+WHERE database = '<db>'
+  AND engine LIKE '%MergeTree'
+ORDER BY table_name;
+```
+
+Substitution map: `<db>` = `kafka_connect_test_696237895_1791983608390` (gg2 run).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-DEDUP-ROW table_name=p20_dedup_plain_1791983609027 engine=MergeTree deduplicates=0
+PROBE-DEDUP-ROW table_name=p20_dedup_replicated_1791983609027 engine=ReplicatedMergeTree deduplicates=1
+PROBE-DEDUP-ROW table_name=p20_dedup_replicated_off_1791983609027 engine=ReplicatedMergeTree deduplicates=0
+PROBE-DEDUP-ROW table_name=p20_dedup_window_1791983609027 engine=MergeTree deduplicates=1
+PROBE-DEDUP-TABLE kind=replicated deduplicates=1
+PROBE-DEDUP-TABLE kind=window deduplicates=1
+PROBE-DEDUP-TABLE kind=plain deduplicates=0
+PROBE-DEDUP-TABLE kind=replicated-off deduplicates=0
+```
+
+Matches text: pending (20-03)
+
+### E-19: MBean name and client name, gg1 versus gg2
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the MBean and client-name item (written in plan 20-03); there is no new doc query, the `user-agent` query is the gg1 note's item 7 query copied verbatim. In each run a sink task is started, one record is put through it, the `com.clickhouse:type=ClickHouseKafkaConnector,*` MBeans of that connector are listed while the task still runs, the task is stopped, `SYSTEM FLUSH LOGS` is executed as its own statement, and then the query below reads `system.query_log` of the run's own container.
+
+Result: every MBean of the gg2 run carries `version=v1.7.0_gg2` (the per-task bean and the per-topic bean) and the client name the connector sends starts `clickhouse-kafka-connect/v1.7.0_gg2`; the gg1 run shows `v1.7.0_gg1` for both. The rest of the user agent (`clickhouse-java-v2/0.9.6 (...) Apache-HttpClient/5.6.2`) is the client library and does not change between the two.
+
+Query copied from the gg1 note (SELECT only; `/tmp/gsd20/probe/sql/user-agent.sql`):
+
+```sql
+SELECT DISTINCT http_user_agent
+FROM system.query_log
+WHERE event_date >= today() - 1
+  AND http_user_agent LIKE '%clickhouse-kafka-connect/%';
+```
+
+No placeholders.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (the `PROBE-VERSION` lines of the final runs are in E-12).
+
+```text
+PROBE-MBEAN tree=gg1 name=com.clickhouse:type=ClickHouseKafkaConnector,connector=Phase20RolloutProbe-mbeanAndClientName-8,name=SinkTask7,version=v1.7.0_gg1
+PROBE-MBEAN tree=gg1 name=com.clickhouse:type=ClickHouseKafkaConnector,connector=Phase20RolloutProbe-mbeanAndClientName-8,name=SinkTask7,version=v1.7.0_gg1,topic=p20_mbean_1791983594077
+PROBE-AGENT tree=gg1 agent=clickhouse-kafka-connect/v1.7.0_gg1 clickhouse-java-v2/0.9.6 (Mac OS X; jvm:17.0.9) Apache-HttpClient/5.6.2
+PROBE-MBEAN tree=gg2 name=com.clickhouse:type=ClickHouseKafkaConnector,connector=Phase20RolloutProbe-mbeanAndClientName-10,name=SinkTask7,version=v1.7.0_gg2,topic=p20_mbean_1791983609960
+PROBE-MBEAN tree=gg2 name=com.clickhouse:type=ClickHouseKafkaConnector,connector=Phase20RolloutProbe-mbeanAndClientName-10,name=SinkTask7,version=v1.7.0_gg2
+PROBE-AGENT tree=gg2 agent=clickhouse-kafka-connect/v1.7.0_gg2 clickhouse-java-v2/0.9.6 (Mac OS X; jvm:17.0.9) Apache-HttpClient/5.6.2
+```
+
+Matches text: pending (20-03)
+
+### E-20: shapes that failed instead of storing, recorded as observed facts
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the "what changed" text of the 999.1 and tuple items (written in plan 20-03). These two shapes did not store a wrong row, so they need no detection query; they are facts about which release refuses what.
+
+- `enum16-top` on the gg1 code: the batch failed with the server error `CANNOT_READ_ALL_DATA` (code 33, `Cannot read all data. Bytes read: 1. Bytes expected: 4`), root-cause class `ServerException`, and no row was left (`rowsLeft=0`). The gg2 code stores the same batch (E-12).
+- `tuple-x1-null-field` on the gg2 code: the batch failed with a `DataException` naming `tuple field 'a'` (root-cause class `DataException`, message `column 'c' (Nullable(Tuple(...))) tuple field 'a': null in non-nullable slot`), and no row was left (`rowsLeft=0`). The gg1 code stored a NULL tuple silently (E-15).
+
+```text
+PROBE-OBSERVED tree=gg1 shape=enum16-top outcome=failed match=n/a detail=ServerException: Code: 33. DB::Exception: Cannot read all data. Bytes read: 1. Bytes expected: 4: (at row 4) : While executing WaitForAsyncInsert. (CANNOT_READ_ALL_DATA) (version 26.9.18.11 (official build))  rowsLeft=0 chain=RuntimeException: Number of records: 3 | RuntimeException: Number of records: 3 | RuntimeException: Topic: [p20_enum16_top_1791983593912], Partition: [0], MinOffset: [0], MaxOffset: [2], (QueryId: [78da0eb9-5c95-44ef-bc3
+PROBE-OBSERVED tree=gg2 shape=tuple-x1-null-field outcome=failed match=n/a detail=DataException: column 'c' (Nullable(Tuple(...))) tuple field 'a': null in non-nullable slot rowsLeft=0 chain=RuntimeException: Number of records: 1 | RuntimeException: Number of records: 1 | RuntimeException: Topic: [p20_tuple_x1_1791983609212], Partition: [0], MinOffset: [0], MaxOffset: [0], (QueryId: [1ece109c-d744-4487-a6da-
+```
+
+Matches text: pending (20-03)
