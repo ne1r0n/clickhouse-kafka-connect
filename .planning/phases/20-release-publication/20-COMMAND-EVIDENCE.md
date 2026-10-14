@@ -860,3 +860,51 @@ MERGE-DRY-RUN-OK
 The dry-run merge `D` has first parent `be6b8861c25f3d7611194e7150b18362c5c75e32`, second parent X, and `git diff --quiet D X` is empty, so the merged tree equals the tested tip. `git worktree list` afterwards shows only the main checkout.
 
 Matches text: n/a (gate check)
+
+### E-62: rehearsal push and run
+
+Backs: PUB-08 (the release tree ran green on CI under its own SHA before any merge depends on it). Date (UTC) 2026-10-14.
+
+**The user's answer, verbatim:** `push` — given directly to the orchestrator in the main session at the Task 2 `blocking-human` checkpoint, after the rehearsal bundle (items 1-8) was presented verbatim. Received by: the orchestrator, directly. Task 3 ran inline in the orchestrator; no subagent held push authority.
+
+**Pre-push re-checks on the tip (Task 3 step 1):** HEAD equalled the bundle's X exactly (no commit landed after it). PUSH-READY re-passed (`X=d316bc454f99615e2d9c49a7e9632ec94eed80e5 rate=51`; anchors `result=PASS` in `/tmp/gsd20/exec/anchors-20-06-t3.log`). MERGE-DRY-RUN-OK re-passed (`D=d99c01a04c30f1ac1d21fcbc5c67b2824bc6ae1e`, parents `be6b8861` and X, tree equal, worktree removed). Ref snapshots saved to `origin-heads-before-rehearsal.txt` and `origin-tags-before-rehearsal.txt`.
+
+**The push, as run:**
+
+```sh
+git push origin refs/heads/sync/v1.7.0:refs/heads/sync/v1.7.0
+```
+
+```text
+ * [new branch]        sync/v1.7.0 -> sync/v1.7.0
+```
+
+No force flag, no tag, no other refspec.
+
+X0=d316bc454f99615e2d9c49a7e9632ec94eed80e5
+
+**The run** (`actions/runs?head_sha=X0`: exactly one run, zero cancelled):
+
+```text
+id=38578966373 path=.github/workflows/tests.yaml event=push head_branch=sync/v1.7.0 status=completed conclusion=success
+run_started_at=2026-10-14T14:15:57Z updated_at=2026-10-14T14:23:10Z (about 7 min)
+url=https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/38578966373
+job="ClickHouse latest Client version V2 tests" runner_name="GitHub Actions 1000000188" labels=ubuntu-24.04 completed/success
+```
+
+**Origin before the push** (heads; tags in `origin-tags-before-rehearsal.txt`, 4 tags):
+
+```text
+be6b8861c25f3d7611194e7150b18362c5c75e32  refs/heads/custom_build
+bec167d85918e77c11621063000acc6e031ae2fa  refs/heads/main
+```
+
+**Origin after the push** (tags byte-identical, `origin-tags-after-rehearsal.txt`):
+
+```text
+be6b8861c25f3d7611194e7150b18362c5c75e32  refs/heads/custom_build
+bec167d85918e77c11621063000acc6e031ae2fa  refs/heads/main
+d316bc454f99615e2d9c49a7e9632ec94eed80e5  refs/heads/sync/v1.7.0
+```
+
+Matches text: n/a (gate check)
