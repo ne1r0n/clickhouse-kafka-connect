@@ -1,27 +1,26 @@
 package com.clickhouse.kafka.connect.sink;
 
+import static com.clickhouse.kafka.connect.sink.CdcTestFixtures.CDC_ENVELOPE_SCHEMA;
+import static com.clickhouse.kafka.connect.sink.CdcTestFixtures.allRows;
+import static com.clickhouse.kafka.connect.sink.CdcTestFixtures.cdcEnvelope;
+import static com.clickhouse.kafka.connect.sink.CdcTestFixtures.cdcRow;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.clickhouse.client.api.query.GenericRecord;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -336,45 +335,6 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
         }
     }
 
-    private static final Schema CDC_ROW_SCHEMA = SchemaBuilder.struct().optional()
-            .field("id", Schema.INT32_SCHEMA)
-            .field("ts", Timestamp.SCHEMA)
-            .field("amount", Decimal.schema(4))
-            .field("name", Schema.STRING_SCHEMA)
-            .build();
-
-    private static final Schema CDC_SOURCE_SCHEMA = SchemaBuilder.struct().optional()
-            .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
-            .build();
-
-    private static final Schema CDC_ENVELOPE_SCHEMA = SchemaBuilder.struct().name("server.db.orders.Envelope")
-            .field("op", Schema.STRING_SCHEMA)
-            .field("before", CDC_ROW_SCHEMA)
-            .field("after", CDC_ROW_SCHEMA)
-            .field("source", CDC_SOURCE_SCHEMA)
-            .build();
-
-    private static Struct cdcRow(int id, String name) {
-        return new Struct(CDC_ROW_SCHEMA)
-                .put("id", id)
-                .put("ts", new Date(1_704_067_200_123L))
-                .put("amount", new BigDecimal("12.3456"))
-                .put("name", name);
-    }
-
-    private static Struct cdcEnvelope(String op, Struct before, Struct after, long lsn) {
-        Struct envelope = new Struct(CDC_ENVELOPE_SCHEMA)
-                .put("op", op)
-                .put("source", new Struct(CDC_SOURCE_SCHEMA).put("lsn", lsn));
-        if (before != null) {
-            envelope.put("before", before);
-        }
-        if (after != null) {
-            envelope.put("after", after);
-        }
-        return envelope;
-    }
-
     @Test
     @DisplayName(
             "JSONP-05/D-19: a Debezium CDC batch on the metadata-free route lands typed rows and skips records that carry no values")
@@ -450,28 +410,5 @@ public class ExplicitJsonInsertPathLiveTest extends ClickHouseBase {
             t = t.getCause();
         }
         return false;
-    }
-
-    /**
-     * Snapshots each row's requested columns into a plain {@code Map<String, String>} while the
-     * row is still the iterator's current element. The client-v2 {@link GenericRecord} returned
-     * by {@link Records}'s iterator is a mutable, reused view over the underlying binary reader
-     * buffer - collecting the {@code GenericRecord} references themselves (rather than reading
-     * their values immediately) leaves every collected reference pointing at whatever row the
-     * iterator most recently advanced to, silently aliasing every "row" to the last one read.
-     */
-    private static List<Map<String, String>> allRows(ClickHouseHelperClient chc, String sql, String... columns)
-            throws Exception {
-        List<Map<String, String>> rows = new ArrayList<>();
-        try (Records records = chc.getClient().queryRecords(sql).get()) {
-            for (GenericRecord r : records) {
-                Map<String, String> row = new LinkedHashMap<>();
-                for (String column : columns) {
-                    row.put(column, r.getString(column));
-                }
-                rows.add(row);
-            }
-        }
-        return rows;
     }
 }

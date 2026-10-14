@@ -73,6 +73,14 @@ configurations.all {
     }
 }
 
+// Backlog 999.2 (DEBT-07): the rule above does not fire on the test runtime classpath, so the
+// Confluent test stack's original lz4-java rides there beside the maintained fork. The fork is a
+// drop-in (same `net.jpountz.lz4` package) and already arrives through client-v2, so the original
+// is dropped for tests only; runtimeClasspath and integrationTestRuntimeClasspath are untouched.
+configurations.named("testRuntimeClasspath") {
+    exclude(group = "org.lz4", module = "lz4-java")
+}
+
 dependencies {
     // Exposed as `api` because they leak into the connector's public signatures
     // (e.g. ClickHouseHelperClient returns ClickHouseResponse/Records, ClickHouseSinkTask
@@ -241,6 +249,16 @@ tasks.withType<Test> {
             }
         }
     })
+}
+
+// CI reads the fork count from this task instead of recomputing the formula in shell (CI-14, 14-REVIEW WR-02).
+tasks.register("reportTestForks") {
+    group = "verification"
+    description = "Prints the effective maxParallelForks of the test task, one line (read by CI)"
+    val forks = tasks.named<Test>("test").map { it.maxParallelForks }
+    doLast {
+        println(forks.get())
+    }
 }
 
 // INFRA-04, D-12: runs every test not tagged @Tag("clickhouse"); no Docker required.

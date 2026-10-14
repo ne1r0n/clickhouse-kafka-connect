@@ -7,9 +7,19 @@
 # The trigger is branch pushes only (CI-08). A tag pushed onto an already-pushed SHA joins the
 # same SHA-keyed concurrency group and cancels the branch run, as happened on c61d90ce. The
 # release workflows are workflow_dispatch, so nothing depends on tag-triggered tests.
-# The fork-count step mirrors the maxParallelForks formula in build.gradle.kts and also emits a
-# notice annotation, because job logs are not readable without repository admin rights (CI-09).
+#
+# Hardening (Phase 17): every action is pinned to a full commit SHA with a version comment, and
+# Dependabot keeps those pins current (CI-11, CI-15). The runner is pinned to ubuntu-24.04 instead
+# of the floating label (CI-12). The token is read-only and checkout does not persist it in
+# .git/config (CI-13).
+#
+# The fork-count step prints the value the reportTestForks Gradle task reads from the test task, and
+# also emits a notice annotation, because job logs are not readable without repository admin rights
+# (CI-09, CI-14).
 name: ClickHouse Kafka Connect Tests CI
+
+permissions:
+  contents: read
 
 on:
   push:
@@ -21,27 +31,33 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     name: ClickHouse latest Client version V2 tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Report test fork count
         run: |
-          cpus="$(nproc)"
-          if [ -n "${CLICKHOUSE_CLUSTER_NAME+set}" ]; then forks=1; else forks=$((cpus / 2)); fi
-          if [ "$forks" -lt 1 ]; then forks=1; fi
-          msg="runner nproc=${cpus}, derived maxParallelForks=${forks} (build.gradle.kts: availableProcessors/2, minimum 1)"
+          forks="$(./gradlew -q --console=plain reportTestForks | tail -n 1)"
+          case "$forks" in
+            ''|*[!0-9]*)
+              echo "::error::reportTestForks did not print an integer: '${forks}'"
+              exit 1
+              ;;
+          esac
+          msg="runner nproc=$(nproc), Gradle maxParallelForks=${forks} (read from the test task in build.gradle.kts)"
           echo "$msg"
           echo "### Test fork count" >> "$GITHUB_STEP_SUMMARY"
           echo "$msg" >> "$GITHUB_STEP_SUMMARY"
@@ -59,7 +75,7 @@ jobs:
 
       - name: Upload JaCoCo coverage reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jacoco-coverage-reports
           path: build/reports/jacoco/
@@ -67,7 +83,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: gradle-test-reports
           path: build/reports/tests/

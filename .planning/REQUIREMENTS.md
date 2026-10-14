@@ -15,41 +15,41 @@
 
 ### Column mapping — 999.1
 
-- [ ] **COLS-08**: `Nullable(Enum8)` and `Nullable(Enum16)` columns round-trip through RowBinary for NULL and non-NULL values, top-level and nested (`Array(Nullable(Enum))`, `Map(K, Nullable(Enum))`), checked by typed read-back; the D-16/L-13 pin tests that asserted the old behavior are flipped with a written rationale, not deleted
-- [ ] **COLS-09**: A Tuple spike runs a live twin-table matrix on ClickHouse `latest` — `Nullable(Tuple(...))` with nullable and non-nullable elements, and `Array(Nullable(Tuple(...)))` — and records a go/no-go decision (with the type-string parsing approach) before any Tuple production code lands
-- [ ] **COLS-10**: On go, `Nullable(Tuple(...))` round-trips with element nullability taken from the declared type string (not DESCRIBE's all-`Nullable` sub-columns, not `Table.java`), and `Array(Nullable(Tuple(...)))` still round-trips; on no-go, the discovery WARN narrows to Tuple and FORK-DELTA records a Known cost with the 999.1 backlog entry updated
-- [ ] **COLS-11**: The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` change in the same commit as the code they describe, and the merge-invariant script stays green
+- [x] **COLS-08**: `Nullable(Enum8)` and `Nullable(Enum16)` columns round-trip through RowBinary for NULL and non-NULL values, top-level and nested (`Array(Nullable(Enum))`, `Map(K, Nullable(Enum))`), checked by typed read-back; the D-16/L-13 pin tests that asserted the old behavior are flipped with a written rationale, not deleted
+- [x] **COLS-09**: A Tuple spike runs a live twin-table matrix on ClickHouse `latest` — `Nullable(Tuple(...))` with nullable and non-nullable elements, and `Array(Nullable(Tuple(...)))` — and records a go/no-go decision (with the type-string parsing approach) before any Tuple production code lands
+- [x] **COLS-10**: On go, `Nullable(Tuple(...))` round-trips with element nullability taken from the declared type string (not DESCRIBE's all-`Nullable` sub-columns, not `Table.java`), and `Array(Nullable(Tuple(...)))` still round-trips; on no-go, the discovery WARN narrows to Tuple and FORK-DELTA records a Known cost with the 999.1 backlog entry updated
+- [x] **COLS-11**: The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` change in the same commit as the code they describe, and the merge-invariant script stays green
 
 ### Writer correctness
 
-- [ ] **JSONP-09**: An empty Debezium record (`op=t`, or null `before` and `after`) inserts no row on all three routes — explicit `insertFormat=json`, upstream `bypassRowBinary=true` JSON, and RowBinary — while offsets and exactly-once state still advance; the skip is decided inside the writer so the batch sent on retry stays byte-identical; one live test per route
-- [ ] **WRT-10**: A missing value for a non-nullable column, including inside `Array(Tuple(...))`, raises a `DataException` naming the column and its ClickHouse type, so Connect status and the DLQ show which column failed (13-REVIEW WR-03)
-- [ ] **WRT-11**: `ClickHouseWriter`'s error path handles an exception whose message is null without a `NullPointerException`, and retriable vs non-retriable classification is unchanged; pinned by a Docker-free test (13-REVIEW WR-04)
-- [ ] **WRT-12**: A DateTime parse failure logs the column name, ClickHouse and Kafka types, exception class and value length — never the raw value, directly or via the parse exception's message; pinned by a log-capture test; the patch to upstream-identical lines is recorded in FORK-DELTA (T-13-19)
+- [x] **JSONP-09**: An empty Debezium record (`op=t`, or null `before` and `after`) inserts no row on all three routes — explicit `insertFormat=json`, upstream `bypassRowBinary=true` JSON, and RowBinary — while offsets and exactly-once state still advance; the skip is decided inside the writer so the batch sent on retry stays byte-identical; one live test per route
+- [x] **WRT-10**: A missing value for a non-nullable column, including inside `Array(Tuple(...))`, raises a `DataException` naming the column and its ClickHouse type, so Connect status and the DLQ show which column failed (13-REVIEW WR-03)
+- [x] **WRT-11**: `ClickHouseWriter`'s error path handles an exception whose message is null without a `NullPointerException`, and retriable vs non-retriable classification is unchanged; pinned by a Docker-free test (13-REVIEW WR-04)
+- [x] **WRT-12**: A DateTime parse failure logs the column name, ClickHouse and Kafka types, exception class and value length — never the raw value, directly or via the parse exception's message; pinned by a log-capture test; the patch to upstream-identical lines is recorded in FORK-DELTA (T-13-19)
 
 ### Test & build debt
 
-- [ ] **DEBT-06**: `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion (`ProfileEvents['NetworkSendBytes']` vs `result_bytes` for the read's query id), seen red with server-response compression disabled (14-REVIEW WR-01)
-- [ ] **DEBT-07**: `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java` — the `org.lz4:lz4-java:1.8.0` duplicate from the Confluent 7.9.1 stack is gone — and the `runtimeClasspath`/`integrationTestRuntimeClasspath` resolution is unchanged (backlog 999.2)
-- [ ] **DEBT-08**: A pin row covers the mantissa-with-fraction scientific form for Debezium `NanoTimestamp` in `MetadataFreeJsonWriterTest` (15-REVIEW IN-06)
-- [ ] **DEBT-09**: 15-REVIEW IN-01..IN-05 are each fixed or closed with a written reason in the disposition file, consistent with the COLS-10 outcome
-- [ ] **BLD-14**: The Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning no longer appears in the build, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code is unchanged
+- [x] **DEBT-06**: `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion (`ProfileEvents['NetworkSendBytes']` vs `result_bytes` for the read's query id), seen red with server-response compression disabled (14-REVIEW WR-01)
+- [x] **DEBT-07**: `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java` — the `org.lz4:lz4-java:1.8.0` duplicate from the Confluent 7.9.1 stack is gone — and the `runtimeClasspath`/`integrationTestRuntimeClasspath` resolution is unchanged (backlog 999.2)
+- [x] **DEBT-08**: A pin row covers the mantissa-with-fraction scientific form for Debezium `NanoTimestamp` in `MetadataFreeJsonWriterTest` (15-REVIEW IN-06)
+- [x] **DEBT-09**: 15-REVIEW IN-01..IN-05 are each fixed or closed with a written reason in the disposition file, consistent with the COLS-10 outcome
+- [x] **BLD-14**: The Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning no longer appears in the build, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code is unchanged
 
 ### CI hygiene
 
-- [ ] **CI-11**: `tests.yaml` uses Node 24 action majors (`actions/checkout` v7.x, `actions/upload-artifact` v7.x) and every action is pinned by full commit SHA (the peeled commit for annotated tags) with a `# vX.Y.Z` comment (T-14-16)
-- [ ] **CI-12**: `tests.yaml` runs on `ubuntu-24.04` instead of `ubuntu-latest`
-- [ ] **CI-13**: `tests.yaml` declares a least-privilege `permissions: contents: read` block and checkout uses `persist-credentials: false` (T-14-16)
-- [ ] **CI-14**: The "Test fork count" step reads the effective `maxParallelForks` from a Gradle task instead of recomputing the formula in shell (14-REVIEW WR-02)
-- [ ] **CI-15**: `.github/dependabot.yml` includes the `github-actions` ecosystem so the SHA-pinned actions still get update PRs
-- [ ] **CI-16**: `test-head.yaml` is fixed or disabled in the fork so no scheduled run fails because `tests.yaml` is not a reusable workflow
-- [ ] **CI-17**: One green CI run on a pushed SHA proves CI-11..CI-16 together — job summary, fork-count notice and both artifact uploads present
+- [x] **CI-11**: `tests.yaml` uses Node 24 action majors (`actions/checkout` v7.x, `actions/upload-artifact` v7.x) and every action is pinned by full commit SHA (the peeled commit for annotated tags) with a `# vX.Y.Z` comment (T-14-16)
+- [x] **CI-12**: `tests.yaml` runs on `ubuntu-24.04` instead of `ubuntu-latest`
+- [x] **CI-13**: `tests.yaml` declares a least-privilege `permissions: contents: read` block and checkout uses `persist-credentials: false` (T-14-16)
+- [x] **CI-14**: The "Test fork count" step reads the effective `maxParallelForks` from a Gradle task instead of recomputing the formula in shell (14-REVIEW WR-02)
+- [x] **CI-15**: `.github/dependabot.yml` includes the `github-actions` ecosystem so the SHA-pinned actions still get update PRs
+- [x] **CI-16**: `test-head.yaml` is fixed or disabled in the fork so no scheduled run fails because `tests.yaml` is not a reusable workflow
+- [x] **CI-17**: One green CI run on a pushed SHA proves CI-11..CI-16 together — job summary, fork-count notice and both artifact uploads present
 
 ### Release
 
-- [ ] **ROLL-02**: `docs/ROLLOUT-v1.7.0_gg2.md` gives operators the 999.1 value change (rows already stored wrongly are not repaired), the dedup-token retry consequence verified on `latest`, the empty-CDC skip change, and the MBean `version=` change — reviewed before the publication gate
-- [ ] **PUB-07**: `VERSION` is `v1.7.0_gg2`, `CHANGELOG.md` has a plain-language `1.7.0_gg2` section, and `docs/FORK-DELTA.md` has a row for every new fork-side patch
-- [ ] **SUITE-05**: The full suite is green twice on ClickHouse `latest` × client V2 (0 failures, 0 errors, every skip named) and `testUnit` is green with Docker stopped
+- [x] **ROLL-02**: `docs/ROLLOUT-v1.7.0_gg2.md` gives operators the 999.1 value change (rows already stored wrongly are not repaired), the dedup-token retry consequence verified on `latest`, the empty-CDC skip change, and the MBean `version=` change — reviewed before the publication gate
+- [x] **PUB-07**: `VERSION` is `v1.7.0_gg2`, `CHANGELOG.md` has a plain-language `1.7.0_gg2` section, and `docs/FORK-DELTA.md` has a row for every new fork-side patch
+- [x] **SUITE-05**: The full suite is green twice on ClickHouse `latest` × client V2 (0 failures, 0 errors, every skip named) and `testUnit` is green with Docker stopped
 - [ ] **PUB-08**: The release lands on `custom_build` as a non-force `--no-ff` merge after the user's own explicit approval, the published SHA has exactly one green CI run, the `v1.7.0_gg2` tag is pushed only after that run is green, and the rollback tag points at a commit that already carries the branch-only trigger
 
 ## Future Requirements
@@ -75,29 +75,29 @@
 |-------------|-------|--------|
 | PUB-05 | Phase 16 | Complete |
 | PUB-06 | Phase 16 | Complete |
-| COLS-08 | Phase 19 | Pending |
-| COLS-09 | Phase 19 | Pending |
-| COLS-10 | Phase 19 | Pending |
-| COLS-11 | Phase 19 | Pending |
-| JSONP-09 | Phase 18 | Pending |
-| WRT-10 | Phase 18 | Pending |
-| WRT-11 | Phase 18 | Pending |
-| WRT-12 | Phase 18 | Pending |
-| DEBT-06 | Phase 17 | Pending |
-| DEBT-07 | Phase 17 | Pending |
-| DEBT-08 | Phase 17 | Pending |
-| DEBT-09 | Phase 19 | Pending |
-| BLD-14 | Phase 17 | Pending |
-| CI-11 | Phase 17 | Pending |
-| CI-12 | Phase 17 | Pending |
-| CI-13 | Phase 17 | Pending |
-| CI-14 | Phase 17 | Pending |
-| CI-15 | Phase 17 | Pending |
-| CI-16 | Phase 17 | Pending |
-| CI-17 | Phase 17 | Pending |
-| ROLL-02 | Phase 20 | Pending |
-| PUB-07 | Phase 20 | Pending |
-| SUITE-05 | Phase 20 | Pending |
+| COLS-08 | Phase 19 | Complete |
+| COLS-09 | Phase 19 | Complete |
+| COLS-10 | Phase 19 | Complete |
+| COLS-11 | Phase 19 | Complete |
+| JSONP-09 | Phase 18 | Complete |
+| WRT-10 | Phase 18 | Complete |
+| WRT-11 | Phase 18 | Complete |
+| WRT-12 | Phase 18 | Complete |
+| DEBT-06 | Phase 17 | Complete |
+| DEBT-07 | Phase 17 | Complete |
+| DEBT-08 | Phase 17 | Complete |
+| DEBT-09 | Phase 19 | Complete |
+| BLD-14 | Phase 17 | Complete |
+| CI-11 | Phase 17 | Complete |
+| CI-12 | Phase 17 | Complete |
+| CI-13 | Phase 17 | Complete |
+| CI-14 | Phase 17 | Complete |
+| CI-15 | Phase 17 | Complete |
+| CI-16 | Phase 17 | Complete |
+| CI-17 | Phase 17 | Complete |
+| ROLL-02 | Phase 20 | Complete |
+| PUB-07 | Phase 20 | Complete |
+| SUITE-05 | Phase 20 | Complete |
 | PUB-08 | Phase 20 | Pending |
 
 **Coverage:**

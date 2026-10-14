@@ -1,3 +1,68 @@
+# 1.7.0_gg2, 2026-10-14
+
+This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg1`. It lists only the fork's own changes
+since `v1.7.0_gg1`. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on top of upstream,
+and work through [docs/ROLLOUT-v1.7.0_gg2.md](docs/ROLLOUT-v1.7.0_gg2.md), the operator checklist with a self-check per
+item, before upgrading from `v1.7.0_gg1`. If you are coming from an earlier release, start with the `1.7.0_gg1` rollout
+checklist.
+
+## Important Changes
+
+* `Nullable(Enum8)`, `Nullable(Enum16)` and `Nullable(Tuple(...))` values are now stored as the record says, at the top
+  level and inside `Array` and `Map` columns, and a null entry in such an `Array` or `Map` stores NULL instead of failing
+  the batch. A record that omits such a column, where the column has no `DEFAULT`, now stores NULL instead of failing
+  schema validation. The limitation that the `1.7.0_gg1` startup WARN announced is closed, and that WARN is gone, so a
+  log alert that matches it stops matching. Rows that earlier releases already stored wrongly are not repaired by the
+  connector; the rollout checklist has queries that list the suspects.
+* A single-field `Nullable(Tuple(a T))` whose field `a` is null now fails the batch with a `DataException` that names the
+  tuple field, where the earlier release silently stored a NULL tuple. Under `errors.tolerance=none` the task stops, and
+  stops again on every retry because the batch is rebuilt identically; under `errors.tolerance=all` the batch goes to
+  the dead letter queue. A NULL for the whole tuple still stores NULL.
+* New WARN, once per affected column each time a table is described, when the declared type of a column that contains a
+  `Tuple` cannot be parsed or does not match the column structure. The column then keeps the nullability that
+  `DESCRIBE` reported, so it is still exposed to the old behaviour. The line names the database, table, column and type
+  and carries no value.
+* With `debeziumCDCEnabled=true`, empty Debezium records (a truncate event, or an event whose value struct is null) no
+  longer insert a row on the `bypassRowBinary=true` JSON route and on RowBinary, as they already did not on the explicit
+  `insertFormat=json` route. Offsets, the exactly-once state and the deduplication token still cover the whole batch.
+  Phantom rows written by earlier releases are not removed.
+* A missing value for a non-nullable column without a default now fails with a `DataException` that names the column and
+  its type, instead of a `RuntimeException` without a message. The ERROR line `Column <name> is not nullable and no value
+  is provided` is no longer logged. Failure handling is unchanged.
+* Changed log lines that alert rules may match: the DateTime parse failure line now reads
+  `Error parsing date time string for column '<name>' ...` and never carries the value, and the generic write failure
+  line `Error writing value of ...` carries the exception class instead of a stack trace. A matcher on the prefix of
+  either line still matches; one on the old colon form does not.
+* A batch that `v1.7.0_gg1` left in flight under `exactlyOnce=true` and that `v1.7.0_gg2` retries keeps whatever the
+  earlier attempt stored, because ClickHouse drops a retry that carries the same deduplication token even when its bytes
+  differ. Stop connectors cleanly and check for in-flight batches before upgrading; the first item of the rollout
+  checklist has the procedure.
+* The JMX MBean name's `version=` segment changes from `v1.7.0_gg1` to `v1.7.0_gg2`, and the client name sent on every
+  request is now `clickhouse-kafka-connect/v1.7.0_gg2`. Dashboards, alerts and exporter rules that spell out the old
+  values stop matching.
+
+## Bug Fixes
+
+* A writer failure whose exception has no message now surfaces as itself instead of being replaced by a
+  `NullPointerException`, and a socket timeout without a message at that point is retried where it used to fail the task.
+* Error handling no longer throws a `NullPointerException` for an `IOException` without a message. The failure now goes
+  through the `errors.tolerance` handling, so the original exception is no longer lost.
+* Date, Date32, DateTime and DateTime64 conversion errors now name the column.
+* The DateTime parse-failure log and the generic write-failure log no longer carry record values. One known open item
+  remains: the message of a rethrown write failure can still carry a value into the task status, the dead letter queue
+  headers and two `Error inserting records` log lines.
+
+## Build and CI
+
+* The test workflow pins every action to a commit SHA (Node 24 releases), runs on `ubuntu-24.04` instead of the floating
+  `ubuntu-latest` label, uses a read-only token and does not persist credentials in the checkout.
+* The upstream `test-head.yaml` workflow is deleted from the fork.
+* Dependabot also covers GitHub Actions, in one monthly grouped pull request that moves the commit pins together.
+* The test classpath drops a duplicate lz4 library, so the tests load one copy. This is test-only; the shipped
+  classpaths are unchanged.
+* `lombok.config` gains a line that selects Jackson 2 for `@Jacksonized`, which removes a compile-time warning. The
+  generated code of the one class that uses `@Jacksonized` is unchanged.
+
 # 1.7.0_gg1, 2026-10-10
 
 This is the fork release built on upstream `1.7.0` (the section below). It lists only the fork's own changes since

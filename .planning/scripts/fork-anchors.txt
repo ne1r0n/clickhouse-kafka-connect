@@ -38,7 +38,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg1	1	BLD-07
+VERSION	v1.7.0_gg2	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
 build.gradle.kts	slf4j-reload4j:2.0.17	1	BLD-08
 build.gradle.kts	jacocoForkReport	3	BLD-03
@@ -54,4 +54,22 @@ src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHel
 src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/ClickHouseTestHelpers.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.java	"io.debezium.time.Timestamp"	1	PUB-02
 src/main/java/com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.java	"io.debezium.time.NanoTimestamp"	1	PUB-02
-src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	static boolean hasNullableEnumOrTuple(	1	PUB-02
+# Phase 18 (v1.7.0_gg2): rows for patches to upstream-identical lines; a 0 count pins that the upstream text stays gone.
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	String failureMessage = e.getMessage();	1	WRT-11
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	e.getMessage().contains(code)	0	WRT-11
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	if (msg != null && (msg.indexOf(	1	WRT-11
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	MISSING_NON_NULLABLE_MESSAGE_FORMAT	2	WRT-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	is not nullable and no value is provided	0	WRT-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	logDateTimeParseFailure(	3	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Error parsing date time string: {}	0	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT	2	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WRITE_VALUE_FAILURE_LOG_FORMAT	2	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	of type " + columnType, e);	0	WRT-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	skipEmptyCdcRecord(	3	JSONP-09
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]	1	JSONP-09
+# Phase 19 (v1.7.0_gg2): rows for the 999.1 fixes (Column.java Enum and Tuple branches, the declared-nullability pass wired into ClickHouseHelperClient).
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	.isNullable(isNull)	3	COLS-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	@Setter(AccessLevel.PACKAGE) private boolean isNullable;	1	COLS-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	DeclaredNullability.apply(	1	COLS-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	buildDescribedTable(	3	COLS-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	unwrapSimpleAggregate(	2	COLS-10

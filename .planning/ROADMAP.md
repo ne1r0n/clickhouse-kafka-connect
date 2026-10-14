@@ -58,10 +58,10 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
 
 **Milestone Goal:** Close all 11 follow-ups left open by `v1.7.0_gg1-sync`, getting the corrected rollout doc onto `origin` first, and publish `v1.7.0_gg2` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
-- [ ] **Phase 16: Early Docs Publication** - Fix the 15-REVIEW docs findings and publish the corrected rollout doc to `custom_build` as a docs-only `--no-ff` merge, before any code work
-- [ ] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed
-- [ ] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data
-- [ ] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release
+- [x] **Phase 16: Early Docs Publication** - Fix the 15-REVIEW docs findings and publish the corrected rollout doc to `custom_build` as a docs-only `--no-ff` merge, before any code work (completed 2026-10-11)
+- [x] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed (completed 2026-10-12)
+- [x] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data (completed 2026-10-12)
+- [x] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release (completed 2026-10-13)
 - [ ] **Phase 20: Release & Publication** - `v1.7.0_gg2` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
 
 ## Phase Details
@@ -90,7 +90,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
      - only `custom_build` was pushed, and no tag
   5. That merge SHA has exactly one `tests.yaml` run, located by `head_sha` plus workflow path. The run is green and has no cancelled sibling.
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -130,7 +130,20 @@ Whether IN-10 corrects the published `1.7.0_gg1` CHANGELOG section in place or a
   4. The build prints no Lombok "Ambiguous: Jackson2 and Jackson3 exist" warning, and a `javap` diff shows `ClickHouseFieldDescriptor`'s generated code unchanged. `testRuntimeClasspath` resolves only `at.yawk.lz4:lz4-java`, pinned by a Docker-free test. `runtimeClasspath` and `integrationTestRuntimeClasspath` resolve exactly as before.
   5. `Lz4RoundTripLiveTest` asserts LZ4 on the response leg with a standing assertion, and that assertion has been seen red with server-response compression disabled. `MetadataFreeJsonWriterTest` pins Debezium `NanoTimestamp` in mantissa-with-fraction scientific notation.
 
-**Plans**: TBD
+**Plans**: 4/4 plans complete
+
+Plans:
+**Wave 1**
+- [x] 17-01-PLAN.md — Tracer: `reportTestForks` read by the fork-count step (CI-14); SHA pins, `ubuntu-24.04`, read-only token and the github-actions Dependabot entry behind a red-first Docker-free guard (CI-11..CI-13, CI-15); `test-head.yaml` deleted with FORK-DELTA rows and Recorded Fact 41 (CI-16, D-01, D-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 17-02-PLAN.md — Test-scoped lz4 exclude with a single-`LZ4Factory` pin (DEBT-07); response-leg LZ4 assertion seen red (DEBT-06); Lombok Jackson 2 line with a `javap` no-change proof (BLD-14); NanoTimestamp scientific-form rows (DEBT-08)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 17-03-PLAN.md — D-10 local gate and measured bundle, blocking-human push decision (D-11, surfacing F1: default branch is `main`), then one branch-only push with its single green `tests.yaml` run read through the API and the scratch branch deleted (CI-17)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 17-04-PLAN.md — User-pasted "Set up job" and job summary as E-11 (CI-17, D-13); STATE and ROADMAP record the outcome and carry the Dependabot and default-branch checks to Phase 20 (D-05)
 
 **Note**: This phase changes no `src/main` code, so it cannot regress connector behaviour. Files shared within the phase:
 - `tests.yaml` (CI-11..CI-14). The `timeout-minutes: 45` anchor in `fork-anchors.txt` must survive.
@@ -144,7 +157,7 @@ CI-17's push follows the D-13 precedent:
 - never at the SHA `custom_build` already sits on
 - the scratch branch is deleted from `origin` once the run is green
 
-`test-head.yaml` runs on a nightly schedule from the default branch, `custom_build`. The effect of CI-16 on scheduled runs is therefore only observable after Phase 20 publishes it. This phase proves the fix statically.
+`test-head.yaml` is deleted (D-01) and CI-16 is proven statically. The fork's default branch is `main`, not `custom_build` (research F1), so no schedule on `custom_build` ever ran it and publishing the deletion changes no observable schedule.
 
 **Research flag**: DEBT-06 needs a short spike. It must confirm that `ProfileEvents['NetworkSendBytes']` against `result_bytes` can be read through client-v2 for the read's own query id. The fallback is the raw-HTTP LZ4 method-byte check from ARCHITECTURE.md. If neither works, narrow the test's claim; never leave "both legs" unbacked.
 
@@ -163,7 +176,20 @@ CI-17's push follows the D-13 precedent:
   3. An exception with a null message that reaches `ClickHouseWriter`'s error path surfaces as itself, not as a `NullPointerException`. Retriable vs non-retriable classification is unchanged. A Docker-free test pins both.
   4. An unparseable `DateTime` or `DateTime64` string logs the column name, the ClickHouse and Kafka types, the exception class and the value length. A log-capture test proves the raw value appears neither directly nor through the parse exception's message. `docs/FORK-DELTA.md` has a row for this patch to upstream-identical lines.
 
-**Plans**: TBD
+**Plans**: 4/4 plans complete
+
+Plans:
+**Wave 1**
+- [x] 18-01-PLAN.md — Tracer: null-safe failure-message lookup in `doInsertRawBinary`, pinned Docker-free and through `put()` (WRT-11, D-06/D-07); `Utils.handleException` null-message IOException guard (D-05); the column-naming `DataException` for a missing non-nullable value, flat and `Array(Tuple)`, ERROR line dropped (WRT-10, D-10/D-11). Three commits, each with its anchors, FORK-DELTA and ledger rows
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 18-02-PLAN.md — Tracer: `LogCapture` helper and masked DateTime/DateTime64 parse logs plus the column-naming conversion exception (WRT-12, D-08/D-12); throwable-free generic write-failure log with the rethrow residual recorded in FORK-DELTA and backlog 999.3 (D-09)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 18-03-PLAN.md — Tracer: one shared empty-CDC skip in both serialization loops, proven live on RowBinary (JSONP-09); bypass, explicit and plain-table routes live on V1/V2; `ExplicitJsonInsertPathLiveTest` moved onto shared CDC fixtures
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 18-04-PLAN.md — Docker-free byte-identity, edge, log-line and exactly-once state pins for the empty-CDC skip, mutation-checked (JSONP-09, D-02/D-03/D-04); phase gate (cache-busted testUnit and full suite on `latest` x V2 run by the gate command itself, `verify-merge-invariants.sh 54e63648 HEAD`, phase scope)
 
 **Note**: All four items edit `ClickHouseWriter.java`, a high-risk file (AGENTS.md), in disjoint regions. Land them as separate commits.
 
@@ -195,7 +221,38 @@ Phase gate: a cache-busted full suite on `latest` × V2, plus the anchors invari
   4. The discovery WARN, the `fork-anchors.txt` row for `hasNullableEnumOrTuple` and `docs/FORK-DELTA.md` each change in the same commit as the code they describe. The merge-invariant script passes at every commit in the phase.
   5. Each of 15-REVIEW IN-01..IN-05 is fixed, or closed with a written reason in the disposition file, consistently with the Tuple outcome.
 
-**Plans**: TBD
+**Plans**: 10/10 plans complete (19-04 and 19-05 are alternatives; the 19-03 gate retires one; 19-07 to 19-10 close the verification gaps)
+
+Plans:
+**Wave 1**
+- [x] 19-01-PLAN.md — Tracer: committed live twin-table Nullable(Tuple) matrix (C1-C3 deciding, X1-X3 informational), both sides per cell, control and parsing-approach evidence; writes the go/no-go bundle 19-SPIKE.md (COLS-09, D-04..D-08)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 19-02-PLAN.md — Tracer: Enum branch carries Nullable (COLS-08), discovery WARN narrowed to Tuple in the same commit with flipped pins, anchors, FORK-DELTA and the new behaviour ledger (D-09, D-11, COLS-11); full Enum8/Enum16 matrix on both twins, Docker-free bytes, mutation-checked
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 19-03-PLAN.md — Gate: bundle refreshed on that day's latest, blocking-human go/no-go answered directly by the user, decision recorded and the alternative plan retired (D-01..D-03)
+
+**Wave 4** *(blocked on Wave 3; runs only on go)*
+- [x] 19-04-PLAN.md — Tracer: Tuple element nullability from the declared type (DeclaredNullability after Table, Table.java untouched), WARN machinery deleted with its anchors and FORK-DELTA rows, D-16 and WARN pins flipped (COLS-10, D-10, D-11); edge pins, mutation; tests on client V2 only, V1 coverage structural (both describe loops return through one shared helper)
+
+**Wave 5** *(blocked on Wave 4 being resolved; runs only on no-go)*
+- [x] 19-05-PLAN.md — Tracer: route-qualified, record-keyed, text-pinned Tuple WARN (IN-01, IN-03, IN-04), Tuple Known cost in FORK-DELTA, 999.1 entry updated (COLS-10, D-12)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [x] 19-06-PLAN.md — DEBT-09: IN-01..IN-05 dispositioned per the outcome (D-12, D-13); phase gate (cache-busted testUnit plus two full runs on latest x V2, anchors invariant, scope)
+
+**Wave 7** *(gap closure; blocked on 19-06 completion)*
+- [x] 19-07-PLAN.md — Gap closure, tracer: CR-01 (SC3 / COLS-10) SimpleAggregateFunction unwrap in DeclaredNullability.collect with seen-red Docker-free CR-01 and root-wrapper pins and a live twin round trip; anchors row, FORK-DELTA clause and ledger L-41 in one commit; matrix held at 30
+
+**Wave 8** *(gap closure; blocked on 19-07 completion)*
+- [x] 19-08-PLAN.md — Gap closure: WR-01 (total pass) and IN-01 (table context in the fallback WARN), WR-03 (control asserts the read-past-end code) and IN-03 (production normalisation, one shared flattener)
+
+**Wave 9** *(gap closure; blocked on 19-08 completion)*
+- [x] 19-09-PLAN.md — Gap closure: parser premise, then LowCardinality (Tuple element, Array element, Map value) and SimpleAggregateFunction boundary pins; seen red by a never-committed mutation; adjacent-suite regression with the matrix held at 30; anchors gate
+
+**Wave 10** *(gap closure; blocked on 19-09 completion)*
+- [x] 19-10-PLAN.md — Gap closure: phase gate first (cache-busted testUnit plus two full runs, anchors invariant, scope, ledger L-31..L-41), then all eight 19-REVIEW findings dispositioned (open 0) and WR-02 (L-38), the VERSION and CHANGELOG obligation and IN-04 carried into the Phase 20 entry, committed last
 
 **Note**: Order inside the phase:
 1. Spike (COLS-09).
@@ -239,7 +296,38 @@ The Enum fix changes stored values. It also lets a record that omits a `Nullable
   3. The full suite passes twice on ClickHouse `latest` × client V2, the second run with `--rerun`. Both runs have 0 failures, 0 errors and every skip named. `testUnit` passes with the Docker daemon stopped.
   4. After the user's own explicit approval, `custom_build` on `origin` is a non-force `--no-ff` merge, and its SHA has exactly one green `tests.yaml` run. The `v1.7.0_gg2` tag reaches `origin` only after that run is green. The rollback tag points at a commit that already carries the branch-only trigger.
 
-**Plans**: TBD
+**Carried from Phase 19** (19-REVIEW dispositions, recorded by 19-10; Phase 20 planning covers each item):
+
+- WR-02 (deferred to ROLL-02 and PUB-07): `docs/ROLLOUT-v1.7.0_gg2.md` and the `1.7.0_gg2` CHANGELOG section must state that the `Nullable(Tuple)` limitation is closed and its discovery WARN is gone, and that rows stored by earlier releases are not repaired; they must carry ledger L-38: a single-field `Nullable(Tuple)` with a null field now throws a `DataException`, which stops the task under `errors.tolerance=none`. The published gg1 rollout and CHANGELOG text stays as released.
+- PUB-07 owns the AGENTS.md pre-PR obligation: this covers the `VERSION` bump and the `CHANGELOG.md` entry, and Phase 19 left both untouched on purpose.
+- IN-04 (deferred): a Tuple Column that lacks a declared element still applies. Owner: Phase 20 copies the item into the milestone close record so the next milestone inherits it. Trigger: a clickhouse-data version change, or any DESCRIBE shape observed to drop a declared Tuple element. Until then `missingDeclaredElementDoesNotShiftPairing` pins the current behaviour.
+
+**Plans**: 6/8 plans executed
+
+Plans:
+**Wave 1**
+- [x] 20-01-PLAN.md — Tracer: committed live `DedupTokenRetryLiveTest` pinning the measured dedup-token outcomes on latest (server matrix on three engines, exactlyOnce=true upgrade shapes, exactlyOnce=false re-delivery), seen red without the connector's token; evidence file started (ROLL-02, D-04, D-05, D-13, D-14)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 20-02-PLAN.md — Tracer: VERSION bump with its anchor row in one commit; throwaway probe in be6b8861 and bumped worktrees proving every rollout query on gg1-written versus gg2-written rows, the KeeperMap self-check, table classification, MBean and client name (PUB-07, ROLL-02, D-02, D-06, D-16)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 20-03-PLAN.md — Tracer: `docs/ROLLOUT-v1.7.0_gg2.md`, six items quoting only recorded evidence, the gg1 dedup reasoning corrected in the gg2 note, rollback to local tag `pre-v1.7.0_gg2` proven on a dry-run merge (ROLL-02, D-01, D-03, D-06, D-13..D-16)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 20-04-PLAN.md — `1.7.0_gg2` CHANGELOG section, FORK-DELTA refresh with raw numbers and the read-past-end wording, 19-REVIEW advisories dispositioned, milestone close record (PUB-07, D-08, D-10, D-11, D-12, IN-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 20-05-PLAN.md — `/gsd-secure-phase 19` cross-checked against its review, pre-gate review of everything Phase 20 committed, every finding dispositioned, documents frozen (D-07, D-09)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [x] 20-06-PLAN.md — Suite gate on the frozen tree (clean, Docker-stopped testUnit, two cache-busted full runs, anchors), blocking-human rehearsal gate, scratch push of `sync/v1.7.0` and its single green run, measured release bundle (SUITE-05, PUB-08)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 20-07-PLAN.md — Blocking-human release gate; rollback tag pushed first, `--no-ff` merge in a worktree with shape, no-TRUNCATE and rollback re-checks on M, `custom_build` pushed alone, single green run, `v1.7.0_gg2` tag after green, scratch branch deleted (PUB-08, D-15)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 20-08-PLAN.md — The three manual checks answered by the user and recorded; STATE points at the milestone audit and close (D-11, D-12)
 
 **Note**: This phase follows the Phase 11/15 recipe: rehearse, measure, approve, publish. The steps:
 1. Push `sync/v1.7.0` once as a scratch branch (explicit refspec, never at a SHA another pushed branch already holds) and wait for green.
@@ -253,7 +341,11 @@ The approval gate runs orchestrator-inline. The upstream-sync merge-parent check
 
 The rollback point is the Phase 16 merge commit, which already carries the branch-only trigger. The `VERSION` anchor row moves in the bump commit. Docs must be inside the merged tree, written and reviewed before the gate, so nothing is stranded locally the way `505e4981` was. Refresh FORK-DELTA's raw numbers here only.
 
-After publication, check once that `test-head.yaml`'s nightly schedule no longer fails (CI-16, landed in Phase 17).
+Manual checks for the user, by hand, after publication (D-05, F1). No agent changes repository settings.
+
+- Whether Dependabot version updates are enabled in the fork's settings.
+- Which branch is the GitHub default: `main` at Phase 17; the user's intent is undecided (E-10). Dependabot (CI-15) and scheduled workflows read only the default branch.
+- There is no `test-head.yaml` nightly run to check, since CI-16 was proven statically in Phase 17.
 
 ## Structure Notes
 
@@ -262,7 +354,7 @@ After publication, check once that `test-head.yaml`'s nightly schedule no longer
 **Placement choices worth recording:**
 
 - **CI, build and test debt share one phase (17).** None of it touches `src/main`. CI-14 and DEBT-07 both edit `build.gradle.kts`, and DEBT-06/DEBT-07 are both lz4 test-infra items. The 2026-10-19 runner switch time-boxes the phase. DEBT-08 is a single test row in a file no other phase edits, so it rides here rather than forming its own phase. The research files disagreed on placement: PITFALLS put CI last before release, while ARCHITECTURE and SUMMARY put it early. The user's ordering and the runner deadline settle it as early.
-- **CI-17 is proven in Phase 17, not by the release run.** The release merge's run should not be the first run of the new workflow. CI-16 is the exception: its effect on the nightly schedule shows only once the file reaches the default branch, in Phase 20.
+- **CI-17 is proven in Phase 17, not by the release run.** The release merge's run should not be the first run of the new workflow. CI-16 is proven statically in Phase 17; the fork's default branch is `main`, so no schedule observes it (F1).
 - **JSONP-09 covers all three routes**, including RowBinary, per the user's scope decision. The skip stays inside the writer.
 - **DEBT-09 sits in Phase 19, not with the other debt.** IN-01..IN-05 are all about the WARN block that 999.1 narrows or deletes, and their disposition depends on the COLS-10 outcome.
 - **IN-07..IN-10 (PUB-05) ride the early publication** by user decision. They touch the same files, and the docs get their review before the gate.
@@ -307,17 +399,26 @@ After publication, check once that `test-head.yaml`'s nightly schedule no longer
 **Requirements:** mapped under Phase 17
 **Plans:** planned under Phase 17
 
+### Phase 999.3: Rethrown write-failure messages can carry record values (BACKLOG)
+
+**Goal:** `ClickHouseWriter.doWriteColValue`'s generic catch rethrows the original exception (kept by Phase 18 D-09 so classification cannot change). For some failures its message embeds the record value (`UUID.fromString`: `Invalid UUID string: <value>`; number parsing: `For input string: ...`), which reaches the Connect task status, the DLQ headers and `doInsertRawBinary`'s two `Error inserting records` ERROR logs. Fixing it means changing the rethrown type or message without changing retriable classification. Found 2026-10-12 in the Phase 18 discussion (D-09)
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ## Progress
 
 **Execution Order:** 16 → 17 → 18 → 19 → 20, sequential on one working tree.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | In Progress | - |
-| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
-| 18. Writer Correctness | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
-| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
-| 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
+| 16. Early Docs Publication | v1.7.0_gg2-hardening | 3/3 | Complete    | 2026-10-11 |
+| 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
+| 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
+| 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 10/10 | Complete    | 2026-10-13 |
+| 20. Release & Publication | v1.7.0_gg2-hardening | 6/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg2-hardening` created: 2026-10-10*

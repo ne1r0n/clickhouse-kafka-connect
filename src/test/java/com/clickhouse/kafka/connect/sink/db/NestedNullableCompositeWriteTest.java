@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.sink.data.Data;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import java.io.ByteArrayOutputStream;
@@ -260,12 +261,18 @@ class NestedNullableCompositeWriteTest {
         assertArrayEquals(bytes(NULL_MARKER), writeColumnValue(tupleColumn(true), nullData, true));
     }
 
+    // COLS-10 (D-16 flip): before COLS-10 Column.extractColumn dropped Tuple nullability and this case
+    // threw a DataException for the null element. The premise is inverted now that element
+    // nullability comes from the declared type; the input is unchanged and the null element writes
+    // the null marker.
     @Test
-    @DisplayName("D-16: a null element in Array(Nullable(Tuple(a Int32))) now throws, because Column reports the Tuple non-nullable")
-    void nullElementInArrayOfNullableTupleThrowsBecauseColumnDropsTupleNullability() {
+    @DisplayName("COLS-10 (D-16 flip): a null element in Array(Nullable(Tuple(a Int32))) writes the null marker once element nullability comes from the declared type")
+    void nullElementInArrayOfNullableTupleWritesNullMarker() throws Exception {
         Column arrayColumn = Column.extractColumn(newDescriptor("at", "Array(Nullable(Tuple(a Int32)))"));
         arrayColumn.getArrayType().getTupleFields().add(Column.extractColumn(newDescriptor("at.a", "Nullable(Int32)")));
-        assertFalse(arrayColumn.getArrayType().isNullable(), "premise: extractColumn drops Tuple nullability");
+        assertTrue(DeclaredNullability.apply(arrayColumn, "Array(Nullable(Tuple(a Int32)))", "db", "t"));
+        assertTrue(arrayColumn.getArrayType().isNullable(), "the declared element is a Nullable(Tuple)");
+        assertFalse(arrayColumn.getArrayType().getTupleFields().get(0).isNullable(), "at.a is declared non-nullable");
         Schema elementSchema = SchemaBuilder.struct()
                 .optional()
                 .field("a", Schema.OPTIONAL_INT32_SCHEMA)
@@ -274,10 +281,8 @@ class NestedNullableCompositeWriteTest {
         present.put("a", new Data(Schema.OPTIONAL_INT32_SCHEMA, 5));
         Data data = new Data(SchemaBuilder.array(elementSchema).build(), Arrays.asList(present, null));
 
-        DataException ex = assertNestedNullThrows(arrayColumn, data, false);
-
-        assertTrue(ex.getMessage().contains("column 'at'"), ex.getMessage());
-        assertTrue(ex.getMessage().contains("element"), ex.getMessage());
+        // Array size, element 0 (non-null marker, a = 5 without a marker), element 1 (null marker).
+        assertArrayEquals(bytes(2, 0, 5, 0, 0, 0, 1), writeColumnValue(arrayColumn, data, false));
     }
 
     @Test

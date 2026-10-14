@@ -1,0 +1,1 @@
+No external API integration: Phase 20 publishes a release of the existing sink (docs, a version bump, one new live test, gates, git pushes); its only API use is the read-only, unauthenticated GitHub REST lookup (`actions/runs`, `/jobs`, `/rate_limit`) already used in Phases 15-17 to watch the rehearsal and release CI runs, which adds no new external surface.

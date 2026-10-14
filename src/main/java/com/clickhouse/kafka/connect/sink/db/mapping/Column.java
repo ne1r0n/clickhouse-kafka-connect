@@ -2,6 +2,7 @@ package com.clickhouse.kafka.connect.sink.db.mapping;
 
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.util.Utils;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -52,7 +53,7 @@ public class Column {
 
     @Accessors(fluent = true)
     private boolean hasDefault;
-    private boolean isNullable;
+    @Setter(AccessLevel.PACKAGE) private boolean isNullable;
     private boolean isSubColumn;
 
 
@@ -208,6 +209,7 @@ public class Column {
             }
             return builder.type(type)
                     .enumValues(extractEnumValues(valueType))
+                    .isNullable(isNull)
                     .build();
         } else if (valueType.startsWith("Array")) {
             Column arrayType = extractColumn(name, valueType.substring("Array".length() + 1, valueType.length() - 1), false, hasDefaultValue, isSubColumn, arrayDepth + 1);
@@ -233,6 +235,7 @@ public class Column {
             // We will fill the columns inside the tuple later (since the describe_include_subcolumns option prints the details later).
             return builder.type(Type.TUPLE)
                     .tupleFields(new ArrayList<>())
+                    .isNullable(isNull)
                     .build();
         } else if (valueType.startsWith("Nested")) {
             LOGGER.warn("DESCRIBE TABLE is never supposed to return Nested type - it should always yield its Array fields directly. " +

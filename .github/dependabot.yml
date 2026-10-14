@@ -13,3 +13,21 @@ updates:
       - "dependencies"
     open-pull-requests-limit: 5
       
+  # FORK: keeps the SHA pins in tests.yaml current. The four upstream workflows are not pinned by
+  # this fork, so they are excluded; a stray bump PR for one of them is closed, not merged.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    exclude-paths:
+      - ".github/workflows/increment-version.yml"
+      - ".github/workflows/integrationTests.yaml"
+      - ".github/workflows/pre-release.yaml"
+      - ".github/workflows/release.yaml"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"

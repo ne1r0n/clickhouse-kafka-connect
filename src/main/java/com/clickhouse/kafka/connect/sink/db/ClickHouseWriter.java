@@ -458,7 +458,7 @@ public class ClickHouseWriter implements DBWriter {
                         ZonedDateTime zonedDateTime = ZonedDateTime.parse((String) value.getObject());
                         BinaryStreamUtils.writeUnsignedInt32(stream, zonedDateTime.toInstant().getEpochSecond());
                     } catch (Exception e) {
-                        LOGGER.error("Error parsing date time string: {}", value.getObject());
+                        logDateTimeParseFailure(columnName, type, value, e);
                         unsupported = true;
                     }
                 } else {
@@ -512,7 +512,7 @@ public class ClickHouseWriter implements DBWriter {
                             BinaryStreamUtils.writeInt64(stream, seconds);
                         }
                     } catch (Exception e) {
-                        LOGGER.error("Error parsing date time string: {}, exception: {}", value.getObject(), e.getMessage());
+                        logDateTimeParseFailure(columnName, type, value, e);
                         unsupported = true;
                     }
                 } else {
@@ -521,10 +521,20 @@ public class ClickHouseWriter implements DBWriter {
                 break;
         }
         if (unsupported) {
-            String msg = String.format("(Potentially) Not implemented conversion from %s to %s", value.getFieldType(), type);
+            String msg = String.format(DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT, value.getFieldType(), type, columnName);
             LOGGER.error(msg);
             throw new DataException(msg);
         }
+    }
+
+    /**
+     * Logs an unparseable date-time string from its metadata alone: the column, the two types, the
+     * exception class and the length of the value in UTF-16 code units. The exception is reduced to its
+     * class name before it reaches the logger, because its message embeds the record value.
+     */
+    private static void logDateTimeParseFailure(String columnName, Type type, Data value, Exception e) {
+        LOGGER.error(DATETIME_PARSE_FAILURE_LOG_FORMAT, columnName, type, value.getFieldType(), e.getClass().getName(),
+                String.valueOf(value.getObject()).length());
     }
 
     private void doWriteDate(OutputStream stream, Date date, int precision ) throws IOException {
@@ -552,6 +562,12 @@ public class ClickHouseWriter implements DBWriter {
 
     // Slot kinds name the position of a nested null in the schema; none of them carries record data.
     private static final String NESTED_NULL_MESSAGE_FORMAT = "column '%s' (%s) %s: null in non-nullable slot";
+    private static final String DATETIME_PARSE_FAILURE_LOG_FORMAT = "Error parsing date time string for column '{}' "
+            + "(ClickHouse type {}, Kafka type {}): exception {}, value length {}";
+    private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
+    private static final String DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT = "(Potentially) Not implemented conversion from %s to %s for column '%s'";
+    private static final String MISSING_NON_NULLABLE_MESSAGE_FORMAT = "column '%s' (%s): no value provided for a non-nullable column without a default; "
+            + "add the field, make the column Nullable, or give it a DEFAULT";
     private static final String NESTED_NULL_SLOT_ELEMENT = "element";
     private static final String NESTED_NULL_SLOT_MAP_VALUE = "map value";
     private static final String NESTED_NULL_SLOT_TUPLE = "tuple";
@@ -730,8 +746,8 @@ public class ClickHouseWriter implements DBWriter {
                     break;
                 case TUPLE:
                     if (value.getObject() == null) {
-                        // Column reports a Tuple non-nullable even for Nullable(Tuple(...)) (D-16),
-                        // so only a slot it does report nullable may take the marker (D-10).
+                        // A slot takes the null marker only when its Column reports it nullable (D-10);
+                        // since COLS-10 that flag follows the declared type, Nullable(Tuple(...)) included.
                         if (!col.isNullable()) {
                             throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_TUPLE));
                         }
@@ -852,7 +868,8 @@ public class ClickHouseWriter implements DBWriter {
             LOGGER.error(message, e);
             throw new DataException(message, e);
         } catch (Exception e) {
-            LOGGER.error("Error writing value of " + (value == null ? "<value null>" : value.getFieldType() ) + " to the column `" + col.getName() + "` of type " + columnType, e);
+            LOGGER.error(WRITE_VALUE_FAILURE_LOG_FORMAT, value == null ? "<value null>" : value.getFieldType(), col.getName(), columnType,
+                    e.getClass().getName());
             throw e;
         }
     }
@@ -1089,9 +1106,7 @@ public class ClickHouseWriter implements DBWriter {
                 }
                 BinaryStreamUtils.writeUnsignedInt8(stream, 255);
             } else {
-                // no filled and not nullable
-                LOGGER.error("Column {} is not nullable and no value is provided", name);
-                throw new RuntimeException();
+                throw new DataException(String.format(MISSING_NON_NULLABLE_MESSAGE_FORMAT, name, renderColumnType(col)));
             }
         }
     }
@@ -1174,8 +1189,9 @@ public class ClickHouseWriter implements DBWriter {
             }
         } catch (Exception e) {
             // Note: this part will be removed once V1 is deprecated
-            Optional<String> updateTableException = UPDATE_TABLE_EXCEPTION_STR_TO_ERROR_CODE.keySet().stream().filter(code -> e.getMessage().contains(code)).findFirst();
-            if (e.getMessage() != null && updateTableException.isPresent() && retry) {
+            String failureMessage = e.getMessage();
+            Optional<String> updateTableException = failureMessage == null ? Optional.empty() : UPDATE_TABLE_EXCEPTION_STR_TO_ERROR_CODE.keySet().stream().filter(failureMessage::contains).findFirst();
+            if (updateTableException.isPresent() && retry) {
                 LOGGER.warn("Error code {}. Trying to update table mapping because ClickHouse table schema may have evolved.", UPDATE_TABLE_EXCEPTION_STR_TO_ERROR_CODE.get(updateTableException.get()));
                 try {
                     chc.pinReplica();
@@ -1265,6 +1281,33 @@ public class ClickHouseWriter implements DBWriter {
 
     }
 
+    private static final String SKIP_EMPTY_CDC_LOG_FORMAT = "Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]";
+
+    /**
+     * Decides whether a Debezium record is left out of the insert body on every write route.
+     * op=t and a null before/after struct convert to an empty value map, which would otherwise
+     * land as an all-defaults row (or fail the batch on a table without defaults).
+     *
+     * <p>A pure function of the record, so a retried batch serializes byte-identically. It runs
+     * before field cleanup: a record whose fields are all unknown is not empty and still writes a
+     * defaults-only row. Records are never filtered before the writer, so offsets, exactly-once
+     * state and the dedup token cover the whole batch.
+     */
+    private static boolean skipEmptyCdcRecord(Record record) {
+        if (record.getSchemaType() != SchemaType.DEBEZIUM_CDC) {
+            return false;
+        }
+        Map<String, Data> values = record.getJsonMap();
+        if (values != null && !values.isEmpty()) {
+            return false;
+        }
+        LOGGER.debug(SKIP_EMPTY_CDC_LOG_FORMAT,
+                record.getTopic(),
+                record.getRecordOffsetContainer().getPartition(),
+                record.getRecordOffsetContainer().getOffset());
+        return true;
+    }
+
     /**
      * Serializes records into the given stream in RowBinary(WithDefaults) format.
      * Shared by the V1 and V2 raw binary insert paths.
@@ -1275,6 +1318,9 @@ public class ClickHouseWriter implements DBWriter {
         long pushStreamTime = 0;
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
+                if (skipEmptyCdcRecord(record)) {
+                    continue;
+                }
                 for (Column col : table.getRootColumnsList()) {
                     LOGGER.debug("Writing column: {}", col.getName());
                     long beforePushStream = System.currentTimeMillis();
@@ -1356,6 +1402,9 @@ public class ClickHouseWriter implements DBWriter {
         for (Record record : records) {
             if (record.getSinkRecord().value() != null) {
                 LOGGER.trace("Record: {}", record.getTopicAndPartition());
+                if (skipEmptyCdcRecord(record)) {
+                    continue;
+                }
 
                 long beforeSerialize;
                 byte[] bytes;
@@ -1363,15 +1412,6 @@ public class ClickHouseWriter implements DBWriter {
                     beforeSerialize = System.currentTimeMillis();
                     bytes = MetadataFreeJsonWriter.structRow((Struct) record.getSinkRecord().value());
                 } else if (metadataFree && record.getSchemaType() == SchemaType.DEBEZIUM_CDC) {
-                    // op=t and a null before/after struct convert to an empty map, which would
-                    // otherwise land as an all-defaults row.
-                    if (record.getJsonMap() == null || record.getJsonMap().isEmpty()) {
-                        LOGGER.debug("Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]",
-                                record.getTopic(),
-                                record.getRecordOffsetContainer().getPartition(),
-                                record.getRecordOffsetContainer().getOffset());
-                        continue;
-                    }
                     beforeSerialize = System.currentTimeMillis();
                     bytes = MetadataFreeJsonWriter.cdcRow(record.getJsonMap());
                 } else {

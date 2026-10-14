@@ -1,7 +1,7 @@
 ---
 phase: 16-early-docs-publication
 verified: 2026-10-11T17:05:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 covered_files:
   - ".planning/phases/16-early-docs-publication/16-01-PLAN.md"
@@ -161,3 +161,15 @@ No gaps against the five success criteria and no failed truths. The published ti
 
 _Verified: 2026-10-11T17:05:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+## Human verification resolved: republication (2026-10-11)
+
+The user approved the republication. On 2026-10-11 the user answered "Publish now" in the `/gsd-verify-work 16` session.
+
+- **Merge:** a non-force `--no-ff` merge of `sync/v1.7.0` (`8497dc1d`) into `custom_build`, made in a separate worktree: `be6b8861` "Merge sync/v1.7.0: publish corrected v1.7.0_gg1 rollback steps (item 8)", with parents `537beb1f` and `8497dc1d`.
+- **Contents:** outside `.planning/`, the merge changes only `docs/ROLLOUT-v1.7.0_gg1.md` (item 8, 6 insertions and 2 deletions). No tag was pushed.
+- **Pre-push check:** before the push, the E-16 script (`/tmp/gsd16-wr01/demo2.sh`) ran against `be6b8861` itself, starting from a stale branch at `f328fd21`. The fast-forward reached `be6b8861`, the rollback commit's tree equals `pre-v1.7.0-sync` (`ok`), `git merge <merge-commit>^2` printed "Already up to date.", and `git revert <rollback-commit>` restored the `be6b8861` tree.
+- **Push:** `537beb1f..be6b8861  custom_build -> custom_build`.
+- **CI:** one `tests.yaml` run on `be6b8861` (id 38156040416, push event). It started at 16:34:36Z and finished at 16:40:59Z with conclusion `success`. Its job "ClickHouse latest Client version V2 tests" succeeded.
+
+Item 8 on `origin/custom_build` now holds the corrected rollback procedure, so the open human item from this report is resolved.
