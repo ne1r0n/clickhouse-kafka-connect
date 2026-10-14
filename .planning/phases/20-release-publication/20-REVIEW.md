@@ -78,6 +78,23 @@ Two Warnings are factual disagreements between the release documents, both found
 
 ---
 
+## Re-review of the fix commits (round 2)
+
+**Scope:** `git diff be5e44b1 02adff03` over the six fix commits `54474bf5` (WR-01), `32a06bcf` (WR-02), `e6682d9a` (IN-01), `aef8d39d` (IN-03), `a15c3887` (IN-02) and `02adff03` (IN-04), after which `cf68dd40` records the re-run of the owning checks (E-50). The commits touch `CHANGELOG.md`, `docs/FORK-DELTA.md` and `docs/ROLLOUT-v1.7.0_gg2.md` only, change prose only, and no quoted `sql` or `sh` block.
+
+**Result: no new finding, so the frontmatter counts stay at 6.** Each fix was read against its source:
+
+- WR-01: "`lombok.config` gains a line ... The generated code of the one class that uses `@Jacksonized` is unchanged." `ClickHouseFieldDescriptor` is the only class with `@Jacksonized` (`grep -rln @Jacksonized src/`), and 17-02-SUMMARY records its normalized `javap` as byte-identical. The file did exist at `be6b8861` with two lines.
+- WR-02: the FORK-DELTA sentence now matches rollout item 1 and E-03 (a window drops the same-token retry, a table without one stores it again).
+- IN-01: `L-23` to `L-30` and `L-31` to `L-41` are the row ranges of `18-BEHAVIOUR-LEDGER.md` and `19-BEHAVIOUR-LEDGER.md`; the `L-01` to `L-22` sentence is back in the gg1 paragraph, where the base had it.
+- IN-02: `DeclaredNullability.apply` logs per root column on every describe, as both documents now say.
+- IN-03: the Known costs preamble now agrees with items 1, 2, 3, 5 and 7.
+- IN-04: the added sentence says what E-03 and the test do (simulated earlier attempt, then a real retry) and nothing more.
+
+The unchanged-text checks were re-run after the last fix: ROLLOUT-T3-OK, ITEM1-CONTENT-OK, ITEMS2-5-CONTENT-OK, ROLLOUT-FINAL-OK, CHANGELOG-GG2-OK and FORK-DELTA-GG2-OK all print.
+
+---
+
 ## Mandated confirmations (D-07)
 
 1. **The dedup claims match the test and E-01/E-03: confirmed, with IN-04 and WR-02.** Every claim of item 1 about the server (same token dropped with changed bytes, different token with identical data stored, window 100 drops, window 0 stores, the `exactlyOnce=false` outcomes on `ReplicatedMergeTree` and plain `MergeTree`, the version 26.9.18.11 and the window values 10000 and 3600) equals a `DedupTokenRetryLiveTest` case and its E-01/E-03 output (8 tests, 0 failures). The 3600 seconds time limit is stated as read from the setting and not waited out, which is accurate. Two wordings over-reach (IN-04 in the note, WR-02 in FORK-DELTA).
@@ -88,6 +105,17 @@ Two Warnings are factual disagreements between the release documents, both found
 6. **No secret, hostname, record value or production identifier: confirmed.** The added lines carry no URL outside the repository's own relative links, no address, credential or host; every environment-specific value is an angle-bracket placeholder; the test uses synthetic names and numbers and logs the server version, the window settings, case keys and row counts only. The only local-style paths are inside the evidence file, which is not published.
 7. **The note, CHANGELOG and FORK-DELTA agree with each other and with the quoted source texts: not fully, see WR-01, WR-02, IN-01, IN-02 and IN-03.** The statements about values, the single-field `DataException`, the empty-CDC skip, the message and log changes (L-23 to L-29), the MBean and client name, the VERSION row and the anchor row (`v1.7.0_gg2`, count 1, anchors invariant PASS) agree across the three documents and with ledgers L-23 to L-41. The quoted texts (the old and new WARN, the `DataException` texts, the DateTime line) equal the source strings.
 8. **The new test follows the AGENTS.md test rules: confirmed.** It extends `ClickHouseBase`, so it runs against a real ClickHouse and is excluded from `testUnit`; every assertion is a typed read-back compared with `assertEquals` (the grouped read-back makes a row stored twice visible as `n = 2`); the exactly-once cases use the real `ClickHouseSinkTask` and `KeeperStateProvider`, not `InMemoryState` and not a mocked writer; names are descriptive; strings are constants; the helpers are shared with the other live tests; and no existing test was edited or weakened. E-04 shows it goes red without the connector's token.
+
+**Round 2 (after the fix commits `54474bf5` to `02adff03`), repeated confirmations:**
+
+1. Dedup claims match the test and E-01/E-03: confirmed; item 1 now says the earlier gg1 attempt is simulated (IN-04), and FORK-DELTA limits the statement to tables with a window (WR-02).
+2. Every quoted query and command has matching evidence; the 999.1 queries were proven on gg1-written rows: confirmed, unchanged (no quoted block was edited; ROLLOUT-T3-OK re-run).
+3. No TRUNCATE or unscoped DELETE instruction for the shared KeeperMap table: confirmed (the truncate scan in ROLLOUT-FINAL-OK re-run).
+4. The rollback item uses read-tree with pre-v1.7.0_gg2 and E-31 proves it: confirmed, item 6 untouched.
+5. The released gg1 CHANGELOG section and gg1 note are unchanged: confirmed (CHANGELOG-GG2-OK and the gg1 note diff re-run).
+6. No secret, hostname, record value or production identifier: confirmed; the added sentences name none.
+7. The note, CHANGELOG and FORK-DELTA agree with each other and with the quoted source texts: confirmed after the fixes (WR-01, WR-02, IN-01, IN-02 and IN-03 resolved).
+8. The new test follows the AGENTS.md test rules: confirmed; `DedupTokenRetryLiveTest` was not changed.
 
 ---
 
