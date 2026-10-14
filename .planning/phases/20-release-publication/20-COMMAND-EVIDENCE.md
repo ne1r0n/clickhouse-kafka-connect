@@ -763,3 +763,100 @@ FORK-DELTA-GG2-OK        (raw numbers 119/18802/529 and 32/2042/143 equal git, 3
 What the changed sentences rest on: the IN-04 sentence says the earlier gg1 attempt is simulated, which is how E-03 describes the two `eo-true` cases (two real rows plus two all-defaults phantom rows inserted under the connector's token for offsets 1 to 4, then the task retries the range); the WR-02 sentence restates E-03's rows for `REPLICATED` and `NON_REPLICATED_WINDOW` (a same-token retry dropped) against `PLAIN` (every insert stored); the IN-02 sentence matches `DeclaredNullability.apply`, which logs the WARN per root column on every describe; the IN-01 ledger ranges `L-23` to `L-30` and `L-31` to `L-41` are the row ranges of the Phase 18 and Phase 19 ledgers.
 
 Matches text: yes
+
+### E-60: v1.7.0_gg2 suite gate
+
+Backs: SUITE-05 (the full suite twice on ClickHouse `latest` x client V2, `testUnit` Docker-free). Date (UTC) 2026-10-14. The tree gated is `951310f0` (HEAD on `sync/v1.7.0` before this entry was committed); the last non-`.planning` commit is `02adff03` (committed 2026-10-14T16:46:17+03:00), so every XML timestamp had to be later than that. Every command ran through `env -u TESTCONTAINERS_HOST_OVERRIDE`, colima profile `vz` only, the docker CLI by absolute path `/opt/homebrew/opt/docker/bin/docker`.
+
+Freeze (verify command 1), run before anything else:
+
+```text
+branch sync/v1.7.0 dirty False scope-ok True ['CHANGELOG.md', 'VERSION', 'docs/FORK-DELTA.md', 'docs/ROLLOUT-v1.7.0_gg2.md', 'src/test/java/com/clickhouse/kafka/connect/sink/DedupTokenRetryLiveTest.java'] anchors ['-VERSION\tv1.7.0_gg1\t1\tBLD-07', '+VERSION\tv1.7.0_gg2\t1\tBLD-07'] review-open0 True 19-review-open0 True threats0 True protected-diff 0
+FREEZE-OK
+```
+
+Clean build, version, Docker stopped, `testUnit` (verify command 2):
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew clean compileJava
+grep -q 'ARTIFACT_VERSION = "v1.7.0_gg2"' build/generated/sources/version/java/main/com/clickhouse/kafka/connect/sink/Version.java
+colima stop --profile vz
+/opt/homebrew/opt/docker/bin/docker info        # must fail
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew testUnit --rerun
+colima start --profile vz
+/opt/homebrew/opt/docker/bin/docker info        # must succeed again
+```
+
+```text
+generated:  public static final String ARTIFACT_VERSION = "v1.7.0_gg2";
+docker info with colima stopped (exit non-zero):  Server:
+  failed to connect to the docker API at unix:///Users/alexandr.chashnikov/.colima/vz/docker.sock; check if the path is correct and if the daemon is running: dial unix /Users/alexandr.chashnikov/.colima/vz/docker.sock: connect: no such file or directory
+testUnit: BUILD SUCCESSFUL in 10s
+testUnit classes 45 tests 556 failures 0 errors 0 missing [] live-test-ran False stale 0
+TESTUNIT-DOCKER-STOPPED-GREEN
+colima list afterwards: vz  Running
+```
+
+Two full runs (verify command 3). `rm -rf build/test-results/test` came first; run 1's XML was copied to `/tmp/gsd20/exec/run1-results` before run 2 started:
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --rerun    # run 1, then the XML check, then the copy
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --rerun    # run 2, then the XML check against run 1's copy
+```
+
+```text
+run-1-duration=158s
+run-1 classes 85 tests 988 failures 0 errors 0 skipped 18 missing [] stale 0 exact True skip-set-ok True after-run-1 True server ['26.9.18.11'] matrix 30 dedup 8 min-ts 2026-10-14 13:51:23.750000+00:00 max-ts 2026-10-14 13:53:55.965000+00:00
+run-2-duration=157s
+run-2 classes 85 tests 988 failures 0 errors 0 skipped 18 missing [] stale 0 exact True skip-set-ok True after-run-1 True server ['26.9.18.11'] matrix 30 dedup 8 min-ts 2026-10-14 13:54:02.343000+00:00 max-ts 2026-10-14 13:56:33.012000+00:00
+SUITE-TWICE-GREEN
+```
+
+Run 2's earliest XML timestamp (13:54:02) is later than run 1's latest (13:53:55), read from run 1's copied results. Server version `26.9.18.11` in both runs (`SELECT version()` logged by `DedupTokenRetryLiveTest`); the local `clickhouse/clickhouse-server:latest` image was created 2026-10-13 21:01:43 +0300. Phase 19's gate recorded `26.9.17.8`, so `latest` moved by one patch release between the two gates; both are green and nothing was edited. `NullableTupleMatrixLiveTest` ran exactly 30 cases and `DedupTokenRetryLiveTest` 8, in both runs.
+
+The 18 skips, compared as a set of `class#method` names with the inventory in `docs/FORK-DELTA.md` (identical in both runs; the 11 parameterised cases are `ClickHouseSinkTaskWithSchemaTest#[1]` to `[11]`, the `exactlyOnceStateMismatchTest` cases skipped by the standalone assumption):
+
+```text
+ClickHouseSinkTaskTest#clientNameTest()
+ClickHouseSinkTaskWithSchemaTest#schemaWithNestedTupleMapArrayAndVariant()
+ClickHouseSinkTaskWithSchemaTest#schemaWithTupleOfMapsWithVariantTest()
+ClickHouseSinkTaskWithSchemaTest#[1] 11, 7 ... #[11] 229, 221   (11 cases)
+ConvertToMapOrJsonPerformanceTestJson#testDeepNestedStructPerformance()
+ConvertToMapOrJsonPerformanceTestJson#testWideStructPerformance()
+InsertFormatPerformanceTest#compareInsertPerformance()
+JsonColumnTest#compareAllConfigurations()
+```
+
+Anchors invariant on the branch tip (verify command 4, first half):
+
+```sh
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD
+```
+
+```text
+invariants: provenance_paths=21 anchor_commits=344 anchor_rows=59 marker_commits=391 result=PASS
+```
+
+Matches text: n/a (gate check)
+
+### E-61: pre-push checks and dry-run merge
+
+Backs: SUITE-05 and PUB-08 (the push is safe to make; the release merge shape is rehearsed). Date (UTC) 2026-10-14. Both commands ran on `951310f0`, before this entry was committed; the evidence commit touches only `.planning/`, so the tree outside `.planning/` is the same. Verify commands 4 and 5 were re-run on the committed tip after the commit and their output is in the rehearsal bundle.
+
+PUSH-READY (verify command 4, second half: HEAD on `sync/v1.7.0`, `.gsd-ws-arg` untracked, no `push.followTags`, no `remote.origin.push` or `mirror`, `git fetch --no-tags`, origin `custom_build` at `be6b8861`, origin has no `sync/v1.7.0` and no ref at X, `8497dc1d` an ancestor, no secret pattern in the changed files, API rate limit at least 20):
+
+```text
+X=951310f070400f871eb6a796b6fd01df87605859 rate=58
+PUSH-READY
+```
+
+MERGE-DRY-RUN-OK (verify command 5: a `--no-ff` merge of X into a detached worktree at `be6b8861`, then the worktree removed and pruned):
+
+```text
+D=514c13f692c19e6eebb4fe29f6cfb6b9322a86ae X=951310f070400f871eb6a796b6fd01df87605859
+MERGE-DRY-RUN-OK
+```
+
+The dry-run merge `D` has first parent `be6b8861c25f3d7611194e7150b18362c5c75e32`, second parent X, and `git diff --quiet D X` is empty, so the merged tree equals the tested tip. `git worktree list` afterwards shows only the main checkout.
+
+Matches text: n/a (gate check)
