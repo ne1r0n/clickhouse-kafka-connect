@@ -5,17 +5,17 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 20
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Phase 20 context gathered
-last_updated: "2026-10-14T11:50:27.837Z"
-last_activity: 2026-10-13
-last_activity_desc: Phase 19 complete, transitioned to Phase 20
-state_head: 3caf7ab410d3956e5c9c7e6962ed6c539d8fbda2
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-10-14T12:56:13.363Z"
+last_activity: 2026-10-14
+last_activity_desc: Phase 20 execution started
+state_head: ccf15ea0097bae80debfca04662e8b11be49ee5f
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 29
-  completed_plans: 21
-  percent: 72
+  completed_plans: 22
+  percent: 76
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-13 after Phase 19)
 
 ## Current Position
 
-Phase: 20 (Release & Publication) — READY TO EXECUTE
-Plan: Not started
+Phase: 20 (Release & Publication) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-10-13 — Phase 19 complete, transitioned to Phase 20
+Last activity: 2026-10-14 — Phase 20 execution started
 
-Progress: [███████░░░] 72%
+Progress: [████████░░] 76%
 
 ## Performance Metrics
 
@@ -129,6 +129,7 @@ Progress: [███████░░░] 72%
 | Phase 19 P08 | 9 min | 2 tasks | 10 files |
 | Phase 19 P09 | 6 min | 2 tasks | 2 files |
 | Phase 19 P10 | 10 min | 3 tasks | 2 files |
+| Phase 20 P01 | 47 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 19]: Phase 19 DEBT-09: IN-01..IN-05 closed as fixed (superseded) citing 2a94e045, consistent with the recorded go; IN-06 left deferred (outside D-12 scope, for Phase 20) — Branch read from 19-SPIKE.md Decision (go); the cited commit removes the code each finding concerns; D-12 limits the plan to IN-01..IN-05
 - [Phase 19]: 19-07: unwrap SimpleAggregateFunction at the entry of DeclaredNullability.collect (all branches), not only the leaf; a root wrapper over a Tuple pairs and flips no flag
 - [Phase 19]: 19-08: DeclaredNullability.apply is total (one try over parse, pairing, assignment) and its fallback WARN names database and table; the matrix control asserts a read-past-end code (CANNOT_READ_ALL_DATA plain, ATTEMPT_TO_READ_AFTER_EOF defaults) — Closes 19-REVIEW WR-01, IN-01, WR-03, IN-03; assignments apply only after the whole root pairs, so a caught exception never leaves a partial root
+- [Phase 20]: Dedup-token retry pinned by measurement (latest 26.9.18.11): a same-token retry is dropped on every deduplicating engine even when its bytes changed, so the rollout wording is 'old rows persist', not 'rows written twice' — Measured by DedupTokenRetryLiveTest (E-01..E-04); exactlyOnce=false is also deduplicated by the token on a replicated table; plain tables and window 0 deduplicate nothing
 
 ### Pending Todos
 
@@ -212,9 +214,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-14T08:52:19.319Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-release-publication/20-CONTEXT.md
+Last session: 2026-10-14T12:56:09.621Z
+Stopped at: Completed 20-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

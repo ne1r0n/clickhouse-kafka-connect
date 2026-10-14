@@ -302,11 +302,11 @@ The Enum fix changes stored values. It also lets a record that omits a `Nullable
 - PUB-07 owns the AGENTS.md pre-PR obligation: this covers the `VERSION` bump and the `CHANGELOG.md` entry, and Phase 19 left both untouched on purpose.
 - IN-04 (deferred): a Tuple Column that lacks a declared element still applies. Owner: Phase 20 copies the item into the milestone close record so the next milestone inherits it. Trigger: a clickhouse-data version change, or any DESCRIBE shape observed to drop a declared Tuple element. Until then `missingDeclaredElementDoesNotShiftPairing` pins the current behaviour.
 
-**Plans**: 8 plans
+**Plans**: 1/8 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 20-01-PLAN.md — Tracer: committed live `DedupTokenRetryLiveTest` pinning the measured dedup-token outcomes on latest (server matrix on three engines, exactlyOnce=true upgrade shapes, exactlyOnce=false re-delivery), seen red without the connector's token; evidence file started (ROLL-02, D-04, D-05, D-13, D-14)
+- [x] 20-01-PLAN.md — Tracer: committed live `DedupTokenRetryLiveTest` pinning the measured dedup-token outcomes on latest (server matrix on three engines, exactlyOnce=true upgrade shapes, exactlyOnce=false re-delivery), seen red without the connector's token; evidence file started (ROLL-02, D-04, D-05, D-13, D-14)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 20-02-PLAN.md — Tracer: VERSION bump with its anchor row in one commit; throwaway probe in be6b8861 and bumped worktrees proving every rollout query on gg1-written versus gg2-written rows, the KeeperMap self-check, table classification, MBean and client name (PUB-07, ROLL-02, D-02, D-06, D-16)
@@ -418,7 +418,7 @@ Plans:
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 10/10 | Complete    | 2026-10-13 |
-| 20. Release & Publication | v1.7.0_gg2-hardening | 0/8 | Planned | - |
+| 20. Release & Publication | v1.7.0_gg2-hardening | 1/8 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg2-hardening` created: 2026-10-10*
