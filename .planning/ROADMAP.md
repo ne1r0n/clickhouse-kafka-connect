@@ -302,7 +302,32 @@ The Enum fix changes stored values. It also lets a record that omits a `Nullable
 - PUB-07 owns the AGENTS.md pre-PR obligation: this covers the `VERSION` bump and the `CHANGELOG.md` entry, and Phase 19 left both untouched on purpose.
 - IN-04 (deferred): a Tuple Column that lacks a declared element still applies. Owner: Phase 20 copies the item into the milestone close record so the next milestone inherits it. Trigger: a clickhouse-data version change, or any DESCRIBE shape observed to drop a declared Tuple element. Until then `missingDeclaredElementDoesNotShiftPairing` pins the current behaviour.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+**Wave 1**
+- [ ] 20-01-PLAN.md — Tracer: committed live `DedupTokenRetryLiveTest` pinning the measured dedup-token outcomes on latest (server matrix on three engines, exactlyOnce=true upgrade shapes, exactlyOnce=false re-delivery), seen red without the connector's token; evidence file started (ROLL-02, D-04, D-05, D-13, D-14)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 20-02-PLAN.md — Tracer: VERSION bump with its anchor row in one commit; throwaway probe in be6b8861 and bumped worktrees proving every rollout query on gg1-written versus gg2-written rows, the KeeperMap self-check, table classification, MBean and client name (PUB-07, ROLL-02, D-02, D-06, D-16)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 20-03-PLAN.md — Tracer: `docs/ROLLOUT-v1.7.0_gg2.md`, six items quoting only recorded evidence, the gg1 dedup reasoning corrected in the gg2 note, rollback to local tag `pre-v1.7.0_gg2` proven on a dry-run merge (ROLL-02, D-01, D-03, D-06, D-13..D-16)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 20-04-PLAN.md — `1.7.0_gg2` CHANGELOG section, FORK-DELTA refresh with raw numbers and the read-past-end wording, 19-REVIEW advisories dispositioned, milestone close record (PUB-07, D-08, D-10, D-11, D-12, IN-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 20-05-PLAN.md — `/gsd-secure-phase 19` cross-checked against its review, pre-gate review of everything Phase 20 committed, every finding dispositioned, documents frozen (D-07, D-09)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 20-06-PLAN.md — Suite gate on the frozen tree (clean, Docker-stopped testUnit, two cache-busted full runs, anchors), blocking-human rehearsal gate, scratch push of `sync/v1.7.0` and its single green run, measured release bundle (SUITE-05, PUB-08)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 20-07-PLAN.md — Blocking-human release gate; rollback tag pushed first, `--no-ff` merge in a worktree with shape, no-TRUNCATE and rollback re-checks on M, `custom_build` pushed alone, single green run, `v1.7.0_gg2` tag after green, scratch branch deleted (PUB-08, D-15)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 20-08-PLAN.md — The three manual checks answered by the user and recorded; STATE points at the milestone audit and close (D-11, D-12)
 
 **Note**: This phase follows the Phase 11/15 recipe: rehearse, measure, approve, publish. The steps:
 1. Push `sync/v1.7.0` once as a scratch branch (explicit refspec, never at a SHA another pushed branch already holds) and wait for green.
@@ -393,7 +418,7 @@ Plans:
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 10/10 | Complete    | 2026-10-13 |
-| 20. Release & Publication | v1.7.0_gg2-hardening | 0/TBD | Not started | - |
+| 20. Release & Publication | v1.7.0_gg2-hardening | 0/8 | Planned | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg2-hardening` created: 2026-10-10*
