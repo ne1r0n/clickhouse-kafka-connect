@@ -4,18 +4,18 @@ milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 20
 current_phase_name: Release & Publication
-status: planning
+status: executing
 stopped_at: Phase 20 context gathered
-last_updated: "2026-10-14T08:52:19.413Z"
+last_updated: "2026-10-14T11:50:27.837Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 19 complete, transitioned to Phase 20
-state_head: 3d41a023b0740b32c14544fa12f9c4d91b5df0c6
+state_head: 3caf7ab410d3956e5c9c7e6962ed6c539d8fbda2
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 21
+  total_plans: 29
   completed_plans: 21
-  percent: 80
+  percent: 72
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-13 after Phase 19)
 
 ## Current Position
 
-Phase: 20 — Release & Publication
+Phase: 20 (Release & Publication) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-10-13 — Phase 19 complete, transitioned to Phase 20
 
-Progress: [████████░░] 80%
+Progress: [███████░░░] 72%
 
 ## Performance Metrics
 
