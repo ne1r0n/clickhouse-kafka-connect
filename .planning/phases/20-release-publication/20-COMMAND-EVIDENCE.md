@@ -120,3 +120,73 @@ ISOLATED-RED restored: git diff --quiet -- src/main exit=0
 Green re-run after both restores (`env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests '*DedupTokenRetryLiveTest' --rerun`): tests=8 failures=0 errors=0 skipped=0.
 
 Matches text: n/a (gate check)
+
+### E-10: probe versions
+
+Backs: no doc text on its own; it fixes which code each later probe entry (E-11 onwards) was run against. The probe is one throwaway JUnit class, `Phase20RolloutProbe`, kept under `/tmp/gsd20/probe` and copied into two detached worktrees. The gg1 worktree is the published v1.7.0_gg1 code (`be6b8861c25f3d7611194e7150b18362c5c75e32`, `origin/custom_build`); the gg2 worktree is the VERSION bump commit `43c82975` (`v1.7.0_gg2`, all Phase 17 to 19 code). Both ran against ClickHouse `latest` with client V2 in their own Testcontainers container, and `latest` was pulled again for each run; both reported the same server.
+
+```sh
+git worktree add --detach /tmp/gsd20/gg1 be6b8861c25f3d7611194e7150b18362c5c75e32
+git worktree add --detach /tmp/gsd20/gg2 43c82975
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+```
+
+```text
+PROBE-VERSION tree=gg1 server=26.9.18.11 artifact=v1.7.0_gg1
+PROBE-VERSION tree=gg2 server=26.9.18.11 artifact=v1.7.0_gg2
+```
+
+Matches text: n/a (gate check)
+
+### E-11: Nullable(Tuple) wrong row and phantom row, gg1 versus gg2
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the 999.1 item, the `Nullable(Tuple)` detection query (written in plan 20-03). Fixture: a plain `MergeTree ORDER BY id` table `(id Int32, c Nullable(Tuple(a Nullable(Int32), b String)))` with no DEFAULT column (the plain twin of 19-SPIKE C2). Three schema'd `Struct` records, ids 1 to 3, each with a non-NULL tuple whose `a` (5, 6, 7) and `b` (`y`, `z`, `w`) are non-NULL, put in one batch through `ClickHouseSinkTask` on the RowBinary route (base properties, no `bypassRowBinary`). Typed read-back is `id, isNull(c), tupleElement(c,'a'), tupleElement(c,'b')` (a NULL element prints as `NULL`).
+
+What each tree stored (from the `PROBE-OBSERVED` lines below): the gg1 code stored the three records as wrong rows (tuple not NULL, `a` NULL, `b` empty), and added three more rows under id `16777216` that no record carries, each with a NULL tuple (a phantom row per record); no error was raised. The gg2 code stored the three records exactly as sent and nothing else. The phantom rows have no content that identifies them by themselves (their key is garbage derived from the shifted bytes), so the query lists them by where they sit: a NULL tuple in a part that also holds a wrong-row suspect. Both kinds of hit are suspects, not proof: stored data cannot tell a legitimate NULL, or a legitimate tuple of NULL and empty string, from a wrongly stored one.
+
+Doc-form query (SELECT only; the probe reads this exact text from `/tmp/gsd20/probe/sql/tuple-c2-plain.sql`, replaces the four placeholders and runs it otherwise unchanged):
+
+```sql
+SELECT
+    <key_column> AS row_key,
+    _part AS part,
+    if(<column> IS NULL,
+       'NULL tuple in a part that also holds a suspect (possible phantom row)',
+       'tuple is not NULL but every element is NULL or empty') AS reason
+FROM `<db>`.`<table>`
+WHERE _part IN (
+        SELECT _part
+        FROM `<db>`.`<table>`
+        WHERE <column> IS NOT NULL
+          AND toString(assumeNotNull(<column>)) = toString(defaultValueOfTypeName(toTypeName(assumeNotNull(<column>))))
+    )
+  AND (
+        <column> IS NULL
+        OR toString(assumeNotNull(<column>)) = toString(defaultValueOfTypeName(toTypeName(assumeNotNull(<column>))))
+    )
+ORDER BY part, row_key;
+```
+
+Substitution map (gg1 run; the gg2 run used the same placeholders with its own database and table names, `kafka_connect_test_228901658_1791983368853` and `p20_tuple_c2_1791983368974`): `<db>` = `kafka_connect_test_497821928_1791983352541`, `<table>` = `p20_tuple_c2_1791983352677`, `<column>` = `c`, `<key_column>` = `id`.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg1/gradlew -p /tmp/gsd20/gg1 test --tests '*Phase20RolloutProbe' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd20/gg2/gradlew -p /tmp/gsd20/gg2 test --tests '*Phase20RolloutProbe' --rerun
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg1-t1.xml
+python3 -I /tmp/gsd20/probe/xml-probe-lines.py /tmp/gsd20/exec/probe-gg2-t1.xml
+```
+
+`SELECT version()` of both runs: `26.9.18.11` (E-10).
+
+```text
+PROBE-OBSERVED tree=gg1 shape=tuple-c2-plain outcome=stored match=no detail=1,0,NULL,;2,0,NULL,;3,0,NULL,;16777216,1,NULL,NULL;16777216,1,NULL,NULL;16777216,1,NULL,NULL
+PROBE-RESULT tree=gg1 shape=tuple-c2-plain flagged=6
+PROBE-SUSPECTS tree=gg1 shape=tuple-c2-plain rows=1,all_1_1_0,tuple is not NULL but every element is NULL or empty;2,all_1_1_0,tuple is not NULL but every element is NULL or empty;3,all_1_1_0,tuple is not NULL but every element is NULL or empty;16777216,all_1_1_0,NULL tuple in a part that also holds a suspect (possible phantom row);16777216,all_1_1_0,NULL tuple in a part that also holds a suspect (possible phantom row);16777216,all_1_1_0,NULL tuple in a part that also holds a suspect (possible phantom row)
+PROBE-OBSERVED tree=gg2 shape=tuple-c2-plain outcome=stored match=yes detail=1,0,5,y;2,0,6,z;3,0,7,w
+PROBE-RESULT tree=gg2 shape=tuple-c2-plain flagged=0
+```
+
+An empty result of this query means no row of the column matches the shape, not that the column is healthy: a wrongly stored tuple whose elements are not all NULL or empty is not found by it.
+
+Matches text: pending (20-03)
