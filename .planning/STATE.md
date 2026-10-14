@@ -5,17 +5,17 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 20
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-10-14T13:16:05.529Z"
+stopped_at: Completed 20-03-PLAN.md
+last_updated: "2026-10-14T13:26:19.909Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 20 execution started
-state_head: fcdd39292313f96380feaae31617d7b8d6728eab
+state_head: 6639eaaee0fc74fc8e6d70489dbe7383e0612ae9
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 29
-  completed_plans: 23
-  percent: 79
+  completed_plans: 24
+  percent: 80
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-13 after Phase 19)
 ## Current Position
 
 Phase: 20 (Release & Publication) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-10-14 — Phase 20 execution started
 
-Progress: [████████░░] 79%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -131,6 +131,7 @@ Progress: [████████░░] 79%
 | Phase 19 P10 | 10 min | 3 tasks | 2 files |
 | Phase 20 P01 | 47 min | 3 tasks | 2 files |
 | Phase 20 P02 | 15 min | 2 tasks | 3 files |
+| Phase 20 P03 | 10 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 19]: 19-08: DeclaredNullability.apply is total (one try over parse, pairing, assignment) and its fallback WARN names database and table; the matrix control asserts a read-past-end code (CANNOT_READ_ALL_DATA plain, ATTEMPT_TO_READ_AFTER_EOF defaults) — Closes 19-REVIEW WR-01, IN-01, WR-03, IN-03; assignments apply only after the whole root pairs, so a caught exception never leaves a partial root
 - [Phase 20]: Dedup-token retry pinned by measurement (latest 26.9.18.11): a same-token retry is dropped on every deduplicating engine even when its bytes changed, so the rollout wording is 'old rows persist', not 'rows written twice' — Measured by DedupTokenRetryLiveTest (E-01..E-04); exactlyOnce=false is also deduplicated by the token on a replicated table; plain tables and window 0 deduplicate nothing
 - [Phase 20]: Detection queries return suspect lists: Tuple phantom rows have a garbage key and are located by part co-location with a wrong-row suspect; one query text serves Enum8 and Enum16 top level because gg1 failed Enum16 outright — Proven live on gg1 (be6b8861) and gg2 rows, E-10..E-20
+- [Phase 20]: 20-03: the gg2 rollout note corrects gg1 item 1's dedup reasoning in the gg2 note only; the in-flight check is required only for connectors writing Nullable Enum/Tuple columns or Debezium records under exactlyOnce=true
 
 ### Pending Todos
 
@@ -216,8 +218,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-14T13:16:01.336Z
-Stopped at: Completed 20-02-PLAN.md
+Last session: 2026-10-14T13:26:19.858Z
+Stopped at: Completed 20-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
