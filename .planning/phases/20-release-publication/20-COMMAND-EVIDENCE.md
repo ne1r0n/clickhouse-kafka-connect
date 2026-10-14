@@ -635,3 +635,110 @@ after git revert <rollback-commit>: tree(HEAD)==tree(target)
 Afterwards `git worktree list` shows only the main working tree, no `gg2-rollback-demo-*` branch is left, and `git ls-remote --tags origin` lists no `pre-v1.7.0_gg2`.
 
 Matches text: yes
+
+### E-40: FORK-DELTA raw numbers and src/main counts at ce9ea7ae
+
+Backs: `docs/FORK-DELTA.md`, "The raw numbers" table (two new `after gg2` rows), the comparison paragraph, the "One number does bear" paragraph and the Adopted-wholesale `src/main` row (written in plan 20-04). Date (UTC) 2026-10-14. HEAD is `ce9ea7ae` on `sync/v1.7.0`. Nothing under `src`, `build.gradle.kts`, `gradle` or `.github` changed after `7ae6af45` (the last such commit, the dedup live test of plan 20-01), checked with `git diff --quiet d73848807c58c4ba535da05e7515ecbbf5025bdf HEAD -- src build.gradle.kts gradle .github ':(exclude)src/test/java/com/clickhouse/kafka/connect/sink/DedupTokenRetryLiveTest.java'`, which exits 0. The tag `v1.7.0_gg2` does not exist yet, so the gg2 figures are measured against HEAD; plan 20-07 re-runs the two tag commands once the tag exists.
+
+```sh
+git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 HEAD -- src/main
+git diff --shortstat v1.6.0 pre-v1.7.0-sync -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 v1.7.0_gg1 -- src build.gradle.kts gradle .github
+git diff --shortstat v1.6.0 pre-v1.7.0-sync -- src/main
+git diff --shortstat v1.7.0 v1.7.0_gg1 -- src/main
+for s in src/test src/testFixtures src/main build.gradle.kts gradle .github; do git diff --shortstat v1.7.0 HEAD -- $s; done
+```
+
+```text
+ 119 files changed, 18802 insertions(+), 529 deletions(-)
+ 32 files changed, 2042 insertions(+), 143 deletions(-)
+ 84 files changed, 9476 insertions(+), 451 deletions(-)
+ 95 files changed, 13587 insertions(+), 484 deletions(-)
+ 30 files changed, 1368 insertions(+), 98 deletions(-)
+ 31 files changed, 1826 insertions(+), 130 deletions(-)
+src/test:  78 files changed, 16288 insertions(+), 102 deletions(-)
+src/testFixtures:  3 files changed, 68 insertions(+), 12 deletions(-)
+src/main:  32 files changed, 2042 insertions(+), 143 deletions(-)
+build.gradle.kts:  1 file changed, 177 insertions(+), 9 deletions(-)
+gradle:  1 file changed, 6 insertions(+), 6 deletions(-)
+.github:  4 files changed, 221 insertions(+), 257 deletions(-)
+```
+
+The four gg1 and before rows keep their published figures (84/9476/451, 95/13587/484, 30/1368/98, 31/1826/130); the two new rows carry 119/18802/529 and 32/2042/143.
+
+The byte-identical and import-order counts. Method (A10): a file counts as byte-identical when `git diff --quiet v1.7.0 HEAD -- <file>` exits 0; of the others, a file counts as import-order-only when its content with every line starting `import ` and every blank line removed equals upstream's. The same method run on `v1.7.0_gg1` reproduces the published 15 and 10, so the two figures are comparable.
+
+```sh
+python3 -I -c '...'   # for each file in `git ls-tree -r --name-only v1.7.0 -- src/main`: identical / import-only / logic; also git diff --diff-filter=A for added files
+```
+
+```text
+files present at v1.7.0: 63
+byte-identical at HEAD: 38
+differ: 25  (import-order only: 14, carry fork logic: 11)
+same method at v1.7.0_gg1: import-order only 15, logic 10
+moved from import-order-only to logic since gg1: Utils.java (the null-message guard, WRT-11)
+files added in src/main since v1.7.0: 7 (MetadataFreeJsonWriter, DeclaredNullability, ConvertToMapOrJson, HeaderToValue, HeaderToValueConfig, HeadersToValue, TableOperationFilter)
+differing src/main files in total: 25 + 7 = 32 (matches the shortstat file count)
+```
+
+The "Named skip inventory" is not changed in this plan; the suite gate (plan 20-06) re-confirms its 18 names.
+
+Matches text: n/a (gate check)
+
+### E-41: FORK-DELTA coverage audit
+
+Backs: `docs/FORK-DELTA.md` "Pinned by" cells for the Phase 17 to 19 code requirements (plan 20-04). Date (UTC) 2026-10-14. For each of CI-11 to CI-16, BLD-14, DEBT-06 to DEBT-08, JSONP-09, WRT-10 to WRT-12, COLS-08 and COLS-10, the script finds the table rows whose last column (Pinned by) names the ID, and for each row of `.planning/scripts/fork-anchors.txt` whose backs-ID is one of them it checks that the ID is pinned in such a cell.
+
+```sh
+python3 -I /tmp/gsd20-cov.py   # throwaway script outside the repository; reads docs/FORK-DELTA.md and .planning/scripts/fork-anchors.txt
+```
+
+First run, before the fix: every ID was pinned except `DEBT-06` and `DEBT-08`, which were named only in the Known costs text. Both were added to the Pinned-by cells of the rows they belong to (`DEBT-08` to the metadata-free JSON row, whose `MetadataFreeJsonWriterTest` carries the NanoTimestamp pin; `DEBT-06` to the dependency-pins row, whose `Lz4RoundTripLiveTest` carries the response-leg assertion). Second run, after the fix:
+
+```text
+CI-11 1 | A single-job CI workflow
+CI-12 1 | A single-job CI workflow
+CI-13 1 | A single-job CI workflow
+CI-14 1 | A single-job CI workflow
+CI-15 1 | Dependabot also updates the `github-actions` eco
+CI-16 1 | Upstream's `.github/workflows/test-head.yaml` is
+BLD-14 1 | `lombok.config` sets `config.stopBubbling = true
+DEBT-06 1 | Fork dependency pins in the version catalog
+DEBT-07 1 | `testRuntimeClasspath` excludes `org.lz4:lz4-java`
+DEBT-08 1 | The metadata-free `insertFormat=json` path
+JSONP-09 1 | One shared skip, `skipEmptyCdcRecord`
+WRT-10 1 | A missing value for a non-nullable column
+WRT-11 2 | `doInsertRawBinary`'s second catch; `Utils.handleException`'s IOException branch
+WRT-12 2 | `doWriteDates` logs an unparseable DateTime; `doWriteColValue`'s generic catch
+COLS-08 1 | `Column.extractColumn`'s Enum8/Enum16 branch
+COLS-10 1 | Tuple element nullability comes from the declared type
+anchor rows backed by a Phase 17-19 ID: 17 rows, all covered
+uncovered IDs: [] anchor rows missing: 0
+```
+
+Matches text: n/a (gate check)
+
+### E-42: FORK-DELTA path resolution
+
+Backs: every `.planning/` path that `docs/FORK-DELTA.md` cites (plan 20-04). Date (UTC) 2026-10-14. One ledger path and two disposition paths still pointed at `.planning/phases/13-...` and `.planning/phases/14-...`, which moved when the `v1.7.0_gg1-sync` milestone was archived (they did not resolve). They now point at `.planning/milestones/v1.7.0_gg1-sync-phases/`. The Phase 18 and 19 ledgers are named by file only, because the Phase 18 and 19 folders move when `v1.7.0_gg2-hardening` is archived.
+
+```sh
+grep -o '\.planning/[A-Za-z0-9_./-]*[A-Za-z0-9_-]' docs/FORK-DELTA.md | sort -u | while read p; do [ -n "$(git ls-files -- "$p")" ] && echo "OK   $p" || echo "DEAD $p"; done
+```
+
+```text
+OK   .planning/MERGE-CHECKLIST-v1.7.0.md
+OK   .planning/MERGE-CHECKLIST.md
+OK   .planning/REQUIREMENTS.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/13-fork-hardening-on-the-merged-tree/13-REVIEW-DISPOSITION.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/14-dependency-bumps-ci/14-REVIEW-DISPOSITION.md
+OK   .planning/scripts/fork-anchors.txt
+OK   .planning/scripts/verify-merge-invariants.sh
+```
+
+Before the fix the same command printed `DEAD` for exactly those three paths (the Phase 13 ledger, the Phase 13 disposition and the Phase 14 disposition). A9 held: the archived files exist under the same names.
+
+Matches text: n/a (gate check)
