@@ -5,11 +5,11 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 20
 current_phase_name: Release & Publication
 status: planning
-stopped_at: Phase 19 complete, ready to plan Phase 20
-last_updated: "2026-10-13T10:47:38.925Z"
+stopped_at: Phase 20 context gathered
+last_updated: "2026-10-14T08:52:19.413Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 19 complete, transitioned to Phase 20
-state_head: 81cb4f74eafc86d8f542203e8c4e76bde41b2520
+state_head: 3d41a023b0740b32c14544fa12f9c4d91b5df0c6
 progress:
   total_phases: 5
   completed_phases: 4
@@ -212,9 +212,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-13T10:47:38.848Z
-Stopped at: Phase 19 complete, ready to plan Phase 20
-Resume file: None
+Last session: 2026-10-14T08:52:19.319Z
+Stopped at: Phase 20 context gathered
+Resume file: .planning/phases/20-release-publication/20-CONTEXT.md
 
 ## Operator Next Steps
 
