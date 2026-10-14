@@ -3,7 +3,7 @@
 - **Base commit:** `P20_BASE` = `d73848807c58c4ba535da05e7515ecbbf5025bdf` (the tip when Phase 20 planning started; every "Phase 20 changed nothing here" check diffs non-`.planning` paths against it).
 - **Shell:** macOS zsh, BSD `grep`. Gradle is always run as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...` because this shell sets that variable to the literal `null`. Log lines carry the local time zone (UTC+3); the date below is UTC.
 - **Date (UTC):** 2026-10-14.
-- **Rule:** a `Matches text: no` verdict means the doc text gets fixed, never the evidence. Entries that back no doc text carry `Matches text: n/a (gate check)`. Entries that back text not yet written carry the verdict `pending (20-03)` until plan 20-03 writes that text.
+- **Rule:** a `Matches text: no` verdict means the doc text gets fixed, never the evidence. Entries that back no doc text carry `Matches text: n/a (gate check)`. Entries that back text not yet written carry a pending verdict until plan 20-03 writes that text; every entry that backs the gg2 rollout note now reads `Matches text: yes`.
 
 ### E-01: server version and deduplication windows
 
@@ -573,5 +573,65 @@ exit=1
 ```
 
 Result: every old text is listed once and the unrelated file is not. The directory holding only the unrelated file prints nothing and exits 1, which is what an operator sees when no matcher uses an old text. A matcher that escapes the dot of `String.contains` is not listed, because `-F` compares literal text; the note says so.
+
+Matches text: yes
+
+### E-31: item 6 rollback on a dry-run merge of the release tip
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, item 6 (the rollback): `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build`, `git status --porcelain` printing nothing, `git read-tree -u --reset pre-v1.7.0_gg2`, `git commit -m "Roll back v1.7.0_gg2"`, `git diff --quiet HEAD pre-v1.7.0_gg2 && echo ok`, `git revert <rollback-commit>` and `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg2.md` (written in plan 20-03). Date (UTC) 2026-10-14.
+
+Tag `pre-v1.7.0_gg2` is a local lightweight tag on `be6b8861c25f3d7611194e7150b18362c5c75e32` (`origin/custom_build`, the published `v1.7.0_gg1` tree); its `tests.yaml` has the trigger `branches: ['**']` and `git ls-remote --tags origin` does not list the tag. X is the tip that contains the finished note: `X = 8a913415d15ea47e4695c4fb3f9ad321975acb26` (the commit that added item 6). Throwaway merge: `git worktree add --detach /tmp/gsd20/dry be6b8861c25f3d7611194e7150b18362c5c75e32`, then in it `git -c user.name=demo -c user.email=demo@example.invalid merge --no-ff --no-edit X`, giving the merge commit `D = 7f64a8e7cf4419519a0630755f29f4b5eba18341`. D has two parents, `D^1` is `be6b8861`, `D^2` is X, and `git diff --quiet D X` holds (no non-merge difference), which printed `MERGE-DRY-RUN-OK`. D was never pushed, and plan 20-07 re-runs the script against the real merge commit before its push (the real release merge has a different tip). The dry-run worktree was removed and pruned afterwards.
+
+The script lives outside the repository (`/tmp/gsd20/rollback-demo.sh <repo> <target> <worktree>`), adapted from the Phase 16 demo script. A throwaway branch that starts at `pre-v1.7.0_gg2` stands in for a stale local `custom_build`, so `git checkout custom_build` is the one command not run verbatim (a linked worktree cannot check out `custom_build` itself); the fast-forward target D stands in for `origin/custom_build`. The `-c user.name/user.email` options only give the throwaway commits an identity. Deviation from a published tag: `git fetch --tags origin` ran while the tag existed only locally, and it kept the local tag (the script prints it after the fetch).
+
+```sh
+#!/bin/bash
+# usage: rollback-demo.sh <repo> <target-tip> <worktree-path>
+# Runs item 6 as written, on a throwaway branch standing in for a stale local custom_build
+# (starts at pre-v1.7.0_gg2, then fast-forwards to <target-tip>, the stand-in for origin/custom_build).
+set -u
+REPO=$1; TARGET=$2; WT=$3; BR=gg2-rollback-demo-$$
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+git -C "$REPO" worktree add --quiet -b "$BR" "$WT" 'pre-v1.7.0_gg2^{commit}'
+g() { git -C "$WT" "$@"; }
+TGT=$(git -C "$REPO" rev-parse "$TARGET")
+echo "target=$TGT stale-start=$(g rev-parse --short HEAD)"
+echo "x" >> "$WT/README.md"; echo "dirty: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"; g checkout -q -- README.md
+g fetch -q --tags origin && echo "fetch --tags exit=0"
+echo "local tag kept after fetch: $(g rev-parse --short 'pre-v1.7.0_gg2^{commit}')"
+g merge -q --ff-only "$TARGET" && echo "merge --ff-only exit=0, HEAD==target: $([ "$(g rev-parse HEAD)" = "$TGT" ] && echo yes)"
+echo "clean: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"
+g read-tree -u --reset pre-v1.7.0_gg2 && g "${ID[@]}" commit -q -m "Roll back v1.7.0_gg2" && echo "read-tree + commit exit=0"
+RB=$(g rev-parse HEAD); echo "rollback-commit parent==target: $([ "$(g rev-parse HEAD^)" = "$TGT" ] && echo yes)"
+g diff --quiet HEAD pre-v1.7.0_gg2 && echo ok
+[ -z "$(g status --porcelain)" ] && echo "worktree clean after commit"
+g ls-files --error-unmatch docs/ROLLOUT-v1.7.0_gg2.md >/dev/null 2>&1 || echo "rollout doc gone from branch"
+g show "$RB^:docs/ROLLOUT-v1.7.0_gg2.md" | grep -c '^## Item 6: Rollback' | sed 's/^/git show <rollback-commit>^:docs\/ROLLOUT... item-6 headings: /'
+g show HEAD:.github/workflows/tests.yaml | grep -qF "branches: ['**']" && echo "rolled-back tests.yaml keeps branches: ['**']"
+g "${ID[@]}" revert --no-edit "$RB" >/dev/null && g diff --quiet HEAD "$TARGET" && echo "after git revert <rollback-commit>: tree(HEAD)==tree(target)"
+git -C "$REPO" worktree remove --force "$WT" && git -C "$REPO" worktree prune && git -C "$REPO" branch -q -D "$BR"
+```
+
+```text
+X=8a913415d15ea47e4695c4fb3f9ad321975acb26
+D=7f64a8e7cf4419519a0630755f29f4b5eba18341
+MERGE-DRY-RUN-OK
+target=7f64a8e7cf4419519a0630755f29f4b5eba18341 stale-start=be6b8861
+dirty: status --porcelain lines=1
+fetch --tags exit=0
+local tag kept after fetch: be6b8861
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=0
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+worktree clean after commit
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-6 headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+Afterwards `git worktree list` shows only the main working tree, no `gg2-rollback-demo-*` branch is left, and `git ls-remote --tags origin` lists no `pre-v1.7.0_gg2`.
 
 Matches text: yes
