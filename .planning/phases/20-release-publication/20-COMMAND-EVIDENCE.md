@@ -189,7 +189,7 @@ PROBE-RESULT tree=gg2 shape=tuple-c2-plain flagged=0
 
 An empty result of this query means no row of the column matches the shape, not that the column is healthy: a wrongly stored tuple whose elements are not all NULL or empty is not found by it.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-12: Nullable(Enum8) and Nullable(Enum16) at the top level, gg1 versus gg2
 
@@ -241,7 +241,7 @@ PROBE-RESULT tree=gg2 shape=enum16-top flagged=0
 
 A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-13: Array(Nullable(Enum8)), gg1 versus gg2
 
@@ -280,7 +280,7 @@ PROBE-RESULT tree=gg2 shape=enum8-array flagged=0
 
 A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-14: Map(String, Nullable(Enum8)), gg1 versus gg2
 
@@ -319,7 +319,7 @@ PROBE-RESULT tree=gg2 shape=enum8-map flagged=0
 
 A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-15: single-field Nullable(Tuple) with a NULL field, gg1 versus gg2
 
@@ -360,7 +360,7 @@ PROBE-RESULT tree=gg2 shape=tuple-x1-null-field flagged=0
 
 A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-16: empty CDC records on the bypassRowBinary JSON route, gg1 versus gg2
 
@@ -402,7 +402,7 @@ PROBE-RESULT tree=gg2 shape=empty-cdc-bypass flagged=0
 
 A hit is a suspect, never proof: stored data cannot always tell a legitimate NULL from a wrongly stored one. An empty result means no row matches the shape, not that the table is healthy.
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-17: topic-scoped KeeperMap self-check on a connector-created state table
 
@@ -529,7 +529,7 @@ PROBE-MBEAN tree=gg2 name=com.clickhouse:type=ClickHouseKafkaConnector,connector
 PROBE-AGENT tree=gg2 agent=clickhouse-kafka-connect/v1.7.0_gg2 clickhouse-java-v2/0.9.6 (Mac OS X; jvm:17.0.9) Apache-HttpClient/5.6.2
 ```
 
-Matches text: pending (20-03)
+Matches text: yes
 
 ### E-20: shapes that failed instead of storing, recorded as observed facts
 
@@ -543,4 +543,35 @@ PROBE-OBSERVED tree=gg1 shape=enum16-top outcome=failed match=n/a detail=ServerE
 PROBE-OBSERVED tree=gg2 shape=tuple-x1-null-field outcome=failed match=n/a detail=DataException: column 'c' (Nullable(Tuple(...))) tuple field 'a': null in non-nullable slot rowsLeft=0 chain=RuntimeException: Number of records: 1 | RuntimeException: Number of records: 1 | RuntimeException: Topic: [p20_tuple_x1_1791983609212], Partition: [0], MinOffset: [0], MaxOffset: [0], (QueryId: [1ece109c-d744-4487-a6da-
 ```
 
-Matches text: pending (20-03)
+Matches text: yes
+
+### E-30: alert-rule grep against a scratch directory
+
+Backs: `docs/ROLLOUT-v1.7.0_gg2.md`, the error-message and log-line item, its "Am I affected?" command (written in plan 20-03). The command lists matchers in `<alert-rule-directory>` that still use one of the four texts this release removes or changes: the ERROR line `Column <name> is not nullable and no value is provided` (ledger L-26), the colon form `Error parsing date time string:` (ledger L-27), the message-less-failure NullPointerException that mentions `String.contains` (ledger L-23, L-24), and the startup WARN of the Nullable Enum and Tuple limitation, matched by the fragment `writes such slots without their null marker` (ledger L-34, L-39). It uses `-F` so the dots and parentheses of the texts need no escaping, and fragments without parentheses so the search does not depend on the matcher's own quoting.
+
+Scratch directory `/tmp/gsd20/alerts/` (never committed): one file per old text, each holding one matcher line that spells the old text out, and one unrelated file (`kafka_consumergroup_lag > 1000`). `/tmp/gsd20/alerts-empty/` holds only the unrelated file. `/tmp/gsd20/alerts-escaped/` holds one matcher that writes the dot of `String.contains` as a regular-expression escape (`String\\.contains`).
+
+Doc-form command (the note quotes exactly this, placeholder included):
+
+```sh
+grep -rnF -e 'is not nullable and no value is provided' -e 'Error parsing date time string:' -e 'String.contains' -e 'writes such slots without their null marker' <alert-rule-directory>
+```
+
+Substitution: `<alert-rule-directory>` = `/tmp/gsd20/alerts`, `/tmp/gsd20/alerts-empty` and `/tmp/gsd20/alerts-escaped` for the three runs; nothing else changed. Date (UTC) 2026-10-14, macOS BSD `grep`.
+
+```text
+$ grep -rnF -e 'is not nullable and no value is provided' -e 'Error parsing date time string:' -e 'String.contains' -e 'writes such slots without their null marker' /tmp/gsd20/alerts
+/tmp/gsd20/alerts/rule-missing-value.yml:2:  expr: log_message =~ "Column .* is not nullable and no value is provided"
+/tmp/gsd20/alerts/rule-null-message.yml:2:  expr: log_message =~ "Cannot invoke .String.contains.*getMessage.*is null"
+/tmp/gsd20/alerts/rule-nullable-warn.yml:2:  expr: log_message =~ "The connector writes such slots without their null marker"
+/tmp/gsd20/alerts/rule-datetime-parse.yml:2:  expr: log_message =~ "Error parsing date time string: .*"
+exit=0
+$ grep -rnF ... /tmp/gsd20/alerts-empty
+exit=1
+$ grep -rnF ... /tmp/gsd20/alerts-escaped
+exit=1
+```
+
+Result: every old text is listed once and the unrelated file is not. The directory holding only the unrelated file prints nothing and exits 1, which is what an operator sees when no matcher uses an old text. A matcher that escapes the dot of `String.contains` is not listed, because `-F` compares literal text; the note says so.
+
+Matches text: yes
