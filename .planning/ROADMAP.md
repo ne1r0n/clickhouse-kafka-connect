@@ -62,7 +62,7 @@ Phase artifacts: `milestones/v1.7.0_gg1-sync-phases/`
 - [x] **Phase 17: CI, Build & Test Hygiene** - SHA-pinned, least-privilege Node 24 workflow on `ubuntu-24.04` with a Gradle-reported fork count; Lombok warning, duplicate test-classpath lz4, LZ4 response leg and the NanoTimestamp edge row closed (completed 2026-10-12)
 - [x] **Phase 18: Writer Correctness** - Empty-CDC skip on every route, a column-naming `DataException`, a null-message guard on the error path, and DateTime parse logs without record data (completed 2026-10-12)
 - [x] **Phase 19: Nullable Enum & Tuple Mapping** - Backlog 999.1: `Nullable(Enum8|Enum16)` round-trips; `Nullable(Tuple)` decided by a spike and a go/no-go that cannot hold the release (completed 2026-10-13)
-- [ ] **Phase 20: Release & Publication** - `v1.7.0_gg2` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
+- [x] **Phase 20: Release & Publication** - `v1.7.0_gg2` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag (completed 2026-10-14)
 
 ## Phase Details
 
@@ -302,7 +302,7 @@ The Enum fix changes stored values. It also lets a record that omits a `Nullable
 - PUB-07 owns the AGENTS.md pre-PR obligation: this covers the `VERSION` bump and the `CHANGELOG.md` entry, and Phase 19 left both untouched on purpose.
 - IN-04 (deferred): a Tuple Column that lacks a declared element still applies. Owner: Phase 20 copies the item into the milestone close record so the next milestone inherits it. Trigger: a clickhouse-data version change, or any DESCRIBE shape observed to drop a declared Tuple element. Until then `missingDeclaredElementDoesNotShiftPairing` pins the current behaviour.
 
-**Plans**: 7/8 plans executed
+**Plans**: 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -327,7 +327,7 @@ Plans:
 - [x] 20-07-PLAN.md — Blocking-human release gate; rollback tag pushed first, `--no-ff` merge in a worktree with shape, no-TRUNCATE and rollback re-checks on M, `custom_build` pushed alone, single green run, `v1.7.0_gg2` tag after green, scratch branch deleted (PUB-08, D-15)
 
 **Wave 8** *(blocked on Wave 7 completion)*
-- [ ] 20-08-PLAN.md — The three manual checks answered by the user and recorded; STATE points at the milestone audit and close (D-11, D-12)
+- [x] 20-08-PLAN.md — The three manual checks answered by the user and recorded; STATE points at the milestone audit and close (D-11, D-12)
 
 **Note**: This phase follows the Phase 11/15 recipe: rehearse, measure, approve, publish. The steps:
 1. Push `sync/v1.7.0` once as a scratch branch (explicit refspec, never at a SHA another pushed branch already holds) and wait for green.
@@ -418,7 +418,7 @@ Plans:
 | 17. CI, Build & Test Hygiene | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 18. Writer Correctness | v1.7.0_gg2-hardening | 4/4 | Complete    | 2026-10-12 |
 | 19. Nullable Enum & Tuple Mapping | v1.7.0_gg2-hardening | 10/10 | Complete    | 2026-10-13 |
-| 20. Release & Publication | v1.7.0_gg2-hardening | 7/8 | In Progress | - |
+| 20. Release & Publication | v1.7.0_gg2-hardening | 8/8 | Complete    | 2026-10-14 |
 
 ---
 *Roadmap for milestone `v1.7.0_gg2-hardening` created: 2026-10-10*

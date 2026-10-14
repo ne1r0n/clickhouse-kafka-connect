@@ -3,19 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 20
-current_phase_name: Release & Publication
-status: verifying
-stopped_at: Completed 20-08-PLAN.md
-last_updated: "2026-10-14T18:39:19.337Z"
+status: completed
+stopped_at: Phase 20 complete — all phases complete
+last_updated: "2026-10-14T18:54:41.925Z"
 last_activity: 2026-10-14
-last_activity_desc: Phase 20 execution started
-state_head: be4a53a7f567c4131ff61210883837b269288514
+last_activity_desc: Phase 20 complete
+state_head: 69e7ba27df29f0bfa3d4d8be3c23c165930c91d5
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 29
   completed_plans: 29
-  percent: 80
+  percent: 100
 ---
 
 # Project State
@@ -29,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-10-13 after Phase 19)
 
 ## Current Position
 
-Phase: 20 (Release & Publication) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
-Last activity: 2026-10-14 — Phase 20 execution started
+Phase: 20
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-10-14 — Phase 20 complete
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -56,6 +55,7 @@ Progress: [████████░░] 80%
 | 17 | 4 | - | - |
 | 18 | 4 | - | - |
 | 19 | 10 | - | - |
+| 20 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -226,7 +226,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-14T18:39:19.283Z
-Stopped at: Completed 20-08-PLAN.md
+Stopped at: Phase 20 complete — all phases complete
 Resume file: None
 
 ## Operator Next Steps
