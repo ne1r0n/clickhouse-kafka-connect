@@ -10,7 +10,7 @@ lombok = "1.18.46"
 lz4Java = "1.12.0"
 
 # Testing
-junitJupiter = "5.14.4"
+junitJupiter = "6.1.3"
 apiguardian = "1.1.2"
 hamcrest = "3.0"
 mockito = "5.24.0"
