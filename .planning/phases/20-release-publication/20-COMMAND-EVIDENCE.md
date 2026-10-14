@@ -92,3 +92,31 @@ No cell of this table records "rows written twice because the bytes differ": a c
 For the two `eo-true` connector cases the read-back leaves out the `ts` column, as `EmptyCdcSkipRouteLiveTest` does for the `bypassRowBinary` route (the first run of those cases showed that route storing a different `ts` than the source instant; that is existing behaviour of the metadata-free JSON path and not what this class pins). The compared columns are `id`, `amount`, `name`, `_version` and `is_deleted`. The simulated earlier attempt of the landed case inserts those same columns and leaves `ts` at its column default.
 
 Matches text: pending (20-03)
+
+### E-04: seen-red without the connector's token
+
+Backs: no doc text. It proves that the connector-path pins depend on the token the connector sends (Pitfall 1: a pin that would also pass with no token proves nothing). Nothing below is committed: both edits to `src/main` were reverted with `git checkout` before any commit.
+
+**Run A (the mutation the plan names).** `QueryIdentifier.getDeduplicationToken()` was edited to return null for every identifier, then the class was run with `--rerun`. Without a token the server falls back to hashing the data: an identical retry is still dropped, but a retry whose bytes changed lands (for example the changed-bytes retry of the ReplicatedMergeTree table read back both the old and the changed rows). Because the test builds its own tokens through the same method (it never copies the format string), the two server-matrix cases on the deduplicating engines went red as well; the plan had expected those to stay green. Run A therefore shows the pins depend on the token, but not by itself that the connector is the sender.
+
+```text
+SEEN-RED failed: D-13: same-token and different-token inserts on REPLICATED
+SEEN-RED failed: D-13: same-token and different-token inserts on NON_REPLICATED_WINDOW
+SEEN-RED failed: D-13: an exactlyOnce retry of a landed range is dropped and keeps the earlier rows
+SEEN-RED failed: D-14: with exactlyOnce=false a re-delivered range on ReplicatedMergeTree is dropped by its token, identical or changed
+SEEN-RED passed: 4 other testcases
+SEEN-RED restored: git diff --quiet -- src/main exit=0
+```
+
+**Run B (isolating the connector).** To separate the connector from the test's own token builder, a second temporary edit changed only `Processing.doInsert(List, RangeContainer)` so it built the partition-less identifier (no token), leaving `QueryIdentifier` untouched. Only the two connector-path cases that assert a dropped retry went red; the whole server matrix stayed green, and the case whose earlier attempt never landed stayed green because there is nothing to drop.
+
+```text
+ISOLATED-RED failed: D-13: an exactlyOnce retry of a landed range is dropped and keeps the earlier rows
+ISOLATED-RED failed: D-14: with exactlyOnce=false a re-delivered range on ReplicatedMergeTree is dropped by its token, identical or changed
+ISOLATED-RED passed: 6 other testcases
+ISOLATED-RED restored: git diff --quiet -- src/main exit=0
+```
+
+Green re-run after both restores (`env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests '*DedupTokenRetryLiveTest' --rerun`): tests=8 failures=0 errors=0 skipped=0.
+
+Matches text: n/a (gate check)
