@@ -59,8 +59,8 @@ checklist.
 * Dependabot also covers GitHub Actions, in one monthly grouped pull request that moves the commit pins together.
 * The test classpath drops a duplicate lz4 library, so the tests load one copy. This is test-only; the shipped
   classpaths are unchanged.
-* A new `lombok.config` selects Jackson 2 for `@Jacksonized`, which removes a compile-time warning. The built artifact
-  is byte-identical.
+* `lombok.config` gains a line that selects Jackson 2 for `@Jacksonized`, which removes a compile-time warning. The
+  generated code of the one class that uses `@Jacksonized` is unchanged.
 
 # 1.7.0_gg1, 2026-10-10
 
