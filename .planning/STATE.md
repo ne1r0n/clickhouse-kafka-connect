@@ -5,16 +5,16 @@ milestone_name: Follow-up Hardening & CI Hygiene
 current_phase: 20
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 20-04-PLAN.md
-last_updated: "2026-10-14T13:33:19.392Z"
+stopped_at: Completed 20-05-PLAN.md
+last_updated: "2026-10-14T13:48:09.700Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 20 execution started
-state_head: a443e4c34d3419ae91bb232e32ae90223ee4fe89
+state_head: c0fe6eb54987ae80e08c2d1864a16aaca5c55b89
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 29
-  completed_plans: 25
+  completed_plans: 26
   percent: 80
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-13 after Phase 19)
 ## Current Position
 
 Phase: 20 (Release & Publication) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-10-14 — Phase 20 execution started
 
@@ -133,6 +133,7 @@ Progress: [████████░░] 80%
 | Phase 20 P02 | 15 min | 2 tasks | 3 files |
 | Phase 20 P03 | 10 min | 3 tasks | 2 files |
 | Phase 20 P04 | 19 min | 3 tasks | 6 files |
+| Phase 20 P05 | 20 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,7 @@ The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifact
 - [Phase 20]: Detection queries return suspect lists: Tuple phantom rows have a garbage key and are located by part co-location with a wrong-row suspect; one query text serves Enum8 and Enum16 top level because gg1 failed Enum16 outright — Proven live on gg1 (be6b8861) and gg2 rows, E-10..E-20
 - [Phase 20]: 20-03: the gg2 rollout note corrects gg1 item 1's dedup reasoning in the gg2 note only; the in-flight check is required only for connectors writing Nullable Enum/Tuple columns or Debezium records under exactlyOnce=true
 - [Phase 20]: 20-04: gg2 CHANGELOG, FORK-DELTA refresh and 19-REVIEW dispositions committed; the close record heads advisories '19-REVIEW <ID>' and records the L-38 obligation as fulfilled under its own heading — A second Phase 19 review reused IDs of the first, so ROADMAP's WR-02 (L-38) and 19-REVIEW WR-02 (vacuous assertions) are different items; the deferred one must not be read as the fulfilled one
+- [Phase 20]: Phase 19 threat audit closed 32 of 34 threats; T-19-12 and T-19-26 stay open at medium (below the high block threshold) because 19-REVIEW WR-01 and IN-04 limit their totality and pairing claims; threats_open 0 — The auditor checks presence, not correctness; a finding that limits a mitigation keeps the threat open
 
 ### Pending Todos
 
@@ -220,8 +222,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-14T13:33:13.824Z
-Stopped at: Completed 20-04-PLAN.md
+Last session: 2026-10-14T13:48:09.645Z
+Stopped at: Completed 20-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
