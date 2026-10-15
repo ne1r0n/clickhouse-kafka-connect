@@ -227,14 +227,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-14T18:57:18.847Z
-Stopped at: Phase 20 complete, verification passed; next /gsd-audit-milestone
+Last session: 2026-10-15
+Stopped at: Phase 20 UAT complete (35/35 passed, 0 issues, `20-UAT.md` status complete); next /gsd-audit-milestone
 Resume file: None
 
 ## Operator Next Steps
 
 - `v1.7.0_gg2` is published: merge `a246ca01` on `origin/custom_build`, tags `v1.7.0_gg2` and `pre-v1.7.0_gg2` on origin, CI run 38587062864 green, `origin/sync/v1.7.0` deleted. The three post-publication manual checks are answered and recorded in `20-MILESTONE-CLOSE-RECORD.md` (Dependabot enabled; default branch changed to `custom_build` by the user; no Dependabot config error). In order:
-- Phase 20 verification passed (8/8 must-haves, `20-VERIFICATION.md`, status `passed`). Advisory: the security capability is active and Phase 20 has no `20-SECURITY.md` (its plans carried per-plan threat models and 20-05 audited Phase 19 to `threats_open: 0`); run `/gsd-secure-phase 20` first if the phase should carry its own threat check.
+- Phase 20 verification passed (8/8 must-haves, `20-VERIFICATION.md`, status `passed`) and UAT passed (2026-10-15, 35/35 checks in `20-UAT.md`: 27 auto-covered, 8 human-confirmed). `20-SECURITY.md` exists with `threats_open: 0` — the earlier advisory to run `/gsd-secure-phase 20` is resolved.
 - Run `/gsd-audit-milestone` (D-12). It replaces the stale, untracked `.planning/v1.7.0_gg2-hardening-MILESTONE-AUDIT.md` snapshot of 2026-10-10 — do not commit that snapshot — so `v1.7.0_gg2-hardening` closes on a fresh audit instead of a third override closeout.
 - Run `/gsd-complete-milestone`, carrying `20-MILESTONE-CLOSE-RECORD.md` into MILESTONES.md Known gaps and PROJECT.md Active: the five 19-REVIEW advisories (WR-01, WR-02, IN-01, IN-02, IN-03), IN-04 with its pin, backlog 999.3, and the three manual-check outcomes (including the `gradle` "Last checked" residue).
 - Revoke the read-only GitHub token if it was used: on GitHub under Settings, Developer settings, Personal access tokens, then `security delete-generic-password -s gsd17-gh-actions-read`. (It was not needed this session — both CI runs were read unauthenticated.)
