@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg2-hardening
-milestone_name: Follow-up Hardening & CI Hygiene
-status: Awaiting next milestone
-stopped_at: Milestone v1.7.0_gg2-hardening completed and archived; next /gsd-new-milestone
-last_updated: "2026-10-16T16:20:21.839Z"
+milestone: v1.7.0_gg3-hardening
+milestone_name: Record-Data Exposure & Review Debt
+status: planning
+last_updated: "2026-10-16T17:32:29.308Z"
 last_activity: 2026-10-16
-last_activity_desc: Milestone v1.7.0_gg2-hardening completed and archived
-state_head: bf8f56c6f957c7cadf07b2cdc464f75782cb4a31
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
-current_phase: 20
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-16 after v1.7.0_gg2-hardening milesto
 
 ## Current Position
 
-Phase: Milestone v1.7.0_gg2-hardening complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-16 — Milestone v1.7.0_gg2-hardening completed and archived
+Status: Defining requirements
+Last activity: 2026-10-16 — Milestone v1.7.0_gg3-hardening started
 
 ## Performance Metrics
 

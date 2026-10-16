@@ -98,16 +98,52 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
-## Next Milestone Goals
+## Current Milestone: `v1.7.0_gg3-hardening` Record-Data Exposure & Review Debt
 
-No milestone is defined yet; start one with `/gsd-new-milestone`. Upstream is still at `v1.7.0` (`upstream/main` = `379b8d01`, checked 2026-10-16), so there is nothing to sync yet. Candidates, in rough priority order:
+**Goal:** Close the last known record-data exposure (backlog 999.3), clear every review advisory carried from `v1.7.0_gg2-hardening`, and absorb the Dependabot bumps already on `origin/custom_build`. Then publish `v1.7.0_gg3` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
-- **Backlog 999.3.** A rethrown write-failure message can carry a record value into the Connect task status, the DLQ headers and two `Error inserting records` ERROR logs. The fix has to change the rethrown message or type without changing retriable classification. It is the last known record-data exposure.
-- **The nightly `integrationTests.yaml`.** The workflow is upstream-identical. Its schedule fires now that `custom_build` is the default branch. It is red by inheritance: upstream's own nightly fails daily, and the cloud job has no fork secrets. Disable it in the repository's Actions settings, or decide to make it pass.
-- **Deferred review advisories.** These are 19-REVIEW WR-01, WR-02, IN-01..IN-03 and IN-04 (owned by the next milestone) and 17-REVIEW IN-01..IN-03. Each has a re-open trigger in `milestones/v1.7.0_gg2-hardening-phases/20-release-publication/20-MILESTONE-CLOSE-RECORD.md` or its `REVIEW-DISPOSITION.md`.
-- **Test-harness risk.** `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` with Mockito, with an intermittent OpenJ9 crash risk on this machine. Build the client without Mockito, or run the suite on a HotSpot JDK.
-- **The next upstream sync**, when upstream tags past `v1.7.0`. It follows the same shape: scratch branch, rollback tag, mechanical merge, and FORK-DELTA as the starting record.
-- **Housekeeping (user).** Confirm that the Dependabot `gradle` entry shows a recent "Last checked". Revoke the read-only GitHub token and delete the Keychain item `gsd17-gh-actions-read`.
+**Target features:**
+
+- **999.3, record values in rethrown write failures:**
+  - A `doWriteColValue` failure stops carrying the record value into the Connect task status, the DLQ headers and the two `Error inserting records` ERROR logs (T-18-07).
+  - Retriable/non-retriable classification stays exactly as it is, pinned both ways.
+  - This closes FORK-DELTA Known costs item 6.
+- **19-REVIEW advisories** (carried under D-08):
+  - WR-01: `DeclaredNullability.apply`/`containsTuple` become null-safe.
+  - WR-02: the vacuous WARN-content assertions use a column name that cannot match the fixed text.
+  - IN-01: the backslash-n literal is shared, not copied.
+  - IN-02: brittle and indirect pins are fixed.
+  - IN-03: `normalise` no longer rewrites backslash-n inside names and enum labels.
+  - IN-04: a Tuple Column that lacks a declared element no longer "applies".
+- **17-REVIEW advisories:**
+  - IN-01: the pin guard covers the workflow's use of `reportTestForks`.
+  - IN-02: the `RUNS_ON` and `WRITE_SCOPE` regexes are fixed.
+  - IN-03: the `Lz4RoundTripLiveTest` jar-origin duplicate stops growing. The live test is not deleted or weakened.
+- **Test-harness risk.** `ClickHouseWriterNullMessageUnitTest` drops the Mockito inline mock of `ClickHouseHelperClient` and overrides one level up instead (the `CapturingClickHouseWriter` pattern). This removes the intermittent OpenJ9 `retransformClasses` crash risk.
+- **Dependabot integration.** The three Dependabot merges on `origin/custom_build` are merged into the working branch, and the suite stays green on them: lombok 1.18.48 (#1), spotless 8.10.4 (#2) and slf4j-reload4j 2.0.20 (#3), tip `6473e24f`.
+- **Operator checks (user):**
+  - Disable the nightly `integrationTests.yaml` in the repository's Actions settings. The file stays byte-identical to upstream; the milestone records the change and verifies that no scheduled run follows.
+  - Confirm that the Dependabot `gradle` entry shows a recent "Last checked". This closes the residue of 17-REVIEW WR-01.
+  - Revoke the read-only GitHub token and delete the Keychain item `gsd17-gh-actions-read`.
+- **Release:**
+  - `VERSION=v1.7.0_gg3`, CHANGELOG, FORK-DELTA and a tag.
+  - A rollout note for the changed error and DLQ message text.
+  - A `--no-ff` merge into `custom_build` after human approval, with CI green on the published SHA.
+
+**Baseline at milestone start (2026-10-16):**
+- `origin/custom_build` = `6473e24f`, which is `a246ca01` (`v1.7.0_gg2`) plus three Dependabot merges the user made on 2026-10-16. CI is green on each.
+- Local `sync/v1.7.0` carries the post-publication bookkeeping and the gg2 close past `3879b883`. It does not contain the Dependabot commits, so the two have diverged.
+- `upstream/main` = `v1.7.0` (`379b8d01`) with 0 commits past the tag, so there is no sync this milestone.
+- Dependabot PR #4 (`clickHouseDriver` 0.9.6 → 0.10.0) is open.
+- The nightly `integrationTests.yaml` failed all 31 jobs on 2026-10-16 (run 38881153720), including the standalone `latest` × V2 jobs.
+- No seeds, no pending todos.
+
+**Out of this milestone:**
+- The next upstream sync: nothing past `v1.7.0` to sync.
+- ClickHouse client `0.10.0`: PR #4 is left open, unmerged and not ignored, and the client stays `0.9.6`.
+- Making the nightly `integrationTests.yaml` pass, or editing or deleting it: the user disables it in settings instead.
+- New connector features.
+- Running the upgrade on production connectors.
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg2-hardening</code> Follow-up Hardening & CI Hygiene (shipped 2026-10-14)</summary>
@@ -339,7 +375,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 ### Active
 
-<!-- No milestone is active. Every open `[ ]` item below is a candidate for the next milestone. Struck-through items are history. -->
+<!-- Milestone `v1.7.0_gg3-hardening` is active: every open `[ ]` item below is in its scope (see REQUIREMENTS.md). Struck-through items are history. -->
 
 **v1.6.0_gg1-sync:** all 53 requirements shipped and moved to Validated.
 
@@ -426,6 +462,10 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - [ ] Phase 18 deferred item: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` with Mockito, with an intermittent OpenJ9 `retransformClasses` crash risk on this machine. Acknowledged at close
 - [ ] The nightly `integrationTests.yaml` is upstream-identical. Its cron fires now that `custom_build` is the default branch, and it is red by inheritance: upstream's nightly fails daily, and the cloud job has no fork secrets. Disable it in Actions settings, or make it pass
 - [ ] Housekeeping (user): confirm that the Dependabot `gradle` entry shows a recent "Last checked". Revoke the read-only GitHub token and delete the Keychain item `gsd17-gh-actions-read`
+
+**Milestone-start items (emerged 2026-10-16, at `v1.7.0_gg3-hardening` start):**
+
+- [ ] The user merged three Dependabot PRs straight onto `origin/custom_build` on 2026-10-16: lombok 1.18.48 (#1), spotless 8.10.4 (#2) and slf4j-reload4j 2.0.20 (#3), tip `6473e24f`, CI green on each. Local `sync/v1.7.0` lacks them. They must be merged into the working branch, and the suite must pass on them before the next `--no-ff` publish merge
 
 **Quality gates:** all three met — moved to Validated at the Phase 5 transition.
 
@@ -623,4 +663,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-16 after v1.7.0_gg2-hardening milestone*
+*Last updated: 2026-10-16 after starting v1.7.0_gg3-hardening milestone*
