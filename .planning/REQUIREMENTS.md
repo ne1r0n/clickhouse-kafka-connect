@@ -109,32 +109,39 @@ No milestone-level research was run; plan-phase researches each phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01 | — | Pending |
-| WRT-13 | — | Pending |
-| WRT-14 | — | Pending |
-| WRT-15 | — | Pending |
-| COLS-12 | — | Pending |
-| COLS-13 | — | Pending |
-| COLS-14 | — | Pending |
-| DEBT-10 | — | Pending |
-| DEBT-11 | — | Pending |
-| CI-18 | — | Pending |
-| CI-19 | — | Pending |
-| DEBT-12 | — | Pending |
-| HARN-08 | — | Pending |
-| OPS-01 | — | Pending |
-| OPS-02 | — | Pending |
-| OPS-03 | — | Pending |
-| ROLL-03 | — | Pending |
-| PUB-09 | — | Pending |
-| SUITE-06 | — | Pending |
-| PUB-10 | — | Pending |
+| DEPS-01 | Phase 21 | Pending |
+| WRT-13 | Phase 22 | Pending |
+| WRT-14 | Phase 22 | Pending |
+| WRT-15 | Phase 22 | Pending |
+| COLS-12 | Phase 23 | Pending |
+| COLS-13 | Phase 23 | Pending |
+| COLS-14 | Phase 23 | Pending |
+| DEBT-10 | Phase 23 | Pending |
+| DEBT-11 | Phase 23 | Pending |
+| CI-18 | Phase 21 | Pending |
+| CI-19 | Phase 21 | Pending |
+| DEBT-12 | Phase 23 | Pending |
+| HARN-08 | Phase 22 | Pending |
+| OPS-01 | Phase 21 | Pending |
+| OPS-02 | Phase 21 | Pending |
+| OPS-03 | Phase 21 | Pending |
+| ROLL-03 | Phase 24 | Pending |
+| PUB-09 | Phase 24 | Pending |
+| SUITE-06 | Phase 24 | Pending |
+| PUB-10 | Phase 24 | Pending |
 
 **Coverage:**
 - v1 requirements: 20 total
-- Mapped to phases: 0 (filled by roadmap creation)
-- Unmapped: 20
+- Mapped to phases: 20 ✓
+- Unmapped: 0
+
+| Phase | Requirements | Count |
+|-------|--------------|-------|
+| 21. Dependabot Integration & CI Hygiene | DEPS-01, CI-18, CI-19, OPS-01, OPS-02, OPS-03 | 6 |
+| 22. Writer Record-Data Exposure | HARN-08, WRT-13, WRT-14, WRT-15 | 4 |
+| 23. Declared-Nullability Hardening & Review Closure | COLS-12, COLS-13, COLS-14, DEBT-10, DEBT-11, DEBT-12 | 6 |
+| 24. Release & Publication | ROLL-03, PUB-09, SUITE-06, PUB-10 | 4 |
 
 ---
 *Requirements defined: 2026-10-16*
-*Last updated: 2026-10-16 after initial definition*
+*Last updated: 2026-10-16 after roadmap creation (Phases 21-24, 20/20 mapped)*

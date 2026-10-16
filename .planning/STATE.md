@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
 status: planning
-last_updated: "2026-10-16T17:32:29.308Z"
+last_updated: "2026-10-16T18:02:46.000Z"
 last_activity: 2026-10-16
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-16 after v1.7.0_gg2-hardening milestone)
+See: .planning/PROJECT.md (updated 2026-10-16 after starting v1.7.0_gg3-hardening milestone)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Planning the next milestone — `/gsd-new-milestone`. Candidates are in `PROJECT.md` → Next Milestone Goals.
+**Current focus:** Phase 21 — Dependabot Integration & CI Hygiene (merge `origin/custom_build`'s three Dependabot commits into `sync/v1.7.0` before any code work)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-16 — Milestone v1.7.0_gg3-hardening started
+Phase: 21 of 24 (Dependabot Integration & CI Hygiene)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-16 — Roadmap created for v1.7.0_gg3-hardening (Phases 21-24, 20/20 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -152,6 +154,14 @@ The full decision log is in `PROJECT.md` → Key Decisions. Per-phase decision l
 
 The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are archived with their phase artifacts (`milestones/<milestone>-phases/`), and their locked decisions with their requirements (`milestones/<milestone>-REQUIREMENTS.md`). Milestone-level decisions are in `PROJECT.md` → Key Decisions.
 
+**`v1.7.0_gg3-hardening` roadmap decisions (2026-10-16):**
+
+- Phase order: 21 → 22 → 23 → 24, sequential on one working tree. DEPS-01 opens Phase 21 and gates all code work: `origin/custom_build` is merged into `sync/v1.7.0` (no rebase, no force), and `spotlessCheck` and `testUnit` are green on the merged tree before any code plan starts. The release (Phase 24) comes last.
+- Backlog 999.3 (Phase 22): HARN-08 comes first, so no new writer test uses the inline mock. The classification pin (WRT-14) is committed and green on the unchanged writer before the WRT-13 change. WRT-15's doc edits ride in the same commit as the writer code.
+- Phase 23's DEBT-12 runs last in its phase. It records every 17-REVIEW and 19-REVIEW outcome, including the Phase 21 closures (CI-18, CI-19, OPS-02) and the COLS-14 decision. COLS-14 goes to a user checkpoint if it is not clear-cut.
+- Operator checks OPS-01..OPS-03 are user actions in the GitHub web UI, done in Phase 21 (D-11: no agent changes repository settings). OPS-01 comes early so that nights pass with no scheduled run before the release; Phase 24 re-checks it.
+- Every approval or decision gate (a COLS-14 checkpoint if raised, Phase 24's rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
+
 ### Pending Todos
 
 None.
@@ -161,10 +171,10 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: `origin/custom_build` = `a246ca01` (`v1.7.0_gg2`). Local `sync/v1.7.0` is 13 commits past the merged tip `3879b883`: post-publication bookkeeping and this milestone close. They are local-only until the next `--no-ff` merge into `custom_build`. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
-- [CI]: Upstream's nightly `integrationTests.yaml` (byte-identical) fires on `custom_build` since the default-branch switch and is red by inheritance. Upstream's own nightly fails daily, and the fork has no cloud secrets. It is not a fork regression; disable it in Actions settings or fix it (PROJECT.md Active).
-- [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds. Residue of 17-REVIEW WR-01: confirm that the Dependabot `gradle` entry shows a recent "Last checked".
-- [Env]: The user created a fine-grained read-only GitHub token (Actions: Read, single repo, 1-day expiry) in the macOS Keychain item `gsd17-gh-actions-read` for E-11. Revoke it on GitHub and run `security delete-generic-password -s gsd17-gh-actions-read` once no longer needed.
+- [Publish]: `origin/custom_build` = `6473e24f`. That is `a246ca01` (`v1.7.0_gg2`) plus three Dependabot merges the user made on 2026-10-16: lombok 1.18.48 (#1), spotless 8.10.4 (#2) and slf4j-reload4j 2.0.20 (#3), CI green on each. Local `sync/v1.7.0` lacks them and has diverged: past the merged tip `3879b883` it carries post-publication bookkeeping, the gg2 close and this milestone's start, all `.planning/`-only and local until the next `--no-ff` merge into `custom_build`. **Scheduled: Phase 21 (DEPS-01)** merges `origin/custom_build` into the working branch, with no rebase and no force, before any code work. `fork-anchors.txt` still pins `slf4j-reload4j:2.0.17` (BLD-08), which #3 changed without the anchors file, so the anchors invariant fails on any range containing `6473e24f` until Phase 21 settles the row and the `PRE_TAG`. Dependabot PR #4 (client `0.10.0`) stays open and unmerged. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
+- [CI]: Upstream's nightly `integrationTests.yaml` (byte-identical, cron `00 05 * * *`) fires on `custom_build` since the default-branch switch and is red by inheritance. Upstream's own nightly fails daily, and the fork has no cloud secrets. It is not a fork regression. **Scheduled: Phase 21 (OPS-01)**: the user disables it in Actions settings, and the file stays upstream-identical.
+- [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds. Residue of 17-REVIEW WR-01: confirm that the Dependabot `gradle` entry shows a recent "Last checked". **Scheduled: Phase 21 (OPS-02).**
+- [Env]: The user created a fine-grained read-only GitHub token (Actions: Read, single repo, 1-day expiry) in the macOS Keychain item `gsd17-gh-actions-read` for E-11. Revoke it on GitHub and run `security delete-generic-password -s gsd17-gh-actions-read` once no longer needed. **Scheduled: Phase 21 (OPS-03).**
 
 ## Deferred Items
 
@@ -172,9 +182,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| deferred_items | 18/deferred-items.md: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` (intermittent OpenJ9 `retransformClasses` crash risk) | acknowledged | 2026-10-16 | v1.7.0_gg2-hardening |
+| deferred_items | 18/deferred-items.md: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` (intermittent OpenJ9 `retransformClasses` crash risk) | acknowledged; scheduled as HARN-08 (Phase 22) | 2026-10-16 | v1.7.0_gg2-hardening |
 
-`v1.7.0_gg2-hardening` closed after a passed milestone audit. The open-artifact audit found one deferred item, and the user acknowledged it. The close was an override closeout, because the Phase 16–19 verification digests had gone stale after Phase 20 edited the files they covered (see `MILESTONES.md`). Its follow-ups are under `PROJECT.md` → Requirements → Active.
+`v1.7.0_gg2-hardening` closed after a passed milestone audit. The open-artifact audit found one deferred item, and the user acknowledged it. The close was an override closeout, because the Phase 16–19 verification digests had gone stale after Phase 20 edited the files they covered (see `MILESTONES.md`). Its follow-ups are now scheduled as this milestone's 20 requirements (`REQUIREMENTS.md` → Traceability).
 
 `v1.7.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. The close was an override closeout, because the Phase 12/13 verification digests had gone stale and no milestone audit was run. All eleven of its follow-ups were closed in `v1.7.0_gg2-hardening`.
 
@@ -182,11 +192,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-16
-Stopped at: Milestone v1.7.0_gg2-hardening completed and archived; next /gsd-new-milestone
+Last session: 2026-10-16T18:02:46.000Z
+Stopped at: Roadmap created for v1.7.0_gg3-hardening (Phases 21-24)
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with `/gsd-new-milestone` (candidates in `PROJECT.md` → Next Milestone Goals).
-- Housekeeping (user): revoke the read-only GitHub token and run `security delete-generic-password -s gsd17-gh-actions-read`. Glance at the Dependabot tab for the `gradle` entry's "Last checked". Decide whether to disable the inherited-red nightly `integrationTests.yaml`.
+- Review `.planning/ROADMAP.md` (Phases 21-24) and approve or request revisions.
+- Start Phase 21 with `/gsd-discuss-phase 21` or `/gsd-plan-phase 21`. Its operator checks (OPS-01..OPS-03) are yours in the GitHub web UI: disabling the nightly `integrationTests.yaml` early gives OPS-01 nights to observe before the release.
