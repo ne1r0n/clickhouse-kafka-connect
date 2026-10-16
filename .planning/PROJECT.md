@@ -16,7 +16,26 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 
 ## Current State
 
-**Published (Phase 20 complete, 2026-10-14; milestone `v1.7.0_gg2-hardening` awaits `/gsd-audit-milestone` + `/gsd-complete-milestone`):** `v1.7.0_gg2` is on `origin/custom_build` as the two-parent `--no-ff` merge `a246ca01` (parents `be6b8861` and the rehearsed tip `3879b883`), tagged `v1.7.0_gg2`, with rollback tag `pre-v1.7.0_gg2` → `be6b8861`. The published SHA has exactly one green `tests.yaml` run (38587062864); the rehearsal SHA `d316bc45` had its own green run (38578966373); the scratch branch `sync/v1.7.0` is deleted from `origin`. The suite gate was two cache-busted full runs of 988 tests each (0 failures, 0 errors, 18 named skips) on ClickHouse `latest` 26.9.18.11 × client V2, plus `testUnit` (556 tests) green with Docker stopped. Phase 20 verification passed 8/8. Post-publication the user enabled Dependabot version updates and switched the fork's default branch to `custom_build`, so Dependabot and scheduled workflows now read the fork's files; outcomes are in `20-MILESTONE-CLOSE-RECORD.md`, which also carries the five deferred 19-REVIEW advisories, IN-04, and backlog 999.3 into the next milestone.
+**Shipped:** `v1.7.0_gg2-hardening` (published 2026-10-14, closed 2026-10-16). It covered 5 phases (16–20), 29 plans, 59 tasks and 26/26 requirements. The milestone audit passed: requirements 26/26, integration 4/4, flows 3/3. It still closed as an override closeout, for two reasons. First, the Phase 16–19 verification reports read as stale because Phase 20 later edited files they covered. Each passed when run, and Phase 20 verification (8/8) and UAT (35/35) are current. Second, one deferred item was acknowledged: the Mockito inline mock in `ClickHouseWriterNullMessageUnitTest`, with its intermittent OpenJ9 crash risk.
+
+`v1.7.0_gg2` is on `origin/custom_build` as the two-parent `--no-ff` merge `a246ca01` (parents `be6b8861` and the rehearsed tip `3879b883`). It is tagged `v1.7.0_gg2`, and the rollback tag `pre-v1.7.0_gg2` points at `be6b8861`. The published SHA has exactly one `tests.yaml` run, 38587062864, and it is green. The scratch branch `sync/v1.7.0` is deleted from `origin`. Post-merge bookkeeping, including this close, lives on local `sync/v1.7.0`. After publication the user switched the fork's GitHub default branch to `custom_build` and enabled Dependabot version updates.
+
+The suite runs 988 tests on ClickHouse `latest` (26.9.18.11) × client V2 and passed twice: 0 failures, 0 errors, and the same 18 named skips. `testUnit` runs 556 tests with Docker stopped. Client `0.9.6`, Connect API `4.1.1` and the version catalog are unchanged; this milestone bumped no library.
+
+Code: `src/main` 10,322 LOC; tests 34,467 LOC (`src/test` 28,360, `src/testFixtures` 4,329, `src/integrationTest` 1,778). The fork delta against upstream grew from 95 to 119 files at the wide scope and from 31 to 32 in `src/main`. Most of the growth is tests, and `src/main` gained one file, `DeclaredNullability` (`docs/FORK-DELTA.md`).
+
+**Behaviour changes operators will see** (each in `docs/ROLLOUT-v1.7.0_gg2.md`):
+- `Nullable(Enum8|Enum16)` and `Nullable(Tuple)` values are now stored as written. Rows stored wrongly by earlier releases are not repaired; the note gives five detection queries.
+- A single-field `Nullable(Tuple(a T))` with a null field now fails with a `DataException` (ledger L-38).
+- Empty Debezium records (`op=t`, or null `before` and `after`) insert no row on any write route.
+- A batch left `BEFORE_PROCESSING` by the previous release retries with the same deduplication token. On deduplicating engines it is dropped even if its bytes changed, so old rows persist when the earlier attempt landed.
+- Writer errors and DateTime parse logs name the column without the raw value. A rethrown message can still carry one (backlog 999.3).
+- The MBean `version=` segment and the client name change with the version.
+
+**Knowingly open in the published `v1.7.0_gg2`:** backlog 999.3, record values in rethrown write-failure messages. No known wrong-value defect remains in the writer.
+
+<details>
+<summary>Previous state — <code>v1.7.0_gg1-sync</code> (shipped 2026-10-10)</summary>
 
 **Shipped:** `v1.7.0_gg1-sync` (2026-10-10). It covered 4 phases (12–15), 25 plans, 55 tasks and 39/39 requirements. It closed as an override closeout for the same two reasons as the previous milestone. First, no milestone audit was run. Second, the Phase 12 and 13 verification reports read as stale because Phases 13–15 later edited the files they covered. Both verifications passed when run. Phases 14 and 15 verification passed on the final tree, and Phase 15 UAT was 1/1.
 
@@ -34,6 +53,8 @@ Code: `src/main` 10,119 LOC; tests 29,523 LOC (`src/test` 23,416, `src/testFixtu
 - The MBean `version=` segment changes.
 
 Each is covered in the rollout checklist. **Knowingly open in the published `v1.7.0_gg1`:** `Nullable(Enum8|Enum16|Tuple)` columns are mis-mapped (backlog 999.1, warned at discovery), and the empty-CDC skip covers only the explicit JSON route. Both fixes — the empty-CDC skip on all four routes (Phase 18, JSONP-09) and 999.1 closed with `Nullable(Enum)`/`Nullable(Tuple)` round-tripping and the discovery WARN deleted (Phase 19, COLS-08/COLS-10) — are now published in `v1.7.0_gg2` (Phase 20, merge `a246ca01`).
+
+</details>
 
 <details>
 <summary>Previous state — <code>v1.6.0_gg1-sync</code> (shipped 2026-10-07)</summary>
@@ -77,7 +98,19 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
-## Current Milestone: `v1.7.0_gg2-hardening` Follow-up Hardening & CI Hygiene
+## Next Milestone Goals
+
+No milestone is defined yet; start one with `/gsd-new-milestone`. Upstream is still at `v1.7.0` (`upstream/main` = `379b8d01`, checked 2026-10-16), so there is nothing to sync yet. Candidates, in rough priority order:
+
+- **Backlog 999.3.** A rethrown write-failure message can carry a record value into the Connect task status, the DLQ headers and two `Error inserting records` ERROR logs. The fix has to change the rethrown message or type without changing retriable classification. It is the last known record-data exposure.
+- **The nightly `integrationTests.yaml`.** The workflow is upstream-identical. Its schedule fires now that `custom_build` is the default branch. It is red by inheritance: upstream's own nightly fails daily, and the cloud job has no fork secrets. Disable it in the repository's Actions settings, or decide to make it pass.
+- **Deferred review advisories.** These are 19-REVIEW WR-01, WR-02, IN-01..IN-03 and IN-04 (owned by the next milestone) and 17-REVIEW IN-01..IN-03. Each has a re-open trigger in `milestones/v1.7.0_gg2-hardening-phases/20-release-publication/20-MILESTONE-CLOSE-RECORD.md` or its `REVIEW-DISPOSITION.md`.
+- **Test-harness risk.** `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` with Mockito, with an intermittent OpenJ9 crash risk on this machine. Build the client without Mockito, or run the suite on a HotSpot JDK.
+- **The next upstream sync**, when upstream tags past `v1.7.0`. It follows the same shape: scratch branch, rollback tag, mechanical merge, and FORK-DELTA as the starting record.
+- **Housekeeping (user).** Confirm that the Dependabot `gradle` entry shows a recent "Last checked". Revoke the read-only GitHub token and delete the Keychain item `gsd17-gh-actions-read`.
+
+<details>
+<summary>Milestone scope as planned — <code>v1.7.0_gg2-hardening</code> Follow-up Hardening & CI Hygiene (shipped 2026-10-14)</summary>
 
 **Goal:** Close all 11 follow-ups left open by `v1.7.0_gg1-sync`, getting the corrected rollout doc onto `origin` first, and publish `v1.7.0_gg2` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
@@ -93,6 +126,10 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 **Baseline at milestone start (2026-10-10):** `origin/custom_build` = `f328fd21` (`v1.7.0_gg1`); local `sync/v1.7.0` is 20 commits ahead. `upstream/main` = `v1.7.0` (`379b8d01`) — no newer upstream tag, so no sync this milestone. No seeds, no pending todos.
 
 **Out of this milestone:** the next upstream sync (nothing to sync); ClickHouse client `0.10.0`; adopting upstream's Avro-union or Debezium paths; running the upgrade on production connectors.
+
+**Outcome:** all 26 requirements shipped, and all 11 carried follow-ups are closed. The Tuple spike answered `go`, so the `Nullable(Tuple)` half of 999.1 shipped with the Enum half instead of becoming a Known cost. Review gap closure added the `SimpleAggregateFunction(f, Nullable(T))` case (19-07..19-10). The rollout work corrected the gg1 note's deduplication-token claim from a live pin (`DedupTokenRetryLiveTest`). One new fork-side defect surfaced and was deferred rather than fixed: backlog 999.3. The five 19-REVIEW advisories were deferred under D-08, so no code changed between Phase 19's green gate and the release.
+
+</details>
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg1-sync</code> Upstream v1.7.0 Sync & Follow-up Hardening (shipped 2026-10-10)</summary>
@@ -284,14 +321,31 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ `tests.yaml` hardened: all four actions pinned to 40-hex commits with version comments (Node 24 majors; `gradle/actions` on the peeled commit), runner pinned to `ubuntu-24.04`, a top-level `permissions: contents: read` with `persist-credentials: false`, and the fork-count step reads Gradle's own value from a new `reportTestForks` task; `TestsWorkflowPinGuardUnitTest` pins it Docker-free; a grouped monthly `github-actions` Dependabot entry; `test-head.yaml` deleted — Phase 17 (CI-11..CI-16)
 - ✓ Phase 14 build/test debt closed: duplicate `org.lz4:lz4-java:1.8.0` excluded from `testRuntimeClasspath` only (other classpaths byte-identical), `Lz4RoundTripLiveTest` asserts LZ4 on the response leg (seen red with response compression off), `lombok.config` selects Jackson 2 for `@Jacksonized` (warning gone, bytecode identical), NanoTimestamp mantissa-with-fraction rows pinned — Phase 17 (DEBT-06, DEBT-07, BLD-14, DEBT-08)
 - ✓ CI-17 proven by one approved scratch push of `0c90d331`: run `38172811430` green on `ubuntu-24.04` (one run, attempt 1), fork-count notice `nproc=4, Gradle maxParallelForks=2`, no Node 20 / Lombok / `ubuntu-latest` annotation, token `Contents: read` + `Metadata: read`, all four action SHAs downloaded as pinned; scratch branch deleted after green; local gate 840 tests / 0 failures / 18 named skips on `latest` 26.9.16.11 — Phase 17 (CI-17)
+- ✓ Empty Debezium records (`op=t`, or null `before` and `after`) insert no row on all four write routes: explicit JSON, `bypassRowBinary=true` JSON, and RowBinary with and without defaults. One shared `skipEmptyCdcRecord` in the writer serialization loops decides it, so offsets, exactly-once state and the dedup token still cover the whole batch. Pinned live on clients V1 and V2 plus 24 Docker-free byte/token/state pins, mutation-checked — Phase 18 (JSONP-09)
+- ✓ Writer error path. A missing non-nullable value, including inside `Array(Tuple)`, throws a data-free `DataException` naming the column and its type. A message-less failure is rethrown as itself, and a null `IOException` message no longer classifies as a timeout; retry classification is pinned both ways. DateTime/DateTime64 parse-failure ERROR logs carry column, types, exception class and value length only, pinned by `WriterLogMaskingUnitTest` (T-13-19) — Phase 18 (WRT-10, WRT-11, WRT-12)
+- ✓ Backlog 999.1 closed. `Nullable(Enum8|Enum16)` round-trips top-level and nested through `.isNullable(isNull)` in `Column.extractColumn`. After a live twin-table spike answered `go` (`19-SPIKE.md`), `Nullable(Tuple(...))` and `Array(Nullable(Tuple(...)))` round-trip with element nullability taken from the declared type string. `DeclaredNullability` does this, is total, fails open per root and unwraps `SimpleAggregateFunction`. The discovery WARN, its anchor row and its FORK-DELTA rows were removed in the same commit. 15-REVIEW IN-01..IN-05 were closed against the fix — Phase 19 (COLS-08..COLS-11, DEBT-09)
+- ✓ `docs/ROLLOUT-v1.7.0_gg2.md` adds six delta items over the gg1 note:
+  - in-flight batches and the deduplication token
+  - `Nullable` Enum/Tuple values, with five detection queries
+  - empty Debezium records
+  - messages and log lines
+  - MBean and client name
+  - rollback to `pre-v1.7.0_gg2`
+
+  Every quoted query was run live. The dedup-token consequence is pinned by `DedupTokenRetryLiveTest` (8 cases on 26.9.18.11) — Phase 20 (ROLL-02)
+- ✓ `VERSION` = `v1.7.0_gg2`, with a plain-language `1.7.0_gg2` CHANGELOG section. FORK-DELTA is refreshed with git-derived raw numbers and has a row for every new fork-side patch — Phase 20 (PUB-07)
+- ✓ The frozen tree passed the full suite twice on `latest` 26.9.18.11 × V2: 988 tests, 0 failures, 0 errors, and 18 named skips equal to FORK-DELTA's inventory. `testUnit` ran 556 tests with Docker stopped, and the anchors invariant passed — Phase 20 (SUITE-05)
+- ✓ `v1.7.0_gg2` published. Rehearsal run 38578966373 was green on the exact tip. `custom_build` on `origin` is the non-force `--no-ff` merge `a246ca01`, approved verbatim "publish". The rollback tag `pre-v1.7.0_gg2` (`be6b8861`, which already carries the branch-only trigger) was pushed first. The published SHA had exactly one green `tests.yaml` run (38587062864) before the `v1.7.0_gg2` tag went up, and the scratch branch was deleted last — Phase 20 (PUB-08)
 
 ### Active
 
-<!-- Milestone `v1.7.0_gg2-hardening` is active: every open `[ ]` item below is in its scope (see REQUIREMENTS.md). Struck-through items are history. -->
+<!-- No milestone is active. Every open `[ ]` item below is a candidate for the next milestone. Struck-through items are history. -->
 
 **v1.6.0_gg1-sync:** all 53 requirements shipped and moved to Validated.
 
 **v1.7.0_gg1-sync:** all 39 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg1-sync-REQUIREMENTS.md`). All 17 follow-ups carried in are closed. The open items below emerged during this milestone.
+
+**v1.7.0_gg2-hardening:** all 26 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg2-hardening-REQUIREMENTS.md`). All 11 follow-ups carried in are closed. Backlog 999.3 and the milestone-close follow-ups below are open.
 
 **Publication & client follow-ups (emerged in Phase 11, not yet scheduled):**
 
@@ -351,7 +405,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 - [x] ~~⚠ The published `docs/ROLLOUT-v1.7.0_gg1.md` (at `f328fd21`) still has the pre-review text: item 2 offers `TRUNCATE TABLE` on the KeeperMap state table, which every `exactlyOnce` connector with the same `zkDatabase`/`zkPath` shares, so following it erases other connectors' state (15-REVIEW WR-01 / T-15-14); item 7's `version=*` advice is wrong for regex matchers (WR-03); FORK-DELTA L-05 states `best_effort` as the default without a version (WR-02). Fixed locally by docs-only `505e4981` on `sync/v1.7.0`; at Phase 15 UAT the user chose to leave it unpublished for now, so it reaches `origin` with the next `--no-ff` merge unless pushed earlier. Operators reading the published copy should be pointed at the corrected text~~ **Closed in Phase 16 (PUB-05, PUB-06)**: published in `537beb1f` (run 38074050935, green), with item 8 corrected in `be6b8861` (run 38156040416, green)
 - ~~Audit threat T-13-19 (upstream ERROR log of an unparseable DateTime string) open below the `high` block threshold, listed in FORK-DELTA Known costs~~ **Closed in Phase 18 (WRT-12)** — DateTime/DateTime64 parse-failure ERROR logs carry column, types, exception class and value length only; sentinel masking pinned by `WriterLogMaskingUnitTest`. T-14-16 (`tests.yaml` has no `permissions` block; tag-pinned actions) **closed in Phase 17 (CI-11, CI-13)**
-- [ ] 15-02 code review of the D-01/D-02 commits: 6 Info findings deferred (`15-REVIEW-DISPOSITION.md`)
+- ~~15-02 code review of the D-01/D-02 commits: 6 Info findings deferred (`15-REVIEW-DISPOSITION.md`)~~ **Closed in Phases 17 and 19 (DEBT-08, DEBT-09)**. IN-01..IN-05 were fixed (superseded) by the Nullable(Tuple) fix `2a94e045`, and IN-06's NanoTimestamp mantissa-with-fraction row is pinned in `MetadataFreeJsonWriterTest`
 
 **Phase 17 follow-ups (emerged 2026-10-12, carried to Phase 20's operator checks):**
 
@@ -363,6 +417,16 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - [ ] The generic `doWriteColValue` catch rethrows the original exception, whose message can embed record data (reaches Connect status, DLQ headers and the `Error inserting records` ERROR log). Kept by D-09 so retry classification cannot change; pinned by a test and recorded as FORK-DELTA Known costs item 6 — ROADMAP backlog 999.3 (T-18-07)
 - ~~Phase 20's rollout note (ROLL-02) must state the upgrade carry-over for a batch left `BEFORE_PROCESSING` by the previous release: the batch retries with the same `insert_deduplication_token`, and whether earlier phantom rows remain depends on whether the first attempt landed; ledger L-30 carries the detection query (UAT test 2)~~ **Closed in Phase 20 (ROLL-02)** — `docs/ROLLOUT-v1.7.0_gg2.md` item 1, with the retry consequence pinned live by `DedupTokenRetryLiveTest` (8 cases on 26.9.18.11): a same-token retry is dropped on deduplicating engines even if the bytes changed, so old rows persist when the earlier attempt landed — the gg1 note's "can write rows twice" reasoning was wrong and is corrected
 
+**Milestone-close follow-ups (emerged in `v1.7.0_gg2-hardening`, carried to the next milestone; owners and re-open triggers in `milestones/v1.7.0_gg2-hardening-phases/20-release-publication/20-MILESTONE-CLOSE-RECORD.md`):**
+
+- [ ] 19-REVIEW WR-01: `DeclaredNullability.apply`/`containsTuple` can throw an NPE outside the `try` for a null root or a null-type Column. Unreachable today. Re-open on a new caller or the next change to the pass
+- [ ] 19-REVIEW WR-02: four WARN-content assertions use column name `c`, which also matches the fixed text, so they cannot fail on a dropped column argument. Fix at the next edit of those test classes
+- [ ] 19-REVIEW IN-01..IN-03: the `ESCAPED_NEWLINE` literal is copied into three tests; some test pins are brittle or indirect; `normalise` rewrites backslash-n inside element names and enum labels, which fails open with the metadata-only WARN
+- [ ] 19-REVIEW IN-04: a Tuple Column that lacks a declared element still "applies". Owned by the next milestone. Re-open on a clickhouse-data version change or a DESCRIBE shape that drops a declared element. Pinned by `missingDeclaredElementDoesNotShiftPairing`
+- [ ] Phase 18 deferred item: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` with Mockito, with an intermittent OpenJ9 `retransformClasses` crash risk on this machine. Acknowledged at close
+- [ ] The nightly `integrationTests.yaml` is upstream-identical. Its cron fires now that `custom_build` is the default branch, and it is red by inheritance: upstream's nightly fails daily, and the cloud job has no fork secrets. Disable it in Actions settings, or make it pass
+- [ ] Housekeeping (user): confirm that the Dependabot `gradle` entry shows a recent "Last checked". Revoke the read-only GitHub token and delete the Keychain item `gsd17-gh-actions-read`
+
 **Quality gates:** all three met — moved to Validated at the Phase 5 transition.
 
 **Milestone-close note (v1.2.9_gg4-tests):** every item above is a *review finding*, not an unmet v1 requirement — all 75 v1 requirements shipped. None is a regression; each is either pre-existing fork behavior now documented, or a hardening opportunity the coverage work made visible for the first time.
@@ -370,6 +434,8 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 **Milestone-close note (v1.6.0_gg1-sync):** 17 items open. Ten items came in from `v1.2.9_gg4-tests`: two closed for free (FREE-01, FREE-03) and eight carry forward. Nine are new, from Phase 7, 9, 10 and 11 review and verification. None is an unmet requirement; R-01 is still the only one that loses data.
 
 **Milestone-close note (v1.7.0_gg1-sync):** all 17 carried items are closed. Eleven new items are open: four from Phase 13 review, four from Phase 14 review and CI, and three from Phase 15 publication. Info-level review findings are tracked in each phase's `REVIEW-DISPOSITION.md`. None is an unmet requirement. None loses data silently. 999.1 stores wrong values for `Nullable(Enum)`, but it is a pre-existing defect that is now warned about at discovery. The most urgent item is publishing `505e4981`, because the published rollout doc can erase shared exactly-once state.
+
+**Milestone-close note (v1.7.0_gg2-hardening):** all 11 carried items are closed, including the 15-02 Info findings (DEBT-08, DEBT-09). Ten items are open: backlog 999.3, the five 19-REVIEW advisories and IN-04, the Phase 18 Mockito/OpenJ9 risk, the inherited-red nightly `integrationTests.yaml`, and user housekeeping. The 17-REVIEW WR-01 residue and IN-01..IN-03 stay recorded under the Phase 17 follow-ups above. None is an unmet requirement. None stores a wrong value. 999.3 is the only one that can expose record data.
 
 ### Out of Scope
 
@@ -400,9 +466,15 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - **The `ClickHouseWriter` refactoring exclusion was stretched, not broken.** The R-01 routing, nested-null rules and Int256 fail-fast are targeted edits. The new writer lives in its own file, so the upstream JSON paths stay byte-identical.
 - **Rollout guidance is now in scope; rollout itself is not.** The operator checklist shipped (ROLL-01). Running the upgrade on production connectors stays with the operators.
 
+**Out-of-Scope audit at v1.7.0_gg2-hardening close.** Every exclusion still holds, with three notes:
+
+- **"New connector features" held.** `DeclaredNullability` restores the values the declared column type already promised and adds no capability or config option. The empty-CDC skip extends an existing rule to the remaining routes.
+- **The `ClickHouseWriter` refactoring exclusion held.** Phase 18 touched four targeted regions. The Tuple nullability pass lives in its own file, outside `Table`, the writer and the state classes, so retried batches stay byte-identical.
+- **Upstream-identical code was patched on the record.** The DateTime ERROR-log masking (T-13-19) and the null-message guard in `Utils.handleException` change upstream lines, and each has its FORK-DELTA row. Upstream's nightly `integrationTests.yaml` stays byte-identical even though it now runs red on the fork.
+
 ## Context
 
-- **Repository:** fork `git@github.com:ne1r0n/clickhouse-kafka-connect.git` (`origin`), branch `custom_build` at merge `f328fd21` = upstream `v1.7.0` + the fork delta in `docs/FORK-DELTA.md`. `upstream` remote → `ClickHouse/clickhouse-kafka-connect`. Tags on `origin`: `v1.7.0_gg1` and `v1.6.0_gg1` (published), `pre-v1.7.0-sync` and `pre-v1.6.0-sync` (rollback). Phase 16's docs-only merges `537beb1f` and `be6b8861` publish the planning history through `8497dc1d`. Later bookkeeping lives on local `sync/v1.7.0`. Milestone tags (`v1.7.0_gg1-sync` etc.) are local-only. `custom_build` is protected; the scratch branch was deleted from `origin` once CI went green. Codebase map in `.planning/codebase/` predates the merge (mapped at `22f055c`) and is stale for `ClickHouseWriter`, `ClickHouseHelperClient` and the build.
+- **Repository:** fork `git@github.com:ne1r0n/clickhouse-kafka-connect.git` (`origin`), branch `custom_build` at merge `a246ca01` (`v1.7.0_gg2`) = upstream `v1.7.0` + the fork delta in `docs/FORK-DELTA.md`. Since 2026-10-14 `custom_build` is the GitHub default branch. `upstream` remote → `ClickHouse/clickhouse-kafka-connect`. Tags on `origin`: `v1.7.0_gg2`, `v1.7.0_gg1` and `v1.6.0_gg1` (published); `pre-v1.7.0_gg2`, `pre-v1.7.0-sync` and `pre-v1.6.0-sync` (rollback). The release merge publishes the planning history through `3879b883`. Later bookkeeping, including the `v1.7.0_gg2-hardening` close, lives on local `sync/v1.7.0`. Milestone tags (`v1.7.0_gg1-sync` etc.) are local-only. `custom_build` is protected; the scratch branch was deleted from `origin` once CI went green. Codebase map in `.planning/codebase/` predates the merge (mapped at `22f055c`) and is stale for `ClickHouseWriter`, `ClickHouseHelperClient` and the build.
 - **Stack:** Java 17 toolchain, Gradle 9.6.1 with upstream's version catalog (`gradle/libs.versions.toml`) and `testFixtures`, Kafka Connect API 4.1.1 (fork-pinned), ClickHouse Java client 0.9.6 (fork-pinned; V1 and V2 paths), Jackson + Gson, Lombok. Tests: JUnit Jupiter 5.14.4, Mockito, Hamcrest, Testcontainers 2.0.5 (ClickHouse, Kafka, Toxiproxy). Shared test helpers (`ClickHouseTestHelpers`, `SchemaTestData`, `SchemalessTestData`) live in `src/testFixtures`.
 - **Test layout:**
   - `src/test/java` — unit tests plus ClickHouse-backed tests extending `ClickHouseBase` (starts a Testcontainers ClickHouse per class); run by `./gradlew test`.
@@ -435,8 +507,9 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - **Baseline — established.** Phase 1 found the untouched suite already green on `latest` × V2 once a sandbox environment artifact was neutralized: 187 tests / 0 failed / 7 skipped, rising to 194 / 0 / 7 after the harness work. The final milestone run is 371 / 0 failures / 0 errors / 7 skipped.
 - **CI after v1.6.0_gg1-sync:** same single `latest` × V2 job, now with no `CLICKHOUSE_VERSION`/`CLIENT_VERSION` in the job environment, so CI runs the code defaults that `ClickHouseVersionDefaultUnitTest` pins. Last verified run: `37619434848` on `c61d90ce`, 386 s. The concurrency group is keyed on `github.sha` with `cancel-in-progress`, so pushing a branch and a tag at one SHA produces a cancelled run beside the green one (Active follow-up).
 - **CI after v1.7.0_gg1-sync:** `tests.yaml` triggers on branch pushes only, so a tag push starts no run. Before "Run tests" it compiles the integration-test sources and reports the test fork count (`nproc=4`, `maxParallelForks=2` on public runners). Last verified run: `38050860929` on `f328fd21`, 389 s, the only run on that SHA.
-- **Research:** each milestone's research is archived with it: `milestones/v1.2.9_gg4-tests-research/` (per-feature test inventories, 10 pitfalls), `milestones/v1.6.0_gg1-sync-research/` (merge strategy, conflict map, upgrade pitfalls) and `milestones/v1.7.0_gg1-sync-research/` (v1.7.0 collision map, compression and lz4 advisories, R-01 routing).
-- **Open follow-ups:** eight items under Requirements → Active (the four Phase 14 items closed in Phase 17; two Phase 17 items added). The corrected rollout doc was published in Phase 16, so the `TRUNCATE` example is gone from `origin`. R-01 and the Debezium `Timestamp` gap are both fixed, and no known silent wrong value remains on the metadata-free JSON route. Phase 19 closed 999.1 (`Nullable(Enum)`/`Nullable(Tuple)` round-trip on RowBinary), so no known wrong-value defect remains on local `sync/v1.7.0`; the published `v1.7.0_gg1` still carries 999.1 until the Phase 20 release merge.
+- **CI after v1.7.0_gg2-hardening:** `tests.yaml` runs on `ubuntu-24.04` with all four actions pinned to commit SHAs (Node 24 majors), plus `permissions: contents: read` and `persist-credentials: false`. The fork-count notice reads Gradle's `reportTestForks` (`nproc=4, Gradle maxParallelForks=2`). `TestsWorkflowPinGuardUnitTest` pins all of it Docker-free. `test-head.yaml` is deleted. Dependabot has `gradle` and grouped monthly `github-actions` entries, and version updates are enabled. With `custom_build` the default branch, upstream's nightly `integrationTests.yaml` now fires on schedule and is red by inheritance (Active follow-up). Last verified run: `38587062864` on `a246ca01`, 408 s, the only run on that SHA.
+- **Research:** each milestone's research is archived with it: `milestones/v1.2.9_gg4-tests-research/` (per-feature test inventories, 10 pitfalls), `milestones/v1.6.0_gg1-sync-research/` (merge strategy, conflict map, upgrade pitfalls) `milestones/v1.7.0_gg1-sync-research/` (v1.7.0 collision map, compression and lz4 advisories, R-01 routing) and `milestones/v1.7.0_gg2-hardening-research/` (follow-up hardening and CI hygiene).
+- **Open follow-ups:** ten items under Requirements → Active, all from the `v1.7.0_gg2-hardening` close (see Next Milestone Goals). No known wrong-value defect remains in the published `v1.7.0_gg2`. Backlog 999.3 is the one remaining record-data exposure.
 
 ## Constraints
 
@@ -460,10 +533,18 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - **Tooling.** No new build dependency was added. Five version bumps were user-approved and each landed as its own catalog commit.
 - **Rebasability.** The fork delta grew (84→95 files wide) because hardening and tests sit on top of the merge. The mechanical-merge invariant held again (`54e63648`, zero authored lines), so the next sync starts from the same footing.
 
+**Constraints check at v1.7.0_gg2-hardening close.** All five still apply.
+
+- **Behavior preservation** was crossed again, deliberately and on the record. `Nullable(Enum)`/`Nullable(Tuple)` values change, empty CDC records stop writing rows, and a single-field `Nullable(Tuple)` with a null field now throws. Each is a bug fix with a rollout item, a CHANGELOG line and a FORK-DELTA row.
+- **Tooling.** No library was bumped and no build dependency was added. `build.gradle.kts` gained 18 lines: the test-only lz4 exclude and the `reportTestForks` task.
+- **Rebasability.** The fork delta grew (95→119 files wide, 31→32 in `src/main`), mostly with tests. The one new `src/main` file keeps the Tuple fix outside upstream's `Table`, which keeps the next sync's conflict surface small. The anchors invariant passed over every commit.
+
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| Close `v1.7.0_gg2-hardening` as an override closeout after a passed milestone audit, accepting the stale Phase 16–19 verification digests and acknowledging the Phase 18 Mockito/OpenJ9 item | The digests drifted only because Phase 20 edited the docs and anchors they covered, so re-running four verifiers would change nothing on the tree. The audit, two suite runs and the published-SHA CI run cover the final tree | ✓ Milestone close (2026-10-16; user chose Acknowledge and Override) |
+| Phase 20 D-08: carry the five 19-REVIEW advisories and IN-04 with re-open triggers instead of fixing them before the release | Any fix would be a production or test change after Phase 19's last green gate. None is reachable today or changes shipped behaviour | — Pending (next milestone; triggers in `20-MILESTONE-CLOSE-RECORD.md`) |
 | Phase 20 PUB-08: publish `v1.7.0_gg2` as a rehearsed two-step — push `sync/v1.7.0` once for a green CI rehearsal on the exact tip X0, then the `--no-ff` merge of X into `be6b8861` with the rollback tag pushed first, the release tag only after the merge's own run is green, and the scratch branch deleted last | One branch per SHA keeps "exactly one run per published SHA" provable; tagging after green means the tag can never point at an unproven tree; the pre-pushed rollback tag makes the escape hatch live before the change it escapes | ✓ Phase 20 (user answered verbatim "push", then "publish", both directly) — merge `a246ca01`, run 38587062864 green, tags `v1.7.0_gg2` + `pre-v1.7.0_gg2` on origin, verification 8/8 |
 | Phase 20 ROLL-02: pin the dedup-token retry consequence with a live test before writing the rollout note, instead of reasoning from the gg1 note | The gg1 note's "can write rows twice" claim was unverified; `DedupTokenRetryLiveTest` showed the opposite — a same-token retry is dropped on deduplicating engines even with changed bytes, so the real risk is old rows persisting when the earlier attempt landed | ✓ Phase 20 (20-01, 8/8 green on 26.9.18.11) — rollout item 1 quotes only measured behaviour; detection queries flag gg1 rows and no gg2 rows in the live probe matrix |
 | Phase 19 COLS-10/COLS-08: Tuple element nullability comes from the declared type string (`DeclaredNullability`, fail-open total pass run once per DESCRIBE), and the Enum fix is a single `.isNullable(isNull)` in `Column.extractColumn`; the `Nullable(Tuple)` discovery WARN is deleted | Upstream drops Tuple nullability and DESCRIBE marks every element of a `Nullable(Tuple)` as `Nullable`, so the declared string is the only correct source; keeping the fix outside `Table`/writer/state classes keeps retried batches byte-identical | ✓ Phase 19 — go recorded in `19-SPIKE.md`; gap closure (19-07..19-10) added the `SimpleAggregateFunction` unwrap, made the pass total with a `db.t`-naming fallback WARN, and pinned 7 wrapper edges; suite gate 2× green (980 tests), verification passed 6/6 |
@@ -542,4 +623,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-14 after Phase 20*
+*Last updated: 2026-10-16 after v1.7.0_gg2-hardening milestone*

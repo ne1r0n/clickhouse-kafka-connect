@@ -2,44 +2,42 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg2-hardening
 milestone_name: Follow-up Hardening & CI Hygiene
-current_phase: 20
-status: completed
-stopped_at: Phase 20 complete, verification passed; next /gsd-audit-milestone
-last_updated: "2026-10-14T18:57:18.929Z"
-last_activity: 2026-10-14
-last_activity_desc: Phase 20 complete
-state_head: ab587b2f02b81d30d0bcf322c57909d2c61626cd
+status: Awaiting next milestone
+stopped_at: Milestone v1.7.0_gg2-hardening completed and archived; next /gsd-new-milestone
+last_updated: "2026-10-16T16:20:21.839Z"
+last_activity: 2026-10-16
+last_activity_desc: Milestone v1.7.0_gg2-hardening completed and archived
+state_head: bf8f56c6f957c7cadf07b2cdc464f75782cb4a31
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 29
   completed_plans: 29
   percent: 100
+current_phase: 20
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-14 after Phase 20)
+See: .planning/PROJECT.md (updated 2026-10-16 after v1.7.0_gg2-hardening milestone)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Milestone close — `/gsd-audit-milestone`, then `/gsd-complete-milestone` (all 5 phases complete, Phase 20 verification passed)
+**Current focus:** Planning the next milestone — `/gsd-new-milestone`. Candidates are in `PROJECT.md` → Next Milestone Goals.
 
 ## Current Position
 
-Phase: 20
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-14 — Phase 20 complete
-
-Progress: [██████████] 100%
+Phase: Milestone v1.7.0_gg2-hardening complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-16 — Milestone v1.7.0_gg2-hardening completed and archived
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
+- Total plans completed: `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -153,48 +151,10 @@ The full decision log is in `PROJECT.md` → Key Decisions. Per-phase decision l
 - client-v2 `GenericRecord` from a `Records` iterator is a mutable, reused row view. Snapshot it into a `Map` during iteration.
 - New sink-task tests must create their tables before `start()`, because `ClickHouseWriter.start()` fails against an empty database.
 - A two-run acceptance gate must bust Gradle's cache (`--rerun`). A bare second `./gradlew test` echoes the first run's results.
+- `custom_build` is the fork's GitHub default branch (since 2026-10-14). Dependabot and scheduled workflows read it, so a workflow file merged there can start running on its own schedule.
+- Do not inline-mock `ClickHouseHelperClient` with Mockito in tests that share a JVM with the full suite. It intermittently crashes the OpenJ9 test JVM in `retransformClasses`. Override the writer one level up instead (see `CapturingClickHouseWriter`).
 
-The `v1.7.0_gg1-sync` per-phase decision log is archived with its phase artifacts (`milestones/v1.7.0_gg1-sync-phases/`), and its locked decisions with its requirements (`milestones/v1.7.0_gg1-sync-REQUIREMENTS.md`).
-
-**`v1.7.0_gg2-hardening` roadmap decisions (2026-10-10):**
-
-- Phase order: 16 → 17 → 18 → 19 → 20, sequential on one working tree. Phase 16 (docs-only publication, PUB-05/PUB-06) comes first by user decision. Phase 20 (release) comes last.
-- Phase 16's merge gate is a path allow-list diff (`.planning/`, `docs/`, `CHANGELOG.md`) plus a tree-equality check. The upstream-sync script `verify-merge-invariants.sh` does not apply to a docs-only merge and must not be "fixed". The same holds for the Phase 20 release merge's parent checks; the anchors invariant still runs on the branch tip.
-- CI/build/test hygiene (Phase 17) runs before code because `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19. CI-17 is proven by an approved branch-only scratch push in Phase 17, so the release merge's run is not the new workflow's first.
-- Writer fixes (Phase 18) come before 999.1 (Phase 19), because both edit `ClickHouseWriter.java` and Phase 19's flipped pins rely on Phase 18's column-naming `DataException`. The Phase 19 Tuple spike (COLS-09) runs first in its phase. Its go/no-go cannot hold the release, and the Enum fix ships either way. DEBT-09 follows the COLS-10 outcome.
-- Every approval gate (Phase 16 merge, Phase 17 scratch push, Phase 20 rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
-- [Phase 16]: 16-02: IN-01 fixed by naming 'git merge <merge-commit>^2' in rollout item 8 instead of the unpublished sync/v1.7.0 branch; refines D-05 wording only
-- [Phase 16]: UAT (2026-10-11): 16-REVIEW WR-01 was fixed and republished, not deferred. Item 8 step 1 is now `git read-tree -u --reset pre-v1.7.0-sync` from a clean, fast-forwarded `custom_build`. `git revert -m 1` on the release merge hits 97 conflicts once docs merges sit on top, and Phase 20's release merge will add another. ROADMAP criterion 1b's "after `git revert -m 1`" wording is superseded by "after the rollback commit".
-- [Phase 17]: 17-01: gradle/actions is pinned to the peeled commit 3f5f9adaf7d9fecd50b5935e54106014257a94e6 (v6.4.0), never the tag object; all four action SHAs were re-resolved with git ls-remote and matched the planning-time values — A tag object is not a commit on the action history, and an unchecked SHA is the impostor-commit risk (T-14-16)
-- [Phase 17]: 17-01: the workflow fork-count step reads the reportTestForks Gradle task and fails on a non-integer; test-head.yaml is deleted and future syncs keep it deleted (Recorded Fact 41) — Removes the formula copy (14-REVIEW WR-02); both test-head jobs called tests.yaml as a reusable workflow it does not declare
-- [Phase 17]: 17-02: duplicate org.lz4 is excluded from testRuntimeClasspath only (not configurations.all); shipped classpaths proven byte-identical
-- [Phase 17]: 17-02: DEBT-06 response leg proven from the read's own system.query_log row (lz4 setting, NetworkSendBytes < result_bytes/10); green 0.0129, red 0.9976 on 26.9.16.11
-- [Phase 17]: 17-02: lombok.config selects Jackson 2 via 'lombok.jacksonized.jacksonVersion += 2'; javap of ClickHouseFieldDescriptor and builder byte-identical
-- [Phase 17]: 17-03: CI-17 proof push taken on the user's direct 'push' to the orchestrator; one green tests.yaml run 38172811430 on X=0c90d331, scratch branch deleted, origin heads/tags/custom_build unchanged — D-11 gate satisfied; push shape was one explicit refspec, no tag
-- [Phase 17]: 17-03: finding F1 (fork default branch is main) recorded as undecided; no repository setting changed; carried to Phase 20 operator checks — User gave no default-branch intent at the D-11 gate
-- [Phase 17]: 17-03: CI-17 left in progress; plan 17-04 also declares it and owns the web-UI items (runner image, token permissions, job summary) — requirements.ready-ids reported 0/1 ready (shared-ID gate)
-- [Phase 17]: CI-17 web-UI evidence (E-11) comes from the job log downloaded through the API with a user-created read-only token, not a web-UI paste; token never printed, written or committed — Job logs return 403 without a token; the user chose to create a one-repository Actions read-only token. Provenance is recorded in E-11 with file hashes and flagged for the verifier.
-- [Phase 17]: Default-branch intent stays undecided; Phase 20 operator checks list Dependabot enablement and the default branch (main at Phase 17) as manual checks — Research F1: the fork's default is main, so schedules and Dependabot read main. The user stated no intent (E-10) and D-05 forbids agent changes to repository settings.
-- [Phase 18]: 18-01: WRT-11, D-05 and WRT-10 are three separate fix commits, each carrying its own fork-anchors rows, FORK-DELTA row and ledger rows (D-13) — Keeps every commit self-contained for the per-commit anchors gate and a future upstream sync
-- [Phase 18]: 18-01: ClickHouseWriter.java stays IS DIRTY under the Spotless IDE hook (upstream-identical import order); not reformatted — Reordering its imports would churn the file against upstream; the hook diff is imports-only so new edits add no formatting debt
-- [Phase 18]: WRT-12: date-time parse-failure logs report the value length as String.length() in UTF-16 code units; the rethrown-message residual of the generic catch is recorded (FORK-DELTA item 6, backlog 999.3) and pinned by a test, not fixed — Accepted per D-09 and T-18-07; changing the rethrown type or message must not change retry classification
-- [Phase 18]: JSONP-09: one shared skipEmptyCdcRecord in the writer loops, no short-circuit for an all-empty batch (empty insert body accepted by clients V1 and V2) — Offsets, exactly-once state and the dedup token must cover the whole batch, so the skip lives only in the serialization loops; both clients accepted a zero-row body on 26.9.16.11 (D-01..D-04).
-- [Phase 18]: 18-04: CapturingClickHouseWriter overrides doInsertJson and doInsertRawBinary instead of the V2 hooks plus a mocked ClickHouseHelperClient — Inline-mocking ClickHouseHelperClient crashed the Semeru/OpenJ9 test JVM natively in retransformClasses during the full suite (intermittent); overriding one level up needs no helper client and keeps every pin intact.
-- [Phase 19]: 19-01 spike recommends GO for Nullable(Tuple): every deciding cell (C1-C3) round-trips on side (b) on both twins and the approach test passes; the user answers at the 19-03 gate — Measured on ClickHouse 26.9.17.8 with client V2; 19-SPIKE.md holds the bundle
-- [Phase 19]: 19-01 side (a) pins observed behaviour: CANNOT_READ_ALL_DATA (not ATTEMPT_TO_READ_AFTER_EOF), and C2 id 1 on the plain twin silently stores a wrong row plus a phantom row — Observed by probe before pinning; flips on go in plan 19-04
-- [Phase 19]: Enum fix is a single .isNullable(isNull) in Column.extractColumn; writer, Table and state classes untouched so retried batches stay byte-identical
-- [Phase 19]: Discovery WARN narrowed to Nullable(Tuple( in the Enum commit (D-09); ledger L-33 is the written rationale reversing L-13 (no existing pin asserted it)
-- [Phase 19]: Tuple element nullability comes from the declared type (approach C, fail open per root); the Nullable(Tuple) discovery WARN is deleted — Upstream drops Tuple nullability and DESCRIBE marks every element of a Nullable(Tuple) Nullable, so the declared type string is the only correct source; Table.java stays upstream-identical and the pass runs once per DESCRIBE, never per record
-- [Phase 19]: Phase 19 DEBT-09: IN-01..IN-05 closed as fixed (superseded) citing 2a94e045, consistent with the recorded go; IN-06 left deferred (outside D-12 scope, for Phase 20) — Branch read from 19-SPIKE.md Decision (go); the cited commit removes the code each finding concerns; D-12 limits the plan to IN-01..IN-05
-- [Phase 19]: 19-07: unwrap SimpleAggregateFunction at the entry of DeclaredNullability.collect (all branches), not only the leaf; a root wrapper over a Tuple pairs and flips no flag
-- [Phase 19]: 19-08: DeclaredNullability.apply is total (one try over parse, pairing, assignment) and its fallback WARN names database and table; the matrix control asserts a read-past-end code (CANNOT_READ_ALL_DATA plain, ATTEMPT_TO_READ_AFTER_EOF defaults) — Closes 19-REVIEW WR-01, IN-01, WR-03, IN-03; assignments apply only after the whole root pairs, so a caught exception never leaves a partial root
-- [Phase 20]: Dedup-token retry pinned by measurement (latest 26.9.18.11): a same-token retry is dropped on every deduplicating engine even when its bytes changed, so the rollout wording is 'old rows persist', not 'rows written twice' — Measured by DedupTokenRetryLiveTest (E-01..E-04); exactlyOnce=false is also deduplicated by the token on a replicated table; plain tables and window 0 deduplicate nothing
-- [Phase 20]: Detection queries return suspect lists: Tuple phantom rows have a garbage key and are located by part co-location with a wrong-row suspect; one query text serves Enum8 and Enum16 top level because gg1 failed Enum16 outright — Proven live on gg1 (be6b8861) and gg2 rows, E-10..E-20
-- [Phase 20]: 20-03: the gg2 rollout note corrects gg1 item 1's dedup reasoning in the gg2 note only; the in-flight check is required only for connectors writing Nullable Enum/Tuple columns or Debezium records under exactlyOnce=true
-- [Phase 20]: 20-04: gg2 CHANGELOG, FORK-DELTA refresh and 19-REVIEW dispositions committed; the close record heads advisories '19-REVIEW <ID>' and records the L-38 obligation as fulfilled under its own heading — A second Phase 19 review reused IDs of the first, so ROADMAP's WR-02 (L-38) and 19-REVIEW WR-02 (vacuous assertions) are different items; the deferred one must not be read as the fulfilled one
-- [Phase 20]: Phase 19 threat audit closed 32 of 34 threats; T-19-12 and T-19-26 stay open at medium (below the high block threshold) because 19-REVIEW WR-01 and IN-04 limit their totality and pairing claims; threats_open 0 — The auditor checks presence, not correctness; a finding that limits a mitigation keeps the threat open
-- [Phase 20]: 20-06/20-07: publication ran as rehearse-then-merge — scratch push of X0 for one green CI run, `--no-ff` merge of X into `be6b8861` with the rollback tag pushed first, release tag only after the merge's own run was green, scratch branch deleted last; both gates answered by the user verbatim ("push", "publish") directly to the orchestrator
-- [Phase 20]: 20-08: the user enabled Dependabot version updates and switched the default branch to `custom_build` themselves; no agent touched a setting (origin refs byte-identical before/after, CLOSE-STEPS-RECORDED) — outcomes verbatim in `20-MILESTONE-CLOSE-RECORD.md`
+The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are archived with their phase artifacts (`milestones/<milestone>-phases/`), and their locked decisions with their requirements (`milestones/<milestone>-REQUIREMENTS.md`). Milestone-level decisions are in `PROJECT.md` → Key Decisions.
 
 ### Pending Todos
 
@@ -205,12 +165,9 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: ✓ 2026-10-10: the corrected docs are on `origin/custom_build` at `537beb1f`, published by Phase 16's docs-only `--no-ff` merge of `sync/v1.7.0` (`1e0eefde`) onto `f328fd21`. `tests.yaml` run 38074050935 was green. The rollout doc no longer instructs a `TRUNCATE` of the shared KeeperMap state table (15-REVIEW WR-01 / T-15-14). WR-02, WR-03 and IN-07..IN-10 (plus 16-REVIEW IN-01) are fixed on origin.
-- [Publish]: ✓ 2026-10-11: second docs-only `--no-ff` merge `be6b8861` (parents `537beb1f`, `8497dc1d`), approved by the user in the Phase 16 UAT. It publishes the corrected item 8 rollback (16-REVIEW WR-01/WR-02, IN-02..IN-04). Its single `tests.yaml` run, 38156040416, is green. Everything up to `8497dc1d` is published. Later commits (Phase 16 transition bookkeeping) were a local tail on `sync/v1.7.0`; Phase 20's release merge published them (see the 2026-10-14 [Publish] line). Before any merge on top of `custom_build`, re-run E-16's rollback check (`docs/ROLLOUT-v1.7.0_gg1.md` item 8) against the merge commit before pushing. `.planning/.gsd-ws-arg` was absent. `.planning/state.json` is tracked, with uncommitted local edits that did not ride the merge (CONTEXT's "untracked" note was stale). Milestone tags such as `v1.7.0_gg1-sync` stay local.
-- [Publish]: ✓ 2026-10-14: `v1.7.0_gg2` is on `origin/custom_build` at `a246ca01`, published by Phase 20's `--no-ff` merge of `sync/v1.7.0` (`3879b883`) onto `be6b8861` after the user's own "publish"; its single `tests.yaml` run 38587062864 is green. Tags on origin: `v1.7.0_gg2` (`a246ca01`) and `pre-v1.7.0_gg2` (`be6b8861`, the rollback point, pushed before the merge). The scratch branch `sync/v1.7.0` is deleted from origin (the rehearsal run 38578966373 on X0 `d316bc45` was green). Later `.planning` commits are a local tail on `sync/v1.7.0`.
-- [CI]: ✓ 2026-10-12: Phase 17 pinned `tests.yaml` to `ubuntu-24.04` (ahead of `ubuntu-latest` moving to Ubuntu 26 on 2026-10-19), with SHA-pinned Node 24 actions, a read-only token (`permissions: contents: read`) and `persist-credentials: false`. CI-17 run 38172811430 on `0c90d331` was green: job label `ubuntu-24.04`, token permissions exactly `Contents: read` / `Metadata: read`, no Node 20 or Lombok-ambiguity annotation (E-10, E-11). Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule still holds.
-- [CI]: ✓ 2026-10-14 (plan 20-08): `test-head.yaml` is deleted (CI-16, proven statically in Phase 17, E-04). The manual checks are answered: the user enabled Dependabot version updates and changed the default branch from `main` to `custom_build` themselves (Phase 17 F1 closed — Dependabot and scheduled workflows now read the fork's files). Outcomes recorded verbatim in `20-MILESTONE-CLOSE-RECORD.md` "Manual checks after publication".
-- [CI]: ✓ 2026-10-14 (plan 20-08): 17-REVIEW WR-01 largely closed: with `custom_build` the default branch, the Dependabot tab showed no configuration error (`exclude-paths` did not invalidate `dependabot.yml`) and version-update job 1627650108 was running. One residue carried in `20-MILESTONE-CLOSE-RECORD.md`: confirm the `gradle` entry shows a recent "Last checked" once the first jobs finish.
+- [Publish]: `origin/custom_build` = `a246ca01` (`v1.7.0_gg2`). Local `sync/v1.7.0` is 13 commits past the merged tip `3879b883`: post-publication bookkeeping and this milestone close. They are local-only until the next `--no-ff` merge into `custom_build`. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
+- [CI]: Upstream's nightly `integrationTests.yaml` (byte-identical) fires on `custom_build` since the default-branch switch and is red by inheritance. Upstream's own nightly fails daily, and the fork has no cloud secrets. It is not a fork regression; disable it in Actions settings or fix it (PROJECT.md Active).
+- [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds. Residue of 17-REVIEW WR-01: confirm that the Dependabot `gradle` entry shows a recent "Last checked".
 - [Env]: The user created a fine-grained read-only GitHub token (Actions: Read, single repo, 1-day expiry) in the macOS Keychain item `gsd17-gh-actions-read` for E-11. Revoke it on GitHub and run `security delete-generic-password -s gsd17-gh-actions-read` once no longer needed.
 
 ## Deferred Items
@@ -219,22 +176,21 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| *(none)* | | | | |
+| deferred_items | 18/deferred-items.md: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` (intermittent OpenJ9 `retransformClasses` crash risk) | acknowledged | 2026-10-16 | v1.7.0_gg2-hardening |
 
-`v1.7.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. The close was an override closeout, because the Phase 12/13 verification digests had gone stale and no milestone audit was run (see `MILESTONES.md`). Its eleven open follow-ups are now scheduled as this milestone's 26 requirements (`REQUIREMENTS.md` → Traceability).
+`v1.7.0_gg2-hardening` closed after a passed milestone audit. The open-artifact audit found one deferred item, and the user acknowledged it. The close was an override closeout, because the Phase 16–19 verification digests had gone stale after Phase 20 edited the files they covered (see `MILESTONES.md`). Its follow-ups are under `PROJECT.md` → Requirements → Active.
+
+`v1.7.0_gg1-sync` closed with a clear open-artifact audit, so nothing was acknowledged. The close was an override closeout, because the Phase 12/13 verification digests had gone stale and no milestone audit was run. All eleven of its follow-ups were closed in `v1.7.0_gg2-hardening`.
 
 `v1.6.0_gg1-sync` also closed with a clear audit. All 17 of its follow-ups were closed in `v1.7.0_gg1-sync`.
 
 ## Session Continuity
 
-Last session: 2026-10-15
-Stopped at: Phase 20 UAT complete (35/35 passed, 0 issues, `20-UAT.md` status complete); next /gsd-audit-milestone
+Last session: 2026-10-16
+Stopped at: Milestone v1.7.0_gg2-hardening completed and archived; next /gsd-new-milestone
 Resume file: None
 
 ## Operator Next Steps
 
-- `v1.7.0_gg2` is published: merge `a246ca01` on `origin/custom_build`, tags `v1.7.0_gg2` and `pre-v1.7.0_gg2` on origin, CI run 38587062864 green, `origin/sync/v1.7.0` deleted. The three post-publication manual checks are answered and recorded in `20-MILESTONE-CLOSE-RECORD.md` (Dependabot enabled; default branch changed to `custom_build` by the user; no Dependabot config error). In order:
-- Phase 20 verification passed (8/8 must-haves, `20-VERIFICATION.md`, status `passed`) and UAT passed (2026-10-15, 35/35 checks in `20-UAT.md`: 27 auto-covered, 8 human-confirmed). `20-SECURITY.md` exists with `threats_open: 0` — the earlier advisory to run `/gsd-secure-phase 20` is resolved.
-- Run `/gsd-audit-milestone` (D-12). It replaces the stale, untracked `.planning/v1.7.0_gg2-hardening-MILESTONE-AUDIT.md` snapshot of 2026-10-10 — do not commit that snapshot — so `v1.7.0_gg2-hardening` closes on a fresh audit instead of a third override closeout.
-- Run `/gsd-complete-milestone`, carrying `20-MILESTONE-CLOSE-RECORD.md` into MILESTONES.md Known gaps and PROJECT.md Active: the five 19-REVIEW advisories (WR-01, WR-02, IN-01, IN-02, IN-03), IN-04 with its pin, backlog 999.3, and the three manual-check outcomes (including the `gradle` "Last checked" residue).
-- Revoke the read-only GitHub token if it was used: on GitHub under Settings, Developer settings, Personal access tokens, then `security delete-generic-password -s gsd17-gh-actions-read`. (It was not needed this session — both CI runs were read unauthenticated.)
+- Start the next milestone with `/gsd-new-milestone` (candidates in `PROJECT.md` → Next Milestone Goals).
+- Housekeeping (user): revoke the read-only GitHub token and run `security delete-generic-password -s gsd17-gh-actions-read`. Glance at the Dependabot tab for the `gradle` entry's "Last checked". Decide whether to disable the inherited-red nightly `integrationTests.yaml`.
