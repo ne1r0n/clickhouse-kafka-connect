@@ -102,6 +102,13 @@ So D-01..D-04 replace the `PRE_TAG` idea. `PRE_TAG` stays at its default `pre-v1
   - Clicking an option does not count as "in their own words".
   - The OPS-01 disable date comes from the user's answer. The API timestamp corroborates it.
 
+### Spotless gate (DEPS-01) — decided at plan time, 2026-10-17
+- **D-14:** **Baseline-equal spotless gate, no tree-wide reformat.** Research found `spotlessCheck` already red on `sync/v1.7.0` under 8.10.1: 46 files, import-order lines only, 37 of them byte-identical to upstream `v1.7.0`. Under 8.10.4 it is identically red (same `spotlessApply` diff, md5 `3393873370f9b48d2239131eedba8ff8`). The bump demands no reformatting. The user chose, directly in the plan-phase session:
+  - No 46-file `spotlessApply` commit. Phases 7, 8 and 11 declined it for the same reasons: upstream-sync noise and overlap with Phase 22–23 files.
+  - The DEPS-01 spotless gate is **"no new violations"**: the merged tree's `spotlessApply` diff equals the 8.10.1 baseline diff (same md5, same 46 files), checked in a throwaway worktree with the recipe in `21-RESEARCH.md` Pitfall 3.
+  - Every file this phase edits (at least `TestsWorkflowPinGuardUnitTest.java`) must be spotless-clean on its own (the per-file recipe).
+  - ROADMAP Phase 21 SC1, the Phase 22 `Depends on` line, REQUIREMENTS DEPS-01 and STATE were amended to this wording the same day. A verifier reads "`spotlessCheck` passes" there per D-14.
+
 ### Claude's Discretion
 - The exemption file's name, column order, and whether it is read from `RANGE_END`'s tree (like `CONFLICTED_PATHS_FILE`) or the working tree. Recommendation: read it from `RANGE_END`'s tree, use TAB-separated columns like `fork-anchors.txt`, and require the full 40-hex SHA.
 - Whether to rehearse the merge and the gate in a throwaway worktree before committing on `sync/v1.7.0`. Recommendation: yes. Expected result: no conflicts, and only the BLD-08 `slf4j-reload4j` row at `6473e24f` violating.

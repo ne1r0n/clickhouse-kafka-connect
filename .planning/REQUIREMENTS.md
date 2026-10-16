@@ -26,7 +26,7 @@ No milestone-level research was run; plan-phase researches each phase.
 - [ ] **DEPS-01**: The working branch contains `origin/custom_build`'s three Dependabot commits:
   - lombok 1.18.48 (#1), spotless 8.10.4 (#2) and slf4j-reload4j 2.0.20 (#3), tip `6473e24f`;
   - brought in by a merge of `custom_build`, with no rebase and no force;
-  - `spotlessCheck` passes under spotless 8.10.4, and `testUnit` stays green.
+  - spotless 8.10.4 adds no violations beyond the pre-existing 8.10.1 baseline (the same `spotlessApply` diff, no tree-wide reformat; amended 2026-10-17 per 21-CONTEXT D-14), and `testUnit` stays green.
 
 ### Record-data exposure — backlog 999.3
 
