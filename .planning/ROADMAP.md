@@ -105,10 +105,19 @@ Phase artifacts: `milestones/v1.7.0_gg2-hardening-phases/`
 **Plans:** 5 plans
 
 Plans:
+**Wave 1**
 - [ ] 21-01-PLAN.md — OPS-01..03 operator checks at the start: REST/clock tracer (E-01), blocking-human checkpoint, answers verbatim (E-02) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 21-02-PLAN.md — DEPS-01 merge of origin/custom_build (6473e24f) with the D-03 edits inside, then build, Lombok, testUnit and spotless baseline-equal evidence (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 21-03-PLAN.md — SHA- and row-pinned anchor exemption in verify-merge-invariants.sh plus fail-first self-test cases ST5-ST9 (D-01, D-02, D-04) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 21-04-PLAN.md — Pin guard: rules extracted, fixtures red then green, CI-18 fork-step/task rules, CI-19 runs-on/write-scope fixes, D-09 exclude-paths guard (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 21-05-PLAN.md — Phase close gate at the tip, then the OPS-01 closing observation at or after 2026-10-17T12:00:00Z (D-11, D-12) (wave 5)
 
 **Note**: DEPS-01 is the opening plan and gates all code work in this milestone.

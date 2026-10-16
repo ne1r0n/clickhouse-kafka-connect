@@ -4,16 +4,16 @@ milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
 current_phase: 21
 current_phase_name: Dependabot Integration & CI Hygiene
-status: planning
+status: executing
 stopped_at: Phase 21 context gathered
-last_updated: "2026-10-16T21:07:52.077Z"
+last_updated: "2026-10-16T23:35:07.809Z"
 last_activity: 2026-10-16
 last_activity_desc: Roadmap created for v1.7.0_gg3-hardening (Phases 21-24, 20/20 requirements mapped)
-state_head: 9f5982507917e10d997a9243f2fa14f80a6cefb8
+state_head: df9a3d7af76d93d228eaf44fc9ff16c7b44ac419
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 5
   completed_plans: 0
   percent: 0
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-16 after starting v1.7.0_gg3-hardenin
 
 ## Current Position
 
-Phase: 21 of 24 (Dependabot Integration & CI Hygiene)
+Phase: 21 (Dependabot Integration & CI Hygiene) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-10-16 — Roadmap created for v1.7.0_gg3-hardening (Phases 21-24, 20/20 requirements mapped)
 
 Progress: [░░░░░░░░░░] 0%
@@ -161,7 +161,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 
 **`v1.7.0_gg3-hardening` roadmap decisions (2026-10-16):**
 
-- Phase order: 21 → 22 → 23 → 24, sequential on one working tree. DEPS-01 opens Phase 21 and gates all code work: `origin/custom_build` is merged into `sync/v1.7.0` (no rebase, no force), and `spotlessCheck` and `testUnit` are green on the merged tree before any code plan starts. The release (Phase 24) comes last.
+- Phase order: 21 → 22 → 23 → 24, sequential on one working tree. DEPS-01 opens Phase 21 and gates all code work: `origin/custom_build` is merged into `sync/v1.7.0` (no rebase, no force), and before any code plan starts the merged tree adds no spotless violations beyond the 8.10.1 baseline and `testUnit` is green. The baseline is 46 import-order files, red before the bump. Amended 2026-10-17 per 21-CONTEXT D-14: no tree-wide reformat. The release (Phase 24) comes last.
 - Backlog 999.3 (Phase 22): HARN-08 comes first, so no new writer test uses the inline mock. The classification pin (WRT-14) is committed and green on the unchanged writer before the WRT-13 change. WRT-15's doc edits ride in the same commit as the writer code.
 - Phase 23's DEBT-12 runs last in its phase. It records every 17-REVIEW and 19-REVIEW outcome, including the Phase 21 closures (CI-18, CI-19, OPS-02) and the COLS-14 decision. COLS-14 goes to a user checkpoint if it is not clear-cut.
 - Operator checks OPS-01..OPS-03 are user actions in the GitHub web UI, done in Phase 21 (D-11: no agent changes repository settings). OPS-01 comes early so that nights pass with no scheduled run before the release; Phase 24 re-checks it.
