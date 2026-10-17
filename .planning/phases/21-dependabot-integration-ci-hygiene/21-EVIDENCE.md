@@ -16,8 +16,8 @@
 | E-05 | DEPS-01 (dependencyInsight) | pass |
 | E-06 | DEPS-01 (testUnit and Lombok warning) | pass |
 | E-07 | DEPS-01, D-14 (spotless baseline-equal) | pass |
-| E-08 | DEPS-01, D-01, D-02 (gate with and without the exemption) | pending (plan 21-03) |
-| E-09 | D-04 (self-test) | pending (plan 21-03) |
+| E-08 | DEPS-01, D-01, D-02 (gate with and without the exemption) | pass |
+| E-09 | D-04 (self-test) | pass |
 | E-10 | CI-18, CI-19, D-07 (pin-guard red run) | pending (plan 21-04) |
 | E-11 | CI-18, CI-19, D-09, D-14 (pin-guard green run) | pending (plan 21-04) |
 | E-12 | DEPS-01 (phase close gate) | pending (plan 21-05) |
@@ -220,5 +220,79 @@ cmp: identical
 The post-merge result equals the plan-time 8.10.1 baseline, so the merge adds no spotless violation. No reformat commit was made (D-14), and no spotlessApply ran in the main tree.
 
 Timestamp: 2026-10-17T08:46:35Z (spotless-post.txt written)
+
+Verdict: pass
+
+### E-08: Gate with and without the exemption (D-01, D-02)
+
+Commands as run (repo root, after commit `a231d4f1`, background, both in parallel, output in `/tmp/gsd21/exec/gate-exempt.*` and `gate-noexempt.*`):
+
+1. `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD`
+2. `ANCHOR_EXEMPTIONS_FILE= bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD`
+
+```text
+run 1 (default, exemption file at HEAD): exit status 0, stderr empty
+invariants: provenance_paths=21 anchor_commits=386 anchor_rows=59 marker_commits=433 anchor_exempt=1 result=PASS
+
+run 2 (ANCHOR_EXEMPTIONS_FILE= , lookup disabled): exit status 1, stderr exactly one line
+ANCHOR VIOLATION: 6473e24f build.gradle.kts 'slf4j-reload4j:2.0.17' expected 1 got 0 (BLD-08)
+invariants: provenance_paths=21 anchor_commits=386 anchor_rows=59 marker_commits=433 anchor_exempt=0 result=FAIL
+```
+
+The one data row in `.planning/scripts/fork-anchor-exemptions.txt` is what lets the full range `pre-v1.7.0-sync..HEAD` pass, and `anchor_exempt=1` records that exactly one violation was forgiven.
+
+Phases 22-24: `PRE_TAG` stays `pre-v1.7.0-sync` (`c61d90ce`), and the gate command stays `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD`. Phase 24's "PRE_TAG Phase 21 chose" means this default plus `.planning/scripts/fork-anchor-exemptions.txt`. Another published bump of an anchored line is absorbed by adding a row to that file, not by editing the script.
+
+Hand-off to Phase 24: the "mechanical checks" paragraph of `docs/FORK-DELTA.md` (near L206) should name `fork-anchor-exemptions.txt` beside `fork-anchors.txt`. Per the ROADMAP shared-files rule Phase 21 edited only its own FORK-DELTA rows, so this sentence belongs to Phase 24's completeness pass. It is not done here.
+
+Timestamp: 2026-10-17T08:54:45Z (gate-exempt.rc and gate-noexempt.rc written)
+
+Verdict: pass
+
+### E-09: Self-test, fail-first (D-04)
+
+Commands as run (three background runs in parallel, combined output and exit status in `/tmp/gsd21/exec/selftest-{new,oldgate,mutant}.{out,rc}`):
+
+1. new: `bash .planning/scripts/verify-merge-invariants-selftest.sh` in the main tree (patched gate, uncommitted self-test at the time of the run).
+2. oldgate: a throwaway worktree at `a231d4f1^` (`a044dded`, the gate before the patch), with the new self-test copied in.
+3. mutant: a throwaway worktree at `a231d4f1` whose gate lookup was changed from `grep -qxF -e "${c}${TAB}${a_path}${TAB}${a_pattern}"` to the SHA-only `grep -qF -e "${c}"`, with the new self-test copied in.
+
+```text
+new (exit status 0, 16 PASS, 0 FAIL, 0 SKIP):
+PASS ST1 ST2 ST3 ST4
+PASS ST5-empty-file ST5-disabled ST6-other-row ST6-other-commit
+PASS ST7-other-bld08-row ST7-exempted-row-silent
+PASS ST8-short-sha ST8-uppercase-sha ST8-missing-reason ST8-empty-reason ST8-extra-field
+PASS ST9-exact-row
+selftest: no failures
+
+oldgate (exit status 1, 9 PASS, 7 FAIL):
+PASS ST1 ST2 ST3 ST4 ST5-empty-file ST5-disabled ST6-other-row ST6-other-commit ST7-other-bld08-row
+FAIL ST7-exempted-row-silent (stderr still reports slf4j-reload4j:2.0.17)
+FAIL ST8-short-sha, ST8-uppercase-sha, ST8-missing-reason, ST8-empty-reason, ST8-extra-field
+     (each: exit 1, but no 'ANCHOR EXEMPTION VIOLATION' on stderr)
+FAIL ST9-exact-row (exit 1, result=FAIL: the old gate has no exemption)
+selftest: 7 case(s) failed
+
+mutant (SHA-only lookup; exit status 1, 14 PASS, 2 FAIL):
+FAIL ST6-other-row (exit 0, wanted non-zero with the slf4j violation)
+FAIL ST7-other-bld08-row (exit 0, wanted non-zero with the kafka violation)
+selftest: 2 case(s) failed
+```
+
+ST5 and ST6 pass against the old gate because they assert narrowness, not the feature. ST7-exempted-row-silent, ST8-* and ST9-exact-row are the fail-first anchors. ST6-other-row and ST7-other-bld08-row are the cases that go red on an over-broad lookup.
+
+Default merge lookup after the DEPS-01 merge (`git rev-list --first-parent --merges pre-v1.7.0-sync..HEAD`, newest first, so `tail -1` is the oldest):
+
+```text
+82524e12969cdcd8345835c1082b30b04da31c5a
+54e6364858cd728e3427ce2058fc00380895c689
+```
+
+The self-test header (line 6) now says the default is the oldest first-parent merge, and ST4's needle is `'TARGET_TABLE_FILTER' expected`, the row its awk breaks.
+
+Refs unchanged: `git for-each-ref --format='%(objectname) %(refname)'` before and after the three runs is byte-identical (145 lines, `cmp` clean). Both throwaway worktrees were removed and `git worktree list` shows only the main tree. No `git stash` was used.
+
+Timestamp: 2026-10-17T09:02:56Z (selftest-new.rc and selftest-oldgate.rc written)
 
 Verdict: pass
