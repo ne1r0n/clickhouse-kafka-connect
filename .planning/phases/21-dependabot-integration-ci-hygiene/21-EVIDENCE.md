@@ -20,7 +20,7 @@
 | E-09 | D-04 (self-test) | pass |
 | E-10 | CI-18, CI-19, D-07 (pin-guard red run) | pass |
 | E-11 | CI-18, CI-19, D-09, D-14 (pin-guard green run) | pass |
-| E-12 | DEPS-01 (phase close gate) | pending (plan 21-05) |
+| E-12 | DEPS-01, D-14 (phase close gate at the tip) | pass |
 | E-13 | OPS-01, D-11 (closing observation) | pending (plan 21-05) |
 
 ### E-01: OPS facts at phase start (REST, GitHub clock, Keychain)
@@ -432,5 +432,50 @@ This is the deliberate, user-decided exception (D-10) to AGENTS.md's rule "Exist
 Eight inputs are newly accepted (two runs-on trailing-comment fixtures, six step-text fixtures), exactly the eight fixtures whose E-10 messages show the old rule rejecting them. `- run: echo write-all` is not among them: the old regex already accepted it. One class is newly rejected (the quoted `"write"` and `'write'` forms), so the read-only pin is strictly stronger on real grants.
 
 Timestamp: 2026-10-17T09:10:18Z (testunit-pinguard.rc and per-file spotless result)
+
+Verdict: pass
+
+### E-12: Phase close gate at the tip (DEPS-01, D-01, D-04, D-14)
+
+Commands as run (repo root, tip `4ba6ce23dd09589edad48168c53251b439a22923` on `sync/v1.7.0`, main working tree, output in `/tmp/gsd21/exec/`):
+
+1. Background, in parallel: `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD > gate-final.out 2> gate-final.err; echo $? > gate-final.rc` and `bash .planning/scripts/verify-merge-invariants-selftest.sh > selftest-final.out 2>&1; echo $? > selftest-final.rc`
+2. `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > testunit-final.log 2>&1`
+3. Spotless in `git worktree add --detach /tmp/gsd21/wt-fmt-final HEAD`: `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q spotlessApply`, then `git diff | md5`, `git diff --name-only | wc -l | tr -d ' '` and `git diff --shortstat | sed 's/^ *//'` into `spotless-final.txt`; worktree removed (`git worktree list` shows only the main tree).
+4. Scope and no-push: `git diff` / `git ls-remote origin` / `git rev-list --left-right --count origin/custom_build...HEAD`, with M the newest first-parent merge in `pre-v1.7.0-sync..HEAD`.
+
+```text
+gate (gate-final.rc): 0, stderr (gate-final.err) empty
+invariants: provenance_paths=21 anchor_commits=391 anchor_rows=59 marker_commits=438 anchor_exempt=1 result=PASS
+
+self-test (selftest-final.rc): 0, 16 PASS lines, last line:
+selftest: no failures
+
+testUnit (testunit-final.log):
+Test result: SUCCESS
+Tests summary: 577 tests, 575 succeeded, 0 failed, 2 skipped
+
+spotless-final.txt (tip, spotless 8.10.4; equals E-07's):
+3393873370f9b48d2239131eedba8ff8
+46
+46 files changed, 260 insertions(+), 337 deletions(-)
+
+M (newest first-parent merge): 82524e12969cdcd8345835c1082b30b04da31c5a, second parent 6473e24f372a8b37dfd8cc8cf3124e6cff52edca
+non-.planning paths changed M^1..HEAD (exactly four):
+build.gradle.kts
+docs/FORK-DELTA.md
+gradle/libs.versions.toml
+src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java
+git diff --quiet M HEAD -- src/main src/integrationTest src/testFixtures .github build.gradle.kts gradle lombok.config VERSION settings.gradle.kts: succeeds
+src/test changed M..HEAD: only the pin-guard class (TestsWorkflowPinGuardUnitTest.java)
+git diff --quiet v1.7.0 HEAD -- .github/workflows/integrationTests.yaml: succeeds (identical)
+git ls-remote origin: refs at HEAD's SHA = 0
+git ls-remote origin refs/heads/custom_build: 6473e24f372a8b37dfd8cc8cf3124e6cff52edca
+left-right count origin/custom_build...HEAD: 0	35 (left side 0, so origin/custom_build is contained in HEAD)
+```
+
+The three DEPS-01 merge files are changed only by the merge commit M, and the pin-guard class is the only Phase 21 change to `src/test`. Nothing was pushed.
+
+Timestamp: 2026-10-17T09:20:12Z (selftest-final.rc and gate-final.rc written; spotless and scope facts taken minutes earlier at the same tip)
 
 Verdict: pass
