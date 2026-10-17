@@ -1,14 +1,13 @@
 package com.clickhouse.kafka.connect.ci;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -54,31 +53,33 @@ class TestsWorkflowPinGuardUnitTest {
                 .collect(Collectors.toList());
     }
 
-    @Test
-    @DisplayName("every action in tests.yaml is pinned to a full commit SHA with a version comment")
-    void everyActionIsPinnedToAFullCommitShaWithAVersionComment() throws IOException {
+    private static void assertNoProblem(Optional<String> problem) {
+        problem.ifPresent(message -> fail(message));
+    }
+
+    static Optional<String> pinnedUsesProblem(List<String> lines) {
         List<String> uses =
-                nonCommentLines(WORKFLOW).stream()
+                lines.stream()
                         .filter(line -> USES_LINE.matcher(line).matches())
                         .collect(Collectors.toList());
 
-        assertTrue(
-                uses.size() >= MIN_PINNED_ACTIONS,
-                "Expected at least " + MIN_PINNED_ACTIONS + " 'uses:' lines in " + WORKFLOW
-                        + " but found " + uses.size() + ": an empty or unreadable workflow must not pass");
-        for (String line : uses) {
-            assertTrue(
-                    PINNED_USES.matcher(line).matches(),
-                    "Action is not pinned to a 40-hex commit with a '# vX.Y.Z' comment: '"
-                            + line.strip()
-                            + "'");
+        if (uses.size() < MIN_PINNED_ACTIONS) {
+            return Optional.of(
+                    "Expected at least " + MIN_PINNED_ACTIONS + " 'uses:' lines in " + WORKFLOW
+                            + " but found " + uses.size() + ": an empty or unreadable workflow must not pass");
         }
+        for (String line : uses) {
+            if (!PINNED_USES.matcher(line).matches()) {
+                return Optional.of(
+                        "Action is not pinned to a 40-hex commit with a '# vX.Y.Z' comment: '"
+                                + line.strip()
+                                + "'");
+            }
+        }
+        return Optional.empty();
     }
 
-    @Test
-    @DisplayName("every job in tests.yaml runs on the pinned ubuntu-24.04 runner")
-    void everyJobRunsOnUbuntu2404() throws IOException {
-        List<String> lines = nonCommentLines(WORKFLOW);
+    static Optional<String> runsOnProblem(List<String> lines) {
         List<String> runners =
                 lines.stream()
                         .map(RUNS_ON::matcher)
@@ -86,59 +87,58 @@ class TestsWorkflowPinGuardUnitTest {
                         .map(m -> m.group(1))
                         .collect(Collectors.toList());
 
-        assertFalse(runners.isEmpty(), "No 'runs-on:' line found in " + WORKFLOW);
+        if (runners.isEmpty()) {
+            return Optional.of("No 'runs-on:' line found in " + WORKFLOW);
+        }
         for (String runner : runners) {
-            assertEquals(
-                    EXPECTED_RUNNER,
-                    runner,
-                    "runs-on must be the pinned runner, not '" + runner + "'");
+            if (!EXPECTED_RUNNER.equals(runner)) {
+                return Optional.of("runs-on must be the pinned runner, not '" + runner + "'");
+            }
         }
         for (String line : lines) {
-            assertFalse(
-                    line.contains(FLOATING_RUNNER),
-                    "The floating runner label must not appear outside comments: '"
-                            + line.strip()
-                            + "'");
+            if (line.contains(FLOATING_RUNNER)) {
+                return Optional.of(
+                        "The floating runner label must not appear outside comments: '"
+                                + line.strip()
+                                + "'");
+            }
         }
+        return Optional.empty();
     }
 
-    @Test
-    @DisplayName("the workflow token is read-only: one top-level permissions block, contents read")
-    void workflowTokenIsReadOnly() throws IOException {
-        List<String> lines = nonCommentLines(WORKFLOW);
-
-        int blocks = 0;
+    static Optional<String> writeScopeProblem(List<String> lines) {
         for (String line : lines) {
-            if (PERMISSIONS_KEY.matcher(line).matches()) {
-                blocks++;
+            if (WRITE_SCOPE.matcher(line).matches()) {
+                return Optional.of("No line may grant a write scope: '" + line.strip() + "'");
             }
-            assertFalse(
-                    WRITE_SCOPE.matcher(line).matches(),
-                    "No line may grant a write scope: '" + line.strip() + "'");
         }
-        assertEquals(
-                1,
-                blocks,
-                "Exactly one 'permissions:' line is allowed, at the top level, so every job inherits it");
+        return Optional.empty();
+    }
+
+    static Optional<String> permissionsBlockProblem(List<String> lines) {
+        long blocks = lines.stream().filter(line -> PERMISSIONS_KEY.matcher(line).matches()).count();
+        if (blocks != 1) {
+            return Optional.of(
+                    "Exactly one 'permissions:' line is allowed, at the top level, so every job inherits it");
+        }
 
         int top = lines.indexOf(TOP_LEVEL_PERMISSIONS);
-        assertTrue(top >= 0, "Missing a column-0 '" + TOP_LEVEL_PERMISSIONS + "' line in " + WORKFLOW);
+        if (top < 0) {
+            return Optional.of("Missing a column-0 '" + TOP_LEVEL_PERMISSIONS + "' line in " + WORKFLOW);
+        }
         String next =
                 lines.subList(top + 1, lines.size()).stream()
                         .filter(line -> !line.isBlank())
                         .findFirst()
                         .orElse("");
-        assertEquals(
-                READ_ONLY_CONTENTS,
-                next,
-                "The top-level permissions block must hold only 'contents: read', found: '" + next + "'");
+        if (!READ_ONLY_CONTENTS.equals(next)) {
+            return Optional.of(
+                    "The top-level permissions block must hold only 'contents: read', found: '" + next + "'");
+        }
+        return Optional.empty();
     }
 
-    @Test
-    @DisplayName("checkout does not persist the token in .git/config")
-    void checkoutDoesNotPersistCredentials() throws IOException {
-        List<String> lines = nonCommentLines(WORKFLOW);
-
+    static Optional<String> checkoutCredentialsProblem(List<String> lines) {
         int checkouts = 0;
         for (int i = 0; i < lines.size(); i++) {
             if (!lines.get(i).contains(CHECKOUT)) {
@@ -149,30 +149,64 @@ class TestsWorkflowPinGuardUnitTest {
             for (int j = i + 1; j < lines.size() && !LIST_ITEM.matcher(lines.get(j)).matches(); j++) {
                 persistsNothing |= lines.get(j).strip().equals(NO_PERSISTED_CREDENTIALS);
             }
-            assertTrue(
-                    persistsNothing,
-                    "Checkout step must set '"
-                            + NO_PERSISTED_CREDENTIALS
-                            + "': '"
-                            + lines.get(i).strip()
-                            + "'");
+            if (!persistsNothing) {
+                return Optional.of(
+                        "Checkout step must set '"
+                                + NO_PERSISTED_CREDENTIALS
+                                + "': '"
+                                + lines.get(i).strip()
+                                + "'");
+            }
         }
-        assertTrue(checkouts >= 1, "No '" + CHECKOUT + "' step found in " + WORKFLOW);
+        if (checkouts < 1) {
+            return Optional.of("No '" + CHECKOUT + "' step found in " + WORKFLOW);
+        }
+        return Optional.empty();
+    }
+
+    static Optional<String> dependabotEcosystemProblem(List<String> lines) {
+        List<String> stripped = lines.stream().map(String::strip).collect(Collectors.toList());
+
+        if (!stripped.contains(GITHUB_ACTIONS_ECOSYSTEM)) {
+            return Optional.of("Missing '" + GITHUB_ACTIONS_ECOSYSTEM + "' in " + DEPENDABOT);
+        }
+        if (!stripped.contains(GRADLE_ECOSYSTEM)) {
+            return Optional.of(
+                    "The existing '" + GRADLE_ECOSYSTEM + "' entry must stay in " + DEPENDABOT);
+        }
+        return Optional.empty();
+    }
+
+    @Test
+    @DisplayName("every action in tests.yaml is pinned to a full commit SHA with a version comment")
+    void everyActionIsPinnedToAFullCommitShaWithAVersionComment() throws IOException {
+        assertNoProblem(pinnedUsesProblem(nonCommentLines(WORKFLOW)));
+    }
+
+    @Test
+    @DisplayName("every job in tests.yaml runs on the pinned ubuntu-24.04 runner")
+    void everyJobRunsOnUbuntu2404() throws IOException {
+        assertNoProblem(runsOnProblem(nonCommentLines(WORKFLOW)));
+    }
+
+    @Test
+    @DisplayName("the workflow token is read-only: one top-level permissions block, contents read")
+    void workflowTokenIsReadOnly() throws IOException {
+        List<String> lines = nonCommentLines(WORKFLOW);
+
+        assertNoProblem(writeScopeProblem(lines));
+        assertNoProblem(permissionsBlockProblem(lines));
+    }
+
+    @Test
+    @DisplayName("checkout does not persist the token in .git/config")
+    void checkoutDoesNotPersistCredentials() throws IOException {
+        assertNoProblem(checkoutCredentialsProblem(nonCommentLines(WORKFLOW)));
     }
 
     @Test
     @DisplayName("dependabot.yml updates the github-actions ecosystem next to gradle")
     void dependabotUpdatesTheGithubActionsEcosystem() throws IOException {
-        List<String> stripped =
-                nonCommentLines(DEPENDABOT).stream()
-                        .map(String::strip)
-                        .collect(Collectors.toList());
-
-        assertTrue(
-                stripped.contains(GITHUB_ACTIONS_ECOSYSTEM),
-                "Missing '" + GITHUB_ACTIONS_ECOSYSTEM + "' in " + DEPENDABOT);
-        assertTrue(
-                stripped.contains(GRADLE_ECOSYSTEM),
-                "The existing '" + GRADLE_ECOSYSTEM + "' entry must stay in " + DEPENDABOT);
+        assertNoProblem(dependabotEcosystemProblem(nonCommentLines(DEPENDABOT)));
     }
 }
