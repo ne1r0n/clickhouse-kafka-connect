@@ -1,0 +1,13 @@
+# SHA-pinned exemptions for invariant 3 of verify-merge-invariants.sh, read from the range end tree.
+#
+# Format: four TAB-separated fields per row:
+#   full lowercase 40-hex commit SHA <TAB> path <TAB> fixed-string pattern <TAB> reason
+# The path and the pattern are spelled exactly as that commit own copy of fork-anchors.txt spells
+# them, not as HEAD spells them (Phase 21 research, Pitfall 7).
+# Only an already-published commit can be listed, because a commit cannot know its own SHA.
+# Only the count mismatch of that one anchor row at that one commit is forgiven. A malformed row
+# fails the gate (ANCHOR EXEMPTION VIOLATION). An unused row is not an error. A missing file means
+# no exemptions.
+# Another published bump of an anchored line is absorbed by adding a row here, never by editing
+# the script (D-02).
+6473e24f372a8b37dfd8cc8cf3124e6cff52edca	build.gradle.kts	slf4j-reload4j:2.0.17	Dependabot #3 on origin/custom_build bumped slf4j-reload4j to 2.0.20 without fork-anchors.txt; the DEPS-01 merge moves the row (D-03)

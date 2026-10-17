@@ -11,6 +11,9 @@
 #                           empty skips the cross-check                  (default .planning/scripts/conflicted-paths-v1.7.0.txt)
 #   ANCHORS_FILE            repo-relative fork anchor inventory, read from every commit's tree;
 #                           empty skips invariant 3                      (default .planning/scripts/fork-anchors.txt)
+#   ANCHOR_EXEMPTIONS_FILE  repo-relative SHA-pinned anchor exemption list, read from RANGE_END's tree;
+#                           a missing file means no exemptions, empty skips the lookup
+#                                                                        (default .planning/scripts/fork-anchor-exemptions.txt)
 
 set -uo pipefail
 
@@ -24,6 +27,7 @@ PRE_TAG="${PRE_TAG-pre-v1.7.0-sync}"
 UPSTREAM_REF="${UPSTREAM_REF-refs/tags/v1.7.0}"
 CONFLICTED_PATHS_FILE="${CONFLICTED_PATHS_FILE-.planning/scripts/conflicted-paths-v1.7.0.txt}"
 ANCHORS_FILE="${ANCHORS_FILE-.planning/scripts/fork-anchors.txt}"
+ANCHOR_EXEMPTIONS_FILE="${ANCHOR_EXEMPTIONS_FILE-.planning/scripts/fork-anchor-exemptions.txt}"
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
@@ -34,6 +38,7 @@ provenance_paths=0
 anchor_commits=0
 anchor_rows=0
 marker_commits=0
+exempt_used=0
 
 # Invariant 0 (shape): the merge has exactly two parents, the second is the upstream release, and the
 # rollback tag is an ancestor of the first parent. Provenance below is meaningless without this shape.
@@ -208,6 +213,30 @@ if [ -n "${ANCHORS_FILE}" ]; then
     fi
   fi
 
+  # Exemption rows: full-SHA TAB path TAB fixed-string TAB reason. Only the count-mismatch branch below
+  # consults the resulting keys, and the key is the commit's own anchor row, never the backs-id.
+  : > "${WORK_DIR}/exempt-keys"
+  if [ -n "${ANCHOR_EXEMPTIONS_FILE}" ] \
+    && git show "${RANGE_END}:${ANCHOR_EXEMPTIONS_FILE}" > "${WORK_DIR}/exempt-end" 2>/dev/null; then
+    while IFS= read -r row <&5 || [ -n "${row}" ]; do
+      is_data_row "${row}" || continue
+      tabs="${row//[^${TAB}]/}"
+      e_sha="${row%%${TAB}*}"
+      rest="${row#*${TAB}}"
+      e_path="${rest%%${TAB}*}"
+      rest="${rest#*${TAB}}"
+      e_pattern="${rest%%${TAB}*}"
+      e_reason="${rest#*${TAB}}"
+      if [ "${#tabs}" -ne 3 ] || ! [[ "${e_sha}" =~ ^[0-9a-f]{40}$ ]] \
+        || [ -z "${e_path}" ] || [ -z "${e_pattern}" ] || [ -z "${e_reason}" ]; then
+        echo "ANCHOR EXEMPTION VIOLATION: malformed row (need a full 40-hex SHA, path, fixed-string and reason, TAB-separated): ${row}" >&2
+        fail=1
+        continue
+      fi
+      printf '%s\t%s\t%s\n' "${e_sha}" "${e_path}" "${e_pattern}" >> "${WORK_DIR}/exempt-keys"
+    done 5< "${WORK_DIR}/exempt-end"
+  fi
+
   for c in ${RANGE_COMMITS}; do
     git show "${c}:${ANCHORS_FILE}" > "${WORK_DIR}/anchors-c" 2>/dev/null || continue
     anchor_commits=$((anchor_commits + 1))
@@ -245,13 +274,17 @@ if [ -n "${ANCHORS_FILE}" ]; then
         echo "ANCHOR VIOLATION: ${short_c} ${a_path} '${a_pattern}' search failed with exit status ${grep_rc} (${a_backs})" >&2
         fail=1
       elif [ "${a_actual}" != "${a_expected}" ]; then
-        echo "ANCHOR VIOLATION: ${short_c} ${a_path} '${a_pattern}' expected ${a_expected} got ${a_actual} (${a_backs})" >&2
-        fail=1
+        if grep -qxF -e "${c}${TAB}${a_path}${TAB}${a_pattern}" "${WORK_DIR}/exempt-keys"; then
+          exempt_used=$((exempt_used + 1))
+        else
+          echo "ANCHOR VIOLATION: ${short_c} ${a_path} '${a_pattern}' expected ${a_expected} got ${a_actual} (${a_backs})" >&2
+          fail=1
+        fi
       fi
     done 3< "${WORK_DIR}/anchors-c"
   done
 fi
 
 if [ "${fail}" -eq 0 ]; then result=PASS; else result=FAIL; fi
-echo "invariants: provenance_paths=${provenance_paths} anchor_commits=${anchor_commits} anchor_rows=${anchor_rows} marker_commits=${marker_commits} result=${result}"
+echo "invariants: provenance_paths=${provenance_paths} anchor_commits=${anchor_commits} anchor_rows=${anchor_rows} marker_commits=${marker_commits} anchor_exempt=${exempt_used} result=${result}"
 exit "${fail}"
