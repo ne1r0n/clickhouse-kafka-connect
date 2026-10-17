@@ -10,7 +10,7 @@
 | Entry | Requirement | Verdict |
 |-------|-------------|---------|
 | E-01 | OPS-01, OPS-02, OPS-03 (facts at phase start) | unmeasured (D-11 window opens 2026-10-17T12:00:00Z; the closing OPS-01 check is E-13 in plan 21-05) |
-| E-02 | OPS-01, OPS-02, OPS-03 (operator answers) | pending (plan 21-01) |
+| E-02 | OPS-01, OPS-02, OPS-03 (operator answers) | unmeasured (OPS-02 unmeasured: no gradle "Last checked" time reported; OPS-01 disable recorded and OPS-03 pass) |
 | E-03 | DEPS-01 (merge) | pending (plan 21-02) |
 | E-04 | DEPS-01, D-03 (gate before the exemption) | pending (plan 21-02) |
 | E-05 | DEPS-01 (dependencyInsight) | pending (plan 21-02) |
@@ -51,3 +51,45 @@ integration_tests_yaml_identical_to_v1.7.0: yes
 Timestamp: 2026-10-17T07:34:34Z
 
 Verdict: unmeasured (D-11 window opens 2026-10-17T12:00:00Z; the closing OPS-01 check is E-13 in plan 21-05)
+
+### E-02: OPS-01..OPS-03 operator answers (verbatim)
+
+Presented inline by the orchestrator in this session: the three web-UI checks from plan 21-01 Task 2, each shown beside its E-01 fact. Every answer below is the user's typed reply, copied unedited.
+
+OPS-01 answer (verbatim, given directly to the orchestrator, 2026-10-17T08:30:20Z):
+> 1. disabled
+
+OPS-02 answer (verbatim, given directly to the orchestrator, 2026-10-17T08:30:20Z):
+> 2. dependabot works
+
+OPS-03 answer (verbatim, given directly to the orchestrator, 2026-10-17T08:30:20Z):
+> 3. token've been deleted
+
+The first OPS-01 answer gave no disable date, and the first OPS-02 answer gave no "Last checked" time and no configuration-error reading. In the same session, the orchestrator showed the API instant `2026-10-16T09:38:23Z` and asked when the workflow was disabled (plan 21-01 Task 3 step 5). It also asked for the `gradle` entry's "Last checked" time and whether a configuration error shows. The user's reply:
+
+OPS-01 disable instant resolution (verbatim, given directly to the orchestrator, 2026-10-17T08:37:22Z):
+> OPS-01: time is right
+
+OPS-02 follow-up answer (verbatim, given directly to the orchestrator, 2026-10-17T08:37:22Z):
+> OPS-02: [Image #1] [Image #2]
+
+orchestrator annotation (not the user's words): Image #1 shows Insights, Dependency graph, Dependabot tab. It has one banner, error-styled with a check icon, reading "Dependabot cannot open any more pull requests. The open pull request limit has been exceeded. The current limit is: 5. Dependabot will open new pull requests once you merge or close the already open pull requests. You can also update this limit in the config file." with a "Troubleshoot Dependabot errors" link. Below it is the "Dependabot update logs" panel. No per-manifest entry and no "Last checked" time are visible in the image. The banner is about the open-PR limit, not a `dependabot.yml` validation error. The repository navigation shows 1 open pull request, so the banner probably dates from the 2026-10-14 jobs, when PRs #1 to #5 were open; that is the orchestrator's inference, not an observation. Image #2 shows Actions, Dependabot Updates, with 2 runs on `custom_build`, both successful: `github_actions in /. - Update #1627650108` (Oct 15, 00:09 GMT+3, 1m 0s) and `gradle in /. - Update #1627525145` (Oct 15, 00:05 GMT+3, 3m 17s, which is 2026-10-14T21:05Z and matches E-01 `dependabot_gradle_job`). Its sidebar lists "Integration Tests" as "Disabled", which corroborates OPS-01.
+
+Command re-run by the orchestrator after the first answers: `security find-generic-password -s gsd17-gh-actions-read >/dev/null 2>&1; echo $?` (exit status only, 2026-10-17T08:30:20Z)
+
+```text
+ops01_disable_date_user: not stated in the first answer ("1. disabled"); resolved below
+ops01_disable_date_api: 2026-10-16T09:38:23Z
+ops01_dates_agree: no
+ops01_disable_instant_resolved: 2026-10-16T09:38:23Z
+keychain_lookup_exit_after: 44
+OPS-01 disable recorded: pass
+OPS-02: unmeasured (no "Last checked" time for the gradle entry was reported or is visible in the screenshot; the Dependabot tab shows an open-PR-limit banner, not a configuration error; gradle in / job #1627525145 succeeded 2026-10-14T21:05:35Z)
+OPS-03: pass
+```
+
+`ops01_dates_agree` is `no` because the first answer stated no date, not because the dates conflict. The user confirmed the API instant in the resolution above, so `ops01_disable_instant_resolved` equals E-01 `workflow_updated_at`. OPS-01's no-scheduled-run observation is E-13 (plan 21-05), not this entry.
+
+Timestamp: 2026-10-17T08:37:22Z
+
+Verdict: unmeasured (OPS-02 unmeasured: no gradle "Last checked" time reported; OPS-01 disable recorded and OPS-03 pass)
