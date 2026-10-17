@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 21
 current_phase_name: Dependabot Integration & CI Hygiene
 status: executing
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-10-17T09:04:07.649Z"
+stopped_at: Completed 21-04-PLAN.md
+last_updated: "2026-10-17T09:11:37.345Z"
 last_activity: 2026-10-17
 last_activity_desc: Phase 21 execution started
-state_head: 046fe59defa5ed7cab9dc8cb29c25b4e36fd9d28
+state_head: fee898c635fe7a9fd33e5e00a0485743e14848d2
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-16 after starting v1.7.0_gg3-hardenin
 ## Current Position
 
 Phase: 21 (Dependabot Integration & CI Hygiene) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-17 — Phase 21 execution started
 
@@ -140,6 +140,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 21 P01 | 65 min | 3 tasks | 1 files |
 | Phase 21 P02 | 8 min | 2 tasks | 5 files |
 | Phase 21 P03 | 15 min | 2 tasks | 5 files |
+| Phase 21 P04 | 7 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -172,6 +173,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 21]: Phase 21-01: OPS-02 recorded unmeasured; no gradle "Last checked" time was reported and the Dependabot tab shows an open-PR-limit banner (limit 5), not a configuration error — Pass needs a Last checked reading (plan 21-01 Task 3); the UI may no longer show that field (research A2), so ROADMAP criterion 5 needs the user at verification
 - [Phase 21]: 21-02: DEPS-01 merged origin/custom_build (6473e24f) into sync/v1.7.0 as merge 82524e12 with D-03 bookkeeping edits inside; the unmodified anchors gate shows exactly one violation at 6473e24f, to be exempted by 21-03; spotless baseline-equal (D-14)
 - [Phase 21]: 21-03: only invariant 3's count-mismatch branch consults the SHA- and row-pinned exemption list (fork-anchor-exemptions.txt); PRE_TAG stays pre-v1.7.0-sync and the gate command for Phases 22-24 is unchanged
+- [Phase 21]: 21-04: the narrowing of RUNS_ON and WRITE_SCOPE is a user-decided (D-10) exception to AGENTS.md no-weakening, tabled in E-11 Accept-set changes
+- [Phase 21]: 21-04: pin-guard fixtures use List.of with exact leading spaces and a literal upstream-workflow list, independent of the production constant
 
 ### Pending Todos
 
@@ -203,8 +206,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-17T09:04:07.627Z
-Stopped at: Completed 21-03-PLAN.md
+Last session: 2026-10-17T09:11:37.323Z
+Stopped at: Completed 21-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

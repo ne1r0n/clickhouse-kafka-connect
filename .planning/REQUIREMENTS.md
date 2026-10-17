@@ -55,8 +55,8 @@ No milestone-level research was run; plan-phase researches each phase.
 
 ### CI pin guard — 17-REVIEW
 
-- [ ] **CI-18**: `TestsWorkflowPinGuardUnitTest` fails if `tests.yaml`'s "Test fork count" step stops reading `reportTestForks`, or if that task disappears from `build.gradle.kts` (17-REVIEW IN-01).
-- [ ] **CI-19**: The pin guard handles two cases correctly, each seen red and green on a fixture (17-REVIEW IN-02):
+- [x] **CI-18**: `TestsWorkflowPinGuardUnitTest` fails if `tests.yaml`'s "Test fork count" step stops reading `reportTestForks`, or if that task disappears from `build.gradle.kts` (17-REVIEW IN-01).
+- [x] **CI-19**: The pin guard handles two cases correctly, each seen red and green on a fixture (17-REVIEW IN-02):
   - it accepts `runs-on: ubuntu-24.04 # comment`;
   - it no longer reports a step `name:` or `run:` text containing `: write` as a write scope.
 - [ ] **DEBT-12**: Every 17-REVIEW and 19-REVIEW finding ends as either fixed or closed with a written reason. Each archived disposition row points to where it was closed.
@@ -118,8 +118,8 @@ No milestone-level research was run; plan-phase researches each phase.
 | COLS-14 | Phase 23 | Pending |
 | DEBT-10 | Phase 23 | Pending |
 | DEBT-11 | Phase 23 | Pending |
-| CI-18 | Phase 21 | Pending |
-| CI-19 | Phase 21 | Pending |
+| CI-18 | Phase 21 | Complete |
+| CI-19 | Phase 21 | Complete |
 | DEBT-12 | Phase 23 | Pending |
 | HARN-08 | Phase 22 | Pending |
 | OPS-01 | Phase 21 | Pending |
