@@ -18,8 +18,8 @@
 | E-07 | DEPS-01, D-14 (spotless baseline-equal) | pass |
 | E-08 | DEPS-01, D-01, D-02 (gate with and without the exemption) | pass |
 | E-09 | D-04 (self-test) | pass |
-| E-10 | CI-18, CI-19, D-07 (pin-guard red run) | pending (plan 21-04) |
-| E-11 | CI-18, CI-19, D-09, D-14 (pin-guard green run) | pending (plan 21-04) |
+| E-10 | CI-18, CI-19, D-07 (pin-guard red run) | pass |
+| E-11 | CI-18, CI-19, D-09, D-14 (pin-guard green run) | pass |
 | E-12 | DEPS-01 (phase close gate) | pending (plan 21-05) |
 | E-13 | OPS-01, D-11 (closing observation) | pending (plan 21-05) |
 
@@ -294,5 +294,143 @@ The self-test header (line 6) now says the default is the oldest first-parent me
 Refs unchanged: `git for-each-ref --format='%(objectname) %(refname)'` before and after the three runs is byte-identical (145 lines, `cmp` clean). Both throwaway worktrees were removed and `git worktree list` shows only the main tree. No `git stash` was used.
 
 Timestamp: 2026-10-17T09:02:56Z (selftest-new.rc and selftest-oldgate.rc written)
+
+Verdict: pass
+
+### E-10: Pin-guard red run against the old regexes (D-07)
+
+State under test: HEAD is `37ef6d40` (`refactor(21-04)`, the behaviour-preserving extraction with the old `RUNS_ON` and `WRITE_SCOPE`), plus the uncommitted working-tree edit that adds the 18 fixture tests, the 3 new real-file tests, the helpers `ktsCode`, `excludePaths` and `indent`, and the new rules `forkCountStepProblem`, `nprocProblem`, `forkTaskProblem` and `dependabotExcludeProblem` as accept-all bodies (`return Optional.empty();`). Nothing was committed for this state, so no red commit exists and every commit keeps `testUnit` green.
+
+Command as run (repo root, output in `/tmp/gsd21/exec/pinguard-red.log`, exit status in `pinguard-red.rc`, report copied to `pinguard-red.xml`):
+
+```text
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun
+exit status: 1
+Tests summary: 26 tests, 20 succeeded, 6 failed, 0 skipped
+```
+
+The XML has `tests="26" failures="6" errors="0" skipped="0"`. The six failing tests are exactly the predicted set; all eight real-file tests and every D-10 must-still-reject group for runs-on and permissions are green.
+
+1. `fixture: runs-on rule accepts ubuntu-24.04 with a trailing comment (CI-19)`: 2 failures
+
+```text
+must accept 'runs-on: ubuntu-24.04 # pinned' but the rule said: runs-on must be the pinned runner, not 'ubuntu-24.04 # pinned'
+must accept 'runs-on: ubuntu-24.04    # padded' but the rule said: runs-on must be the pinned runner, not 'ubuntu-24.04    # padded'
+```
+
+2. `fixture: write-scope rule ignores step name and run text (CI-19)`: 6 failures
+
+```text
+must accept '- name: write summary' but the rule said: No line may grant a write scope: '- name: write summary'
+must accept 'name: write summary' but the rule said: No line may grant a write scope: 'name: write summary'
+must accept '- name: Write summary: write' but the rule said: No line may grant a write scope: '- name: Write summary: write'
+must accept 'run: echo "mode: write"' but the rule said: No line may grant a write scope: 'run: echo "mode: write"'
+must accept 'echo "contents: write" >> "$GITHUB_STEP_SUMMARY"' but the rule said: No line may grant a write scope: 'echo "contents: write" >> "$GITHUB_STEP_SUMMARY"'
+must accept 'run: write' but the rule said: No line may grant a write scope: 'run: write'
+```
+
+3. `fixture: write-scope rule rejects contents write, write-all, quoted write and a job-level block (D-10)`: 2 failures, both the quoted forms
+
+```text
+must reject 'contents: "write"' but the rule accepted it
+must reject 'contents: 'write'' but the rule accepted it
+```
+
+4. `fixture: fork-count step rule rejects a shell nproc formula, an echoed or misplaced call and a renamed step (CI-18)`: 7 failures, one per fixture (the rule accepts everything)
+
+```text
+must reject 'steps: / - name: Report test fork count / run: | / forks=$(( $(nproc) / 2 )) / echo "::error::reportTestForks did not print an integer"' but the rule accepted it
+must reject 'steps: / - name: Report test fork count / run: | / echo hello /  / - name: Compile integration-test sources / run: ./gradlew -q reportTestForks' but the rule accepted it
+must reject 'steps: / - name: Report test fork count / run: | / echo "./gradlew reportTestForks"' but the rule accepted it
+must reject 'steps: / - name: Report test fork count / run: | / forks="$(./gradlew -q --console=plain reportTestForks | tail -n 1)" / case ... / msg="runner nproc=$(nproc), ..." / echo "$msg" / forks=$(( $(nproc) / 2 ))' but the rule accepted it
+must reject '- name: Count forks / run: | / forks="$(./gradlew -q --console=plain reportTestForks | tail -n 1)"' but the rule accepted it
+must reject '(empty list)' but the rule accepted it
+must reject 'steps: / - name: Report test fork count / run: | / forks="$(./gradlew -q --console=plain reportTestForks | tail -n 1)" / msg="$(( $(nproc) / 2 ))"' but the rule accepted it
+```
+
+5. `fixture: reportTestForks task rule rejects a deleted, renamed, commented-out or constant task (CI-18)`: 6 failures
+
+```text
+must reject '// reportTestForks' but the rule accepted it
+must reject 'tasks.register("reportForks") { / ... }' (renamed) but the rule accepted it
+must reject 'tasks.register("reportTestForks") { /     println(6) / }' but the rule accepted it
+must reject '... tasks.named<Test>("testUnit") ...' but the rule accepted it
+must reject '/* / tasks.register("reportTestForks") { ... } / */' (whole block commented out) but the rule accepted it
+must reject '// tasks.register("reportTestForks") { / tasks.register("other") { ... maxParallelForks ... / }' but the rule accepted it
+```
+
+6. `fixture: exclude-paths rule rejects a missing, misspelt, stale or misplaced path (17-REVIEW WR-01)`: 5 failures, one per fixture: `release.yaml` missing, the typo `integrationTest.yaml`, the stale `gone.yml`, all four paths only under the `gradle` entry, and the empty list.
+
+Old rule versus expected verdict:
+
+| Case | Old rule | Expected | Red because |
+|------|----------|----------|-------------|
+| CI-19 `runs-on: ubuntu-24.04 # pinned` and the padded form | rejected | accepted | falsely rejected: the group is `ubuntu-24.04 # pinned` |
+| CI-19 step `name:` and `run:` text with `: write` (six fixtures) | rejected | accepted | falsely rejected by `.*:\s*write\b.*` |
+| `contents: "write"` and `contents: 'write'` | accepted | rejected | falsely accepted: a hole in the old regex, not named in CONTEXT |
+| CI-18 fork-count step, `reportTestForks` task and D-09 exclude-paths rules | no rule yet (accept-all) | rejected where bad | red by construction |
+| D-10 must-still-reject: `contents: write`, `permissions: write-all`, `id-token: write`, `packages: write # why`, flow mappings, the job-level block, `runs-on: ubuntu-latest # x`, `ubuntu-22.04 # x`, `ubuntu-24.04#x`, `runs-on:`, empty list | rejected | rejected | green: the regression guards the fix must not weaken |
+
+Timestamp: 2026-10-17T09:08:41Z (pinguard-red.xml written)
+
+Verdict: pass
+
+### E-11: Pin-guard green run, per-file spotless and full testUnit (CI-18, CI-19, D-09, D-14)
+
+After swapping in the fixed `RUNS_ON`, the `WRITE_SCALAR`/`WRITE_FLOW` pair and the real bodies of `forkCountStepProblem`, `nprocProblem`, `forkTaskProblem` and `dependabotExcludeProblem` (regexes as in 21-RESEARCH Pattern 4, "New constants and regexes (final forms)"). No fixture was changed between E-10 and E-11.
+
+Commands as run (repo root, logs in `/tmp/gsd21/exec/`):
+
+```text
+1. env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun
+   (pinguard-green.log, pinguard-green.xml)
+   exit status 0; XML: tests="26" skipped="0" failures="0" errors="0"
+   Tests summary: 26 tests, 26 succeeded, 0 failed, 0 skipped
+
+2. env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun
+   (testunit-pinguard.log, exit status 0 in testunit-pinguard.rc)
+   Test result: SUCCESS
+   Tests summary: 577 tests, 575 succeeded, 0 failed, 2 skipped
+   (556 before this plan plus the 21 added tests; the two skips are the same two ConvertToMapOrJsonPerformanceTestJson tests as in E-06)
+
+3. per-file spotless (throwaway worktree /tmp/gsd21/wt-fmt at HEAD, the edited class copied in,
+   env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q spotlessApply, cmp, worktree removed):
+   reformatted files in the worktree: 47 (the 46 baseline files plus the copied class, so spotlessApply ran)
+   cmp of the worktree's class with the main tree's class: identical
+   PER-FILE-SPOTLESS-CLEAN
+```
+
+Guarded files: `git diff --quiet 82524e12 HEAD -- .github build.gradle.kts gradle src/main` succeeds and `git diff --quiet -- .github build.gradle.kts gradle` succeeds in the working tree. `tests.yaml`, `build.gradle.kts` and `dependabot.yml` are untouched since the DEPS-01 merge, and `timeout-minutes: 45` is still in `tests.yaml`. No `spotlessApply` ran in the main tree.
+
+The eight real-file tests pass unchanged on the real files: the five existing display names and the three new ones (`the Report test fork count step calls ./gradlew reportTestForks and tests.yaml holds no nproc formula (CI-18)`, `build.gradle.kts registers reportTestForks reading maxParallelForks from the test task (CI-18)`, `dependabot.yml excludes the four upstream workflows from github-actions updates and lists only existing workflow files (17-REVIEW WR-01)`).
+
+#### Accept-set changes (D-10)
+
+This is the deliberate, user-decided exception (D-10) to AGENTS.md's rule "Existing tests: only add new tests, never delete/weaken existing ones": the runs-on and write-scope rules were narrowed so they stop failing on valid input, and they were also strengthened where the old regex had a hole. No existing `@Test`, `@DisplayName` or assertion message text changed (only the "expected/but was" suffix JUnit appended to the former `assertEquals` checks is gone, because each message already names the offending value). The "before" column is the old regex as measured in E-10, the "after" column is the fixed regex as measured in this entry.
+
+| Input | Rule | Before (old regex, E-10) | After (fixed regex, E-11) | Basis |
+|-------|------|--------------------------|---------------------------|-------|
+| `runs-on: ubuntu-24.04 # pinned` | runs-on | rejected | accepted | D-10: a whitespace-preceded trailing comment is stripped before the equality check |
+| `runs-on: ubuntu-24.04    # padded` | runs-on | rejected | accepted | D-10: same, with padding around the comment |
+| `- name: write summary` | write-scope | rejected | accepted | D-10: step name text is not a write scope |
+| `name: write summary` | write-scope | rejected | accepted | D-10: step name text is not a write scope |
+| `- name: Write summary: write` | write-scope | rejected | accepted | D-10: step name text is not a write scope |
+| `run: echo "mode: write"` | write-scope | rejected | accepted | D-10: run text is not a write scope |
+| `echo "contents: write" >> "$GITHUB_STEP_SUMMARY"` | write-scope | rejected | accepted | D-10: run text is not a write scope |
+| `run: write` | write-scope | rejected | accepted | D-10: run text is not a write scope |
+| `contents: write` | write-scope | rejected | rejected | D-10: a real write grant stays rejected |
+| `permissions: write-all` | write-scope | rejected | rejected | D-10: a real write grant stays rejected |
+| `id-token: write` | write-scope | rejected | rejected | D-10: a real write grant stays rejected |
+| `packages: write # why` | write-scope | rejected | rejected | D-10: a real write grant stays rejected |
+| `permissions: { contents: write }` | write-scope | rejected | rejected | D-10: a flow-mapping write grant stays rejected |
+| `job-level write block: permissions: / contents: read / jobs: / build: / permissions: / contents: write` | write-scope | rejected | rejected | D-10: a job-level write block stays rejected |
+| `runs-on: ubuntu-latest # x` | runs-on | rejected | rejected | D-10: a floating runner stays rejected even with a comment |
+| `runs-on: ubuntu-24.04#x` | runs-on | rejected | rejected | D-10: no whitespace before the hash, so not a comment |
+| `contents: "write"` | write-scope | accepted | rejected | D-10: the quoted form was a hole in the old regex, now closed |
+| `contents: 'write'` | write-scope | accepted | rejected | D-10: the quoted form was a hole in the old regex, now closed |
+
+Eight inputs are newly accepted (two runs-on trailing-comment fixtures, six step-text fixtures), exactly the eight fixtures whose E-10 messages show the old rule rejecting them. `- run: echo write-all` is not among them: the old regex already accepted it. One class is newly rejected (the quoted `"write"` and `'write'` forms), so the read-only pin is strictly stronger on real grants.
+
+Timestamp: 2026-10-17T09:10:18Z (testunit-pinguard.rc and per-file spotless result)
 
 Verdict: pass
