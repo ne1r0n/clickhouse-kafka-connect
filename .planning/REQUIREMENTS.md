@@ -74,7 +74,7 @@ No milestone-level research was run; plan-phase researches each phase.
   - The file stays byte-identical to upstream `v1.7.0`.
   - The REST API shows no `schedule` run of it after the recorded disable date.
 - [ ] **OPS-02**: The Dependabot `gradle` entry shows a recent "Last checked" time with no configuration error. This closes the residue of 17-REVIEW WR-01.
-- [ ] **OPS-03**: The read-only GitHub token is revoked on GitHub, and the Keychain item `gsd17-gh-actions-read` is deleted.
+- [x] **OPS-03**: The read-only GitHub token is revoked on GitHub, and the Keychain item `gsd17-gh-actions-read` is deleted.
 
 ### Release
 
@@ -124,7 +124,7 @@ No milestone-level research was run; plan-phase researches each phase.
 | HARN-08 | Phase 22 | Pending |
 | OPS-01 | Phase 21 | Pending |
 | OPS-02 | Phase 21 | Pending |
-| OPS-03 | Phase 21 | Pending |
+| OPS-03 | Phase 21 | Complete |
 | ROLL-03 | Phase 24 | Pending |
 | PUB-09 | Phase 24 | Pending |
 | SUITE-06 | Phase 24 | Pending |

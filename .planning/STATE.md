@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 21
 current_phase_name: Dependabot Integration & CI Hygiene
 status: executing
-stopped_at: Phase 21 context gathered
-last_updated: "2026-10-16T23:35:07.809Z"
-last_activity: 2026-10-16
-last_activity_desc: Roadmap created for v1.7.0_gg3-hardening (Phases 21-24, 20/20 requirements mapped)
-state_head: df9a3d7af76d93d228eaf44fc9ff16c7b44ac419
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-10-17T08:38:50.023Z"
+last_activity: 2026-10-17
+last_activity_desc: Phase 21 execution started
+state_head: 7897a39b9bbb5286adcea8ceb4d91672712d4a73
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-16 after starting v1.7.0_gg3-hardening milestone)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 21 — Dependabot Integration & CI Hygiene (merge `origin/custom_build`'s three Dependabot commits into `sync/v1.7.0` before any code work)
+**Current focus:** Phase 21 — Dependabot Integration & CI Hygiene
 
 ## Current Position
 
-Phase: 21 (Dependabot Integration & CI Hygiene) — READY TO EXECUTE
-Plan: Not started
+Phase: 21 (Dependabot Integration & CI Hygiene) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-16 — Roadmap created for v1.7.0_gg3-hardening (Phases 21-24, 20/20 requirements mapped)
+Last activity: 2026-10-17 — Phase 21 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -137,6 +137,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 20 P05 | 20 min | 3 tasks | 8 files |
 | Phase 20 P06 | 45 min | 3 tasks | 1 files |
 | Phase 20 P07 | 35 min | 3 tasks | 2 files |
+| Phase 21 P01 | 65 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - Phase 23's DEBT-12 runs last in its phase. It records every 17-REVIEW and 19-REVIEW outcome, including the Phase 21 closures (CI-18, CI-19, OPS-02) and the COLS-14 decision. COLS-14 goes to a user checkpoint if it is not clear-cut.
 - Operator checks OPS-01..OPS-03 are user actions in the GitHub web UI, done in Phase 21 (D-11: no agent changes repository settings). OPS-01 comes early so that nights pass with no scheduled run before the release; Phase 24 re-checks it.
 - Every approval or decision gate (a COLS-14 checkpoint if raised, Phase 24's rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
+- [Phase 21]: Phase 21-01: OPS-02 recorded unmeasured; no gradle "Last checked" time was reported and the Dependabot tab shows an open-PR-limit banner (limit 5), not a configuration error — Pass needs a Last checked reading (plan 21-01 Task 3); the UI may no longer show that field (research A2), so ROADMAP criterion 5 needs the user at verification
 
 ### Pending Todos
 
@@ -197,9 +199,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-16T21:07:52.061Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-dependabot-integration-ci-hygiene/21-CONTEXT.md
+Last session: 2026-10-17T08:38:44.345Z
+Stopped at: Completed 21-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
