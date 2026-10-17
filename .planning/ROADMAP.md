@@ -102,14 +102,14 @@ Phase artifacts: `milestones/v1.7.0_gg2-hardening-phases/`
   4. The user has disabled the nightly `integrationTests.yaml` in the repository's Actions settings, and the disable date is recorded. The file is byte-identical to upstream `v1.7.0`. Once at least one 05:00 UTC cron time has passed, the REST API lists no `schedule` run of it created after that date.
   5. The user has confirmed, directly and in their own words, that the Dependabot `gradle` entry shows a recent "Last checked" with no configuration error, and that the read-only token is revoked on GitHub. The Keychain lookup for `gsd17-gh-actions-read` finds nothing.
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 **Wave 1**
 - [x] 21-01-PLAN.md — OPS-01..03 operator checks at the start: REST/clock tracer (E-01), blocking-human checkpoint, answers verbatim (E-02) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 21-02-PLAN.md — DEPS-01 merge of origin/custom_build (6473e24f) with the D-03 edits inside, then build, Lombok, testUnit and spotless baseline-equal evidence (wave 2)
+- [x] 21-02-PLAN.md — DEPS-01 merge of origin/custom_build (6473e24f) with the D-03 edits inside, then build, Lombok, testUnit and spotless baseline-equal evidence (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 21-03-PLAN.md — SHA- and row-pinned anchor exemption in verify-merge-invariants.sh plus fail-first self-test cases ST5-ST9 (D-01, D-02, D-04) (wave 3)
@@ -297,7 +297,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 1/5 | In Progress | - |
+| 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 2/5 | In Progress | - |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 | 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 | 24. Release & Publication | v1.7.0_gg3-hardening | 0/TBD | Not started | - |

@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 21
 current_phase_name: Dependabot Integration & CI Hygiene
 status: executing
-stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-10-17T08:38:50.023Z"
+stopped_at: Completed 21-02-PLAN.md
+last_updated: "2026-10-17T08:47:56.174Z"
 last_activity: 2026-10-17
 last_activity_desc: Phase 21 execution started
-state_head: 7897a39b9bbb5286adcea8ceb4d91672712d4a73
+state_head: 6147fa223d9f2363c35e19ca4600177ab33f7e2e
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-16 after starting v1.7.0_gg3-hardenin
 ## Current Position
 
 Phase: 21 (Dependabot Integration & CI Hygiene) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-17 — Phase 21 execution started
 
@@ -138,6 +138,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 20 P06 | 45 min | 3 tasks | 1 files |
 | Phase 20 P07 | 35 min | 3 tasks | 2 files |
 | Phase 21 P01 | 65 min | 3 tasks | 1 files |
+| Phase 21 P02 | 8 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - Operator checks OPS-01..OPS-03 are user actions in the GitHub web UI, done in Phase 21 (D-11: no agent changes repository settings). OPS-01 comes early so that nights pass with no scheduled run before the release; Phase 24 re-checks it.
 - Every approval or decision gate (a COLS-14 checkpoint if raised, Phase 24's rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
 - [Phase 21]: Phase 21-01: OPS-02 recorded unmeasured; no gradle "Last checked" time was reported and the Dependabot tab shows an open-PR-limit banner (limit 5), not a configuration error — Pass needs a Last checked reading (plan 21-01 Task 3); the UI may no longer show that field (research A2), so ROADMAP criterion 5 needs the user at verification
+- [Phase 21]: 21-02: DEPS-01 merged origin/custom_build (6473e24f) into sync/v1.7.0 as merge 82524e12 with D-03 bookkeeping edits inside; the unmodified anchors gate shows exactly one violation at 6473e24f, to be exempted by 21-03; spotless baseline-equal (D-14)
 
 ### Pending Todos
 
@@ -199,8 +201,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-17T08:38:44.345Z
-Stopped at: Completed 21-01-PLAN.md
+Last session: 2026-10-17T08:47:56.153Z
+Stopped at: Completed 21-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
