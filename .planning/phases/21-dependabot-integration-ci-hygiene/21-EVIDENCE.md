@@ -21,7 +21,7 @@
 | E-10 | CI-18, CI-19, D-07 (pin-guard red run) | pass |
 | E-11 | CI-18, CI-19, D-09, D-14 (pin-guard green run) | pass |
 | E-12 | DEPS-01, D-14 (phase close gate at the tip) | pass |
-| E-13 | OPS-01, D-11 (closing observation) | pending (plan 21-05) |
+| E-13 | OPS-01, D-11 (closing observation) | pass |
 
 ### E-01: OPS facts at phase start (REST, GitHub clock, Keychain)
 
@@ -477,5 +477,34 @@ left-right count origin/custom_build...HEAD: 0	35 (left side 0, so origin/custom
 The three DEPS-01 merge files are changed only by the merge commit M, and the pin-guard class is the only Phase 21 change to `src/test`. Nothing was pushed.
 
 Timestamp: 2026-10-17T09:20:12Z (selftest-final.rc and gate-final.rc written; spotless and scope facts taken minutes earlier at the same tip)
+
+Verdict: pass
+
+### E-13: OPS-01 closing observation (D-11, D-12)
+
+Step 0 ran first and both halves of the precondition held. The `date:` header of `curl -sSI https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect` read `Sun, 18 Oct 2026 17:10:23 GMT`, after the 2026-10-17T12:00:00Z window. E-02 records `ops01_dates_agree: no` with the user's verbatim `OPS-01 disable instant resolution` block and `ops01_disable_instant_resolved: 2026-10-16T09:38:23Z`, which is a UTC instant, not `pending`. The window was not open when the previous executor stopped (header `Sat, 17 Oct 2026 09:20:39 GMT`); the user's earlier reply "continue" was not counted as meeting it.
+
+Commands as run (repo root, unauthenticated, `R=https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect`, every curl `-sS --fail`, output in `/tmp/gsd21/exec/`):
+
+1. `curl -sS --fail -D close-wf.headers -o close-wf.json "$R/actions/workflows/integrationTests.yaml"` (state, `updated_at`, and the `date:` header taken as the clock of record)
+2. `curl -sS --fail -o close-runs-after.json "$R/actions/workflows/integrationTests.yaml/runs?event=schedule&created=%3E2026-10-16T09:38:23Z&per_page=100"`
+3. `curl -sS --fail -o close-repo-runs-after.json "$R/actions/runs?event=schedule&created=%3E2026-10-16T09:38:23Z&per_page=100"`
+4. `curl -sS --fail -o close-runs-control.json "$R/actions/workflows/integrationTests.yaml/runs?event=schedule&created=%3E2026-10-01T00:00:00Z&per_page=100"` (control, runs created 2026-10-15T09:39:18Z and 2026-10-16T09:32:28Z)
+5. `git diff --quiet v1.7.0 HEAD -- .github/workflows/integrationTests.yaml` (succeeded)
+
+The cutoff is derived per D-13. E-02 says `ops01_dates_agree: no`, so `cutoff_u` is the earlier of E-01 `workflow_updated_at` (2026-10-16T09:38:23Z) and `ops01_disable_instant_resolved` (2026-10-16T09:38:23Z). They are equal, so `cutoff_u` is 2026-10-16T09:38:23Z. The API reports `updated_at` as `2026-10-16T09:38:23.000Z`, normalised below to second precision. The user's own words on the disable date are "OPS-01: time is right", given after the orchestrator showed them the API instant, so the user and the API agree on 2026-10-16T09:38:23Z.
+
+```text
+github_date: Sun, 18 Oct 2026 17:11:13 GMT
+workflow_state: disabled_manually
+workflow_updated_at: 2026-10-16T09:38:23Z
+cutoff_u: 2026-10-16T09:38:23Z
+schedule_runs_after_disable: 0
+repo_schedule_runs_after_disable: 0
+control_schedule_runs_since_2026-10-01: 2
+integration_tests_yaml_identical_to_v1.7.0: yes
+```
+
+Timestamp: 2026-10-18T17:11:15Z (local clock, noted only; the window rule used the GitHub `date:` header above)
 
 Verdict: pass
