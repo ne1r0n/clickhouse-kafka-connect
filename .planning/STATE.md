@@ -4,17 +4,17 @@ milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
 current_phase: 21
 current_phase_name: Dependabot Integration & CI Hygiene
-status: executing
-stopped_at: Completed 21-04-PLAN.md
-last_updated: "2026-10-17T09:11:37.345Z"
+status: verifying
+stopped_at: Completed 21-05-PLAN.md
+last_updated: "2026-10-18T17:12:35.079Z"
 last_activity: 2026-10-17
 last_activity_desc: Phase 21 execution started
-state_head: fee898c635fe7a9fd33e5e00a0485743e14848d2
+state_head: 7c06f32ba97dd1069f54a2aaac4a5fba972c0530
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-16 after starting v1.7.0_gg3-hardenin
 
 Phase: 21 (Dependabot Integration & CI Hygiene) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-17 — Phase 21 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -141,6 +141,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 21 P02 | 8 min | 2 tasks | 5 files |
 | Phase 21 P03 | 15 min | 2 tasks | 5 files |
 | Phase 21 P04 | 7 min | 3 tasks | 3 files |
+| Phase 21 P05 | 32h 4m (about 10 min of work) | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 21]: 21-03: only invariant 3's count-mismatch branch consults the SHA- and row-pinned exemption list (fork-anchor-exemptions.txt); PRE_TAG stays pre-v1.7.0-sync and the gate command for Phases 22-24 is unchanged
 - [Phase 21]: 21-04: the narrowing of RUNS_ON and WRITE_SCOPE is a user-decided (D-10) exception to AGENTS.md no-weakening, tabled in E-11 Accept-set changes
 - [Phase 21]: 21-04: pin-guard fixtures use List.of with exact leading spaces and a literal upstream-workflow list, independent of the production constant
+- [Phase 21]: 21-05: E-13 cutoff_u is 2026-10-16T09:38:23Z (earlier-of rule over E-01 and the user's resolved instant); the continuation re-ran step 0 itself, since a reply or another agent's Date reading does not meet the D-11 precondition
 
 ### Pending Todos
 
@@ -206,8 +208,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-17T09:11:37.323Z
-Stopped at: Completed 21-04-PLAN.md
+Last session: 2026-10-18T17:12:35.054Z
+Stopped at: Completed 21-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

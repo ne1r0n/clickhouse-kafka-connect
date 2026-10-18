@@ -102,7 +102,7 @@ Phase artifacts: `milestones/v1.7.0_gg2-hardening-phases/`
   4. The user has disabled the nightly `integrationTests.yaml` in the repository's Actions settings, and the disable date is recorded. The file is byte-identical to upstream `v1.7.0`. Once at least one 05:00 UTC cron time has passed, the REST API lists no `schedule` run of it created after that date.
   5. The user has confirmed, directly and in their own words, that the Dependabot `gradle` entry shows a recent "Last checked" with no configuration error, and that the read-only token is revoked on GitHub. The Keychain lookup for `gsd17-gh-actions-read` finds nothing.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -118,7 +118,7 @@ Plans:
 - [x] 21-04-PLAN.md — Pin guard: rules extracted, fixtures red then green, CI-18 fork-step/task rules, CI-19 runs-on/write-scope fixes, D-09 exclude-paths guard (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 21-05-PLAN.md — Phase close gate at the tip, then the OPS-01 closing observation at or after 2026-10-17T12:00:00Z (D-11, D-12) (wave 5)
+- [x] 21-05-PLAN.md — Phase close gate at the tip, then the OPS-01 closing observation at or after 2026-10-17T12:00:00Z (D-11, D-12) (wave 5)
 
 **Note**: DEPS-01 is the opening plan and gates all code work in this milestone.
 
@@ -297,7 +297,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 4/5 | In Progress | - |
+| 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | In Progress | - |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 | 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 | 24. Release & Publication | v1.7.0_gg3-hardening | 0/TBD | Not started | - |

@@ -23,7 +23,7 @@ No milestone-level research was run; plan-phase researches each phase.
 
 ### Branch integration
 
-- [ ] **DEPS-01**: The working branch contains `origin/custom_build`'s three Dependabot commits:
+- [x] **DEPS-01**: The working branch contains `origin/custom_build`'s three Dependabot commits:
   - lombok 1.18.48 (#1), spotless 8.10.4 (#2) and slf4j-reload4j 2.0.20 (#3), tip `6473e24f`;
   - brought in by a merge of `custom_build`, with no rebase and no force;
   - spotless 8.10.4 adds no violations beyond the pre-existing 8.10.1 baseline (the same `spotlessApply` diff, no tree-wide reformat; amended 2026-10-17 per 21-CONTEXT D-14), and `testUnit` stays green.
@@ -70,7 +70,7 @@ No milestone-level research was run; plan-phase researches each phase.
 
 ### Operator checks (user, in the GitHub web UI)
 
-- [ ] **OPS-01**: The user disables the nightly `integrationTests.yaml` in the repository's Actions settings.
+- [x] **OPS-01**: The user disables the nightly `integrationTests.yaml` in the repository's Actions settings.
   - The file stays byte-identical to upstream `v1.7.0`.
   - The REST API shows no `schedule` run of it after the recorded disable date.
 - [ ] **OPS-02**: The Dependabot `gradle` entry shows a recent "Last checked" time with no configuration error. This closes the residue of 17-REVIEW WR-01.
@@ -109,7 +109,7 @@ No milestone-level research was run; plan-phase researches each phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01 | Phase 21 | Pending |
+| DEPS-01 | Phase 21 | Complete |
 | WRT-13 | Phase 22 | Pending |
 | WRT-14 | Phase 22 | Pending |
 | WRT-15 | Phase 22 | Pending |
@@ -122,7 +122,7 @@ No milestone-level research was run; plan-phase researches each phase.
 | CI-19 | Phase 21 | Complete |
 | DEBT-12 | Phase 23 | Pending |
 | HARN-08 | Phase 22 | Pending |
-| OPS-01 | Phase 21 | Pending |
+| OPS-01 | Phase 21 | Complete |
 | OPS-02 | Phase 21 | Pending |
 | OPS-03 | Phase 21 | Complete |
 | ROLL-03 | Phase 24 | Pending |
