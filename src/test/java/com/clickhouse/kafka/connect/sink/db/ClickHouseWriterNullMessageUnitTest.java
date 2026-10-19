@@ -3,15 +3,9 @@ package com.clickhouse.kafka.connect.sink.db;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.clickhouse.kafka.connect.sink.data.Record;
 import com.clickhouse.kafka.connect.sink.data.SchemaType;
-import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
@@ -32,7 +26,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * stream filter before its own null check, so a message-less failure became a NullPointerException
  * that hid the real error. This class drives the real {@code doInsertRawBinary} catch through the
  * protected insert hooks, so no ClickHouse server is needed. It extends nothing, so that it stays
- * in {@code testUnit}: {@code ClickHouseBase} carries {@code @Tag("clickhouse")}.
+ * in {@code testUnit}: {@code ClickHouseBase} carries {@code @Tag("clickhouse")}. The helper client
+ * is the Mockito-free {@link CountingHelperClient} (HARN-08).
  */
 public class ClickHouseWriterNullMessageUnitTest {
 
@@ -113,10 +108,9 @@ public class ClickHouseWriterNullMessageUnitTest {
         return new QueryIdentifier(TOPIC, 0, 0, 0, "wrt11-query");
     }
 
-    private static ClickHouseHelperClient installHelperClient(ClickHouseWriter writer, boolean useClientV2)
+    private static CountingHelperClient installHelperClient(ClickHouseWriter writer, boolean useClientV2)
             throws Exception {
-        ClickHouseHelperClient chc = mock(ClickHouseHelperClient.class);
-        when(chc.isUseClientV2()).thenReturn(useClientV2);
+        CountingHelperClient chc = new CountingHelperClient(useClientV2);
         Field field = ClickHouseWriter.class.getDeclaredField(WRITER_HELPER_CLIENT_FIELD);
         field.setAccessible(true);
         field.set(writer, chc);
@@ -129,14 +123,14 @@ public class ClickHouseWriterNullMessageUnitTest {
     void messageLessFailureIsRethrownAsItself(boolean useClientV2) throws Exception {
         RuntimeException failure = new RuntimeException();
         ScriptedInsertWriter writer = new ScriptedInsertWriter(new SinkTaskStatistics(null, 0), stubTable(), failure);
-        ClickHouseHelperClient chc = installHelperClient(writer, useClientV2);
+        try (CountingHelperClient chc = installHelperClient(writer, useClientV2)) {
+            Exception thrown =
+                    assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, true));
 
-        Exception thrown =
-                assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, true));
-
-        assertSame(failure, thrown);
-        assertEquals(1, writer.hookCalls);
-        verify(chc, never()).pinReplica();
+            assertSame(failure, thrown);
+            assertEquals(1, writer.hookCalls);
+            assertEquals(0, chc.pinCalls());
+        }
     }
 
     @Test
@@ -144,14 +138,14 @@ public class ClickHouseWriterNullMessageUnitTest {
     void emptyMessageIsRethrownAsItself() throws Exception {
         RuntimeException failure = new RuntimeException("");
         ScriptedInsertWriter writer = new ScriptedInsertWriter(new SinkTaskStatistics(null, 0), stubTable(), failure);
-        ClickHouseHelperClient chc = installHelperClient(writer, true);
+        try (CountingHelperClient chc = installHelperClient(writer, true)) {
+            Exception thrown =
+                    assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, true));
 
-        Exception thrown =
-                assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, true));
-
-        assertSame(failure, thrown);
-        assertEquals(1, writer.hookCalls);
-        verify(chc, never()).pinReplica();
+            assertSame(failure, thrown);
+            assertEquals(1, writer.hookCalls);
+            assertEquals(0, chc.pinCalls());
+        }
     }
 
     @Test
@@ -159,15 +153,15 @@ public class ClickHouseWriterNullMessageUnitTest {
     void knownCodeInsideLongerTextRetriesOnce() throws Exception {
         RuntimeException failure = new RuntimeException(RETRY_TRIGGER_MESSAGE);
         ScriptedInsertWriter writer = new ScriptedInsertWriter(new SinkTaskStatistics(null, 0), stubTable(), failure);
-        ClickHouseHelperClient chc = installHelperClient(writer, true);
+        try (CountingHelperClient chc = installHelperClient(writer, true)) {
+            Exception thrown =
+                    assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, true));
 
-        Exception thrown =
-                assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, true));
-
-        assertSame(failure, thrown);
-        assertEquals(2, writer.hookCalls);
-        verify(chc, times(1)).pinReplica();
-        verify(chc, times(1)).unpinReplica();
+            assertSame(failure, thrown);
+            assertEquals(2, writer.hookCalls);
+            assertEquals(1, chc.pinCalls());
+            assertEquals(1, chc.unpinCalls());
+        }
     }
 
     @Test
@@ -175,13 +169,13 @@ public class ClickHouseWriterNullMessageUnitTest {
     void knownCodeWithoutRetryIsNotRetried() throws Exception {
         RuntimeException failure = new RuntimeException(RETRY_TRIGGER_MESSAGE);
         ScriptedInsertWriter writer = new ScriptedInsertWriter(new SinkTaskStatistics(null, 0), stubTable(), failure);
-        ClickHouseHelperClient chc = installHelperClient(writer, true);
+        try (CountingHelperClient chc = installHelperClient(writer, true)) {
+            Exception thrown =
+                    assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, false));
 
-        Exception thrown =
-                assertThrows(Exception.class, () -> writer.doInsertRawBinary(oneRecord(), stubTable(), queryId(), false, false));
-
-        assertSame(failure, thrown);
-        assertEquals(1, writer.hookCalls);
-        verify(chc, never()).pinReplica();
+            assertSame(failure, thrown);
+            assertEquals(1, writer.hookCalls);
+            assertEquals(0, chc.pinCalls());
+        }
     }
 }
