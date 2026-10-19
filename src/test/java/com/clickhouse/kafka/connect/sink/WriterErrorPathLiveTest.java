@@ -12,9 +12,12 @@ import com.clickhouse.kafka.connect.sink.data.Record;
 import com.clickhouse.kafka.connect.sink.db.ClickHouseWriter;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
+import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
 import com.clickhouse.kafka.connect.sink.dlq.InMemoryDLQ;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import com.clickhouse.kafka.connect.sink.util.ThrowableTexts;
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import java.io.IOException;
@@ -33,6 +36,8 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Fork-only put()-level pins for WRT-11, D-05 and WRT-10. The failure is injected by reflectively
@@ -56,8 +61,59 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
     private static final String TUPLE_TABLE_DDL =
             "CREATE TABLE %s (id Int32, at Array(Tuple(a Int32, b String))) ENGINE = MergeTree ORDER BY id";
     private static final String SENTINEL = "SENTINELq7Zx41kV";
+    private static final String UUID_TABLE_DDL =
+            "CREATE TABLE %s (id Int32, u UUID) ENGINE = MergeTree ORDER BY id";
+    private static final String SERVER_EXCEPTION_CLASS = "com.clickhouse.client.api.ServerException";
+    private static final String INSERT_FAILURE_MESSAGE = "Error inserting records";
+    private static final String ERROR_LEVEL = "ERROR";
+    private static final String WITHHELD_CAUSE_NOTE = " (message withheld: may contain record data)";
     private static final String MISSING_VALUE_HINT =
             "): no value provided for a non-nullable column without a default; add the field, make the column Nullable, or give it a DEFAULT";
+
+    /**
+     * A conversion failure that happens client-side while the connector serializes a value. Each
+     * case carries the table, the failing column, the {@code Type} token and the exception class the
+     * rendered text must name, and the value that must never appear.
+     */
+    enum LiveCase {
+        INVALID_UUID(
+                UUID_TABLE_DDL,
+                "u",
+                String.valueOf(Type.UUID),
+                IllegalArgumentException.class.getName(),
+                SENTINEL,
+                WriterErrorPathLiveTest::uuidBatch);
+
+        final String ddl;
+        final String column;
+        final String typeToken;
+        final String originalClass;
+        final String value;
+        final Function<String, List<SinkRecord>> batch;
+
+        LiveCase(
+                String ddl,
+                String column,
+                String typeToken,
+                String originalClass,
+                String value,
+                Function<String, List<SinkRecord>> batch) {
+            this.ddl = ddl;
+            this.column = column;
+            this.typeToken = typeToken;
+            this.originalClass = originalClass;
+            this.value = value;
+            this.batch = batch;
+        }
+
+        /** The column, type and class text the rendered failure must carry. */
+        List<String> expectedRenderedFragments() {
+            return List.of(
+                    "Failed to write column `" + column + "`: ",
+                    "could not be written as ClickHouse type " + typeToken + ": " + originalClass,
+                    "Caused by: " + originalClass + WITHHELD_CAUSE_NOTE);
+        }
+    }
 
     /**
      * Throws the stored instance itself from both RowBinary hooks, never a wrapper, so the instance
@@ -132,6 +188,19 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
         Struct element = new Struct(elementSchema).put("b", SENTINEL);
         Struct struct = new Struct(schema).put("id", 1).put("at", List.of(element));
         return List.of(new SinkRecord(topic, 0, null, null, schema, struct, 0));
+    }
+
+    private static List<SinkRecord> uuidBatch(String topic) {
+        Schema schema = SchemaBuilder.struct()
+                .field("id", Schema.INT32_SCHEMA)
+                .field("u", Schema.STRING_SCHEMA)
+                .build();
+        List<SinkRecord> records = new ArrayList<>();
+        for (int offset = 0; offset < BATCH_SIZE; offset++) {
+            Struct struct = new Struct(schema).put("id", offset).put("u", SENTINEL);
+            records.add(new SinkRecord(topic, 0, null, null, schema, struct, offset));
+        }
+        return records;
     }
 
     private static Object readField(Object target, String fieldName) throws Exception {
@@ -308,5 +377,46 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
         assertTrue(dataException.getMessage().endsWith(MISSING_VALUE_HINT), dataException.getMessage());
         chain.forEach(t -> assertFalse(
                 String.valueOf(t.getMessage()).contains(SENTINEL), "no chain message may carry a record value"));
+    }
+
+    @ParameterizedTest(name = "WRT-13 live: errors.tolerance=none fails put value-free for {0}")
+    @EnumSource(LiveCase.class)
+    void conversionFailureFailsPutValueFreeUnderToleranceNone(LiveCase liveCase, TestInfo testInfo)
+            throws Exception {
+        try (LogCapture log = LogCapture.attach(ClickHouseWriter.class)) {
+            Throwable thrown = putBatch(testInfo, liveCase.ddl, false, null, null, liveCase.batch);
+
+            assertNotNull(thrown, "put must fail when errors.tolerance=none");
+            assertFalse(thrown instanceof RetriableException, "a conversion failure is not retriable");
+            ThrowableTexts.allTexts(thrown)
+                    .forEach(text -> assertFalse(text.contains(liveCase.value), "the thrown chain carries the value"));
+            // Connect's task status wraps put()'s exception in its own value-free ConnectException
+            // ("Exiting WorkerSinkTask due to unrecoverable exception.") and prints the trace of the
+            // whole chain, so rendering the exception put() throws is the faithful approximation
+            // (22-RESEARCH Pitfall 8).
+            String rendered = ThrowableTexts.printedStackTrace(thrown);
+            liveCase.expectedRenderedFragments().forEach(fragment -> assertTrue(
+                    rendered.contains(fragment), "the rendering lacks '" + fragment + "':\n" + rendered));
+            ThrowableTexts.causeChain(thrown)
+                    .forEach(t -> assertFalse(
+                            SERVER_EXCEPTION_CLASS.equals(t.getClass().getName()),
+                            "a client-side conversion failure must not surface as a ServerException (D-13)"));
+
+            List<LogCapture.CapturedEvent> insertErrors = log.events(ERROR_LEVEL).stream()
+                    .filter(e -> INSERT_FAILURE_MESSAGE.equals(e.message()) && e.hasThrowable())
+                    .toList();
+            assertFalse(insertErrors.isEmpty(), "no '" + INSERT_FAILURE_MESSAGE + "' ERROR event with a throwable");
+            assertTrue(
+                    insertErrors.stream().anyMatch(e -> {
+                        String text = String.join("\n", e.throwableTexts());
+                        return liveCase.expectedRenderedFragments().stream().allMatch(text::contains);
+                    }),
+                    "the logged throwable must name the column, the type and the class");
+            log.allTexts().forEach(text -> assertFalse(text.contains(liveCase.value), "a log text carries the value"));
+            log.events().stream()
+                    .flatMap(e -> e.throwableTexts().stream())
+                    .forEach(line -> assertFalse(
+                            line.startsWith(SERVER_EXCEPTION_CLASS), "a logged throwable line is a ServerException"));
+        }
     }
 }
