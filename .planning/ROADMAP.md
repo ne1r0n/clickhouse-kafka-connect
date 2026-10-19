@@ -152,10 +152,19 @@ The 17-REVIEW closures made here (WR-01 residue by OPS-02, IN-01 by CI-18, IN-02
 **Plans**: 5 plans (sequential, waves 1-5)
 
 Plans:
+**Wave 1**
 - [ ] 22-01-PLAN.md — HARN-08: ClickHouseWriterNullMessageUnitTest on a Mockito-free CountingHelperClient; opens 22-EVIDENCE.md with the D-16 spotless baseline
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 22-02-PLAN.md — WRT-14: Docker-free classification pin for 21 failure kinds through the real writer catch, ProxySinkTask and ChunkFlusher, green on the unchanged writer
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 22-03-PLAN.md — WRT-13 + WRT-15: value-free DataException with a WithheldMessageException cause, D-14 enum text, Docker-free sentinel tests, F2 flip and all doc edits in one fix(22-03) commit
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 22-04-PLAN.md — WRT-13 live: put() pins on latest x V2 for an invalid UUID and an unparseable Int128, and the D-15 DLQ header facts (live and Docker-free)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 22-05-PLAN.md — Phase gate: testUnit --rerun, full suite, anchors invariant, D-16 spotless, scope/order/no-push checks, and E-05 with the SC1..SC4 readings
 
 **Note**: `ClickHouseWriter.java` is a high-risk file (AGENTS.md). Order inside the phase:
