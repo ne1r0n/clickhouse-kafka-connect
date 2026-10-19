@@ -30,12 +30,12 @@ No milestone-level research was run; plan-phase researches each phase.
 
 ### Record-data exposure — backlog 999.3
 
-- [ ] **WRT-13**: A value-conversion failure in `ClickHouseWriter.doWriteColValue`'s generic catch reaches three places: the Connect task status, the DLQ exception headers (message and stack trace) and `doInsertRawBinary`'s two `Error inserting records` ERROR logs. Two cases are an invalid UUID string and an unparseable number.
+- [x] **WRT-13**: A value-conversion failure in `ClickHouseWriter.doWriteColValue`'s generic catch reaches three places: the Connect task status, the DLQ exception headers (message and stack trace) and `doInsertRawBinary`'s two `Error inserting records` ERROR logs. Two cases are an invalid UUID string and an unparseable number.
   - In all three, it names the column, the ClickHouse type and the exception class, and never carries the record value.
   - A sentinel test asserts the value is absent from every message in the cause chain and from every captured log line (T-18-07).
-- [ ] **WRT-14**: `Utils.handleException`'s retriable vs non-retriable classification is unchanged for every failure kind that reaches that catch.
+- [x] **WRT-14**: `Utils.handleException`'s retriable vs non-retriable classification is unchanged for every failure kind that reaches that catch.
   - It's pinned both ways by a Docker-free test that passes on the tree before the change and after it.
-- [ ] **WRT-15**: These change in the same commit as the code they describe:
+- [x] **WRT-15**: These change in the same commit as the code they describe:
   - FORK-DELTA Known costs item 6 and the WRT-12 row of the patch table.
   - The ROADMAP backlog 999.3 entry, which is marked delivered.
 
@@ -64,7 +64,7 @@ No milestone-level research was run; plan-phase researches each phase.
 
 ### Test harness
 
-- [ ] **HARN-08**: `ClickHouseWriterNullMessageUnitTest` no longer inline-mocks `ClickHouseHelperClient` with Mockito; it overrides one level up instead, in the `CapturingClickHouseWriter` pattern.
+- [x] **HARN-08**: `ClickHouseWriterNullMessageUnitTest` no longer inline-mocks `ClickHouseHelperClient` with Mockito; it overrides one level up instead, in the `CapturingClickHouseWriter` pattern.
   - Every original assertion of the WRT-11 null-message behavior is kept.
   - The Phase 18 deferred item (OpenJ9 `retransformClasses` crash risk) is closed.
 
@@ -110,9 +110,9 @@ No milestone-level research was run; plan-phase researches each phase.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DEPS-01 | Phase 21 | Complete |
-| WRT-13 | Phase 22 | Pending |
-| WRT-14 | Phase 22 | Pending |
-| WRT-15 | Phase 22 | Pending |
+| WRT-13 | Phase 22 | Complete |
+| WRT-14 | Phase 22 | Complete |
+| WRT-15 | Phase 22 | Complete |
 | COLS-12 | Phase 23 | Pending |
 | COLS-13 | Phase 23 | Pending |
 | COLS-14 | Phase 23 | Pending |
@@ -121,7 +121,7 @@ No milestone-level research was run; plan-phase researches each phase.
 | CI-18 | Phase 21 | Complete |
 | CI-19 | Phase 21 | Complete |
 | DEBT-12 | Phase 23 | Pending |
-| HARN-08 | Phase 22 | Pending |
+| HARN-08 | Phase 22 | Complete |
 | OPS-01 | Phase 21 | Complete |
 | OPS-02 | Phase 21 | Complete |
 | OPS-03 | Phase 21 | Complete |

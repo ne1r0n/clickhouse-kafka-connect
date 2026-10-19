@@ -4,17 +4,17 @@ milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
 current_phase: 22
 current_phase_name: Writer Record-Data Exposure
-status: executing
-stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-10-19T20:45:54.903Z"
+status: verifying
+stopped_at: Completed 22-05-PLAN.md
+last_updated: "2026-10-19T21:01:42.335Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 22 execution started
-state_head: d5dc0cc52e05a2232c2d172b7168696fae974228
+state_head: f2911a35300f19e5cd3ac2eb0eabeedafa9070e1
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 25
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-19 after Phase 21)
 
 Phase: 22 (Writer Record-Data Exposure) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-19 — Phase 22 execution started
 
 Progress: [███░░░░░░░] 25%
@@ -147,6 +147,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 22 P02 | 8 min | 2 tasks | 3 files |
 | Phase 22 P03 | 18 min | 3 tasks | 13 files |
 | Phase 22 P04 | 6 min | 2 tasks | 5 files |
+| Phase 22 P05 | 9 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 22]: D-04 pin uses a record text of at most 36 characters because UUID.fromString rejects longer strings with a value-free message
 - [Phase 22]: 22-04: shared D-15 header assertions and QUERY_ID_MESSAGE live in ValueFreeDlqHeadersUnitTest and the live test calls them; the live Int128 case uses Nullable(Int128) so the value reaches the conversion
 - [Phase 22]: 22-04: plan counted 7 existing live cases but WriterErrorPathLiveTest has 6; verify thresholds corrected to 7 and 10, no case added to hit a number
+- [Phase 22]: 22-05: the 22-03 F2 flip (L-47) is recorded as surfaced to the user with no response received, not as approved
 
 ### Pending Todos
 
@@ -222,8 +224,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T20:45:54.802Z
-Stopped at: Completed 22-04-PLAN.md
+Last session: 2026-10-19T21:01:42.237Z
+Stopped at: Completed 22-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
