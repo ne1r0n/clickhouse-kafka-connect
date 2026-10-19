@@ -2,39 +2,39 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
-current_phase: 21
-current_phase_name: Dependabot Integration & CI Hygiene
-status: verifying
-stopped_at: Completed 21-05-PLAN.md
-last_updated: "2026-10-18T17:12:35.079Z"
-last_activity: 2026-10-17
-last_activity_desc: Phase 21 execution started
-state_head: 7c06f32ba97dd1069f54a2aaac4a5fba972c0530
+current_phase: 22
+current_phase_name: Writer Record-Data Exposure
+status: planning
+stopped_at: Phase 21 complete, ready to plan Phase 22
+last_updated: "2026-10-19T09:55:57.136Z"
+last_activity: 2026-10-19
+last_activity_desc: Phase 21 complete, transitioned to Phase 22
+state_head: c0bf0195d981313a655e751d02a71bbb054f117e
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
   completed_plans: 5
-  percent: 0
+  percent: 25
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-16 after starting v1.7.0_gg3-hardening milestone)
+See: .planning/PROJECT.md (updated 2026-10-19 after Phase 21)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 21 — Dependabot Integration & CI Hygiene
+**Current focus:** Phase 22 — Writer Record-Data Exposure
 
 ## Current Position
 
-Phase: 21 (Dependabot Integration & CI Hygiene) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-10-17 — Phase 21 execution started
+Phase: 22 — Writer Record-Data Exposure
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-19 — Phase 21 complete, transitioned to Phase 22
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | 18 | 4 | - | - |
 | 19 | 10 | - | - |
 | 20 | 8 | - | - |
+| 21 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -177,6 +178,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 21]: 21-04: the narrowing of RUNS_ON and WRITE_SCOPE is a user-decided (D-10) exception to AGENTS.md no-weakening, tabled in E-11 Accept-set changes
 - [Phase 21]: 21-04: pin-guard fixtures use List.of with exact leading spaces and a literal upstream-workflow list, independent of the production constant
 - [Phase 21]: 21-05: E-13 cutoff_u is 2026-10-16T09:38:23Z (earlier-of rule over E-01 and the user's resolved instant); the continuation re-ran step 0 itself, since a reply or another agent's Date reading does not meet the D-11 precondition
+- [Phase 21]: UAT (2026-10-19): OPS-02 passed on the user's own words ("dependabot работает как и ожидается, новые PR создаются"). The Dependabot tab has no "Last checked" field any more; gradle job 1636257648 opened PRs #6-#9. A screenshot-only reply was not counted. Phase 21 closed with verification passed and SECURITY threats_open 0
 
 ### Pending Todos
 
@@ -187,10 +189,10 @@ None.
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
-- [Publish]: `origin/custom_build` = `6473e24f`. That is `a246ca01` (`v1.7.0_gg2`) plus three Dependabot merges the user made on 2026-10-16: lombok 1.18.48 (#1), spotless 8.10.4 (#2) and slf4j-reload4j 2.0.20 (#3), CI green on each. Local `sync/v1.7.0` lacks them and has diverged: past the merged tip `3879b883` it carries post-publication bookkeeping, the gg2 close and this milestone's start, all `.planning/`-only and local until the next `--no-ff` merge into `custom_build`. **Scheduled: Phase 21 (DEPS-01)** merges `origin/custom_build` into the working branch, with no rebase and no force, before any code work. `fork-anchors.txt` still pins `slf4j-reload4j:2.0.17` (BLD-08), which #3 changed without the anchors file, so the anchors invariant fails on any range containing `6473e24f` until Phase 21 settles the row and the `PRE_TAG`. Dependabot PR #4 (client `0.10.0`) stays open and unmerged. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
-- [CI]: Upstream's nightly `integrationTests.yaml` (byte-identical, cron `00 05 * * *`) fires on `custom_build` since the default-branch switch and is red by inheritance. Upstream's own nightly fails daily, and the fork has no cloud secrets. It is not a fork regression. **Scheduled: Phase 21 (OPS-01)**: the user disables it in Actions settings, and the file stays upstream-identical.
-- [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds. Residue of 17-REVIEW WR-01: confirm that the Dependabot `gradle` entry shows a recent "Last checked". **Scheduled: Phase 21 (OPS-02).**
-- [Env]: The user created a fine-grained read-only GitHub token (Actions: Read, single repo, 1-day expiry) in the macOS Keychain item `gsd17-gh-actions-read` for E-11. Revoke it on GitHub and run `security delete-generic-password -s gsd17-gh-actions-read` once no longer needed. **Scheduled: Phase 21 (OPS-03).**
+- [Publish]: `origin/custom_build` = `6473e24f`, merged into `sync/v1.7.0` by DEPS-01 (`82524e12`). Dependabot PRs #4 (client 0.9.6 → 0.10.0), #6 (commons-lang3 3.21.0), #7 (ben-manes versions 0.66.0), #8 (Gradle wrapper 9.8.1) and #9 (Kafka `connect-api` 4.1.1 → 4.4.0) are open, using all 5 open-PR slots. #4 and #9 bump fork-only pins, and `dependabot.yml` has no `ignore` for them. Any merge on `origin/custom_build` diverges the working branch again and needs a DEPS-01-shaped merge before the release. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
+- [CI]: The nightly `integrationTests.yaml` has been disabled by the user since 2026-10-16T09:38:23Z (Phase 21 OPS-01). The file stays upstream-identical. Phase 24 re-checks that no scheduled run followed.
+- [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
+- [Dependabot]: The repository has no `dependencies` label, but both `dependabot.yml` entries request it, so every Dependabot PR gets a "labels could not be found" comment. Updates still run. Fixing it means the user creates the label (D-11), or the fork drops the request. Tracked in PROJECT.md → Active, Phase 21 follow-ups.
 
 ## Deferred Items
 
@@ -208,11 +210,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-18T17:12:35.054Z
-Stopped at: Completed 21-05-PLAN.md
+Last session: 2026-10-19T09:58:00Z
+Stopped at: Phase 21 complete, ready to plan Phase 22
 Resume file: None
 
 ## Operator Next Steps
 
-- Review `.planning/ROADMAP.md` (Phases 21-24) and approve or request revisions.
-- Start Phase 21 with `/gsd-discuss-phase 21` or `/gsd-plan-phase 21`. Its operator checks (OPS-01..OPS-03) are yours in the GitHub web UI: disabling the nightly `integrationTests.yaml` early gives OPS-01 nights to observe before the release.
+- Start Phase 22 (Writer Record-Data Exposure) with `/gsd-discuss-phase 22` or `/gsd-plan-phase 22`.
+- Optional, in the GitHub web UI: create the `dependencies` label. Before merging any open Dependabot PR on `origin`, note that #4 and #9 bump fork-only pins, and that a merge diverges `sync/v1.7.0` again.
