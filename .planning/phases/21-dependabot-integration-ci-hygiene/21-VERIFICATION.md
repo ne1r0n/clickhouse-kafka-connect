@@ -1,7 +1,7 @@
 ---
 phase: 21-dependabot-integration-ci-hygiene
 verified: 2026-10-18T17:40:00Z
-status: human_needed
+status: passed
 score: 4/5 must-haves verified
 covered_files:
   - ".planning/phases/21-dependabot-integration-ci-hygiene/21-01-PLAN.md"
@@ -65,7 +65,7 @@ human_verification:
 | `testUnit` green | Orchestrator's post-merge `./gradlew test`: run 2 BUILD SUCCESSFUL, 1009 tests, 0 failures, 0 errors, 18 skipped. Run 1 hit the known intermittent OpenJ9 `retransformClasses` crash (Phase 18 deferred item). E-12 `testUnit`: 577 tests, 0 failed, 2 skipped. I re-ran the 26-test pin-guard class (green). I did not re-run the full suite. |
 | Anchors and FORK-DELTA rows | `fork-anchors.txt:43` reads `build.gradle.kts slf4j-reload4j:2.0.20 1 BLD-08`. FORK-DELTA lines 63 and 65 name `slf4j-reload4j:2.0.20` and `Lombok 1.18.48`. |
 | Merge-invariants gate | `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD` exits 0: `anchor_commits=396 ... anchor_exempt=1 result=PASS`. The single exemption is `.planning/scripts/fork-anchor-exemptions.txt`, a full-SHA-, path- and pattern-pinned row for `6473e24f`. |
-| Self-test | `verify-merge-invariants-selftest.sh` PASS per E-12 (16 PASS, 0 FAIL). E-09 records the fail-first runs: the old gate fails 7 cases and a SHA-only mutant fails 2. I did not re-run the self-test myself. |
+| Self-test | I re-ran `verify-merge-invariants-selftest.sh` at the tip: exit 0, 16 PASS (ST1-ST4, ST5-ST9 including every ST8 malformed-row case), "selftest: no failures". This matches E-12. The fail-first runs are E-09 only, which I did not repeat: the old gate fails 7 cases and a SHA-only mutant fails 2. |
 
 #### Truth 4 sub-checks (independently re-run, GitHub `date:` Sun, 18 Oct 2026 17:25:50 GMT)
 
@@ -113,6 +113,7 @@ Not applicable. The phase changes build config, CI test code, a shell gate and d
 | CI-18: fork-count step stops reading `reportTestForks` | Throwaway worktree: `sed` renames the call in `tests.yaml`, then the same test run | 1 failure: "Step 'Report test fork count' ... must call './gradlew ... reportTestForks'" | PASS (fails as required) |
 | CI-18: task disappears from `build.gradle.kts` | Throwaway worktree: `sed` renames the registration, then the same test run | 1 failure: "tasks.register(\"reportTestForks\") not found in build.gradle.kts outside comments" | PASS (fails as required) |
 | Merge-invariants gate | `bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD` | exit 0, `result=PASS`, `anchor_exempt=1` | PASS |
+| Merge-invariants self-test | `bash .planning/scripts/verify-merge-invariants-selftest.sh` | exit 0, 16 PASS, "selftest: no failures" | PASS |
 | Dependency resolution | `dependencyInsight` slf4j-reload4j and lombok | 2.0.20 and 1.18.48 | PASS |
 | Clean compile Lombok warning | `clean compileJava`, grep "ambiguous" | exit 0, 0 matches | PASS |
 | Spotless baseline-equal | `spotlessApply` in a worktree at the tip | Same md5 and 46 files as the 8.10.1 baseline | PASS |
