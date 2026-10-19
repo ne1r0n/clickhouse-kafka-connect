@@ -13,7 +13,7 @@
 | E-02 | 22-02 | WRT-14 pin on the unchanged writer | recorded |
 | E-03 | 22-03 | WRT-13 red-before and green-after, D-03 result, WRT-15 commit | recorded |
 | E-04 | 22-04 | Live put() evidence and DLQ headers | recorded |
-| E-05 | 22-05 | Phase close gate and SC1..SC4 readings | pending |
+| E-05 | 22-05 | Phase close gate and SC1..SC4 readings | recorded |
 
 ### E-01: Spotless baseline, anchors mirror and the HARN-08 migration (22-01)
 
@@ -142,3 +142,34 @@ D-13 trace (SC2 "both logs"):
 | Both | the `ServerException` branch is unreachable for a client-side conversion failure: measured in 22-RESEARCH and tripwired live here (no `ServerException` in the thrown chain, no captured throwable line starts with its class name) | | | |
 
 SC2's two logs are therefore met by the generic-branch log plus the written stack trace (E-04's rendering assertions). The Connect task status is approximated by rendering the exception `put()` throws (flagged assumption A3, a `backstop` truth).
+
+### E-05: Phase 22 close gate and the success-criteria readings (22-05)
+
+Recorded 2026-10-19T20:55:01Z on `sync/v1.7.0` at `3f1b071a`. Scratch output is in `/tmp/gsd22/exec/` (`testunit-final.log`, `full-suite.log`, `full-suite.rc`, `gate-final.out`, `gate-final.err`, `gate-final.rc`, `scope-final.txt`). Every gate ran with its `--rerun` flag or fresh from the script, and every run is listed. No gate was red, so no source was edited and nothing was re-run.
+
+testunit_rerun: Tests summary: 795 tests, 793 succeeded, 0 failed, 2 skipped
+full_suite: Tests summary: 1231 tests, 1213 succeeded, 0 failed, 18 skipped
+full_suite_runs: 1
+gate_final: invariants: provenance_paths=21 anchor_commits=429 anchor_rows=65 marker_commits=476 anchor_exempt=1 result=PASS
+spotless_final: SPOTLESS-BASELINE-EQUAL
+scope_ok: SCOPE-ORDER-OK
+order_ok: test(22-01) < test(22-02) < fix(22-03) < test(22-04)
+pin_unchanged: 0590d20ce1bade8deac21ae73f954546185be91d -> HEAD, pin_testcases 184
+wrt15_commit_files: 12
+no_push: HEAD on no remote ref
+worktrees: 1
+
+Run facts. The full suite ran on ClickHouse `latest` (server reported "Connected to ClickHouse version: 26.9.19.9", image created 2026-10-14, the same server as E-04) with client V2, CLICKHOUSE_VERSION and CLIENT_VERSION unset. It exited 0 with no OpenJ9 exit-255 crash, so there was no re-run and no core dump to clean up. The 18 skipped cases are the suite's existing `@Disabled` and conditional skips (JsonColumnTest, InsertFormatPerformanceTest, two ClickHouseSinkTaskWithSchemaTest methods, the eleven exactlyOnceStateMismatchTest cases, ClickHouseSinkTaskTest.clientNameTest and two ConvertToMapOrJson performance tests), none touched by this phase. `build/test-results/test` holds 89 JUnit XML files with 0 failures and 0 errors, including the seven Phase 22 classes (WriterErrorPathLiveTest, ClickHouseSinkTaskWithSchemaTest, WriterFailureClassificationUnitTest, WriterValueFreeFailureUnitTest, ClickHouseWriterNullMessageUnitTest, WithheldMessageExceptionUnitTest, ValueFreeDlqHeadersUnitTest). The pin class XML shows `tests="184"`, equal to E-02's `pin_testcases`.
+
+The anchors gate was run at `3f1b071a`, which is every commit of `54e63648..HEAD` before this plan's own docs commits. Those touch no anchored file; the gate is re-run on the final tip after the plan metadata commits (see 22-05-SUMMARY.md).
+
+Reading of the 22-03 F2 flip (ledger L-47): `ClickHouseSinkTaskWithSchemaTest.schemaWithFixedStringMismatchTest` was flipped by 22-03 because D-05 forces the old instance-of assertion red (E-03 `f2_forced_red`). The orchestrator surfaced the flip to the user; no user response has been received, so it is recorded here as surfaced and not as approved.
+
+sc1: pass. WRT-14 is closed: E-02 shows the 184-case classification pin (21 failure kinds through the real writer catch, ProxySinkTask and ChunkFlusher) green on the unchanged writer, and E-03 and this entry show the same pin class and its two fixtures byte-identical to the last test(22-02) commit and green on the changed writer (pin_testcases_after 184, final testUnit and full suite 0 failed).
+sc2: pass. E-03 (Docker-free sentinel cases on V1 and V2, red before and green after the single fix(22-03) commit) and E-04 (live put() on latest x V2 plus the DLQ header cases) show the column, the ClickHouse type and the exception class named and the record value absent from the cause chain and every captured log line. Read with D-13 (the ServerException-branch log is unreachable for client-side conversion failures, so the two Error inserting records logs are met by the generic-branch log plus E-04's written trace) and D-15 (the DLQ message header stays the queryId text, the column, type and class are in the stacktrace header, and the sentinel is in neither).
+sc3: pass. E-01 shows ClickHouseWriterNullMessageUnitTest with 0 Mockito lines (5 before), all five WRT-11 cases and their assertions kept, and the Phase 18 OpenJ9 retransformClasses item closed because nothing is bytecode-instrumented any more. Read with F7: the D-10 Mockito-free helper-client subclass meets "no longer inline-mocks".
+sc4: pass. E-03 records the single twelve-file fix(22-03) commit (FORK-DELTA Known costs item 6, the WRT-12 row, the backlog 999.3 entry and the writer code in one commit, rechecked here as 12 files), and gate_final shows the anchors invariant passing across the range with `anchor_exempt=1`.
+
+d13_reading: the ServerException branch of doInsertRawBinary is unreachable for a client-side conversion failure on V1 and V2 (measured in 22-RESEARCH, tripwired live in E-04), so SC2's "both Error inserting records logs" is met by the generic-branch log plus this written trace.
+d15_reading: the DLQ exception.message header stays Processing's queryId text as before; the column, the type and the class are in exception.stacktrace; the sentinel is in neither (L-48).
+f7_reading: the D-10 Mockito-free ClickHouseHelperClient subclass meets "no longer inline-mocks" and closes the OpenJ9 retransformClasses item; "one level up" is read through the locked D-10 design (E-01).
