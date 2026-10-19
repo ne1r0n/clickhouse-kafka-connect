@@ -12,7 +12,11 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.dlq.InMemoryDLQ;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,7 +74,77 @@ public class WriterFailureClassificationUnitTest {
             RuntimeException nestedFailure) {}
 
     enum FailureKind {
-        INVALID_UUID(RetryClass.NON_RETRIABLE, () -> bytes(column("c_uuid", Type.UUID), string("not-a-uuid")));
+        INVALID_UUID(RetryClass.NON_RETRIABLE, () -> bytes(column("c_uuid", Type.UUID), string("not-a-uuid"))),
+        UNPARSEABLE_INT128(RetryClass.NON_RETRIABLE, () -> bytes(column("c_int128", Type.INT128), string("Zq7x41kV"))),
+        INT128_TOO_WIDE(
+                RetryClass.NON_RETRIABLE, () -> bytes(column("c_int128", Type.INT128), string("9".repeat(60)))),
+        DECIMAL_OUT_OF_RANGE(
+                RetryClass.NON_RETRIABLE,
+                () -> bytes(
+                        Column.builder().name("c_decimal").type(Type.Decimal).precision(9).scale(2).build(),
+                        string("123456789012345.12"))),
+        FIXED_STRING_TOO_LONG(
+                RetryClass.NON_RETRIABLE,
+                () -> bytes(
+                        Column.builder().name("c_fixed").type(Type.FIXED_STRING).precision(2).build(),
+                        string("abcdefgh"))),
+        UNKNOWN_ENUM_LABEL(
+                RetryClass.NON_RETRIABLE,
+                () -> bytes(
+                        Column.builder().name("c_enum").type(Type.Enum8).enumValues(Map.of("a", 1)).build(),
+                        string("zz"))),
+        JSON_COLUMN_FLAG_OFF(RetryClass.NON_RETRIABLE, () -> bytes(column("c_json", Type.JSON), string("{}"))),
+        ARITHMETIC_SCRIPTED(
+                RetryClass.NON_RETRIABLE,
+                () -> new Scenario(
+                        column("c_int", Type.INT32),
+                        new Data(Schema.INT32_SCHEMA, 1),
+                        ByteArrayOutputStream::new,
+                        new ArithmeticException("scripted overflow"),
+                        null)),
+        NESTED_EXACT_RUNTIME_SCRIPTED(
+                RetryClass.NON_RETRIABLE,
+                () -> new Scenario(
+                        tupleColumn(),
+                        tupleValue(Schema.INT32_SCHEMA, 1),
+                        ByteArrayOutputStream::new,
+                        null,
+                        new RuntimeException(String.format(NESTED_NULL_RUNTIME_FORMAT, TUPLE_FIELD_COLUMN)))),
+        NESTED_DATA_EXCEPTION(
+                RetryClass.NON_RETRIABLE,
+                () -> bytes(tupleColumn(), tupleValue(Schema.OPTIONAL_INT32_SCHEMA, null))),
+        IO_PLAIN(RetryClass.NON_RETRIABLE, () -> uuidStream(new IOException("stream closed by test"))),
+        IO_NO_MESSAGE(RetryClass.NON_RETRIABLE, () -> uuidStream(new IOException())),
+        IO_READ_TIMEOUT_PREFIX(
+                RetryClass.RETRIABLE, () -> uuidStream(new IOException("Read timed out after 30000 ms"))),
+        IO_WRITE_TIMEOUT_PREFIX(
+                RetryClass.RETRIABLE, () -> uuidStream(new IOException("Write timed out after 30000 ms"))),
+        IO_TIMEOUT_TEXT_NOT_AT_START(
+                RetryClass.NON_RETRIABLE, () -> uuidStream(new IOException("stream: Read timed out after 30000 ms"))),
+        SOCKET_EXCEPTION(RetryClass.SOCKET, () -> uuidStream(new SocketException("Connection reset"))),
+        SOCKET_TIMEOUT(RetryClass.RETRIABLE, () -> uuidStream(new SocketTimeoutException("timed out"))),
+        UNKNOWN_HOST(RetryClass.RETRIABLE, () -> uuidStream(new UnknownHostException("clickhouse.invalid"))),
+        IO_IN_MAP_VALUE(
+                RetryClass.RETRIABLE,
+                () -> failingStream(
+                        mapColumn(),
+                        new Data(SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.INT32_SCHEMA).build(), Map.of("k", 1)),
+                        new SocketTimeoutException("timed out"),
+                        MAP_BYTES_BEFORE_VALUE)),
+        IO_IN_TUPLE_FIELD(
+                RetryClass.RETRIABLE,
+                () -> failingStream(
+                        tupleColumn(),
+                        tupleValue(Schema.INT32_SCHEMA, 1),
+                        new SocketTimeoutException("timed out"),
+                        0)),
+        IO_IN_ARRAY_ELEMENT(
+                RetryClass.RETRIABLE,
+                () -> failingStream(
+                        arrayColumn(),
+                        new Data(SchemaBuilder.array(Schema.INT32_SCHEMA).build(), List.of(1)),
+                        new SocketTimeoutException("timed out"),
+                        ARRAY_BYTES_BEFORE_ELEMENT));
 
         private final RetryClass retryClass;
         private final Supplier<Scenario> scenario;
@@ -97,6 +171,13 @@ public class WriterFailureClassificationUnitTest {
     private static final String INSERT_FAILURE_MESSAGE = "Error inserting records";
     private static final String ERROR_LEVEL = "ERROR";
     private static final int BATCH_SIZE = 3;
+    private static final String VALID_UUID = "123e4567-e89b-12d3-a456-426614174000";
+    private static final String TUPLE_FIELD_COLUMN = "t.a";
+    private static final String NESTED_NULL_RUNTIME_FORMAT = "An attempt to write null into not nullable column '%s'";
+    // size varint (1) + key length varint (1) + key "k" (1), written before the Int32 value
+    private static final int MAP_BYTES_BEFORE_VALUE = 3;
+    // size varint (1), written before the first Int32 element
+    private static final int ARRAY_BYTES_BEFORE_ELEMENT = 1;
 
     private static Column column(String name, Type type) {
         return Column.builder().name(name).type(type).build();
@@ -108,6 +189,49 @@ public class WriterFailureClassificationUnitTest {
 
     private static Scenario bytes(Column column, Data value) {
         return new Scenario(column, value, ByteArrayOutputStream::new, null, null);
+    }
+
+    private static Scenario failingStream(Column column, Data value, IOException failure, int bytesBeforeFailure) {
+        return new Scenario(
+                column,
+                value,
+                () -> new ScriptedWriteFailureWriter.FailingOutputStream(failure, bytesBeforeFailure),
+                null,
+                null);
+    }
+
+    private static Scenario uuidStream(IOException failure) {
+        return failingStream(column("c_uuid", Type.UUID), string(VALID_UUID), failure, 0);
+    }
+
+    private static Column tupleColumn() {
+        return Column.builder()
+                .name("t")
+                .type(Type.TUPLE)
+                .tupleFields(List.of(column(TUPLE_FIELD_COLUMN, Type.INT32)))
+                .build();
+    }
+
+    private static Data tupleValue(Schema fieldSchema, Integer fieldValue) {
+        Schema schema = SchemaBuilder.struct().field("a", fieldSchema).build();
+        return new Data(schema, new Struct(schema).put("a", fieldValue));
+    }
+
+    private static Column mapColumn() {
+        return Column.builder()
+                .name("m")
+                .type(Type.MAP)
+                .mapKeyType(Type.STRING)
+                .mapValueType(column("m", Type.INT32))
+                .build();
+    }
+
+    private static Column arrayColumn() {
+        return Column.builder()
+                .name("arr")
+                .type(Type.ARRAY)
+                .arrayType(column("arr", Type.INT32))
+                .build();
     }
 
     private static Schema recordSchema() {
@@ -240,5 +364,26 @@ public class WriterFailureClassificationUnitTest {
         assertEquals(
                 expected(kind.retryClass(), errorsTolerance, retryOnSocketException),
                 run(kind, clientV2, errorsTolerance, retryOnSocketException, entry, false));
+    }
+
+    static Stream<Arguments> ignorePartitionsMatrix() {
+        List<Arguments> cases = new ArrayList<>();
+        for (FailureKind kind : new FailureKind[] {FailureKind.INVALID_UUID, FailureKind.SOCKET_TIMEOUT}) {
+            for (boolean errorsTolerance : new boolean[] {false, true}) {
+                for (Entry entry : Entry.values()) {
+                    cases.add(Arguments.of(kind, errorsTolerance, entry));
+                }
+            }
+        }
+        return cases.stream();
+    }
+
+    @ParameterizedTest(name = "WRT-14 ignorePartitionsWhenBatching route: {0} errorsTolerance={1} via {2}")
+    @MethodSource("ignorePartitionsMatrix")
+    void classificationOutcomeIsPinnedOnTheIgnorePartitionsRoute(
+            FailureKind kind, boolean errorsTolerance, Entry entry) throws Exception {
+        assertEquals(
+                expected(kind.retryClass(), errorsTolerance, false),
+                run(kind, false, errorsTolerance, false, entry, true));
     }
 }
