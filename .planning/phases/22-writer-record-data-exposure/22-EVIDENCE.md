@@ -11,7 +11,7 @@
 |----|------|-----------------|--------|
 | E-01 | 22-01 | Spotless baseline (D-16), anchors mirror, HARN-08 before and after runs, F7 reading | recorded |
 | E-02 | 22-02 | WRT-14 pin on the unchanged writer | recorded |
-| E-03 | 22-03 | WRT-13 red-before and green-after, D-03 result, WRT-15 commit | pending |
+| E-03 | 22-03 | WRT-13 red-before and green-after, D-03 result, WRT-15 commit | recorded |
 | E-04 | 22-04 | Live put() evidence and DLQ headers | pending |
 | E-05 | 22-05 | Phase close gate and SC1..SC4 readings | pending |
 
@@ -89,3 +89,28 @@ Shape inventory (every route from the writer to the handler):
 - Shape B: `ChunkFlusher.putDirect` calls `ProxySinkTask.put` and runs the handler a second time over what A threw. The Direct, AtLeastOnceBuffer and ExactlyOnceBuffer delivery strategies all end in `putDirect` (22-RESEARCH). Entry `CHUNK_FLUSHER_PUT_DIRECT`.
 - ignorePartitions overload: with `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`, `Processing.doLogic` takes the second `doInsert` overload, which wraps the same way. Pinned for INVALID_UUID and SOCKET_TIMEOUT across both tolerances and both entries.
 - Modeled V2 client wrap: for `clientV2=true` the scripted hook wraps a `RuntimeException` once in `com.clickhouse.client.api.ClickHouseException` with the original as cause (the shape measured in 22-RESEARCH D-13) and passes an `IOException` through. The real client also keeps an `IOException` as the deepest cause, so root-cause classification is the same. Plan 22-04's live V2 test exercises the real client.
+
+### E-03: WRT-13 red-before and green-after, the D-03 result and the WRT-15 commit (22-03)
+
+Recorded 2026-10-19. Scratch output is in `/tmp/gsd22/exec/` (`tracer-red.log`, `tracer-red-wvf.xml`, `tracer-red-wlm.xml`, `tracer-green.log`, `tracer-green-pin.xml`, `expansion-red.log`, `expansion-red.xml`, `expansion-green.log`, `f2-forced-red.log`, `f2-forced-red.xml`, `f2-live.log`, `f2-live.xml`, `testunit-22-03.log`, `gate-22-03.out`). The red-before runs of the new cases used a throwaway `git worktree` of the last committed tree (the unchanged writer), removed afterwards (`git worktree list` shows one entry).
+
+d03_result: one value-carrying exact RuntimeException was reachable (Column.convertEnumValues, F1), fixed by D-14; none in clickhouse-data or JDK code (javap: BinaryStreamUtils has none, ClickHouseChecker throws IllegalArgumentException only)
+tracer_red: WriterValueFreeFailureUnitTest red 4 of 4 total on the unchanged writer; wlm_red=1 of 10 (only the flipped method)
+expansion_red: 21 cases, 13 red; WRT-13 value-free 10 of 10 red, D-04 V1 2 of 2 red, D-14 1 of 1 red; WRT-13 pass-through 6 of 6 green, D-04 V2 unchanged 2 of 2 green
+green_after: TRACER-GREEN EXPANSION-GREEN
+pin_unchanged_since: 0590d20ce1bade8deac21ae73f954546185be91d
+pin_testcases_after: 184
+f2_forced_red: tests=1 failures=1 type=org.opentest4j.AssertionFailedError (the unchanged assertion red on the changed writer, message naming the assertion text and WithheldMessageException; D-05 forces the flip)
+f2_live: tests=1 failures=0
+anchors_mirror_22_03: rows=65 bad=0
+spotless_after_22_03: SPOTLESS-BASELINE-EQUAL
+testunit_22_03: Tests summary: 793 tests, 791 succeeded, 0 failed, 2 skipped
+wrt13_commit: c713a8379b546a14d1cb4f6a574bb0278aadcfb0
+wrt13_commit_files: 12
+gate_22_03: invariants: provenance_paths=21 anchor_commits=420 anchor_rows=65 marker_commits=467 anchor_exempt=1 result=PASS
+
+D-13 branch trace (22-RESEARCH, re-confirmed by the new cases): on both clients a conversion failure reaches the generic second catch of `doInsertRawBinary`, so the `Error inserting records` log carries the throwable of that catch. V2 throws the `com.clickhouse.client.api.ClickHouseException` insert wrapper synchronously with the writer exception as cause, and V1 throws the raw writer exception. The `ServerException` branch is unreachable for a client-side conversion failure, because the writer throws mid-stream before the server answers. The Docker-free cases assert this with a tripwire: no captured throwable text line starts with `com.clickhouse.client.api.ServerException`.
+
+D-03 pass-through shapes pinned green on both the unchanged and the changed writer: the JSON hint, the unsupported JSON field type, a scripted L-12 RuntimeException (same instance), a stream IOException (same instance), an IOException inside a Tuple field (exact RuntimeException wrapper with the same cause) and the WRT-08 DataException.
+
+Residual (flagged assumption A2): an IOException chain passes through unchanged under the locked D-01, including a Jackson `JsonProcessingException` on the JSON-as-string route. Whether a Jackson reference chain can name a record's map key was not measured. It is recorded in FORK-DELTA Known costs item 6 and is not fixed here.
