@@ -66,7 +66,9 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
     private static final String SERVER_EXCEPTION_CLASS = "com.clickhouse.client.api.ServerException";
     private static final String INSERT_FAILURE_MESSAGE = "Error inserting records";
     private static final String ERROR_LEVEL = "ERROR";
-    private static final String WITHHELD_CAUSE_NOTE = " (message withheld: may contain record data)";
+    private static final String INT128_TABLE_DDL =
+            "CREATE TABLE %s (id Int32, n Nullable(Int128)) ENGINE = MergeTree ORDER BY id";
+    private static final String NUMERIC_SENTINEL = "Zq7x41kV";
     private static final String MISSING_VALUE_HINT =
             "): no value provided for a non-nullable column without a default; add the field, make the column Nullable, or give it a DEFAULT";
 
@@ -82,7 +84,14 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
                 String.valueOf(Type.UUID),
                 IllegalArgumentException.class.getName(),
                 SENTINEL,
-                WriterErrorPathLiveTest::uuidBatch);
+                WriterErrorPathLiveTest::uuidBatch),
+        UNPARSEABLE_INT128(
+                INT128_TABLE_DDL,
+                "n",
+                String.valueOf(Type.INT128),
+                NumberFormatException.class.getName(),
+                NUMERIC_SENTINEL,
+                WriterErrorPathLiveTest::int128Batch);
 
         final String ddl;
         final String column;
@@ -108,10 +117,7 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
 
         /** The column, type and class text the rendered failure must carry. */
         List<String> expectedRenderedFragments() {
-            return List.of(
-                    "Failed to write column `" + column + "`: ",
-                    "could not be written as ClickHouse type " + typeToken + ": " + originalClass,
-                    "Caused by: " + originalClass + WITHHELD_CAUSE_NOTE);
+            return ValueFreeDlqHeadersUnitTest.renderedFragments(column, typeToken, originalClass);
         }
     }
 
@@ -198,6 +204,23 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
         List<SinkRecord> records = new ArrayList<>();
         for (int offset = 0; offset < BATCH_SIZE; offset++) {
             Struct struct = new Struct(schema).put("id", offset).put("u", SENTINEL);
+            records.add(new SinkRecord(topic, 0, null, null, schema, struct, offset));
+        }
+        return records;
+    }
+
+    /**
+     * The column is Nullable on purpose: {@code validateDataSchema} skips a nullable root column, so
+     * the STRING field reaches the Int128 conversion instead of failing schema validation first.
+     */
+    private static List<SinkRecord> int128Batch(String topic) {
+        Schema schema = SchemaBuilder.struct()
+                .field("id", Schema.INT32_SCHEMA)
+                .field("n", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        List<SinkRecord> records = new ArrayList<>();
+        for (int offset = 0; offset < BATCH_SIZE; offset++) {
+            Struct struct = new Struct(schema).put("id", offset).put("n", NUMERIC_SENTINEL);
             records.add(new SinkRecord(topic, 0, null, null, schema, struct, offset));
         }
         return records;
@@ -418,5 +441,18 @@ public class WriterErrorPathLiveTest extends ClickHouseBase {
                     .forEach(line -> assertFalse(
                             line.startsWith(SERVER_EXCEPTION_CLASS), "a logged throwable line is a ServerException"));
         }
+    }
+
+    @ParameterizedTest(name = "WRT-13 live: errors.tolerance=all sends value-free DLQ headers for {0}")
+    @EnumSource(LiveCase.class)
+    void conversionFailureDlqHeadersAreValueFreeUnderToleranceAll(LiveCase liveCase, TestInfo testInfo)
+            throws Exception {
+        InMemoryDLQ dlq = new InMemoryDLQ();
+
+        Throwable thrown = putBatch(testInfo, liveCase.ddl, true, dlq, null, liveCase.batch);
+
+        assertNull(thrown, "put must return when errors.tolerance=all");
+        ValueFreeDlqHeadersUnitTest.assertValueFreeDlqHeaders(
+                dlq, BATCH_SIZE, liveCase.expectedRenderedFragments(), liveCase.value);
     }
 }
