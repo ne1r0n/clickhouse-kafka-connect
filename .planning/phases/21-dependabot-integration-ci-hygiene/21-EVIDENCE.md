@@ -10,7 +10,7 @@
 | Entry | Requirement | Verdict |
 |-------|-------------|---------|
 | E-01 | OPS-01, OPS-02, OPS-03 (facts at phase start) | unmeasured (D-11 window opens 2026-10-17T12:00:00Z; the closing OPS-01 check is E-13 in plan 21-05) |
-| E-02 | OPS-01, OPS-02, OPS-03 (operator answers) | unmeasured (OPS-02 unmeasured: no gradle "Last checked" time reported; OPS-01 disable recorded and OPS-03 pass) |
+| E-02 | OPS-01, OPS-02, OPS-03 (operator answers) | pass (OPS-02 confirmed in the 2026-10-19 UAT follow-up; OPS-01 disable recorded and OPS-03 pass) |
 | E-03 | DEPS-01 (merge) | pass |
 | E-04 | DEPS-01, D-03 (gate before the exemption) | pass |
 | E-05 | DEPS-01 (dependencyInsight) | pass |
@@ -92,7 +92,37 @@ OPS-03: pass
 
 Timestamp: 2026-10-17T08:37:22Z
 
-Verdict: unmeasured (OPS-02 unmeasured: no gradle "Last checked" time reported; OPS-01 disable recorded and OPS-03 pass)
+#### OPS-02 follow-up during `/gsd-verify-work 21` (UAT test 1)
+
+The UAT checkpoint asked for the `gradle` entry's "Last checked" time and whether a configuration error shows. The user's first reply was screenshots only (verbatim, given directly to the orchestrator, 2026-10-19):
+> [Image #3] [Image #4] посмотри на скринах
+
+The orchestrator did not count that as the user's reading. It presented its reading of the images and the API facts below. That included the missing-label warning, with the question whether it counts as a configuration error. It then asked for a one-line answer in the user's own words. The user's answer (verbatim, given directly to the orchestrator, recorded 2026-10-19T09:52:47Z):
+> dependabot работает как и ожидается, новые PR создаются
+
+orchestrator translation (not the user's words): "dependabot works as expected, new PRs are being created". The answer states no clock time. The recency in the fence below comes from "new PRs are being created" together with the API timestamps.
+
+orchestrator annotation (not the user's words): Image #3 shows PR #9, "chore(deps): bump org.apache.kafka:connect-api from 4.1.1 to 4.4.0", opened by `dependabot[bot]` into `custom_build` "52 minutes ago". A second Dependabot comment on it reads "The following labels could not be found: `dependencies`. Please create it before Dependabot can add it to a pull request. Please fix the above issues or remove invalid values from `dependabot.yml`." Image #4 shows Insights, Dependency graph, Dependabot tab. It has one entry, `build.gradle.kts`, with a "Check for updates" button. The tab has no "Last checked" field, and the entry has no configuration-error marker. Its "Recent jobs" list shows two entries, both red: "Version update 1636257648, Errored with the message "Dependabot cannot open any more pull requests", Affected #6 and 3 more, 52 minutes ago" and "Version update 1627525145, Errored with the message "Dependabot cannot open any more pull requests", Affected #1 and 4 more, 5 days ago". So job #1627525145 concluded `success` as an Actions run (E-01, Image #2), but the Dependabot tab marks it as errored on the open-PR limit.
+
+Commands as run (unauthenticated, `R=https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect`, every curl `-sS --fail`, GitHub `date:` header `Mon, 19 Oct 2026 09:47:47 GMT`):
+
+1. `curl -sS --fail -D /tmp/gsd21-uat-h.txt "$R/actions/workflows/384810012/runs?per_page=5"`
+2. `curl -sS --fail "$R/pulls?state=open&per_page=50"`
+3. `curl -sS --fail "$R/labels?per_page=100"`
+4. `git show v1.7.0:.github/dependabot.yml` and `git log --oneline -3 -- .github/dependabot.yml`
+
+```text
+ops02_last_checked_ui_field: absent (the Dependabot tab now shows a "Recent jobs" list instead)
+ops02_latest_gradle_job: 1636257648 (Actions run 39225727880, created 2026-10-19T08:51:12Z, completed, success)
+ops02_prs_opened_by_that_job: #6 2026-10-19T08:51:57Z, #7 08:52:09Z, #8 08:52:31Z, #9 08:52:58Z
+ops02_open_dependabot_prs: 5 (#4, #6, #7, #8, #9), equal to open-pull-requests-limit 5
+ops02_config_error_on_gradle_entry: none shown (Image #4)
+ops02_job_error_reason: open-pull-request limit, not a dependabot.yml validation error
+ops02_label_warning: repo has no `dependencies` label; both dependabot.yml entries request it (gradle entry from upstream v1.7.0, github-actions entry from 475ce7b9); updates still run, PRs arrive unlabeled; the user answered "works as expected" after this was presented; follow-up, not a Phase 21 gap
+OPS-02: pass
+```
+
+Verdict: pass (OPS-01 disable recorded, OPS-02 pass on the 2026-10-19 follow-up, OPS-03 pass)
 
 ### E-03: DEPS-01 merge of origin/custom_build (6473e24f)
 

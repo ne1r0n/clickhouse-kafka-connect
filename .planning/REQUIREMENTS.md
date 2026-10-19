@@ -73,7 +73,7 @@ No milestone-level research was run; plan-phase researches each phase.
 - [x] **OPS-01**: The user disables the nightly `integrationTests.yaml` in the repository's Actions settings.
   - The file stays byte-identical to upstream `v1.7.0`.
   - The REST API shows no `schedule` run of it after the recorded disable date.
-- [ ] **OPS-02**: The Dependabot `gradle` entry shows a recent "Last checked" time with no configuration error. This closes the residue of 17-REVIEW WR-01.
+- [x] **OPS-02**: The Dependabot `gradle` entry shows a recent "Last checked" time with no configuration error. This closes the residue of 17-REVIEW WR-01.
 - [x] **OPS-03**: The read-only GitHub token is revoked on GitHub, and the Keychain item `gsd17-gh-actions-read` is deleted.
 
 ### Release
@@ -123,7 +123,7 @@ No milestone-level research was run; plan-phase researches each phase.
 | DEBT-12 | Phase 23 | Pending |
 | HARN-08 | Phase 22 | Pending |
 | OPS-01 | Phase 21 | Complete |
-| OPS-02 | Phase 21 | Pending |
+| OPS-02 | Phase 21 | Complete |
 | OPS-03 | Phase 21 | Complete |
 | ROLL-03 | Phase 24 | Pending |
 | PUB-09 | Phase 24 | Pending |
