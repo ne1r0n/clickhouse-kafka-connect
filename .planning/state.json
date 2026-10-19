@@ -11,7 +11,7 @@
     {
       "number": "22",
       "name": "Writer Record-Data Exposure",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "23",
@@ -26,8 +26,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 22)",
-    "reason": "Phase 2 of 4 — needs a plan"
+    "label": "Advance to the next step",
+    "reason": "Phase 2 of 4 · 25% · executing"
   },
-  "updated_at": "2026-10-19T09:55:57.154Z"
+  "updated_at": "2026-10-19T19:56:30.964Z"
 }
