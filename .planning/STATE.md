@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 22
 current_phase_name: Writer Record-Data Exposure
 status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-10-19T20:08:44.540Z"
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-10-19T20:16:53.457Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 22 execution started
-state_head: 6deba8388d5e466d4374cae8e4ba09b57602e784
+state_head: 029f448bfc94b23a4ddcd4d9062243cc41987bca
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-19 after Phase 21)
 ## Current Position
 
 Phase: 22 (Writer Record-Data Exposure) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 22 execution started
 
@@ -144,6 +144,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 21 P04 | 7 min | 3 tasks | 3 files |
 | Phase 21 P05 | 32h 4m (about 10 min of work) | 2 tasks | 1 files |
 | Phase 22 P01 | 12 min | 2 tasks | 3 files |
+| Phase 22 P02 | 8 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 21]: 21-05: E-13 cutoff_u is 2026-10-16T09:38:23Z (earlier-of rule over E-01 and the user's resolved instant); the continuation re-ran step 0 itself, since a reply or another agent's Date reading does not meet the D-11 precondition
 - [Phase 21]: UAT (2026-10-19): OPS-02 passed on the user's own words ("dependabot работает как и ожидается, новые PR создаются"). The Dependabot tab has no "Last checked" field any more; gradle job 1636257648 opened PRs #6-#9. A screenshot-only reply was not counted. Phase 21 closed with verification passed and SECURITY threats_open 0
 - [Phase 22]: 22-01: HARN-08 via CountingHelperClient (hand-written ClickHouseHelperClient subclass, D-10); F7 reading recorded in 22-EVIDENCE.md E-01; Phase 18 OpenJ9 deferred item closed
+- [Phase 22]: 22-02: NESTED_DATA_EXCEPTION pins as RUNTIME_WRAP, not DATA_EXCEPTION, because Processing.doInsert wraps every writer failure before Utils.handleException tests instanceof DataException; pin_testcases=184 is the count 22-03 must see unchanged
+- [Phase 22]: 22-02: V2 client wrap is modeled in ScriptedWriteFailureWriter (RuntimeException wrapped once in client.api.ClickHouseException); 22-04 live test covers the real client
 
 ### Pending Todos
 
@@ -212,8 +215,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T20:08:44.507Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-10-19T20:16:53.429Z
+Stopped at: Completed 22-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
