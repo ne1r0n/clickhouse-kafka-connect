@@ -12,7 +12,7 @@
 | E-01 | 22-01 | Spotless baseline (D-16), anchors mirror, HARN-08 before and after runs, F7 reading | recorded |
 | E-02 | 22-02 | WRT-14 pin on the unchanged writer | recorded |
 | E-03 | 22-03 | WRT-13 red-before and green-after, D-03 result, WRT-15 commit | recorded |
-| E-04 | 22-04 | Live put() evidence and DLQ headers | pending |
+| E-04 | 22-04 | Live put() evidence and DLQ headers | recorded |
 | E-05 | 22-05 | Phase close gate and SC1..SC4 readings | pending |
 
 ### E-01: Spotless baseline, anchors mirror and the HARN-08 migration (22-01)
@@ -114,3 +114,31 @@ D-13 branch trace (22-RESEARCH, re-confirmed by the new cases): on both clients 
 D-03 pass-through shapes pinned green on both the unchanged and the changed writer: the JSON hint, the unsupported JSON field type, a scripted L-12 RuntimeException (same instance), a stream IOException (same instance), an IOException inside a Tuple field (exact RuntimeException wrapper with the same cause) and the WRT-08 DataException.
 
 Residual (flagged assumption A2): an IOException chain passes through unchanged under the locked D-01, including a Jackson `JsonProcessingException` on the JSON-as-string route. Whether a Jackson reference chain can name a record's map key was not measured. It is recorded in FORK-DELTA Known costs item 6 and is not fixed here.
+
+### E-04: Live put() evidence on latest x V2 and the DLQ headers (22-04)
+
+Recorded 2026-10-19. Scratch output is in `/tmp/gsd22/exec/` (`live-tracer-red.*`, `live-tracer-green.*`, `live-red.*`, `live-red-wep.xml`, `live-red-dlq.xml`, `live-green.*`, `live-green-wep.xml`, `live-green-dlq.xml`, `testunit-22-04.log`). Both red-before runs used a throwaway `git worktree` at the parent of the `fix(22-03)` commit, with the new test files copied in; it was removed afterwards (`git worktree list` shows one entry). The test commits are `f9b2cd52` (tracer, invalid UUID) and `0096a5fe` (expansion).
+
+live_red_commit: 6ecfae89f4bddc7ccfa49a4ab81987c28c8fcfea
+live_red: tracer run 7 cases, 1 failed (the `WRT-13 live` UUID case) and 6 passed; expansion run WriterErrorPathLiveTest 10 cases, 4 failed (every `WRT-13 live` case) and 6 passed, ValueFreeDlqHeadersUnitTest 2 cases, 2 failed and 0 passed
+live_green: tracer run 7 of 7 passed; expansion run WriterErrorPathLiveTest 10 of 10 passed, ValueFreeDlqHeadersUnitTest 2 of 2 passed
+existing_live_cases: 6 (the plan text says 7; the class has 6 `@Test` methods at fefd8648 and at HEAD, so the class totals 7 after Task 1 and 10 after Task 2)
+testunit_22_04: Tests summary: 795 tests, 793 succeeded, 0 failed, 2 skipped
+spotless_after_22_04: SPOTLESS-BASELINE-EQUAL
+anchors_mirror_22_04: rows=65 bad=0
+server_exception_seen: no
+clickhouse_image: latest (server reported "Connected to ClickHouse version: 26.9.19.9"), client V2
+
+What the red cases failed on (all genuine): the thrown chain of the tolerance=none cases carried the value (original library message in the `Caused by` of the pre-fix writer), and the stack-trace header of the tolerance=all and Docker-free cases lacked the `Failed to write column` text.
+
+D-15 reading (SC2 DLQ headers): under errors.tolerance=all the DLQ receives `Processing.doInsert`'s `RuntimeException` built from the queryId text, so (a) `exception.class.name` is `java.lang.RuntimeException`, (b) `exception.message` fully matches `Topic: [..], Partition: [..], MinOffset: [..], MaxOffset: [..], (QueryId: [..])` as before this phase, with no column text and no value, and (c) `exception.stacktrace` names the column, the ClickHouse type and the original exception class (through the `Caused by` chain) and carries no value. Processing was not touched. The headers are rendered by `InMemoryDLQ.connectHeaders`, which reproduces Connect 4.1.1's `DeadLetterQueueReporter.populateContextHeaders` (flagged assumption A4, a `backstop` truth).
+
+D-13 trace (SC2 "both logs"):
+
+| Client | Exception leaving the insert call | Suppressed | Catch in doInsertRawBinary | Rows landed |
+|--------|-----------------------------------|------------|----------------------------|-------------|
+| V1 | the raw exception from writeRecordsRowBinary, on the caller thread | none | generic catch (`Error inserting records` ERROR with the throwable) | 0 |
+| V2 | `com.clickhouse.client.api.ClickHouseException: Insert failed (Attempt: 1/4 ...)`, cause the writer exception | 0 | generic catch (same ERROR event) | 0 |
+| Both | the `ServerException` branch is unreachable for a client-side conversion failure: measured in 22-RESEARCH and tripwired live here (no `ServerException` in the thrown chain, no captured throwable line starts with its class name) | | | |
+
+SC2's two logs are therefore met by the generic-branch log plus the written stack trace (E-04's rendering assertions). The Connect task status is approximated by rendering the exception `put()` throws (flagged assumption A3, a `backstop` truth).
