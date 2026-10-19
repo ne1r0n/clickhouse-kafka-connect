@@ -306,6 +306,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 **Scheduled:** 2026-10-16 into milestone `v1.7.0_gg3-hardening` as Phase 22 (WRT-13, WRT-14, WRT-15). The classification pin (WRT-14) lands and is green on the unchanged writer before the change. WRT-15 marks this entry delivered in the same commit as the writer code.
 **Requirements:** mapped under Phase 22
 **Plans:** planned under Phase 22
+**Delivered:** Phase 22 (WRT-13..WRT-15), lands in the next release (Phase 24 publishes it): a value-conversion failure names the column, the ClickHouse type and the exception class without the record value; retry classification is pinned by WRT-14
 
 ## Progress
 

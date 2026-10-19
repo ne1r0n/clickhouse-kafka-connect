@@ -13,6 +13,7 @@ import com.clickhouse.kafka.connect.sink.data.Data;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import com.clickhouse.kafka.connect.sink.util.ThrowableTexts;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
@@ -249,18 +250,27 @@ public class WriterLogMaskingUnitTest {
     }
 
     @Test
-    @DisplayName("WRT-12: the generic catch still rethrows the original IllegalArgumentException, whose message embeds the value (accepted residual, backlog 999.3)")
-    void uuidWriteFailureRethrowsOriginalWithValueInMessage() throws Exception {
+    @DisplayName("WRT-13: the generic catch throws a value-free DataException naming the column, the ClickHouse type and the exception class (backlog 999.3 delivered)")
+    void uuidWriteFailureThrowsValueFreeDataException() throws Exception {
         ClickHouseWriter writer = newWriter();
         Column uuid = column(UUID_COLUMN, Type.UUID);
 
-        // Residual pinned on purpose: the rethrown message carries the record value into Connect status,
-        // the DLQ headers and the Error inserting records logs. A later fix (backlog 999.3) must flip this.
-        IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
+        // This test pinned the Phase 18 D-09 residual: the original IllegalArgumentException was
+        // rethrown with the record value in its message, which reached Connect status, the DLQ headers
+        // and the Error inserting records logs. WRT-13 (backlog 999.3) flips it. The raw-JDK check
+        // below keeps the absence check meaningful: the same input really embeds the value.
+        DataException ex = assertThrows(
+                DataException.class,
                 () -> writer.doWriteColValue(uuid, new ByteArrayOutputStream(), stringData(SENTINEL), false));
 
-        assertTrue(ex.getMessage().contains(SENTINEL));
+        assertTrue(ex.getMessage().contains(UUID_COLUMN));
+        assertTrue(ex.getMessage().contains(String.valueOf(Type.UUID)));
+        assertTrue(ex.getMessage().contains(IllegalArgumentException.class.getName()));
+        for (String text : ThrowableTexts.allTexts(ex)) {
+            assertFalse(text.contains(SENTINEL), "a thrown text must carry no record value");
+        }
+        IllegalArgumentException raw = assertThrows(IllegalArgumentException.class, () -> UUID.fromString(SENTINEL));
+        assertTrue(raw.getMessage().contains(SENTINEL), "self-check: the JDK UUID message embeds the value");
     }
 
     @Test

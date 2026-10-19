@@ -23,6 +23,7 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.Utils;
+import com.clickhouse.kafka.connect.util.WithheldMessageException;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -565,6 +566,10 @@ public class ClickHouseWriter implements DBWriter {
     private static final String DATETIME_PARSE_FAILURE_LOG_FORMAT = "Error parsing date time string for column '{}' "
             + "(ClickHouse type {}, Kafka type {}): exception {}, value length {}";
     private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
+    // Built from Column metadata and class names only: this text reaches Connect status and DLQ topics, so it carries no value and no value length (D-07, D-08).
+    private static final String WRITE_FAILURE_COLUMN_PREFIX = "Failed to write column `";
+    private static final String WRITE_VALUE_CONVERSION_FAILURE_FORMAT = WRITE_FAILURE_COLUMN_PREFIX
+            + "%s`: Kafka value of type %s (value class: %s) could not be written as ClickHouse type %s: %s";
     private static final String DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT = "(Potentially) Not implemented conversion from %s to %s for column '%s'";
     private static final String MISSING_NON_NULLABLE_MESSAGE_FORMAT = "column '%s' (%s): no value provided for a non-nullable column without a default; "
             + "add the field, make the column Nullable, or give it a DEFAULT";
@@ -625,6 +630,34 @@ public class ClickHouseWriter implements DBWriter {
                 .findFirst()
                 .map(col -> buildRowBinaryUnsupportedTypeMessage(col.getName(), Type.JSON))
                 .orElse("Data schema validation failed.");
+    }
+
+    /**
+     * Decides whether {@link #doWriteColValue}'s generic catch rethrows {@code e} as it is (D-01,
+     * D-03). Three families pass through: any chain holding an {@link IOException}, so retry
+     * classification still sees stream and timeout failures (the Map/Tuple/Array lambdas wrap them
+     * in a RuntimeException); a {@code ConnectException}, which includes this fork's own value-free
+     * {@link DataException}s and an inner column's replacement; and a RuntimeException of exactly
+     * that class, which only the connector's own throw sites produce.
+     */
+    private static boolean passesThroughUnchanged(Exception e) {
+        if (e instanceof org.apache.kafka.connect.errors.ConnectException || e.getClass() == RuntimeException.class) {
+            return true;
+        }
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable t = e; t != null && seen.add(t); t = t.getCause()) {
+            if (t instanceof IOException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String buildValueConversionFailureMessage(Column col, Type columnType, Data value, Exception cause) {
+        String sourceType = value == null ? "null" : String.valueOf(value.getFieldType());
+        String valueClass = (value == null || value.getObject() == null) ? "null" : value.getObject().getClass().getName();
+        return String.format(WRITE_VALUE_CONVERSION_FAILURE_FORMAT, col.getName(), sourceType, valueClass, columnType,
+                cause.getClass().getName());
     }
 
     protected void doWriteColValue(Column col, OutputStream stream, Data value, boolean defaultsSupport) throws IOException {
@@ -870,7 +903,10 @@ public class ClickHouseWriter implements DBWriter {
         } catch (Exception e) {
             LOGGER.error(WRITE_VALUE_FAILURE_LOG_FORMAT, value == null ? "<value null>" : value.getFieldType(), col.getName(), columnType,
                     e.getClass().getName());
-            throw e;
+            if (passesThroughUnchanged(e)) {
+                throw e;
+            }
+            throw new DataException(buildValueConversionFailureMessage(col, columnType, value, e), WithheldMessageException.of(e));
         }
     }
 
