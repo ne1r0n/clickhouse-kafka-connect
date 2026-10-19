@@ -46,7 +46,7 @@ Out of this phase:
 - **Process rules:**
   - Existing tests are never deleted or weakened.
   - Gradle always runs as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew …`.
-  - `spotlessApply` runs on touched files only. Every touched file must be spotless-clean on its own (Phase 21 D-14: no tree-wide reformat, baseline-equal gate).
+  - `spotlessApply` runs on touched files only. Every touched file must be spotless-clean on its own (Phase 21 D-14: no tree-wide reformat, baseline-equal gate). For files already in the spotless baseline-red set, this is read as D-16.
   - Phase gate: cache-busted `testUnit` (`--rerun`), a full suite on `latest` × V2, and the anchors invariant.
 
 ### What gets replaced (WRT-13)
@@ -61,7 +61,7 @@ Out of this phase:
   - `Unsupported field type … for column type [JSON]` (~L845);
   - the nested L-12 `An attempt to write null into not nullable column '%s'` (~L1073/L1088, reached through Tuple/Map children).
 
-  No throw sites are edited. JDK and client conversion failures are typed subclasses (`IllegalArgumentException`, `NumberFormatException`, `ArithmeticException`, `DateTimeException`, `NullPointerException`, …) and are replaced.
+  No throw sites are edited, with the single exception of D-14. JDK and client conversion failures are typed subclasses (`IllegalArgumentException`, `NumberFormatException`, `ArithmeticException`, `DateTimeException`, `NullPointerException`, …) and are replaced.
   - **Research must verify** that no client-library (`clickhouse-java` `BinaryStreamUtils`, `ClickHouseValues`, …) or JDK code reachable from `doWriteColValue` throws an exact `RuntimeException` whose message carries a value. **If it finds one, stop and ask the user** before choosing another rule.
 - **D-04:** Today, a record value that itself contains `ClickHouseException: Code: 33` (or `131`) makes the rethrown message match `UPDATE_TABLE_EXCEPTION_STR_TO_ERROR_CODE`, which triggers one table-mapping refresh and retry. After the change it can't. **This loss is accepted and intended**, because it is record content steering control flow, which is the leak itself.
   - Read the roadmap's "must neither start nor stop matching" rule as follows. Metadata-built messages never start matching. Real server and client failures (which pass through per D-01/D-03, or never reach this catch) never stop matching.
@@ -128,6 +128,24 @@ Out of this phase:
 - **D-13 (the "both logs" in SC2):** research traces, for V1 and V2, which `doInsertRawBinary` branch an invalid UUID and an unparseable number actually reach.
   - If the `ServerException` branch is unreachable for a client-side conversion failure, which is expected because the writer fails before the server answers, SC2 is met by the generic-branch log plus a written trace in the phase evidence explaining why.
   - **If a conversion failure can surface as a `ServerException` on either client** (e.g. the server rejects a truncated body first), **stop and ask the user** before touching that branch (Phase 18 D-01 style).
+
+### Post-research decisions (user, 2026-10-19, answering 22-RESEARCH F1/F3/F6)
+- **D-14 (F1, the D-03 stop-and-ask):** `Column.convertEnumValues` (`Column.java` ~L524-529) throws an exact `RuntimeException("No content in enum <value>")` that carries the record value, so D-03's pass-through would leak it. Production-built columns can't reach it (`Column.extractColumn` always sets `enumValues`); a hand-built `Column` can. **Edit that one throw site** so its message is the fixed text `No content in enum` with no value. This is the only throw-site edit in the phase, and D-03 stays as written for everything else.
+  - It lands in the WRT-13 commit, with a ledger row and FORK-DELTA coverage (a fork patch in `Column.java`, an upstream-region file).
+  - A Docker-free test with a hand-built Enum8 column and a sentinel value asserts that the sentinel is absent and the fixed text is present.
+  - The existing `Column.java` anchors keep passing. — **Reversibility:** cheap. The message is unreachable in production.
+- **D-15 (F3, the SC2 DLQ "message" header):** read SC2/WRT-13's "DLQ exception headers (message and stack trace)" as follows:
+  - the column name, the `Type` token and the original exception class name appear in the `__connect.errors.exception.stacktrace` header;
+  - the `__connect.errors.exception.message` header stays `Processing.doInsert`'s queryId wrapper text, as before this phase;
+  - the sentinel is absent from **both** headers.
+
+  `Processing` is not touched. The D-12 DLQ test pins all three facts, so the limitation is pinned rather than hidden. The ledger, the verification and the SC2 evidence state this reading explicitly.
+- **D-16 (F6, spotless on baseline-red files):** for touched files already in the 46-file spotless baseline-red set (`ClickHouseWriter.java`, `ClickHouseSinkTaskWithSchemaTest.java`, `Column.java`), "spotless-clean on its own" means **no new violations**:
+  - don't reorder existing imports;
+  - put any new import where `spotlessApply` would sort it;
+  - each such file's post-edit `spotlessApply` diff has the same +/- line counts as its baseline (e.g. 19 for `ClickHouseWriter.java`, 55 for `ClickHouseSinkTaskWithSchemaTest.java`), measured on a throwaway `git archive` copy.
+
+  Every other touched or new file must have an empty `spotlessApply` diff.
 
 ### Claude's Discretion
 - The name and package of the sanitized-cause class and of the helper-client fake (test-side: beside `CapturingClickHouseWriter` or nested in the test).
