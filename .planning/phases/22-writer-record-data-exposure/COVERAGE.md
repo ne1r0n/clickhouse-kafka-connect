@@ -1,0 +1,1 @@
+No external API integration: Phase 22 changes how ClickHouseWriter's generic catch shapes its exceptions and adds tests. "Connect REST" appears only as a threat-model trust boundary, the place where Connect renders the task status. No API, SDK or service is added or called.
