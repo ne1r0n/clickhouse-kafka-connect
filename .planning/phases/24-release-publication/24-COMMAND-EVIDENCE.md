@@ -870,3 +870,35 @@ consistency failures: 0
 The first run of the script failed on three units that mentioned `size0` without the codes (the rollback bullet of the note, and the `shouldSkipDescribeRow` and declared-nullability rows of FORK-DELTA). Each was fixed at its source document (the note's item 7 bullet now says "with code 32 or 33"; the two FORK-DELTA rows now name the codes and Known costs item 10), and plan 24-03's five checks (`ROLLOUT-FRAME-OK`, `ITEMS-1-7-OK`, `ITEMS-2-3-OK`, `ROLLOUT-T3-OK`, `ROLLOUT-FINAL-OK`) were re-run after that edit.
 
 Matches text: n/a (gate check)
+
+### E-40: documents re-checked after the pre-gate review fixes (20-D-07, plan 24-05)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md` items 2 and 4, the `CHANGELOG.md` Known Issues and Bug Fixes bullets and `docs/FORK-DELTA.md` Known costs item 10 (reworded by the fix commits `0c08e663` WR-01, `cd40803c` WR-02 and `6ee4a22a` IN-01). No query or command text changed, so the 24-02 probe was not re-run; only prose changed. The round 1 findings are in `24-REVIEW.md`: WR-01 scoped the size-element defect to the route that E-15 measured (the default route with client V2) and said that client V1 and the explicit `insertFormat=json` route were not measured; WR-02 limited item 4's upgrade sentence to the four shapes that E-11 inserted; IN-01 named the shapes whose insert outcome E-11 measured in the CHANGELOG bullet. The wording "whatever the connector settings" of D-02 stays, scoped to the measured route.
+
+```sh
+bash /tmp/gsd24/exec/v03-0.sh   # ROLLOUT-FRAME-OK (24-03)
+bash /tmp/gsd24/exec/v03-1.sh   # ITEMS-1-7-OK
+bash /tmp/gsd24/exec/v03-2.sh   # ITEMS-2-3-OK
+bash /tmp/gsd24/exec/v03-3.sh   # ROLLOUT-T3-OK
+bash /tmp/gsd24/exec/v03-4.sh   # ROLLOUT-FINAL-OK
+bash /tmp/gsd24/exec/v04-0.sh   # CHANGELOG-GG3-OK (24-04)
+bash /tmp/gsd24/exec/v04-1.sh   # FORK-DELTA-ROWS-OK
+bash /tmp/gsd24/exec/v04-2.sh   # FORK-DELTA-PATHS-OK
+bash /tmp/gsd24/exec/v04-3.sh   # RAW-NUMBERS-GG3-OK (also runs consistency.py)
+```
+
+```text
+ROLLOUT-FRAME-OK
+ITEMS-1-7-OK
+ITEMS-2-3-OK
+ROLLOUT-T3-OK
+ROLLOUT-FINAL-OK
+CHANGELOG-GG3-OK
+FORK-DELTA-ROWS-OK
+FORK-DELTA-PATHS-OK
+RAW-NUMBERS-GG3-OK
+```
+
+(The nine scripts are the `<automated>` blocks of plans 24-03 and 24-04, extracted to `/tmp/gsd24/exec`.) `consistency.py` reports `consistency failures: 0`: every prose unit that mentions `size0` still names the codes 32 and 33. `src`, `build.gradle.kts`, `gradle` and `.github` are unchanged since the last measurement, so the FORK-DELTA raw numbers (130/22783/534 and 33/2245/145) hold, and the test file was not touched, so `D03-LIVE-GREEN`, `D03-STATIC-OK` and `SPOTLESS-BASELINE-EQUAL` of plan 24-01 were not re-run.
+
+Matches text: yes
