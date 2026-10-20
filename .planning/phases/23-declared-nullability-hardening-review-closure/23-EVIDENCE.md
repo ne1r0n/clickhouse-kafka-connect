@@ -13,7 +13,13 @@
 | R-02 | 23-RESEARCH | D-11 live capture: backslash-n inside a quoted element name and an enum label | recorded |
 | R-03 | 23-RESEARCH | D-07 null-shape matrix on the unchanged code | recorded |
 | R-04 | 23-RESEARCH | Prototype run: which existing tests D-01 turns red | recorded |
-| E-01.. | execution | red-before / green-after runs (D-07, D-09, D-17), gate output | pending |
+| E-01 | 23-01 | DEBT-11 baselines and commits | recorded |
+| E-02 | 23-02 | COLS-12 | pending |
+| E-03 | 23-03 | DEBT-10 fallback-WARN mutations | pending |
+| E-04 | 23-04 | COLS-13 | pending |
+| E-05 | 23-05 | COLS-14, the unpaired-WARN mutations and the SC3 reading | pending |
+| E-06 | 23-06 | DEBT-12 closure pointers | pending |
+| E-07 | 23-06 | phase gate and SC1..SC5 readings | pending |
 
 ## Research captures (written during 23-RESEARCH, not by an executor)
 
@@ -147,3 +153,24 @@ live classes with the prototype (NullableTupleMatrixLiveTest, SimpleAggregateTup
 Failures 2 to 4 are NOT in the plan's list of expected flips: their fixtures are a Tuple **root row alone**, so every declared element is unpaired and the new WARN fires. See 23-RESEARCH.md, Open Question 1.
 
 Shape check with the prototype on the R-01 rows: three events, one per root, e.g. `Declared Tuple element(s) [c.size] of column c of table db.t (declared type Tuple(\n    size UInt32,\n    name String)) have no matching column; applying the declared nullability to the elements that paired` (wording is the prototype's, not binding).
+
+### E-01: DEBT-11 shared literal and test cleanups (23-01)
+
+Recorded 2026-10-20T11:41:16Z. Scratch output is in `/tmp/gsd23/exec/`.
+
+base_rev: 16e0b2d68f90cb1ecc6471c5fbca5240ffd3f05f
+spotless_base_files: 46
+spotless_base_md5: f2e32c7bc069ecd155830f82d26285d6
+spotless_after_23_01: SPOTLESS-BASELINE-EQUAL
+anchors_mirror_23_01: rows=65 bad=0
+testunit_23_01: Tests summary: 795 tests, 793 succeeded, 0 failed, 2 skipped
+shared_literal_definitions: 1 (before 4)
+old_test_constant_lines: 0 (before 4)
+pass_through_refs: 0 (before 2)
+d14_commit: 4478016aecc7188ee334692374b969c82881ee3d
+d15_commit: 252cf8f330d7caa258b9e9f85be913269ba97113
+live_d14: SimpleAggregateTupleRoundTripLiveTest tests=2 failures=0; declaredTupleTypesParseWithDdlNullability tests=1 failures=0
+live_d15: declaredTupleTypesParseWithDdlNullability tests=1 failures=0
+clickhouse_image: sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z
+fork_unit_testcases: 45
+assumption_delta: no-change (the detector fired on the prose words "also" and "fallback"; no identity model generalises)
