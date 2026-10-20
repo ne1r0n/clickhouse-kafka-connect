@@ -16,7 +16,7 @@
 | E-01 | 23-01 | DEBT-11 baselines and commits | recorded |
 | E-02 | 23-02 | COLS-12 | recorded |
 | E-03 | 23-03 | DEBT-10 fallback-WARN mutations | recorded |
-| E-04 | 23-04 | COLS-13 | pending |
+| E-04 | 23-04 | COLS-13 | recorded |
 | E-05 | 23-05 | COLS-14, the unpaired-WARN mutations and the SC3 reading | pending |
 | E-06 | 23-06 | DEBT-12 closure pointers | pending |
 | E-07 | 23-06 | phase gate and SC1..SC5 readings | pending |
@@ -224,3 +224,21 @@ Mutation 1 deleted `columnName, ` after `FALLBACK_WARNING, ` in the three LOGGER
 | COLS-12 (D-07) structure mismatch: a Map value with a null type | red | red |
 | COLS-12 (D-07) structure mismatch: a second call on the same null-type root warns again and leaves it untouched | red | red |
 | COLS-10 IN-01: the fallback WARN raised during discovery names the database and the table | red | red |
+
+### E-04: COLS-13 quote-aware normalise and the live premise (23-04)
+
+Recorded 2026-10-20. Scratch output is in `/tmp/gsd23/exec/` (`cols13-*`, `live-six-23-04*`, `testunit-23-04.log`).
+
+cols13_tracer_red: unit rc=1 failed=1; live rc=1 failed=2 (fallback WARN)
+cols13_expansion_red: unit rc=1 disc_failed=7 unchanged_passed=6; live drift rc=1 failed=1
+cols13_green: unit tests=52; live round trip tests=2; live drift tests=1
+live_six_23_04: NullableTupleMatrixLiveTest=33/0, SimpleAggregateTupleRoundTripLiveTest=2/0, NullableEnumRoundTripLiveTest=6/0, NestedNullRowBinaryLiveTest=10/0, NestedNullableCompositeWriteTest=18/0, ClickHouseHelperClientForkLiveTest=12/0 (tests/failures, errors 0 for all six)
+d13_verdict: not triggered; the server line break is a lone backslash-n outside quotes and every backslash run inside quotes is even (R-02); the live premise matched every captured literal
+clickhouse_server: 26.9.19.9 (clickhouse/clickhouse-server:latest, image bdb5c911a23d created 2026-10-14)
+cols13_commit: f55165ee8397d0574a81abec348761fef8fb7e67
+cols13_commit_files: 7
+anchors_mirror_23_04: rows=68 bad=0
+spotless_after_23_04: SPOTLESS-BASELINE-EQUAL
+testunit_23_04: Tests summary: 822 tests, 820 succeeded, 0 failed, 2 skipped
+
+Tracer red (unchanged production file): the new unit pin failed on the `normalise` assertion (the old replace turned the backslash-n inside the name into a space, `\\ b` instead of `\\nb`), and both twin testcases failed on the fallback WARN assertion, not on the raw-type premise. Expansion red by file swap: the seven `COLS-13 (D-10)` / `COLS-13 (D-10) edges` testcases failed, the six `COLS-13 (D-10) unchanged` cases and every older testcase passed, and the live drift test failed on six fallback WARNs (columns p, r, n, s and the Array and Map wrappers; the enum column q already paired) with the raw-type premise passing. The restored production file was byte-identical to the saved copy (`cmp`).
