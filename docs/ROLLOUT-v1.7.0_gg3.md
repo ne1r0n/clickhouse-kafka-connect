@@ -160,7 +160,7 @@ This release has no fix for the defect, and the fix is tracked for a later relea
 
 A `Nullable(Tuple(...))` column whose Tuple element name holds a backslash followed by `n`, or a line break, now pairs with its declared type. That holds when the Tuple is the column itself, an `Array` element, a `Map` value or a field of another Tuple (ledger L-50).
 
-On `v1.7.0_gg2` such a name did not pair. The connector logged the following WARN at every table description, kept the nullability that the server reported, and every insert into the table failed with the server error code 33 (`CANNOT_READ_ALL_DATA`) and stored no row:
+On `v1.7.0_gg2` such a name did not pair. The connector logged the following WARN at every table description, kept the nullability that the server reported, and the inserts that were run into such tables (four shapes, listed below) failed with the server error code 33 (`CANNOT_READ_ALL_DATA`) and stored no row:
 
 ```text
 Could not take element nullability for column <column> of table <db>.<table> from its declared type <type> (structure mismatch); keeping the nullability DESCRIBE reported for it
@@ -238,7 +238,7 @@ For the one shape that differs, the two directions are not alike.
 
 ### Am I affected?
 
-You are affected if a connector writes a table that the query of [item 3](#item-3-backslashes-and-line-breaks-in-names) lists, and you want to roll back. **Empty result of that query:** no table of that database has the shape, so a rollback needs no clean stop for this reason. A connector with `exactlyOnce=false` has no state table to query, so the check below does not exist for it, but the failure does: a range that Kafka delivers again to `v1.7.0_gg2` for a table of the item 3 shape fails with code 33 even when `v1.7.0_gg3` stored its rows. The measurement in the rollback bullet above ran with `exactlyOnce=false`, which still sends the token. Stop its tasks cleanly, so that the offsets are committed, before you redeploy `v1.7.0_gg2`.
+You are affected if a connector writes a table that the query of [item 3](#item-3-backslashes-and-line-breaks-in-names) lists, and you want to roll back. **Empty result of that query:** no table of that database has the shape, so a rollback needs no clean stop for this reason. A connector with `exactlyOnce=false` has no state table to query, so the check below does not exist for it, but the failure does: a range that Kafka delivers again to `v1.7.0_gg2` for a table of the item 3 shape is expected to fail with code 33 even when `v1.7.0_gg3` stored its rows. The measurement in the rollback bullet above ran with `exactlyOnce=false`, which still sends the token, for one such table, a `Nullable(Tuple)` with a literal backslash-n name; the other shapes were not run. Stop its tasks cleanly, so that the offsets are committed, before you redeploy `v1.7.0_gg2`.
 
 ### What to do
 
@@ -329,7 +329,7 @@ To go forward again, revert the rollback commit with `git revert <rollback-commi
 Rolling back brings back:
 
 - record values in the writer error text of the task status, the DLQ stack-trace header and the `Error inserting records` logs, with the library messages and without the `Failed to write column ` match for conversion failures, and on client V1 the table-mapping refresh that a record text containing `Code: 33` or `Code: 131` starts ([item 1](#item-1-record-values-in-writer-error-text));
-- the failure of inserts into a table with a `Nullable(Tuple(...))` whose element name holds a backslash and an `n`, or a line break, with the server error code 33 and the `Could not take element nullability` WARN at every table description ([item 3](#item-3-backslashes-and-line-breaks-in-names));
+- for a table with a `Nullable(Tuple(...))` whose element name holds a backslash and an `n`, or a line break, the failure of inserts (measured for the four shapes of item 3, with the server error code 33) and the `Could not take element nullability` WARN at every table description ([item 3](#item-3-backslashes-and-line-breaks-in-names));
 - the silence about a table with a Tuple element named `size` or `size0`: its inserts behave as before (the shapes that were inserted failed with code 32 or 33), but the WARN that points at the table is gone ([item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size));
 - the `v1.7.0_gg2` MBean `version=` segment and client name ([item 5](#item-5-jmx-mbean-name-and-client-name));
 - on the branch, the gg3 documents themselves: this note, the CHANGELOG section and the FORK-DELTA rows;
