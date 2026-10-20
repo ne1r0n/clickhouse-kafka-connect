@@ -76,3 +76,50 @@ PROBE-AGENT tree=gg3 agent=clickhouse-kafka-connect/v1.7.0_gg3 clickhouse-java-v
 ```
 
 Matches text: pending (24-03)
+
+### E-03: the Jackson Map-key residual through the connector (D-03)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md` (the headline exception of the value-free error-text item), `docs/FORK-DELTA.md` Known-costs item 6 and `22-SECURITY.md` R-22-02 (written in plans 24-03 and 24-04). The committed live test `JsonAsStringKeyResidualLiveTest` drives `ClickHouseSinkTask.put()` against the real writer with `clickhouseSettings=input_format_binary_read_json_as_string=1`, a table `(id Int32, j JSON)` and a record `Struct{id, j: Struct{m: Map<String,String>, s: String}}` (the List case uses `l: Array<String>`). Distinct sentinels: Map key `SENTKEYa1b2`, a sibling Map value `SENTVALc3d4`, a sibling Struct string `SENTSTRe5f6`, a List element `SENTLSTg7h8`. The failure trigger is a content-free `java.lang.Object` put into the Map (or List) after both `Struct.put` calls, because Connect validates on `put`.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*JsonAsStringKeyResidualLiveTest' --rerun
+```
+
+```text
+<testsuite name="com.clickhouse.kafka.connect.sink.JsonAsStringKeyResidualLiveTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:15:26.731Z" ...>
+JSON_AS_STRING_RESIDUAL server version=26.9.19.9
+```
+
+Client V2, ClickHouse `26.9.19.9`. The excerpts below were captured by running a renamed scratch copy of the same test with extra `println` calls in the `wt-tip` worktree (the copy is not committed); the committed test asserts the same facts without printing.
+
+| Destination | Map key (`SENTKEYa1b2`) | Any value (`SENTVALc3d4`, `SENTSTRe5f6`, `SENTLSTg7h8`) |
+|-------------|-------------------------|------------------------------------------------------|
+| Task status: the cause chain `put` throws, rendered with `printStackTrace` | yes | no |
+| DLQ `__connect.errors.exception.message` header | no (it is the `Topic: [..], Partition: [..], MinOffset: [..], MaxOffset: [..], (QueryId: [..])` text) | no |
+| DLQ `__connect.errors.exception.stacktrace` header | yes | no |
+| `Error inserting records` ERROR throwable (every such event) | yes | no |
+| `Error writing value of` line | no | no |
+
+The DLQ `__connect.errors.exception.class.name` header is `java.lang.RuntimeException`. No value sentinel appears in any text the log capture saw (all events of `ClickHouseWriter`, messages and throwables).
+
+The Map case (task status, DLQ stack-trace header and the `Error inserting records` throwable each carry this same line, sentinels only):
+
+```text
+Caused by: com.fasterxml.jackson.databind.exc.InvalidDefinitionException: No serializer found for class java.lang.Object and no properties discovered to create BeanSerializer (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS) (through reference chain: java.util.HashMap["m"]->java.util.HashMap["SENTKEYa1b2"])
+```
+
+`"m"` is the Struct field name (schema metadata); the Map key is record data. The `Error writing value of` line reads `Error writing value of STRUCT to the column `j` of type JSON: exception com.fasterxml.jackson.databind.exc.InvalidDefinitionException`, which names the column, the Kafka type and the exception class only. The List case, with an element Jackson cannot serialize, names an index, so no record text reaches any destination:
+
+```text
+Caused by: com.fasterxml.jackson.databind.exc.InvalidDefinitionException: No serializer found for class java.lang.Object and no properties discovered to create BeanSerializer (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS) (through reference chain: java.util.HashMap["l"]->java.util.ArrayList[1])
+```
+
+Non-vacuity: every case that claims the Jackson route was reached asserts `com.fasterxml.jackson.databind.exc.InvalidDefinitionException` in the cause chain. The control (same record, setting absent) fails earlier with `Column [j] has unsupported type [JSON] for RowBinary serialization. Use insertFormat=json or bypassRowBinary=true instead.` and no record text. Only the key-present assertions would have flipped to absence on branch 2; none had to.
+
+Out of scope (D-14): a bean whose own getter or exception text carries data is not a Connect value type. The matrix holds Connect-typed values only, so D-04's third branch cannot fire on it. That case is recorded here as not measured and not added.
+
+Deviation from the plan text: the plan expected the control to show `Writing JSON in binary is not supported yet`. That `RuntimeException` sits in the writer's JSON branch, but schema validation refuses the JSON column first when the setting is absent, so `put()` surfaces the validation message above; the test asserts the measured text and keeps the other string only in its class comment.
+
+D-04-BRANCH=1
+
+Matches text: pending (24-03, 24-04)
