@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-20 after Phase 22)
+See: .planning/PROJECT.md (updated 2026-10-20 after Phase 23)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 23 — Declared-Nullability Hardening & Review Closure
+**Current focus:** Phase 24 — Release & Publication
 
 ## Current Position
 
@@ -211,6 +211,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 23]: 23-05: D-19 (user Option B) flips three existing tests with names and assertions unchanged and a scoped AGENTS.md exemption; backlog 999.4 (size/size0 dropped by discovery) pinned Docker-free and deferred, 999.5 recorded
 - [Phase 23]: 23-06: Tracer (19-REVIEW WR-01) verified on its own but folded into the single DEBT-12 commit, whose check requires exactly the two disposition files
 - [Phase 23]: 23-06: 17-REVIEW IN-03 closed as skipped, a status already in both files rules footer
+- [Phase 23]: Phase closed 2026-10-20: verification passed 5/5 (the verifier re-ran the suites and four mutations itself), SECURITY threats_open 0 (19 threats, 4 accepted at plan time), full suite 1277/0. 23-REVIEW (0 critical, 2 warning, 4 info) stays `open` in 23-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 23 follow-ups)
 
 ### Pending Todos
 
@@ -224,6 +225,7 @@ None.
 - [Publish]: `origin/custom_build` = `6473e24f`, merged into `sync/v1.7.0` by DEPS-01 (`82524e12`). Dependabot PRs #4 (client 0.9.6 → 0.10.0), #6 (commons-lang3 3.21.0), #7 (ben-manes versions 0.66.0), #8 (Gradle wrapper 9.8.1) and #9 (Kafka `connect-api` 4.1.1 → 4.4.0) are open, using all 5 open-PR slots. #4 and #9 bump fork-only pins, and `dependabot.yml` has no `ignore` for them. Any merge on `origin/custom_build` diverges the working branch again and needs a DEPS-01-shaped merge before the release. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
 - [CI]: The nightly `integrationTests.yaml` has been disabled by the user since 2026-10-16T09:38:23Z (Phase 21 OPS-01). The file stays upstream-identical. Phase 24 re-checks that no scheduled run followed.
 - [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
+- [Phase 23]: Backlog 999.4 is a pre-existing, high-severity defect for any table with a Tuple element named `size` or `size0`: discovery drops the element and every insert fails with code 33. Since COLS-14 it is named by a WARN at every DESCRIBE, but it is not fixed. Phase 24 decides whether the release notes mention it.
 - [Dependabot]: The repository has no `dependencies` label, but both `dependabot.yml` entries request it, so every Dependabot PR gets a "labels could not be found" comment. Updates still run. Fixing it means the user creates the label (D-11), or the fork drops the request. Tracked in PROJECT.md → Active, Phase 21 follow-ups.
 
 ## Deferred Items
@@ -242,11 +244,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T12:21:06.464Z
+Last session: 2026-10-20T12:37:52.000Z
 Stopped at: Phase 23 complete, ready to plan Phase 24
 Resume file: None
 
 ## Operator Next Steps
 
-- Start Phase 23 (Declared-Nullability Hardening & Review Closure) with `/gsd-discuss-phase 23` or `/gsd-plan-phase 23`.
+- Start Phase 24 (Release & Publication) with `/gsd-discuss-phase 24` or `/gsd-plan-phase 24`. First run `git fetch origin` and compare `origin/custom_build` with `sync/v1.7.0`: a Dependabot merge on origin needs a DEPS-01-shaped merge before the release.
+- Optional before the release: the 23-REVIEW warnings (WR-01, a missing pin for the escaped-quote branch of `normalise`; WR-02, the copied DESCRIBE loop in `discoverAsDescribeTableV2`) are test-quality findings, not defects. `/gsd-code-review 23 --fix` would address them.
 - Optional, in the GitHub web UI: create the `dependencies` label. Before merging any open Dependabot PR on `origin`, note that #4 and #9 bump fork-only pins, and that a merge diverges `sync/v1.7.0` again.

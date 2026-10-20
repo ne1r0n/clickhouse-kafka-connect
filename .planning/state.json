@@ -16,7 +16,7 @@
     {
       "number": "23",
       "name": "Declared-Nullability Hardening & Review Closure",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "24",
@@ -26,8 +26,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 3 of 4 · 50% · executing"
+    "label": "Advance to the next step (plan phase 24)",
+    "reason": "Phase 4 of 4 — needs a plan"
   },
-  "updated_at": "2026-10-20T10:36:05.425Z"
+  "updated_at": "2026-10-20T12:36:03.129Z"
 }
