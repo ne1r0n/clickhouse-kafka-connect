@@ -149,6 +149,13 @@ The 17 findings below come from `21-REVIEW.md`, `22-REVIEW.md` and `23-REVIEW.md
 - **Owner:** the next milestone
 - **Re-open trigger:** the next edit of `jacocoForkReport`, or the next milestone that reports fork coverage.
 
+### 24-REVIEW IN-03: Planning identifiers in the Phase 24 live test's Javadoc and display names
+
+- **Reason:** `JsonAsStringKeyResidualLiveTest` cites `D-03`, `D-14` and `22-RESEARCH Pitfall 8` in comments and starts each `@DisplayName` with `D-03:`. The identifiers resolve only in `.planning`. It is the convention of the Phase 21 to 23 tests and the same point as 22-REVIEW IN-05, and changing the file now would re-open its live run and FORK-DELTA's raw numbers for a naming point.
+- **Owner:** the next milestone
+- **Re-open trigger:** the next edit of `JsonAsStringKeyResidualLiveTest`, or the first upstream sync that touches a test with such a display name.
+- **Source:** 24-REVIEW.md
+
 ## Open user items after publication
 
 These three items are for the user in the GitHub web UI of `ne1r0n/clickhouse-kafka-connect` (D-11). No agent changes repository settings, and nothing in the release waits on the answers.
