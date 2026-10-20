@@ -196,11 +196,11 @@ Phase gate: cache-busted `testUnit` and a full suite on `latest` × V2, plus the
   4. The fallback-WARN content assertions use a column name that cannot occur in the WARN's fixed text and assert it in a delimited form, and each was seen red with the column argument dropped (WR-02). The backslash-n literal is defined once and shared by every test that needs it. The one-line pass-through helper and the mid-class constant are cleaned up (IN-01, IN-02).
   5. Every 17-REVIEW and 19-REVIEW finding is fixed or closed with a written reason, and each row in the archived `17-REVIEW-DISPOSITION.md` and `19-REVIEW-DISPOSITION.md` points to where it was closed. 17-REVIEW IN-03 is closed as "leave `Lz4RoundTripLiveTest`'s jar-origin check, cross-referenced to `TestRuntimeClasspathLz4UnitTest`, with no new origin assertions"; the live test is neither deleted nor weakened.
 
-**Plans**: 6 plans (sequential, waves 1-6)
+**Plans**: 1/6 plans executed (sequential, waves 1-6)
 
 Plans:
 **Wave 1**
-- [ ] 23-01-PLAN.md — DEBT-11: public DeclaredNullability.ESCAPED_NEWLINE replaces the three test copies; pass-through and mid-class constants cleaned up; opens 23-EVIDENCE.md execution entries
+- [x] 23-01-PLAN.md — DEBT-11: public DeclaredNullability.ESCAPED_NEWLINE replaces the three test copies; pass-through and mid-class constants cleaned up; opens 23-EVIDENCE.md execution entries
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 23-02-PLAN.md — COLS-12: apply/containsTuple total for a null root and null types, every null a structure mismatch, D-08 flip and D-09 pin, sentinel fixture; one fix(23-02) commit with FORK-DELTA, anchor and ledger L-49
@@ -335,7 +335,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 |-------|-----------|----------------|--------|-----------|
 | 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-19 |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-20 |
-| 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 0/6 | Planned | - |
+| 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 1/6 | In Progress | - |
 | 24. Release & Publication | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 
 ---
