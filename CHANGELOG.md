@@ -59,7 +59,7 @@ checklist.
   is not in the archive.
 * The workflow pin-guard test also checks the fork-count step and accepts a trailing comment on the pinned runner
   label.
-* The writer error-path tests no longer mock the ClickHouse client inline.
+* The writer error-path tests no longer inline-mock the connector's `ClickHouseHelperClient`; they use a subclass.
 
 # 1.7.0_gg2, 2026-10-14
 
