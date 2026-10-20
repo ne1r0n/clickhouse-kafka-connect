@@ -196,7 +196,7 @@ Phase gate: cache-busted `testUnit` and a full suite on `latest` × V2, plus the
   4. The fallback-WARN content assertions use a column name that cannot occur in the WARN's fixed text and assert it in a delimited form, and each was seen red with the column argument dropped (WR-02). The backslash-n literal is defined once and shared by every test that needs it. The one-line pass-through helper and the mid-class constant are cleaned up (IN-01, IN-02).
   5. Every 17-REVIEW and 19-REVIEW finding is fixed or closed with a written reason, and each row in the archived `17-REVIEW-DISPOSITION.md` and `19-REVIEW-DISPOSITION.md` points to where it was closed. 17-REVIEW IN-03 is closed as "leave `Lz4RoundTripLiveTest`'s jar-origin check, cross-referenced to `TestRuntimeClasspathLz4UnitTest`, with no new origin assertions"; the live test is neither deleted nor weakened.
 
-**Plans**: 5/6 plans executed (sequential, waves 1-6)
+**Plans**: 6/6 plans executed (sequential, waves 1-6)
 
 Plans:
 **Wave 1**
@@ -215,7 +215,7 @@ Plans:
 - [x] 23-05-PLAN.md — COLS-14: unpaired-element WARN that still applies (D-01), D-19 flips, D-04 known-defect pin, backlog 999.4 and 999.5; one fix(23-05) commit with FORK-DELTA, anchor and ledger L-51
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 23-06-PLAN.md — DEBT-12 closure pointers in the 17/19-REVIEW dispositions, then the phase gate (testUnit --rerun, full suite, anchors invariant) and E-07 with the SC1..SC5 readings
+- [x] 23-06-PLAN.md — DEBT-12 closure pointers in the 17/19-REVIEW dispositions, then the phase gate (testUnit --rerun, full suite, anchors invariant) and E-07 with the SC1..SC5 readings
 
 **Note**: Order inside the phase:
 1. DEBT-11's shared literal, so the COLS-13 pin uses it instead of adding a fourth copy (IN-01's re-open trigger).
@@ -349,7 +349,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 |-------|-----------|----------------|--------|-----------|
 | 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-19 |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-20 |
-| 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 5/6 | In Progress | - |
+| 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 6/6 | In Progress | - |
 | 24. Release & Publication | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 
 ---

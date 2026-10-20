@@ -41,17 +41,17 @@ No milestone-level research was run; plan-phase researches each phase.
 
 ### Declared-nullability hardening — 19-REVIEW
 
-- [ ] **COLS-12**: `DeclaredNullability.apply` and `containsTuple` return without throwing for a null root or a Column with a null type, and a Docker-free test pins that (19-REVIEW WR-01).
+- [x] **COLS-12**: `DeclaredNullability.apply` and `containsTuple` return without throwing for a null root or a Column with a null type, and a Docker-free test pins that (19-REVIEW WR-01).
   - The existing test that provokes a `NullPointerException` through a null-type Column is flipped with a written rationale, not deleted (19-REVIEW IN-02 trigger).
-- [ ] **COLS-13**: A literal backslash-n inside a backtick-quoted Tuple element name or an enum label survives `normalise`. Pairing then succeeds, and declared nullability applies without the metadata-only fallback WARN (19-REVIEW IN-03).
+- [x] **COLS-13**: A literal backslash-n inside a backtick-quoted Tuple element name or an enum label survives `normalise`. Pairing then succeeds, and declared nullability applies without the metadata-only fallback WARN (19-REVIEW IN-03).
   - It's pinned by a Docker-free test whose input is the escaping the server actually returns, captured live.
-- [ ] **COLS-14**: It's decided and recorded whether a Tuple Column can legitimately lack a declared element (19-REVIEW IN-04).
+- [x] **COLS-14**: It's decided and recorded whether a Tuple Column can legitimately lack a declared element (19-REVIEW IN-04).
   - The pass then either logs and falls back on an unpaired declared element, or keeps today's behavior with a written reason.
   - `missingDeclaredElementDoesNotShiftPairing` stays green either way.
   - A decision that isn't clear-cut goes to the user at a checkpoint.
-- [ ] **DEBT-10**: The fallback-WARN content assertions use a column name that cannot occur in the WARN's fixed text and assert it in a delimited form (19-REVIEW WR-02).
+- [x] **DEBT-10**: The fallback-WARN content assertions use a column name that cannot occur in the WARN's fixed text and assert it in a delimited form (19-REVIEW WR-02).
   - Each assertion is seen red with the column argument dropped.
-- [ ] **DEBT-11**: The backslash-n literal is defined once and shared by every test that needs it. The one-line pass-through helper and the mid-class constant are cleaned up (19-REVIEW IN-01, IN-02).
+- [x] **DEBT-11**: The backslash-n literal is defined once and shared by every test that needs it. The one-line pass-through helper and the mid-class constant are cleaned up (19-REVIEW IN-01, IN-02).
 
 ### CI pin guard — 17-REVIEW
 
@@ -59,7 +59,7 @@ No milestone-level research was run; plan-phase researches each phase.
 - [x] **CI-19**: The pin guard handles two cases correctly, each seen red and green on a fixture (17-REVIEW IN-02):
   - it accepts `runs-on: ubuntu-24.04 # comment`;
   - it no longer reports a step `name:` or `run:` text containing `: write` as a write scope.
-- [ ] **DEBT-12**: Every 17-REVIEW and 19-REVIEW finding ends as either fixed or closed with a written reason. Each archived disposition row points to where it was closed.
+- [x] **DEBT-12**: Every 17-REVIEW and 19-REVIEW finding ends as either fixed or closed with a written reason. Each archived disposition row points to where it was closed.
   - 17-REVIEW IN-03 is closed as "leave `Lz4RoundTripLiveTest`'s jar-origin check, cross-referenced to `TestRuntimeClasspathLz4UnitTest`, with no new origin assertions". It's not deleted or weakened.
 
 ### Test harness
@@ -113,14 +113,14 @@ No milestone-level research was run; plan-phase researches each phase.
 | WRT-13 | Phase 22 | Complete |
 | WRT-14 | Phase 22 | Complete |
 | WRT-15 | Phase 22 | Complete |
-| COLS-12 | Phase 23 | Pending |
-| COLS-13 | Phase 23 | Pending |
-| COLS-14 | Phase 23 | Pending |
-| DEBT-10 | Phase 23 | Pending |
-| DEBT-11 | Phase 23 | Pending |
+| COLS-12 | Phase 23 | Complete |
+| COLS-13 | Phase 23 | Complete |
+| COLS-14 | Phase 23 | Complete |
+| DEBT-10 | Phase 23 | Complete |
+| DEBT-11 | Phase 23 | Complete |
 | CI-18 | Phase 21 | Complete |
 | CI-19 | Phase 21 | Complete |
-| DEBT-12 | Phase 23 | Pending |
+| DEBT-12 | Phase 23 | Complete |
 | HARN-08 | Phase 22 | Complete |
 | OPS-01 | Phase 21 | Complete |
 | OPS-02 | Phase 21 | Complete |

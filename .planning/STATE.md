@@ -4,17 +4,17 @@ milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
 current_phase: 23
 current_phase_name: Declared-Nullability Hardening & Review Closure
-status: executing
-stopped_at: Completed 23-05-PLAN.md
-last_updated: "2026-10-20T12:09:51.534Z"
+status: verifying
+stopped_at: Completed 23-06-PLAN.md
+last_updated: "2026-10-20T12:21:06.670Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 execution started
-state_head: "0bf93c73ae97bab07a8cedf5ed26fdb84aabb104"
+state_head: cbc36f4746dbbe04852850fc0abd27ca2ce01064
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 50
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 22)
 
 Phase: 23 (Declared-Nullability Hardening & Review Closure) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-20 — Phase 23 execution started
 
 Progress: [█████░░░░░] 50%
@@ -154,6 +154,7 @@ Progress: [█████░░░░░] 50%
 | Phase 23 P03 | 8 min | 2 tasks | 3 files |
 | Phase 23 P04 | 35 min | 3 tasks | 8 files |
 | Phase 23 P05 | 8 min | 3 tasks | 8 files |
+| Phase 23 P06 | 9 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 23]: 23-04: DeclaredNullability.normalise is a single quote-aware pass; a backslash-n inside a backtick name or single-quoted label is kept, only the server's line break becomes a space (COLS-13, D-10)
 - [Phase 23]: 23-05: an unpaired declared Tuple element logs one metadata-only WARN at every DESCRIBE and the pass still applies the declared nullability (D-01, D-02); falling back would bring back the double flag
 - [Phase 23]: 23-05: D-19 (user Option B) flips three existing tests with names and assertions unchanged and a scoped AGENTS.md exemption; backlog 999.4 (size/size0 dropped by discovery) pinned Docker-free and deferred, 999.5 recorded
+- [Phase 23]: 23-06: Tracer (19-REVIEW WR-01) verified on its own but folded into the single DEBT-12 commit, whose check requires exactly the two disposition files
+- [Phase 23]: 23-06: 17-REVIEW IN-03 closed as skipped, a status already in both files rules footer
 
 ### Pending Todos
 
@@ -238,8 +241,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T12:09:51.325Z
-Stopped at: Completed 23-05-PLAN.md
+Last session: 2026-10-20T12:21:06.464Z
+Stopped at: Completed 23-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
