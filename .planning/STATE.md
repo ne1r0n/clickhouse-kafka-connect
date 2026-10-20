@@ -5,10 +5,10 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 24
 status: completed
 stopped_at: Phase 24 complete — all phases complete
-last_updated: "2026-10-20T19:07:30.266Z"
+last_updated: "2026-10-20T21:07:46.674Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 24 complete
-state_head: 62d8df3c90418e3003758da89bb30df0bac5859c
+last_activity_desc: Completed quick task 261020-vcr (corrected rollout note published at 6a2a87a5)
+state_head: a403cc1d1acb62cc0dd351149d215c126cb16a58
 progress:
   total_phases: 4
   completed_phases: 4
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 24)
 Phase: 24
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-10-20 — Phase 24 complete
+Last activity: 2026-10-20 - Completed quick task 261020-vcr: Fix the 7 open Round 3 findings on the v1.7.0_gg3 rollout note and republish to custom_build
 
 Progress: [██████████] 100%
 
@@ -242,12 +242,19 @@ None.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
 - [Publish] 2026-10-20: `v1.7.0_gg3` is on `origin/custom_build` at `3376a18f`, published by Phase 24's `--no-ff` merge of `sync/v1.7.0` (X = `8b1c318d`, rehearsed at X0 = `3ab55e1d`) onto `6473e24f`, with `tests.yaml` run 39472696952 green. Tags `v1.7.0_gg3` (`3376a18f`) and `pre-v1.7.0_gg3` (`6473e24f`) are on origin, and the scratch branch `sync/v1.7.0` was deleted from origin. The Dependabot freeze is over. Later `.planning/` commits on local `sync/v1.7.0` are a local tail and are not pushed.
-- [Publish]: `origin/custom_build` was `6473e24f` until the gg3 merge and is now `3376a18f`. Dependabot PRs #4 (client 0.9.6 → 0.10.0), #6 (commons-lang3 3.21.0), #7 (ben-manes versions 0.66.0), #8 (Gradle wrapper 9.8.1) and #9 (Kafka `connect-api` 4.1.1 → 4.4.0) are open, using all 5 open-PR slots. #4 and #9 bump fork-only pins, and `dependabot.yml` has no `ignore` for them. Any merge on `origin/custom_build` diverges the next milestone's base, which then opens with a DEPS-01-shaped merge. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
+- [Publish] 2026-10-20: the corrected rollout note is on `origin/custom_build` at `6a2a87a5`, a `--no-ff` merge of `sync/v1.7.0` (S = `a403cc1d`) onto `3376a18f`, made after the user's direct `publish`, with `tests.yaml` run 39496482074 green (quick 261020-vcr). It fixes the 14 findings of 24-REVIEW rounds 3 to 5 in `docs/ROLLOUT-v1.7.0_gg3.md`, `CHANGELOG.md` and `docs/FORK-DELTA.md`. Tags `v1.7.0_gg3` (`3376a18f`) and `pre-v1.7.0_gg3` (`6473e24f`) did not move, and no tag was pushed.
+- [Publish]: `origin/custom_build` was `6473e24f` until the gg3 merge, then `3376a18f`, and is now `6a2a87a5` (the corrected-note merge). Dependabot PRs #4 (client 0.9.6 → 0.10.0), #6 (commons-lang3 3.21.0), #7 (ben-manes versions 0.66.0), #8 (Gradle wrapper 9.8.1) and #9 (Kafka `connect-api` 4.1.1 → 4.4.0) are open, using all 5 open-PR slots. #4 and #9 bump fork-only pins, and `dependabot.yml` has no `ignore` for them. Any merge on `origin/custom_build` diverges the next milestone's base, which then opens with a DEPS-01-shaped merge. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
 - [CI]: The nightly `integrationTests.yaml` has been disabled by the user since 2026-10-16T09:38:23Z (Phase 21 OPS-01). The file stays upstream-identical. Phase 24 re-checks that no scheduled run followed.
 - [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
-- [Phase 23]: Backlog 999.4 is a pre-existing, high-severity defect for any table with a Tuple element named `size` or `size0`: discovery drops the element and every insert fails with code 33. Since COLS-14 it is named by a WARN at every DESCRIBE, but it is not fixed. The gg3 rollout note (item 2), the CHANGELOG (Known Issues) and FORK-DELTA (Known costs item 10) disclose it, measured as code 32 or 33 on the default route with client V2.
+- [Phase 23]: Backlog 999.4 is a pre-existing, high-severity defect for any table with a Tuple element named `size` or `size0`: discovery drops the element, and the inserts that were run (four shapes) failed with code 32 or 33; a wrong stored value is possible and not measured. Since COLS-14 it is named by a WARN at every DESCRIBE, but it is not fixed. The gg3 rollout note (item 2), the CHANGELOG (Known Issues) and FORK-DELTA (Known costs item 10) disclose it, measured as code 32 or 33 on the default route with client V2.
 - [Dependabot]: The repository has no `dependencies` label, but both `dependabot.yml` entries request it, so every Dependabot PR gets a "labels could not be found" comment. Updates still run. Fixing it means the user creates the label (D-11), or the fork drops the request. Tracked in PROJECT.md → Active, Phase 21 follow-ups.
-- [Phase 24]: `24-REVIEW-DISPOSITION.md` reads `open: 7` (round 3), but the Milestone audit section of `24-MILESTONE-CLOSE-RECORD.md` says all four disposition files read `open: 0`. `/gsd-audit-milestone` will see the seven rows open. Either disposition them as `deferred` to PROJECT.md → Active, Phase 24 follow-ups (the 24-UAT test 1 decision), or fix them, before the audit.
+- [Phase 24] (resolved 2026-10-20 by quick 261020-vcr): the seven round 3 rows of `24-REVIEW-DISPOSITION.md` are fixed, and so are the seven findings of review rounds 4 and 5 (19 rows, `open: 0`, round 6 clean). The fixes are published at `6a2a87a5`.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261020-vcr | Fix the 7 open Round 3 findings on the v1.7.0_gg3 rollout note and republish to custom_build | 2026-10-21 | a403cc1d | [261020-vcr-fix-the-7-open-round-3-findings-on-the-v](./quick/261020-vcr-fix-the-7-open-round-3-findings-on-the-v/) |
 
 ## Deferred Items
 
