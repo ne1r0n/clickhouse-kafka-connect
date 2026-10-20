@@ -437,3 +437,140 @@ PROBE-KEEPER case=all-after keys=
 Result: the first run returns exactly the one in-flight key of the listed topic, `orders-1`; it does not return `orders-0` (already `AFTER_PROCESSING`) and does not return `orders-v2-0`, which is `BEFORE_PROCESSING` under a topic that merely shares the prefix. The second run returns nothing. Same result as Phase 20's E-17 on the gg2 classes, now on the gg3 classes.
 
 Matches text: pending (24-03)
+
+### E-15: Tuple elements named size, the WARN oracle and the suspects query (D-01, D-12)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, the item for a Tuple element named `size` or `size0` (the unpaired-element WARN of ledger row L-51), `docs/FORK-DELTA.md` Known-costs item (backlog 999.4) and the CHANGELOG known-issue line (written in plans 24-03 and 24-04). Server `26.9.19.9`, client V2, run in both worktrees (methods `sizeQuery` and `escapeNames` in one Gradle run each, XML `/tmp/gsd24/exec/q-gg3.xml` for the gg3 tip and `q-gg2.xml` for tag `v1.7.0_gg2`; both `tests="2" skipped="0" failures="0" errors="0"`).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-tip/gradlew -p /tmp/gsd24/wt-tip --console=plain test --tests '*Phase24RolloutProbe.sizeQuery' --tests '*Phase24RolloutProbe.escapeNames' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-gg2/gradlew -p /tmp/gsd24/wt-gg2 --console=plain test --tests '*Phase24RolloutProbe.sizeQuery' --tests '*Phase24RolloutProbe.escapeNames' --rerun
+python3 -I /tmp/gsd24/probe/xml-probe-lines.py /tmp/gsd24/exec/q-gg3.xml
+```
+
+Fixtures (every table `(id Int32, c <type>)` unless noted, `ENGINE = MergeTree ORDER BY id`). Expected affected, thirteen tables: `s4_a01` `Tuple(size UInt16, v String)`; `s4_a02` `Tuple(size0 UInt8, v String)`; `s4_a03` `Nullable(Tuple(size UInt8, v String))`; `s4_a04` `Array(Tuple(size UInt16, v String))`; `s4_a05` `Map(String, Tuple(size UInt8, v String))`; `s4_a06` `Tuple(x Tuple(size UInt8, v String))`; `s4_a07` `Tuple(x Array(Tuple(size0 UInt8)))`; `s4_a08` `Array(Tuple(size1 UInt16, v String))`; `s4_a09` `Array(Tuple(size12 UInt8, v String))`; `s4_a10` `Array(Array(Tuple(size1 UInt8, v String)))`; `s4_a11` `Tuple(x Array(Tuple(size1 UInt8, v String)))`; `s4_a12` `Array(Tuple(x Tuple(size1 UInt8, v String)))`; `s4_a13` `Array(Tuple(v String, size1 UInt16))`. Expected unaffected, nineteen look-alikes: `s4_u01` `Tuple(size1 UInt8, v String)`; `s4_u02` `Nullable(Tuple(size1 UInt8, v String))`; `s4_u03` `Map(String, Tuple(size1 UInt8, v String))`; `s4_u04` `Tuple(a Array(UInt8), size1 UInt8)`; `s4_u05` `Tuple(sizes UInt8, v String)`; `s4_u06` `Tuple(size_x UInt8, v String)`; `s4_u07` `Tuple(size_1 UInt8, v String)`; `s4_u08` `Tuple(sizeA UInt8, v String)`; `s4_u09` `Tuple(Size UInt8, v String)`; `s4_u10` `Tuple(xsize UInt8, v String)`; `s4_u11` a Tuple element named `my size` in backticks; `s4_u12` a plain column `size UInt8`; `s4_u13` a plain column `size0 UInt8`; `s4_u14` a column `size Array(UInt8)`; `s4_u15` `Nested(size UInt8, v String)`; `s4_u16` `Enum8('size' = 1, 'size0' = 2)`; `s4_u17` `Array(Tuple(e Enum8('x, size1 UInt8' = 1), v String))`; `s4_u18` `Tuple(e Enum8('x, size UInt8' = 1), v String)`; `s4_u19` an unnamed `Tuple(UInt8, String)`. The known over-flag: `s4_o01` `Array(Map(String, Tuple(size1 UInt8)))`.
+
+The oracle is the connector's own WARN: the tables whose `describeTable` logs `have no matching DESCRIBE sub-column` on the gg3 tip. The suspects query (`/tmp/gsd24/probe/sql/size-suspects.sql`, one read-only `SELECT` over `system.columns`, `<db>` its only placeholder):
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '[(,] ?size0? [A-Za-z]')
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''),
+                 'Array\\((?:[^()]|\\((?:[^()]|\\((?:[^()]|\\([^()]*\\))*\\))*\\)|\\()*?[(,] ?size[0-9]+ [A-Za-z]')
+      )
+ORDER BY `table`;
+```
+
+Substitution map: `<db>` = the fixture database of that run (`<test database>_sf`: the 13 affected, the 19 look-alikes and `s4_o01`) and, for the second run, a database holding only the 19 look-alikes (`<test database>_su`).
+
+```text
+PROBE-SIZE-ORACLE tree=gg3 tables=s4_a01,s4_a02,s4_a03,s4_a04,s4_a05,s4_a06,s4_a07,s4_a08,s4_a09,s4_a10,s4_a11,s4_a12,s4_a13
+PROBE-SIZE-ORACLE tree=gg2 tables=
+PROBE-SIZE-QUERY tree=gg3 db=fixture tables=s4_a01,s4_a02,s4_a03,s4_a04,s4_a05,s4_a06,s4_a07,s4_a08,s4_a09,s4_a10,s4_a11,s4_a12,s4_a13,s4_o01
+PROBE-SIZE-QUERY tree=gg3 db=lookalike tables=
+PROBE-SIZE-QUERY tree=gg2 db=fixture tables=s4_a01,s4_a02,s4_a03,s4_a04,s4_a05,s4_a06,s4_a07,s4_a08,s4_a09,s4_a10,s4_a11,s4_a12,s4_a13,s4_o01
+PROBE-SIZE-QUERY tree=gg2 db=lookalike tables=
+```
+
+Result. The WARN fires on exactly the thirteen affected tables and on none of the nineteen look-alikes or on `s4_o01`. The query lists the thirteen plus `s4_o01`, a known over-flag: `Array(Map(String, Tuple(size1 UInt8)))` has `size1` after an `Array(` in the type text, but the connector does not drop that element and the table does not log the WARN. It lists no look-alike, and returns an empty list on the database that holds only look-alikes, which is what the note's "Empty result" sentence promises. The query reads the declared type text, so a listed table is a suspect; the log line is the exact check, because it comes from the same code path as the insert. `v1.7.0_gg2` has no such WARN (its oracle is empty) and its query result is the same, so the defect itself is older than the WARN: the WARN is what gg3 adds.
+
+Captured WARN line (gg3, a line break in the declared type prints as `\n`; the greppable phrase is `have no matching DESCRIBE sub-column`), plan 24-03 builds its log-grep proof from it:
+
+```text
+PROBE-SIZE-WARN tree=gg3 line=Declared Tuple element(s) [c.size] of column c of table kafka_connect_test_1278298601_1792514361103_sf.s4_a01 (declared type Tuple(\\n    size UInt16,\\n    v String)) have no matching DESCRIBE sub-column; applying the declared nullability to the elements that paired
+```
+
+Inserts (one record of constants, `put()` through a V2 task, typed read-back; identical on both trees):
+
+```text
+PROBE-INSERT tree=gg3 table=s4_a01 outcome=failed code=32 rows=0 match=-
+PROBE-INSERT tree=gg3 table=s4_a04 outcome=failed code=32 rows=0 match=-
+PROBE-INSERT tree=gg3 table=s4_a08 outcome=failed code=32 rows=0 match=-
+PROBE-INSERT tree=gg3 table=s4_a13 outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg3 table=s4_u01 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=s4_u03 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=s4_u05 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg2 table=s4_a01 outcome=failed code=32 rows=0 match=-
+PROBE-INSERT tree=gg2 table=s4_a04 outcome=failed code=32 rows=0 match=-
+PROBE-INSERT tree=gg2 table=s4_a08 outcome=failed code=32 rows=0 match=-
+PROBE-INSERT tree=gg2 table=s4_a13 outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg2 table=s4_u01 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg2 table=s4_u03 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg2 table=s4_u05 outcome=stored code=- rows=1 match=yes
+PROBE-SIZE-NULL tree=gg3 code=36
+PROBE-SIZE-NULL tree=gg2 code=36
+```
+
+Inserts into the affected shapes fail with code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or 33 (`CANNOT_READ_ALL_DATA`) and store 0 rows, on both releases; `Tuple(size1 ...)`, `Map(String, Tuple(size1 ...))` and `Tuple(sizes ...)` store their row. A Tuple element named `null` is rejected by the server at `CREATE TABLE` with code 36, so no such table exists to be affected. A silently wrong stored value, reachable when the shorter bytes happen to parse (research, 23-EVIDENCE.md R-01), was not measured here.
+
+Matches text: pending (24-03, 24-04)
+
+### E-16: names with a backslash, a line break, a slash, a tab or a double quote (D-05, D-13)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md` (the known-limitation paragraph beside the backslash-n item) and `docs/FORK-DELTA.md` Known-costs item (backlog 999.5), written in plans 24-03 and 24-04. Same runs and commands as E-15 (method `escapeNames`). Fixtures in the database `<test database>_e5`: roots `e5_e01` a name with one backslash (`a\b`), `e5_e02` a literal backslash followed by `n`, `e5_e03` a real line break, `e5_e04` `a/b`, `e5_e05` a tab, each `(id Int32, <name> String DEFAULT 'DEFAULTED')`; elements `e5_e06` .. `e5_e10` the same five characters as the first element name in `c Tuple(<name> Int32, d String)`; `e5_e11` a root name holding a double quote. Look-alikes (also in the look-alike-only database `<test database>_e5l`): `e5_l01` a root named `a.b`, `e5_l02` `Tuple(e Enum8('a\b' = 1), d String)`, `e5_l03` `s String DEFAULT 'a\b'`, `e5_l04` a backslash only in the column COMMENT, `e5_l05` roots named `\u00e9` and `\u65e5\u672c` (non-ASCII), `e5_l06` plain names, `e5_l07` `Tuple(e Enum8('a/b' = 1), d String)`, `e5_l08` `s String DEFAULT 'x/y'`.
+
+What the connector calls a column. Equality of a name is defined by the connector's Column name, which is the server's name with every JSON escape doubled (`fromJsonRow` doubles each backslash and each line break before parsing). Measured per character class; in the Column name column, a backslash is a real backslash:
+
+| character in the server name | server name | connector Column name | record field `natural` (the server name) | record field `escaped` (the Column name) |
+|------------------------------|-------------|-----------------------|-------------------------------------------|-------------------------------------------|
+| backslash | `a\b` | `a\\b` (two backslashes) | stores the column DEFAULT, no error | stores the value |
+| backslash and `n` | `a\nb` (backslash, `n`) | `a\\nb` (two backslashes, `n`) | stores the column DEFAULT, no error | stores the value |
+| line break | `a`, LF, `b` | `a\nb` (backslash, `n`) | stores the column DEFAULT, no error | stores the value |
+| slash | `a/b` | `a\/b` | stores the column DEFAULT, no error | stores the value |
+| tab | `a`, TAB, `b` | `a\tb` (backslash, `t`) | stores the column DEFAULT, no error | stores the value |
+| double quote | `a"b` | none: the table is not mapped (`describeTable` returns no table) | n/a | n/a |
+| non-ASCII (`\u00e9`, `\u65e5\u672c`), space, dot | unchanged | same as the server name | n/a | n/a |
+
+The rows for the first five classes are the root-name fixtures `e5_e01`..`e5_e05`, and the result is identical on `v1.7.0_gg2` and on the gg3 tip. For an element name (`e5_e09`, a slash inside a Tuple) the natural field name makes the put fail (`failed`) instead of storing a default, and the Column-name field stores the value, again identical on both trees. The set of Column names (34 names over the mapped fixture tables, listed by `PROBE-ESC-NAME`) is the same on both trees. The root-name rows are the silent ones: a record whose field uses the server's name loses that field to the DEFAULT without any error.
+
+```text
+PROBE-ESC-NAME tree=gg3 table=e5_e01 column=a\\\\b
+PROBE-ESC-NAME tree=gg3 table=e5_e02 column=a\\\\nb
+PROBE-ESC-NAME tree=gg3 table=e5_e03 column=a\\nb
+PROBE-ESC-NAME tree=gg3 table=e5_e04 column=a\\/b
+PROBE-ESC-NAME tree=gg3 table=e5_e05 column=a\\tb
+PROBE-ESC-NAME tree=gg3 table=e5_e09 column=c.a\\/b
+PROBE-ESC-UNMAPPED tree=gg3 table=e5_e11 mapped=no
+PROBE-ESC-UNMAPPED tree=gg3 table=e5_l06 mapped=yes
+PROBE-ESC-PUT tree=gg3 table=e5_e01 field=natural stored=default
+PROBE-ESC-PUT tree=gg3 table=e5_e01 field=escaped stored=value
+PROBE-ESC-PUT tree=gg3 table=e5_e04 field=natural stored=default
+PROBE-ESC-PUT tree=gg3 table=e5_e04 field=escaped stored=value
+PROBE-ESC-PUT tree=gg3 table=e5_e09 field=natural stored=failed
+PROBE-ESC-PUT tree=gg3 table=e5_e09 field=escaped stored=value
+```
+
+(In a PROBE line a backslash prints as two backslashes, so `a\\\\b` is the Column name `a\\b` with two backslashes. The same lines with `tree=gg2` are in `q-gg2.lines`; the whole 34-name list and the ten put lines are equal on both trees.)
+
+The detection query (`/tmp/gsd24/probe/sql/escaped-names.sql`, one read-only `SELECT` over `system.columns`, `<db>` its only placeholder). It lists a table when a root column name holds a backslash, a line break, a slash or a tab, or when a backtick-quoted element name in the declared type holds a backslash or a slash (the type text prints a backslash, a line break and a tab as a backslash escape, so the backslash test covers an element name with a line break or a tab). Single-quoted enum labels are stripped first. The `/` and tab predicates were kept because this run showed them exact: no look-alike is listed.
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        position(name, '\\') > 0
+        OR position(name, '\n') > 0
+        OR position(name, '/') > 0
+        OR position(name, '\t') > 0
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*\\\\[^`]*`')
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*/[^`]*`')
+      )
+ORDER BY `table`;
+```
+
+Substitution map: `<db>` = the fixture database (`<test database>_e5`, 11 `e5_e*` tables and the 8 look-alikes) and, for the second run, the look-alike-only database (`<test database>_e5l`).
+
+```text
+PROBE-ESC-QUERY tree=gg3 db=fixture tables=e5_e01,e5_e02,e5_e03,e5_e04,e5_e05,e5_e06,e5_e07,e5_e08,e5_e09,e5_e10
+PROBE-ESC-QUERY tree=gg3 db=lookalike tables=
+PROBE-ESC-QUERY tree=gg2 db=fixture tables=e5_e01,e5_e02,e5_e03,e5_e04,e5_e05,e5_e06,e5_e07,e5_e08,e5_e09,e5_e10
+PROBE-ESC-QUERY tree=gg2 db=lookalike tables=
+```
+
+Result: exactly the ten backslash, line-break, slash and tab fixtures, none of the look-alikes, and an empty list on the look-alike-only database ("Empty result" in the note). The double-quote table `e5_e11` is not listed and is not meant to be: the query reads names, and that table is not a name-equality case but an unmapped one (`describeTable` returns no table on both releases). A root or Tuple with a slash in an element name is listed (`e5_e04`, `e5_e09`). A slash element name under a `Nullable(Tuple)` was not run through this query, but E-13 (row `x_sl`) shows that such a table fails with code 33 on both releases, because the declared-type pairing falls back; that is the same name-equality limit seen from the nullability side.
+
+Matches text: pending (24-03, 24-04)
