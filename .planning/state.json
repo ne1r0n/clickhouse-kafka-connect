@@ -1,38 +1,33 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg2-hardening — Follow-up Hardening & CI Hygiene",
+  "milestone": "v1.7.0_gg3-hardening — Record-Data Exposure & Review Debt",
   "phases": [
     {
-      "number": "16",
-      "name": "Early Docs Publication",
+      "number": "21",
+      "name": "Dependabot Integration & CI Hygiene",
       "status": "complete"
     },
     {
-      "number": "17",
-      "name": "CI, Build & Test Hygiene",
+      "number": "22",
+      "name": "Writer Record-Data Exposure",
       "status": "complete"
     },
     {
-      "number": "18",
-      "name": "Writer Correctness",
+      "number": "23",
+      "name": "Declared-Nullability Hardening & Review Closure",
       "status": "complete"
     },
     {
-      "number": "19",
-      "name": "Nullable Enum & Tuple Mapping",
-      "status": "complete"
-    },
-    {
-      "number": "20",
+      "number": "24",
       "name": "Release & Publication",
       "status": "in_progress"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
+    "command": "/gsd-progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 20 of 5 · 79% · executing"
+    "reason": "Phase 4 of 4 · 75% · executing"
   },
-  "updated_at": "2026-10-14T13:16:00.528Z"
+  "updated_at": "2026-10-20T18:04:16.782Z"
 }

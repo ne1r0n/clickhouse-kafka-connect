@@ -1,0 +1,1 @@
+No external API integration: Phase 22 reshapes the exceptions ClickHouseWriter's generic catch throws and adds tests. "Connect REST" is only a threat-model trust boundary; no API, SDK or service is added or called.

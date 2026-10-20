@@ -13,7 +13,6 @@ import com.clickhouse.data.ClickHouseFormat;
 import com.clickhouse.kafka.connect.sink.db.CapturingClickHouseWriter;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
-import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -189,11 +188,6 @@ final class NullableRoundTrip {
             }
         }
         return rows;
-    }
-
-    /** Production's normalisation, so the approach test exercises the code discovery runs. */
-    static String normaliseDeclaredType(String rawType) {
-        return DeclaredNullability.normalise(rawType);
     }
 
     static String serverVersion(ClickHouseHelperClient chc) throws Exception {

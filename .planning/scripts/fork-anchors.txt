@@ -38,9 +38,9 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg2	1	BLD-07
+VERSION	v1.7.0_gg3	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
-build.gradle.kts	slf4j-reload4j:2.0.17	1	BLD-08
+build.gradle.kts	slf4j-reload4j:2.0.20	1	BLD-08
 build.gradle.kts	jacocoForkReport	3	BLD-03
 build.gradle.kts	register<Test>("testUnit")	1	BLD-04
 build.gradle.kts	withCapability("org.lz4:lz4-java")	1	BLD-09
@@ -73,3 +73,15 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	@Setter(A
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	DeclaredNullability.apply(	1	COLS-10
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	buildDescribedTable(	3	COLS-10
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	unwrapSimpleAggregate(	2	COLS-10
+# Phase 22 (v1.7.0_gg3): rows for WRT-13, the value-free DataException of the generic catch in doWriteColValue, its WithheldMessageException cause and the fixed Column.convertEnumValues text (the last row is negative so an upstream sync cannot bring the label back).
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WRITE_VALUE_CONVERSION_FAILURE_FORMAT	2	WRT-13
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WithheldMessageException.of(	1	WRT-13
+src/main/java/com/clickhouse/kafka/connect/util/WithheldMessageException.java	public final class WithheldMessageException extends RuntimeException	1	WRT-13
+src/main/java/com/clickhouse/kafka/connect/util/WithheldMessageException.java	(message withheld: may contain record data)	1	WRT-13
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	throw new RuntimeException("No content in enum");	1	WRT-13
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	No content in enum %s	0	WRT-13
+# Phase 23 (v1.7.0_gg3): rows for the declared-nullability hardening (COLS-12 null totality; COLS-13 and COLS-14 rows follow).
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	column == null || column.getType() == null	2	COLS-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	declaredType.replace(ESCAPED_NEWLINE, SPACE)	0	COLS-13
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	private static final char BACKTICK	1	COLS-13
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	UNPAIRED_ELEMENT_WARNING	2	COLS-14

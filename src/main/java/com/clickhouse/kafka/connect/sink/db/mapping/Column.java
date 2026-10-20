@@ -525,7 +525,8 @@ public class Column {
         if ( this.enumValues != null ) {
             return enumValues.get(value);
         }
-        throw new RuntimeException(String.format("No content in enum %s", value));
+        // The label is record data and this exact RuntimeException reaches Connect status unchanged, so the text is fixed (D-14).
+        throw new RuntimeException("No content in enum");
     }
 
     public String toString() {

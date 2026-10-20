@@ -3,6 +3,19 @@ package com.clickhouse.kafka.connect.sink;
 import static com.clickhouse.kafka.connect.sink.NullableRoundTrip.DEFAULT_VALUE_TEXT;
 import static com.clickhouse.kafka.connect.sink.NullableRoundTrip.FALSE_TEXT;
 import static com.clickhouse.kafka.connect.sink.NullableRoundTrip.TRUE_TEXT;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ELEMENT;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ENUM_LABEL_DDL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ENUM_LABEL_RAW;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_NAME_DDL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_NAME_RAW;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_NESTED_NAMES_DDL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_NESTED_NAMES_RAW;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.NULLABLE_BACKSLASH_N_NAME_DDL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.NULLABLE_BACKSLASH_N_NAME_RAW;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.REAL_NEWLINE_NAME_DDL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.REAL_NEWLINE_NAME_RAW;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.TRAILING_BACKSLASH_NAMES_DDL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.TRAILING_BACKSLASH_NAMES_RAW;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -17,10 +30,12 @@ import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.ColumnNullabilityPaths;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
+import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,9 +96,11 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
     private static final String P6_DDL_TYPE = "Nullable(Tuple(Int32, Nullable(String)))";
     // Backtick-quoted element names holding a space and a comma.
     private static final String P8_DDL_TYPE = "Nullable(Tuple(`a b` Int32, `c,d` Nullable(String)))";
-    // The two characters backslash and n that fromJsonRow leaves for the server's escaped newline.
-    private static final String ESCAPED_NEWLINE = "\\n";
     private static final String PATH_SEPARATOR = ".";
+    // The second element of the backslash-n Tuple; it lives at c.d beside the DEFAULT twin's own column d.
+    private static final String TUPLE_STRING_ELEMENT = "d";
+    private static final String PREMISE_MESSAGE =
+            "premise (IN-03 re-open trigger): the server's escaping must equal the Docker-free pin input";
     // The server errors for a body that is shorter than the doubled null flags make it read.
     private static final List<String> READ_PAST_END_CODES =
             List.of("ATTEMPT_TO_READ_AFTER_EOF", "CANNOT_READ_ALL_DATA");
@@ -727,7 +744,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                 if (row.isSubcolumn() || !expected.containsKey(row.getName())) {
                     continue;
                 }
-                String normalised = NullableRoundTrip.normaliseDeclaredType(row.getType());
+                String normalised = DeclaredNullability.normalise(row.getType());
                 LOGGER.info(
                         "{} approach {} | raw={} | normalised={}",
                         MATRIX_LOG_PREFIX,
@@ -742,7 +759,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
             assertEquals(expected, parsed, "parsed declared nullability must equal the DDL's");
             for (String multiLine : List.of("p1", "p2")) {
                 assertTrue(
-                        rawTypes.get(multiLine).contains(ESCAPED_NEWLINE),
+                        rawTypes.get(multiLine).contains(DeclaredNullability.ESCAPED_NEWLINE),
                         "the non-nullable " + multiLine + " must reach the parser as the escaped multi-line form");
             }
         } finally {
@@ -774,6 +791,110 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                     tableName,
                     id,
                     withDefaultColumn(List.of(cell("c_is_null", "isNull(c)", TRUE_TEXT)), twin));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, tableName);
+        }
+    }
+
+    @ParameterizedTest(
+            name = "COLS-13 (D-12) live: a backslash-n in a Tuple element name round-trips without a fallback WARN {0}")
+    @EnumSource(Twin.class)
+    void backslashNInTupleElementNameRoundTripsWithoutFallback(Twin twin, TestInfo testInfo) throws Exception {
+        Map<String, String> props = getBaseProps();
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
+        String tableName = createTopicName(TABLE_PREFIX + "bsn_" + twin);
+        ClickHouseTestHelpers.dropTable(chc, tableName);
+        NullableRoundTrip.createTable(chc, tableName, twin.ddl(CELL_COLUMN + " " + NULLABLE_BACKSLASH_N_NAME_DDL));
+        props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
+        try {
+            for (ClickHouseFieldDescriptor row : NullableRoundTrip.describeRows(chc, tableName)) {
+                if (CELL_COLUMN.equals(row.getName())) {
+                    assertEquals(NULLABLE_BACKSLASH_N_NAME_RAW, row.getType(), PREMISE_MESSAGE);
+                }
+            }
+            try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+                Table table = chc.describeTable(chc.getDatabase(), tableName);
+
+                assertEquals(List.of(), log.events("WARN"), "the declared-nullability pass must not fall back");
+                Map<String, Column> columns = table.getAllColumnsMap();
+                assertTrue(columns.get(CELL_COLUMN).isNullable());
+                assertFalse(columns
+                        .get(CELL_COLUMN + PATH_SEPARATOR + BACKSLASH_N_ELEMENT)
+                        .isNullable());
+            }
+
+            Schema cellSchema = SchemaBuilder.struct()
+                    .optional()
+                    .field(BACKSLASH_N_ELEMENT, Schema.INT32_SCHEMA)
+                    .field(TUPLE_STRING_ELEMENT, Schema.STRING_SCHEMA)
+                    .build();
+            Schema schema = SchemaBuilder.struct()
+                    .field(ROW_ID_COLUMN, Schema.INT32_SCHEMA)
+                    .field(CELL_COLUMN, cellSchema)
+                    .build();
+            int id = 1;
+            Struct cellValue = new Struct(cellSchema).put(BACKSLASH_N_ELEMENT, 7).put(TUPLE_STRING_ELEMENT, "nm");
+            SinkRecord record = new SinkRecord(
+                    tableName, 0, null, null, schema, new Struct(schema).put(ROW_ID_COLUMN, id).put(CELL_COLUMN, cellValue), id);
+
+            NullableRoundTrip.putAndStop(props, List.of(record));
+
+            NullableRoundTrip.selectAndAssert(
+                    chc,
+                    tableName,
+                    id,
+                    withDefaultColumn(
+                            List.of(
+                                    cell("c_a", "tupleElement(c, 1)", "7"),
+                                    cell("c_d", "tupleElement(c, 2)", "nm")),
+                            twin));
+        } finally {
+            ClickHouseTestHelpers.dropTable(chc, tableName);
+        }
+    }
+
+    @Test
+    @DisplayName(
+            "COLS-13 (D-12) live: DESCRIBE returns the captured escaping for every Docker-free backslash-n literal, and quoted names pair without a fallback WARN")
+    void describeReturnsTheCapturedBackslashNEscapingAndPairs() throws Exception {
+        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(getBaseProps());
+        String tableName = createTopicName(TABLE_PREFIX + "bsn_drift");
+        ClickHouseTestHelpers.dropTable(chc, tableName);
+        // Root column -> DDL type, and the DESCRIBE text each Docker-free literal claims for it.
+        Map<String, String> ddlTypes = new LinkedHashMap<>();
+        Map<String, String> expectedRawTypes = new LinkedHashMap<>();
+        ddlTypes.put("p", BACKSLASH_N_NAME_DDL);
+        expectedRawTypes.put("p", BACKSLASH_N_NAME_RAW);
+        ddlTypes.put("r", REAL_NEWLINE_NAME_DDL);
+        expectedRawTypes.put("r", REAL_NEWLINE_NAME_RAW);
+        ddlTypes.put("q", BACKSLASH_N_ENUM_LABEL_DDL);
+        expectedRawTypes.put("q", BACKSLASH_N_ENUM_LABEL_RAW);
+        ddlTypes.put("n", BACKSLASH_N_NESTED_NAMES_DDL);
+        expectedRawTypes.put("n", BACKSLASH_N_NESTED_NAMES_RAW);
+        ddlTypes.put("s", TRAILING_BACKSLASH_NAMES_DDL);
+        expectedRawTypes.put("s", TRAILING_BACKSLASH_NAMES_RAW);
+        // Wrappers: no raw literal was captured for them, so only their pairing is checked.
+        ddlTypes.put("w", "Array(Tuple(`a\\\\nb` Int32, d Nullable(String)))");
+        ddlTypes.put("m", "Map(String, Tuple(`a\\\\nb` Int32, d Nullable(String)))");
+        String columnsDdl = ddlTypes.entrySet().stream()
+                .map(entry -> entry.getKey() + " " + entry.getValue())
+                .collect(Collectors.joining(", "));
+        NullableRoundTrip.createTable(chc, tableName, Twin.PLAIN.ddl(columnsDdl));
+        try {
+            Map<String, String> rawTypes = new LinkedHashMap<>();
+            for (ClickHouseFieldDescriptor row : NullableRoundTrip.describeRows(chc, tableName)) {
+                if (!row.isSubcolumn() && expectedRawTypes.containsKey(row.getName())) {
+                    rawTypes.put(row.getName(), row.getType());
+                }
+            }
+            assertEquals(expectedRawTypes, rawTypes, PREMISE_MESSAGE);
+
+            try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+                Table table = chc.describeTable(chc.getDatabase(), tableName);
+
+                assertEquals(List.of(), log.events("WARN"), "the declared-nullability pass must not fall back");
+                assertTrue(table.getAllColumnsMap().get("n.p\\\\nq.t").isNullable());
+            }
         } finally {
             ClickHouseTestHelpers.dropTable(chc, tableName);
         }

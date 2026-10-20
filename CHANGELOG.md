@@ -1,3 +1,63 @@
+# 1.7.0_gg3, 2026-10-20
+
+This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg2`. It lists only the fork's own changes
+since `v1.7.0_gg2`. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on top of upstream,
+and work through [docs/ROLLOUT-v1.7.0_gg3.md](docs/ROLLOUT-v1.7.0_gg3.md), the operator checklist with a self-check per
+item, before upgrading from `v1.7.0_gg2`. If you are coming from an earlier release, start with the `1.7.0_gg2`
+checklist.
+
+## Important Changes
+
+* When the connector cannot convert a record value into a ClickHouse column on the RowBinary route (an invalid UUID
+  string, a number that cannot be parsed or is too wide, a `Decimal` out of range, a `FixedString` that is too long, an
+  unknown `Enum` label), the error text no longer carries the value. The Connect task status, the stack-trace header of
+  the dead letter queue and the `Error inserting records` log lines now name the column, the ClickHouse type and the
+  exception class, and the original frames stay visible. An alert that matches `Failed to write column ` keeps matching;
+  an alert that matches a library message such as `Invalid UUID string` stops matching. The class-name and message
+  headers of the dead letter queue are unchanged.
+* The only exception to that we know of is a Map key, on connectors whose `clickhouseSettings` sets
+  `input_format_binary_read_json_as_string` to `1` or `true` and whose records carry a value Jackson cannot serialize.
+  There the JSON library's own failure text is passed on unchanged, and it can name the Map key in the task status, the
+  stack-trace header of the dead letter queue and the `Error inserting records` log lines (measured on ClickHouse
+  26.9.19.9). No Map value, no Struct field value and no list element appeared in any of them. The rollout checklist has
+  a check for your connector configurations.
+* New WARN, logged every time a table is described, when a `Tuple` element that a column's declared type names has no
+  matching column in the table description. The line names the database, table, column, element paths and declared type
+  and carries no value. It marks a table hit by the known issue below, so a table it names may already have been
+  failing before the upgrade. The connector describes every table that its `targetTableFilter` lets through, so the
+  line can name a table that this connector never writes.
+* The JMX MBean name's `version=` segment changes from `v1.7.0_gg2` to `v1.7.0_gg3`, and the client name sent on every
+  request is now `clickhouse-kafka-connect/v1.7.0_gg3`. Dashboards, alerts and exporter rules that spell out the old
+  values stop matching.
+* A rollback to `v1.7.0_gg2` with batches in flight needs a clean stop only for a table with a `Nullable(Tuple(...))`
+  whose element name holds a backslash followed by `n`, or a line break. The upgrade needs no clean stop, and neither
+  does any other change in this release. The rollout checklist has the query that finds such tables and the procedure.
+
+## Known Issues
+
+* A `Tuple` element named `size` or `size0` at any depth of a column's type, or an element named `size` followed by
+  digits where an `Array` encloses its Tuple, is dropped when the connector reads the table. On the default route with
+  client V2, every insert into such a table fails with the server error code 32 or 33 and stores no row, on
+  `v1.7.0_gg2` and on this release alike. This release adds the WARN described above that names such a table, but it
+  has no fix. The rollout checklist has a query that lists suspect tables and the log line that confirms one.
+
+## Bug Fixes
+
+* A `Nullable(Tuple(...))` whose element name holds a backslash followed by `n`, or a line break, now pairs with its
+  declared type, so an insert into it stores the row instead of failing with code 33 (measured for a `Nullable(Tuple)`,
+  an `Array` of it and a `Map` of it), and the fallback WARN for such a table stops.
+* On client V1, a record whose text contains a ClickHouse code 33 or code 131 message no longer triggers a
+  table-mapping refresh and a retry of the insert.
+
+## Build and CI
+
+* Three dependency updates merged from Dependabot, lombok `1.18.48`, spotless `8.10.4` and slf4j-reload4j `2.0.20`,
+  leave the jar inside the shipped Confluent archive unchanged. slf4j-reload4j is on the runtime classpath only, so it
+  is not in the archive.
+* The workflow pin-guard test also checks the fork-count step and accepts a trailing comment on the pinned runner
+  label.
+* The writer error-path tests no longer mock the ClickHouse client inline.
+
 # 1.7.0_gg2, 2026-10-14
 
 This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg1`. It lists only the fork's own changes

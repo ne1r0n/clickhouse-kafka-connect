@@ -13,6 +13,7 @@ import com.clickhouse.kafka.connect.test.TestProtos;
 import com.clickhouse.kafka.connect.test.junit.extension.FromVersionConditionExtension;
 import com.clickhouse.kafka.connect.test.junit.extension.SinceClickHouseVersion;
 import com.clickhouse.kafka.connect.util.Utils;
+import com.clickhouse.kafka.connect.util.WithheldMessageException;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.DynamicMessage;
 import io.confluent.connect.protobuf.ProtobufConverter;
@@ -908,7 +909,9 @@ public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
         try {
             chst.put(sr);
         } catch (RuntimeException e) {
-            assertInstanceOf(IllegalArgumentException.class, Utils.getRootCause(e), "Could not detect size mismatch for FixedString");
+            // Under WRT-13 (D-05) the deepest cause is the value-free copy, so the exact original class is checked through it, which is as strict as before.
+            WithheldMessageException withheld = assertInstanceOf(WithheldMessageException.class, Utils.getRootCause(e), "Could not detect size mismatch for FixedString");
+            assertEquals(IllegalArgumentException.class.getName(), withheld.getOriginalClassName(), "Could not detect size mismatch for FixedString");
         }
         chst.stop();
     }

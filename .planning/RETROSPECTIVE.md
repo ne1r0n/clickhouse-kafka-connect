@@ -170,6 +170,65 @@
 
 ---
 
+## Milestone: v1.7.0_gg2-hardening — Follow-up Hardening & CI Hygiene
+
+**Shipped:** 2026-10-14 (closed 2026-10-16)
+**Phases:** 5 | **Plans:** 29 | **Tasks:** 59 | **Commits:** 217 (no upstream sync) | **Timeline:** 6 days (2026-10-10 → 2026-10-15)
+
+### What Was Built
+
+- The corrected gg1 rollout doc was published first, as docs-only `--no-ff` merges `537beb1f` and `be6b8861`. The `TRUNCATE` advice on the shared KeeperMap state table is gone. The item 8 rollback was rewritten so that it works on the published tip.
+- CI hardening. `tests.yaml` runs on `ubuntu-24.04` with SHA-pinned Node 24 actions, a read-only token, a Gradle-reported fork count and a Dependabot `github-actions` entry, and a Docker-free guard pins all of it. Phase 17 also excluded the duplicate test-classpath lz4, asserted the LZ4 response leg, silenced the Lombok warning and pinned the NanoTimestamp row.
+- Writer correctness:
+  - the empty-CDC skip covers all four routes
+  - a missing non-nullable value throws a column-naming, data-free `DataException`
+  - message-less failures no longer become NPEs
+  - DateTime parse logs no longer carry the raw value
+- Backlog 999.1 closed. `Nullable(Enum8|Enum16)` round-trips through a one-line fix. `Nullable(Tuple)` round-trips through `DeclaredNullability`, which reads nullability from the declared type string. A live spike decided it, and review gap closure covered `SimpleAggregateFunction`.
+- `v1.7.0_gg2` was published with `docs/ROLLOUT-v1.7.0_gg2.md`, whose every quoted query was run live. A live `DedupTokenRetryLiveTest` corrected the gg1 note's deduplication claim. The tree was gated by two 988-test runs and a CI rehearsal.
+
+### What Worked
+
+- **Last milestone's lesson was applied.** "Review release docs before the publish gate" shaped Phase 16, and Phase 20 reviewed everything it committed before the release gate (20-05). Both rollout docs were reviewed before they reached `origin`. 16-REVIEW WR-01 found a rollback step that hit 97 conflicts on the published tip. It was fixed and republished at Phase 16 UAT.
+- **Spike-first go/no-go that could not hold the release.** The Enum half shipped either way. The Tuple spike ran a live twin-table matrix before any production code, and its `go` was decided at a gate on measured evidence.
+- **Measure before you write prose.** `DedupTokenRetryLiveTest` showed that the gg1 note's "rows written twice" was wrong; the real risk is that old rows persist. Every query in the gg2 note was run against rows written by both gg1 and gg2 code.
+- **Rehearse-then-publish, again with zero surprises.** A scratch push for one green run on the exact tip came first. The rollback tag went up before the merge, the release tag only after the merge's own run was green, and the scratch branch was deleted last. Exactly one run landed on the published SHA.
+- **The milestone audit ran this time.** It passed: 26/26, integration 4/4, flows 3/3. That makes this the first close where the override rests only on stale digests, not on a missing audit.
+
+### What Was Inefficient
+
+- **Review gap closure in Phase 19.** CR-01 (`SimpleAggregateFunction(f, Nullable(T))` flipped to non-nullable) was found after the main fix landed. It took four more plans (19-07..19-10), so Phase 19 ran 10 plans. A wrapper-type matrix in the spike would have found it earlier.
+- **Verification staleness, fourth time.** Phases 16–19 read stale at close because Phase 20 edited the docs and anchors they covered. It was again an `override_closeout`.
+- **Review IDs were reused across re-runs.** A second Phase 19 review reused IDs of the first, so "WR-02" meant two different things, L-38 and vacuous assertions. Phase 20 had to write a disambiguation section into the close record.
+- **A repository setting changed runtime behaviour after the release.** Switching the default branch to `custom_build` (the right call for Dependabot) also activated upstream's nightly `integrationTests.yaml`, which is red by inheritance. The consequence was not foreseen at the decision.
+
+### Patterns Established
+
+- **Docs-only early publication.** A path allow-list diff plus a tree-equality check replaces the merge-invariant script when no code moves.
+- **Fail-open, total metadata passes.** `DeclaredNullability` wraps parse, pairing and assignment in one `try` and applies only once a whole root pairs. On failure it falls back with a metadata-only WARN that names the database and table, so a surprise can never corrupt a batch.
+- **A close record as the hand-off artifact.** `20-MILESTONE-CLOSE-RECORD.md` holds every carried advisory with its reason, re-open trigger and owner. It also holds the post-publication manual-check outcomes in the user's words.
+- **One branch per SHA, always.** Every push in this milestone (two docs merges, the CI-17 proof, the rehearsal and the release) produced exactly one run.
+
+### Key Lessons
+
+1. **Put wrapper and modifier types in the spike matrix.** `SimpleAggregateFunction`, `LowCardinality` and `Nullable` nest around the types a fix targets. The Tuple spike covered the targets but not their wrappers, and review found the gap.
+2. **Never reuse a review ID for a different finding.** When a review is re-run, number new findings past the old ones, or prefix them by report. A reused ID makes "deferred" and "fulfilled" collide.
+3. **Before changing a repository setting, list what it activates.** The default branch decides which `schedule:` workflows run and which Dependabot config applies. Check `.github/workflows/*` for `schedule:` triggers first.
+4. **Verify claims in operator docs with a live test, not with reasoning.** Two consecutive milestones shipped a rollout claim that a live test later overturned.
+
+### Quality Observations
+
+- Code review ran on all five phases. The only critical was 19-REVIEW CR-01, found and fixed by gap closure in Phase 19. Final reports: 10 warnings and 15 info. Phase 16 is clean after its fixes. The rest are fixed or deferred with re-open triggers in each `REVIEW-DISPOSITION.md` and the close record.
+- Security audits for Phases 16, 18, 19 and 20 verified with 0 open threats at or above the block threshold. In Phase 19, T-19-12 and T-19-26 stay open at medium because 19-REVIEW WR-01 and IN-04 limit their claims.
+- Final suite: 988 tests, 0 failures, 0 errors, 18 named skips on `latest` 26.9.18.11. It was green twice locally, once on the rehearsal SHA and once on the published SHA (run `38587062864`).
+- `src/main` changes were within decided scope:
+  - the empty-CDC skip, the column-naming `DataException`, the null-message guards and the log masking (Phase 18)
+  - the Enum one-liner and `DeclaredNullability` (Phase 19)
+
+  The fork delta grew 95→119 files wide and 31→32 in `src/main`, mostly tests.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -179,6 +238,7 @@
 | v1.2.9_gg4-tests | 5 | 16 | First GSD milestone on this repo. Established parallel independent test tracks, blocking-human checkpoints for out-of-scope production changes, and real test/build commands in `config.json`. |
 | v1.6.0_gg1-sync | 6 | 24 | First upstream sync. Mechanical-merge-then-intent with a byte-identity invariant, a generated per-path merge checklist, scratch-branch CI rehearsal, and human-gated one-way publication. |
 | v1.7.0_gg1-sync | 4 | 25 | Second sync, 4 days against 20, because the recipe was reused with a parameterised invariant script. Hardening went on top of the merged tree. Behaviour ledger, twin-table parity tests and seen-red mutation checks; one commit per dependency bump. |
+| v1.7.0_gg2-hardening | 5 | 29 | First milestone without a sync. Docs-only early publication with release docs reviewed before the gate, a spike-first go/no-go that could not hold the release, operator claims pinned by live tests, and the first close with a passed milestone audit. |
 
 ### Cumulative Quality
 
@@ -187,10 +247,12 @@
 | v1.2.9_gg4-tests | 187 → 371 | 0 | 7 (+1 pinned by decision) | 9 |
 | v1.6.0_gg1-sync | 371 → 663 (incl. upstream's) | 4 (all fixed) | 2 silent merge reversions + D-17 + CR-01 auto.evolve (R-01 still pinned) | 17 |
 | v1.7.0_gg1-sync | 663 → 830 | 0 | R-01 data loss, Debezium Timestamp, nested-null desync, #820 shadowing, DESCRIBE depth, Int256, 3 config/metadata | 11 (all 17 carried closed) |
+| v1.7.0_gg2-hardening | 830 → 988 | 1 (CR-01, fixed) | 999.1 Nullable Enum/Tuple mis-storage, empty-CDC rows on 3 routes, message-less NPE, nameless missing-value error, raw DateTime in logs | 10 (all 11 carried closed) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. **Verification goes stale in sequential phases.** All three milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. Re-verify at close, or plan for the override.
+1. **Verification goes stale in sequential phases.** All four milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. That held even when the milestone audit passed. Re-verify at close, or plan for the override.
 2. **Blocking-human checkpoints on irreversible or production-affecting calls pay off.** They fired at least twice in every milestone and were right each time. Examples: R-01 pinned rather than fixed, KEEP over DROP, and every one-way publication.
 3. **Check the environment and the gate before trusting a result.** In v1.2.9_gg4-tests a red baseline turned out to be an environment artifact (`TESTCONTAINERS_HOST_OVERRIDE`). In v1.6.0_gg1-sync a green run turned out to be against the wrong server (`CLICKHOUSE_VERSION_DEFAULT`).
 4. **Reuse compounds.** Each milestone's tools made the next one cheaper: the suite (v1.2.9) gated the first sync, and the first sync's invariant script and checklist made the second take 4 days. Keep those tools current at every close.
+5. **Operator-facing claims need live evidence.** In v1.7.0_gg1-sync review caught a destructive `TRUNCATE` instruction, and in v1.7.0_gg2-hardening a live test overturned the gg1 note's deduplication claim. Review rollout docs before the publish gate, and back every behavioural claim with a test.

@@ -1,5 +1,62 @@
 # Milestones
 
+## v1.7.0_gg2-hardening Follow-up Hardening & CI Hygiene (Shipped: 2026-10-14)
+
+**Phases completed:** 5 phases (16–20), 29 plans, 59 tasks
+
+**Delivered:** All 11 follow-ups that `v1.7.0_gg1-sync` left open are closed. They shipped as `v1.7.0_gg2`. The corrected gg1 rollout doc went out first: the published copy no longer offers `TRUNCATE` on the shared KeeperMap state table, and its rollback step works on the published tip. Backlog 999.1 is fixed: `Nullable(Enum8|Enum16)` and `Nullable(Tuple)` values are stored as written. Empty Debezium records are skipped on every write route. Writer errors name the column without carrying record data, and DateTime parse logs no longer print the raw value. CI runs on a pinned `ubuntu-24.04` runner with SHA-pinned actions and a read-only token. Operators get `docs/ROLLOUT-v1.7.0_gg2.md`, whose every quoted query was run live.
+
+**Stats:**
+
+- Git range: `9ff1affc` (milestone start) → `bf8f56c6` (milestone audit). That is 217 commits on `sync/v1.7.0`. There was no upstream sync this milestone.
+- Timeline: 2026-10-10 → 2026-10-15 (6 days). Published 2026-10-14, closed 2026-10-16.
+- Files changed: 167 total (+31,700 / −413), mostly `.planning/`. Of those, 37 are in `src/`, build, `gradle/` and `.github/` (+5,433 / −263).
+- Codebase: 10,322 LOC main Java; 34,467 LOC test Java (`src/test` 28,360, `src/testFixtures` 4,329, `src/integrationTest` 1,778)
+- Fork delta over upstream: files 95→119 (wide) and 31→32 (`src/main`). Insertions 13,587→18,802 (wide) and 1,826→2,042 (`src/main`). Tests are 16,288 of the 18,802 wide insertions; `src/main` gained one file, `DeclaredNullability`.
+- Suite: 988 tests, 0 failures, 0 errors, 18 named skips on ClickHouse `latest` (26.9.18.11), passed twice (cache-busted `test --rerun`). `testUnit` runs 556 tests with Docker stopped.
+- Requirements: 26/26 complete. Milestone audit passed: requirements 26/26, integration 4/4, flows 3/3.
+- Published: `custom_build` = `--no-ff` merge `a246ca01` (parents `be6b8861` and the rehearsed tip `3879b883`), with tags `v1.7.0_gg2` and `pre-v1.7.0_gg2` (rollback → `be6b8861`) on `origin`. Before it, Phase 16 published the docs-only merges `537beb1f` and `be6b8861`.
+- CI: run [`38587062864`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/38587062864) on `a246ca01` is green in 408 s. It is the only run on that SHA. The rehearsal SHA had its own green run, `38578966373`.
+
+**Closeout type:** `override_closeout`
+
+**Known verification overrides:** 1 newly acknowledged, 0 carried forward from a prior close (see STATE.md Deferred Items). Unlike the two previous closes, the milestone audit was run, and it passed. The override is for two reasons, both accepted by the user at close:
+
+1. **Phases 16–19 verification reads stale.** All four `VERIFICATION.md` files have `status: passed`. Their covered-file digests no longer match because Phase 20 later edited files they covered, such as `CHANGELOG.md`, `docs/FORK-DELTA.md` and `.planning/scripts/fork-anchors.txt`. That is ordinary sequential drift, not a failed or reversed check. Phase 20 verification is current and `passed` (8/8), and Phase 20 UAT was 35/35. The audit, the two suite runs and the CI run on the published SHA cover the final tree.
+2. **One deferred item acknowledged.** `ClickHouseWriterNullMessageUnitTest` (Phase 18) inline-mocks `ClickHouseHelperClient` with Mockito. That carries an intermittent risk of an OpenJ9 `retransformClasses` crash on this machine. It has passed in every observed run.
+
+**Known gaps:** none against requirements. These follow-ups are carried into `PROJECT.md` → Requirements → Active. Each has its owner and re-open trigger in `20-MILESTONE-CLOSE-RECORD.md`:
+
+- Backlog 999.3: a rethrown write-failure message can carry a record value into the task status, the DLQ headers and two `Error inserting records` ERROR logs.
+- 19-REVIEW WR-01, WR-02 and IN-01..IN-03 are deferred advisories on the declared-nullability pass and its tests. IN-04 is owned by the next milestone.
+- 17-REVIEW WR-01 residue: confirm that the Dependabot `gradle` entry shows a recent "Last checked". IN-01..IN-03 are still open.
+- Housekeeping for the user: revoke the read-only GitHub token and delete the Keychain item `gsd17-gh-actions-read`.
+
+**Key accomplishments:**
+
+- Published the corrected gg1 rollout doc before any code work, as docs-only `--no-ff` merges `537beb1f` and `be6b8861`, each with one green run. The `TRUNCATE` advice on the shared KeeperMap state table is gone. Item 8's rollback is now `git read-tree -u --reset pre-v1.7.0-sync`, because `git revert -m 1` hits 97 conflicts once docs merges sit on top of the release.
+- Hardened CI. `tests.yaml` now has:
+  - an `ubuntu-24.04` runner and all four actions pinned to commit SHAs on Node 24 majors
+  - `permissions: contents: read` and `persist-credentials: false`
+  - a fork count read from a new `reportTestForks` Gradle task
+  - a grouped `github-actions` Dependabot entry
+
+  `test-head.yaml` is deleted. A Docker-free guard pins all of this. One scratch run, `38172811430`, proved it. The duplicate test-classpath lz4 (999.2), the unasserted LZ4 response leg, the Lombok Jackson warning and the NanoTimestamp edge row were closed alongside.
+- Made the writer correct on four fronts:
+  - The empty-CDC skip covers all four write routes. It is pinned live on clients V1 and V2 and by 24 Docker-free byte, token and state pins, with a mutation check.
+  - A missing non-nullable value throws a column-naming, data-free `DataException`.
+  - A message-less failure is rethrown as itself instead of becoming a `NullPointerException`.
+  - DateTime parse-failure logs no longer print the raw value.
+- Closed backlog 999.1:
+  - `Nullable(Enum8|Enum16)` needed a one-line `.isNullable(isNull)` in `Column.extractColumn`.
+  - `Nullable(Tuple)` takes element nullability from the declared type string through `DeclaredNullability`, after a live twin-table spike answered `go`.
+  - Gap closure added the `SimpleAggregateFunction` unwrap and made the pass total, with a fallback WARN that names the database and table.
+  - The discovery WARN is deleted.
+- Pinned the deduplication-token retry consequence live (`DedupTokenRetryLiveTest`, 8 cases) before writing the rollout note. This corrected the gg1 note: a same-token retry is dropped even when its bytes changed. Shipped `docs/ROLLOUT-v1.7.0_gg2.md` with six delta items and detection queries, a `1.7.0_gg2` CHANGELOG section and a refreshed `FORK-DELTA.md`.
+- Gated the frozen tree twice (988 tests), rehearsed it on CI and published it as `v1.7.0_gg2`. The rollback tag was pushed first and the release tag only after the merge's own run was green. After publication the user enabled Dependabot version updates and switched the fork's default branch to `custom_build`.
+
+---
+
 ## v1.7.0_gg1-sync Upstream v1.7.0 Sync & Follow-up Hardening (Shipped: 2026-10-10)
 
 **Phases completed:** 4 phases (12–15), 25 plans, 55 tasks

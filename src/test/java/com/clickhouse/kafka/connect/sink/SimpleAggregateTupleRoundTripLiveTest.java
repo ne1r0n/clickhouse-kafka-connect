@@ -48,8 +48,6 @@ public class SimpleAggregateTupleRoundTripLiveTest extends ClickHouseBase {
     private static final String CONNECTOR_NAME_PROP = "name";
     private static final String ROW_ID_COLUMN = "id";
     private static final String DEFAULT_COLUMN = "d";
-    // The two characters backslash and n that fromJsonRow leaves where the server escaped a newline.
-    private static final String ESCAPED_NEWLINE = "\\n";
 
     private static final String SUM_COLUMN = "c";
     private static final String ARRAY_COLUMN = "g";
@@ -116,7 +114,7 @@ public class SimpleAggregateTupleRoundTripLiveTest extends ClickHouseBase {
                         row.isSubcolumn());
                 if (SUM_COLUMN.equals(row.getName()) || ARRAY_COLUMN.equals(row.getName())) {
                     assertTrue(
-                            row.getType().contains(ESCAPED_NEWLINE),
+                            row.getType().contains(DeclaredNullability.ESCAPED_NEWLINE),
                             "premise: the non-nullable Tuple root reaches the pass in the multi-line form");
                 }
             }
