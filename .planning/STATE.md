@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 23
 current_phase_name: Declared-Nullability Hardening & Review Closure
 status: executing
-stopped_at: Completed 23-01-PLAN.md
-last_updated: "2026-10-20T11:42:06.257Z"
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-10-20T11:47:49.916Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 execution started
-state_head: 4d59d001e70d34a8aa2be343ded381f199ac2bd3
+state_head: 8b35eae0f932787102a7ea2cbeac35f581dc4690
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 16
-  completed_plans: 11
+  completed_plans: 12
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 22)
 ## Current Position
 
 Phase: 23 (Declared-Nullability Hardening & Review Closure) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 23 execution started
 
@@ -150,6 +150,7 @@ Progress: [█████░░░░░] 50%
 | Phase 22 P04 | 6 min | 2 tasks | 5 files |
 | Phase 22 P05 | 9 min | 2 tasks | 1 files |
 | Phase 23 P01 | 15 min | 2 tasks | 7 files |
+| Phase 23 P02 | 14 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 22]: 22-05: the 22-03 F2 flip (L-47) was recorded as surfaced with no response; the user approved it at 22-UAT test 1 (2026-10-20)
 - [Phase 22]: UAT: the Jackson reference-chain residual on the opt-in JSON-as-string route (22-REVIEW WR-01) is accepted, not fixed (R-22-02 in 22-SECURITY.md); the F7 reading of HARN-08 is accepted. 22-REVIEW WR-01 and IN-01..IN-05 stay `open` in 22-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 22 follow-ups)
 - [Phase 23]: 23-01: DeclaredNullability.ESCAPED_NEWLINE made public as the single shared definition; test copies and the NullableRoundTrip pass-through removed (DEBT-11)
+- [Phase 23]: A null root name in DeclaredNullability.apply is a structure mismatch, not IllegalArgumentException (COLS-12, RESEARCH Open Question 2)
+- [Phase 23]: D-08 flip keeps unexpectedExceptionInThePassFailsOpenWithOneMetadataWarning and its null-type input; NPE class-name assertion becomes (structure mismatch) under a scoped AGENTS.md exemption
 
 ### Pending Todos
 
@@ -228,8 +231,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T11:42:06.144Z
-Stopped at: Completed 23-01-PLAN.md
+Last session: 2026-10-20T11:47:49.718Z
+Stopped at: Completed 23-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
