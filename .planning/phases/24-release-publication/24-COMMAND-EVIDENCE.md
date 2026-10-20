@@ -122,7 +122,7 @@ Deviation from the plan text: the plan expected the control to show `Writing JSO
 
 D-04-BRANCH=1
 
-Matches text: pending (24-03, 24-04)
+Matches text: pending (24-04)
 
 ### E-04: the shipped archive at v1.7.0_gg2, the pre-merge tip and the gg3 tip (D-07, D-08)
 
@@ -231,7 +231,7 @@ The META-INF/MANIFEST.MF of the inner jar differs between the pre-merge and gg3 
 
 Sentence the documents may use: none of the three bumps changes an entry of the shipped jar. `slf4j-reload4j` and `reload4j` are on `runtimeClasspath` (tests and local runs) and are not in the Confluent archive, whose only logging classes are `slf4j-api` 2.0.7; Lombok 1.18.48 generated class files byte-identical to those of 1.18.46; spotless is build-time only. `manifest.json` carries `version` and `release_date` besides the fixed fields, and `release_date` is the build date, so whole-zip equality holds only for builds of the same day (the 2026-10-20 builds above agree; across days only the per-entry compare is claimed). Between the pre-merge tip and the gg3 tip the jar gains `WithheldMessageException.class` and changes the seven Phase 22-23 classes, `ClickHouseHelperClient.class`, `SinkTaskStatistics.class`, `Version.class` and `META-INF/MANIFEST.MF`.
 
-Matches text: pending (24-03, 24-04)
+Matches text: pending (24-04)
 
 ### E-05: BLD-14 re-established for Lombok 1.18.48 (21-IN-03)
 
@@ -628,5 +628,65 @@ exit=1
 ```
 
 Result: each old text is listed once and the unrelated file is not. The directory holding only the unrelated file prints nothing and exits 1, which is what an operator sees when no matcher uses an old text. A matcher that escapes the spaces is not listed, because `-F` compares literal text; the note says so.
+
+Matches text: yes
+
+### E-22: item 7 rollback on a dry-run merge of the tip
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, item 7 (the rollback): `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build`, `git status --porcelain` printing nothing, `git read-tree -u --reset pre-v1.7.0_gg3`, `git commit -m "Roll back v1.7.0_gg3"`, `git diff --quiet HEAD pre-v1.7.0_gg3 && echo ok`, `git revert <rollback-commit>` and `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg3.md` (written in plan 24-03). Date (UTC) 2026-10-20.
+
+Tag `pre-v1.7.0_gg3` is a local lightweight tag on `6473e24f372a8b37dfd8cc8cf3124e6cff52edca` (`origin/custom_build`, the pre-merge tip: the published `v1.7.0_gg2` tree plus the three dependency updates); its `tests.yaml` has the trigger `branches: ['**']` (a branch-push trigger only) and `git ls-remote --tags origin` does not list the tag. X is the tip that contains the finished frame, item 1 and item 7 of the note: `X = 1ea720ede4b0e04abc6b89fdb338288be8912ffd` (the commit of plan 24-03 Task 1 that added the note). Throwaway merge: `git worktree add --detach /tmp/gsd24/dry 6473e24f372a8b37dfd8cc8cf3124e6cff52edca`, then in it `git -c user.name=demo -c user.email=demo@example.invalid merge --no-ff --no-edit X`, giving the merge commit `D = 02e0e5f057409cc15cfd2169496c928b05bfd746`. D has two parents, `D^1` is `6473e24f`, `D^2` is X, and `git diff --quiet D X` holds (no non-merge difference), which printed `MERGE-DRY-RUN-OK`. D was never pushed. Plans 24-06 and 24-07 re-run the script on the publication tip and on the real merge commit, which have a different tip from X (items 2 to 6 of the note are written after X). The dry-run worktree was removed and pruned afterwards.
+
+The script lives outside the repository (`/tmp/gsd24/rollback-demo.sh <repo> <target> <worktree>`), adapted from Phase 20's E-31. A throwaway branch that starts at `pre-v1.7.0_gg3` stands in for a stale local `custom_build`, so `git checkout custom_build` is the one command not run verbatim (a linked worktree cannot check out `custom_build` itself); the fast-forward target D stands in for `origin/custom_build`. The `-c user.name/user.email` options only give the throwaway commits an identity. Deviation from a published tag: `git fetch --tags origin` ran while the tag existed only locally, and it kept the local tag (the script prints it after the fetch).
+
+```sh
+#!/bin/bash
+# usage: rollback-demo.sh <repo> <target-tip> <worktree-path>
+# Runs item 7 as written, on a throwaway branch standing in for a stale local custom_build
+# (starts at pre-v1.7.0_gg3, then fast-forwards to <target-tip>, the stand-in for origin/custom_build).
+set -u
+REPO=$1; TARGET=$2; WT=$3; BR=gg3-rollback-demo-$$
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+git -C "$REPO" worktree add --quiet -b "$BR" "$WT" 'pre-v1.7.0_gg3^{commit}'
+g() { git -C "$WT" "$@"; }
+TGT=$(git -C "$REPO" rev-parse "$TARGET")
+echo "target=$TGT stale-start=$(g rev-parse --short HEAD)"
+echo "x" >> "$WT/README.md"; echo "dirty: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"; g checkout -q -- README.md
+g fetch -q --tags origin && echo "fetch --tags exit=0"
+echo "local tag kept after fetch: $(g rev-parse --short 'pre-v1.7.0_gg3^{commit}')"
+g merge -q --ff-only "$TARGET" && echo "merge --ff-only exit=0, HEAD==target: $([ "$(g rev-parse HEAD)" = "$TGT" ] && echo yes)"
+echo "clean: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"
+g read-tree -u --reset pre-v1.7.0_gg3 && g "${ID[@]}" commit -q -m "Roll back v1.7.0_gg3" && echo "read-tree + commit exit=0"
+RB=$(g rev-parse HEAD); echo "rollback-commit parent==target: $([ "$(g rev-parse HEAD^)" = "$TGT" ] && echo yes)"
+g diff --quiet HEAD pre-v1.7.0_gg3 && echo ok
+[ -z "$(g status --porcelain)" ] && echo "worktree clean after commit"
+g ls-files --error-unmatch docs/ROLLOUT-v1.7.0_gg3.md >/dev/null 2>&1 || echo "rollout doc gone from branch"
+g show "$RB^:docs/ROLLOUT-v1.7.0_gg3.md" | grep -c '^## Item 7: Rollback' | sed 's/^/git show <rollback-commit>^:docs\/ROLLOUT... item-7 headings: /'
+g show HEAD:.github/workflows/tests.yaml | grep -qF "branches: ['**']" && echo "rolled-back tests.yaml keeps branches: ['**']"
+g "${ID[@]}" revert --no-edit "$RB" >/dev/null && g diff --quiet HEAD "$TARGET" && echo "after git revert <rollback-commit>: tree(HEAD)==tree(target)"
+git -C "$REPO" worktree remove --force "$WT" && git -C "$REPO" worktree prune && git -C "$REPO" branch -q -D "$BR"
+```
+
+```text
+X=1ea720ede4b0e04abc6b89fdb338288be8912ffd
+D=02e0e5f057409cc15cfd2169496c928b05bfd746
+MERGE-DRY-RUN-OK
+target=02e0e5f057409cc15cfd2169496c928b05bfd746 stale-start=6473e24f
+dirty: status --porcelain lines=1
+fetch --tags exit=0
+local tag kept after fetch: 6473e24f
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=0
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+worktree clean after commit
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-7 headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+Afterwards `git worktree list` shows only the main working tree, no `gg3-rollback-demo-*` branch is left, and `git ls-remote --tags origin` lists no `pre-v1.7.0_gg3`.
 
 Matches text: yes
