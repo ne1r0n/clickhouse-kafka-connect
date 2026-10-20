@@ -104,11 +104,51 @@ grep -rnF -e 'Invalid UUID string' -e 'For input string' <alert-rule-directory>
 
 ### What changed
 
-This item is completed in a later step of the release work.
+`v1.7.0_gg3` logs a new WARN. It appears when a Tuple element that a column's declared type names has no matching sub-column in the table description that the connector reads from the server (ledger L-51):
+
+```text
+Declared Tuple element(s) [<element path>] of column <column> of table <db>.<table> (declared type <type>) have no matching DESCRIBE sub-column; applying the declared nullability to the elements that paired
+```
+
+The line is logged once per affected column each time the connector describes a table, with no throttling, and it carries the element paths, the column, the database, the table and the declared type, never a value. A line break in the declared type prints as `\n`. The connector describes every table of the database that its `targetTableFilter` lets through, at task start and at every mapping refresh, not only the tables that its topics write to, so the line can name a table that this connector never writes.
+
+**What the WARN marks: a known defect that is older than this release.** The table description drops a Tuple element named `size` or `size0` at any depth of a column's type. It also drops an element named `size` followed by digits (`size1`, `size12`) wherever an `Array` encloses its Tuple. The connector then writes fewer fields than the table declares, and every insert into that table fails with the server error code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or code 33 (`CANNOT_READ_ALL_DATA`) and stores no row. Measured on ClickHouse 26.9.19.9 with client V2, one record per table, on `v1.7.0_gg2` and on `v1.7.0_gg3` alike:
+
+- code 32 for `Tuple(size UInt16, v String)`, `Array(Tuple(size UInt16, v String))` and `Array(Tuple(size1 UInt16, v String))`;
+- code 33 for `Array(Tuple(v String, size1 UInt16))`;
+- the stored row for `Tuple(size1 UInt8, v String)`, `Map(String, Tuple(size1 UInt8, v String))` and `Tuple(sizes UInt8, v String)`, which are not affected.
+
+`v1.7.0_gg2` fails the same way and logs no WARN, so a table that the new WARN names may already have been failing before you upgrade. A wrongly stored value is possible in principle when the shorter row happens to parse; that case was not measured. The server refuses to create a table with a Tuple element named `null` (code 36), so no such table exists to be affected.
 
 ### Am I affected?
 
+Two checks, both read-only. The first reads the declared type text of your columns and lists suspects. Replace `<db>` with the database the connector writes to:
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '[(,] ?size0? [A-Za-z]')
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''),
+                 'Array\\((?:[^()]|\\((?:[^()]|\\((?:[^()]|\\([^()]*\\))*\\))*\\)|\\()*?[(,] ?size[0-9]+ [A-Za-z]')
+      )
+ORDER BY `table`;
+```
+
+**Empty result:** no column of `<db>` has a declared type with an element of that shape, as far as the type text shows. **Non-empty result:** each listed table is a suspect. The query reads text, so it has one known over-flag: it also lists a table such as one with a column of type `Array(Map(String, Tuple(size1 UInt8)))`, which the connector does not affect. Run on the server named above, it listed the thirteen affected fixture tables and that one over-flag, and nothing for a database that held nineteen look-alike tables (names such as `size_x`, `sizes` and `Size`, a plain column named `size`, and an `Enum` label that holds the text `size`).
+
+The second check is exact, because the line comes from the same code path as the insert. Replace `<connector-log-file>` with a log file of a `v1.7.0_gg3` connector that covers a task start:
+
+```sh
+grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
+```
+
+**Empty result:** that log shows no unpaired element for any table the connector described, so none of those tables is affected. It says nothing about a period the file does not cover, and `v1.7.0_gg2` never logs the line. **Non-empty result:** each line names a table and the element paths that the connector dropped; inserts into that table fail. Run on a scratch log file that held the line captured from a real run between two unrelated lines, the command printed that line; on a file with only the unrelated lines it printed nothing.
+
 ### What to do
+
+This release has no fix for the defect, and the fix is tracked for a later release. Inserts into such a table fail whatever the connector settings: that was measured with client V2 on the default route, and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, was not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table fails and why.
 
 ---
 
@@ -116,11 +156,63 @@ This item is completed in a later step of the release work.
 
 ### What changed
 
-This item is completed in a later step of the release work.
+A `Nullable(Tuple(...))` column whose Tuple element name holds a backslash followed by `n`, or a line break, now pairs with its declared type. That holds when the Tuple is the column itself, an `Array` element, a `Map` value or a field of another Tuple (ledger L-50).
+
+On `v1.7.0_gg2` such a name did not pair. The connector logged the following WARN at every table description, kept the nullability that the server reported, and every insert into the table failed with the server error code 33 (`CANNOT_READ_ALL_DATA`) and stored no row:
+
+```text
+Could not take element nullability for column <column> of table <db>.<table> from its declared type <type> (structure mismatch); keeping the nullability DESCRIBE reported for it
+```
+
+`v1.7.0_gg3` pairs the name, applies the declared nullability, logs no such WARN for the table and stores the row. Measured on ClickHouse 26.9.19.9 with client V2: of 44 fixture tables, 14 `Nullable(Tuple)`-bearing ones with a backslash-n or line-break element name came out different. On `v1.7.0_gg2` the four that were inserted (a `Nullable(Tuple)`, an `Array(Nullable(Tuple))` and a `Map` of `Nullable(Tuple)` with a literal backslash-n name, and a `Nullable(Tuple)` with a real line break) failed with code 33 and stored 0 rows. On `v1.7.0_gg3` all of them stored the row and read back equal. The other 30, among them every table with a plain name, every root that is not `Nullable`, and the `Enum` label shapes, are identical on both releases. A name with a single backslash, a trailing backslash or a tab was not affected: both releases store the record.
 
 ### Am I affected?
 
+Replace `<db>` with the database the connector writes to:
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND position(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), 'Nullable(Tuple(') > 0
+  AND match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*\\\\n[^`]*`')
+ORDER BY `table`;
+```
+
+**Empty result:** no column of `<db>` has a `Nullable(Tuple(` type with a backtick-quoted name that holds a backslash followed by `n`, so nothing in that database changes. **Non-empty result:** each listed table has a column of the changed shape. Under `v1.7.0_gg2` the inserts of the four shapes listed above failed, and under `v1.7.0_gg3` they store the row. For the other listed shapes (an element that is itself `Nullable`, a nested Tuple) the two releases build different column descriptions in the same way, but no insert was run, so read their outcome as likely, not measured. Run on the server named above, the query listed exactly the 14 fixture tables of the shape and none of the look-alike tables, and it listed no table that was not of the shape. It reads the declared type text.
+
 ### What to do
+
+Nothing is needed for the fix itself. If you have a table of this shape, read [item 4](#item-4-in-flight-batches) before a rollback.
+
+**A known limitation, the same on both releases.** The connector matches a record's field names against the column and element names in its own escaped form of the server's name. A backslash, a slash or a tab in a column or element name therefore means the Kafka field must use the connector's escaped form as its name. For a column name, a field that uses the natural name is ignored and the column's `DEFAULT` is stored, with no error. For an element name inside a Tuple, the natural field name makes the record fail. The escaped form is the following (measured on ClickHouse 26.9.19.9, client V2, identical on `v1.7.0_gg2` and `v1.7.0_gg3`):
+
+| Character in the server name | Server name | Kafka field name that stores the value |
+|------------------------------|-------------|----------------------------------------|
+| backslash | `a\b` | `a\\b` (two backslashes) |
+| backslash and `n` | `a\nb` (backslash, `n`) | `a\\nb` (two backslashes, `n`) |
+| line break | `a`, line feed, `b` | `a\nb` (backslash, `n`) |
+| slash | `a/b` | `a\/b` |
+| tab | `a`, tab, `b` | `a\tb` (backslash, `t`) |
+
+A name that holds a double quote leaves the table unmapped: the connector does not map the table at all. A `Nullable(Tuple)` with a slash in an element name fails with code 33 on both releases, because its declared type does not pair. To list the tables of your database with such names, replace `<db>`:
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        position(name, '\\') > 0
+        OR position(name, '\n') > 0
+        OR position(name, '/') > 0
+        OR position(name, '\t') > 0
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*\\\\[^`]*`')
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*/[^`]*`')
+      )
+ORDER BY `table`;
+```
+
+**Empty result:** no root column name holds a backslash, a line break, a slash or a tab, and no element name in a declared type holds a backslash or a slash, so the limitation does not apply to that database. **Non-empty result:** each listed table needs the escaped field names above. The query does not list a table whose name holds a double quote, because that table is not mapped at all. Run on the server named above, it listed exactly the ten fixture tables and none of the look-alike tables, and it printed nothing for a database that held only look-alikes.
 
 ---
 

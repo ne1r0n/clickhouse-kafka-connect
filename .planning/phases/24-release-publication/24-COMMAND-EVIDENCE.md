@@ -297,7 +297,7 @@ Research R3.2 expected exactly the `Nullable(Tuple)`-bearing roots and the 41 sh
 
 D09-DIFFERING=d09_r02_bsn,d09_r02_lf,d09_r03_bsn,d09_r03_lf,d09_r05_bsn,d09_r05_lf,d09_r07_bsn,d09_r07_lf,d09_r09_bsn,d09_r09_lf,d09_r10_bsn,d09_r10_lf,d09_r12_bsn,d09_r12_lf
 
-Matches text: pending (24-03)
+Matches text: yes
 
 ### E-11: one live insert per shape, gg2 versus gg3 (D-09)
 
@@ -336,7 +336,7 @@ Verdict per direction, worded from the measurements above (research R3.4 was the
 - **Every other shape** (non-`Nullable` roots, plain names, enum labels, the `size` shapes) has identical trees on both releases and stored the record on both (E-11 controls r01, r04 and r02 with a plain name), so a batch of those shapes is byte for byte the same on both releases.
 - **Rollback, gg3 to gg2:** measured in E-12.
 
-Matches text: pending (24-03)
+Matches text: yes
 
 ### E-12: a gg2 retry of a range gg3 landed, differing shape versus control (D-15)
 
@@ -413,7 +413,7 @@ PROBE-SHAPEQX-BROAD tree=gg3 tables=x_bbn,x_bs1,x_bs2,x_bst,x_tab
 
 The broad variant would have flagged four tables whose bytes are the same on both releases. The query above is the one kept. The slash row is a different known limit (E-16): a `Nullable(Tuple)` with a slash in an element name fails on both releases, so it is not a rollback difference and this query does not list it.
 
-Matches text: pending (24-03)
+Matches text: yes
 
 ### E-14: KeeperMap self-check on a gg3-created state table (D-15)
 
@@ -506,7 +506,7 @@ PROBE-SIZE-NULL tree=gg2 code=36
 
 Inserts into the affected shapes fail with code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or 33 (`CANNOT_READ_ALL_DATA`) and store 0 rows, on both releases; `Tuple(size1 ...)`, `Map(String, Tuple(size1 ...))` and `Tuple(sizes ...)` store their row. A Tuple element named `null` is rejected by the server at `CREATE TABLE` with code 36, so no such table exists to be affected. A silently wrong stored value, reachable when the shorter bytes happen to parse (research, 23-EVIDENCE.md R-01), was not measured here.
 
-Matches text: pending (24-03, 24-04)
+Matches text: pending (24-04)
 
 ### E-16: names with a backslash, a line break, a slash, a tab or a double quote (D-05, D-13)
 
@@ -573,7 +573,7 @@ PROBE-ESC-QUERY tree=gg2 db=lookalike tables=
 
 Result: exactly the ten backslash, line-break, slash and tab fixtures, none of the look-alikes, and an empty list on the look-alike-only database ("Empty result" in the note). The double-quote table `e5_e11` is not listed and is not meant to be: the query reads names, and that table is not a name-equality case but an unmapped one (`describeTable` returns no table on both releases). A root or Tuple with a slash in an element name is listed (`e5_e04`, `e5_e09`). A slash element name under a `Nullable(Tuple)` was not run through this query, but E-13 (row `x_sl`) shows that such a table fails with code 33 on both releases, because the declared-type pairing falls back; that is the same name-equality limit seen from the nullability side.
 
-Matches text: pending (24-03, 24-04)
+Matches text: pending (24-04)
 
 ### E-20: connector-config self-check for the JSON-as-string route (D-14)
 
@@ -688,5 +688,29 @@ after git revert <rollback-commit>: tree(HEAD)==tree(target)
 ```
 
 Afterwards `git worktree list` shows only the main working tree, no `gg3-rollback-demo-*` branch is left, and `git ls-remote --tags origin` lists no `pre-v1.7.0_gg3`.
+
+Matches text: yes
+
+### E-23: log grep for the unpaired-element WARN (L-51)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, item 2 (the exact check, written in plan 24-03). The command lists the lines of a connector log that carry the greppable phrase of the unpaired-element WARN. The scratch log `/tmp/gsd24/logs/connect.log` (never committed, constants only) holds the WARN line captured in E-15 (`PROBE-SIZE-WARN`, with the probe's doubled backslash printed once, as a log appender prints a line break in the declared type) between two unrelated lines; `/tmp/gsd24/logs-empty/connect.log` holds only the two unrelated lines.
+
+Doc-form command (the note quotes exactly this, placeholder included):
+
+```sh
+grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
+```
+
+Substitution: `<connector-log-file>` = `/tmp/gsd24/logs/connect.log` and `/tmp/gsd24/logs-empty/connect.log` for the two runs; nothing else changed. Date (UTC) 2026-10-20, macOS BSD `grep`.
+
+```text
+$ grep -F 'have no matching DESCRIBE sub-column' /tmp/gsd24/logs/connect.log
+2026-10-20 19:00:00,002 WARN  [task-thread-0] DeclaredNullability - Declared Tuple element(s) [c.size] of column c of table kafka_connect_test_1278298601_1792514361103_sf.s4_a01 (declared type Tuple(\n    size UInt16,\n    v String)) have no matching DESCRIBE sub-column; applying the declared nullability to the elements that paired
+exit=0
+$ grep -F 'have no matching DESCRIBE sub-column' /tmp/gsd24/logs-empty/connect.log
+exit=1
+```
+
+Result: the captured WARN line is printed and the two unrelated lines are not. The file with only unrelated lines prints nothing and exits 1, which is what an operator sees when no table has an unpaired element. The oracle behind the phrase is E-15: the WARN fired on exactly the thirteen affected tables of that run and on none of the nineteen look-alikes.
 
 Matches text: yes
