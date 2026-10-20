@@ -23,9 +23,37 @@ findings:
     severity: info
     disposition: deferred
     title: "Planning identifiers in the new live test's Javadoc and display names"
-open: 0
-total: 5
-recorded: 2026-10-20T17:30:00.000Z
+  - id: WR-03
+    severity: warning
+    disposition: open
+    title: "Item 3 says \"every root that is not `Nullable`\" is identical on both releases, and four of the 14 differing roots are not `Nullable`"
+  - id: WR-04
+    severity: warning
+    disposition: open
+    title: "\"Every insert into such a table fails\" is stated for all `size` shapes, and E-15 inserted four of 13 and the same documents say a shorter row might parse"
+  - id: WR-05
+    severity: warning
+    disposition: open
+    title: "Item 4 sends `exactlyOnce=false` connectors to the token for a rollback, and E-12 measured that the token does not save them for the differing shape"
+  - id: WR-06
+    severity: warning
+    disposition: open
+    title: "Item 7 makes the branch rollback step 1 and the in-flight check step 2, while item 4 says \"do not roll back yet\" and has the operator restart the `v1.7.0_gg3` jar"
+  - id: WR-07
+    severity: warning
+    disposition: open
+    title: "The state-table query has room for two topics only, and its \"Empty result\" sentence says it is safe to roll back"
+  - id: IN-04
+    severity: info
+    disposition: open
+    title: "The known-limitation sentence lists a backslash, a slash and a tab, and the table below it also requires the escaped form for a line break"
+  - id: IN-05
+    severity: info
+    disposition: open
+    title: "The CHANGELOG Build and CI bullet says the tests no longer mock \"the ClickHouse client\""
+open: 7
+total: 12
+recorded: 2026-10-20T18:42:11.122Z
 ---
 
 # Phase 24: Code Review Disposition
@@ -37,21 +65,14 @@ recorded: 2026-10-20T17:30:00.000Z
 | IN-01 | info | fixed | 6ee4a22a (Phase 24; CHANGELOG bullet names the shapes whose insert was measured) |
 | IN-02 | info | skipped | by design: the gg2 text used the same tense before its tag existed; the document is part of the tree the tag names; plan 24-06 states it in the approval bundle |
 | IN-03 | info | deferred | 24-MILESTONE-CLOSE-RECORD.md (carried: planning identifiers in the new test's comments; fork-wide convention; same point as 22-REVIEW IN-05) |
+| WR-03 | warning | open | - |
+| WR-04 | warning | open | - |
+| WR-05 | warning | open | - |
+| WR-06 | warning | open | - |
+| WR-07 | warning | open | - |
+| IN-04 | info | open | - |
+| IN-05 | info | open | - |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
 Re-running the gate keeps every row it can. A row the current review no longer reports is kept and its Source cell flagged, so a finding does not leave this record silently. ONE exception: when a finding id is REUSED by a different finding, the earlier decision cannot keep a row — the id is taken — and it is dropped. A RECORDED decision (anything but `open`) is named on the console when that happens; a row still at `open` is replaced silently, because `open` records no decision to lose.
-
-## Mandated confirmations (20-D-07)
-
-Two review rounds: round 1 over the whole Phase 24 diff from `P24_BASE`, round 2 over the three fix commits. No Critical or Warning remains.
-
-1. The headline and its Map-key exception match E-03, and no nonexistent connector key is told: holds.
-2. Every quoted query and command has matching evidence, and the detection queries were proven against look-alikes: holds.
-3. No TRUNCATE or unscoped DELETE of the KeeperMap table: holds.
-4. The rollback uses `read-tree` with `pre-v1.7.0_gg3`, E-22 proves it, and the artifact wording matches E-04: holds.
-5. Released CHANGELOG sections and the gg1 and gg2 notes are unchanged: holds.
-6. No secret, host, record value or production identifier: holds.
-7. The three documents agree with each other and with the evidence: did not hold in round 1 (WR-01, WR-02); holds after the fixes.
-8. The new test `JsonAsStringKeyResidualLiveTest` follows the AGENTS.md test rules: holds (IN-03 is a naming point, carried).
-9. The size-element item offers no workaround and the escaped-name limitation has no CHANGELOG line: holds.
