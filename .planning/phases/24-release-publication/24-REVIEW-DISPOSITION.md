@@ -51,8 +51,28 @@ findings:
     severity: info
     disposition: fixed
     title: "The CHANGELOG Build and CI bullet says the tests no longer mock \"the ClickHouse client\""
+  - id: WR-08
+    severity: warning
+    disposition: fixed
+    title: "Item 2 still closes with \"it only tells you which table fails\", after the same item says a shorter row might store a wrong value instead of failing"
+  - id: WR-09
+    severity: warning
+    disposition: fixed
+    title: "The item 3 shape is described as failing \"every insert\" and \"fails with code 33\" for all 14 tables, and E-11 and E-12 measured four inserts and one retry"
+  - id: WR-10
+    severity: warning
+    disposition: fixed
+    title: "Step 2 of item 4 says nothing about `enableDbTopicSplit=true`, and the link it relies on does not carry the rule, so the empty result can be false-safe"
+  - id: IN-06
+    severity: info
+    disposition: fixed
+    title: "Two FORK-DELTA rows still say that inserts into a `size` table \"fail with code 32 or 33\""
+  - id: IN-07
+    severity: info
+    disposition: fixed
+    title: "The revision notice says \"No query and no command changed\", and item 7 step 1 now names a build command for the `v1.7.0_gg3` tag"
 open: 0
-total: 12
+total: 17
 recorded: 2026-10-20T18:42:11.122Z
 ---
 
@@ -72,6 +92,11 @@ recorded: 2026-10-20T18:42:11.122Z
 | WR-07 | warning | fixed | 72773c7c (quick 261020-vcr; item 4 asks for one entry per topic and names the database, Empty result speaks of the listed topics; query text unchanged, E-14) |
 | IN-04 | info | fixed | 6df28936 (quick 261020-vcr; item 3 lead sentence lists the line break, E-16) |
 | IN-05 | info | fixed | 1ba3fe96 (quick 261020-vcr; CHANGELOG Build and CI bullet names ClickHouseHelperClient; released CHANGELOG text changed for this finding) |
+| WR-08 | warning | fixed | ee7a0db5 (quick 261020-vcr, round 4; item 2 says the WARN names a table with the defect and limits the failed insert to the four shapes inserted on both releases, E-15) |
+| WR-09 | warning | fixed | cb648804 (quick 261020-vcr, round 4; items 3, 4 and 7 name the four inserted shapes and the one retried table, item 4 reads is expected to fail for the rest, E-11, E-12) |
+| WR-10 | warning | fixed | 77e76700 (quick 261020-vcr, round 4; item 4 step 2 has the reader list both key forms under enableDbTopicSplit=true, read from RecordConvertor.convert and Processing.doLogic, not measured; the closing link also names the gg1 note; query text unchanged) |
+| IN-06 | info | fixed | 0f2bb4e5 (quick 261020-vcr, round 4; the shouldSkipDescribeRow and declared-nullability rows say the inserts that were run failed, E-15) |
+| IN-07 | info | fixed | 68cab778 (quick 261020-vcr, round 4; the revision notice says no query and no git command changed and names what item 4 adds) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
