@@ -17,6 +17,7 @@ import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.ColumnNullabilityPaths;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
@@ -81,8 +82,6 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
     private static final String P6_DDL_TYPE = "Nullable(Tuple(Int32, Nullable(String)))";
     // Backtick-quoted element names holding a space and a comma.
     private static final String P8_DDL_TYPE = "Nullable(Tuple(`a b` Int32, `c,d` Nullable(String)))";
-    // The two characters backslash and n that fromJsonRow leaves for the server's escaped newline.
-    private static final String ESCAPED_NEWLINE = "\\n";
     private static final String PATH_SEPARATOR = ".";
     // The server errors for a body that is shorter than the doubled null flags make it read.
     private static final List<String> READ_PAST_END_CODES =
@@ -742,7 +741,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
             assertEquals(expected, parsed, "parsed declared nullability must equal the DDL's");
             for (String multiLine : List.of("p1", "p2")) {
                 assertTrue(
-                        rawTypes.get(multiLine).contains(ESCAPED_NEWLINE),
+                        rawTypes.get(multiLine).contains(DeclaredNullability.ESCAPED_NEWLINE),
                         "the non-nullable " + multiLine + " must reach the parser as the escaped multi-line form");
             }
         } finally {

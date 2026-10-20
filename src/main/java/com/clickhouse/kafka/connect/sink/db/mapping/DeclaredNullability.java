@@ -30,7 +30,7 @@ public final class DeclaredNullability {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeclaredNullability.class);
 
     /** The two characters backslash and n that {@code fromJsonRow} leaves for a server-escaped newline. */
-    static final String ESCAPED_NEWLINE = "\\n";
+    public static final String ESCAPED_NEWLINE = "\\n";
 
     static final String FALLBACK_WARNING = "Could not take element nullability for column {} of table {}.{} from its "
             + "declared type {} ({}); keeping the nullability DESCRIBE reported for it";

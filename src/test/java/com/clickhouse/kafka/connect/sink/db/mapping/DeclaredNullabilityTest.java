@@ -29,8 +29,6 @@ class DeclaredNullabilityTest {
     private static final String TABLE = "t";
     private static final String QUALIFIED_TABLE = "db.t";
     private static final String PATH_SEPARATOR = ".";
-    // The two characters backslash and n that the server's escaped newline becomes in a JSON line.
-    private static final String SERVER_NEWLINE = "\\n";
 
     /** One DESCRIBE row; a name holding a dot is a sub-column. */
     private static String row(String name, String type) {
@@ -137,9 +135,9 @@ class DeclaredNullabilityTest {
     @Test
     @DisplayName("COLS-10: the multi-line non-nullable Tuple form (backslash plus n) applies after normalisation without a fallback WARN")
     void multiLineTupleFormAppliesWithoutFallback() throws Exception {
-        String serverType = "Tuple(" + SERVER_NEWLINE + "    a Int32," + SERVER_NEWLINE + "    b Nullable(String))";
+        String serverType = "Tuple(" + DeclaredNullability.ESCAPED_NEWLINE + "    a Int32," + DeclaredNullability.ESCAPED_NEWLINE + "    b Nullable(String))";
         String rawType = ClickHouseFieldDescriptor.fromJsonRow(row("c", serverType)).getType();
-        assertTrue(rawType.contains(SERVER_NEWLINE), "premise: discovery sees the escaped multi-line form");
+        assertTrue(rawType.contains(DeclaredNullability.ESCAPED_NEWLINE), "premise: discovery sees the escaped multi-line form");
         Column column = root(describe(row("c", serverType), row("c.a", "Int32"), row("c.b", "Nullable(String)")));
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
@@ -345,7 +343,7 @@ class DeclaredNullabilityTest {
         assertEquals(before, nullabilityByPath(column));
         String plain = "Nullable(Tuple(a Int32, b String))";
         assertEquals(plain, DeclaredNullability.normalise(plain));
-        assertEquals("Tuple( a Int32, b String)", DeclaredNullability.normalise("Tuple(" + SERVER_NEWLINE + "a Int32, b String)"));
+        assertEquals("Tuple( a Int32, b String)", DeclaredNullability.normalise("Tuple(" + DeclaredNullability.ESCAPED_NEWLINE + "a Int32, b String)"));
     }
 
     @Test
