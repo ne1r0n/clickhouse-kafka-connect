@@ -714,3 +714,14 @@ exit=1
 Result: the captured WARN line is printed and the two unrelated lines are not. The file with only unrelated lines prints nothing and exits 1, which is what an operator sees when no table has an unpaired element. The oracle behind the phrase is E-15: the WARN fired on exactly the thirteen affected tables of that run and on none of the nineteen look-alikes.
 
 Matches text: yes
+
+### E-30: CHANGELOG section check
+
+Backs: the `# 1.7.0_gg3, 2026-10-20` section of `CHANGELOG.md` (plan 24-04, task 1). Date used for the heading (UTC): 2026-10-20, the day the section was written. Plan 24-06's bundle compares it with the publication date. The check compares everything from `# 1.7.0_gg2, 2026-10-14` down with `07bf1e7695cc32fa7239b0b9ee0feed06c079f63:CHANGELOG.md` byte for byte, requires the four sections in order, the Map-key exception of D-04 branch 1 (`D-04-BRANCH=1` in E-03), the size-element scope with codes 32 and 33 in Known Issues, the links, the gg3 identity and the three dependency versions, and rejects planning IDs, an escaped-name line, the derived flag name and any line over 120 characters.
+
+```text
+heading True tail-unchanged True sections ['Important Changes', 'Known Issues', 'Bug Fixes', 'Build and CI'] exception True known-issues-ok True missing [] planning-ids [] escaped-name-line False derived-flag False long-lines []
+CHANGELOG-GG3-OK
+```
+
+Matches text: n/a (gate check)
