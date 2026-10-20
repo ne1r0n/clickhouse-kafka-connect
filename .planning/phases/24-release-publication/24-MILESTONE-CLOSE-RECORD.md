@@ -183,7 +183,7 @@ Outcome: reminder only; nothing waits on it (D-11)
 
 ## Milestone audit
 
-Run `/gsd-audit-milestone` after Phase 24 verification and before `/gsd-complete-milestone` (20-D-12), so that `v1.7.0_gg3-hardening` closes with an audit instead of an override closeout. The audit reads this file and the four `*-REVIEW-DISPOSITION.md` files, all of which read `open: 0`.
+Run `/gsd-audit-milestone` after Phase 24 verification and before `/gsd-complete-milestone` (20-D-12), so that `v1.7.0_gg3-hardening` closes with an audit instead of an override closeout. The audit reads this file and the four `*-REVIEW-DISPOSITION.md` files, all of which read `open: 0` (`24-REVIEW-DISPOSITION.md` read `open: 7` after the round 3 review until quick task 261020-vcr fixed those seven findings on `sync/v1.7.0`).
 
 ## Housekeeping
 
