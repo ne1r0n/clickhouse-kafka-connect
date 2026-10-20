@@ -122,7 +122,7 @@ Deviation from the plan text: the plan expected the control to show `Writing JSO
 
 D-04-BRANCH=1
 
-Matches text: pending (24-04)
+Matches text: yes
 
 ### E-04: the shipped archive at v1.7.0_gg2, the pre-merge tip and the gg3 tip (D-07, D-08)
 
@@ -231,7 +231,7 @@ The META-INF/MANIFEST.MF of the inner jar differs between the pre-merge and gg3 
 
 Sentence the documents may use: none of the three bumps changes an entry of the shipped jar. `slf4j-reload4j` and `reload4j` are on `runtimeClasspath` (tests and local runs) and are not in the Confluent archive, whose only logging classes are `slf4j-api` 2.0.7; Lombok 1.18.48 generated class files byte-identical to those of 1.18.46; spotless is build-time only. `manifest.json` carries `version` and `release_date` besides the fixed fields, and `release_date` is the build date, so whole-zip equality holds only for builds of the same day (the 2026-10-20 builds above agree; across days only the per-entry compare is claimed). Between the pre-merge tip and the gg3 tip the jar gains `WithheldMessageException.class` and changes the seven Phase 22-23 classes, `ClickHouseHelperClient.class`, `SinkTaskStatistics.class`, `Version.class` and `META-INF/MANIFEST.MF`.
 
-Matches text: pending (24-04)
+Matches text: yes
 
 ### E-05: BLD-14 re-established for Lombok 1.18.48 (21-IN-03)
 
@@ -252,7 +252,7 @@ neg  (Lombok 1.18.48, line removed): warnings 274, "Ambiguous: Jackson2 and Jack
 
 Result: with the cap lifted, the gg2 and gg3 trees compile with more than 100 warnings and none says `Ambiguous: Jackson2 and Jackson3`; the control without `lombok.jacksonized.jacksonVersion += 2` prints that warning for `ClickHouseFieldDescriptor.java`, so the absence is the setting's doing. Lombok-generated class bytes are identical between 1.18.46 and 1.18.48 (E-04), which is the stronger form of an older `javap` comparison. `lombok.config`, `build.gradle.kts` and `gradle/` are unchanged since `P24_BASE`.
 
-Matches text: pending (24-04)
+Matches text: yes
 
 ### E-10: Column trees, gg2 versus gg3 (D-09)
 
@@ -506,7 +506,7 @@ PROBE-SIZE-NULL tree=gg2 code=36
 
 Inserts into the affected shapes fail with code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or 33 (`CANNOT_READ_ALL_DATA`) and store 0 rows, on both releases; `Tuple(size1 ...)`, `Map(String, Tuple(size1 ...))` and `Tuple(sizes ...)` store their row. A Tuple element named `null` is rejected by the server at `CREATE TABLE` with code 36, so no such table exists to be affected. A silently wrong stored value, reachable when the shorter bytes happen to parse (research, 23-EVIDENCE.md R-01), was not measured here.
 
-Matches text: pending (24-04)
+Matches text: yes
 
 ### E-16: names with a backslash, a line break, a slash, a tab or a double quote (D-05, D-13)
 
@@ -573,7 +573,7 @@ PROBE-ESC-QUERY tree=gg2 db=lookalike tables=
 
 Result: exactly the ten backslash, line-break, slash and tab fixtures, none of the look-alikes, and an empty list on the look-alike-only database ("Empty result" in the note). The double-quote table `e5_e11` is not listed and is not meant to be: the query reads names, and that table is not a name-equality case but an unmapped one (`describeTable` returns no table on both releases). A root or Tuple with a slash in an element name is listed (`e5_e04`, `e5_e09`). A slash element name under a `Nullable(Tuple)` was not run through this query, but E-13 (row `x_sl`) shows that such a table fails with code 33 on both releases, because the declared-type pairing falls back; that is the same name-equality limit seen from the nullability side.
 
-Matches text: pending (24-04)
+Matches text: yes
 
 ### E-20: connector-config self-check for the JSON-as-string route (D-14)
 
@@ -723,5 +723,57 @@ Backs: the `# 1.7.0_gg3, 2026-10-20` section of `CHANGELOG.md` (plan 24-04, task
 heading True tail-unchanged True sections ['Important Changes', 'Known Issues', 'Bug Fixes', 'Build and CI'] exception True known-issues-ok True missing [] planning-ids [] escaped-name-line False derived-flag False long-lines []
 CHANGELOG-GG3-OK
 ```
+
+Matches text: n/a (gate check)
+
+### E-31: FORK-DELTA coverage audit
+
+Backs: the "Pinned by" cells of `docs/FORK-DELTA.md` for the Phase 21 to 23 requirement IDs with a code, build or test effect (plan 24-04, task 2). Date (UTC) 2026-10-20. Method of E-41 in the Phase 20 evidence, re-created as `/tmp/gsd24-scripts/cov.py` (scratch, not committed): for each of the twelve IDs the script lists the table rows whose last cell (Pinned by) names it, and for each row of `.planning/scripts/fork-anchors.txt` whose backs-ID is one of them it checks that the ID is named in such a cell. The twelve: DEPS-01, CI-18, CI-19, WRT-13, WRT-14, WRT-15, HARN-08, COLS-12, COLS-13, COLS-14, DEBT-10, DEBT-11. The first audit, before the rows were edited, had no row for CI-18, CI-19, DEPS-01, HARN-08, DEBT-10 and DEBT-11 (research R6.2); they were added to the Pinned-by cells of the CI row, the slf4j-reload4j and catalog rows, the new Test harness row and the declared-nullability row.
+
+```sh
+python3 -I /tmp/gsd24-scripts/cov.py "$PWD"
+```
+
+```text
+DEPS-01 2 | `org.slf4j:slf4j-reload4j:2.0.20` is declared as; Fork dependency pins in the version catalog: Kaf
+CI-18 1 | A single-job CI workflow: ClickHouse `latest` wi
+CI-19 1 | A single-job CI workflow: ClickHouse `latest` wi
+WRT-13 2 | `doWriteColValue`'s generic catch passes the ori; `Column.convertEnumValues` on a `Column` without
+WRT-14 1 | `doWriteColValue`'s generic catch passes the ori
+WRT-15 1 | `doWriteColValue`'s generic catch passes the ori
+HARN-08 1 | Hand-written test doubles instead of inline Mock
+COLS-12 1 | Tuple element nullability comes from the declare
+COLS-13 1 | Tuple element nullability comes from the declare
+COLS-14 1 | Tuple element nullability comes from the declare
+DEBT-10 1 | Tuple element nullability comes from the declare
+DEBT-11 1 | Tuple element nullability comes from the declare
+anchor rows backed by a Phase 21-23 ID: 10 missing: 0
+uncovered IDs: [] anchor rows missing: 0
+```
+
+Matches text: n/a (gate check)
+
+### E-32: FORK-DELTA path resolution
+
+Backs: every `.planning/` path that `docs/FORK-DELTA.md` cites (plan 24-04, task 2). Date (UTC) 2026-10-20. Same command as E-42 in the Phase 20 evidence. The documents named in the new text (`22-UAT.md`, `22-SECURITY.md`, `24-COMMAND-EVIDENCE.md`, the three ledgers) are named by file only, because the phase folders move when the milestone is archived; the paths the document does spell out all resolve.
+
+```sh
+grep -o '\.planning/[A-Za-z0-9_./-]*[A-Za-z0-9_-]' docs/FORK-DELTA.md | sort -u | while read -r p; do [ -n "$(git ls-files -- "$p")" ] && echo "OK   $p" || echo "DEAD $p"; done
+```
+
+```text
+OK   .planning/MERGE-CHECKLIST-v1.7.0.md
+OK   .planning/MERGE-CHECKLIST.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/13-fork-hardening-on-the-merged-tree/13-REVIEW-DISPOSITION.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/14-dependency-bumps-ci/14-REVIEW-DISPOSITION.md
+OK   .planning/REQUIREMENTS.md
+OK   .planning/ROADMAP.md
+OK   .planning/scripts/fork-anchor-exemptions.txt
+OK   .planning/scripts/fork-anchors.txt
+OK   .planning/scripts/verify-merge-invariants.sh
+```
+
+No `DEAD` line. The two new paths are `.planning/ROADMAP.md` (the Phase 999.4 and 999.5 backlog entries that Known-costs items 10 and 11 point at) and `.planning/scripts/fork-anchor-exemptions.txt`.
 
 Matches text: n/a (gate check)
