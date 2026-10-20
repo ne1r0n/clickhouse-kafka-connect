@@ -4,6 +4,7 @@ import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFi
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.assertWarnNamesColumn;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -236,8 +237,9 @@ class DeclaredNullabilityTest {
     void unparsableDeclaredTypeFailsOpenWithOneMetadataWarning() throws Exception {
         String sentinel = "SENTINEL_ELEMENT_NAME";
         String type = "Nullable(Tuple(" + sentinel + " NoSuchType))";
-        Column column = root(describe(
-                row("c", "Nullable(Tuple(a Int32))"), row("c.a", "Nullable(Int32)")));
+        Column column = root(
+                describe(row(ROOT_SENTINEL, "Nullable(Tuple(a Int32))"), row(ROOT_SENTINEL + ".a", "Nullable(Int32)")),
+                ROOT_SENTINEL);
         Map<String, Boolean> before = nullabilityByPath(column);
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
@@ -246,7 +248,7 @@ class DeclaredNullabilityTest {
             List<LogCapture.CapturedEvent> warnings = log.events("WARN");
             assertEquals(1, warnings.size());
             String message = warnings.get(0).message();
-            assertTrue(message.contains(ROOT), message);
+            assertWarnNamesColumn(message, ROOT_SENTINEL);
             assertTrue(message.contains(type), message);
             assertTrue(message.contains(QUALIFIED_TABLE), message);
             assertFalse(warnings.get(0).hasThrowable(), "the exception text can echo the type and is never logged");
@@ -259,8 +261,9 @@ class DeclaredNullabilityTest {
     @DisplayName("COLS-10: a Tuple Column whose declared type is not a Tuple fails open and changes nothing")
     void structureMismatchFailsOpenWithOneWarning() throws Exception {
         String type = "Array(Int32)";
-        Column column = root(describe(
-                row("c", "Nullable(Tuple(a Int32))"), row("c.a", "Nullable(Int32)")));
+        Column column = root(
+                describe(row(ROOT_SENTINEL, "Nullable(Tuple(a Int32))"), row(ROOT_SENTINEL + ".a", "Nullable(Int32)")),
+                ROOT_SENTINEL);
         Map<String, Boolean> before = nullabilityByPath(column);
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
@@ -268,12 +271,21 @@ class DeclaredNullabilityTest {
 
             List<LogCapture.CapturedEvent> warnings = log.events("WARN");
             assertEquals(1, warnings.size());
-            assertTrue(warnings.get(0).message().contains(ROOT), warnings.get(0).message());
+            assertWarnNamesColumn(warnings.get(0).message(), ROOT_SENTINEL);
             assertTrue(warnings.get(0).message().contains(type), warnings.get(0).message());
             assertTrue(warnings.get(0).message().contains(QUALIFIED_TABLE), warnings.get(0).message());
             assertFalse(warnings.get(0).hasThrowable());
         }
         assertEquals(before, nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("DEBT-10: the sentinel root occurs in no fixed WARN text, is plain ASCII and differs from the database and table")
+    void sentinelRootOccursInNoFixedWarnText() {
+        assertFalse(DeclaredNullability.FALLBACK_WARNING.contains(ROOT_SENTINEL), DeclaredNullability.FALLBACK_WARNING);
+        assertTrue(ROOT_SENTINEL.matches("[a-z_]+"), ROOT_SENTINEL);
+        assertNotEquals(DATABASE, ROOT_SENTINEL);
+        assertNotEquals(TABLE, ROOT_SENTINEL);
     }
 
     @Test

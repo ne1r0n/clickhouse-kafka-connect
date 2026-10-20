@@ -1,5 +1,7 @@
 package com.clickhouse.kafka.connect.sink.db.helper;
 
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.ROOT_SENTINEL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.assertWarnNamesColumn;
 import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -408,15 +410,15 @@ class ClickHouseHelperClientForkUnitTest {
     void fallbackWarningNamesDatabaseAndTable() {
         try (LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
             discover(
-                    Map.of("c", "Nullable(Tuple(a NoSuchType))"),
-                    "c", "Nullable(Tuple(a Int32))",
-                    "c.a", "Nullable(Int32)");
+                    Map.of(ROOT_SENTINEL, "Nullable(Tuple(a NoSuchType))"),
+                    ROOT_SENTINEL, "Nullable(Tuple(a Int32))",
+                    ROOT_SENTINEL + ".a", "Nullable(Int32)");
 
             List<LogCapture.CapturedEvent> warnings = nullabilityLog.events(WARN_LEVEL);
             assertEquals(1, warnings.size());
             String message = warnings.get(0).message();
+            assertWarnNamesColumn(message, ROOT_SENTINEL);
             assertTrue(message.contains(DISCOVERED_TABLE), message);
-            assertTrue(message.contains("c"), message);
         }
     }
 
