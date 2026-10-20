@@ -123,3 +123,133 @@ Deviation from the plan text: the plan expected the control to show `Writing JSO
 D-04-BRANCH=1
 
 Matches text: pending (24-03, 24-04)
+
+### E-04: the shipped archive at v1.7.0_gg2, the pre-merge tip and the gg3 tip (D-07, D-08)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md` (the dependency item and the rollback artifact wording), `docs/FORK-DELTA.md` (the catalog and BLD-14 rows) and the 21-IN-03 disposition (written in plans 24-03, 24-04 and 24-05). The shipped artifact is the `createConfluentArchive` zip (`build.gradle.kts`). Three throwaway worktrees were built on the same UTC day (2026-10-20): `wt-gg2` at tag `v1.7.0_gg2` (`a246ca01`), `wt-pre` at `6473e24f` (`origin/custom_build`, the pre-merge tip) and `wt-tip` at `98b9e04d` (the gg3 tip after the bump commit and the D-03 test). Extracted content is untrusted data: each archive was unpacked into new, empty directories under `/tmp/gsd24/x-<id>/{zip,jar}`, the compare script lives in `/tmp/gsd24-scripts`, and Python ran with `-I`.
+
+D-07: what separates tag `v1.7.0_gg2` from the pre-merge tip.
+
+```sh
+git diff --stat a246ca01b073faae86e2e92bb0288c07dd7eb0d7 6473e24f372a8b37dfd8cc8cf3124e6cff52edca
+```
+
+```text
+ build.gradle.kts          | 2 +-
+ gradle/libs.versions.toml | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+```
+
+The three lines are the Dependabot bumps (`slf4j-reload4j` 2.0.17 to 2.0.20, `lombok` 1.18.46 to 1.18.48, `spotless` 8.10.1 to 8.10.4; read from `git show v1.7.0_gg2:gradle/libs.versions.toml` and from the same file at `6473e24f`).
+
+Builds (house prefix `env -u TESTCONTAINERS_HOST_OVERRIDE` and `-p <worktree>`; logs in `/tmp/gsd24/exec/build-<gg2|pre|tip>.log`, all exit 0):
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-gg2/gradlew -p /tmp/gsd24/wt-gg2 --console=plain createConfluentArchive
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-pre/gradlew -p /tmp/gsd24/wt-pre --console=plain clean createConfluentArchive
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-tip/gradlew -p /tmp/gsd24/wt-tip --console=plain clean createConfluentArchive
+for id in gg2 pre tip; do shasum -a 256 /tmp/gsd24/wt-$id/build/confluent/*.zip /tmp/gsd24/x-$id/zip/*/lib/*.jar; done
+python3 -I /tmp/gsd24-scripts/cmp.py /tmp/gsd24/x-gg2/jar /tmp/gsd24/x-pre/jar
+python3 -I /tmp/gsd24-scripts/cmp.py /tmp/gsd24/x-pre/jar /tmp/gsd24/x-tip/jar
+```
+
+```text
+2e3583a9a0bd20b12172cc0efae6a1adb461e23dbbb9b3fe08b06dfca46689fb  wt-gg2/build/confluent/clickhouse-kafka-connect-v1.7.0_gg2.zip
+95256b62c11231d2c5a45ed14e7c69a39c9876dcd218257930fd611434defaa3  x-gg2/zip/clickhouse-kafka-connect-v1.7.0_gg2/lib/clickhouse-kafka-connect-v1.7.0_gg2-confluent.jar
+2e3583a9a0bd20b12172cc0efae6a1adb461e23dbbb9b3fe08b06dfca46689fb  wt-pre/build/confluent/clickhouse-kafka-connect-v1.7.0_gg2.zip
+95256b62c11231d2c5a45ed14e7c69a39c9876dcd218257930fd611434defaa3  x-pre/zip/clickhouse-kafka-connect-v1.7.0_gg2/lib/clickhouse-kafka-connect-v1.7.0_gg2-confluent.jar
+fc4a0511fc90f101823a2c275ed325432bbf61e60b3fb82fe9889c19ea370464  wt-tip/build/confluent/clickhouse-kafka-connect-v1.7.0_gg3.zip
+c2514401f76729d17f61bab3d405288801c2b162dba10a58eead3d20e264b36e  x-tip/zip/clickhouse-kafka-connect-v1.7.0_gg3/lib/clickhouse-kafka-connect-v1.7.0_gg3-confluent.jar
+
+cmp.py gg2 vs pre:
+files: 7375 7375
+only-in-a: []
+only-in-b: []
+changed: 0
+
+cmp.py pre vs tip:
+files: 7375 7376
+only-in-a: []
+only-in-b: ['com/clickhouse/kafka/connect/util/WithheldMessageException.class']
+changed: 11
+   META-INF/MANIFEST.MF
+   com/clickhouse/kafka/connect/sink/Version.class
+   com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$1.class
+   com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$2.class
+   com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class
+   com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class
+   com/clickhouse/kafka/connect/sink/db/mapping/Column.class
+   com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class
+   com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class
+   com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class
+   com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class
+```
+
+Result: the archive built at tag `v1.7.0_gg2` and at the pre-merge tip is the same file (identical whole-zip and inner-jar SHA-256, 7375 entries, 0 only-in-a, 0 only-in-b, 0 changed). So the three bumps change no entry of the shipped jar.
+
+Surprise recorded, not waved through (research assumption A3): the plan's allowed set for the pre-merge to gg3 compare named nine changed entries; the measurement shows eleven. The two extra entries, `ClickHouseHelperClient.class` and `SinkTaskStatistics.class`, are the classes that read `Version.ARTIFACT_VERSION`, a `static final String` literal that javac inlines (`ClickHouseHelperClient.CONNECT_CLIENT_NAME = "clickhouse-kafka-connect/" + Version.ARTIFACT_VERSION`, and `SinkTaskStatistics` builds the MBean name from it). They hold `v1.7.0_gg2` in the pre-merge jar and `v1.7.0_gg3` in the gg3 jar (byte search of both class files), which is the MBean `version=` and client-name change of E-02. Control: a fourth throwaway worktree at the same commit with only `VERSION` set back to `v1.7.0_gg2` (`wt-ver`, removed afterwards) built the archive and compared against the pre-merge jar:
+
+```text
+files: 7375 7376
+only-in-a: []
+only-in-b: ['com/clickhouse/kafka/connect/util/WithheldMessageException.class']
+changed: 7
+   com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$1.class
+   com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$2.class
+   com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class
+   com/clickhouse/kafka/connect/sink/db/mapping/Column.class
+   com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class
+   com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class
+   com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class
+```
+
+So the four entries that move with the version are `Version.class`, `META-INF/MANIFEST.MF` (`Implementation-Version` only), `ClickHouseHelperClient.class` and `SinkTaskStatistics.class`; everything else that changes is the seven Phase 22-23 classes plus the one added class `util/WithheldMessageException.class`. The artifact check passes with those two classes added to the allowed set (`/tmp/gsd24-scripts/artifact-diff-check.py`); with the plan's original nine-entry set it exits 1 because of exactly them.
+
+Manifest, dependencies and the logging jar:
+
+```sh
+diff /tmp/gsd24/x-gg2/zip/*/manifest.json /tmp/gsd24/x-pre/zip/*/manifest.json
+diff /tmp/gsd24/x-pre/zip/*/manifest.json /tmp/gsd24/x-tip/zip/*/manifest.json
+grep -nE '"version"|"release_date"' /tmp/gsd24/x-{gg2,pre,tip}/zip/*/manifest.json
+ls /tmp/gsd24/x-tip/jar/META-INF/maven/*/*/pom.properties | wc -l
+find /tmp/gsd24/x-tip -iname '*reload4j*'
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-tip/gradlew -p /tmp/gsd24/wt-tip -q dependencies --configuration clickhouseDependencies | grep -iE 'slf4j|reload4j'
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-tip/gradlew -p /tmp/gsd24/wt-tip -q dependencies --configuration runtimeClasspath | grep -iE 'slf4j|reload4j'
+```
+
+```text
+gg2 vs pre manifest.json: identical
+pre vs tip manifest.json: 3c3 "version" : "v1.7.0_gg2" -> "v1.7.0_gg3"   (no other line differs)
+"release_date": "2026-10-20"  in all three (the build date, 3 builds on the same UTC day)
+pom.properties files in the gg3 jar: 18 (lz4-java, jackson x3, gson, error_prone_annotations, guava x3, j2objc, commons-codec, commons-io, commons-compress, commons-lang3, httpclient5, httpcore5-h2, httpcore5, slf4j-api 2.0.7)
+find -iname '*reload4j*': (empty)
+clickhouseDependencies: org.slf4j:slf4j-api:1.7.36 -> 2.0.7 (no reload4j)
+runtimeClasspath: org.slf4j:slf4j-reload4j:2.0.20 -> ch.qos.reload4j:reload4j:1.2.22, slf4j-api 2.0.20
+```
+
+The META-INF/MANIFEST.MF of the inner jar differs between the pre-merge and gg3 jars in one line, `Implementation-Version: v1.7.0_gg2` to `v1.7.0_gg3`.
+
+Sentence the documents may use: none of the three bumps changes an entry of the shipped jar. `slf4j-reload4j` and `reload4j` are on `runtimeClasspath` (tests and local runs) and are not in the Confluent archive, whose only logging classes are `slf4j-api` 2.0.7; Lombok 1.18.48 generated class files byte-identical to those of 1.18.46; spotless is build-time only. `manifest.json` carries `version` and `release_date` besides the fixed fields, and `release_date` is the build date, so whole-zip equality holds only for builds of the same day (the 2026-10-20 builds above agree; across days only the per-entry compare is claimed). Between the pre-merge tip and the gg3 tip the jar gains `WithheldMessageException.class` and changes the seven Phase 22-23 classes, `ClickHouseHelperClient.class`, `SinkTaskStatistics.class`, `Version.class` and `META-INF/MANIFEST.MF`.
+
+Matches text: pending (24-03, 24-04)
+
+### E-05: BLD-14 re-established for Lombok 1.18.48 (21-IN-03)
+
+Backs: `docs/FORK-DELTA.md`, the `lombok.config` row (BLD-14), and the 21-IN-03 disposition (written in plans 24-04 and 24-05). Default `javac` prints at most 100 warnings, so a normal build log cannot show a Lombok warning. The build below lifts the cap with an init script (`allprojects { tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-Xmaxwarns', '100000'] } }`). The gg2 tree uses Lombok 1.18.46, the gg3 tip and the negative control 1.18.48. The negative control is a throwaway worktree at the same commit as the gg3 tip with only the line `lombok.jacksonized.jacksonVersion += 2` deleted from `lombok.config` (`wt-neg`, removed afterwards).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-gg2/gradlew -p /tmp/gsd24/wt-gg2 --console=plain -I /tmp/gsd24-scripts/maxwarns.gradle clean compileJava
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-tip/gradlew -p /tmp/gsd24/wt-tip --console=plain -I /tmp/gsd24-scripts/maxwarns.gradle clean compileJava
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-neg/gradlew -p /tmp/gsd24/wt-neg --console=plain -I /tmp/gsd24-scripts/maxwarns.gradle clean compileJava
+```
+
+```text
+gg2  (Lombok 1.18.46): warnings 273, "Ambiguous: Jackson2 and Jackson3" 0
+tip  (Lombok 1.18.48): warnings 273, "Ambiguous: Jackson2 and Jackson3" 0
+neg  (Lombok 1.18.48, line removed): warnings 274, "Ambiguous: Jackson2 and Jackson3" 1
+/private/tmp/gsd24/wt-neg/src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java:18: warning: Ambiguous: Jackson2 and Jackson3 exist; define which variant(s) you want in 'lombok.config'. See https://projectlombok.org/features/experimental/Jacksonized
+```
+
+Result: with the cap lifted, the gg2 and gg3 trees compile with more than 100 warnings and none says `Ambiguous: Jackson2 and Jackson3`; the control without `lombok.jacksonized.jacksonVersion += 2` prints that warning for `ClickHouseFieldDescriptor.java`, so the absence is the setting's doing. Lombok-generated class bytes are identical between 1.18.46 and 1.18.48 (E-04), which is the stronger form of an older `javap` comparison. `lombok.config`, `build.gradle.kts` and `gradle/` are unchanged since `P24_BASE`.
+
+Matches text: pending (24-04)
