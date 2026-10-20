@@ -1032,3 +1032,59 @@ ROLLBACK-ON-TIP-OK
 `git worktree list` afterwards shows only the main checkout (`/tmp/gsd24/dry` and `/tmp/gsd24/rb-demo` removed and pruned).
 
 Matches text: n/a (gate check)
+
+### E-62: rehearsal push and run
+
+Backs: PUB-10 (the release tree ran green on CI under its own SHA before any merge depends on it). Date (UTC) 2026-10-20.
+
+**The user's answer, verbatim:** `push`. It was given directly to the orchestrator in the main session at the Task 2 `blocking-human` checkpoint, after the rehearsal bundle (items 1-8) was presented. Received by: the orchestrator, directly. Task 3 ran inline in the orchestrator; no subagent held push authority.
+
+**Pre-push re-checks on the tip (Task 3 step 1):**
+
+- X0 = `git rev-parse HEAD` equalled the bundle's X exactly (`3ab55e1d`), so X..X0 touches nothing.
+- PUSH-READY re-passed (`X=3ab55e1da878c6619f711d1220793e9d2456fa9d rate=57`); origin `custom_build` was still `6473e24f`, and `git rev-list --left-right --count origin/custom_build...HEAD` printed `0	159`.
+- MERGE-DRY-RUN-OK re-passed: `D=e1836f3d584e7c64832a93cb99e2d47e22cbc9db`, parents `6473e24f` and X0, tree equal to X0.
+- ROLLBACK-ON-TIP-OK re-passed: `/tmp/gsd24/rollback-demo.sh` on D printed `ok`, `rollout doc gone from branch`, `item-7 headings: 1` and `after git revert <rollback-commit>: tree(HEAD)==tree(target)` (log `/tmp/gsd24/exec/rollback-on-X0.log`). The dry-run worktrees were removed and pruned.
+- Ref snapshots saved to `/tmp/gsd24/exec/origin-heads-before-rehearsal.txt` and `/tmp/gsd24/exec/origin-tags-before-rehearsal.txt`.
+
+**The push, as run** (2026-10-20T17:55:58Z):
+
+```sh
+git push origin refs/heads/sync/v1.7.0:refs/heads/sync/v1.7.0
+```
+
+```text
+ * [new branch]        sync/v1.7.0 -> sync/v1.7.0
+```
+
+No force flag, no tag, no other refspec.
+
+X0=3ab55e1da878c6619f711d1220793e9d2456fa9d
+
+**The run** (`actions/runs?head_sha=X0`: exactly one run, of `.github/workflows/tests.yaml`, zero cancelled; no run of any other path):
+
+```text
+id=39470352668 path=.github/workflows/tests.yaml event=push head_branch=sync/v1.7.0 status=completed conclusion=success
+run_started_at=2026-10-20T17:56:03Z updated_at=2026-10-20T18:02:09Z (about 6 min)
+url=https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/39470352668
+job="ClickHouse latest Client version V2 tests" runner_name="GitHub Actions 1000000291" labels=ubuntu-24.04 completed/success (17:56:08Z-18:02:08Z)
+```
+
+The run registered on the first poll and was observed with 5 status polls at 90 s intervals (`/tmp/gsd24/exec/watch-x0.log`); 48 unauthenticated API requests remained afterwards.
+
+**Origin before the push** (heads other than `dependabot/*`; 6 tags in `origin-tags-before-rehearsal.txt`, none for gg3):
+
+```text
+6473e24f372a8b37dfd8cc8cf3124e6cff52edca  refs/heads/custom_build
+bec167d85918e77c11621063000acc6e031ae2fa  refs/heads/main
+```
+
+**Origin after the push** (tags byte-identical, `origin-tags-after-rehearsal.txt`; the 5 `dependabot/*` heads are not compared):
+
+```text
+6473e24f372a8b37dfd8cc8cf3124e6cff52edca  refs/heads/custom_build
+bec167d85918e77c11621063000acc6e031ae2fa  refs/heads/main
+3ab55e1da878c6619f711d1220793e9d2456fa9d  refs/heads/sync/v1.7.0
+```
+
+Matches text: n/a (gate check)
