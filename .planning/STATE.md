@@ -3,38 +3,37 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
 current_phase: 24
-current_phase_name: Release & Publication
-status: verifying
-stopped_at: Completed 24-07-PLAN.md
-last_updated: "2026-10-20T18:24:16.814Z"
+status: completed
+stopped_at: Phase 24 complete — all phases complete
+last_updated: "2026-10-20T19:07:30.266Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 24 execution started
-state_head: 938d14af596c9df8601dea9110647d7ce2d3a6c9
+last_activity_desc: Phase 24 complete
+state_head: 62d8df3c90418e3003758da89bb30df0bac5859c
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
   completed_plans: 23
-  percent: 75
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-20 after Phase 23)
+See: .planning/PROJECT.md (updated 2026-10-20 after Phase 24)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 24 — Release & Publication
+**Current focus:** Milestone `v1.7.0_gg3-hardening` complete (4/4 phases): audit and close
 
 ## Current Position
 
-Phase: 24 (Release & Publication) — EXECUTING
-Plan: 7 of 7
-Status: Phase complete — ready for verification
-Last activity: 2026-10-20 — Phase 24 execution started
+Phase: 24
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-10-20 — Phase 24 complete
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -60,6 +59,7 @@ Progress: [████████░░] 75%
 | 21 | 5 | - | - |
 | 22 | 5 | - | - |
 | 23 | 6 | - | - |
+| 24 | 7 | - | - |
 
 **Recent Trend:**
 
@@ -230,6 +230,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 24]: 24-06: the user answered 'push' directly to the orchestrator; Task 3 ran inline; sync/v1.7.0 pushed at X0=3ab55e1d with one green tests.yaml run 39470352668
 - [Phase 24]: 24-06: latest moved 26.9.18.11 -> 26.9.19.9 since Phase 20; local gate and CI both green, no test edited
 - [Phase 24]: 24-07: the user answered 'publish' directly to the orchestrator; Tasks 2-3 ran inline; v1.7.0_gg3 published as --no-ff merge M=3376a18f with tests.yaml run 39472696952 green; tags pre-v1.7.0_gg3 and v1.7.0_gg3 on origin; scratch branch deleted
+- [Phase 24]: Phase closed 2026-10-20: verification human_needed → passed after 24-UAT 2/2 (the user accepted the round 3 review warnings as a post-milestone docs-only follow-up and confirmed that both approvals were their own direct answers); SECURITY threats_open 0. 24-REVIEW round 3 (WR-03..WR-07, IN-04, IN-05) stays `open` in 24-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 24 follow-ups)
 
 ### Pending Todos
 
@@ -246,6 +247,7 @@ None.
 - [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
 - [Phase 23]: Backlog 999.4 is a pre-existing, high-severity defect for any table with a Tuple element named `size` or `size0`: discovery drops the element and every insert fails with code 33. Since COLS-14 it is named by a WARN at every DESCRIBE, but it is not fixed. The gg3 rollout note (item 2), the CHANGELOG (Known Issues) and FORK-DELTA (Known costs item 10) disclose it, measured as code 32 or 33 on the default route with client V2.
 - [Dependabot]: The repository has no `dependencies` label, but both `dependabot.yml` entries request it, so every Dependabot PR gets a "labels could not be found" comment. Updates still run. Fixing it means the user creates the label (D-11), or the fork drops the request. Tracked in PROJECT.md → Active, Phase 21 follow-ups.
+- [Phase 24]: `24-REVIEW-DISPOSITION.md` reads `open: 7` (round 3), but the Milestone audit section of `24-MILESTONE-CLOSE-RECORD.md` says all four disposition files read `open: 0`. `/gsd-audit-milestone` will see the seven rows open. Either disposition them as `deferred` to PROJECT.md → Active, Phase 24 follow-ups (the 24-UAT test 1 decision), or fix them, before the audit.
 
 ## Deferred Items
 
@@ -263,12 +265,13 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T18:24:16.473Z
-Stopped at: Completed 24-07-PLAN.md
+Last session: 2026-10-20T19:09:49Z
+Stopped at: Phase 24 complete (24-UAT 2/2 passed); milestone `v1.7.0_gg3-hardening` ready to audit and close
 Resume file: None
 
 ## Operator Next Steps
 
-- Start Phase 24 (Release & Publication) with `/gsd-discuss-phase 24` or `/gsd-plan-phase 24`. First run `git fetch origin` and compare `origin/custom_build` with `sync/v1.7.0`: a Dependabot merge on origin needs a DEPS-01-shaped merge before the release.
-- Optional before the release: the 23-REVIEW warnings (WR-01, a missing pin for the escaped-quote branch of `normalise`; WR-02, the copied DESCRIBE loop in `discoverAsDescribeTableV2`) are test-quality findings, not defects. `/gsd-code-review 23 --fix` would address them.
-- Optional, in the GitHub web UI: create the `dependencies` label. Before merging any open Dependabot PR on `origin`, note that #4 and #9 bump fork-only pins, and that a merge diverges `sync/v1.7.0` again.
+- Before the audit: settle the seven `open` rows of `24-REVIEW-DISPOSITION.md` (round 3, WR-03..WR-07, IN-04, IN-05). At 24-UAT test 1 they were accepted as a docs-only follow-up on `custom_build` after the milestone, so either record them as `deferred` with a pointer, or land the docs-only fix commit. The tag `v1.7.0_gg3` and merge `3376a18f` do not move either way.
+- Run `/gsd-audit-milestone`, then `/gsd-complete-milestone v1.7.0_gg3-hardening`. Both read `24-MILESTONE-CLOSE-RECORD.md`.
+- Housekeeping from the close record: remove `/tmp/gsd24`, `/tmp/gsd24-scripts` and any leftover probe worktree (`git worktree list`). If a new read-only CI-log token was used for 24-06 or 24-07, revoke it and delete its Keychain item.
+- Optional, in the GitHub web UI (D-11): create the `dependencies` label; close or keep PRs #4 and #9 (fork-only pins); merge or close #6, #7 and #8 now that the freeze is over. Any merge on `origin/custom_build` makes the next milestone open with a DEPS-01-shaped merge.

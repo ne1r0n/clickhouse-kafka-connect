@@ -78,7 +78,7 @@ Phase artifacts: `milestones/v1.7.0_gg2-hardening-phases/`
 - [x] **Phase 21: Dependabot Integration & CI Hygiene** - Merge `custom_build`'s three Dependabot commits into the working branch before any code work; close the 17-REVIEW pin-guard gaps; the user disables the inherited-red nightly, checks Dependabot and revokes the stale token (completed 2026-10-19)
 - [x] **Phase 22: Writer Record-Data Exposure** - Backlog 999.3: writer conversion failures name the column, type and exception class without the record value, with retry classification pinned before and after the change; the inline Mockito mock is gone (completed 2026-10-20)
 - [x] **Phase 23: Declared-Nullability Hardening & Review Closure** - The 19-REVIEW advisories are fixed in `DeclaredNullability` and its tests, IN-04 is decided, and every 17-REVIEW and 19-REVIEW finding is dispositioned (completed 2026-10-20)
-- [ ] **Phase 24: Release & Publication** - `v1.7.0_gg3` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
+- [x] **Phase 24: Release & Publication** - `v1.7.0_gg3` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag (completed 2026-10-20)
 
 ## Phase Details
 
@@ -246,7 +246,7 @@ Phase gate: cache-busted `testUnit` and a full suite on `latest` × V2, plus the
   3. The full suite passes twice on ClickHouse `latest` × client V2, the second run with `--rerun`. Both runs have 0 failures, 0 errors and every skip named. `testUnit` passes with the Docker daemon stopped.
   4. After the user's own explicit approval, given directly and not relayed, `custom_build` on `origin` is a non-force `--no-ff` merge whose first parent is the pre-merge `custom_build` tip. That SHA has exactly one `tests.yaml` run, and it is green. The `v1.7.0_gg3` tag reaches `origin` only after that run is green, and the rollback tag `pre-v1.7.0_gg3` points at the pre-merge `custom_build` tip.
 
-**Plans**: 7/7 plans executed (sequential, waves 1-7; plans 24-06 and 24-07 hold the two approval gates and run their post-gate tasks orchestrator-inline)
+**Plans**: 7/7 plans complete (sequential, waves 1-7; plans 24-06 and 24-07 hold the two approval gates and run their post-gate tasks orchestrator-inline)
 
 Plans:
 **Wave 1**
@@ -372,7 +372,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 | 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-19 |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-20 |
 | 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 6/6 | Complete    | 2026-10-20 |
-| 24. Release & Publication | v1.7.0_gg3-hardening | 7/7 | In Progress | - |
+| 24. Release & Publication | v1.7.0_gg3-hardening | 7/7 | Complete    | 2026-10-20 |
 
 ---
 *Roadmap for milestone `v1.7.0_gg3-hardening` created: 2026-10-16*
