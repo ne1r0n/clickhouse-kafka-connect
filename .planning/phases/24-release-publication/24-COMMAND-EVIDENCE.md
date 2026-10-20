@@ -902,3 +902,133 @@ RAW-NUMBERS-GG3-OK
 (The nine scripts are the `<automated>` blocks of plans 24-03 and 24-04, extracted to `/tmp/gsd24/exec`.) `consistency.py` reports `consistency failures: 0`: every prose unit that mentions `size0` still names the codes 32 and 33. `src`, `build.gradle.kts`, `gradle` and `.github` are unchanged since the last measurement, so the FORK-DELTA raw numbers (130/22783/534 and 33/2245/145) hold, and the test file was not touched, so `D03-LIVE-GREEN`, `D03-STATIC-OK` and `SPOTLESS-BASELINE-EQUAL` of plan 24-01 were not re-run.
 
 Matches text: yes
+
+### E-60: v1.7.0_gg3 suite gate
+
+Backs: SUITE-06 (the full suite twice on ClickHouse `latest` x client V2, `testUnit` Docker-free, anchors invariant, spotless baseline-equal on X). Date (UTC) 2026-10-20, 17:17 to 17:32. The tree gated is `a9f8bc88c595302c8a6c21f1536f5fdea3b29981` (HEAD on `sync/v1.7.0` before this entry was committed); the last non-`.planning` commit is `6ee4a22a4650799d67f3f9a1e27a323d88069b2d` (committed 2026-10-20T20:13:13+03:00), so every XML timestamp had to be later than that. Every Gradle command ran through `env -u TESTCONTAINERS_HOST_OVERRIDE`, colima profile `vz` only, the docker CLI by absolute path `/opt/homebrew/opt/docker/bin/docker`. The verify commands are the `<automated>` blocks of the plan, run unchanged from `/tmp/gsd24-scripts/v06-1.src` to `v06-6.src`.
+
+Freeze and D-10 (verify command 1), run before anything else:
+
+```text
+branch sync/v1.7.0 dirty False scope-ok True ['CHANGELOG.md', 'VERSION', 'docs/FORK-DELTA.md', 'docs/ROLLOUT-v1.7.0_gg3.md', 'src/test/java/com/clickhouse/kafka/connect/sink/JsonAsStringKeyResidualLiveTest.java'] anchors ['-VERSION\tv1.7.0_gg2\t1\tBLD-07', '+VERSION\tv1.7.0_gg3\t1\tBLD-07'] open0 True threats0 True protected-diff 0 custom_build ['6473e24f372a8b37dfd8cc8cf3124e6cff52edca'] left-right ['0', '158'] pre-is-ancestor True
+FREEZE-OK
+```
+
+Origin's `custom_build` is `6473e24f` (left count 0, right count 158), so the D-10 contingency did not fire and E-63 is not written. The only untracked path in the working tree is `.planning/milestone.lock` (the GSD session lock); it is not part of the release and was not committed or deleted.
+
+Clean build, version, Docker stopped, `testUnit` (verify command 2):
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew clean compileJava
+grep -q 'ARTIFACT_VERSION = "v1.7.0_gg3"' build/generated/sources/version/java/main/com/clickhouse/kafka/connect/sink/Version.java
+colima stop --profile vz
+/opt/homebrew/opt/docker/bin/docker info        # must fail
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew testUnit --rerun
+colima start --profile vz
+/opt/homebrew/opt/docker/bin/docker info        # must succeed again
+```
+
+```text
+clean compileJava: BUILD SUCCESSFUL in 4s; generated ARTIFACT_VERSION = "v1.7.0_gg3" (grep matched)
+docker info with colima stopped (non-zero): failed to connect to the docker API at unix:///Users/alexandr.chashnikov/.colima/vz/docker.sock; check if the path is correct and if the daemon is running: dial unix /Users/alexandr.chashnikov/.colima/vz/docker.sock: connect: no such file or directory
+testUnit: BUILD SUCCESSFUL in 11s
+testUnit classes 49 tests 838 skipped 2 failures 0 errors 0 missing [] live-ran [] stale 0
+TESTUNIT-DOCKER-STOPPED-GREEN
+colima list afterwards: vz  Running; docker info succeeds again
+```
+
+Two full runs (verify command 3). `rm -rf build/test-results/test` came first; run 1's XML was copied to `/tmp/gsd24/exec/run1-results` before run 2 started:
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --rerun    # run 1, then the XML check, then the copy
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --rerun    # run 2, then the XML check against run 1's copy
+```
+
+```text
+run-1 BUILD SUCCESSFUL in 2m 39s
+run-1 xml 90 tests 1281 failures 0 errors 0 skipped 18 stale 0 exact True skip-set-ok True after-run-1 True server ['26.9.19.9']
+run-2 BUILD SUCCESSFUL in 2m 40s
+run-2 xml 90 tests 1281 failures 0 errors 0 skipped 18 stale 0 exact True skip-set-ok True after-run-1 True server ['26.9.19.9']
+SUITE-TWICE-GREEN
+```
+
+Run 1's XML timestamps span 17:18:18.338Z to 17:20:52.261Z; run 2's span 17:20:59.301Z to 17:23:33.922Z, so run 2's earliest is later than run 1's latest (read from run 1's copied results). 1281 tests is 1277 (Phase 23's E-07 baseline) plus the four cases of `JsonAsStringKeyResidualLiveTest`; 90 XML files is 89 plus that class. Per-class counts, identical in both runs: `NullableTupleMatrixLiveTest` 33, `DeclaredNullabilityTest` 62, `ClickHouseHelperClientForkUnitTest` 51, `SimpleAggregateTupleRoundTripLiveTest` 2, `JsonAsStringKeyResidualLiveTest` 4, `DedupTokenRetryLiveTest` 8, `WriterErrorPathLiveTest` 10. Server version `26.9.19.9` in both runs (logged by the version-logging live tests); the local `clickhouse/clickhouse-server:latest` image was created 2026-10-14T18:05:21Z (21:05:21 +0300). Phase 20's gate recorded `26.9.18.11`, so `latest` moved by one patch release; both gates are green and nothing was edited.
+
+The 18 skips, compared as a set of `class#method` names with the inventory in `docs/FORK-DELTA.md` (identical in both runs; the 11 parameterised cases are the `exactlyOnceStateMismatchTest` cases skipped by the standalone assumption):
+
+```text
+ClickHouseSinkTaskTest#clientNameTest()
+ClickHouseSinkTaskWithSchemaTest#schemaWithNestedTupleMapArrayAndVariant()
+ClickHouseSinkTaskWithSchemaTest#schemaWithTupleOfMapsWithVariantTest()
+ClickHouseSinkTaskWithSchemaTest#[1] 11, 7 ... #[11] 229, 221   (11 cases)
+ConvertToMapOrJsonPerformanceTestJson#testDeepNestedStructPerformance()
+ConvertToMapOrJsonPerformanceTestJson#testWideStructPerformance()
+InsertFormatPerformanceTest#compareInsertPerformance()
+JsonColumnTest#compareAllConfigurations()
+```
+
+Anchors invariant on the branch tip (verify command 4, first half; about 9 minutes with the checks that follow it):
+
+```sh
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD
+```
+
+```text
+invariants: provenance_paths=21 anchor_commits=514 anchor_rows=69 marker_commits=561 anchor_exempt=1 result=PASS
+```
+
+Spotless baseline-equal on X (verify command 6): `spotlessApply` was run in two `git archive` copies, one of `P24_BASE` (`07bf1e7695cc32fa7239b0b9ee0feed06c079f63`) and one of X (`a9f8bc88`), and the sorted `git diff --numstat` of each was compared byte for byte.
+
+```text
+numstat-lines=      46
+SPOTLESS-BASELINE-EQUAL-ON-X
+```
+
+Both numstat files are non-empty (46 lines each, the pre-existing integrationTest formatting baseline) and equal, so no Phase 24 Java change is unformatted.
+
+Matches text: n/a (gate check)
+
+### E-61: OPS-01, pre-push checks, dry-run merge and rollback on it
+
+Backs: SUITE-06 and PUB-10 (the push is safe to make; the release merge shape and the rollback are rehearsed on the publication tip). Date (UTC) 2026-10-20. All commands ran on `a9f8bc88c595302c8a6c21f1536f5fdea3b29981`, before this entry was committed; the evidence commit touches only `.planning/`, so the tree outside `.planning/` is the same.
+
+OPS-01 and PUSH-READY (verify command 4, second half): `integrationTests.yaml` is `disabled_manually` and has no schedule run created after 2026-10-16T09:38:23Z (the response held a `workflow_runs` array). PUSH-READY: HEAD on `sync/v1.7.0`, `.gsd-ws-arg` untracked, no `push.followTags`, no `remote.origin.push` or `mirror`, `git fetch --no-tags`, origin `custom_build` at `6473e24f`, origin has no `sync/v1.7.0` and no ref at X, no secret pattern in the changed files, API rate limit at least 20.
+
+```text
+OPS-01-OK
+X=a9f8bc88c595302c8a6c21f1536f5fdea3b29981 rate=58
+PUSH-READY
+```
+
+MERGE-DRY-RUN-OK (verify command 5: a `--no-ff` merge of X into a detached worktree at `6473e24f`):
+
+```text
+D=628f8ce3385ec51a84d4c229c766ed81a81d593a X=a9f8bc88c595302c8a6c21f1536f5fdea3b29981
+MERGE-DRY-RUN-OK
+```
+
+The dry-run merge D has first parent `6473e24f372a8b37dfd8cc8cf3124e6cff52edca`, second parent X, and `git diff --quiet D X` is empty, so the merged tree equals the tested tip.
+
+Rollback script `/tmp/gsd24/rollback-demo.sh` (the E-22 text) run against D, log `/tmp/gsd24/exec/rollback-on-X.log`:
+
+```text
+target=628f8ce3385ec51a84d4c229c766ed81a81d593a stale-start=6473e24f
+dirty: status --porcelain lines=1
+fetch --tags exit=0
+local tag kept after fetch: 6473e24f
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=0
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+worktree clean after commit
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-7 headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+ROLLBACK-ON-TIP-OK
+```
+
+`git worktree list` afterwards shows only the main checkout (`/tmp/gsd24/dry` and `/tmp/gsd24/rb-demo` removed and pruned).
+
+Matches text: n/a (gate check)
