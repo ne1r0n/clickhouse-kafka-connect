@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 24
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 24-05-PLAN.md
-last_updated: "2026-10-20T17:15:16.815Z"
+stopped_at: Completed 24-06-PLAN.md
+last_updated: "2026-10-20T18:04:19.547Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 24 execution started
-state_head: 2e1beb29506f1e1b9e2fb51a27209767b3b34f51
+state_head: 779e8eaf72b26699073e5bbd96bbe5308519655b
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 23)
 ## Current Position
 
 Phase: 24 (Release & Publication) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 24 execution started
 
@@ -161,6 +161,7 @@ Progress: [████████░░] 75%
 | Phase 24 P03 | 6 min | 3 tasks | 2 files |
 | Phase 24 P04 | 9 min | 3 tasks | 5 files |
 | Phase 24 P05 | 20 min | 3 tasks | 10 files |
+| Phase 24 P06 | 47 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -225,6 +226,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 24]: 24-03: rollout item 1 worded on D-04 branch 1 (Map-key exception, server 26.9.19.9); item 2 offers no workaround and scopes 'whatever the connector settings' to what was measured; item 4 clean stop limited to the Nullable(Tuple) backslash-n shape on rollback
 - [Phase 24]: 24-04: CHANGELOG 1.7.0_gg3 dated 2026-10-20; FORK-DELTA Known costs 10 and 11 knowingly open with no workaround; consistency rule fixed three size0 units at source
 - [Phase 24]: 24-05: the WR-01 fix keeps D-02's 'whatever the connector settings' and scopes it to the measured route (default route, client V2); IN-02 skipped by design; IN-03 carried under Other carried items
+- [Phase 24]: 24-06: the user answered 'push' directly to the orchestrator; Task 3 ran inline; sync/v1.7.0 pushed at X0=3ab55e1d with one green tests.yaml run 39470352668
+- [Phase 24]: 24-06: latest moved 26.9.18.11 -> 26.9.19.9 since Phase 20; local gate and CI both green, no test edited
 
 ### Pending Todos
 
@@ -257,8 +260,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T17:15:16.482Z
-Stopped at: Completed 24-05-PLAN.md
+Last session: 2026-10-20T18:04:19.209Z
+Stopped at: Completed 24-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
