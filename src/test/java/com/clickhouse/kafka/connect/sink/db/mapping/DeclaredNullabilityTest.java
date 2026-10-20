@@ -1,13 +1,17 @@
 package com.clickhouse.kafka.connect.sink.db.mapping;
 
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.ROOT_SENTINEL;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.assertWarnNamesColumn;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.data.ClickHouseColumn;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +33,7 @@ class DeclaredNullabilityTest {
     private static final String TABLE = "t";
     private static final String QUALIFIED_TABLE = "db.t";
     private static final String PATH_SEPARATOR = ".";
+    private static final String STRUCTURE_MISMATCH_REASON = "(structure mismatch)";
 
     /** One DESCRIBE row; a name holding a dot is a sub-column. */
     private static String row(String name, String type) {
@@ -50,11 +55,41 @@ class DeclaredNullabilityTest {
     }
 
     private static Column root(Table table) {
-        return table.getRootColumnsMap().get(ROOT);
+        return root(table, ROOT);
+    }
+
+    private static Column root(Table table, String name) {
+        return table.getRootColumnsMap().get(name);
     }
 
     private static Map<String, Boolean> nullabilityByPath(Column column) {
         return ColumnNullabilityPaths.byPath(column.getName(), column);
+    }
+
+    /** A hand-built node that DESCRIBE would have reported nullable, so a pass that ran would flip it. */
+    private static Column.ColumnBuilder nullableNode(String name) {
+        return Column.builder().name(name).isNullable(true);
+    }
+
+    /** The flags of hand-built nodes, which {@link ColumnNullabilityPaths} cannot walk once a type is null. */
+    private static List<Boolean> flags(Column... nodes) {
+        return Arrays.stream(nodes).map(Column::isNullable).toList();
+    }
+
+    private static LogCapture.CapturedEvent onlyWarning(LogCapture log) {
+        List<LogCapture.CapturedEvent> warnings = log.events("WARN");
+        assertEquals(1, warnings.size());
+        return warnings.get(0);
+    }
+
+    /** The rest of a structure-mismatch WARN, after the column slot was asserted. */
+    private static void assertMismatchWarning(LogCapture.CapturedEvent warning, String type, LogCapture log) {
+        String message = warning.message();
+        assertTrue(message.contains(QUALIFIED_TABLE), message);
+        assertTrue(message.contains(type), message);
+        assertTrue(message.contains(STRUCTURE_MISMATCH_REASON), message);
+        assertFalse(warning.hasThrowable(), "the exception message is never logged");
+        assertEquals(1, log.events().size());
     }
 
     @Test
@@ -261,11 +296,20 @@ class DeclaredNullabilityTest {
         assertEquals(before, nullabilityByPath(column));
     }
 
+    // COLS-12 flip (D-08): this case asserted that the WARN named the NullPointerException provoked
+    // through a Column with a null type. collect gaining a null check is 19-REVIEW IN-02's re-open
+    // trigger. The input is kept and the contract (fail open with one metadata-only WARN) is
+    // unchanged, so the case now asserts the structure mismatch reason.
+    // AGENTS.md exemption (never delete or weaken existing tests): granted by
+    // user decision D-08 (ROADMAP SC1). Not a weakening: the method, its null-type input and the
+    // fail-open assertions (false, one WARN naming the table, no throwable, one event) are kept, and
+    // the NullPointerException class name is replaced by the equally specific `(structure mismatch)`
+    // reason, with the sentinel column assertion added.
     @Test
-    @DisplayName("COLS-10 WR-01: an unexpected exception in the pass falls back with one metadata-only WARN naming the table")
+    @DisplayName("COLS-12 (D-08 flip): a Column with a null type falls back as a structure mismatch with one metadata-only WARN naming the table")
     void unexpectedExceptionInThePassFailsOpenWithOneMetadataWarning() throws Exception {
         String type = "Tuple(a Int32)";
-        Column column = Column.builder().name(ROOT).build();
+        Column column = Column.builder().name(ROOT_SENTINEL).build();
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
             assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
@@ -273,13 +317,273 @@ class DeclaredNullabilityTest {
             List<LogCapture.CapturedEvent> warnings = log.events("WARN");
             assertEquals(1, warnings.size());
             String message = warnings.get(0).message();
-            assertTrue(message.contains(ROOT), message);
+            assertWarnNamesColumn(message, ROOT_SENTINEL);
             assertTrue(message.contains(QUALIFIED_TABLE), message);
             assertTrue(message.contains(type), message);
-            assertTrue(message.contains(NullPointerException.class.getSimpleName()), message);
+            assertTrue(message.contains("(structure mismatch)"), message);
             assertFalse(warnings.get(0).hasThrowable(), "the exception message is never logged");
             assertEquals(1, log.events().size());
         }
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-06): a null root returns false before the pass and logs nothing")
+    void nullRootReturnsFalseAndLogsNothing() {
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(null, "Tuple(a Int32)", DATABASE, TABLE));
+
+            assertEquals(List.of(), log.events());
+        }
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-05): containsTuple is false for a Column with a null type at the root, as an Array element or as a Map value")
+    void containsTupleIsFalseForANullTypeAtAnyDepth() {
+        Column noType = Column.builder().name(ROOT_SENTINEL).build();
+        Column arrayOfNoType = Column.builder()
+                .name(ROOT_SENTINEL)
+                .type(Type.ARRAY)
+                .arrayType(Column.builder().name(ROOT_SENTINEL + "[]").build())
+                .build();
+        Column mapOfNoType = Column.builder()
+                .name(ROOT_SENTINEL)
+                .type(Type.MAP)
+                .mapKeyType(Type.STRING)
+                .mapValueType(Column.builder().name(ROOT_SENTINEL + "{}").build())
+                .build();
+
+        assertFalse(DeclaredNullability.containsTuple(noType));
+        assertFalse(DeclaredNullability.containsTuple(arrayOfNoType));
+        assertFalse(DeclaredNullability.containsTuple(mapOfNoType));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: an Array element with a null type")
+    void arrayElementWithANullTypeIsAStructureMismatch() {
+        String type = "Array(Tuple(a Int32))";
+        Column element = nullableNode(ROOT_SENTINEL + "[]").build();
+        Column column = nullableNode(ROOT_SENTINEL).type(Type.ARRAY).arrayType(element).build();
+        List<Boolean> before = flags(column, element);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(before, flags(column, element));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: a Map value with a null type")
+    void mapValueWithANullTypeIsAStructureMismatch() {
+        String type = "Map(String, Tuple(a Int32))";
+        Column value = nullableNode(ROOT_SENTINEL + "{}").build();
+        Column column = nullableNode(ROOT_SENTINEL)
+                .type(Type.MAP)
+                .mapKeyType(Type.STRING)
+                .mapValueType(value)
+                .build();
+        List<Boolean> before = flags(column, value);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(before, flags(column, value));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: a null tupleFields entry")
+    void nullTupleFieldsEntryIsAStructureMismatch() {
+        String type = "Tuple(a Int32)";
+        Column column = nullableNode(ROOT_SENTINEL)
+                .type(Type.TUPLE)
+                .tupleFields(Arrays.asList((Column) null))
+                .build();
+        List<Boolean> before = flags(column);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(before, flags(column));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: a field with a null name")
+    void fieldWithANullNameIsAStructureMismatch() {
+        String type = "Tuple(a Int32)";
+        Column field = Column.builder().type(Type.INT32).isNullable(true).build();
+        Column column = nullableNode(ROOT_SENTINEL)
+                .type(Type.TUPLE)
+                .tupleFields(List.of(field))
+                .build();
+        List<Boolean> before = flags(column, field);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(before, flags(column, field));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: a field with a null type")
+    void fieldWithANullTypeIsAStructureMismatch() {
+        String type = "Tuple(a Int32)";
+        Column field = nullableNode(ROOT_SENTINEL + ".a").build();
+        Column column = nullableNode(ROOT_SENTINEL)
+                .type(Type.TUPLE)
+                .tupleFields(List.of(field))
+                .build();
+        List<Boolean> before = flags(column, field);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(before, flags(column, field));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: a root with a null name")
+    void rootWithANullNameIsAStructureMismatch() {
+        String type = "Tuple(a Int32)";
+        Column column = Column.builder()
+                .type(Type.TUPLE)
+                .isNullable(true)
+                .tupleFields(List.of())
+                .build();
+        List<Boolean> before = flags(column);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            // the null name is the input under test, so the column slot reads "null"
+            assertWarnNamesColumn(warning.message(), "null");
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(before, flags(column));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: an element Tuple with a null name never pairs a field literally named null.a")
+    void elementTupleWithANullNameIsAStructureMismatch() {
+        String type = "Array(Tuple(a Int32))";
+        Column field = nullableNode("null.a").type(Type.INT32).build();
+        Column elementTuple = Column.builder()
+                .type(Type.TUPLE)
+                .isNullable(true)
+                .tupleFields(List.of(field))
+                .build();
+        Column column = nullableNode(ROOT_SENTINEL).type(Type.ARRAY).arrayType(elementTuple).build();
+        List<Boolean> before = flags(column, elementTuple, field);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(before, flags(column, elementTuple, field));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch: a second call on the same null-type root warns again and leaves it untouched")
+    void secondCallOnTheSameNullTypeRootWarnsAgain() {
+        String type = "Tuple(a Int32)";
+        Column field = nullableNode(ROOT_SENTINEL + ".a").build();
+        Column column = nullableNode(ROOT_SENTINEL)
+                .type(Type.TUPLE)
+                .tupleFields(List.of(field))
+                .build();
+        List<Boolean> before = flags(column, field);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            List<LogCapture.CapturedEvent> warnings = log.events("WARN");
+            assertEquals(2, warnings.size());
+            for (LogCapture.CapturedEvent warning : warnings) {
+                assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+                assertTrue(warning.message().contains(STRUCTURE_MISMATCH_REASON), warning.message());
+                assertFalse(warning.hasThrowable());
+            }
+            assertEquals(warnings.get(0).message(), warnings.get(1).message());
+            assertEquals(2, log.events().size());
+        }
+        assertEquals(before, flags(column, field));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) structure mismatch (kept): an Array root with no element Column")
+    void arrayRootWithoutAnElementColumnIsAStructureMismatch() {
+        String type = "Array(Int32)";
+        Column column = nullableNode(ROOT_SENTINEL).type(Type.ARRAY).build();
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertMismatchWarning(warning, type, log);
+        }
+        assertEquals(List.of(true), flags(column));
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-07) kept, pairs: a Map root with no value Column pairs and logs nothing")
+    void mapRootWithoutAValueColumnPairsAndLogsNothing() {
+        Column column = nullableNode(ROOT_SENTINEL).type(Type.MAP).mapKeyType(Type.STRING).build();
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, "Map(String, Int32)", DATABASE, TABLE));
+
+            assertEquals(List.of(), log.events());
+        }
+    }
+
+    @Test
+    @DisplayName("COLS-12 (D-09): a declared type ClickHouseColumn.of rejects falls back with one WARN ending in the thrown class name")
+    void rejectedDeclaredTypeFallsBackWithTheThrownClassName() throws Exception {
+        String type = "Nullable(Tuple(SENTINEL_ELEMENT_NAME NoSuchType))";
+        RuntimeException rejection =
+                assertThrows(RuntimeException.class, () -> ClickHouseColumn.of(ROOT_SENTINEL, type));
+        String reason = "(" + rejection.getClass().getSimpleName() + ")";
+        Column column = root(
+                describe(row(ROOT_SENTINEL, "Nullable(Tuple(a Int32))"), row(ROOT_SENTINEL + ".a", "Nullable(Int32)")),
+                ROOT_SENTINEL);
+        Map<String, Boolean> before = nullabilityByPath(column);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+            assertTrue(warning.message().contains(QUALIFIED_TABLE), warning.message());
+            assertTrue(warning.message().contains(type), warning.message());
+            assertTrue(warning.message().contains(reason), warning.message());
+            assertFalse(warning.hasThrowable(), "the exception text can echo the type and is never logged");
+            assertEquals(1, log.events().size());
+        }
+        assertEquals(before, nullabilityByPath(column));
     }
 
     @Test

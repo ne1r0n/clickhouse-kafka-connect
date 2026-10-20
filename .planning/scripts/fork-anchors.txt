@@ -80,3 +80,5 @@ src/main/java/com/clickhouse/kafka/connect/util/WithheldMessageException.java	pu
 src/main/java/com/clickhouse/kafka/connect/util/WithheldMessageException.java	(message withheld: may contain record data)	1	WRT-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	throw new RuntimeException("No content in enum");	1	WRT-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	No content in enum %s	0	WRT-13
+# Phase 23 (v1.7.0_gg3): rows for the declared-nullability hardening (COLS-12 null totality; COLS-13 and COLS-14 rows follow).
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	column == null || column.getType() == null	2	COLS-12

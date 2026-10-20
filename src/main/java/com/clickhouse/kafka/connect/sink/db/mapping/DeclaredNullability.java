@@ -23,7 +23,9 @@ import org.slf4j.LoggerFactory;
  * <p>It fails open: a declared type that {@link ClickHouseColumn#of} rejects, a Column tree that
  * does not pair with the parsed tree, or any other unexpected exception in the pass leaves the root
  * exactly as DESCRIBE reported it and logs one WARN with metadata only (column, database, table, raw
- * type and, for an exception, its class name).
+ * type and, for an exception, its class name). A null anywhere in the Column tree (a type, a {@code
+ * tupleFields} entry, a field or Tuple name) counts as a tree that does not pair, and a null root
+ * returns false without a log.
  */
 public final class DeclaredNullability {
 
@@ -54,7 +56,7 @@ public final class DeclaredNullability {
 
     /** True when {@code column} is, or holds as an Array element or Map value, a Tuple. */
     public static boolean containsTuple(Column column) {
-        if (column == null) {
+        if (column == null || column.getType() == null) {
             return false;
         }
         switch (column.getType()) {
@@ -74,18 +76,23 @@ public final class DeclaredNullability {
      * declaredType}, all or none.
      *
      * @return true when the nullability was applied; false when it was left as DESCRIBE reported it
-     *     (no declared type, a type that does not parse, trees that do not pair, or an
-     *     unexpected exception)
+     *     (no root or no declared type, a type that does not parse, trees that do not pair or hold a
+     *     null, or an unexpected exception)
      */
     public static boolean apply(Column root, String declaredType, String database, String table) {
-        if (declaredType == null) {
+        if (root == null || declaredType == null) {
             return false;
         }
+        String columnName = root.getName();
         try {
-            ClickHouseColumn parsed = ClickHouseColumn.of(root.getName(), normalise(declaredType));
+            if (columnName == null) {
+                LOGGER.warn(FALLBACK_WARNING, columnName, database, table, declaredType, STRUCTURE_MISMATCH);
+                return false;
+            }
+            ClickHouseColumn parsed = ClickHouseColumn.of(columnName, normalise(declaredType));
             List<Assignment> assignments = new ArrayList<>();
             if (!collect(root, parsed, assignments)) {
-                LOGGER.warn(FALLBACK_WARNING, root.getName(), database, table, declaredType, STRUCTURE_MISMATCH);
+                LOGGER.warn(FALLBACK_WARNING, columnName, database, table, declaredType, STRUCTURE_MISMATCH);
                 return false;
             }
             for (Assignment assignment : assignments) {
@@ -96,7 +103,7 @@ public final class DeclaredNullability {
             // The exception text can echo the type, so only its class name is logged. The assignments
             // are applied only after collect succeeded, so the root is never left half-updated.
             LOGGER.warn(
-                    FALLBACK_WARNING, root.getName(), database, table, declaredType, e.getClass().getSimpleName());
+                    FALLBACK_WARNING, columnName, database, table, declaredType, e.getClass().getSimpleName());
             return false;
         }
     }
@@ -116,6 +123,9 @@ public final class DeclaredNullability {
     }
 
     private static boolean collect(Column column, ClickHouseColumn declared, List<Assignment> into) {
+        if (column == null || column.getType() == null) {
+            return false;
+        }
         ClickHouseColumn parsed = unwrapSimpleAggregate(declared);
         switch (column.getType()) {
             case TUPLE:
@@ -140,7 +150,7 @@ public final class DeclaredNullability {
     }
 
     private static boolean collectTuple(Column tuple, ClickHouseColumn parsed, List<Assignment> into) {
-        if (!parsed.isTuple()) {
+        if (!parsed.isTuple() || tuple.getName() == null) {
             return false;
         }
         into.add(new Assignment(tuple, parsed.isNullable()));
@@ -155,7 +165,7 @@ public final class DeclaredNullability {
         String prefix = tuple.getName() + NAME_SEPARATOR;
         List<Column> fields = tuple.getTupleFields() == null ? List.of() : tuple.getTupleFields();
         for (Column field : fields) {
-            if (!field.getName().startsWith(prefix)) {
+            if (field == null || field.getName() == null || !field.getName().startsWith(prefix)) {
                 return false;
             }
             ClickHouseColumn declared = byKey.get(field.getName().substring(prefix.length()));
