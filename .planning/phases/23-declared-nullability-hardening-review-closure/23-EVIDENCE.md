@@ -15,7 +15,7 @@
 | R-04 | 23-RESEARCH | Prototype run: which existing tests D-01 turns red | recorded |
 | E-01 | 23-01 | DEBT-11 baselines and commits | recorded |
 | E-02 | 23-02 | COLS-12 | recorded |
-| E-03 | 23-03 | DEBT-10 fallback-WARN mutations | pending |
+| E-03 | 23-03 | DEBT-10 fallback-WARN mutations | recorded |
 | E-04 | 23-04 | COLS-13 | pending |
 | E-05 | 23-05 | COLS-14, the unpaired-WARN mutations and the SC3 reading | pending |
 | E-06 | 23-06 | DEBT-12 closure pointers | pending |
@@ -189,3 +189,38 @@ cols12_commit_files: 6
 anchors_mirror_23_02: rows=66 bad=0
 spotless_after_23_02: SPOTLESS-BASELINE-EQUAL
 testunit_23_02: Tests summary: 808 tests, 806 succeeded, 0 failed, 2 skipped
+
+### E-03: DEBT-10 fallback-WARN mutations (23-03)
+
+Recorded 2026-10-20T11:51:00Z. Scratch output is in `/tmp/gsd23/exec/`.
+
+d17_expected: 14 or more (found 14: the three converted names and the COLS-12 (D-07) structure mismatch / (D-08 flip) / (D-09) testcases)
+d17_tracer: rc=1 under both mutations; `COLS-10: a declared type that does not parse fails open with one metadata-only WARN` failed with `WR-02 column segment: ` under m1 and m2, green after the revert (38 testcases)
+d17_fallback_m1: rc=1 marked=14 missing=none
+d17_fallback_m2: rc=1 marked=14 missing=none
+d17_reverted: yes (git diff --quiet -- src/main after each run)
+d17_m2_reasoning: with the placeholder dropped SLF4J writes the sentinel into the table slot (of table nullability_root.db), so a bare contains(sentinel) passes; only the delimited column <name> of table segment fails
+assert_lines_unchanged: unparsable=8 structure=7 fork=3
+debt10_commit: 075e6466aab3413ececb1301535f80ed00ec4e83
+spotless_after_23_03: SPOTLESS-BASELINE-EQUAL
+anchors_mirror_23_03: rows=66 bad=0
+testunit_23_03: Tests summary: 809 tests, 807 succeeded, 0 failed, 2 skipped
+
+Mutation 1 deleted `columnName, ` after `FALLBACK_WARNING, ` in the three LOGGER.warn calls (before: 3 lines, after: 0; `FALLBACK_WARNING, database, ` 3 lines). Mutation 2 replaced `for column {} of table` with `for column  of table` in the constant (1 line). DeclaredNullability.java was restored with `git checkout --` after each run. DeclaredNullabilityTest ends at 39 testcases and ClickHouseHelperClientForkUnitTest at 45, both with 0 failures. Other testcases that check `db.t` without a column assertion also went red under both mutations; they carry no `WR-02 column segment: ` text and are not in the D-17 list.
+
+| Testcase | m1 | m2 |
+|----------|----|----|
+| COLS-10: a declared type that does not parse fails open with one metadata-only WARN | red | red |
+| COLS-12 (D-09): a declared type ClickHouseColumn.of rejects falls back with one WARN ending in the thrown class name | red | red |
+| COLS-12 (D-07) structure mismatch: a null tupleFields entry | red | red |
+| COLS-12 (D-07) structure mismatch: a field with a null name | red | red |
+| COLS-12 (D-07) structure mismatch: an Array element with a null type | red | red |
+| COLS-10: a Tuple Column whose declared type is not a Tuple fails open and changes nothing | red | red |
+| COLS-12 (D-07) structure mismatch (kept): an Array root with no element Column | red | red |
+| COLS-12 (D-07) structure mismatch: an element Tuple with a null name never pairs a field literally named null.a | red | red |
+| COLS-12 (D-07) structure mismatch: a field with a null type | red | red |
+| COLS-12 (D-07) structure mismatch: a root with a null name | red | red |
+| COLS-12 (D-08 flip): a Column with a null type falls back as a structure mismatch with one metadata-only WARN naming the table | red | red |
+| COLS-12 (D-07) structure mismatch: a Map value with a null type | red | red |
+| COLS-12 (D-07) structure mismatch: a second call on the same null-type root warns again and leaves it untouched | red | red |
+| COLS-10 IN-01: the fallback WARN raised during discovery names the database and the table | red | red |
