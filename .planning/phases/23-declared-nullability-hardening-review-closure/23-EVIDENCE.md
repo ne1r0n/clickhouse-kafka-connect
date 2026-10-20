@@ -18,8 +18,8 @@
 | E-03 | 23-03 | DEBT-10 fallback-WARN mutations | recorded |
 | E-04 | 23-04 | COLS-13 | recorded |
 | E-05 | 23-05 | COLS-14, the unpaired-WARN mutations and the SC3 reading | recorded |
-| E-06 | 23-06 | DEBT-12 closure pointers | pending |
-| E-07 | 23-06 | phase gate and SC1..SC5 readings | pending |
+| E-06 | 23-06 | DEBT-12 closure pointers | recorded |
+| E-07 | 23-06 | phase gate and SC1..SC5 readings | recorded |
 
 ## Research captures (written during 23-RESEARCH, not by an executor)
 
@@ -270,3 +270,53 @@ Tracer red (unchanged production file): only the sibling `COLS-14 unpaired-eleme
 D-17 for the new WARN: mutation 1 deleted `columnName, ` from the `LOGGER.warn` call (marker count 0) and mutation 2 turned `of column {}` into `of column ` in the constant (marker count 1). Under both, all 16 `COLS-14 unpaired-element WARN` testcases failed with the `WR-02 column segment: ` text, and the 14 fallback-WARN column testcases (the three COLS-10 fallback pins, the COLS-12 structure-mismatch pins, the D-08 flip and the D-09 pins) stayed green, which shows the mutations are local.
 
 D-03 / D-04: the Docker-free pin runs the R-01 rows through the real `shouldSkipDescribeRow` and `buildDescribedTable` in the `describeTableV2` loop order. For `size`, `size0` and `Array(Tuple(size ..))` the Tuple Column lacks the element, one WARN names it, a direct `apply` returns true and every paired element carries its declared flag (the `size0` case keeps `other` non-nullable although DESCRIBE reported `Nullable(String)`). `ClickHouseHelperClient.java` is unchanged since 16e0b2d6 (`git diff --quiet` on `sink/db/helper` in src/main).
+
+### E-06: DEBT-12 closure pointers (23-06)
+
+Recorded 2026-10-20. The Task 1 tracer (19-REVIEW WR-01) was verified with its own check and committed together with the rest in the single DEBT-12 commit, because the plan's commit check requires that commit to hold exactly the two disposition files. The DEBT-12 checker printed `errors: []`.
+
+| Review | Finding | Disposition | Pointer | Evidence |
+|--------|---------|-------------|---------|----------|
+| 17 | WR-01 | fixed | fee898c6 and 5d616806 (Phase 21) | 21-EVIDENCE.md E-02, E-11; 21-UAT.md test 1 (5010093f) |
+| 17 | IN-01 | fixed | fee898c6 (Phase 21, CI-18) | 21-EVIDENCE.md E-10, E-11 |
+| 17 | IN-02 | fixed | fee898c6 (Phase 21, CI-19) | 21-EVIDENCE.md E-10, E-11 |
+| 17 | IN-03 | skipped | roadmap reason: leave Lz4RoundTripLiveTest's jar-origin check, cross-referenced to TestRuntimeClasspathLz4UnitTest | Lz4RoundTripLiveTest unchanged since 16e0b2d6 |
+| 19 | WR-01 | fixed | 4bbc9627 (fix(23-02), COLS-12) | E-02 |
+| 19 | WR-02 | fixed | 075e6466 (test(23-03), DEBT-10) | E-03, E-05 |
+| 19 | WR-03 | unchanged | 3e39867d (already fixed) | byte-identical to 16e0b2d6 |
+| 19 | IN-01 | fixed | 4478016a (refactor(23-01) D-14, DEBT-11) | E-01 |
+| 19 | IN-02 | fixed | 252cf8f3 (refactor(23-01) D-15) and 4bbc9627 (fix(23-02) D-08) | E-01, E-02 |
+| 19 | IN-03 | fixed | f55165ee (fix(23-04), COLS-13) | E-04 |
+| 19 | CR-01 | unchanged | 4e133d4e (already fixed) | byte-identical to 16e0b2d6 |
+| 19 | IN-04 | fixed | f83ac147 (fix(23-05), COLS-14, D-01; backlog 999.4) | E-05 |
+
+debt12_commit: fb71551e8e30b2e3306206106177dbeef939b2c0
+open_17: 0 (before 4)
+open_19: 0 (before 0)
+findings_closed: 10
+findings_unchanged: 2 (19 WR-03, CR-01)
+close_record_edited: no
+lz4_live_test_changed: no
+
+### E-07: Phase 23 close gate and SC readings (23-06)
+
+Recorded 2026-10-20 on ClickHouse `latest` with client V2 (CLICKHOUSE_VERSION and CLIENT_VERSION unset), on HEAD fb71551e (the DEBT-12 commit). Scratch output is in `/tmp/gsd23/exec/` (`testunit-final.log`, `full-suite.log`, `full-suite.rc`, `gate-final.{out,err,rc}`, `scope-final.txt`). Every run is listed: `testUnit --rerun` once, `test --rerun` once; no OpenJ9 exit 255 occurred and no re-run was needed.
+
+testunit_rerun: Tests summary: 838 tests, 836 succeeded, 0 failed, 2 skipped
+full_suite: Tests summary: 1277 tests, 1259 succeeded, 0 failed, 18 skipped
+full_suite_runs: 1 (exit 0, no exit-255 crash, no javacore or core dump produced)
+full_suite_skips: 18
+gate_final: invariants: provenance_paths=21 anchor_commits=468 anchor_rows=69 marker_commits=515 anchor_exempt=1 result=PASS
+spotless_final: SPOTLESS-BASELINE-EQUAL
+scope_ok: yes
+order_ok: yes
+no_push: yes
+worktrees: 1
+clickhouse_server: 26.9.19.9 (clickhouse/clickhouse-server:latest, image bdb5c911a23d created 2026-10-14; logged by NullableTupleMatrixLiveTest)
+sc1: pass (E-02: COLS-12 pins red before and green after; the D-08 flip keeps its method and input with a written rationale)
+sc2: pass (E-04: Docker-free pins on the live capture R-02; live premise on both twins and the drift oracle; no fallback WARN; D-13 not triggered)
+sc3: pass (SC3 as amended 2026-10-20 per 23-CONTEXT D-01: log one metadata-only WARN and still apply; E-05 sc3_reading records that the shipped behaviour matches it; missingDeclaredElementDoesNotShiftPairing byte-identical and green)
+sc4: pass (E-03 and E-05: sentinel root, delimited segment, both D-17 mutations red for every column assertion; E-01: one backslash-n literal, pass-through and mid-class constant cleaned up)
+sc5: pass (E-06: every 17-REVIEW and 19-REVIEW finding fixed or closed with a written reason and a pointer; 17 IN-03 skipped with the roadmap's reason; Lz4RoundTripLiveTest unchanged)
+
+Gate detail: all 89 JUnit XML files under `build/test-results/test` show 0 failures and 0 errors, and DeclaredNullabilityTest (62), ClickHouseHelperClientForkUnitTest (51), NullableTupleMatrixLiveTest (33) and SimpleAggregateTupleRoundTripLiveTest (2) hold their expected testcase counts. The anchors invariant exited 0 with an empty stderr. The testUnit total (838/836/2 skipped) equals the figure E-05 recorded after 23-05, so the 23-06 plan, which changes no source, left it unchanged.
