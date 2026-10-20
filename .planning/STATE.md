@@ -5,17 +5,17 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 24
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-10-20T15:07:45.571Z"
+stopped_at: Completed 24-01-PLAN.md
+last_updated: "2026-10-20T16:21:36.459Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 23 complete, transitioned to Phase 24
-state_head: 39d079c22829dda9b678d76cf20f3251c5ce573c
+last_activity_desc: Phase 24 execution started
+state_head: cb5b8cdfbbad1b7f3572a2cddc5dfe6f14264f19
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 16
-  percent: 70
+  completed_plans: 17
+  percent: 74
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 23)
 
 ## Current Position
 
-Phase: 24 (Release & Publication) — READY TO EXECUTE
-Plan: Not started
+Phase: 24 (Release & Publication) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-10-20 — Phase 23 complete, transitioned to Phase 24
+Last activity: 2026-10-20 — Phase 24 execution started
 
-Progress: [███████░░░] 70%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
@@ -156,6 +156,7 @@ Progress: [███████░░░] 70%
 | Phase 23 P04 | 35 min | 3 tasks | 8 files |
 | Phase 23 P05 | 8 min | 3 tasks | 8 files |
 | Phase 23 P06 | 9 min | 3 tasks | 3 files |
+| Phase 24 P01 | 10 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,9 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 23]: 23-06: Tracer (19-REVIEW WR-01) verified on its own but folded into the single DEBT-12 commit, whose check requires exactly the two disposition files
 - [Phase 23]: 23-06: 17-REVIEW IN-03 closed as skipped, a status already in both files rules footer
 - [Phase 23]: Phase closed 2026-10-20: verification passed 5/5 (the verifier re-ran the suites and four mutations itself), SECURITY threats_open 0 (19 threats, 4 accepted at plan time), full suite 1277/0. 23-REVIEW (0 critical, 2 warning, 4 info) stays `open` in 23-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 23 follow-ups)
+- [Phase 24]: 24-01: D-04 branch 1 measured: only a Map key reaches the task status chain, DLQ stack-trace header and Error inserting records throwable; no value; residual stays accepted, no code change
+- [Phase 24]: 24-01: the shipped jar changes between pre-merge tip and gg3 by the Phase 22-23 classes, WithheldMessageException and four version-bearing entries (Version, MANIFEST, ClickHouseHelperClient, SinkTaskStatistics); the three bumps change no entry
+- [Phase 24]: 24-01: the setting-absent JSON control surfaces the schema-validation text, not 'Writing JSON in binary is not supported yet' (shadowed by validation); documents must word it from E-03
 
 ### Pending Todos
 
@@ -244,9 +248,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T13:39:43.112Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-release-publication/24-CONTEXT.md
+Last session: 2026-10-20T16:21:36.016Z
+Stopped at: Completed 24-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
