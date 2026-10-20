@@ -44,8 +44,8 @@ checklist.
 ## Bug Fixes
 
 * A `Nullable(Tuple(...))` whose element name holds a backslash followed by `n`, or a line break, now pairs with its
-  declared type, so its inserts store the row instead of failing with code 33, and the fallback WARN for such a table
-  stops.
+  declared type, so an insert into it stores the row instead of failing with code 33 (measured for a `Nullable(Tuple)`,
+  an `Array` of it and a `Map` of it), and the fallback WARN for such a table stops.
 * On client V1, a record whose text contains a ClickHouse code 33 or code 131 message no longer triggers a
   table-mapping refresh and a retry of the insert.
 
