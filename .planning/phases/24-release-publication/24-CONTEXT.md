@@ -146,6 +146,29 @@ Publish `v1.7.0_gg3` on `custom_build`. Four requirements:
     - decide on #6-#8 now that the freeze is over. Any merge diverges `sync/v1.7.0` again, and the next milestone opens with a DEPS-01-style merge.
   - Nothing waits on the user's answers. The milestone audit and close follow as usual (20-D-12).
 
+### Post-research decisions (user, 2026-10-20, answering 24-RESEARCH Open Questions 1, 2, 4/3 and 5)
+- **D-12 (OQ1, 999.4 scope):** **widen the disclosure to the measured scope.** D-01's rollout item, CHANGELOG Known-issue line and FORK-DELTA Known-costs item state:
+  - a Tuple element named `size` or `size0` at any depth, **plus** an element named `size<digits>` wherever an `Array` encloses its Tuple (24-RESEARCH R5.1);
+  - inserts fail with **code 32 or 33**, depending on shape, not only code 33.
+
+  Ship the two-predicate `system.columns` query (R5.2), re-proven live in execution, with its one known over-flag (`Array(Map(String, Tuple(size1 …)))`) stated. The note says the query lists suspects from the declared type text, and that the log grep `have no matching DESCRIBE sub-column` is the exact check. D-02 holds: no fix and no workaround in this release.
+- **D-13 (OQ2, 999.5 scope):** **widen the known-limitation paragraph and the FORK-DELTA Known-costs item** (R5.3):
+  - a backslash, a `/` or a tab in a column or element name means the Kafka field must use the connector's escaped form (the measured Column-name column), or the default is stored silently with no error;
+  - one clause says that a `"` in a name leaves the table unmapped.
+
+  The detection query adds the `/` and tab predicates only after they are proven live against fixtures, including look-alikes. **No CHANGELOG line**, as D-05 decided.
+- **D-14 (OQ4 + OQ3, D-03/D-04 matrix and wording):**
+  - The D-03 probe matrix is **Connect-typed values only**. The contrived bean whose getter throws with the value in its message is **out of scope**. It is recorded as such in the evidence, so D-04's third branch cannot fire on it. With Connect-typed content only a Map key appears (R2.2), so D-04's **first branch** applies: no code change, and the residual stays accepted.
+  - The headline exception is worded: "the only exception we know of is a Map key, on connectors whose `clickhouseSettings` sets `input_format_binary_read_json_as_string` to `1` or `true` and whose records carry a value Jackson cannot serialize".
+  - The operator self-check greps the connector config for `input_format_binary_read_json_as_string`. **There is no `binaryFormatWrtiteJsonAsString` connector key**; that flag is derived at `ClickHouseSinkConfig.java:355-356`.
+- **D-15 (OQ5, D-09 level):** **use a shape-limited clean stop.** `Nullable(Tuple)` with a backslash-n or line-break element name, whether a root, an `Array` element, a `Map` value or a Tuple field, is the one shape whose bytes differ (R3). For that shape, in the rollback direction only, the note reuses gg2 item 1's clean-stop procedure and KeeperMap self-check, proven live (20-D-03 discipline, `DedupTokenRetryLiveTest`'s measured rule). Every other change gets one sentence each way saying that no clean stop is needed.
+
+**Research corrections to the decisions above** (facts measured in 24-RESEARCH, not new choices; word the documents from these):
+- **D-08 "which ship":** none of the three bumps changes the shipped `createConfluentArchive` zip. `slf4j-reload4j` and `reload4j` are **not in the zip**: they are `runtimeClasspath` only. Lombok 1.18.48 output is byte-identical, and spotless is build-time only (R4.2). The note's dependency item says all three leave the shipped artifact unchanged. Re-measure in execution.
+- **D-07 artifact:** no GitHub Release or asset exists for any tag. "Redeploy the artifact built from tag `v1.7.0_gg2`" therefore means the operator's own `./gradlew createConfluentArchive` build at that tag. A build of `pre-v1.7.0_gg3` gives the same zip bytes (R4.2).
+- **D-06 count:** 17 carried findings, confirmed (19 total, minus 21-IN-03 and 23-IN-04).
+- **Starting refs:** the left/right count is now `0 122`, because of the two planning commits since the discussion. Re-measure at the gate.
+
 ### Claude's Discretion
 - **The plan split.** Likely shape:
   - a probe and evidence plan: the D-03 live test, the D-08 artifact diff, the D-09 check and the detection-query proofs;
