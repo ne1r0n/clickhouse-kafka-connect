@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 23
 current_phase_name: Declared-Nullability Hardening & Review Closure
 status: executing
-stopped_at: Completed 23-02-PLAN.md
-last_updated: "2026-10-20T11:47:49.916Z"
+stopped_at: Completed 23-03-PLAN.md
+last_updated: "2026-10-20T11:51:59.238Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 execution started
-state_head: 8b35eae0f932787102a7ea2cbeac35f581dc4690
+state_head: 267d8cde3304240c326541afc10f23d631b7a224
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 22)
 ## Current Position
 
 Phase: 23 (Declared-Nullability Hardening & Review Closure) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 23 execution started
 
@@ -151,6 +151,7 @@ Progress: [█████░░░░░] 50%
 | Phase 22 P05 | 9 min | 2 tasks | 1 files |
 | Phase 23 P01 | 15 min | 2 tasks | 7 files |
 | Phase 23 P02 | 14 min | 3 tasks | 7 files |
+| Phase 23 P03 | 8 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 23]: 23-01: DeclaredNullability.ESCAPED_NEWLINE made public as the single shared definition; test copies and the NullableRoundTrip pass-through removed (DEBT-11)
 - [Phase 23]: A null root name in DeclaredNullability.apply is a structure mismatch, not IllegalArgumentException (COLS-12, RESEARCH Open Question 2)
 - [Phase 23]: D-08 flip keeps unexpectedExceptionInThePassFailsOpenWithOneMetadataWarning and its null-type input; NPE class-name assertion becomes (structure mismatch) under a scoped AGENTS.md exemption
+- [Phase 23]: 23-03: fallback-WARN column assertions use the sentinel root and the delimited column segment; both D-17 mutations seen red for 14 testcases (DEBT-10)
 
 ### Pending Todos
 
@@ -231,8 +233,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T11:47:49.718Z
-Stopped at: Completed 23-02-PLAN.md
+Last session: 2026-10-20T11:51:59.039Z
+Stopped at: Completed 23-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
