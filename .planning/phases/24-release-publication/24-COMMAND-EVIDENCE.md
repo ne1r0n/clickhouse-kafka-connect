@@ -337,3 +337,103 @@ Verdict per direction, worded from the measurements above (research R3.4 was the
 - **Rollback, gg3 to gg2:** measured in E-12.
 
 Matches text: pending (24-03)
+
+### E-12: a gg2 retry of a range gg3 landed, differing shape versus control (D-15)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, the rollback item and the in-flight item's shape-limited clean stop (written in plan 24-03). It is the measured basis for "stop cleanly before going back to `v1.7.0_gg2`, for tables of the differing shape". Method (`rollbackRetry`, run in the `v1.7.0_gg2` worktree only, server `26.9.19.9`, client V2): two tables `d15_r02_bsn` (the r02 shape `Nullable(Tuple(n Int32, d String))`, the element named with a literal backslash and `n`) and `d15_r02_plain` (the same shape, element `ab`), each `ENGINE = MergeTree ORDER BY id SETTINGS non_replicated_deduplication_window = 100`. For each table the correct row is inserted first as plain SQL under the token the gg3 connector would have sent for topic = table name, partition 0, offsets 0 to 0 (the connector's token is `<topic>-<partition>-<min>-<max>`, `QueryIdentifier.getDeduplicationToken`):
+
+```sql
+INSERT INTO `<db>`.`d15_r02_bsn` (id, c) SETTINGS insert_deduplication_token = 'd15_r02_bsn-0-0-0' VALUES (1, (7, 'x'))
+```
+
+Then a `v1.7.0_gg2` `ClickHouseSinkTask` (V2, `exactlyOnce=false`, which still sends the token) is started and the same record is put at partition 0, offset 0. The row the gg3 connector would have landed is therefore simulated by SQL under its token; the gg3 connector itself did not write it in this measurement.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-gg2/gradlew -p /tmp/gsd24/wt-gg2 --console=plain test --tests '*Phase24RolloutProbe.rollbackRetry' --rerun
+cp /tmp/gsd24/wt-gg2/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase24RolloutProbe.xml /tmp/gsd24/exec/d15-gg2.xml
+python3 -I /tmp/gsd24/probe/xml-probe-lines.py /tmp/gsd24/exec/d15-gg2.xml
+```
+
+```text
+PROBE-VERSION tree=gg2 version=26.9.19.9
+PROBE-RETRY tree=gg2 table=d15_r02_bsn first=landed outcome=failed code=33 rows=1
+PROBE-RETRY tree=gg2 table=d15_r02_plain first=landed outcome=dropped code=- rows=1
+```
+
+(XML: `tests="1" skipped="0" failures="0" errors="0"`.) Result: for the differing shape the gg2 retry of the range fails with server code 33 and leaves exactly the one correct row; the control (plain element name, identical bytes under both releases, E-11) is dropped by the token, also with one row. So under `v1.7.0_gg2` the retry of a range of a differing-shape table is not deduplicated away: the server rejects the bytes first (E-11) and the connector surfaces the failure, even though the rows had landed. That is the one shape where a clean stop (no range of the table in `BEFORE_PROCESSING`) matters before a rollback; the check is the query of E-14, which names topics, not shapes, and the shape is found with the query of E-13.
+
+Matches text: pending (24-03)
+
+### E-13: the query for the differing shape (D-15)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, the in-flight item (which tables are of the shape that encodes differently) and the rollback item (written in plan 24-03). Doc-form query, one read-only `SELECT` over `system.columns`, `<db>` is its only placeholder (`/tmp/gsd24/probe/sql/escaped-nullable-tuple.sql`). It strips single-quoted enum labels first, then lists a column when its declared type text contains `Nullable(Tuple(` and a backtick-quoted name that holds a backslash followed by `n`. In the text `system.columns` shows, a name with a literal backslash-n prints as `\\n` and a name with a real line break prints as `\n`, so both styles of E-10 match; a name with a single backslash, a trailing backslash or a tab (printed `\\`, `\\` at the end and `\t`) does not.
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND position(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), 'Nullable(Tuple(') > 0
+  AND match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*\\\\n[^`]*`')
+ORDER BY `table`;
+```
+
+Substitution map: `<db>` = the fixture database of that run (`<test database>_sq`, 44 `d09_*` tables of E-10) and, for the second run, a database holding only look-alikes (`<test database>_sql`: every `_plain` table, the non-`Nullable` roots r01, r04, r06, r08, r11 in all three name styles, and the four enum-label shapes). Run in the gg3 worktree (the method `shapeQuery`), same server `26.9.19.9`:
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-tip/gradlew -p /tmp/gsd24/wt-tip --console=plain test --tests '*Phase24RolloutProbe.shapeQuery' --tests '*Phase24RolloutProbe.keeperSelfCheck' --rerun
+cp /tmp/gsd24/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase24RolloutProbe.xml /tmp/gsd24/exec/d15-gg3.xml
+```
+
+```text
+PROBE-SHAPEQ tree=gg3 db=fixture tables=d09_r02_bsn,d09_r02_lf,d09_r03_bsn,d09_r03_lf,d09_r05_bsn,d09_r05_lf,d09_r07_bsn,d09_r07_lf,d09_r09_bsn,d09_r09_lf,d09_r10_bsn,d09_r10_lf,d09_r12_bsn,d09_r12_lf
+PROBE-SHAPEQ tree=gg3 db=lookalike tables=
+```
+
+(XML: `tests="2" skipped="0" failures="0" errors="0"`.) The fixture result is exactly the 14 tables of `D09-DIFFERING` (E-10), no plain-name, non-`Nullable`, enum-label or `size` table is listed, and the look-alike-only database returns an empty list, which is what the note's "Empty result" sentence promises.
+
+SHAPEQ-OVERFLAG=
+
+Why the predicate says "backslash followed by `n`" and not "a backslash". The plan's first reading was "a backtick-quoted name holding a backslash" (the broad variant, `/tmp/gsd24/probe/sql/escaped-nullable-tuple-broad.sql`, which differs in one line: the regex `` `[^`]*\\\\[^`]*` `` in place of `` `[^`]*\\\\n[^`]*` ``). A supplementary run outside the plan's fixture set (method `shapeExtra`, both trees, XML `/tmp/gsd24/exec/d15x-gg2.xml` and `d15x-gg3.xml`, each `tests="1" skipped="0" failures="0" errors="0"`) put `c Nullable(Tuple(<name> Int32, d String))` over more names. The two releases' trees differ only where the declared type text holds a backslash directly followed by `n`: the `normalise` of `v1.7.0_gg2` replaces every such pair by a space, and that of `v1.7.0_gg3` leaves a pair inside a quoted name alone. The measurements:
+
+| table | element name | trees gg2 vs gg3 | gg2 insert | gg3 insert | broad query | query above |
+|-------|--------------|------------------|------------|------------|-------------|-------------|
+| `x_bs1` | one backslash (`a\b`) | identical | stored | stored | lists | not listed |
+| `x_bs2` | trailing backslash (`e\`) | identical | stored | stored | lists | not listed |
+| `x_tab` | tab | identical | stored | stored | lists | not listed |
+| `x_bst` | literal backslash and `t` | identical | stored | stored | lists | not listed |
+| `x_sp` | space (`a b`) | identical | stored | stored | not listed | not listed |
+| `x_bbn` | two backslashes and `n` | **differ** | **failed, code 33, 0 rows** | stored | lists | lists |
+| `x_nl` | backslash-n on a non-`Nullable` root with `Nullable` leaves | identical | stored | stored | n/a (no `Nullable(Tuple(`) | not listed |
+| `x_sl` | slash (`a/b`) | identical | **failed, code 33, 0 rows** | **failed, code 33, 0 rows** | not listed | not listed |
+
+```text
+PROBE-SHAPEQX tree=gg3 tables=x_bbn
+PROBE-SHAPEQX-BROAD tree=gg3 tables=x_bbn,x_bs1,x_bs2,x_bst,x_tab
+```
+
+The broad variant would have flagged four tables whose bytes are the same on both releases. The query above is the one kept. The slash row is a different known limit (E-16): a `Nullable(Tuple)` with a slash in an element name fails on both releases, so it is not a rollback difference and this query does not list it.
+
+Matches text: pending (24-03)
+
+### E-14: KeeperMap self-check on a gg3-created state table (D-15)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, the rollback item's clean-stop check (written in plan 24-03). It is the query of item 1 of `docs/ROLLOUT-v1.7.0_gg2.md`, copied verbatim, now run against a state table that the gg3 connector's own code creates. Method (`keeperSelfCheck`, gg3 worktree, server `26.9.19.9`): `new KeeperStateProvider(new ClickHouseSinkConfig(props))` with `zkPath` `/kafka-connect` and `zkDatabase` `connect_state` against the server's embedded Keeper creates the table; the provider then writes three state records: `orders` partition 0 `AFTER_PROCESSING` (offsets 0 to 9), `orders` partition 1 `BEFORE_PROCESSING` (10 to 19) and `orders-v2` partition 0 `BEFORE_PROCESSING` (0 to 4). The query runs for topic `orders`; then `orders` partition 1 is set to `AFTER_PROCESSING` and the query runs again.
+
+```sql
+SELECT `key`, minOffset, maxOffset, state
+FROM `<zkDatabase>`
+WHERE state != 'AFTER_PROCESSING'
+  AND arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>', '<topic>')
+ORDER BY `key`;
+```
+
+Substitution map: `<zkDatabase>` = `connect_state`, `<topic>` = `orders` (both occurrences). The query runs in the database the state table lives in (the probe's connection database). Commands as in E-13 (the same Gradle run, method `keeperSelfCheck`).
+
+```text
+PROBE-KEEPER case=in-flight keys=orders-1
+PROBE-KEEPER case=all-after keys=
+```
+
+Result: the first run returns exactly the one in-flight key of the listed topic, `orders-1`; it does not return `orders-0` (already `AFTER_PROCESSING`) and does not return `orders-v2-0`, which is `BEFORE_PROCESSING` under a topic that merely shares the prefix. The second run returns nothing. Same result as Phase 20's E-17 on the gg2 classes, now on the gg3 classes.
+
+Matches text: pending (24-03)
