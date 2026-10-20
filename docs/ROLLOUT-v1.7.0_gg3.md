@@ -1,6 +1,6 @@
 # Rollout checklist: `v1.7.0_gg2` to `v1.7.0_gg3`
 
-This copy corrects the text of the copy in tag `v1.7.0_gg3` in four items: [item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size), [item 3](#item-3-backslashes-and-line-breaks-in-names), [item 4](#item-4-in-flight-batches) and [item 7](#item-7-rollback). No query and no command changed. Item 7 now has you work through item 4 before you change the branch. If you hold the tagged copy, read those items here.
+This copy corrects the text of the copy in tag `v1.7.0_gg3` in four items: [item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size), [item 3](#item-3-backslashes-and-line-breaks-in-names), [item 4](#item-4-in-flight-batches) and [item 7](#item-7-rollback). No query and no git command changed. Item 4 now also covers connectors with `exactlyOnce=false` and with `enableDbTopicSplit=true`, and item 7 has you work through item 4 before you change the branch. If you hold the tagged copy, read those items here.
 
 If you are coming from a release before `v1.7.0_gg2`, work through [`ROLLOUT-v1.7.0_gg2.md`](ROLLOUT-v1.7.0_gg2.md) first, which in turn sends you to [`ROLLOUT-v1.7.0_gg1.md`](ROLLOUT-v1.7.0_gg1.md), and return here afterwards.
 
