@@ -574,3 +574,59 @@ PROBE-ESC-QUERY tree=gg2 db=lookalike tables=
 Result: exactly the ten backslash, line-break, slash and tab fixtures, none of the look-alikes, and an empty list on the look-alike-only database ("Empty result" in the note). The double-quote table `e5_e11` is not listed and is not meant to be: the query reads names, and that table is not a name-equality case but an unmapped one (`describeTable` returns no table on both releases). A root or Tuple with a slash in an element name is listed (`e5_e04`, `e5_e09`). A slash element name under a `Nullable(Tuple)` was not run through this query, but E-13 (row `x_sl`) shows that such a table fails with code 33 on both releases, because the declared-type pairing falls back; that is the same name-equality limit seen from the nullability side.
 
 Matches text: pending (24-03, 24-04)
+
+### E-20: connector-config self-check for the JSON-as-string route (D-14)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, item 1 (the first "Am I affected?" check, written in plan 24-03). The command lists the connector configuration files that mention the option the exception of E-03 depends on. It uses `-F` so the name needs no escaping, and it names the option itself, not the flag the connector derives from it (`ClickHouseSinkConfig.java:355-356`; there is no connector key of that derived name).
+
+Scratch directory `/tmp/gsd24/conncfg/` (never committed, constants only): `connector-a.properties` with `clickhouseSettings=input_format_binary_read_json_as_string=1`, `connector-b.json` with `"clickhouseSettings": "input_format_binary_read_json_as_string=true"` and `connector-c.json` with `"clickhouseSettings": "async_insert=0"`. `/tmp/gsd24/conncfg-empty/` holds only `connector-c.json`.
+
+Doc-form command (the note quotes exactly this, placeholder included):
+
+```sh
+grep -rnF 'input_format_binary_read_json_as_string' <connector-config-directory>
+```
+
+Substitution: `<connector-config-directory>` = `/tmp/gsd24/conncfg` and `/tmp/gsd24/conncfg-empty` for the two runs; nothing else changed. Date (UTC) 2026-10-20, macOS BSD `grep`.
+
+```text
+$ grep -rnF 'input_format_binary_read_json_as_string' /tmp/gsd24/conncfg
+/tmp/gsd24/conncfg/connector-a.properties:3:clickhouseSettings=input_format_binary_read_json_as_string=1
+/tmp/gsd24/conncfg/connector-b.json:3:  "clickhouseSettings": "input_format_binary_read_json_as_string=true"
+exit=0
+$ grep -rnF 'input_format_binary_read_json_as_string' /tmp/gsd24/conncfg-empty
+exit=1
+```
+
+Result: both files that set the option are listed, in either spelling of the value, and the unrelated file is not. The directory that holds only the unrelated file prints nothing and exits 1, which is what an operator sees when no connector configuration mentions the option. The search sees files only, which the note says.
+
+Matches text: yes
+
+### E-21: alert-rule grep for library messages (L-42, L-45)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, item 1 (the second "Am I affected?" check, written in plan 24-03). The command lists matchers in `<alert-rule-directory>` that use one of the two library message fragments the writer no longer lets through for a value-conversion failure (`Invalid UUID string`, `For input string`). It uses `-F` and fragments without quotes or colons, so the search does not depend on a matcher's own quoting.
+
+Scratch directory `/tmp/gsd24/alerts/` (never committed): `rule-uuid.yml` with a matcher `log_message =~ "Invalid UUID string: .*"`, `rule-number.yml` with `log_message =~ "For input string: .*"` and `rule-unrelated.yml` (`kafka_consumergroup_lag > 1000`). `/tmp/gsd24/alerts-empty/` holds only the unrelated file. `/tmp/gsd24/alerts-escaped/` holds one matcher that writes the spaces of the first text as a regular-expression escape (`Invalid\\sUUID\\sstring` in the rule file, which is `Invalid\sUUID\sstring` once the YAML string is read).
+
+Doc-form command (the note quotes exactly this, placeholder included):
+
+```sh
+grep -rnF -e 'Invalid UUID string' -e 'For input string' <alert-rule-directory>
+```
+
+Substitution: `<alert-rule-directory>` = `/tmp/gsd24/alerts`, `/tmp/gsd24/alerts-empty` and `/tmp/gsd24/alerts-escaped` for the three runs; nothing else changed. Date (UTC) 2026-10-20, macOS BSD `grep`.
+
+```text
+$ grep -rnF -e 'Invalid UUID string' -e 'For input string' /tmp/gsd24/alerts
+/tmp/gsd24/alerts/rule-number.yml:2:  expr: log_message =~ "For input string: .*"
+/tmp/gsd24/alerts/rule-uuid.yml:2:  expr: log_message =~ "Invalid UUID string: .*"
+exit=0
+$ grep -rnF -e 'Invalid UUID string' -e 'For input string' /tmp/gsd24/alerts-empty
+exit=1
+$ grep -rnF -e 'Invalid UUID string' -e 'For input string' /tmp/gsd24/alerts-escaped
+exit=1
+```
+
+Result: each old text is listed once and the unrelated file is not. The directory holding only the unrelated file prints nothing and exits 1, which is what an operator sees when no matcher uses an old text. A matcher that escapes the spaces is not listed, because `-F` compares literal text; the note says so.
+
+Matches text: yes
