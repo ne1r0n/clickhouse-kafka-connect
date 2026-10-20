@@ -77,7 +77,7 @@ Phase artifacts: `milestones/v1.7.0_gg2-hardening-phases/`
 
 - [x] **Phase 21: Dependabot Integration & CI Hygiene** - Merge `custom_build`'s three Dependabot commits into the working branch before any code work; close the 17-REVIEW pin-guard gaps; the user disables the inherited-red nightly, checks Dependabot and revokes the stale token (completed 2026-10-19)
 - [x] **Phase 22: Writer Record-Data Exposure** - Backlog 999.3: writer conversion failures name the column, type and exception class without the record value, with retry classification pinned before and after the change; the inline Mockito mock is gone (completed 2026-10-20)
-- [ ] **Phase 23: Declared-Nullability Hardening & Review Closure** - The 19-REVIEW advisories are fixed in `DeclaredNullability` and its tests, IN-04 is decided, and every 17-REVIEW and 19-REVIEW finding is dispositioned
+- [x] **Phase 23: Declared-Nullability Hardening & Review Closure** - The 19-REVIEW advisories are fixed in `DeclaredNullability` and its tests, IN-04 is decided, and every 17-REVIEW and 19-REVIEW finding is dispositioned (completed 2026-10-20)
 - [ ] **Phase 24: Release & Publication** - `v1.7.0_gg3` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
 
 ## Phase Details
@@ -196,7 +196,7 @@ Phase gate: cache-busted `testUnit` and a full suite on `latest` × V2, plus the
   4. The fallback-WARN content assertions use a column name that cannot occur in the WARN's fixed text and assert it in a delimited form, and each was seen red with the column argument dropped (WR-02). The backslash-n literal is defined once and shared by every test that needs it. The one-line pass-through helper and the mid-class constant are cleaned up (IN-01, IN-02).
   5. Every 17-REVIEW and 19-REVIEW finding is fixed or closed with a written reason, and each row in the archived `17-REVIEW-DISPOSITION.md` and `19-REVIEW-DISPOSITION.md` points to where it was closed. 17-REVIEW IN-03 is closed as "leave `Lz4RoundTripLiveTest`'s jar-origin check, cross-referenced to `TestRuntimeClasspathLz4UnitTest`, with no new origin assertions"; the live test is neither deleted nor weakened.
 
-**Plans**: 6/6 plans executed (sequential, waves 1-6)
+**Plans**: 6/6 plans complete (sequential, waves 1-6)
 
 Plans:
 **Wave 1**
@@ -349,7 +349,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 |-------|-----------|----------------|--------|-----------|
 | 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-19 |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-20 |
-| 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 6/6 | In Progress | - |
+| 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 6/6 | Complete    | 2026-10-20 |
 | 24. Release & Publication | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 
 ---
