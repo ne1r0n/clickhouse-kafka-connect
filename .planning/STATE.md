@@ -2,44 +2,42 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
-current_phase: 24
-status: completed
-stopped_at: Phase 24 complete — all phases complete
-last_updated: "2026-10-20T21:07:46.674Z"
-last_activity: 2026-10-20
-last_activity_desc: Completed quick task 261020-vcr (corrected rollout note published at 6a2a87a5)
-state_head: a403cc1d1acb62cc0dd351149d215c126cb16a58
+status: Awaiting next milestone
+stopped_at: Milestone v1.7.0_gg3-hardening closed (override closeout, re-audit passed) — awaiting next milestone
+last_updated: "2026-10-20T21:13:06.488Z"
+last_activity: 2026-10-21
+last_activity_desc: Milestone v1.7.0_gg3-hardening completed and archived
+state_head: 8fdfcbfd777c63400f658cbee1c4d9fe79d76ec3
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 23
   completed_plans: 23
   percent: 100
+current_phase: 24
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-20 after Phase 24)
+See: .planning/PROJECT.md (updated 2026-10-21 after the v1.7.0_gg3-hardening milestone)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Milestone `v1.7.0_gg3-hardening` complete (4/4 phases): audit and close
+**Current focus:** Planning the next milestone (`/gsd-new-milestone`); candidates in PROJECT.md → Next Milestone Goals
 
 ## Current Position
 
-Phase: 24
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-20 - Completed quick task 261020-vcr: Fix the 7 open Round 3 findings on the v1.7.0_gg3 rollout note and republish to custom_build
-
-Progress: [██████████] 100%
+Phase: Milestone v1.7.0_gg3-hardening complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-21 — Milestone v1.7.0_gg3-hardening completed and archived
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
+- Total plans completed: `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -185,52 +183,10 @@ The full decision log is in `PROJECT.md` → Key Decisions. Per-phase decision l
 
 The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are archived with their phase artifacts (`milestones/<milestone>-phases/`), and their locked decisions with their requirements (`milestones/<milestone>-REQUIREMENTS.md`). Milestone-level decisions are in `PROJECT.md` → Key Decisions.
 
-**`v1.7.0_gg3-hardening` roadmap decisions (2026-10-16):**
+**`v1.7.0_gg3-hardening` (closed 2026-10-21):** its roadmap decisions and per-phase decision log are archived in `milestones/v1.7.0_gg3-hardening-ROADMAP.md` (Milestone Summary) and with the phase artifacts in `milestones/v1.7.0_gg3-hardening-phases/`. The key decisions are in `PROJECT.md` → Key Decisions. Two of them carry forward as standing rules:
 
-- Phase order: 21 → 22 → 23 → 24, sequential on one working tree. DEPS-01 opens Phase 21 and gates all code work: `origin/custom_build` is merged into `sync/v1.7.0` (no rebase, no force), and before any code plan starts the merged tree adds no spotless violations beyond the 8.10.1 baseline and `testUnit` is green. The baseline is 46 import-order files, red before the bump. Amended 2026-10-17 per 21-CONTEXT D-14: no tree-wide reformat. The release (Phase 24) comes last.
-- Backlog 999.3 (Phase 22): HARN-08 comes first, so no new writer test uses the inline mock. The classification pin (WRT-14) is committed and green on the unchanged writer before the WRT-13 change. WRT-15's doc edits ride in the same commit as the writer code.
-- Phase 23's DEBT-12 runs last in its phase. It records every 17-REVIEW and 19-REVIEW outcome, including the Phase 21 closures (CI-18, CI-19, OPS-02) and the COLS-14 decision. COLS-14 goes to a user checkpoint if it is not clear-cut.
-- Operator checks OPS-01..OPS-03 are user actions in the GitHub web UI, done in Phase 21 (D-11: no agent changes repository settings). OPS-01 comes early so that nights pass with no scheduled run before the release; Phase 24 re-checks it.
-- Every approval or decision gate (a COLS-14 checkpoint if raised, Phase 24's rehearsal and release merge) needs the user's own explicit answer. A relayed approval is refused.
-- [Phase 21]: Phase 21-01: OPS-02 recorded unmeasured; no gradle "Last checked" time was reported and the Dependabot tab shows an open-PR-limit banner (limit 5), not a configuration error — Pass needs a Last checked reading (plan 21-01 Task 3); the UI may no longer show that field (research A2), so ROADMAP criterion 5 needs the user at verification
-- [Phase 21]: 21-02: DEPS-01 merged origin/custom_build (6473e24f) into sync/v1.7.0 as merge 82524e12 with D-03 bookkeeping edits inside; the unmodified anchors gate shows exactly one violation at 6473e24f, to be exempted by 21-03; spotless baseline-equal (D-14)
-- [Phase 21]: 21-03: only invariant 3's count-mismatch branch consults the SHA- and row-pinned exemption list (fork-anchor-exemptions.txt); PRE_TAG stays pre-v1.7.0-sync and the gate command for Phases 22-24 is unchanged
-- [Phase 21]: 21-04: the narrowing of RUNS_ON and WRITE_SCOPE is a user-decided (D-10) exception to AGENTS.md no-weakening, tabled in E-11 Accept-set changes
-- [Phase 21]: 21-04: pin-guard fixtures use List.of with exact leading spaces and a literal upstream-workflow list, independent of the production constant
-- [Phase 21]: 21-05: E-13 cutoff_u is 2026-10-16T09:38:23Z (earlier-of rule over E-01 and the user's resolved instant); the continuation re-ran step 0 itself, since a reply or another agent's Date reading does not meet the D-11 precondition
-- [Phase 21]: UAT (2026-10-19): OPS-02 passed on the user's own words ("dependabot работает как и ожидается, новые PR создаются"). The Dependabot tab has no "Last checked" field any more; gradle job 1636257648 opened PRs #6-#9. A screenshot-only reply was not counted. Phase 21 closed with verification passed and SECURITY threats_open 0
-- [Phase 22]: 22-01: HARN-08 via CountingHelperClient (hand-written ClickHouseHelperClient subclass, D-10); F7 reading recorded in 22-EVIDENCE.md E-01; Phase 18 OpenJ9 deferred item closed
-- [Phase 22]: 22-02: NESTED_DATA_EXCEPTION pins as RUNTIME_WRAP, not DATA_EXCEPTION, because Processing.doInsert wraps every writer failure before Utils.handleException tests instanceof DataException; pin_testcases=184 is the count 22-03 must see unchanged
-- [Phase 22]: 22-02: V2 client wrap is modeled in ScriptedWriteFailureWriter (RuntimeException wrapped once in client.api.ClickHouseException); 22-04 live test covers the real client
-- [Phase 22]: WRT-13: generic catch passes IO chains, ConnectExceptions and exact RuntimeExceptions through and replaces everything else with a value-free DataException whose cause is a WithheldMessageException copy (frames kept, messages withheld)
-- [Phase 22]: F2 forced flip: schemaWithFixedStringMismatchTest asserts an exact WithheldMessageException root cause plus its original class name, as strong as the old instance-of check; approved by the user at 22-UAT test 1 (2026-10-20)
-- [Phase 22]: D-04 pin uses a record text of at most 36 characters because UUID.fromString rejects longer strings with a value-free message
-- [Phase 22]: 22-04: shared D-15 header assertions and QUERY_ID_MESSAGE live in ValueFreeDlqHeadersUnitTest and the live test calls them; the live Int128 case uses Nullable(Int128) so the value reaches the conversion
-- [Phase 22]: 22-04: plan counted 7 existing live cases but WriterErrorPathLiveTest has 6; verify thresholds corrected to 7 and 10, no case added to hit a number
-- [Phase 22]: 22-05: the 22-03 F2 flip (L-47) was recorded as surfaced with no response; the user approved it at 22-UAT test 1 (2026-10-20)
-- [Phase 22]: UAT: the Jackson reference-chain residual on the opt-in JSON-as-string route (22-REVIEW WR-01) is accepted, not fixed (R-22-02 in 22-SECURITY.md); the F7 reading of HARN-08 is accepted. 22-REVIEW WR-01 and IN-01..IN-05 stay `open` in 22-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 22 follow-ups)
-- [Phase 23]: 23-01: DeclaredNullability.ESCAPED_NEWLINE made public as the single shared definition; test copies and the NullableRoundTrip pass-through removed (DEBT-11)
-- [Phase 23]: A null root name in DeclaredNullability.apply is a structure mismatch, not IllegalArgumentException (COLS-12, RESEARCH Open Question 2)
-- [Phase 23]: D-08 flip keeps unexpectedExceptionInThePassFailsOpenWithOneMetadataWarning and its null-type input; NPE class-name assertion becomes (structure mismatch) under a scoped AGENTS.md exemption
-- [Phase 23]: 23-03: fallback-WARN column assertions use the sentinel root and the delimited column segment; both D-17 mutations seen red for 14 testcases (DEBT-10)
-- [Phase 23]: 23-04: DeclaredNullability.normalise is a single quote-aware pass; a backslash-n inside a backtick name or single-quoted label is kept, only the server's line break becomes a space (COLS-13, D-10)
-- [Phase 23]: 23-05: an unpaired declared Tuple element logs one metadata-only WARN at every DESCRIBE and the pass still applies the declared nullability (D-01, D-02); falling back would bring back the double flag
-- [Phase 23]: 23-05: D-19 (user Option B) flips three existing tests with names and assertions unchanged and a scoped AGENTS.md exemption; backlog 999.4 (size/size0 dropped by discovery) pinned Docker-free and deferred, 999.5 recorded
-- [Phase 23]: 23-06: Tracer (19-REVIEW WR-01) verified on its own but folded into the single DEBT-12 commit, whose check requires exactly the two disposition files
-- [Phase 23]: 23-06: 17-REVIEW IN-03 closed as skipped, a status already in both files rules footer
-- [Phase 23]: Phase closed 2026-10-20: verification passed 5/5 (the verifier re-ran the suites and four mutations itself), SECURITY threats_open 0 (19 threats, 4 accepted at plan time), full suite 1277/0. 23-REVIEW (0 critical, 2 warning, 4 info) stays `open` in 23-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 23 follow-ups)
-- [Phase 24]: 24-01: D-04 branch 1 measured: only a Map key reaches the task status chain, DLQ stack-trace header and Error inserting records throwable; no value; residual stays accepted, no code change
-- [Phase 24]: 24-01: the shipped jar changes between pre-merge tip and gg3 by the Phase 22-23 classes, WithheldMessageException and four version-bearing entries (Version, MANIFEST, ClickHouseHelperClient, SinkTaskStatistics); the three bumps change no entry
-- [Phase 24]: 24-01: the setting-absent JSON control surfaces the schema-validation text, not 'Writing JSON in binary is not supported yet' (shadowed by validation); documents must word it from E-03
-- [Phase 24]: D-09 verdict (24-02): only Nullable(Tuple)-bearing roots with a backslash-n or line-break element name encode differently between gg2 and gg3 (14 fixture tables); gg2 fails them with code 33 — Measured on 26.9.19.9 with the real describeTable of both class trees (E-10, E-11)
-- [Phase 24]: D-15 shape query tests for a backslash followed by n, not any backslash — The broad form over-flags single-backslash, trailing-backslash and tab names whose trees are identical (E-13)
-- [Phase 24]: 24-03: rollout item 1 worded on D-04 branch 1 (Map-key exception, server 26.9.19.9); item 2 offers no workaround and scopes 'whatever the connector settings' to what was measured; item 4 clean stop limited to the Nullable(Tuple) backslash-n shape on rollback
-- [Phase 24]: 24-04: CHANGELOG 1.7.0_gg3 dated 2026-10-20; FORK-DELTA Known costs 10 and 11 knowingly open with no workaround; consistency rule fixed three size0 units at source
-- [Phase 24]: 24-05: the WR-01 fix keeps D-02's 'whatever the connector settings' and scopes it to the measured route (default route, client V2); IN-02 skipped by design; IN-03 carried under Other carried items
-- [Phase 24]: 24-06: the user answered 'push' directly to the orchestrator; Task 3 ran inline; sync/v1.7.0 pushed at X0=3ab55e1d with one green tests.yaml run 39470352668
-- [Phase 24]: 24-06: latest moved 26.9.18.11 -> 26.9.19.9 since Phase 20; local gate and CI both green, no test edited
-- [Phase 24]: 24-07: the user answered 'publish' directly to the orchestrator; Tasks 2-3 ran inline; v1.7.0_gg3 published as --no-ff merge M=3376a18f with tests.yaml run 39472696952 green; tags pre-v1.7.0_gg3 and v1.7.0_gg3 on origin; scratch branch deleted
-- [Phase 24]: Phase closed 2026-10-20: verification human_needed → passed after 24-UAT 2/2 (the user accepted the round 3 review warnings as a post-milestone docs-only follow-up and confirmed that both approvals were their own direct answers); SECURITY threats_open 0. 24-REVIEW round 3 (WR-03..WR-07, IN-04, IN-05) stays `open` in 24-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 24 follow-ups)
+- Writer failure text stays value-free. In `doWriteColValue`, an `IOException` chain, a `ConnectException` and an exact `RuntimeException` pass through unchanged. Everything else becomes a metadata-only `DataException` with a `WithheldMessageException` cause, and the 184-case `WriterFailureClassificationUnitTest` pins the classification. A new writer message must not embed a record value.
+- Operator documents get an independent `gsd-code-reviewer` pass, spawned by the orchestrator, before any publication gate. Review rounds on fixes continue until a round finds nothing. An executor's inline review does not count as independent (Phase 24, quick 261020-vcr).
 
 ### Pending Todos
 
@@ -248,13 +204,11 @@ None.
 - [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
 - [Phase 23]: Backlog 999.4 is a pre-existing, high-severity defect for any table with a Tuple element named `size` or `size0`: discovery drops the element, and the inserts that were run (four shapes) failed with code 32 or 33; a wrong stored value is possible and not measured. Since COLS-14 it is named by a WARN at every DESCRIBE, but it is not fixed. The gg3 rollout note (item 2), the CHANGELOG (Known Issues) and FORK-DELTA (Known costs item 10) disclose it, measured as code 32 or 33 on the default route with client V2.
 - [Dependabot]: The repository has no `dependencies` label, but both `dependabot.yml` entries request it, so every Dependabot PR gets a "labels could not be found" comment. Updates still run. Fixing it means the user creates the label (D-11), or the fork drops the request. Tracked in PROJECT.md → Active, Phase 21 follow-ups.
-- [Phase 24] (resolved 2026-10-20 by quick 261020-vcr): the seven round 3 rows of `24-REVIEW-DISPOSITION.md` are fixed, and so are the seven findings of review rounds 4 and 5 (19 rows, `open: 0`, round 6 clean). The fixes are published at `6a2a87a5`.
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 261020-vcr | Fix the 7 open Round 3 findings on the v1.7.0_gg3 rollout note and republish to custom_build | 2026-10-21 | a403cc1d | [261020-vcr-fix-the-7-open-round-3-findings-on-the-v](./quick/261020-vcr-fix-the-7-open-round-3-findings-on-the-v/) |
 
 ## Deferred Items
 
@@ -272,13 +226,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T19:09:49Z
-Stopped at: Phase 24 complete (24-UAT 2/2 passed); milestone `v1.7.0_gg3-hardening` ready to audit and close
+Last session: 2026-10-21
+Stopped at: Milestone `v1.7.0_gg3-hardening` closed. Audit `tech_debt`, then quick 261020-vcr, then re-audit passed; corrected note published at `6a2a87a5`; local milestone tag `v1.7.0_gg3-hardening`
 Resume file: None
 
 ## Operator Next Steps
 
-- Before the audit: settle the seven `open` rows of `24-REVIEW-DISPOSITION.md` (round 3, WR-03..WR-07, IN-04, IN-05). At 24-UAT test 1 they were accepted as a docs-only follow-up on `custom_build` after the milestone, so either record them as `deferred` with a pointer, or land the docs-only fix commit. The tag `v1.7.0_gg3` and merge `3376a18f` do not move either way.
-- Run `/gsd-audit-milestone`, then `/gsd-complete-milestone v1.7.0_gg3-hardening`. Both read `24-MILESTONE-CLOSE-RECORD.md`.
-- Housekeeping from the close record: remove `/tmp/gsd24`, `/tmp/gsd24-scripts` and any leftover probe worktree (`git worktree list`). If a new read-only CI-log token was used for 24-06 or 24-07, revoke it and delete its Keychain item.
-- Optional, in the GitHub web UI (D-11): create the `dependencies` label; close or keep PRs #4 and #9 (fork-only pins); merge or close #6, #7 and #8 now that the freeze is over. Any merge on `origin/custom_build` makes the next milestone open with a DEPS-01-shaped merge.
+- Start the next milestone with /gsd-new-milestone
