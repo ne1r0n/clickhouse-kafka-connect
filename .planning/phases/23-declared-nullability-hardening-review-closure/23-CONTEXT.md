@@ -147,6 +147,15 @@ The only `src/main` file this phase changes is `src/main/java/com/clickhouse/kaf
   - The Phase 21 SHAs come from `21-04-SUMMARY.md` and `21-VERIFICATION.md`.
   - The archived `20-MILESTONE-CLOSE-RECORD.md` is not edited.
 
+### Decided at plan-phase (2026-10-20, the user's own answers to 23-RESEARCH.md Open Questions)
+- **D-19:** **The three tests D-01 turns red are flipped (Option B).** They are `ClickHouseHelperClientForkUnitTest.otherTypesDiscoverWithoutWarningAndUnchangedRootNullability`, cases `Tuple(a Nullable(Int32))` and `Tuple(a Nullable(Enum8('q' = 1)))`, and `repeatedDiscoveryNeverWarns`. Each feeds a Tuple root row with no element rows and asserts zero WARNs.
+  - They are flipped in the Phase 19 D-11 format: the element rows are added so each Tuple pairs fully, and their no-WARN and root-nullability assertions stay identical.
+  - The root-only input moves to a new sibling test that asserts exactly one unpaired-element WARN (D-01/D-02, with D-16 and D-17 applying).
+  - These land in the COLS-14 commit. Option A, exempting "no element rows at all" from the WARN, was rejected because it would silence the single-element `Tuple(size UInt32)` shape behind 999.4.
+- **D-20:** **New backlog entry 999.5.** It records that a server column or element name containing a backslash comes out of `fromJsonRow` with the backslash doubled (`c.a\\nb`), so a Kafka field must use the doubled form for the writer to match it.
+  - The evidence is 23-EVIDENCE.md R-02. The behaviour is pre-existing, and Phase 23 changes no code or test for it.
+  - It is appended to `.planning/ROADMAP.md` `## Backlog` after 999.4 (or after 999.3 if D-03's 999.4 is not created), sliced to the backlog section before any edit (23-RESEARCH.md Pitfall 10).
+
 ### Claude's Discretion
 - The new WARN constant's name and exact wording, within D-01's fields. It must not contain the sentinel text, and must not say "keeping the nullability DESCRIBE reported".
 - How the quote-aware scanner is structured (a char loop or a small state machine). It runs once per DESCRIBE per root, not on the hot path.

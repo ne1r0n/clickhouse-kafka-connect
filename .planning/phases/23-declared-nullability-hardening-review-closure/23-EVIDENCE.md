@@ -1,0 +1,149 @@
+# Phase 23 Evidence
+
+- Phase: 23 (Declared-Nullability Hardening & Review Closure)
+- Branch: `sync/v1.7.0`
+- Purpose: measured proof for COLS-12..COLS-14 and DEBT-10..DEBT-12, read by the verifier together with 23-BEHAVIOUR-LEDGER.md. The file holds commands, raw DESCRIBE rows, counts and message formats only, never a record value from a real system (every value below is synthetic). Nothing here was pushed.
+- Entry format: `### E-NN: {title}` per execution entry, `key: value` lines for measured facts. Long output stays in `/tmp/gsd23/` (research) and `/tmp/gsd23/exec/` (execution).
+
+## Index
+
+| ID | Source | What it records | Status |
+|----|--------|-----------------|--------|
+| R-01 | 23-RESEARCH | D-03 live capture: Tuple element named `size` / `size0` / `null` | recorded |
+| R-02 | 23-RESEARCH | D-11 live capture: backslash-n inside a quoted element name and an enum label | recorded |
+| R-03 | 23-RESEARCH | D-07 null-shape matrix on the unchanged code | recorded |
+| R-04 | 23-RESEARCH | Prototype run: which existing tests D-01 turns red | recorded |
+| E-01.. | execution | red-before / green-after runs (D-07, D-09, D-17), gate output | pending |
+
+## Research captures (written during 23-RESEARCH, not by an executor)
+
+All captures ran on ClickHouse `latest` (server `26.9.19.9`, image `sha256:bdb5c911a23d`, created 2026-10-14T18:05:21Z) with client V2 (client-v2 0.9.6), against a throwaway container `gsd23-ch` (`docker run`, port 18123, removed afterwards). The harness classes were compiled outside the repo (`/tmp/gsd23/src*`) against `build/classes/java/main` plus the test runtime classpath. `git status` of the repo was clean before and after.
+
+### R-01: D-03, Tuple elements named `size`, `size0`, `null`
+
+Verdict: **CONFIRMED for `size` and `size0`; REFUTED for `null`.**
+
+`null`: the server refuses the DDL for every shape tried (plain Tuple, `Nullable(Tuple)`):
+`Code: 36. DB::Exception: Tuple element name 'null' is reserved because it would conflict with the subcolumn name used for Nullable null maps if such a tuple is wrapped in Nullable. Please use a different name. (BAD_ARGUMENTS)`.
+So a Tuple element cannot be named `null` on `latest`.
+
+`size` / `size0`: DDL `c Tuple(size UInt32, name String)`, `d Nullable(Tuple(size0 Int32, other String))`, `e Array(Tuple(size UInt8, v String))`. Raw `DESCRIBE TABLE ... FORMAT JSONEachRow` with `describe_include_subcolumns=1` (only the fields that matter; the other keys are empty strings and `is_subcolumn`):
+
+```
+{"name":"c","type":"Tuple(\n    size UInt32,\n    name String)", ... "is_subcolumn":0}
+{"name":"d","type":"Nullable(Tuple(size0 Int32, other String))", ... "is_subcolumn":0}
+{"name":"e","type":"Array(Tuple(\n    size UInt8,\n    v String))", ... "is_subcolumn":0}
+{"name":"c.size","type":"UInt32", ... "is_subcolumn":1}
+{"name":"c.name","type":"String", ... "is_subcolumn":1}
+{"name":"c.name.size","type":"UInt64", ... "is_subcolumn":1}
+{"name":"d.null","type":"UInt8", ... "is_subcolumn":1}
+{"name":"d.size0","type":"Nullable(Int32)", ... "is_subcolumn":1}
+{"name":"d.other","type":"Nullable(String)", ... "is_subcolumn":1}
+{"name":"d.other.size","type":"Nullable(UInt64)", ... "is_subcolumn":1}
+{"name":"e.size0","type":"UInt64", ... "is_subcolumn":1}
+{"name":"e.size","type":"Array(UInt8)", ... "is_subcolumn":1}
+{"name":"e.v","type":"Array(String)", ... "is_subcolumn":1}
+{"name":"e.v.size","type":"Array(UInt64)", ... "is_subcolumn":1}
+```
+
+Full file: `/tmp/gsd23/desc/t_size.jsonl`. `c.size`, `d.size0` and `e.size` are the real elements; `c.name.size`, `d.other.size`, `e.size0` and `e.v.size` are structural rows that the skip is meant to drop.
+
+Column tree discovery builds (the real `shouldSkipDescribeRow` applied row by row, then `buildDescribedTable`, harness `Cap6`): rows skipped `c.size`, `c.name.size`, `d.null`, `d.size0`, `d.other.size`, `e.size0`, `e.size`, `e.v.size`. Tree:
+
+```
+c TUPLE nullable=false
+  c.name STRING                       <- c.size is missing
+d TUPLE nullable=true
+  d.other STRING                      <- d.size0 is missing
+e ARRAY
+  [] e TUPLE nullable=false
+    e.v STRING                        <- e.size is missing
+```
+
+Insert outcome through the real sink task (`ClickHouseSinkTask.start/put`, client V2, one record `{id:1, c:{size:7, name:"nm"}}`), read back with typed SQL:
+
+| Table | Insert | Read-back |
+|-------|--------|-----------|
+| `c Tuple(size UInt32, name String)` | `put` throws; cause chain ends `Code: 33 ... Cannot read all data. Bytes read: 3. Bytes expected: 4 ... (CANNOT_READ_ALL_DATA)` | `count()=0` |
+| `c Nullable(Tuple(size0 Int32, name String))` | same code 33 | `count()=0` |
+| `c Array(Tuple(size Int32, name String))` | same code 33 | `count()=0` |
+| `c Tuple(size0 Int32, name String)` | same code 33 | `count()=0` |
+| `c Tuple(size UInt32, name String)` with a constructed value `name = "abc" + U+0003 + "xyz"` | `put` returns normally | `c = (1667391751,'xyz')`, `hex(c.name) = 78797A`: **silently wrong stored value** |
+
+Reading, stated plainly: for ordinary data the outcome is a **server error, code 33 `CANNOT_READ_ALL_DATA`, and no row is stored**. A silently wrong stored value is also **reachable** (the last row), when the bytes of the shorter write happen to parse as a longer tuple. Severity for 999.4: HIGH for the table (every insert into it fails), with a data-integrity tail for crafted or unlucky values.
+
+### R-02: D-11, backslash-n inside a quoted name and an enum label
+
+DDL (SQL text, so `\\` is one literal backslash and `\n` is a real newline): `` c Tuple(`a\\nb` Int32, d String) `` (`bs_name`), `` c Tuple(e Enum8('x\\ny' = 1, 'z' = 2), d String) `` (`bs_enum`), `` c Tuple(`a\nb` Int32, d String) `` (`nl_name`, a real newline in the name), `` c Tuple(e Enum8('x\ny' = 1, 'z' = 2), d String) `` (`nl_enum`), plus nested, Nullable and trailing-backslash variants.
+
+Raw JSON `type` text of the root row, in the JSON escaping the server sends (this is what `fromJsonRow` receives and what the `row(name, type)` test helper embeds with `%s`). `fromJsonRow` doubles every backslash before Jackson parses, so the Java `getType()` string is **the same text, with its backslashes kept**:
+
+| Case | Raw JSON type text (`\` shown as is) | Backslashes before the `n` |
+|------|--------------------------------------|----------------------------|
+| server line break between elements | `Tuple(\n    a Int32,\n    b String)` | 1 (outside any quote) |
+| literal backslash-n in a backtick name | `Tuple(\n    `a\\\\nb` Int32,\n    d String)` | 4 (inside backticks) |
+| real newline in a backtick name | `Tuple(\n    `a\\nb` Int32,\n    d String)` | 2 (inside backticks) |
+| literal backslash-n in an enum label | `Tuple(\n    e Enum8('x\\\\ny' = 1, 'z' = 2),\n    d String)` | 4 (inside single quotes) |
+| real newline in an enum label | `Tuple(\n    e Enum8('x\\ny' = 1, 'z' = 2),\n    d String)` | 2 (inside single quotes) |
+
+Sub-column rows: `{"name":"c.a\\nb","type":"Int32"...}` for the literal case (2 backslashes in the JSON text and in the Java `getName()`), `{"name":"c.a\nb"...}` for the real-newline case (JSON escape of a newline). The ClickHouse client parser (`ClickHouseColumn.of`) reads a backtick name with one level of unescape (4 backslashes become 2), so the parsed element name equals the sub-column name only when the text is left untouched. All raw rows are in `/tmp/gsd23/desc/*.jsonl`.
+
+Effect of the current `normalise` (`replace("\\n", " ")`), harness `Cap2`:
+
+| Case | `normalise` result | Parsed element name vs sub-column name | `apply` |
+|------|--------------------|-----------------------------------------|---------|
+| literal backslash-n, name | 3 backslashes + space (`a\\\ b`) | `a\ b` vs `a\\nb` | false, fallback WARN `(structure mismatch)` |
+| real newline, name | 1 backslash + space | `a b` vs `a\nb` | false, fallback WARN |
+| literal / real, enum label | label text changed, never compared | element `e` pairs | true, no WARN |
+| literal backslash-n, name inside `Nullable(Tuple(...))` | corrupted | mismatch | false, fallback WARN |
+| two nested levels of such names | corrupted | mismatch | false, fallback WARN |
+
+So the enum-label half of IN-03 **does not change the pairing outcome today** (no WARN either way); only the `normalise` output string differs. A real newline inside a name is broken today as well, which 19-REVIEW IN-03 did not mention.
+
+D-13 verdict: **a quote-aware scan CAN tell the server's line break from a backslash-n inside quotes.** The line break is a lone backslash before `n` and occurs only outside quotes (after `(` or `,`). Inside quotes the server's escapes are doubled by the JSON layer, so every run of backslashes there has even length (2 for a real newline, 4 for a literal backslash-n). No checkpoint is needed unless the plan finds a counter-example. The prototype scanner (source `/tmp/gsd23/src2/com/clickhouse/kafka/connect/sink/db/mapping/Cap2.java`, method `quoteAware`; production-shaped version in `/tmp/gsd23/proto/src/`) normalised every row above to the expected text and the parsed names then equalled the sub-column names (`a\\nb`, `a\nb`, `e\\`, `f\\n`).
+
+Live end-to-end on `` c Nullable(Tuple(`a\\nb` Int32, d String)) `` (the natural D-12 table; Kafka Struct field names must be `a\\nb` with **two** backslashes, the Column name, because the writer looks fields up by `getName()` after the last dot):
+
+| Code | fallback WARN | `put` | read-back |
+|------|---------------|-------|-----------|
+| unchanged `main` | 1, `(structure mismatch)` | throws, `CANNOT_READ_ALL_DATA` (code 33) | `count()=0` |
+| prototype (D-10 quote-aware) | 0 | ok | `c = (7,'nm')` |
+
+### R-03: D-07, which null shapes throw today (unchanged code, harness `Cap4`)
+
+| Input | `containsTuple` | `apply` |
+|-------|-----------------|---------|
+| null root | false | **throws NullPointerException** (the handler dereferences the root) |
+| root Column with null type | **throws NPE** | false, WARN `(NullPointerException)` |
+| root with null name, tuple type | true | false, WARN `(IllegalArgumentException)` (from `ClickHouseColumn.of`, not an NPE) |
+| tuple with a null entry in `tupleFields` | true | false, WARN `(NullPointerException)` |
+| tuple field with null name | true | false, WARN `(NullPointerException)` |
+| tuple field with null type | true | false, WARN `(NullPointerException)` |
+| `tupleFields` null | true | true, no WARN |
+| array root, element Column has null type | **throws NPE** | false, WARN `(NullPointerException)` |
+| array root, `arrayType` null | false | false, WARN `(structure mismatch)` |
+| map root, value Column null | false | true, no WARN |
+| map root, value Column has null type | **throws NPE** | false, WARN `(NullPointerException)` |
+| declared type null | true | false, no WARN |
+| declared type `Tuple(` | true | false, WARN `(IllegalArgumentException)` |
+
+`ClickHouseColumn.of("c", s)` throws `java.lang.IllegalArgumentException` for `Nullable(Tuple(SENTINEL_ELEMENT_NAME NoSuchType))`, `Tuple(`, the empty string, `Foo(`, `Array(`, `Map(String)`, `Tuple()`; it throws `NumberFormatException` for `Enum8('a' = x)`.
+
+### R-04: D-01 prototype against the existing Docker-free tests
+
+Prototype = the current `DeclaredNullability.java` plus D-01 (unpaired WARN, still apply), D-06/D-07 (null totality) and D-10 (quote-aware `normalise`, public `ESCAPED_NEWLINE`), compiled outside the repo and put in front of the classpath. Test runner = JUnit Platform launcher.
+
+```
+DeclaredNullabilityTest + ClickHouseHelperClientForkUnitTest   baseline main: 70 tests, 70 successful
+same two classes with the prototype:                          70 tests, 66 successful, 4 failed
+  1. DeclaredNullabilityTest.unexpectedExceptionInThePassFailsOpenWithOneMetadataWarning   (the D-08 flip target, expected)
+  2. ClickHouseHelperClientForkUnitTest.otherTypesDiscoverWithoutWarningAndUnchangedRootNullability  [Tuple(a Nullable(Int32))]
+  3. ClickHouseHelperClientForkUnitTest.otherTypesDiscoverWithoutWarningAndUnchangedRootNullability  [Tuple(a Nullable(Enum8('q' = 1)))]
+  4. ClickHouseHelperClientForkUnitTest.repeatedDiscoveryNeverWarns
+live classes with the prototype (NullableTupleMatrixLiveTest, SimpleAggregateTupleRoundTripLiveTest,
+  ClickHouseHelperClientForkLiveTest, NullableEnumRoundTripLiveTest, NestedNullableCompositeWriteTest): 68 tests, 68 successful
+```
+
+Failures 2 to 4 are NOT in the plan's list of expected flips: their fixtures are a Tuple **root row alone**, so every declared element is unpaired and the new WARN fires. See 23-RESEARCH.md, Open Question 1.
+
+Shape check with the prototype on the R-01 rows: three events, one per root, e.g. `Declared Tuple element(s) [c.size] of column c of table db.t (declared type Tuple(\n    size UInt32,\n    name String)) have no matching column; applying the declared nullability to the elements that paired` (wording is the prototype's, not binding).
