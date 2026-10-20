@@ -236,7 +236,7 @@ For the one shape that differs, the two directions are not alike.
 
 ### Am I affected?
 
-You are affected if a connector runs with `exactlyOnce=true` and writes a table that the query of [item 3](#item-3-backslashes-and-line-breaks-in-names) lists, and you want to roll back. **Empty result of that query:** no table of that database has the shape, so a rollback needs no clean stop for this reason. A connector with `exactlyOnce=false` keeps no offset state, so the procedure below does not apply to it; a range that Kafka delivers again is handled by the token as described in [item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token).
+You are affected if a connector writes a table that the query of [item 3](#item-3-backslashes-and-line-breaks-in-names) lists, and you want to roll back. **Empty result of that query:** no table of that database has the shape, so a rollback needs no clean stop for this reason. A connector with `exactlyOnce=false` has no state table to query, so the check below does not exist for it, but the failure does: a range that Kafka delivers again to `v1.7.0_gg2` for a table of the item 3 shape fails with code 33 even when `v1.7.0_gg3` stored its rows. The measurement in the rollback bullet above ran with `exactlyOnce=false`, which still sends the token. Stop its tasks cleanly, so that the offsets are committed, before you redeploy `v1.7.0_gg2`.
 
 ### What to do
 
@@ -255,6 +255,8 @@ ORDER BY `key`;
 
    **Empty result:** no batch of those topics is in flight, so it is safe to redeploy `v1.7.0_gg2`. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not redeploy `v1.7.0_gg2` yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
 3. If the result is not empty, start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then continue with step 2 of [item 7](#item-7-rollback).
+
+For a connector with `exactlyOnce=false` that writes such a table, there is no state table to query. Stop its tasks cleanly before you redeploy `v1.7.0_gg2`, so that its offsets are committed and Kafka does not deliver a range again.
 
 [Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) explains why the state table is shared and how the key looks with `enableDbTopicSplit=true`; those explanations are not repeated here. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
 
