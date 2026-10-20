@@ -246,7 +246,7 @@ Phase gate: cache-busted `testUnit` and a full suite on `latest` × V2, plus the
   3. The full suite passes twice on ClickHouse `latest` × client V2, the second run with `--rerun`. Both runs have 0 failures, 0 errors and every skip named. `testUnit` passes with the Docker daemon stopped.
   4. After the user's own explicit approval, given directly and not relayed, `custom_build` on `origin` is a non-force `--no-ff` merge whose first parent is the pre-merge `custom_build` tip. That SHA has exactly one `tests.yaml` run, and it is green. The `v1.7.0_gg3` tag reaches `origin` only after that run is green, and the rollback tag `pre-v1.7.0_gg3` points at the pre-merge `custom_build` tip.
 
-**Plans**: 2/7 plans executed (sequential, waves 1-7; plans 24-06 and 24-07 hold the two approval gates and run their post-gate tasks orchestrator-inline)
+**Plans**: 3/7 plans executed (sequential, waves 1-7; plans 24-06 and 24-07 hold the two approval gates and run their post-gate tasks orchestrator-inline)
 
 Plans:
 **Wave 1**
@@ -256,7 +256,7 @@ Plans:
 - [x] 24-02-PLAN.md — measured inputs for the note: the gg2 versus gg3 tree diff and insert matrix (D-09), the rollback retry, shape query and KeeperMap self-check (D-15), the size-element and escaped-name detection queries proven on fixtures and look-alikes (D-01, D-05, D-12, D-13)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 24-03-PLAN.md — ROLL-03: docs/ROLLOUT-v1.7.0_gg3.md, seven three-part items, every command proven, rollback run on a dry-run merge of the tip
+- [x] 24-03-PLAN.md — ROLL-03: docs/ROLLOUT-v1.7.0_gg3.md, seven three-part items, every command proven, rollback run on a dry-run merge of the tip
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 24-04-PLAN.md — PUB-09: the 1.7.0_gg3 CHANGELOG section, FORK-DELTA rows, Known costs 6/10/11 and raw numbers, 22-SECURITY R-22-02 aligned, cross-document consistency
@@ -372,7 +372,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 | 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-19 |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-20 |
 | 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 6/6 | Complete    | 2026-10-20 |
-| 24. Release & Publication | v1.7.0_gg3-hardening | 2/7 | In Progress | - |
+| 24. Release & Publication | v1.7.0_gg3-hardening | 3/7 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg3-hardening` created: 2026-10-16*
