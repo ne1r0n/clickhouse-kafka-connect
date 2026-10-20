@@ -5,17 +5,17 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 24
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 24-01-PLAN.md
-last_updated: "2026-10-20T16:21:36.459Z"
+stopped_at: Completed 24-02-PLAN.md
+last_updated: "2026-10-20T16:42:18.455Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 24 execution started
-state_head: cb5b8cdfbbad1b7f3572a2cddc5dfe6f14264f19
+state_head: 3b406a8e073b503cc723411811344e07651599d6
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 17
-  percent: 74
+  completed_plans: 18
+  percent: 75
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 23)
 ## Current Position
 
 Phase: 24 (Release & Publication) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 24 execution started
 
-Progress: [███████░░░] 74%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -157,6 +157,7 @@ Progress: [███████░░░] 74%
 | Phase 23 P05 | 8 min | 3 tasks | 8 files |
 | Phase 23 P06 | 9 min | 3 tasks | 3 files |
 | Phase 24 P01 | 10 min | 3 tasks | 4 files |
+| Phase 24 P02 | 16 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 24]: 24-01: D-04 branch 1 measured: only a Map key reaches the task status chain, DLQ stack-trace header and Error inserting records throwable; no value; residual stays accepted, no code change
 - [Phase 24]: 24-01: the shipped jar changes between pre-merge tip and gg3 by the Phase 22-23 classes, WithheldMessageException and four version-bearing entries (Version, MANIFEST, ClickHouseHelperClient, SinkTaskStatistics); the three bumps change no entry
 - [Phase 24]: 24-01: the setting-absent JSON control surfaces the schema-validation text, not 'Writing JSON in binary is not supported yet' (shadowed by validation); documents must word it from E-03
+- [Phase 24]: D-09 verdict (24-02): only Nullable(Tuple)-bearing roots with a backslash-n or line-break element name encode differently between gg2 and gg3 (14 fixture tables); gg2 fails them with code 33 — Measured on 26.9.19.9 with the real describeTable of both class trees (E-10, E-11)
+- [Phase 24]: D-15 shape query tests for a backslash followed by n, not any backslash — The broad form over-flags single-backslash, trailing-backslash and tab names whose trees are identical (E-13)
 
 ### Pending Todos
 
@@ -248,8 +251,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T16:21:36.016Z
-Stopped at: Completed 24-01-PLAN.md
+Last session: 2026-10-20T16:42:17.983Z
+Stopped at: Completed 24-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
