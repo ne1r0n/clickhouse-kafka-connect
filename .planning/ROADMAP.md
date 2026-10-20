@@ -76,7 +76,7 @@ Phase artifacts: `milestones/v1.7.0_gg2-hardening-phases/`
 **Milestone Goal:** Close the last known record-data exposure (backlog 999.3), clear every review advisory carried from `v1.7.0_gg2-hardening`, and absorb the Dependabot bumps already on `origin/custom_build`. Then publish `v1.7.0_gg3` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
 - [x] **Phase 21: Dependabot Integration & CI Hygiene** - Merge `custom_build`'s three Dependabot commits into the working branch before any code work; close the 17-REVIEW pin-guard gaps; the user disables the inherited-red nightly, checks Dependabot and revokes the stale token (completed 2026-10-19)
-- [ ] **Phase 22: Writer Record-Data Exposure** - Backlog 999.3: writer conversion failures name the column, type and exception class without the record value, with retry classification pinned before and after the change; the inline Mockito mock is gone
+- [x] **Phase 22: Writer Record-Data Exposure** - Backlog 999.3: writer conversion failures name the column, type and exception class without the record value, with retry classification pinned before and after the change; the inline Mockito mock is gone (completed 2026-10-20)
 - [ ] **Phase 23: Declared-Nullability Hardening & Review Closure** - The 19-REVIEW advisories are fixed in `DeclaredNullability` and its tests, IN-04 is decided, and every 17-REVIEW and 19-REVIEW finding is dispositioned
 - [ ] **Phase 24: Release & Publication** - `v1.7.0_gg3` published with a reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tag
 
@@ -149,7 +149,7 @@ The 17-REVIEW closures made here (WR-01 residue by OPS-02, IN-01 by CI-18, IN-02
   3. `ClickHouseWriterNullMessageUnitTest` no longer inline-mocks `ClickHouseHelperClient` with Mockito; it overrides the writer one level up, in the `CapturingClickHouseWriter` pattern. Every original assertion of the WRT-11 null-message behaviour is kept, and the Phase 18 deferred item (OpenJ9 `retransformClasses` crash risk) is closed.
   4. FORK-DELTA Known costs item 6, the WRT-12 row of the patch table and this roadmap's backlog 999.3 entry (marked delivered) change in the same commit as the writer code they describe. The anchors invariant passes at every commit in the phase.
 
-**Plans**: 5/5 plans executed (sequential, waves 1-5)
+**Plans**: 5/5 plans complete (sequential, waves 1-5)
 
 Plans:
 **Wave 1**
@@ -315,7 +315,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-19 |
-| 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | In Progress | - |
+| 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-20 |
 | 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 | 24. Release & Publication | v1.7.0_gg3-hardening | 0/TBD | Not started | - |
 

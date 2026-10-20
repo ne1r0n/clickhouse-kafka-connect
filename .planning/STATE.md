@@ -2,39 +2,39 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
-current_phase: 22
-current_phase_name: Writer Record-Data Exposure
-status: verifying
-stopped_at: Completed 22-05-PLAN.md
-last_updated: "2026-10-19T21:01:42.335Z"
-last_activity: 2026-10-19
-last_activity_desc: Phase 22 execution started
-state_head: f2911a35300f19e5cd3ac2eb0eabeedafa9070e1
+current_phase: 23
+current_phase_name: Declared-Nullability Hardening & Review Closure
+status: planning
+stopped_at: Phase 22 complete, ready to plan Phase 23
+last_updated: "2026-10-20T08:05:13.359Z"
+last_activity: 2026-10-20
+last_activity_desc: Phase 22 complete, transitioned to Phase 23
+state_head: 3cd4593c7093a4ac3565c4649ceb06f3c8f0fdc9
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
   completed_plans: 10
-  percent: 25
+  percent: 50
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-19 after Phase 21)
+See: .planning/PROJECT.md (updated 2026-10-20 after Phase 22)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 22 — Writer Record-Data Exposure
+**Current focus:** Phase 23 — Declared-Nullability Hardening & Review Closure
 
 ## Current Position
 
-Phase: 22 (Writer Record-Data Exposure) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-10-19 — Phase 22 execution started
+Phase: 23 — Declared-Nullability Hardening & Review Closure
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-20 — Phase 22 complete, transitioned to Phase 23
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [███░░░░░░░] 25%
 | 19 | 10 | - | - |
 | 20 | 8 | - | - |
 | 21 | 5 | - | - |
+| 22 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -188,11 +189,12 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 22]: 22-02: NESTED_DATA_EXCEPTION pins as RUNTIME_WRAP, not DATA_EXCEPTION, because Processing.doInsert wraps every writer failure before Utils.handleException tests instanceof DataException; pin_testcases=184 is the count 22-03 must see unchanged
 - [Phase 22]: 22-02: V2 client wrap is modeled in ScriptedWriteFailureWriter (RuntimeException wrapped once in client.api.ClickHouseException); 22-04 live test covers the real client
 - [Phase 22]: WRT-13: generic catch passes IO chains, ConnectExceptions and exact RuntimeExceptions through and replaces everything else with a value-free DataException whose cause is a WithheldMessageException copy (frames kept, messages withheld)
-- [Phase 22]: F2 forced flip: schemaWithFixedStringMismatchTest asserts an exact WithheldMessageException root cause plus its original class name, as strong as the old instance-of check; surfaced to the user, not decided by them
+- [Phase 22]: F2 forced flip: schemaWithFixedStringMismatchTest asserts an exact WithheldMessageException root cause plus its original class name, as strong as the old instance-of check; approved by the user at 22-UAT test 1 (2026-10-20)
 - [Phase 22]: D-04 pin uses a record text of at most 36 characters because UUID.fromString rejects longer strings with a value-free message
 - [Phase 22]: 22-04: shared D-15 header assertions and QUERY_ID_MESSAGE live in ValueFreeDlqHeadersUnitTest and the live test calls them; the live Int128 case uses Nullable(Int128) so the value reaches the conversion
 - [Phase 22]: 22-04: plan counted 7 existing live cases but WriterErrorPathLiveTest has 6; verify thresholds corrected to 7 and 10, no case added to hit a number
-- [Phase 22]: 22-05: the 22-03 F2 flip (L-47) is recorded as surfaced to the user with no response received, not as approved
+- [Phase 22]: 22-05: the 22-03 F2 flip (L-47) was recorded as surfaced with no response; the user approved it at 22-UAT test 1 (2026-10-20)
+- [Phase 22]: UAT: the Jackson reference-chain residual on the opt-in JSON-as-string route (22-REVIEW WR-01) is accepted, not fixed (R-22-02 in 22-SECURITY.md); the F7 reading of HARN-08 is accepted. 22-REVIEW WR-01 and IN-01..IN-05 stay `open` in 22-REVIEW-DISPOSITION.md (PROJECT.md → Active, Phase 22 follow-ups)
 
 ### Pending Todos
 
@@ -214,7 +216,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| deferred_items | 18/deferred-items.md: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` (intermittent OpenJ9 `retransformClasses` crash risk) | acknowledged; scheduled as HARN-08 (Phase 22) | 2026-10-16 | v1.7.0_gg2-hardening |
+| deferred_items | 18/deferred-items.md: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` (intermittent OpenJ9 `retransformClasses` crash risk) | closed in Phase 22 (HARN-08, Mockito-free `CountingHelperClient`) | 2026-10-16 | v1.7.0_gg2-hardening |
 
 `v1.7.0_gg2-hardening` closed after a passed milestone audit. The open-artifact audit found one deferred item, and the user acknowledged it. The close was an override closeout, because the Phase 16–19 verification digests had gone stale after Phase 20 edited the files they covered (see `MILESTONES.md`). Its follow-ups are now scheduled as this milestone's 20 requirements (`REQUIREMENTS.md` → Traceability).
 
@@ -224,11 +226,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:01:42.237Z
-Stopped at: Completed 22-05-PLAN.md
+Last session: 2026-10-20T08:06:20.236Z
+Stopped at: Phase 22 complete, ready to plan Phase 23
 Resume file: None
 
 ## Operator Next Steps
 
-- Start Phase 22 (Writer Record-Data Exposure) with `/gsd-discuss-phase 22` or `/gsd-plan-phase 22`.
+- Start Phase 23 (Declared-Nullability Hardening & Review Closure) with `/gsd-discuss-phase 23` or `/gsd-plan-phase 23`.
 - Optional, in the GitHub web UI: create the `dependencies` label. Before merging any open Dependabot PR on `origin`, note that #4 and #9 bump fork-only pins, and that a merge diverges `sync/v1.7.0` again.
