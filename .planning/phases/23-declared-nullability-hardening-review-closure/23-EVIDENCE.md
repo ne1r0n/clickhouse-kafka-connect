@@ -14,7 +14,7 @@
 | R-03 | 23-RESEARCH | D-07 null-shape matrix on the unchanged code | recorded |
 | R-04 | 23-RESEARCH | Prototype run: which existing tests D-01 turns red | recorded |
 | E-01 | 23-01 | DEBT-11 baselines and commits | recorded |
-| E-02 | 23-02 | COLS-12 | pending |
+| E-02 | 23-02 | COLS-12 | recorded |
 | E-03 | 23-03 | DEBT-10 fallback-WARN mutations | pending |
 | E-04 | 23-04 | COLS-13 | pending |
 | E-05 | 23-05 | COLS-14, the unpaired-WARN mutations and the SC3 reading | pending |
@@ -174,3 +174,18 @@ live_d15: declaredTupleTypesParseWithDdlNullability tests=1 failures=0
 clickhouse_image: sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z
 fork_unit_testcases: 45
 assumption_delta: no-change (the detector fired on the prose words "also" and "fallback"; no identity model generalises)
+
+### E-02: COLS-12 null totality and the D-08 flip (23-02)
+
+Recorded 2026-10-20T11:46:40Z. Scratch output is in `/tmp/gsd23/exec/`.
+
+cols12_tracer_red: rc=1 failed=3
+cols12_expansion_red: rc=1 d07_failed=8 kept_and_d09_passed=3
+cols12_green: tests=38 failures=0
+d08_flip: method and null-type input kept; NullPointerException class-name assertion -> (structure mismatch); 19-REVIEW IN-02 re-open trigger
+null_root_name_reading: a null root name is now (structure mismatch), not (IllegalArgumentException) (RESEARCH Open Question 2)
+cols12_commit: 4bbc9627fe7a8a0545dc8f4bb9cf3c3b9109509c
+cols12_commit_files: 6
+anchors_mirror_23_02: rows=66 bad=0
+spotless_after_23_02: SPOTLESS-BASELINE-EQUAL
+testunit_23_02: Tests summary: 808 tests, 806 succeeded, 0 failed, 2 skipped
