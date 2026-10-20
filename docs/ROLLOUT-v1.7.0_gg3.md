@@ -112,13 +112,13 @@ Declared Tuple element(s) [<element path>] of column <column> of table <db>.<tab
 
 The line is logged once per affected column each time the connector describes a table, with no throttling, and it carries the element paths, the column, the database, the table and the declared type, never a value. A line break in the declared type prints as `\n`. The connector describes every table of the database that its `targetTableFilter` lets through, at task start and at every mapping refresh, not only the tables that its topics write to, so the line can name a table that this connector never writes.
 
-**What the WARN marks: a known defect that is older than this release.** The table description drops a Tuple element named `size` or `size0` at any depth of a column's type. It also drops an element named `size` followed by digits (`size1`, `size12`) wherever an `Array` encloses its Tuple. The connector then writes fewer fields than the table declares, and every insert into that table fails with the server error code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or code 33 (`CANNOT_READ_ALL_DATA`) and stores no row. Measured on ClickHouse 26.9.19.9 with client V2, one record per table, on `v1.7.0_gg2` and on `v1.7.0_gg3` alike:
+**What the WARN marks: a known defect that is older than this release.** The table description drops a Tuple element named `size` or `size0` at any depth of a column's type. It also drops an element named `size` followed by digits (`size1`, `size12`) wherever an `Array` encloses its Tuple. The connector then writes fewer fields than the table declares. Inserts that were run into such tables (four shapes: `Tuple(size ...)`, `Array(Tuple(size ...))`, `Array(Tuple(size1 ...))` and `Array(Tuple(v String, size1 ...))`) failed with the server error code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or code 33 (`CANNOT_READ_ALL_DATA`) and stored no row. The other affected shapes were detected by the WARN and were not inserted, and a shorter row that happens to parse could store a wrong value instead of failing; neither was measured. Measured on ClickHouse 26.9.19.9 with client V2, one record per table, on `v1.7.0_gg2` and on `v1.7.0_gg3` alike:
 
 - code 32 for `Tuple(size UInt16, v String)`, `Array(Tuple(size UInt16, v String))` and `Array(Tuple(size1 UInt16, v String))`;
 - code 33 for `Array(Tuple(v String, size1 UInt16))`;
 - the stored row for `Tuple(size1 UInt8, v String)`, `Map(String, Tuple(size1 UInt8, v String))` and `Tuple(sizes UInt8, v String)`, which are not affected.
 
-`v1.7.0_gg2` fails the same way and logs no WARN, so a table that the new WARN names may already have been failing before you upgrade. A wrongly stored value is possible in principle when the shorter row happens to parse; that case was not measured. The server refuses to create a table with a Tuple element named `null` (code 36), so no such table exists to be affected.
+`v1.7.0_gg2` fails the same way and logs no WARN, so a table that the new WARN names may already have been failing before you upgrade. The server refuses to create a table with a Tuple element named `null` (code 36), so no such table exists to be affected.
 
 ### Am I affected?
 
@@ -144,11 +144,11 @@ The second check is exact, because the line comes from the same code path as the
 grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
 ```
 
-**Empty result:** that log shows no unpaired element for any table the connector described, so none of those tables is affected. It says nothing about a period the file does not cover, and `v1.7.0_gg2` never logs the line. **Non-empty result:** each line names a table and the element paths that the connector dropped; inserts into that table fail. Run on a scratch log file that held the line captured from a real run between two unrelated lines, the command printed that line; on a file with only the unrelated lines it printed nothing.
+**Empty result:** that log shows no unpaired element for any table the connector described, so none of those tables is affected. It says nothing about a period the file does not cover, and `v1.7.0_gg2` never logs the line. **Non-empty result:** each line names a table and the element paths that the connector dropped; the table has the defect described above. Run on a scratch log file that held the line captured from a real run between two unrelated lines, the command printed that line; on a file with only the unrelated lines it printed nothing.
 
 ### What to do
 
-This release has no fix for the defect, and the fix is tracked for a later release. Inserts into such a table fail on the route that was measured, the default route with client V2, whatever the connector settings. Client V1 and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, were not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table fails and why.
+This release has no fix for the defect, and the fix is tracked for a later release. The inserts that were run into such tables failed on the route that was measured, the default route with client V2, whatever the connector settings. Client V1 and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, were not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table fails and why.
 
 ---
 
@@ -326,7 +326,7 @@ Rolling back brings back:
 
 - record values in the writer error text of the task status, the DLQ stack-trace header and the `Error inserting records` logs, with the library messages and without the `Failed to write column ` match for conversion failures, and on client V1 the table-mapping refresh that a record text containing `Code: 33` or `Code: 131` starts ([item 1](#item-1-record-values-in-writer-error-text));
 - the failure of inserts into a table with a `Nullable(Tuple(...))` whose element name holds a backslash and an `n`, or a line break, with the server error code 33 and the `Could not take element nullability` WARN at every table description ([item 3](#item-3-backslashes-and-line-breaks-in-names));
-- the silence about a table with a Tuple element named `size` or `size0`: its inserts fail as before, with code 32 or 33, but the WARN that points at the table is gone ([item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size));
+- the silence about a table with a Tuple element named `size` or `size0`: its inserts behave as before (the shapes that were inserted failed with code 32 or 33), but the WARN that points at the table is gone ([item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size));
 - the `v1.7.0_gg2` MBean `version=` segment and client name ([item 5](#item-5-jmx-mbean-name-and-client-name));
 - on the branch, the gg3 documents themselves: this note, the CHANGELOG section and the FORK-DELTA rows;
 - a retry failure for a range that is in `BEFORE_PROCESSING` when you roll back, for the one table shape of item 4 ([item 4](#item-4-in-flight-batches)).

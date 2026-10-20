@@ -37,9 +37,12 @@ checklist.
 
 * A `Tuple` element named `size` or `size0` at any depth of a column's type, or an element named `size` followed by
   digits where an `Array` encloses its Tuple, is dropped when the connector reads the table. On the default route with
-  client V2, every insert into such a table fails with the server error code 32 or 33 and stores no row, on
-  `v1.7.0_gg2` and on this release alike. This release adds the WARN described above that names such a table, but it
-  has no fix. The rollout checklist has a query that lists suspect tables and the log line that confirms one.
+  client V2, inserts that were run into such tables (four shapes: `Tuple(size ...)`, `Array(Tuple(size ...))`,
+  `Array(Tuple(size1 ...))` and `Array(Tuple(v String, size1 ...))`) failed with the server error code 32 or 33 and
+  stored no row, on `v1.7.0_gg2` and on this release alike. The other affected shapes were detected by the WARN and
+  were not inserted, and a shorter row that happens to parse could store a wrong value instead of failing; neither
+  was measured. This release adds the WARN described above that names such a table, but it has no fix. The rollout
+  checklist has a query that lists suspect tables and the log line that confirms one.
 
 ## Bug Fixes
 
