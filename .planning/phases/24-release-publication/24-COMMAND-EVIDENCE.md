@@ -1088,3 +1088,138 @@ bec167d85918e77c11621063000acc6e031ae2fa  refs/heads/main
 ```
 
 Matches text: n/a (gate check)
+
+### E-70: rollback tag pushed before the merge
+
+Backs: PUB-10 and D-07 (the rollback point is on origin before anything else moves). Date (UTC) 2026-10-20.
+
+**The user's answer, verbatim:** `publish`. It was given directly to the orchestrator in the main session at the Task 1 `blocking-human` checkpoint, after 24-06-SUMMARY.md's `## Approval bundle` (items 1-8) and every push command were presented. Received by: the orchestrator, directly. Tasks 2 and 3 ran inline in the orchestrator; no subagent held push authority.
+
+**Ground truth before anything was pushed** (2026-10-20T18:10:42Z):
+
+- X = `8b1c318d52880de07571329d202f26cf322ed043` (local `sync/v1.7.0`); X0 = `3ab55e1da878c6619f711d1220793e9d2456fa9d`, an ancestor of X, with X0..X `.planning/`-only.
+- Origin `custom_build` = `6473e24f` (D-10 holds; no E-73). Rate limit 46.
+- `tests.yaml` runs on `6473e24f` before: 1 (id 38887912912; the Dependabot dynamic run 39225727880 is another path and is not counted).
+- Snapshots: `/tmp/gsd24/exec/origin-tags-before-release.txt`, `origin-heads-before-release.txt`, `runs-6473e24f-before.txt`.
+- `git rev-parse 'pre-v1.7.0_gg3^{commit}'` = `6473e24f`; its `tests.yaml` carries `branches: ['**']`, a branch-only trigger.
+
+**The push, as run** (2026-10-20T18:10:45Z):
+
+```sh
+git push origin refs/tags/pre-v1.7.0_gg3:refs/tags/pre-v1.7.0_gg3
+```
+
+```text
+ * [new tag]           pre-v1.7.0_gg3 -> pre-v1.7.0_gg3
+```
+
+The check ran three times: at 26 s and 54 s, both early against the plan's 60 s wait, and again at 77 s (18:12:05Z). Each time the `tests.yaml` run count on `6473e24f` was unchanged (still 1):
+
+```text
+ROLLBACK-TAG-PUSHED-NO-RUN
+```
+
+Matches text: n/a (gate check)
+
+### E-71: release merge, checks on M, the rollback re-check and the CI run
+
+Backs: PUB-10 (the published tree is the rehearsed, approved tree, and CI passed it under its own SHA). Date (UTC) 2026-10-20.
+
+**The merge**, in the throwaway worktree `/tmp/gsd24/cb`. The worktree was added on the local `custom_build` (`a246ca01`) and fast-forwarded locally with `git -C /tmp/gsd24/cb merge --ff-only 6473e24f372a8b37dfd8cc8cf3124e6cff52edca`; it was clean, with HEAD `6473e24f`.
+
+```sh
+git -C /tmp/gsd24/cb merge --no-ff -F /tmp/gsd24/merge-msg.txt 8b1c318d52880de07571329d202f26cf322ed043
+```
+
+M = `3376a18fd057dba329ceae7d8c74d1ba4e3d36f6`, subject `Merge sync/v1.7.0: release v1.7.0_gg3`, parents `6473e24f` and `8b1c318d`. The body names:
+
+- VERSION `v1.7.0_gg3`, the rollout note, the CHANGELOG section and the FORK-DELTA refresh;
+- the shipped changes, worded as the CHANGELOG words them: value-free conversion error text with the one measured Map-key exception, the backslash-n / line-break `Nullable(Tuple)` fix, the new WARN and its known issue, the pin-guard and test hardening, and the three Dependabot updates already on `custom_build`;
+- the published `.planning/` history;
+- the `pre-v1.7.0_gg3` read-tree rollback.
+
+**Checks on M, before the push** (all printed):
+
+```text
+M=3376a18fd057dba329ceae7d8c74d1ba4e3d36f6 X=8b1c318d52880de07571329d202f26cf322ed043 X0=3ab55e1da878c6619f711d1220793e9d2456fa9d
+MERGE-SHAPE-OK
+files 7 bad []
+MERGED-TREE-NO-TRUNCATE-INSTRUCTION
+ok-line True missing []
+ROLLBACK-RECHECK-ON-M-OK
+```
+
+- **MERGE-SHAPE-OK** asserted that M has exactly two parents, M^1 = `6473e24f` and M^2 = X; that `git diff --quiet M X` holds and X0..X is `.planning/`-only; that `.gsd-ws-arg` is absent from M's tree; and that the worktree is clean.
+- **The rollback re-check:** `/tmp/gsd24/rollback-demo.sh` (E-22) ran against M itself (`/tmp/gsd24/exec/rollback-on-M.log`). It printed `ok`, `rollout doc gone from branch`, `item-7 headings: 1`, `rolled-back tests.yaml keeps branches: ['**']` and `after git revert <rollback-commit>: tree(HEAD)==tree(target)`. Its demo worktree was removed.
+
+**The publish push, as run** (2026-10-20T18:12:12Z, after a final D-10 re-read of origin `custom_build` = `6473e24f`):
+
+```sh
+git -C /tmp/gsd24/cb push origin refs/heads/custom_build:refs/heads/custom_build
+```
+
+```text
+   6473e24f..3376a18f  custom_build -> custom_build
+removed [] added ['6473e24f372a8b37dfd8cc8cf3124e6cff52edca\trefs/tags/pre-v1.7.0_gg3']
+CUSTOM-BUILD-PUBLISHED-ONLY
+```
+
+Only `custom_build` moved. `main` (`bec167d8`), `sync/v1.7.0` (X0) and the five `dependabot/*` heads were unchanged, and the only tag added so far is `pre-v1.7.0_gg3` at `6473e24f` (before/after snapshot diff).
+
+**CI on M** (exactly one `tests.yaml` run, zero cancelled, no run of another path):
+
+```text
+id=39472696952 path=.github/workflows/tests.yaml event=push head_branch=custom_build status=completed conclusion=success
+run_started_at=2026-10-20T18:12:17Z updated_at=2026-10-20T18:17:32Z (about 5 min; X0's run 39470352668 was about 6 min)
+url=https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/39472696952
+job="ClickHouse latest Client version V2 tests" runner_name="GitHub Actions 1000000292" labels=ubuntu-24.04 completed/success (18:12:20Z-18:17:31Z)
+PUBLISHED-SHA-RUN-GREEN
+```
+
+The green result was observed at 2026-10-20T18:18:32Z (`/tmp/gsd24/exec/watch-m.log`); 34 API requests remained.
+
+Matches text: n/a (gate check)
+
+### E-72: release run, tag and final refs
+
+Backs: PUB-10 (the tag names a SHA CI already passed; origin's final refs are exactly the expected set). Date (UTC) 2026-10-20.
+
+**Late re-check** (2026-10-20T18:20:47Z, 135 s after the green result at 18:18:32Z): `actions/runs?head_sha=M` still held exactly one `tests.yaml` run, 39472696952, green, with none cancelled and no run of another path. Origin `custom_build` was still M.
+
+**The tag push and the deletion, as run and in order:**
+
+```sh
+git tag v1.7.0_gg3 3376a18fd057dba329ceae7d8c74d1ba4e3d36f6         # lightweight, like v1.7.0_gg2
+git push origin refs/tags/v1.7.0_gg3:refs/tags/v1.7.0_gg3           # 2026-10-20T18:20:56Z, after the late re-check
+# 73 s later (18:22:11Z): M still has exactly one tests.yaml run, so the tag started none
+git push origin --delete refs/heads/sync/v1.7.0                     # 2026-10-20T18:22:20Z, only after the tag
+```
+
+```text
+ * [new tag]           v1.7.0_gg3 -> v1.7.0_gg3
+ - [deleted]           sync/v1.7.0
+true
+tags-ok True heads ['refs/heads/custom_build', 'refs/heads/main'] custom_build ['3376a18fd057dba329ceae7d8c74d1ba4e3d36f6\trefs/heads/custom_build'] main-unchanged True
+FINAL-REFS-OK
+```
+
+**Final origin refs** (`/tmp/gsd24/exec/origin-heads-final.txt`, `origin-tags-final.txt`):
+
+- Heads other than `dependabot/*`: exactly `custom_build` at `3376a18f` and `main` at `bec167d8`, unchanged. The five `dependabot/*` heads are byte-identical to the before-release snapshot: `clickHouseDriver-0.10.0`, `com.github.ben-manes.versions-0.66.0`, `gradle-wrapper-9.8.1`, `org.apache.commons-commons-lang3-3.21.0` and `org.apache.kafka-connect-api-4.4.0`.
+- Tags: exactly `pre-v1.6.0-sync` (6ac2d20c), `pre-v1.7.0-sync` (c61d90ce), `v1.6.0_gg1` (c61d90ce), `v1.7.0_gg1` (f328fd21), `pre-v1.7.0_gg2` (be6b8861), `v1.7.0_gg2` (a246ca01), `pre-v1.7.0_gg3` (6473e24f) and `v1.7.0_gg3` (3376a18f).
+
+**Cleanup:**
+
+- `/tmp/gsd24/cb` was removed (clean) and pruned. `git fetch origin --no-tags` shows `origin/custom_build` = local `custom_build` = `3376a18f`.
+- The main tree stayed on `sync/v1.7.0`, and the local `sync/v1.7.0` branch is kept.
+- `release.yaml` and `pre-release.yaml` were not dispatched.
+
+**Raw numbers on the tag:** `git diff --shortstat v1.7.0 v1.7.0_gg3` equals FORK-DELTA's gg3 rows as published in M:
+
+```text
+-- src build.gradle.kts gradle .github:  130 files changed, 22783 insertions(+), 534 deletions(-)
+-- src/main:                             33 files changed, 2245 insertions(+), 145 deletions(-)
+wide [130, 22783, 534] [130, 22783, 534] main [33, 2245, 145] [33, 2245, 145]
+```
+
+Matches text: n/a (gate check)

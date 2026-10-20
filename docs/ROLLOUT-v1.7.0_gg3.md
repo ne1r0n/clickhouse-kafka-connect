@@ -1,5 +1,7 @@
 # Rollout checklist: `v1.7.0_gg2` to `v1.7.0_gg3`
 
+This copy corrects the text of the copy in tag `v1.7.0_gg3` in four items: [item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size), [item 3](#item-3-backslashes-and-line-breaks-in-names), [item 4](#item-4-in-flight-batches) and [item 7](#item-7-rollback). No query and no git command changed. Item 4 now also covers connectors with `exactlyOnce=false` and with `enableDbTopicSplit=true`, and item 7 has you work through item 4 before you change the branch. If you hold the tagged copy, read those items here.
+
 If you are coming from a release before `v1.7.0_gg2`, work through [`ROLLOUT-v1.7.0_gg2.md`](ROLLOUT-v1.7.0_gg2.md) first, which in turn sends you to [`ROLLOUT-v1.7.0_gg1.md`](ROLLOUT-v1.7.0_gg1.md), and return here afterwards.
 
 This note covers only what changed between `v1.7.0_gg2` and `v1.7.0_gg3`. Both releases are built on the same upstream base, `1.7.0`. The fork's own changes are listed in [`../CHANGELOG.md`](../CHANGELOG.md), and [`FORK-DELTA.md`](FORK-DELTA.md) lists everything the fork patches on top of upstream.
@@ -112,13 +114,13 @@ Declared Tuple element(s) [<element path>] of column <column> of table <db>.<tab
 
 The line is logged once per affected column each time the connector describes a table, with no throttling, and it carries the element paths, the column, the database, the table and the declared type, never a value. A line break in the declared type prints as `\n`. The connector describes every table of the database that its `targetTableFilter` lets through, at task start and at every mapping refresh, not only the tables that its topics write to, so the line can name a table that this connector never writes.
 
-**What the WARN marks: a known defect that is older than this release.** The table description drops a Tuple element named `size` or `size0` at any depth of a column's type. It also drops an element named `size` followed by digits (`size1`, `size12`) wherever an `Array` encloses its Tuple. The connector then writes fewer fields than the table declares, and every insert into that table fails with the server error code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or code 33 (`CANNOT_READ_ALL_DATA`) and stores no row. Measured on ClickHouse 26.9.19.9 with client V2, one record per table, on `v1.7.0_gg2` and on `v1.7.0_gg3` alike:
+**What the WARN marks: a known defect that is older than this release.** The table description drops a Tuple element named `size` or `size0` at any depth of a column's type. It also drops an element named `size` followed by digits (`size1`, `size12`) wherever an `Array` encloses its Tuple. The connector then writes fewer fields than the table declares. Inserts that were run into such tables (four shapes: `Tuple(size ...)`, `Array(Tuple(size ...))`, `Array(Tuple(size1 ...))` and `Array(Tuple(v String, size1 ...))`) failed with the server error code 32 (`ATTEMPT_TO_READ_AFTER_EOF`) or code 33 (`CANNOT_READ_ALL_DATA`) and stored no row. The other affected shapes were detected by the WARN and were not inserted, and a shorter row that happens to parse could store a wrong value instead of failing; neither was measured. Measured on ClickHouse 26.9.19.9 with client V2, one record per table, on `v1.7.0_gg2` and on `v1.7.0_gg3` alike:
 
 - code 32 for `Tuple(size UInt16, v String)`, `Array(Tuple(size UInt16, v String))` and `Array(Tuple(size1 UInt16, v String))`;
 - code 33 for `Array(Tuple(v String, size1 UInt16))`;
 - the stored row for `Tuple(size1 UInt8, v String)`, `Map(String, Tuple(size1 UInt8, v String))` and `Tuple(sizes UInt8, v String)`, which are not affected.
 
-`v1.7.0_gg2` fails the same way and logs no WARN, so a table that the new WARN names may already have been failing before you upgrade. A wrongly stored value is possible in principle when the shorter row happens to parse; that case was not measured. The server refuses to create a table with a Tuple element named `null` (code 36), so no such table exists to be affected.
+`v1.7.0_gg2` behaves the same way for the four shapes that were inserted on both releases, and logs no WARN, so a table that the new WARN names may already have been affected before you upgrade. The server refuses to create a table with a Tuple element named `null` (code 36), so no such table exists to be affected.
 
 ### Am I affected?
 
@@ -144,11 +146,11 @@ The second check is exact, because the line comes from the same code path as the
 grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
 ```
 
-**Empty result:** that log shows no unpaired element for any table the connector described, so none of those tables is affected. It says nothing about a period the file does not cover, and `v1.7.0_gg2` never logs the line. **Non-empty result:** each line names a table and the element paths that the connector dropped; inserts into that table fail. Run on a scratch log file that held the line captured from a real run between two unrelated lines, the command printed that line; on a file with only the unrelated lines it printed nothing.
+**Empty result:** that log shows no unpaired element for any table the connector described, so none of those tables is affected. It says nothing about a period the file does not cover, and `v1.7.0_gg2` never logs the line. **Non-empty result:** each line names a table and the element paths that the connector dropped; the table has the defect described above. Run on a scratch log file that held the line captured from a real run between two unrelated lines, the command printed that line; on a file with only the unrelated lines it printed nothing.
 
 ### What to do
 
-This release has no fix for the defect, and the fix is tracked for a later release. Inserts into such a table fail on the route that was measured, the default route with client V2, whatever the connector settings. Client V1 and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, were not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table fails and why.
+This release has no fix for the defect, and the fix is tracked for a later release. The inserts that were run into such tables failed on the route that was measured, the default route with client V2, whatever the connector settings. Client V1 and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, were not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table has the defect. For the four shapes that were inserted the defect showed as a failed insert, and for the other shapes it was not measured.
 
 ---
 
@@ -158,13 +160,13 @@ This release has no fix for the defect, and the fix is tracked for a later relea
 
 A `Nullable(Tuple(...))` column whose Tuple element name holds a backslash followed by `n`, or a line break, now pairs with its declared type. That holds when the Tuple is the column itself, an `Array` element, a `Map` value or a field of another Tuple (ledger L-50).
 
-On `v1.7.0_gg2` such a name did not pair. The connector logged the following WARN at every table description, kept the nullability that the server reported, and every insert into the table failed with the server error code 33 (`CANNOT_READ_ALL_DATA`) and stored no row:
+On `v1.7.0_gg2` such a name did not pair. The connector logged the following WARN at every table description, kept the nullability that the server reported, and the inserts that were run into such tables (four shapes, listed below) failed with the server error code 33 (`CANNOT_READ_ALL_DATA`) and stored no row:
 
 ```text
 Could not take element nullability for column <column> of table <db>.<table> from its declared type <type> (structure mismatch); keeping the nullability DESCRIBE reported for it
 ```
 
-`v1.7.0_gg3` pairs the name, applies the declared nullability, logs no such WARN for the table and stores the row. Measured on ClickHouse 26.9.19.9 with client V2: of 44 fixture tables, 14 `Nullable(Tuple)`-bearing ones with a backslash-n or line-break element name came out different. On `v1.7.0_gg2` the four that were inserted (a `Nullable(Tuple)`, an `Array(Nullable(Tuple))` and a `Map` of `Nullable(Tuple)` with a literal backslash-n name, and a `Nullable(Tuple)` with a real line break) failed with code 33 and stored 0 rows. On `v1.7.0_gg3` all of them stored the row and read back equal. The other 30, among them every table with a plain name, every root that is not `Nullable`, and the `Enum` label shapes, are identical on both releases. A name with a single backslash, a trailing backslash or a tab was not affected: both releases store the record.
+`v1.7.0_gg3` pairs the name, applies the declared nullability, logs no such WARN for the table and stores the row. Measured on ClickHouse 26.9.19.9 with client V2: of 44 fixture tables, 14 `Nullable(Tuple)`-bearing ones with a backslash-n or line-break element name came out different. On `v1.7.0_gg2` the four that were inserted (a `Nullable(Tuple)`, an `Array(Nullable(Tuple))` and a `Map` of `Nullable(Tuple)` with a literal backslash-n name, and a `Nullable(Tuple)` with a real line break) failed with code 33 and stored 0 rows. On `v1.7.0_gg3` all of them stored the row and read back equal. The other 30, among them every table with a plain name, every table whose type holds no `Nullable(Tuple(...))` at any depth, and the `Enum` label shapes, are identical on both releases. A name with a single backslash, a trailing backslash or a tab was not affected: both releases store the record.
 
 ### Am I affected?
 
@@ -185,7 +187,7 @@ ORDER BY `table`;
 
 Nothing is needed for the fix itself. If you have a table of this shape, read [item 4](#item-4-in-flight-batches) before a rollback.
 
-**A known limitation, the same on both releases.** The connector matches a record's field names against the column and element names in its own escaped form of the server's name. A backslash, a slash or a tab in a column or element name therefore means the Kafka field must use the connector's escaped form as its name. For a column name, a field that uses the natural name is ignored and the column's `DEFAULT` is stored, with no error. For an element name inside a Tuple, the natural field name makes the record fail. The escaped form is the following (measured on ClickHouse 26.9.19.9, client V2, identical on `v1.7.0_gg2` and `v1.7.0_gg3`):
+**A known limitation, the same on both releases.** The connector matches a record's field names against the column and element names in its own escaped form of the server's name. A backslash, a line break, a slash or a tab in a column or element name therefore means the Kafka field must use the connector's escaped form as its name. For a column name, a field that uses the natural name is ignored and the column's `DEFAULT` is stored, with no error. For an element name inside a Tuple, the natural field name makes the record fail. The escaped form is the following (measured on ClickHouse 26.9.19.9, client V2, identical on `v1.7.0_gg2` and `v1.7.0_gg3`):
 
 | Character in the server name | Server name | Kafka field name that stores the value |
 |------------------------------|-------------|----------------------------------------|
@@ -232,18 +234,18 @@ For every other change, one sentence each way:
 For the one shape that differs, the two directions are not alike.
 
 - **Upgrade: no clean stop is needed.** In the measurement, the four such shapes that were inserted failed on `v1.7.0_gg2` with code 33 and stored 0 rows, so a range of such a table that `v1.7.0_gg2` left in flight holds no row, and the retry by `v1.7.0_gg3` lands once, with the declared bytes. The other differing shapes were not inserted ([item 3](#item-3-backslashes-and-line-breaks-in-names)), and the same outcome is likely for them, not measured.
-- **Rollback: stop cleanly first.** A range that `v1.7.0_gg3` left in `BEFORE_PROCESSING` is retried by `v1.7.0_gg2` under the same `insert_deduplication_token`. The bytes of `v1.7.0_gg2` fail with code 33 even when `v1.7.0_gg3` had stored the rows, because the server reads the bytes before it looks at the token. In the measurement, the rows that `v1.7.0_gg3` would have stored were written by SQL under the token the connector sends, and the retry by `v1.7.0_gg2` failed with code 33 and left exactly the one correct row. A table with a plain element name and the same declared type, whose bytes are the same on both releases, dropped the retry by its token and also kept one row. So the task fails, or the batch goes to the dead letter queue, even though the rows had landed. That is why the check below exists.
+- **Rollback: stop cleanly first.** A range that `v1.7.0_gg3` left in `BEFORE_PROCESSING` is retried by `v1.7.0_gg2` under the same `insert_deduplication_token`. The bytes of `v1.7.0_gg2` are expected to fail with code 33 even when `v1.7.0_gg3` had stored the rows, because the server reads the bytes before it looks at the token. In the measurement, run for one such table, a `Nullable(Tuple)` with a literal backslash-n name, the rows that `v1.7.0_gg3` would have stored were written by SQL under the token the connector sends, and the retry by `v1.7.0_gg2` failed with code 33 and left exactly the one correct row. A table with a plain element name and the same declared type, whose bytes are the same on both releases, dropped the retry by its token and also kept one row. So the task fails, or the batch goes to the dead letter queue, even though the rows had landed. That is why the check below exists.
 
 ### Am I affected?
 
-You are affected if a connector runs with `exactlyOnce=true` and writes a table that the query of [item 3](#item-3-backslashes-and-line-breaks-in-names) lists, and you want to roll back. **Empty result of that query:** no table of that database has the shape, so a rollback needs no clean stop for this reason. A connector with `exactlyOnce=false` keeps no offset state, so the procedure below does not apply to it; a range that Kafka delivers again is handled by the token as described in [item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token).
+You are affected if a connector writes a table that the query of [item 3](#item-3-backslashes-and-line-breaks-in-names) lists, and you want to roll back. **Empty result of that query:** no table of that database has the shape, so a rollback needs no clean stop for this reason. A connector with `exactlyOnce=false` has no state table to query, so the check below does not exist for it, but the failure does: a range that Kafka delivers again to `v1.7.0_gg2` for a table of the item 3 shape is expected to fail with code 33 even when `v1.7.0_gg3` stored its rows. The measurement in the rollback bullet above ran with `exactlyOnce=false`, which still sends the token, for one such table, a `Nullable(Tuple)` with a literal backslash-n name; the other shapes were not run. Stop its tasks cleanly, so that the offsets are committed, before you redeploy `v1.7.0_gg2`.
 
 ### What to do
 
 Before a rollback, for each connector with `exactlyOnce=true` that writes such a table:
 
 1. Stop or pause the connector with your usual procedure, and wait until its tasks have stopped.
-2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace each `<topic>` with one of your topics, writing the same topic twice if you have only one:
+2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries. With `enableDbTopicSplit=true`, also add the entry `'<db><dbTopicSplitChar><topic>'` for each topic, where `<db>` is the connector's `database` setting: the connector keys a topic that its `dbTopicSplitChar` divides into exactly two parts under the topic name itself, and any other topic under that prefixed form. A topic name that ends with `dbTopicSplitChar` can also be keyed without those trailing characters, so list that form as well. An entry that matches no key changes nothing. This key form is read from the connector code, not measured. Run the query in the database the connector connects to (its `database` setting, where the connector creates the state table), or write the table as `` `<db>`.`<zkDatabase>` ``:
 
 ```sql
 SELECT `key`, minOffset, maxOffset, state
@@ -253,10 +255,12 @@ WHERE state != 'AFTER_PROCESSING'
 ORDER BY `key`;
 ```
 
-   **Empty result:** no batch of those topics is in flight, so it is safe to roll back. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not roll back yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
-3. If the result is not empty, start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then roll back.
+   **Empty result:** no batch of the listed topics is in flight, so it is safe to redeploy `v1.7.0_gg2`. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not redeploy `v1.7.0_gg2` yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
+3. If the result is not empty, start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then continue with step 2 of [item 7](#item-7-rollback).
 
-[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) explains why the state table is shared and how the key looks with `enableDbTopicSplit=true`; those explanations are not repeated here. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
+For a connector with `exactlyOnce=false` that writes such a table, there is no state table to query. Stop its tasks cleanly before you redeploy `v1.7.0_gg2`, so that its offsets are committed and Kafka does not deliver a range again.
+
+[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) and [item 1 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check), to which it points, explain why the state table is shared; that explanation is not repeated here. Their rule for the key with `enableDbTopicSplit=true` is shorter than the one in step 2 above and can miss a key, so follow step 2. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
 
 ---
 
@@ -312,12 +316,12 @@ You are affected if you need to go back after upgrading, or if you want to know 
 
 ### What to do
 
-1. Back out the whole release in one commit on `custom_build`, by restoring the tree of tag `pre-v1.7.0_gg3`:
+1. Before you change the branch, work through [item 4](#item-4-in-flight-batches) for each connector it applies to, with either `exactlyOnce` setting. A rollback is the one direction in which a batch can be stuck, and the commit of the next step removes this document from the branch. Keep the `v1.7.0_gg3` archive you deployed, or rebuild it from tag `v1.7.0_gg3` (check out the tag and run `./gradlew createConfluentArchive`, as step 3 does for `v1.7.0_gg2`), because item 4 may need you to start it again.
+2. Back out the whole release in one commit on `custom_build`, by restoring the tree of tag `pre-v1.7.0_gg3`:
    1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing. Commit whatever it lists, or set it aside with `git stash -u` (a plain `git stash` leaves untracked files behind), or work in a fresh clone. The next command discards uncommitted and staged changes to tracked files without asking, and it overwrites untracked files at paths that the tag contains.
    2. Run `git read-tree -u --reset pre-v1.7.0_gg3`, then `git commit -m "Roll back v1.7.0_gg3"`. This commit is `<rollback-commit>` below; `git rev-parse HEAD` right after the commit prints it. `git diff --quiet HEAD pre-v1.7.0_gg3 && echo ok` prints `ok`.
 
    Use this form rather than `git revert -m 1` on the release merge. It restores a known tree and works on whatever tip `custom_build` has reached, including after later commits.
-2. Before you redeploy, run the check of [item 4](#item-4-in-flight-batches): a rollback is the one direction in which a batch can be stuck.
 3. Redeploy the artifact built at tag `v1.7.0_gg2`. If you kept the archive you deployed for `v1.7.0_gg2`, use it. Otherwise check out tag `v1.7.0_gg2` and run `./gradlew createConfluentArchive`. No release asset is published for any tag, so the archive is always your own build. A build of `pre-v1.7.0_gg3` has the same jar contents.
 
 To go forward again, revert the rollback commit with `git revert <rollback-commit>`. The rollback removes this document from the branch; read it again with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg3.md`.
@@ -325,8 +329,8 @@ To go forward again, revert the rollback commit with `git revert <rollback-commi
 Rolling back brings back:
 
 - record values in the writer error text of the task status, the DLQ stack-trace header and the `Error inserting records` logs, with the library messages and without the `Failed to write column ` match for conversion failures, and on client V1 the table-mapping refresh that a record text containing `Code: 33` or `Code: 131` starts ([item 1](#item-1-record-values-in-writer-error-text));
-- the failure of inserts into a table with a `Nullable(Tuple(...))` whose element name holds a backslash and an `n`, or a line break, with the server error code 33 and the `Could not take element nullability` WARN at every table description ([item 3](#item-3-backslashes-and-line-breaks-in-names));
-- the silence about a table with a Tuple element named `size` or `size0`: its inserts fail as before, with code 32 or 33, but the WARN that points at the table is gone ([item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size));
+- for a table with a `Nullable(Tuple(...))` whose element name holds a backslash and an `n`, or a line break, the failure of inserts (measured for the four shapes of item 3, with the server error code 33) and the `Could not take element nullability` WARN at every table description ([item 3](#item-3-backslashes-and-line-breaks-in-names));
+- the silence about a table with a Tuple element named `size` or `size0`: its inserts behave as before (the shapes that were inserted failed with code 32 or 33), but the WARN that points at the table is gone ([item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size));
 - the `v1.7.0_gg2` MBean `version=` segment and client name ([item 5](#item-5-jmx-mbean-name-and-client-name));
 - on the branch, the gg3 documents themselves: this note, the CHANGELOG section and the FORK-DELTA rows;
 - a retry failure for a range that is in `BEFORE_PROCESSING` when you roll back, for the one table shape of item 4 ([item 4](#item-4-in-flight-batches)).

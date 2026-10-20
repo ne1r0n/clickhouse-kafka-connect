@@ -84,7 +84,7 @@ No milestone-level research was run; plan-phase researches each phase.
   - Anything else operator-visible: the MBean `version=` segment, the client name and the dependency bumps.
 - [x] **PUB-09**: `VERSION` is `v1.7.0_gg3`, `CHANGELOG.md` has a plain-language `1.7.0_gg3` section, and `docs/FORK-DELTA.md` has a row for every new fork-side patch.
 - [x] **SUITE-06**: The full suite is green twice, with Gradle's cache busted by `--rerun`, on ClickHouse `latest` × client V2: 0 failures, 0 errors, every skip named. `testUnit` is green with Docker stopped.
-- [ ] **PUB-10**: The release lands on `custom_build` as a non-force `--no-ff` merge, made only after the user's own explicit approval.
+- [x] **PUB-10**: The release lands on `custom_build` as a non-force `--no-ff` merge, made only after the user's own explicit approval.
   - The published SHA has exactly one green `tests.yaml` run.
   - The `v1.7.0_gg3` tag is pushed only after that run is green.
   - The rollback tag `pre-v1.7.0_gg3` points at the pre-merge `custom_build` tip.
@@ -128,7 +128,7 @@ No milestone-level research was run; plan-phase researches each phase.
 | ROLL-03 | Phase 24 | Complete |
 | PUB-09 | Phase 24 | Complete |
 | SUITE-06 | Phase 24 | Complete |
-| PUB-10 | Phase 24 | Pending |
+| PUB-10 | Phase 24 | Complete |
 
 **Coverage:**
 - v1 requirements: 20 total
