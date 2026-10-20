@@ -5,29 +5,29 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "The blanket `IOException` pass-through lets Jackson's `JsonMappingException` carry record text unsanitized"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: deferred
     title: "An unknown Enum label is reported as `java.lang.NullPointerException`"
   - id: IN-02
     severity: info
-    disposition: open
+    disposition: deferred
     title: "The fixed `No content in enum` text drops the column name, and the exact-`RuntimeException` pass-through delivers it as it is"
   - id: IN-03
     severity: info
-    disposition: open
+    disposition: deferred
     title: "The metadata-derivation code is duplicated between the `ClassCastException` branch and the new helper"
   - id: IN-04
     severity: info
-    disposition: open
+    disposition: deferred
     title: "`schemaWithFixedStringMismatchTest` passes vacuously when `put` does not throw"
   - id: IN-05
     severity: info
-    disposition: open
+    disposition: deferred
     title: "Dead counter and planning-ID noise"
-open: 6
+open: 0
 total: 6
 recorded: 2026-10-19T21:09:06.603Z
 ---
@@ -36,12 +36,12 @@ recorded: 2026-10-19T21:09:06.603Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
+| WR-01 | warning | deferred | 24-MILESTONE-CLOSE-RECORD.md (carried: accepted residual on the opt-in JSON-as-string route, measured by JsonAsStringKeyResidualLiveTest (E-03); src/main edit) |
+| IN-01 | info | deferred | 24-MILESTONE-CLOSE-RECORD.md (carried: unknown Enum label reported as NullPointerException; src/main edit) |
+| IN-02 | info | deferred | 24-MILESTONE-CLOSE-RECORD.md (carried: No content in enum text lacks the column name; src/main edit) |
+| IN-03 | info | deferred | 24-MILESTONE-CLOSE-RECORD.md (carried: metadata derivation duplicated in ClickHouseWriter; src/main edit) |
+| IN-04 | info | deferred | 24-MILESTONE-CLOSE-RECORD.md (carried: schemaWithFixedStringMismatchTest can pass vacuously; existing test not edited in the release phase) |
+| IN-05 | info | deferred | 24-MILESTONE-CLOSE-RECORD.md (carried: dead test counter and planning IDs in comments; no behaviour effect) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
