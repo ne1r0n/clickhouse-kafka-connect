@@ -148,7 +148,7 @@ grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
 
 ### What to do
 
-This release has no fix for the defect, and the fix is tracked for a later release. Inserts into such a table fail whatever the connector settings: that was measured with client V2 on the default route, and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, was not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table fails and why.
+This release has no fix for the defect, and the fix is tracked for a later release. Inserts into such a table fail on the route that was measured, the default route with client V2, whatever the connector settings. Client V1 and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, were not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table fails and why.
 
 ---
 
