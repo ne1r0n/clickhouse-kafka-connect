@@ -229,6 +229,67 @@
 
 ---
 
+## Milestone: v1.7.0_gg3-hardening — Record-Data Exposure & Review Debt
+
+**Shipped:** 2026-10-20 (closed 2026-10-21)
+**Phases:** 4 | **Plans:** 23 (+ quick 261020-vcr) | **Tasks:** 60 | **Commits:** 177 first-parent (no upstream sync) | **Timeline:** 5 days (2026-10-16 → 2026-10-20)
+
+### What Was Built
+
+- **Dependabot integration came first.** Lombok 1.18.48, Spotless 8.10.4 and slf4j-reload4j 2.0.20 were merged into the working branch (`82524e12`) before any code work. The one anchor drift is forgiven by a full-SHA, path- and pattern-pinned exemption row, not by a script edit. The pin guard closes the 17-REVIEW gaps. The user disabled the inherited-red nightly, confirmed the Dependabot entry and revoked the read-only token.
+- **Backlog 999.3 is closed.** A writer value-conversion failure is a metadata-only `DataException` with a `WithheldMessageException` cause. The 184-case classification matrix landed green on the unchanged writer first and stayed byte-identical after the fix. The writer tests are off Mockito inline mocking.
+- **`DeclaredNullability` is hardened.** It is total for a null root or a null type, `normalise` is quote-aware, and an unpaired element gets a WARN, which exposed backlog 999.4. Every 17-REVIEW and 19-REVIEW finding was dispositioned with an ancestor-checked commit pointer.
+- **`v1.7.0_gg3` was published (`3376a18f`) with a measured rollout note.** The real gg2 and gg3 class trees were run over 44 fixture tables, the rollback retry was measured, and the Jackson residual is pinned by a live test. The suite ran 1281 tests twice.
+- **Quick 261020-vcr fixed the published note.** It closed the 14 findings of review rounds 3–5, including a false "safe to roll back" for connectors with three or more topics or with `enableDbTopicSplit=true`. The note was republished as `6a2a87a5`, and no tag moved.
+
+### What Worked
+
+- **The pin went in before the change.** WRT-14's 184 cases were green on the unchanged writer and stayed byte-identical after WRT-13. That makes "retry classification unchanged" a measured fact, not a review opinion.
+- **The release was measured before the note was written.** Running both releases' table-description code over 44 fixtures found the one shape that encodes differently, so the rollback clean stop is scoped to it and nothing else.
+- **The Dependabot merge went first, with a pinned gate exemption.** The anchors gate ran unchanged over the whole milestone, and twelve fail-first self-tests prove the exemption forgives nothing broader.
+- **Independent review ran until a round came back clean.** The four rounds found 7, 5, 2 and then 0 findings. Each round used new IDs, and a disposition gate checked that every row's commit touched exactly its finding's files.
+- **Subagent claims were checked against the source.** The integration checker's "blocker" was a misread of a section heading. The reviewer's WR-10 fix text would itself have missed a key. Reading the code caught both.
+- **Direct-approval gates held.** The rehearsal `push` and both `publish` answers came from the user directly.
+
+### What Was Inefficient
+
+- **The pre-gate review was inline again.** Plan 24-05 reviewed the note inside an executor and closed at `open: 0`. The orchestrator-spawned reviewer after publication found five warnings, which forced a post-publication republish. This is the Phase 15 lesson recurring despite a memory note.
+- **The close started before the audit.** "Ready to audit" was the last commit, but the audit had not run. The pre-flight gate caught it, and the close detoured through the audit, a quick task and a re-audit.
+- **Verification staleness, for the fifth time.** All four phases read stale at close, Phase 24 included, because the quick task edited its documents.
+- **The cheaper-model integration checker produced two false gaps,** which cost a verification pass. The executor's scratch findings gate had a case bug that the plan carried.
+
+### Patterns Established
+
+- **Operator docs get an orchestrator-spawned, fresh-context `gsd-code-reviewer`, repeated until a round finds nothing.** Each round appends `### WR-NN`/`### IN-NN` headings with never-reused IDs, followed by a disposition gate with counts.
+- **A code-derived statement in an operator doc is labelled** "read from the connector code, not measured" when no measurement backs it.
+- **A corrected published note carries a revision notice** that links exactly the items that differ from the tagged copy. A gate computes that set.
+- **A post-publication docs fix runs as a quick task with release gates:**
+  - the rollback demo on a dry-run merge and on the real merge;
+  - checks on the merge commit before the push;
+  - exactly one CI run;
+  - origin tags byte-equal before and after.
+
+### Key Lessons
+
+1. **The independent docs review belongs before the gate.** An executor cannot spawn a reviewer, so the orchestrator must do it before the rehearsal or push gate.
+2. **A reviewer's Fix text is a proposal.** WR-10's suggestion, which copied the gg1 note's rule, would have reintroduced a false "safe". Check every key, query or command claim against the code.
+3. **Verify a subagent's "blocker" against the files before acting on it.** Both integration "gaps" were misreads.
+4. **The quantifiers in operator docs must match the measurement:** "the four inserts that were run", "one table". Rounds 3–5 were mostly this one defect class.
+
+### Quality Observations
+
+- **Code review** ran on all four phases, with 0 critical findings. 24-REVIEW ended at 19 findings (11 warnings, 8 info), and all of them are fixed or dispositioned. The 21-, 22- and 23-REVIEW advisories are deferred with re-open triggers in `24-MILESTONE-CLOSE-RECORD.md`.
+- **Security audits** verified all four phases with `threats_open: 0`.
+- **The final suite** ran 1281 tests with 0 failures, 0 errors and 18 named skips on `latest` 26.9.19.9, twice. `testUnit` ran 838 tests with Docker stopped. CI was green on `3376a18f` (39472696952) and on `6a2a87a5` (39496482074).
+- **`src/main` changed by +227/−26 lines in 4 files,** with one new file, `WithheldMessageException`.
+
+### Cost Observations
+
+- **Model mix for the quick task:** an opus planner, a sonnet executor and reviewers, and a haiku integration checker.
+- **Notable:** the haiku checker's two false gaps cost a verification pass, while every sonnet review round found real issues.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -239,6 +300,7 @@
 | v1.6.0_gg1-sync | 6 | 24 | First upstream sync. Mechanical-merge-then-intent with a byte-identity invariant, a generated per-path merge checklist, scratch-branch CI rehearsal, and human-gated one-way publication. |
 | v1.7.0_gg1-sync | 4 | 25 | Second sync, 4 days against 20, because the recipe was reused with a parameterised invariant script. Hardening went on top of the merged tree. Behaviour ledger, twin-table parity tests and seen-red mutation checks; one commit per dependency bump. |
 | v1.7.0_gg2-hardening | 5 | 29 | First milestone without a sync. Docs-only early publication with release docs reviewed before the gate, a spike-first go/no-go that could not hold the release, operator claims pinned by live tests, and the first close with a passed milestone audit. |
+| v1.7.0_gg3-hardening | 4 | 23 | Second milestone without a sync. The classification pin landed before the fix, the gg2/gg3 encoding diff was measured before the rollout note, and the Dependabot merge went first with a pinned gate exemption. A post-publication docs fix ran independent review rounds until one came back clean. |
 
 ### Cumulative Quality
 
@@ -248,11 +310,12 @@
 | v1.6.0_gg1-sync | 371 → 663 (incl. upstream's) | 4 (all fixed) | 2 silent merge reversions + D-17 + CR-01 auto.evolve (R-01 still pinned) | 17 |
 | v1.7.0_gg1-sync | 663 → 830 | 0 | R-01 data loss, Debezium Timestamp, nested-null desync, #820 shadowing, DESCRIBE depth, Int256, 3 config/metadata | 11 (all 17 carried closed) |
 | v1.7.0_gg2-hardening | 830 → 988 | 1 (CR-01, fixed) | 999.1 Nullable Enum/Tuple mis-storage, empty-CDC rows on 3 routes, message-less NPE, nameless missing-value error, raw DateTime in logs | 10 (all 11 carried closed) |
+| v1.7.0_gg3-hardening | 988 → 1281 | 0 | 999.3 record values in writer errors, `DeclaredNullability` null/escape/unpaired cases, pin-guard false failures, four operator-doc rollback hazards (step order, `exactlyOnce=false`, 3+ topics, `enableDbTopicSplit` keys) | 11 (all 10 carried closed) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. **Verification goes stale in sequential phases.** All four milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. That held even when the milestone audit passed. Re-verify at close, or plan for the override.
+1. **Verification goes stale in sequential phases.** All five milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. That held even when the milestone audit passed. Re-verify at close, or plan for the override.
 2. **Blocking-human checkpoints on irreversible or production-affecting calls pay off.** They fired at least twice in every milestone and were right each time. Examples: R-01 pinned rather than fixed, KEEP over DROP, and every one-way publication.
 3. **Check the environment and the gate before trusting a result.** In v1.2.9_gg4-tests a red baseline turned out to be an environment artifact (`TESTCONTAINERS_HOST_OVERRIDE`). In v1.6.0_gg1-sync a green run turned out to be against the wrong server (`CLICKHOUSE_VERSION_DEFAULT`).
 4. **Reuse compounds.** Each milestone's tools made the next one cheaper: the suite (v1.2.9) gated the first sync, and the first sync's invariant script and checklist made the second take 4 days. Keep those tools current at every close.
-5. **Operator-facing claims need live evidence.** In v1.7.0_gg1-sync review caught a destructive `TRUNCATE` instruction, and in v1.7.0_gg2-hardening a live test overturned the gg1 note's deduplication claim. Review rollout docs before the publish gate, and back every behavioural claim with a test.
+5. **Operator-facing claims need live evidence.** In v1.7.0_gg1-sync review caught a destructive `TRUNCATE` instruction, and in v1.7.0_gg2-hardening a live test overturned the gg1 note's deduplication claim. Review rollout docs before the publish gate, and back every behavioural claim with a test. In v1.7.0_gg3-hardening an executor's inline pre-gate review missed five warnings that an independent reviewer found after publication, so the independent review must be orchestrator-spawned and must come before the gate.
