@@ -5,21 +5,21 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Unobserved `exclude-paths` key could invalidate the whole Dependabot config, and the guard does not pin it"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: fixed
     title: "The guard does not pin the workflow's use of `reportTestForks`"
   - id: IN-02
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Pin guard regexes are brittle in two small ways"
   - id: IN-03
     severity: info
-    disposition: open
+    disposition: skipped
     title: "The jar-origin check in `Lz4RoundTripLiveTest` now duplicates the Docker-free unit test"
-open: 4
+open: 0
 total: 4
 recorded: 2026-10-12T08:28:47.317Z
 ---
@@ -28,10 +28,10 @@ recorded: 2026-10-12T08:28:47.317Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
+| WR-01 | warning | fixed | fee898c6 (21-04, D-09: TestsWorkflowPinGuardUnitTest pins the four exclude-paths entries and that each exists under .github/workflows, 21-EVIDENCE.md E-11) and 5d616806 (21-01 OPS-02: the user confirmed the Dependabot gradle entry runs with no configuration error, 21-EVIDENCE.md E-02; 21-UAT.md test 1 pass, 5010093f, 2026-10-19) |
+| IN-01 | info | fixed | fee898c6 (21-04, CI-18: TestsWorkflowPinGuardUnitTest fails if the Test fork count step stops reading reportTestForks or the task disappears from build.gradle.kts; red on fixtures in 21-EVIDENCE.md E-10, green in E-11) |
+| IN-02 | info | fixed | fee898c6 (21-04, CI-19: runs-on accepts a trailing comment, and a step name or run text containing a write colon is no longer a write scope; red against the old regexes in 21-EVIDENCE.md E-10, green in E-11) |
+| IN-03 | info | skipped | leave Lz4RoundTripLiveTest's jar-origin check, cross-referenced to TestRuntimeClasspathLz4UnitTest, with no new origin assertions (ROADMAP Phase 23 SC5, DEBT-12); the live test is neither deleted nor weakened, and its Javadoc already names the unit test |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
