@@ -253,8 +253,8 @@ WHERE state != 'AFTER_PROCESSING'
 ORDER BY `key`;
 ```
 
-   **Empty result:** no batch of those topics is in flight, so it is safe to roll back. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not roll back yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
-3. If the result is not empty, start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then roll back.
+   **Empty result:** no batch of those topics is in flight, so it is safe to redeploy `v1.7.0_gg2`. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not redeploy `v1.7.0_gg2` yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
+3. If the result is not empty, start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then continue with step 2 of [item 7](#item-7-rollback).
 
 [Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) explains why the state table is shared and how the key looks with `enableDbTopicSplit=true`; those explanations are not repeated here. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
 
@@ -312,12 +312,12 @@ You are affected if you need to go back after upgrading, or if you want to know 
 
 ### What to do
 
-1. Back out the whole release in one commit on `custom_build`, by restoring the tree of tag `pre-v1.7.0_gg3`:
+1. Before you change the branch, work through [item 4](#item-4-in-flight-batches) for each connector it applies to, with either `exactlyOnce` setting. A rollback is the one direction in which a batch can be stuck, and the commit of the next step removes this document from the branch. Keep the `v1.7.0_gg3` archive you deployed, or rebuild it from tag `v1.7.0_gg3` (check out the tag and run `./gradlew createConfluentArchive`, as step 3 does for `v1.7.0_gg2`), because item 4 may need you to start it again.
+2. Back out the whole release in one commit on `custom_build`, by restoring the tree of tag `pre-v1.7.0_gg3`:
    1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing. Commit whatever it lists, or set it aside with `git stash -u` (a plain `git stash` leaves untracked files behind), or work in a fresh clone. The next command discards uncommitted and staged changes to tracked files without asking, and it overwrites untracked files at paths that the tag contains.
    2. Run `git read-tree -u --reset pre-v1.7.0_gg3`, then `git commit -m "Roll back v1.7.0_gg3"`. This commit is `<rollback-commit>` below; `git rev-parse HEAD` right after the commit prints it. `git diff --quiet HEAD pre-v1.7.0_gg3 && echo ok` prints `ok`.
 
    Use this form rather than `git revert -m 1` on the release merge. It restores a known tree and works on whatever tip `custom_build` has reached, including after later commits.
-2. Before you redeploy, run the check of [item 4](#item-4-in-flight-batches): a rollback is the one direction in which a batch can be stuck.
 3. Redeploy the artifact built at tag `v1.7.0_gg2`. If you kept the archive you deployed for `v1.7.0_gg2`, use it. Otherwise check out tag `v1.7.0_gg2` and run `./gradlew createConfluentArchive`. No release asset is published for any tag, so the archive is always your own build. A build of `pre-v1.7.0_gg3` has the same jar contents.
 
 To go forward again, revert the rollback commit with `git revert <rollback-commit>`. The rollback removes this document from the branch; read it again with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg3.md`.
