@@ -253,3 +253,87 @@ neg  (Lombok 1.18.48, line removed): warnings 274, "Ambiguous: Jackson2 and Jack
 Result: with the cap lifted, the gg2 and gg3 trees compile with more than 100 warnings and none says `Ambiguous: Jackson2 and Jackson3`; the control without `lombok.jacksonized.jacksonVersion += 2` prints that warning for `ClickHouseFieldDescriptor.java`, so the absence is the setting's doing. Lombok-generated class bytes are identical between 1.18.46 and 1.18.48 (E-04), which is the stronger form of an older `javap` comparison. `lombok.config`, `build.gradle.kts` and `gradle/` are unchanged since `P24_BASE`.
 
 Matches text: pending (24-04)
+
+### E-10: Column trees, gg2 versus gg3 (D-09)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, the in-flight batches item (the shape that encodes differently) and the rollback item (written in plan 24-03). Question: which batches does `v1.7.0_gg2` encode differently from `v1.7.0_gg3`? Bytes can differ only through the `isNullable` flags of the `Column` tree that discovery builds, so the real `ClickHouseHelperClient.describeTable` of each release was run over the same fixture tables on the same server and every node of every tree was dumped (name path, `isNullable`), together with the two `DeclaredNullability` WARN counts. The classes are the real ones: a worktree at tag `v1.7.0_gg2` (`a246ca01`, VERSION `v1.7.0_gg2`) and a worktree at the gg3 tip (`719c3ef1`, VERSION `v1.7.0_gg3`). The probe `Phase24RolloutProbe` (methods `describeDump` and `insertMatrix`) is scratch under `/tmp/gsd24/probe/`, copied untracked into each worktree, and was not committed.
+
+Fixtures (44 tables, one fresh database per run): `d09_rNN_<style>` for the twelve roots r01..r12 and the three name styles `plain` (element `ab`), `bsn` (element name holding a literal backslash followed by `n`, DDL text `` `a\\nb` ``) and `lf` (element name holding a real line break, DDL text `` `a\nb` ``); four enum-label shapes `d09_e01..e04` (a backslash-n inside a label under `Nullable(Tuple)`, `Tuple` and `Array(Nullable(Tuple))`, and a label holding a comma); four `size` shapes `d09_s01..s04`. The twelve roots, with `n` the element under test: r01 `Tuple(n Int32, d String)`, r02 `Nullable(Tuple(n Int32, d String))`, r03 `Nullable(Tuple(n Nullable(Int32), d String))`, r04 `Array(Tuple(n Int32, d String))`, r05 `Array(Nullable(Tuple(n Int32, d String)))`, r06 `Map(String, Tuple(n Int32, d String))`, r07 `Map(String, Nullable(Tuple(n Int32, d String)))`, r08 `Tuple(x Tuple(n Int32, d String))`, r09 `Nullable(Tuple(x Tuple(n Int32, d String)))`, r10 `Tuple(x Nullable(Tuple(n Int32)))`, r11 `Tuple(a Array(Tuple(n Int32)))`, r12 `Tuple(n Int32, y Nullable(Tuple(c Int32)))`. Every table is `(id Int32, c <root>) ENGINE = MergeTree ORDER BY id`; no server setting is set.
+
+```sh
+cp /tmp/gsd24/probe/Phase24RolloutProbe.java /tmp/gsd24/wt-gg2/src/test/java/com/clickhouse/kafka/connect/sink/   # likewise wt-tip
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-gg2/gradlew -p /tmp/gsd24/wt-gg2 --console=plain test --tests '*Phase24RolloutProbe.describeDump' --tests '*Phase24RolloutProbe.insertMatrix' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd24/wt-tip/gradlew -p /tmp/gsd24/wt-tip --console=plain test --tests '*Phase24RolloutProbe.describeDump' --tests '*Phase24RolloutProbe.insertMatrix' --rerun
+cp <worktree>/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase24RolloutProbe.xml /tmp/gsd24/exec/d09-gg2.xml   # d09-gg3.xml for wt-tip
+python3 -I /tmp/gsd24/probe/xml-probe-lines.py /tmp/gsd24/exec/d09-gg2.xml
+```
+
+Both XML files report `tests="2" skipped="0" failures="0" errors="0"`. Server `26.9.19.9` on both runs, client V2. In a PROBE line a backslash prints as two backslashes and a line break as `\n`, so a Column name that holds one backslash and an `n` prints as `a\\nb` and one that holds two backslashes and an `n` prints as `a\\\\nb`. The dump shows the connector's Column name equals the DDL text of the name in every style.
+
+Result. All 44 tables were described by both releases (44 tables in each dump). The trees are identical for 30 of them: every `plain` table (all twelve roots), every non-`Nullable` root with a backslash-n or line-break name (r01, r04, r06, r08, r11 in both styles), the four enum-label shapes and the four `size` shapes. The trees differ for 14 tables, and for these only: the `bsn` and `lf` styles of r02, r03, r05, r07, r09, r10 and r12. In each of them the only difference is that gg2 has `isNullable = true` where gg3 has `false` (never the other way), on the nodes listed below. The plain `Nullable(Tuple)` root r02 differs for both name styles.
+
+| table | root | gg2 fallback WARNs | gg3 fallback WARNs | tree nodes that flip (gg2 true, gg3 false) |
+|---|---|---|---|---|
+| `d09_r02_bsn` | `Nullable(Tuple(n Int32, d String))` | 1 | 0 | `c/c.a\\\\nb`, `c/c.d` |
+| `d09_r02_lf` | `Nullable(Tuple(n Int32, d String))` | 1 | 0 | `c/c.a\\nb`, `c/c.d` |
+| `d09_r03_bsn` | `Nullable(Tuple(n Nullable(Int32), d String))` | 1 | 0 | `c/c.d` |
+| `d09_r03_lf` | `Nullable(Tuple(n Nullable(Int32), d String))` | 1 | 0 | `c/c.d` |
+| `d09_r05_bsn` | `Array(Nullable(Tuple(n Int32, d String)))` | 1 | 0 | `c/[]/c.a\\\\nb`, `c/[]/c.d` |
+| `d09_r05_lf` | `Array(Nullable(Tuple(n Int32, d String)))` | 1 | 0 | `c/[]/c.a\\nb`, `c/[]/c.d` |
+| `d09_r07_bsn` | `Map(String, Nullable(Tuple(n Int32, d String)))` | 1 | 0 | `c/{}/c.values.a\\\\nb`, `c/{}/c.values.d` |
+| `d09_r07_lf` | `Map(String, Nullable(Tuple(n Int32, d String)))` | 1 | 0 | `c/{}/c.values.a\\nb`, `c/{}/c.values.d` |
+| `d09_r09_bsn` | `Nullable(Tuple(x Tuple(n Int32, d String)))` | 1 | 0 | `c/c.x`, `c/c.x/c.x.a\\\\nb`, `c/c.x/c.x.d` |
+| `d09_r09_lf` | `Nullable(Tuple(x Tuple(n Int32, d String)))` | 1 | 0 | `c/c.x`, `c/c.x/c.x.a\\nb`, `c/c.x/c.x.d` |
+| `d09_r10_bsn` | `Tuple(x Nullable(Tuple(n Int32)))` | 1 | 0 | `c/c.x/c.x.a\\\\nb` |
+| `d09_r10_lf` | `Tuple(x Nullable(Tuple(n Int32)))` | 1 | 0 | `c/c.x/c.x.a\\nb` |
+| `d09_r12_bsn` | `Tuple(n Int32, y Nullable(Tuple(c Int32)))` | 1 | 0 | `c/c.y/c.y.c` |
+| `d09_r12_lf` | `Tuple(n Int32, y Nullable(Tuple(c Int32)))` | 1 | 0 | `c/c.y/c.y.c` |
+
+WARN counts (the `DeclaredNullability` logger, per table): gg3 logged no `Could not take element nullability` WARN on any of the 44 tables. gg2 logged one on each of the 14 differing tables and also on the ten tables whose trees are identical (r01, r04, r06, r08, r11 in the `bsn` and `lf` styles; there the fallback keeps the flags DESCRIBE reported, which are already the declared ones, so no node moves); 24 in total. gg3 logged one `have no matching DESCRIBE sub-column` WARN on each of `d09_s01..s04` and nowhere else; gg2 has no such WARN. The differing tables are therefore exactly the ones where gg2's declared-type parse fell back and gg3's did not, restricted to roots that contain a `Nullable(Tuple)`.
+
+Excerpt (r02, `bsn`): gg2 `tree:c nullable=true`, `tree:c/c.a\\\\nb nullable=true`, `tree:c/c.d nullable=true`; gg3 `tree:c nullable=true`, `tree:c/c.a\\\\nb nullable=false`, `tree:c/c.d nullable=false`. The element flags are doubled under gg2 (the root is `Nullable` and each element is also marked nullable), which is the cause of the byte difference measured in E-11. The full 451-line dumps are `/tmp/gsd24/exec/d09-gg2.lines` and `d09-gg3.lines`.
+
+Research R3.2 expected exactly the `Nullable(Tuple)`-bearing roots and the 41 shapes of its own harness; this run matches that reading and adds r12 (`Tuple(n Int32, y Nullable(Tuple(c Int32)))`), where only the nested `y.c` node flips, and counts 24 gg2 fallback WARNs (research counted 23 on its shape set).
+
+D09-DIFFERING=d09_r02_bsn,d09_r02_lf,d09_r03_bsn,d09_r03_lf,d09_r05_bsn,d09_r05_lf,d09_r07_bsn,d09_r07_lf,d09_r09_bsn,d09_r09_lf,d09_r10_bsn,d09_r10_lf,d09_r12_bsn,d09_r12_lf
+
+Matches text: pending (24-03)
+
+### E-11: one live insert per shape, gg2 versus gg3 (D-09)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg3.md`, the in-flight batches item and the rollback item (written in plan 24-03). Same two worktrees, same server `26.9.19.9`, client V2, `exactlyOnce=false`, run by the `insertMatrix` method of the commands in E-10. For each of seven tables `d09i_<root>_<style>` with `(id Int32, c <root>)`, the table is created first, a `ClickHouseSinkTask` is started, one record is put (id 1, the element under test 7, `d` = `'x'`, the Kafka field for the element named exactly as the connector's Column name) and the row is read back with typed SQL (`SELECT id, toString(c)`) and compared inside the probe with the expected text. The expected text is `(7,'x')` for the Tuple roots, `[(7,'x')]` for the Array roots and `{'k':(7,'x')}` for the Map root.
+
+| table | root | gg2 classes (`a246ca01`) | gg3 classes (`719c3ef1`) |
+|-------|------|--------------------------|--------------------------|
+| `d09i_r01_bsn` | `Tuple(n Int32, d String)`, literal backslash-n name | stored, read-back equals expected | stored, read-back equals expected |
+| `d09i_r04_bsn` | `Array(Tuple(n Int32, d String))`, literal backslash-n name | stored, read-back equals expected | stored, read-back equals expected |
+| `d09i_r02_plain` | `Nullable(Tuple(n Int32, d String))`, name `ab` | stored, read-back equals expected | stored, read-back equals expected |
+| `d09i_r02_bsn` | `Nullable(Tuple(n Int32, d String))`, literal backslash-n name | **failed, code 33, 0 rows** | stored, read-back equals expected |
+| `d09i_r05_bsn` | `Array(Nullable(Tuple(n Int32, d String)))`, literal backslash-n name | **failed, code 33, 0 rows** | stored, read-back equals expected |
+| `d09i_r07_bsn` | `Map(String, Nullable(Tuple(n Int32, d String)))`, literal backslash-n name | **failed, code 33, 0 rows** | stored, read-back equals expected |
+| `d09i_r02_lf` | `Nullable(Tuple(n Int32, d String))`, real line break in the name | **failed, code 33, 0 rows** | stored, read-back equals expected |
+
+```text
+PROBE-INSERT tree=gg2 table=d09i_r01_bsn outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg2 table=d09i_r02_bsn outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg2 table=d09i_r04_bsn outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg2 table=d09i_r05_bsn outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg2 table=d09i_r07_bsn outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg2 table=d09i_r02_lf outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg2 table=d09i_r02_plain outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=d09i_r01_bsn outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=d09i_r02_bsn outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=d09i_r04_bsn outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=d09i_r05_bsn outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=d09i_r07_bsn outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=d09i_r02_lf outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=d09i_r02_plain outcome=stored code=- rows=1 match=yes
+```
+
+Verdict per direction, worded from the measurements above (research R3.4 was the expected reading and it holds):
+
+- **Upgrade, gg2 to gg3.** The trees differ only for `Nullable(Tuple)`-bearing roots with a backslash-n or line-break element name (E-10). For the four such shapes that were inserted (r02 in both styles, r05, r07) gg2 landed nothing: code 33 and 0 rows. A range of such a table that gg2 left in flight has therefore not stored a row, and the gg3 retry of the same range lands once with the declared bytes. The remaining differing roots (r03, r09, r10, r12) differ by the same flag doubling but were not inserted in this plan; their insert outcome is by analogy, not measured. A gg2 batch whose doubled null flags happened to parse and stored wrong rows was not measured either (the failing batches here all stopped with code 33).
+- **Every other shape** (non-`Nullable` roots, plain names, enum labels, the `size` shapes) has identical trees on both releases and stored the record on both (E-11 controls r01, r04 and r02 with a plain name), so a batch of those shapes is byte for byte the same on both releases.
+- **Rollback, gg3 to gg2:** measured in E-12.
+
+Matches text: pending (24-03)
