@@ -84,3 +84,4 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	No conten
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	column == null || column.getType() == null	2	COLS-12
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	declaredType.replace(ESCAPED_NEWLINE, SPACE)	0	COLS-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	private static final char BACKTICK	1	COLS-13
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	UNPAIRED_ELEMENT_WARNING	2	COLS-14

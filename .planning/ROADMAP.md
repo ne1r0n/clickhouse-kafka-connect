@@ -327,6 +327,20 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 **Plans:** planned under Phase 22
 **Delivered:** Phase 22 (WRT-13..WRT-15), lands in the next release (Phase 24 publishes it): a value-conversion failure names the column, the ClickHouse type and the exception class without the record value; retry classification is pinned by WRT-14
 
+### Phase 999.4: Discovery drops a Tuple element named size or size0 (BACKLOG — not scheduled)
+
+**Goal:** `ClickHouseHelperClient.shouldSkipDescribeRow` drops every DESCRIBE row that ends in `.size`, `.size0` or `.null`, so a Tuple element named `size` or `size0` never becomes a Column, and the writer, which iterates `getTupleFields()`, writes a short tuple. Measured on `latest` 26.9.19.9 with client V2 (23-EVIDENCE.md R-01): the insert fails with code 33 `CANNOT_READ_ALL_DATA` and no row is stored, and a silently wrong stored value is reachable when the bytes of the shorter write happen to parse as a longer tuple. Severity: high for an affected table, since every insert into it fails. The server rejects a Tuple element named `null` (code 36), so only `size` and `size0` are affected. Since COLS-14 the unpaired-element WARN names the dropped element at every DESCRIBE. Fix sketch: keep a row that is a declared element of its parent Tuple while still dropping the structural rows `c.name.size`, `d.null`, `d.other.size`, `e.size0` and `e.v.size`. Parent-is-a-Tuple alone is not enough for `Array(Tuple)`, where `e.size0` is the array's offsets row. The fix touches upstream-region `ClickHouseHelperClient`, so it gets its own phase, with a FORK-DELTA row, an anchors row, a live round-trip test and the DESC-05 regression check. It flips the D-04 pin `COLS-14 unpaired-element WARN (D-04, known defect 999.4)`: the element then pairs and no WARN fires. Found 2026-10-20 in the Phase 23 discussion (D-03)
+**Scheduled:** not scheduled
+**Requirements:** none yet
+**Plans:** none yet
+
+### Phase 999.5: Backslashes in column and element names come out of fromJsonRow doubled (BACKLOG — not scheduled)
+
+**Goal:** `ClickHouseFieldDescriptor.fromJsonRow` doubles every backslash before Jackson parses, so a server name with a backslash comes out doubled (`c.a\\nb`), and a Kafka field must use the doubled form for the writer to match it (23-EVIDENCE.md R-02). The D-12 live premise uses the doubled field name. The behaviour is pre-existing, and Phase 23 changes no code or test for it. Fix sketch: decide the intended name form, decode name escapes in upstream-region `fromJsonRow`, add a live round-trip pin for both forms and a rollout note, since operators' field names may depend on the doubled form. Found 2026-10-20 in Phase 23 research (D-20)
+**Scheduled:** not scheduled
+**Requirements:** none yet
+**Plans:** none yet
+
 ## Progress
 
 **Execution Order:** 21 → 22 → 23 → 24, sequential on one working tree.

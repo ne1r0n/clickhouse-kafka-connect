@@ -14,8 +14,10 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -306,6 +308,39 @@ class ClickHouseHelperClientForkUnitTest {
         return discover(declaredTypes, nameAndTypePairs);
     }
 
+    /**
+     * The {@code describeTableV2} loop for fixture rows, including the structural-row skip that
+     * {@code discover(...)} leaves out: a sub-column whose parent was skipped is skipped, a
+     * structural row is skipped, and only the rest become Columns.
+     */
+    private static Table discoverAsDescribeTableV2(String... nameAndTypePairs) {
+        List<Column> columns = new ArrayList<>();
+        Map<String, Column> columnsByName = new HashMap<>();
+        Map<String, String> declaredTypes = new HashMap<>();
+        Set<String> skippedCols = new HashSet<>();
+        int numColumns = 0;
+        for (int i = 0; i < nameAndTypePairs.length; i += 2) {
+            ClickHouseFieldDescriptor descriptor = newDescriptor(nameAndTypePairs[i], nameAndTypePairs[i + 1]);
+            if (!descriptor.isSubcolumn()) {
+                numColumns++;
+            } else if (skippedCols.contains(descriptor.getName().substring(0, descriptor.getName().lastIndexOf('.')))) {
+                skippedCols.add(descriptor.getName());
+                continue;
+            }
+            if (ClickHouseHelperClient.shouldSkipDescribeRow(descriptor, columnsByName)) {
+                skippedCols.add(descriptor.getName());
+                continue;
+            }
+            if (!descriptor.isSubcolumn()) {
+                declaredTypes.put(descriptor.getName(), descriptor.getType());
+            }
+            Column column = Column.extractColumn(descriptor);
+            columns.add(column);
+            columnsByName.put(column.getName(), column);
+        }
+        return ClickHouseHelperClient.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
+    }
+
     private static int warnCount(LogCapture... captures) {
         int count = 0;
         for (LogCapture capture : captures) {
@@ -352,28 +387,49 @@ class ClickHouseHelperClientForkUnitTest {
         }
     }
 
+    /** The ten raw types of the D-11 flip with the rows DESCRIBE reports; a Tuple carries its element row. */
+    static Stream<Arguments> formerlyUnflaggedTypes() {
+        return Stream.of(
+                Arguments.of("Array(Nullable(Int32))", new String[] {"c", "Array(Nullable(Int32))"}),
+                Arguments.of("Enum8('a' = 1)", new String[] {"c", "Enum8('a' = 1)"}),
+                Arguments.of(
+                        "Tuple(a Nullable(Int32))",
+                        new String[] {"c", "Tuple(a Nullable(Int32))", "c.a", "Nullable(Int32)"}),
+                Arguments.of("Nullable(String)", new String[] {"c", "Nullable(String)"}),
+                Arguments.of("Map(String, Enum16('b' = 2))", new String[] {"c", "Map(String, Enum16('b' = 2))"}),
+                Arguments.of(
+                        "LowCardinality(Nullable(String))", new String[] {"c", "LowCardinality(Nullable(String))"}),
+                Arguments.of(
+                        "Array(Nullable(Enum8('x' = 1)))", new String[] {"c", "Array(Nullable(Enum8('x' = 1)))"}),
+                Arguments.of(
+                        "Map(String, Nullable(Enum16('y' = 1)))",
+                        new String[] {"c", "Map(String, Nullable(Enum16('y' = 1)))"}),
+                Arguments.of("Nullable(Enum8('z' = 1))", new String[] {"c", "Nullable(Enum8('z' = 1))"}),
+                Arguments.of(
+                        "Tuple(a Nullable(Enum8('q' = 1)))",
+                        new String[] {"c", "Tuple(a Nullable(Enum8('q' = 1)))", "c.a", "Nullable(Enum8('q' = 1))"}));
+    }
+
     // COLS-10 flip (D-11): this case asserted that these ten raw types were not flagged. With the
     // WARN gone the inputs are kept and assert that a root row alone discovers silently, with the
     // root nullability exactly as Column.extractColumn gives it.
+    // COLS-14 flip (D-19): the two Tuple cases fed a root row alone, which D-01 now reports as an
+    // unpaired element. The element rows are added so each Tuple pairs fully; the no-WARN and
+    // root-nullability assertions are unchanged, and the root-only input moved to
+    // tupleRootRowAloneLogsOneUnpairedElementWarning.
+    // AGENTS.md exemption (never delete or weaken existing tests): granted by
+    // user decision D-19 (Option B). Not a weakening: the ten testcase names and the no-WARN and
+    // root-nullability assertions are unchanged, only the two Tuple inputs gain their element rows,
+    // and the root-only input is still asserted, now expecting the WARN, in
+    // tupleRootRowAloneLogsOneUnpairedElementWarning.
     @ParameterizedTest(name = "COLS-10 (D-11 flip): {0} discovers without a warning")
-    @ValueSource(
-            strings = {
-                "Array(Nullable(Int32))",
-                "Enum8('a' = 1)",
-                "Tuple(a Nullable(Int32))",
-                "Nullable(String)",
-                "Map(String, Enum16('b' = 2))",
-                "LowCardinality(Nullable(String))",
-                "Array(Nullable(Enum8('x' = 1)))",
-                "Map(String, Nullable(Enum16('y' = 1)))",
-                "Nullable(Enum8('z' = 1))",
-                "Tuple(a Nullable(Enum8('q' = 1)))"
-            })
-    @DisplayName("COLS-10 (D-11 flip): formerly unflagged types discover without a warning and keep the root nullability")
-    void otherTypesDiscoverWithoutWarningAndUnchangedRootNullability(String rawType) {
+    @MethodSource("formerlyUnflaggedTypes")
+    @DisplayName("COLS-10 (D-11 flip): formerly unflagged types discover without a warning and keep the root nullability"
+            + "; COLS-14 (D-19 flip): the two Tuple types carry their element rows")
+    void otherTypesDiscoverWithoutWarningAndUnchangedRootNullability(String rawType, String[] rows) {
         try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
                 LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
-            Column root = discover("c", rawType).getRootColumnsMap().get("c");
+            Column root = discover(rows).getRootColumnsMap().get("c");
 
             assertEquals(0, warnCount(helperLog, nullabilityLog), rawType);
             assertEquals(
@@ -426,19 +482,75 @@ class ClickHouseHelperClientForkUnitTest {
     // no WARN left to dedup; the three identical inputs now assert that repeated discovery of the
     // same table, and of the same column with another type, never warns and always maps the Tuple
     // nullable.
+    // COLS-14 flip (D-19): each discovery fed a root row alone, which D-01 now reports as an
+    // unpaired element at every DESCRIBE. Each discovery now carries its element row; the assertions
+    // are unchanged and the root-only input moved to repeatedDiscoveryOfARootRowAloneWarnsEveryTime.
+    // AGENTS.md exemption (never delete or weaken existing tests): granted by
+    // user decision D-19 (Option B). Not a weakening: the testcase name and its assertions are
+    // unchanged, and the root-only input is still asserted, now expecting a WARN at every DESCRIBE,
+    // in repeatedDiscoveryOfARootRowAloneWarnsEveryTime.
     @Test
     @DisplayName("COLS-10 (D-11 flip): repeated discovery never warns")
     void repeatedDiscoveryNeverWarns() {
         try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
                 LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
-            for (String rawType : new String[] {
-                "Nullable(Tuple(a Int32))", "Nullable(Tuple(a Int32))", "Nullable(Tuple(a Int64))"
-            }) {
-                Column root = discover("t", rawType).getRootColumnsMap().get("t");
-                assertTrue(root.isNullable(), rawType);
+            String[][] discoveries = {
+                {"Nullable(Tuple(a Int32))", "Nullable(Int32)"},
+                {"Nullable(Tuple(a Int32))", "Nullable(Int32)"},
+                {"Nullable(Tuple(a Int64))", "Nullable(Int64)"}
+            };
+            for (String[] discovery : discoveries) {
+                Column root = discover("t", discovery[0], "t.a", discovery[1])
+                        .getRootColumnsMap()
+                        .get("t");
+                assertTrue(root.isNullable(), discovery[0]);
             }
 
             assertEquals(0, warnCount(helperLog, nullabilityLog));
+        }
+    }
+
+    @ParameterizedTest(
+            name = "COLS-14 unpaired-element WARN (D-19): a {0} root row alone logs one WARN naming its declared element")
+    @ValueSource(strings = {"Tuple(a Nullable(Int32))", "Tuple(a Nullable(Enum8('q' = 1)))"})
+    @DisplayName("COLS-14 unpaired-element WARN (D-19): a Tuple root row alone logs one WARN naming its declared element")
+    void tupleRootRowAloneLogsOneUnpairedElementWarning(String rawType) {
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            Column root = discover(ROOT_SENTINEL, rawType).getRootColumnsMap().get(ROOT_SENTINEL);
+
+            assertEquals(0, warnCount(helperLog));
+            List<LogCapture.CapturedEvent> warnings = nullabilityLog.events(WARN_LEVEL);
+            assertEquals(1, warnings.size(), rawType);
+            String message = warnings.get(0).message();
+            assertWarnNamesColumn(message, ROOT_SENTINEL);
+            assertTrue(message.contains("[" + ROOT_SENTINEL + ".a]"), message);
+            assertTrue(message.contains(DISCOVERED_TABLE), message);
+            assertFalse(warnings.get(0).hasThrowable());
+            assertEquals(
+                    Column.extractColumn(newDescriptor(ROOT_SENTINEL, rawType)).isNullable(), root.isNullable(), rawType);
+        }
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-19, D-02): repeated discovery of a root row alone warns at every DESCRIBE, with no dedup")
+    void repeatedDiscoveryOfARootRowAloneWarnsEveryTime() {
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            for (String rawType : new String[] {
+                "Nullable(Tuple(a Int32))", "Nullable(Tuple(a Int32))", "Nullable(Tuple(a Int64))"
+            }) {
+                Column root = discover(ROOT_SENTINEL, rawType).getRootColumnsMap().get(ROOT_SENTINEL);
+                assertTrue(root.isNullable(), rawType);
+            }
+
+            assertEquals(0, warnCount(helperLog));
+            List<LogCapture.CapturedEvent> warnings = nullabilityLog.events(WARN_LEVEL);
+            assertEquals(3, warnings.size());
+            for (LogCapture.CapturedEvent warning : warnings) {
+                assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+                assertTrue(warning.message().contains("[" + ROOT_SENTINEL + ".a]"), warning.message());
+            }
         }
     }
 
@@ -463,6 +575,82 @@ class ClickHouseHelperClientForkUnitTest {
             assertEquals(1, valueTuple.getTupleFields().size());
             assertFalse(valueTuple.getTupleFields().get(0).isNullable());
             assertTrue(table.getRootColumnsMap().get("e").isNullable());
+        }
+    }
+
+    /** R-01 (23-EVIDENCE.md): DESCRIBE rows of tables whose Tuple element is named size or size0, root renamed to the sentinel. */
+    static Stream<Arguments> discoveryDropsSizeNamedElements() {
+        return Stream.of(
+                Arguments.of(
+                        "Tuple element named size",
+                        "Tuple(\\n    size UInt32,\\n    name String)",
+                        false,
+                        ROOT_SENTINEL + ".size",
+                        ROOT_SENTINEL + ".name",
+                        new String[] {
+                            ROOT_SENTINEL, "Tuple(\\n    size UInt32,\\n    name String)",
+                            ROOT_SENTINEL + ".size", "UInt32",
+                            ROOT_SENTINEL + ".name", "String",
+                            ROOT_SENTINEL + ".name.size", "UInt64"
+                        }),
+                Arguments.of(
+                        "Nullable(Tuple) element named size0",
+                        "Nullable(Tuple(size0 Int32, other String))",
+                        false,
+                        ROOT_SENTINEL + ".size0",
+                        ROOT_SENTINEL + ".other",
+                        new String[] {
+                            ROOT_SENTINEL, "Nullable(Tuple(size0 Int32, other String))",
+                            ROOT_SENTINEL + ".null", "UInt8",
+                            ROOT_SENTINEL + ".size0", "Nullable(Int32)",
+                            ROOT_SENTINEL + ".other", "Nullable(String)",
+                            ROOT_SENTINEL + ".other.size", "Nullable(UInt64)"
+                        }),
+                Arguments.of(
+                        "Array(Tuple) element named size",
+                        "Array(Tuple(\\n    size UInt8,\\n    v String))",
+                        true,
+                        ROOT_SENTINEL + ".size",
+                        ROOT_SENTINEL + ".v",
+                        new String[] {
+                            ROOT_SENTINEL, "Array(Tuple(\\n    size UInt8,\\n    v String))",
+                            ROOT_SENTINEL + ".size0", "UInt64",
+                            ROOT_SENTINEL + ".size", "Array(UInt8)",
+                            ROOT_SENTINEL + ".v", "Array(String)",
+                            ROOT_SENTINEL + ".v.size", "Array(UInt64)"
+                        }));
+    }
+
+    // Known defect 999.4 (D-04): shouldSkipDescribeRow drops a DESCRIBE row ending in .size or .size0, so
+    // a Tuple element with that name never becomes a Column and the writer writes a short tuple
+    // (23-EVIDENCE.md R-01: code 33 CANNOT_READ_ALL_DATA). The unpaired-element WARN names the dropped
+    // element. The 999.4 fix flips this pin: the element then pairs and no WARN fires.
+    @ParameterizedTest(name = "COLS-14 unpaired-element WARN (D-04, known defect 999.4): {0}")
+    @MethodSource("discoveryDropsSizeNamedElements")
+    @DisplayName("COLS-14 unpaired-element WARN (D-04, known defect 999.4): discovery drops a size-named Tuple element and one WARN names it")
+    void sizeNamedTupleElementDroppedByDiscoveryIsNamedInOneWarning(
+            String label, String rawType, boolean arrayWrapped, String unpaired, String paired, String[] rows) {
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            Column root = discoverAsDescribeTableV2(rows).getRootColumnsMap().get(ROOT_SENTINEL);
+
+            Column tuple = arrayWrapped ? root.getArrayType() : root;
+            List<String> fieldNames =
+                    tuple.getTupleFields().stream().map(Column::getName).toList();
+            assertFalse(fieldNames.contains(unpaired), label + ": the dropped element is not a Column");
+            assertTrue(fieldNames.contains(paired), label + ": the other element is a Column");
+            assertEquals(0, warnCount(helperLog), label);
+            List<LogCapture.CapturedEvent> warnings = nullabilityLog.events(WARN_LEVEL);
+            assertEquals(1, warnings.size(), label);
+            String message = warnings.get(0).message();
+            assertWarnNamesColumn(message, ROOT_SENTINEL);
+            assertTrue(message.contains("[" + unpaired + "]"), message);
+            assertTrue(message.contains(DISCOVERED_TABLE), message);
+            assertFalse(warnings.get(0).hasThrowable());
+            for (Column field : tuple.getTupleFields()) {
+                assertFalse(field.isNullable(), field.getName() + " is declared non-nullable");
+            }
+            assertTrue(DeclaredNullability.apply(root, rawType, DATABASE, TABLE), label);
         }
     }
 }

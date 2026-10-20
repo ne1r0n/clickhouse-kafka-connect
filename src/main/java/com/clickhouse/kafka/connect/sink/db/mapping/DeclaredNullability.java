@@ -3,9 +3,11 @@ package com.clickhouse.kafka.connect.sink.db.mapping;
 import com.clickhouse.data.ClickHouseColumn;
 import com.clickhouse.data.ClickHouseDataType;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +28,12 @@ import org.slf4j.LoggerFactory;
  * type and, for an exception, its class name). A null anywhere in the Column tree (a type, a {@code
  * tupleFields} entry, a field or Tuple name) counts as a tree that does not pair, and a null root
  * returns false without a log.
+ *
+ * <p>A Tuple Column never legitimately lacks a declared element; when one is missing, discovery
+ * dropped it (for example backlog 999.4, an element named {@code size} or {@code size0}). That is
+ * not a mismatch that fails open: the pass logs one metadata-only WARN naming the unpaired elements
+ * and still applies the declared nullability to the elements that paired, because falling back
+ * cannot repair the missing element's bytes and would bring back the double flag.
  */
 public final class DeclaredNullability {
 
@@ -36,6 +44,10 @@ public final class DeclaredNullability {
 
     static final String FALLBACK_WARNING = "Could not take element nullability for column {} of table {}.{} from its "
             + "declared type {} ({}); keeping the nullability DESCRIBE reported for it";
+
+    static final String UNPAIRED_ELEMENT_WARNING = "Declared Tuple element(s) {} of column {} of table {}.{} "
+            + "(declared type {}) have no matching DESCRIBE sub-column; applying the declared nullability to "
+            + "the elements that paired";
 
     private static final String SPACE = " ";
     private static final char BACKSLASH = '\\';
@@ -140,12 +152,16 @@ public final class DeclaredNullability {
             }
             ClickHouseColumn parsed = ClickHouseColumn.of(columnName, normalise(declaredType));
             List<Assignment> assignments = new ArrayList<>();
-            if (!collect(root, parsed, assignments)) {
+            List<String> unpaired = new ArrayList<>();
+            if (!collect(root, parsed, assignments, unpaired)) {
                 LOGGER.warn(FALLBACK_WARNING, columnName, database, table, declaredType, STRUCTURE_MISMATCH);
                 return false;
             }
             for (Assignment assignment : assignments) {
                 assignment.column().setNullable(assignment.nullable());
+            }
+            if (!unpaired.isEmpty()) {
+                LOGGER.warn(UNPAIRED_ELEMENT_WARNING, unpaired, columnName, database, table, declaredType);
             }
             return true;
         } catch (RuntimeException e) {
@@ -171,24 +187,25 @@ public final class DeclaredNullability {
         return node;
     }
 
-    private static boolean collect(Column column, ClickHouseColumn declared, List<Assignment> into) {
+    private static boolean collect(
+            Column column, ClickHouseColumn declared, List<Assignment> into, List<String> unpaired) {
         if (column == null || column.getType() == null) {
             return false;
         }
         ClickHouseColumn parsed = unwrapSimpleAggregate(declared);
         switch (column.getType()) {
             case TUPLE:
-                return collectTuple(column, parsed, into);
+                return collectTuple(column, parsed, into, unpaired);
             case ARRAY:
                 return parsed.isArray()
                         && column.getArrayType() != null
-                        && collect(column.getArrayType(), parsed.getNestedColumns().get(0), into);
+                        && collect(column.getArrayType(), parsed.getNestedColumns().get(0), into, unpaired);
             case MAP:
                 if (!parsed.isMap()) {
                     return false;
                 }
                 return column.getMapValueType() == null
-                        || collect(column.getMapValueType(), parsed.getNestedColumns().get(1), into);
+                        || collect(column.getMapValueType(), parsed.getNestedColumns().get(1), into, unpaired);
             default:
                 if (parsed.isTuple() || parsed.isArray() || parsed.isMap()) {
                     return false;
@@ -198,14 +215,15 @@ public final class DeclaredNullability {
         }
     }
 
-    private static boolean collectTuple(Column tuple, ClickHouseColumn parsed, List<Assignment> into) {
+    private static boolean collectTuple(
+            Column tuple, ClickHouseColumn parsed, List<Assignment> into, List<String> unpaired) {
         if (!parsed.isTuple() || tuple.getName() == null) {
             return false;
         }
         into.add(new Assignment(tuple, parsed.isNullable()));
 
         List<ClickHouseColumn> elements = parsed.getNestedColumns();
-        Map<String, ClickHouseColumn> byKey = new HashMap<>();
+        Map<String, ClickHouseColumn> byKey = new LinkedHashMap<>();
         for (int i = 0; i < elements.size(); i++) {
             String name = elements.get(i).getColumnName();
             byKey.put(name == null || name.isEmpty() ? String.valueOf(i + 1) : name, elements.get(i));
@@ -213,13 +231,21 @@ public final class DeclaredNullability {
 
         String prefix = tuple.getName() + NAME_SEPARATOR;
         List<Column> fields = tuple.getTupleFields() == null ? List.of() : tuple.getTupleFields();
+        Set<String> paired = new HashSet<>();
         for (Column field : fields) {
             if (field == null || field.getName() == null || !field.getName().startsWith(prefix)) {
                 return false;
             }
-            ClickHouseColumn declared = byKey.get(field.getName().substring(prefix.length()));
-            if (declared == null || !collect(field, declared, into)) {
+            String key = field.getName().substring(prefix.length());
+            ClickHouseColumn declared = byKey.get(key);
+            if (declared == null || !collect(field, declared, into, unpaired)) {
                 return false;
+            }
+            paired.add(key);
+        }
+        for (String key : byKey.keySet()) {
+            if (!paired.contains(key)) {
+                unpaired.add(prefix + key);
             }
         }
         return true;

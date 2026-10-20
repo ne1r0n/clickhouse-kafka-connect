@@ -45,6 +45,7 @@ class DeclaredNullabilityTest {
     private static final String QUALIFIED_TABLE = "db.t";
     private static final String PATH_SEPARATOR = ".";
     private static final String STRUCTURE_MISMATCH_REASON = "(structure mismatch)";
+    private static final String FALLBACK_KEEPING_CLAUSE = "keeping the nullability DESCRIBE reported";
 
     /** One DESCRIBE row; a name holding a dot is a sub-column. */
     private static String row(String name, String type) {
@@ -101,6 +102,30 @@ class DeclaredNullabilityTest {
         assertTrue(message.contains(STRUCTURE_MISMATCH_REASON), message);
         assertFalse(warning.hasThrowable(), "the exception message is never logged");
         assertEquals(1, log.events().size());
+    }
+
+    /** The single unpaired-element WARN: delimited column, bracketed element list, type and table, no throwable. */
+    private static void assertOnlyUnpairedWarning(LogCapture log, String type, String unpairedList) {
+        LogCapture.CapturedEvent warning = onlyWarning(log);
+        String message = warning.message();
+        assertWarnNamesColumn(message, ROOT_SENTINEL);
+        assertTrue(message.contains(unpairedList), message);
+        assertTrue(message.contains(type), message);
+        assertTrue(message.contains(QUALIFIED_TABLE), message);
+        assertFalse(message.contains(FALLBACK_KEEPING_CLAUSE), message);
+        assertFalse(warning.hasThrowable(), "the WARN names metadata only and carries no throwable");
+        assertEquals(1, log.events().size());
+    }
+
+    /** {@code apply} on a sentinel root built from {@code rows}, with the one WARN it must log. */
+    private static Column applyOnSentinelRoot(String type, String unpairedList, String... jsonRows) throws Exception {
+        Column column = root(describe(jsonRows), ROOT_SENTINEL);
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            assertOnlyUnpairedWarning(log, type, unpairedList);
+        }
+        return column;
     }
 
     @Test
@@ -368,6 +393,165 @@ class DeclaredNullabilityTest {
     }
 
     @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01, D-02): a Tuple Column that lacks a declared element logs one metadata-only WARN naming it and still applies the declared nullability")
+    void missingDeclaredElementLogsOneUnpairedElementWarningAndStillApplies() throws Exception {
+        String type = "Nullable(Tuple(a Int32, b Nullable(String)))";
+        Column column = root(
+                describe(row(ROOT_SENTINEL, type), row(ROOT_SENTINEL + ".b", "Nullable(String)")), ROOT_SENTINEL);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            LogCapture.CapturedEvent warning = onlyWarning(log);
+            String message = warning.message();
+            assertWarnNamesColumn(message, ROOT_SENTINEL);
+            assertTrue(message.contains("[" + ROOT_SENTINEL + ".a]"), message);
+            assertTrue(message.contains(type), message);
+            assertTrue(message.contains(QUALIFIED_TABLE), message);
+            assertFalse(message.contains(FALLBACK_KEEPING_CLAUSE), message);
+            assertFalse(warning.hasThrowable(), "the WARN names metadata only and carries no throwable");
+            assertEquals(1, log.events().size());
+        }
+        assertEquals(
+                Map.of(ROOT_SENTINEL, true, ROOT_SENTINEL + ".b", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): unpaired elements are listed in declaration order")
+    void unpairedElementsAreListedInDeclarationOrder() throws Exception {
+        String type = "Tuple(a Int32, b String, c Nullable(Int32))";
+
+        Column column = applyOnSentinelRoot(
+                type, "[" + ROOT_SENTINEL + ".a, " + ROOT_SENTINEL + ".c]", row(ROOT_SENTINEL, type), row(ROOT_SENTINEL + ".b", "String"));
+
+        assertEquals(Map.of(ROOT_SENTINEL, false, ROOT_SENTINEL + ".b", false), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): an element missing inside a nested Tuple is named by its full path")
+    void nestedUnpairedElementIsNamedByItsFullPath() throws Exception {
+        String type = "Tuple(a Int32, n Tuple(x Int32, y Nullable(String)))";
+
+        Column column = applyOnSentinelRoot(
+                type,
+                "[" + ROOT_SENTINEL + ".n.x]",
+                row(ROOT_SENTINEL, type),
+                row(ROOT_SENTINEL + ".a", "Int32"),
+                row(ROOT_SENTINEL + ".n", "Tuple(x Int32, y Nullable(String))"),
+                row(ROOT_SENTINEL + ".n.y", "Nullable(String)"));
+
+        assertEquals(
+                Map.of(ROOT_SENTINEL, false, ROOT_SENTINEL + ".a", false, ROOT_SENTINEL + ".n", false, ROOT_SENTINEL + ".n.y", true),
+                nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): an element missing inside Array(Nullable(Tuple)) is named and the paired ones apply")
+    void unpairedElementInsideAnArrayOfNullableTupleIsNamed() throws Exception {
+        String type = "Array(Nullable(Tuple(a Int32, b Nullable(String))))";
+
+        Column column = applyOnSentinelRoot(
+                type, "[" + ROOT_SENTINEL + ".a]", row(ROOT_SENTINEL, type), row(ROOT_SENTINEL + ".b", "Array(Nullable(String))"));
+
+        assertEquals(
+                Map.of(ROOT_SENTINEL, false, ROOT_SENTINEL + "[]", true, ROOT_SENTINEL + "[].b", true),
+                nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): an element missing from a Map value Tuple is named by the value Tuple's path")
+    void unpairedElementInsideAMapValueTupleIsNamed() throws Exception {
+        String type = "Map(String, Tuple(a Int32, b Nullable(String)))";
+        Column column = root(
+                describe(
+                        row(ROOT_SENTINEL, type),
+                        row(ROOT_SENTINEL + ".keys", "Array(String)"),
+                        row(ROOT_SENTINEL + ".values", "Array(Tuple(a Int32, b Nullable(String)))"),
+                        row(ROOT_SENTINEL + ".values.b", "Array(Nullable(String))")),
+                ROOT_SENTINEL);
+        String valueTupleName = column.getMapValueType().getName();
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            assertOnlyUnpairedWarning(log, type, "[" + valueTupleName + ".a]");
+        }
+        assertEquals(
+                Map.of(ROOT_SENTINEL, false, ROOT_SENTINEL + "{}", false, ROOT_SENTINEL + "{}.b", true),
+                nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): an element missing under a root SimpleAggregateFunction over a Tuple is named")
+    void unpairedElementUnderARootSimpleAggregateFunctionIsNamed() throws Exception {
+        String type = "SimpleAggregateFunction(anyLast, Tuple(a Nullable(Int32), b Int32))";
+
+        Column column = applyOnSentinelRoot(
+                type, "[" + ROOT_SENTINEL + ".a]", row(ROOT_SENTINEL, type), row(ROOT_SENTINEL + ".b", "Int32"));
+
+        assertEquals(Map.of(ROOT_SENTINEL, false, ROOT_SENTINEL + ".b", false), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): an unnamed (positional) Tuple element is named by its position")
+    void unpairedUnnamedElementIsNamedByPosition() throws Exception {
+        String type = "Tuple(Int32, Nullable(String))";
+
+        Column column = applyOnSentinelRoot(
+                type, "[" + ROOT_SENTINEL + ".1]", row(ROOT_SENTINEL, type), row(ROOT_SENTINEL + ".2", "Nullable(String)"));
+
+        assertEquals(Map.of(ROOT_SENTINEL, false, ROOT_SENTINEL + ".2", true), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): a Tuple root row with no element rows lists every declared element in one WARN")
+    void tupleRootRowWithoutElementRowsListsEveryDeclaredElement() throws Exception {
+        String type = "Tuple(a Nullable(Int32), b String)";
+
+        Column column = applyOnSentinelRoot(
+                type, "[" + ROOT_SENTINEL + ".a, " + ROOT_SENTINEL + ".b]", row(ROOT_SENTINEL, type));
+
+        assertEquals(Map.of(ROOT_SENTINEL, false), nullabilityByPath(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-01): a Tuple Column whose tupleFields is null lists every declared element in one WARN")
+    void tupleColumnWithNullTupleFieldsListsEveryDeclaredElement() {
+        String type = "Tuple(a Int32)";
+        Column column = nullableNode(ROOT_SENTINEL).type(Type.TUPLE).build();
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            assertOnlyUnpairedWarning(log, type, "[" + ROOT_SENTINEL + ".a]");
+        }
+        assertEquals(List.of(false), flags(column));
+    }
+
+    @Test
+    @DisplayName("COLS-14 unpaired-element WARN (D-02): the WARN repeats on every apply, with no dedup")
+    void unpairedElementWarnRepeatsOnEveryApply() throws Exception {
+        String type = "Nullable(Tuple(a Int32, b Nullable(String)))";
+        Column column = root(
+                describe(row(ROOT_SENTINEL, type), row(ROOT_SENTINEL + ".b", "Nullable(String)")), ROOT_SENTINEL);
+
+        try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+            assertTrue(DeclaredNullability.apply(column, type, DATABASE, TABLE));
+
+            List<LogCapture.CapturedEvent> warnings = log.events("WARN");
+            assertEquals(2, warnings.size());
+            for (LogCapture.CapturedEvent warning : warnings) {
+                assertWarnNamesColumn(warning.message(), ROOT_SENTINEL);
+                assertTrue(warning.message().contains("[" + ROOT_SENTINEL + ".a]"), warning.message());
+            }
+            assertEquals(2, log.events().size());
+        }
+        assertEquals(
+                Map.of(ROOT_SENTINEL, true, ROOT_SENTINEL + ".b", true), nullabilityByPath(column));
+    }
+
+    @Test
     @DisplayName("COLS-10: a declared type that does not parse fails open with one metadata-only WARN")
     void unparsableDeclaredTypeFailsOpenWithOneMetadataWarning() throws Exception {
         String sentinel = "SENTINEL_ELEMENT_NAME";
@@ -418,6 +602,12 @@ class DeclaredNullabilityTest {
     @DisplayName("DEBT-10: the sentinel root occurs in no fixed WARN text, is plain ASCII and differs from the database and table")
     void sentinelRootOccursInNoFixedWarnText() {
         assertFalse(DeclaredNullability.FALLBACK_WARNING.contains(ROOT_SENTINEL), DeclaredNullability.FALLBACK_WARNING);
+        assertFalse(
+                DeclaredNullability.UNPAIRED_ELEMENT_WARNING.contains(ROOT_SENTINEL),
+                DeclaredNullability.UNPAIRED_ELEMENT_WARNING);
+        assertFalse(
+                DeclaredNullability.UNPAIRED_ELEMENT_WARNING.contains(FALLBACK_KEEPING_CLAUSE),
+                DeclaredNullability.UNPAIRED_ELEMENT_WARNING);
         assertTrue(ROOT_SENTINEL.matches("[a-z_]+"), ROOT_SENTINEL);
         assertNotEquals(DATABASE, ROOT_SENTINEL);
         assertNotEquals(TABLE, ROOT_SENTINEL);
