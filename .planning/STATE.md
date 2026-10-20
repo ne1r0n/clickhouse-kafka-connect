@@ -5,11 +5,11 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 24
 current_phase_name: Release & Publication
 status: planning
-stopped_at: Phase 23 complete, ready to plan Phase 24
-last_updated: "2026-10-20T12:36:03.112Z"
+stopped_at: Phase 24 context gathered
+last_updated: "2026-10-20T13:39:43.517Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 complete, transitioned to Phase 24
-state_head: 85848e75362f7d379a832430cbcfbeb6010df507
+state_head: f78bbb9e4fafe4a5659cf56e07425bc47182c896
 progress:
   total_phases: 4
   completed_phases: 3
@@ -244,9 +244,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T12:37:52.000Z
-Stopped at: Phase 23 complete, ready to plan Phase 24
-Resume file: None
+Last session: 2026-10-20T13:39:43.112Z
+Stopped at: Phase 24 context gathered
+Resume file: .planning/phases/24-release-publication/24-CONTEXT.md
 
 ## Operator Next Steps
 
