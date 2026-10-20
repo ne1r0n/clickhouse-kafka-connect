@@ -246,7 +246,7 @@ Phase gate: cache-busted `testUnit` and a full suite on `latest` × V2, plus the
   3. The full suite passes twice on ClickHouse `latest` × client V2, the second run with `--rerun`. Both runs have 0 failures, 0 errors and every skip named. `testUnit` passes with the Docker daemon stopped.
   4. After the user's own explicit approval, given directly and not relayed, `custom_build` on `origin` is a non-force `--no-ff` merge whose first parent is the pre-merge `custom_build` tip. That SHA has exactly one `tests.yaml` run, and it is green. The `v1.7.0_gg3` tag reaches `origin` only after that run is green, and the rollback tag `pre-v1.7.0_gg3` points at the pre-merge `custom_build` tip.
 
-**Plans**: 6/7 plans executed (sequential, waves 1-7; plans 24-06 and 24-07 hold the two approval gates and run their post-gate tasks orchestrator-inline)
+**Plans**: 7/7 plans executed (sequential, waves 1-7; plans 24-06 and 24-07 hold the two approval gates and run their post-gate tasks orchestrator-inline)
 
 Plans:
 **Wave 1**
@@ -268,7 +268,7 @@ Plans:
 - [x] 24-06-PLAN.md — SUITE-06 gate (freeze and D-10, Docker-stopped testUnit, two full runs, anchors, OPS-01, rollback on a dry-run merge), rehearsal approval gate, scratch push and its single green run
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 24-07-PLAN.md — PUB-10: release approval gate, rollback tag first, --no-ff merge in a worktree with the checks on M, custom_build push, single green tests.yaml run, v1.7.0_gg3 tag, final refs, D-11 reminders
+- [x] 24-07-PLAN.md — PUB-10: release approval gate, rollback tag first, --no-ff merge in a worktree with the checks on M, custom_build push, single green tests.yaml run, v1.7.0_gg3 tag, final refs, D-11 reminders
 
 **Note**: This phase follows the Phase 20 recipe: rehearse, measure, approve, publish. The steps:
 1. Push `sync/v1.7.0` once as a scratch branch (explicit refspec, never at a SHA another pushed branch already holds) and wait for green.
@@ -372,7 +372,7 @@ Record `SELECT version()` at each gate. If the full suite goes red on unchanged 
 | 21. Dependabot Integration & CI Hygiene | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-19 |
 | 22. Writer Record-Data Exposure | v1.7.0_gg3-hardening | 5/5 | Complete    | 2026-10-20 |
 | 23. Declared-Nullability Hardening & Review Closure | v1.7.0_gg3-hardening | 6/6 | Complete    | 2026-10-20 |
-| 24. Release & Publication | v1.7.0_gg3-hardening | 6/7 | In Progress | - |
+| 24. Release & Publication | v1.7.0_gg3-hardening | 7/7 | In Progress | - |
 
 ---
 *Roadmap for milestone `v1.7.0_gg3-hardening` created: 2026-10-16*

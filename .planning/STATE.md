@@ -4,17 +4,17 @@ milestone: v1.7.0_gg3-hardening
 milestone_name: Record-Data Exposure & Review Debt
 current_phase: 24
 current_phase_name: Release & Publication
-status: executing
-stopped_at: Completed 24-06-PLAN.md
-last_updated: "2026-10-20T18:04:19.547Z"
+status: verifying
+stopped_at: Completed 24-07-PLAN.md
+last_updated: "2026-10-20T18:24:16.814Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 24 execution started
-state_head: 779e8eaf72b26699073e5bbd96bbe5308519655b
+state_head: 938d14af596c9df8601dea9110647d7ce2d3a6c9
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
   percent: 75
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 23)
 
 Phase: 24 (Release & Publication) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-20 — Phase 24 execution started
 
 Progress: [████████░░] 75%
@@ -162,6 +162,7 @@ Progress: [████████░░] 75%
 | Phase 24 P04 | 9 min | 3 tasks | 5 files |
 | Phase 24 P05 | 20 min | 3 tasks | 10 files |
 | Phase 24 P06 | 47 min | 3 tasks | 1 files |
+| Phase 24 P07 | 25 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -228,6 +229,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 24]: 24-05: the WR-01 fix keeps D-02's 'whatever the connector settings' and scopes it to the measured route (default route, client V2); IN-02 skipped by design; IN-03 carried under Other carried items
 - [Phase 24]: 24-06: the user answered 'push' directly to the orchestrator; Task 3 ran inline; sync/v1.7.0 pushed at X0=3ab55e1d with one green tests.yaml run 39470352668
 - [Phase 24]: 24-06: latest moved 26.9.18.11 -> 26.9.19.9 since Phase 20; local gate and CI both green, no test edited
+- [Phase 24]: 24-07: the user answered 'publish' directly to the orchestrator; Tasks 2-3 ran inline; v1.7.0_gg3 published as --no-ff merge M=3376a18f with tests.yaml run 39472696952 green; tags pre-v1.7.0_gg3 and v1.7.0_gg3 on origin; scratch branch deleted
 
 ### Pending Todos
 
@@ -261,8 +263,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T18:04:19.209Z
-Stopped at: Completed 24-06-PLAN.md
+Last session: 2026-10-20T18:24:16.473Z
+Stopped at: Completed 24-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
