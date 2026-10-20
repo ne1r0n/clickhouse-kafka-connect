@@ -29,7 +29,7 @@ slf4j = "2.0.18"
 
 # Plugins
 spotless = "8.10.4"
-shadow = "8.3.5"
+shadow = "9.6.1"
 protobufPlugin = "0.10.0"
 
 [libraries]
