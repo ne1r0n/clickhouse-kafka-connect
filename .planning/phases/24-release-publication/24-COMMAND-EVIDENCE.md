@@ -75,7 +75,7 @@ PROBE-MBEAN tree=gg3 name=com.clickhouse:type=ClickHouseKafkaConnector,connector
 PROBE-AGENT tree=gg3 agent=clickhouse-kafka-connect/v1.7.0_gg3 clickhouse-java-v2/0.9.6 (Mac OS X; jvm:17.0.9) Apache-HttpClient/5.6.2
 ```
 
-Matches text: pending (24-03)
+Matches text: yes
 
 ### E-03: the Jackson Map-key residual through the connector (D-03)
 
@@ -362,7 +362,7 @@ PROBE-RETRY tree=gg2 table=d15_r02_plain first=landed outcome=dropped code=- row
 
 (XML: `tests="1" skipped="0" failures="0" errors="0"`.) Result: for the differing shape the gg2 retry of the range fails with server code 33 and leaves exactly the one correct row; the control (plain element name, identical bytes under both releases, E-11) is dropped by the token, also with one row. So under `v1.7.0_gg2` the retry of a range of a differing-shape table is not deduplicated away: the server rejects the bytes first (E-11) and the connector surfaces the failure, even though the rows had landed. That is the one shape where a clean stop (no range of the table in `BEFORE_PROCESSING`) matters before a rollback; the check is the query of E-14, which names topics, not shapes, and the shape is found with the query of E-13.
 
-Matches text: pending (24-03)
+Matches text: yes
 
 ### E-13: the query for the differing shape (D-15)
 
@@ -436,7 +436,7 @@ PROBE-KEEPER case=all-after keys=
 
 Result: the first run returns exactly the one in-flight key of the listed topic, `orders-1`; it does not return `orders-0` (already `AFTER_PROCESSING`) and does not return `orders-v2-0`, which is `BEFORE_PROCESSING` under a topic that merely shares the prefix. The second run returns nothing. Same result as Phase 20's E-17 on the gg2 classes, now on the gg3 classes.
 
-Matches text: pending (24-03)
+Matches text: yes
 
 ### E-15: Tuple elements named size, the WARN oracle and the suspects query (D-01, D-12)
 

@@ -220,11 +220,43 @@ ORDER BY `table`;
 
 ### What changed
 
-This item is completed in a later step of the release work.
+A batch that one release leaves in `BEFORE_PROCESSING` is retried by the other release under the same `insert_deduplication_token`, which the connector builds from the topic, the partition and the first and last offset of the batch, so it does not depend on how the batch is encoded. Whether a clean stop matters therefore depends on whether the other release encodes the batch to different bytes. Measured on ClickHouse 26.9.19.9 with client V2, the real table-description code of `v1.7.0_gg2` and of `v1.7.0_gg3` was run over 44 fixture tables on the same server, and 30 of them gave identical column descriptions. Bytes can differ only through the nullability flags of that description. The 14 tables that differ are exactly the shape of [item 3](#item-3-backslashes-and-line-breaks-in-names).
+
+For every other change, one sentence each way:
+
+- **Error text and stack traces ([item 1](#item-1-record-values-in-writer-error-text)).** On the upgrade, no clean stop is needed, because only the text of a failure changes and not a byte of the batch or its token. On a rollback, no clean stop is needed for the same reason.
+- **The client V1 table-mapping refresh ([item 1](#item-1-record-values-in-writer-error-text)).** On the upgrade, no clean stop is needed, because the refresh only decides whether the insert is tried once more and the batch it sends is the same. On a rollback, no clean stop is needed for the same reason.
+- **The unpaired-element WARN ([item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size)).** On the upgrade, no clean stop is needed, because the WARN is a log line and the nullability it applies is the same as before. On a rollback, no clean stop is needed, because the WARN disappears and a table that fails keeps failing.
+- **The MBean version and the client name ([item 5](#item-5-jmx-mbean-name-and-client-name)).** On the upgrade, no clean stop is needed, because the version is not part of the batch or of its token. On a rollback, no clean stop is needed for the same reason.
+
+For the one shape that differs, the two directions are not alike.
+
+- **Upgrade: no clean stop is needed.** `v1.7.0_gg2` never stored a batch of that shape. In the measurement, the four such shapes that were inserted failed on `v1.7.0_gg2` with code 33 and stored 0 rows. A range of such a table that `v1.7.0_gg2` left in flight therefore holds no row, and the retry by `v1.7.0_gg3` lands once, with the declared bytes.
+- **Rollback: stop cleanly first.** A range that `v1.7.0_gg3` left in `BEFORE_PROCESSING` is retried by `v1.7.0_gg2` under the same `insert_deduplication_token`. The bytes of `v1.7.0_gg2` fail with code 33 even when `v1.7.0_gg3` had stored the rows, because the server reads the bytes before it looks at the token. In the measurement, the rows that `v1.7.0_gg3` would have stored were written by SQL under the token the connector sends, and the retry by `v1.7.0_gg2` failed with code 33 and left exactly the one correct row. A table with a plain element name and the same declared type, whose bytes are the same on both releases, dropped the retry by its token and also kept one row. So the task fails, or the batch goes to the dead letter queue, even though the rows had landed. That is why the check below exists.
 
 ### Am I affected?
 
+You are affected if a connector runs with `exactlyOnce=true` and writes a table that the query of [item 3](#item-3-backslashes-and-line-breaks-in-names) lists, and you want to roll back. **Empty result of that query:** no table of that database has the shape, so a rollback needs no clean stop for this reason. A connector with `exactlyOnce=false` keeps no offset state, so the procedure below does not apply to it; a range that Kafka delivers again is handled by the token as described in [item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token).
+
 ### What to do
+
+Before a rollback, for each connector with `exactlyOnce=true` that writes such a table:
+
+1. Stop or pause the connector with your usual procedure, and wait until its tasks have stopped.
+2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace each `<topic>` with one of your topics, writing the same topic twice if you have only one:
+
+```sql
+SELECT `key`, minOffset, maxOffset, state
+FROM `<zkDatabase>`
+WHERE state != 'AFTER_PROCESSING'
+  AND arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>', '<topic>')
+ORDER BY `key`;
+```
+
+   **Empty result:** no batch of those topics is in flight, so it is safe to roll back. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not roll back yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
+3. If the result is not empty, start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then roll back.
+
+[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) explains why the state table is shared and how the key looks with `enableDbTopicSplit=true`; those explanations are not repeated here. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
 
 ---
 
@@ -232,11 +264,18 @@ This item is completed in a later step of the release work.
 
 ### What changed
 
-This item is completed in a later step of the release work.
+The MBean name embeds the release version, and so does the client name that the connector sends on every request. Both now carry `v1.7.0_gg3` where they carried `v1.7.0_gg2`:
+
+- MBean: `com.clickhouse:type=ClickHouseKafkaConnector,connector=<connector-name>,name=SinkTask<id>,version=v1.7.0_gg3`, plus `,topic=<topic>` for per-topic beans. Measured on ClickHouse 26.9.19.9 with client V2, the per-task bean and the per-topic bean of `v1.7.0_gg3` both carried `version=v1.7.0_gg3`, and those of `v1.7.0_gg2` carried `version=v1.7.0_gg2`.
+- Client name: `clickhouse-kafka-connect/v1.7.0_gg3`. The client sends it as the prefix of the HTTP user agent. The rest of the user agent belongs to the client library and did not change between the two releases.
 
 ### Am I affected?
 
+Search your dashboards, alert rules and JMX exporter rules for matchers that spell out `version=v1.7.0_gg2`, and for filters on the client name `clickhouse-kafka-connect/v1.7.0_gg2`. **Empty result:** no matcher spells out the old value, and nothing needs to change. The query of [item 7 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-7-jmx-mbean-name-and-client-name) lists the client names that your server has seen, and works unchanged. After the upgrade it shows `clickhouse-kafka-connect/v1.7.0_gg3` for the new build.
+
 ### What to do
+
+Change matchers that spell out the old value. If you already use the wildcard forms from item 7 of the gg1 note, they keep working across releases and nothing needs to change.
 
 ---
 
@@ -244,11 +283,20 @@ This item is completed in a later step of the release work.
 
 ### What changed
 
-This item is completed in a later step of the release work.
+Three dependency updates were merged from Dependabot before this release: `lombok` from `1.18.46` to `1.18.48`, `spotless` from `8.10.1` to `8.10.4` and `slf4j-reload4j` from `2.0.17` to `2.0.20`. They change the files `build.gradle.kts` and `gradle/libs.versions.toml` only. These are build measurements, and no ClickHouse server is involved.
+
+- **The shipped archive is unchanged by all three.** The archive that `./gradlew createConfluentArchive` writes was built at tag `v1.7.0_gg2` and at the tree with the three updates, on the same day. The two jars inside are identical entry by entry (7375 entries, none added, none removed, none changed), and so are the two archives as files.
+- **`slf4j-reload4j` is not in the archive.** It is on the runtime classpath of a source checkout, which tests and local runs use. The archive carries no `reload4j` file, and its only logging classes are those of `slf4j-api`.
+- **Lombok** `1.18.48` generated class files that are byte for byte the same as those of `1.18.46`, and **spotless** runs only when you build.
+- **The release date in the archive is the build date.** The `release_date` field of the archive's `manifest.json` is the day of the build, so two builds on different days differ in that field and in no other, and only a per-entry compare of the jars is a fair test across days.
 
 ### Am I affected?
 
+Only if you run from a source checkout, because its runtime classpath holds `slf4j-reload4j`. The deployed archive is not affected.
+
 ### What to do
+
+Nothing.
 
 ---
 
