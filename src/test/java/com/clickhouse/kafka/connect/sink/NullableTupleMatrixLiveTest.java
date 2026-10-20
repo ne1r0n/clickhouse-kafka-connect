@@ -726,7 +726,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                 if (row.isSubcolumn() || !expected.containsKey(row.getName())) {
                     continue;
                 }
-                String normalised = NullableRoundTrip.normaliseDeclaredType(row.getType());
+                String normalised = DeclaredNullability.normalise(row.getType());
                 LOGGER.info(
                         "{} approach {} | raw={} | normalised={}",
                         MATRIX_LOG_PREFIX,

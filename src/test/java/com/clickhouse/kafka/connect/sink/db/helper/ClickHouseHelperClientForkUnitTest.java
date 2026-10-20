@@ -31,6 +31,11 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class ClickHouseHelperClientForkUnitTest {
 
+    private static final String DATABASE = "db";
+    private static final String TABLE = "t";
+    private static final String DISCOVERED_TABLE = DATABASE + "." + TABLE;
+    private static final String WARN_LEVEL = "WARN";
+
     @Test
     @DisplayName("FILT-01: empty filter produces the empty clause")
     void emptyFilterProducesEmptyClause() {
@@ -271,8 +276,6 @@ class ClickHouseHelperClientForkUnitTest {
 
     // ---- COLS-10 (D-11 flips): the discovery WARN is gone, the same inputs now assert the new truth ----
 
-    private static final String WARN_LEVEL = "WARN";
-
     /**
      * Discovery as {@code describeTableV2} runs it for the given rows: one Column per row, the raw
      * type of each root row recorded, then {@code buildDescribedTable}.
@@ -287,7 +290,7 @@ class ClickHouseHelperClientForkUnitTest {
                 numColumns++;
             }
         }
-        return ClickHouseHelperClient.buildDescribedTable("db", "t", false, columns, numColumns, declaredTypes);
+        return ClickHouseHelperClient.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
     }
 
     /** Discovery where every root row's own type is its declared type, as DESCRIBE reports it. */
@@ -399,8 +402,6 @@ class ClickHouseHelperClientForkUnitTest {
                     "control: with the declared type the same element is non-nullable");
         }
     }
-
-    private static final String DISCOVERED_TABLE = "db.t";
 
     @Test
     @DisplayName("COLS-10 IN-01: the fallback WARN raised during discovery names the database and the table")
