@@ -243,7 +243,7 @@ You are affected if a connector writes a table that the query of [item 3](#item-
 Before a rollback, for each connector with `exactlyOnce=true` that writes such a table:
 
 1. Stop or pause the connector with your usual procedure, and wait until its tasks have stopped.
-2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace each `<topic>` with one of your topics, writing the same topic twice if you have only one:
+2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries. Run the query in the database the connector connects to (its `database` setting, where the connector creates the state table), or write the table as `` `<db>`.`<zkDatabase>` ``:
 
 ```sql
 SELECT `key`, minOffset, maxOffset, state
@@ -253,7 +253,7 @@ WHERE state != 'AFTER_PROCESSING'
 ORDER BY `key`;
 ```
 
-   **Empty result:** no batch of those topics is in flight, so it is safe to redeploy `v1.7.0_gg2`. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not redeploy `v1.7.0_gg2` yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
+   **Empty result:** no batch of the listed topics is in flight, so it is safe to redeploy `v1.7.0_gg2`. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not redeploy `v1.7.0_gg2` yet. On a state table created by `v1.7.0_gg3` itself, measured on the server named above, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like.
 3. If the result is not empty, start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then continue with step 2 of [item 7](#item-7-rollback).
 
 For a connector with `exactlyOnce=false` that writes such a table, there is no state table to query. Stop its tasks cleanly before you redeploy `v1.7.0_gg2`, so that its offsets are committed and Kafka does not deliver a range again.
