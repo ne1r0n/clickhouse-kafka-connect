@@ -777,3 +777,96 @@ OK   .planning/scripts/verify-merge-invariants.sh
 No `DEAD` line. The two new paths are `.planning/ROADMAP.md` (the Phase 999.4 and 999.5 backlog entries that Known-costs items 10 and 11 point at) and `.planning/scripts/fork-anchor-exemptions.txt`.
 
 Matches text: n/a (gate check)
+
+### E-33: raw numbers, recount, skip inventory and cross-document consistency
+
+Backs: `docs/FORK-DELTA.md` "The raw numbers" (two new `after gg3` rows, two new commands, the comparison and "One number does bear" paragraphs), the Adopted-wholesale `src/main` row and the Named skip inventory (plan 24-04, task 3), and the agreement of the rollout note, the CHANGELOG section and FORK-DELTA (research Pitfall 9). Date (UTC) 2026-10-20. HEAD is the commit that carries the rows, on `sync/v1.7.0`. Nothing under `src`, `build.gradle.kts`, `gradle` or `.github` changed after `98b9e04d` (the last such commit, the Jackson Map-key live test of plan 24-01), checked with `git diff --quiet 98b9e04d HEAD -- src build.gradle.kts gradle .github`, which exits 0. The tag `v1.7.0_gg3` does not exist yet, so the gg3 figures are measured against HEAD; plan 24-07 re-runs the two tag commands once the tag exists. Tags `v1.7.0_gg1` and `v1.7.0_gg2` exist, and the two published rows of each scope reproduce.
+
+```sh
+git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 HEAD -- src/main
+git diff --shortstat v1.7.0 v1.7.0_gg2 -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 v1.7.0_gg2 -- src/main
+git diff --shortstat v1.6.0 pre-v1.7.0-sync -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 v1.7.0_gg1 -- src build.gradle.kts gradle .github
+git diff --shortstat v1.6.0 pre-v1.7.0-sync -- src/main
+git diff --shortstat v1.7.0 v1.7.0_gg1 -- src/main
+for s in src/test src/testFixtures src/main build.gradle.kts gradle .github; do git diff --shortstat v1.7.0 HEAD -- $s; done
+```
+
+```text
+ 130 files changed, 22783 insertions(+), 534 deletions(-)
+ 33 files changed, 2245 insertions(+), 145 deletions(-)
+ 119 files changed, 18802 insertions(+), 529 deletions(-)
+ 32 files changed, 2042 insertions(+), 143 deletions(-)
+ 84 files changed, 9476 insertions(+), 451 deletions(-)
+ 95 files changed, 13587 insertions(+), 484 deletions(-)
+ 30 files changed, 1368 insertions(+), 98 deletions(-)
+ 31 files changed, 1826 insertions(+), 130 deletions(-)
+src/test:  88 files changed, 20064 insertions(+), 103 deletions(-)
+src/testFixtures:  3 files changed, 68 insertions(+), 12 deletions(-)
+src/main:  33 files changed, 2245 insertions(+), 145 deletions(-)
+build.gradle.kts:  1 file changed, 177 insertions(+), 9 deletions(-)
+gradle:  1 file changed, 8 insertions(+), 8 deletions(-)
+.github:  4 files changed, 221 insertions(+), 257 deletions(-)
+```
+
+The gg1, gg2 and before rows keep their published figures; the two new rows carry 130/22783/534 and 33/2245/145. The catalog (`gradle`) moved by two more lines than at gg2 (6/6 to 8/8: the Lombok and Spotless bumps), and the `slf4j-reload4j` bump replaces a line in `build.gradle.kts` (177/9 as at gg2).
+
+The byte-identical and import-order counts, E-40 method of the Phase 20 evidence (a file is byte-identical when `git diff --quiet v1.7.0 HEAD -- <file>` exits 0; of the others it is import-order-only when its content without `import ` lines and blank lines equals upstream's), re-created as `/tmp/gsd24-scripts/recount.py` (scratch, not committed):
+
+```sh
+python3 -I /tmp/gsd24-scripts/recount.py "$PWD" HEAD v1.7.0
+```
+
+```text
+files present at v1.7.0 : 63
+byte-identical at HEAD : 38
+differ: 25  (import-order only: 14 , carry fork logic: 11 )
+absent at HEAD : 0 []
+files only here (added since v1.7.0): 8
+    MetadataFreeJsonWriter.java
+    DeclaredNullability.java
+    ConvertToMapOrJson.java
+    HeaderToValue.java
+    HeaderToValueConfig.java
+    HeadersToValue.java
+    TableOperationFilter.java
+    WithheldMessageException.java
+differing src/main files in total: 33
+import-only: ClickHouseSinkConnector.java, Record.java, StructToJsonMap.java, EmptyRecordConvertor.java, RecordConvertor.java, SchemaRecordConvertor.java, SchemalessRecordConvertor.java, DBWriter.java, InMemoryDBWriter.java, TableMappingRefresher.java, InMemoryState.java, ExtractTopic.java, ExtractTopicConfig.java, MBeanServerUtils.java
+logic: ClickHouseSinkConfig.java, ClickHouseSinkTask.java, ProxySinkTask.java, Data.java, ClickHouseWriter.java, ClickHouseHelperClient.java, Column.java, Type.java, Utils.java, SinkTaskStatistics.java, org.apache.kafka.connect.transforms.Transformation
+```
+
+The same script on `v1.7.0_gg2` gives 38 byte-identical, 14 import-order only and 11 with fork logic, so the only change in the split since gg2 is the eighth new file, `WithheldMessageException`. 25 differing upstream files plus 8 new files make the 33 of the shortstat.
+
+Named skip inventory, the two sources re-counted:
+
+```sh
+grep -rho '@Disabled' src/test/java | wc -l
+grep -rho 'Assumptions.assumeTrue' src/test/java | wc -l
+```
+
+```text
+       7
+       1
+```
+
+7 `@Disabled` methods plus the 11 parameterized cases behind the one standalone-mode assumption stay 18; the Phase 24 live test adds no skip, and the inventory text is unchanged.
+
+Cross-document consistency (Pitfall 9), `/tmp/gsd24-scripts/consistency.py` (scratch): every prose unit of the rollout note, the CHANGELOG gg3 section and FORK-DELTA that mentions `size0` also names codes 32 and 33; each of the three names `input_format_binary_read_json_as_string`, the words Map key and `v1.7.0_gg3`; the note and the CHANGELOG name `1.18.48`, `8.10.4`, `2.0.20` and `clickhouse-kafka-connect/v1.7.0_gg3`; FORK-DELTA names the three versions in its rows; the note and FORK-DELTA name `pre-v1.7.0_gg3`; the server version of E-03 appears in the note and in FORK-DELTA item 6; the MBean row no longer calls `v1.7.0_gg2` current.
+
+```text
+note: 2 units mention size0
+changelog: 1 units mention size0
+fork-delta: 3 units mention size0
+fork-delta rows naming 1.18.48: 2
+fork-delta rows naming 8.10.4: 1
+fork-delta rows naming 2.0.20: 1
+server version: 26.9.19.9
+consistency failures: 0
+```
+
+The first run of the script failed on three units that mentioned `size0` without the codes (the rollback bullet of the note, and the `shouldSkipDescribeRow` and declared-nullability rows of FORK-DELTA). Each was fixed at its source document (the note's item 7 bullet now says "with code 32 or 33"; the two FORK-DELTA rows now name the codes and Known costs item 10), and plan 24-03's five checks (`ROLLOUT-FRAME-OK`, `ITEMS-1-7-OK`, `ITEMS-2-3-OK`, `ROLLOUT-T3-OK`, `ROLLOUT-FINAL-OK`) were re-run after that edit.
+
+Matches text: n/a (gate check)
