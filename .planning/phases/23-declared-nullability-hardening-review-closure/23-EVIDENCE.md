@@ -17,7 +17,7 @@
 | E-02 | 23-02 | COLS-12 | recorded |
 | E-03 | 23-03 | DEBT-10 fallback-WARN mutations | recorded |
 | E-04 | 23-04 | COLS-13 | recorded |
-| E-05 | 23-05 | COLS-14, the unpaired-WARN mutations and the SC3 reading | pending |
+| E-05 | 23-05 | COLS-14, the unpaired-WARN mutations and the SC3 reading | recorded |
 | E-06 | 23-06 | DEBT-12 closure pointers | pending |
 | E-07 | 23-06 | phase gate and SC1..SC5 readings | pending |
 
@@ -242,3 +242,31 @@ spotless_after_23_04: SPOTLESS-BASELINE-EQUAL
 testunit_23_04: Tests summary: 822 tests, 820 succeeded, 0 failed, 2 skipped
 
 Tracer red (unchanged production file): the new unit pin failed on the `normalise` assertion (the old replace turned the backslash-n inside the name into a space, `\\ b` instead of `\\nb`), and both twin testcases failed on the fallback WARN assertion, not on the raw-type premise. Expansion red by file swap: the seven `COLS-13 (D-10)` / `COLS-13 (D-10) edges` testcases failed, the six `COLS-13 (D-10) unchanged` cases and every older testcase passed, and the live drift test failed on six fallback WARNs (columns p, r, n, s and the Array and Map wrappers; the enum column q already paired) with the raw-type premise passing. The restored production file was byte-identical to the saved copy (`cmp`).
+
+### E-05: COLS-14 unpaired-element WARN, D-19 flips and the SC3 reading (23-05)
+
+Recorded 2026-10-20. Scratch output is in `/tmp/gsd23/exec/` (`cols14-*`, `d19-forced-red*`, `d17-unpaired-*`, `live-six-23-05*`, `testunit-23-05.log`).
+
+cols14_tracer_red: rc=1 failed=1
+d19_forced_red: rc=1 failed=3 (the three D-19 names)
+cols14_expansion_red: rc=1 unpaired_failed=16 others_passed=yes
+cols14_green: DeclaredNullabilityTest tests=62; ClickHouseHelperClientForkUnitTest tests=51
+d17_unpaired_m1: rc=1 marked=16 missing=none fallback_unaffected=yes
+d17_unpaired_m2: rc=1 marked=16 missing=none fallback_unaffected=yes
+d17_reverted: yes (cmp against the saved copy)
+sc3_reading: ROADMAP SC3 (amended 2026-10-20 per 23-CONTEXT D-01) names log and still apply, the form shipped here; it replaced the original falls back / keeps today's behaviour wording, which RESEARCH Open Question 3 had flagged as a third form; falling back cannot repair the missing element's bytes and would bring back the double flag; missingDeclaredElementDoesNotShiftPairing is byte-identical and green
+missing_declared_unchanged: yes (block md5 equals 16e0b2d6)
+d03_verdict: confirmed for size and size0, refuted for null (code 36); backlog 999.4 created
+backlog_9995: created (D-20)
+live_six_23_05: NullableTupleMatrixLiveTest=33/0, SimpleAggregateTupleRoundTripLiveTest=2/0, NullableEnumRoundTripLiveTest=6/0, NestedNullRowBinaryLiveTest=10/0, NestedNullableCompositeWriteTest=18/0, ClickHouseHelperClientForkLiveTest=12/0 (tests/failures, errors 0 for all six)
+cols14_commit: f83ac147b5aa733c0a7b326d603a416b5cbba38c
+cols14_commit_files: 7
+anchors_mirror_23_05: rows=69 bad=0
+spotless_after_23_05: SPOTLESS-BASELINE-EQUAL
+testunit_23_05: Tests summary: 838 tests, 836 succeeded, 0 failed, 2 skipped
+
+Tracer red (unchanged production file): only the sibling `COLS-14 unpaired-element WARN (D-01, D-02)` failed, on the exactly-one-WARN assertion, because the unchanged pass returned true and logged nothing; the other 52 testcases passed. D-19 forced red (new pass, unflipped fork unit test): exactly the three collided testcases failed, `Tuple(a Nullable(Int32))` and `Tuple(a Nullable(Enum8('q' = 1)))` of `otherTypesDiscoverWithoutWarningAndUnchangedRootNullability` and `repeatedDiscoveryNeverWarns`, each on the no-WARN assertion; the other 95 of 98 passed. After the flips the fork XML still holds 15 testcases named `COLS-10 (D-11 flip)`. Expansion red by file swap (HEAD's production file, the two premise assertions of the `DEBT-10:` test removed for that run only): the 16 testcases starting `COLS-14 unpaired-element WARN` failed (10 in DeclaredNullabilityTest, 6 in ClickHouseHelperClientForkUnitTest, 3 of them the D-04 known-defect 999.4 cases), and the other 97 of 113 passed, the D-19 flipped ones included. The production file and the test file were restored byte-identically (`cmp`).
+
+D-17 for the new WARN: mutation 1 deleted `columnName, ` from the `LOGGER.warn` call (marker count 0) and mutation 2 turned `of column {}` into `of column ` in the constant (marker count 1). Under both, all 16 `COLS-14 unpaired-element WARN` testcases failed with the `WR-02 column segment: ` text, and the 14 fallback-WARN column testcases (the three COLS-10 fallback pins, the COLS-12 structure-mismatch pins, the D-08 flip and the D-09 pins) stayed green, which shows the mutations are local.
+
+D-03 / D-04: the Docker-free pin runs the R-01 rows through the real `shouldSkipDescribeRow` and `buildDescribedTable` in the `describeTableV2` loop order. For `size`, `size0` and `Array(Tuple(size ..))` the Tuple Column lacks the element, one WARN names it, a direct `apply` returns true and every paired element carries its declared flag (the `size0` case keeps `other` non-nullable although DESCRIBE reported `Nullable(String)`). `ClickHouseHelperClient.java` is unchanged since 16e0b2d6 (`git diff --quiet` on `sink/db/helper` in src/main).
