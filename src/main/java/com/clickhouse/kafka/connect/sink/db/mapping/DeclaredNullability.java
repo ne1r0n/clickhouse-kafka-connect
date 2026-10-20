@@ -38,6 +38,10 @@ public final class DeclaredNullability {
             + "declared type {} ({}); keeping the nullability DESCRIBE reported for it";
 
     private static final String SPACE = " ";
+    private static final char BACKSLASH = '\\';
+    private static final char BACKTICK = '`';
+    private static final char SINGLE_QUOTE = '\'';
+    private static final char NO_QUOTE = 0;
     private static final String NAME_SEPARATOR = ".";
     private static final String STRUCTURE_MISMATCH = "structure mismatch";
 
@@ -47,11 +51,56 @@ public final class DeclaredNullability {
     private record Assignment(Column column, boolean nullable) {}
 
     /**
-     * The multi-line form of a non-nullable Tuple type does not parse until the escape is a space.
-     * Public so tests normalise exactly as production does.
+     * The multi-line form of a non-nullable Tuple type does not parse until the server's line break
+     * is a space. Public so tests normalise exactly as production does.
+     *
+     * <p>{@code fromJsonRow} keeps JSON escapes as text, and the JSON layer doubles every backslash
+     * inside a quoted name or label. So the line break is the only backslash-n outside quotes, and a
+     * backslash-n inside a backtick-quoted name or a single-quoted label is part of that name and is
+     * kept. Inside quotes a backslash run is copied with the next character, which closes the quote
+     * only when half the run length is even. A type with no backslash inside quotes normalises
+     * exactly as the plain replace of the line break did. One linear pass; an unterminated quote
+     * leaves the rest of the type unchanged.
      */
     public static String normalise(String declaredType) {
-        return declaredType.replace(ESCAPED_NEWLINE, SPACE);
+        int length = declaredType.length();
+        StringBuilder normalised = new StringBuilder(length);
+        char quote = NO_QUOTE;
+        int i = 0;
+        while (i < length) {
+            char c = declaredType.charAt(i);
+            if (c == BACKSLASH) {
+                int end = i;
+                while (end < length && declaredType.charAt(end) == BACKSLASH) {
+                    end++;
+                }
+                int run = end - i;
+                if (quote == NO_QUOTE && run == 1 && declaredType.startsWith(ESCAPED_NEWLINE, i)) {
+                    normalised.append(SPACE);
+                    i += ESCAPED_NEWLINE.length();
+                    continue;
+                }
+                normalised.append(declaredType, i, end);
+                i = end;
+                if (quote != NO_QUOTE && i < length) {
+                    char escaped = declaredType.charAt(i);
+                    normalised.append(escaped);
+                    i++;
+                    if (escaped == quote && (run / 2) % 2 == 0) {
+                        quote = NO_QUOTE;
+                    }
+                }
+                continue;
+            }
+            if (quote == NO_QUOTE && (c == BACKTICK || c == SINGLE_QUOTE)) {
+                quote = c;
+            } else if (c == quote) {
+                quote = NO_QUOTE;
+            }
+            normalised.append(c);
+            i++;
+        }
+        return normalised.toString();
     }
 
     /** True when {@code column} is, or holds as an Array element or Map value, a Tuple. */

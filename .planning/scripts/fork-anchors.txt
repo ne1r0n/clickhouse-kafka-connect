@@ -82,3 +82,5 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	throw new
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	No content in enum %s	0	WRT-13
 # Phase 23 (v1.7.0_gg3): rows for the declared-nullability hardening (COLS-12 null totality; COLS-13 and COLS-14 rows follow).
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	column == null || column.getType() == null	2	COLS-12
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	declaredType.replace(ESCAPED_NEWLINE, SPACE)	0	COLS-13
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	private static final char BACKTICK	1	COLS-13
