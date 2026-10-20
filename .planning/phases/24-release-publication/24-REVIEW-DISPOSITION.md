@@ -71,8 +71,16 @@ findings:
     severity: info
     disposition: fixed
     title: "The revision notice says \"No query and no command changed\", and item 7 step 1 now names a build command for the `v1.7.0_gg3` tag"
+  - id: WR-11
+    severity: warning
+    disposition: fixed
+    title: "The rollback bullet of item 4 still states, for the whole differing shape, that the `v1.7.0_gg2` bytes fail with code 33, four lines above the sentence that says it is only expected"
+  - id: IN-08
+    severity: info
+    disposition: fixed
+    title: "The two links that end item 4 lead to key text that differs from the rule now stated in step 2"
 open: 0
-total: 17
+total: 19
 recorded: 2026-10-20T18:42:11.122Z
 ---
 
@@ -97,6 +105,8 @@ recorded: 2026-10-20T18:42:11.122Z
 | WR-10 | warning | fixed | 77e76700 (quick 261020-vcr, round 4; item 4 step 2 has the reader list both key forms under enableDbTopicSplit=true, read from RecordConvertor.convert and Processing.doLogic, not measured; the closing link also names the gg1 note; query text unchanged) |
 | IN-06 | info | fixed | 0f2bb4e5 (quick 261020-vcr, round 4; the shouldSkipDescribeRow and declared-nullability rows say the inserts that were run failed, E-15) |
 | IN-07 | info | fixed | 68cab778 (quick 261020-vcr, round 4; the revision notice says no query and no git command changed and names what item 4 adds) |
+| WR-11 | warning | fixed | 133da776 (quick 261020-vcr, round 5; item 4 rollback bullet reads are expected to fail and names the one table the retry ran for, E-12) |
+| IN-08 | info | fixed | f4a51a29 (quick 261020-vcr, round 5; item 4 closing sentence says step 2 wins over the older notes' key rule; step 2 also lists a topic name without trailing split characters, read from RecordConvertor.convert, not measured) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
