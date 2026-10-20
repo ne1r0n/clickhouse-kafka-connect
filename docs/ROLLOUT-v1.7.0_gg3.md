@@ -120,7 +120,7 @@ The line is logged once per affected column each time the connector describes a 
 - code 33 for `Array(Tuple(v String, size1 UInt16))`;
 - the stored row for `Tuple(size1 UInt8, v String)`, `Map(String, Tuple(size1 UInt8, v String))` and `Tuple(sizes UInt8, v String)`, which are not affected.
 
-`v1.7.0_gg2` fails the same way and logs no WARN, so a table that the new WARN names may already have been failing before you upgrade. The server refuses to create a table with a Tuple element named `null` (code 36), so no such table exists to be affected.
+`v1.7.0_gg2` behaves the same way for the four shapes that were inserted on both releases, and logs no WARN, so a table that the new WARN names may already have been affected before you upgrade. The server refuses to create a table with a Tuple element named `null` (code 36), so no such table exists to be affected.
 
 ### Am I affected?
 
@@ -150,7 +150,7 @@ grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
 
 ### What to do
 
-This release has no fix for the defect, and the fix is tracked for a later release. The inserts that were run into such tables failed on the route that was measured, the default route with client V2, whatever the connector settings. Client V1 and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, were not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table fails and why.
+This release has no fix for the defect, and the fix is tracked for a later release. The inserts that were run into such tables failed on the route that was measured, the default route with client V2, whatever the connector settings. Client V1 and the route of an explicit `insertFormat=json`, which runs no table description and so logs no WARN, were not measured. This note offers no workaround and no schema change, because the fork has not tested one. The WARN changes nothing about what the connector does; it only tells you which table has the defect. For the four shapes that were inserted the defect showed as a failed insert, and for the other shapes it was not measured.
 
 ---
 
