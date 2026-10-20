@@ -28,7 +28,7 @@ plugins {
     alias(libs.plugins.spotless)
     alias(libs.plugins.shadow)
     alias(libs.plugins.protobuf)
-    id("com.github.ben-manes.versions") version "0.53.0"
+    id("com.github.ben-manes.versions") version "0.66.0"
     id("java-test-fixtures")
 }
 
