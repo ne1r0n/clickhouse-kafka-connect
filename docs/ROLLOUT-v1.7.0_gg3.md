@@ -185,7 +185,7 @@ ORDER BY `table`;
 
 Nothing is needed for the fix itself. If you have a table of this shape, read [item 4](#item-4-in-flight-batches) before a rollback.
 
-**A known limitation, the same on both releases.** The connector matches a record's field names against the column and element names in its own escaped form of the server's name. A backslash, a slash or a tab in a column or element name therefore means the Kafka field must use the connector's escaped form as its name. For a column name, a field that uses the natural name is ignored and the column's `DEFAULT` is stored, with no error. For an element name inside a Tuple, the natural field name makes the record fail. The escaped form is the following (measured on ClickHouse 26.9.19.9, client V2, identical on `v1.7.0_gg2` and `v1.7.0_gg3`):
+**A known limitation, the same on both releases.** The connector matches a record's field names against the column and element names in its own escaped form of the server's name. A backslash, a line break, a slash or a tab in a column or element name therefore means the Kafka field must use the connector's escaped form as its name. For a column name, a field that uses the natural name is ignored and the column's `DEFAULT` is stored, with no error. For an element name inside a Tuple, the natural field name makes the record fail. The escaped form is the following (measured on ClickHouse 26.9.19.9, client V2, identical on `v1.7.0_gg2` and `v1.7.0_gg3`):
 
 | Character in the server name | Server name | Kafka field name that stores the value |
 |------------------------------|-------------|----------------------------------------|
