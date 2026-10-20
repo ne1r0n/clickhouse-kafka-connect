@@ -245,7 +245,7 @@ You are affected if a connector writes a table that the query of [item 3](#item-
 Before a rollback, for each connector with `exactlyOnce=true` that writes such a table:
 
 1. Stop or pause the connector with your usual procedure, and wait until its tasks have stopped.
-2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries. With `enableDbTopicSplit=true`, also add the entry `'<db><dbTopicSplitChar><topic>'` for each topic, where `<db>` is the connector's `database` setting: the connector keys a topic that its `dbTopicSplitChar` divides into exactly two parts under the topic name itself, and any other topic under that prefixed form. An entry that matches no key changes nothing. This key form is read from the connector code, not measured. Run the query in the database the connector connects to (its `database` setting, where the connector creates the state table), or write the table as `` `<db>`.`<zkDatabase>` ``:
+2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries. With `enableDbTopicSplit=true`, also add the entry `'<db><dbTopicSplitChar><topic>'` for each topic, where `<db>` is the connector's `database` setting: the connector keys a topic that its `dbTopicSplitChar` divides into exactly two parts under the topic name itself, and any other topic under that prefixed form. A topic name that ends with `dbTopicSplitChar` can also be keyed without those trailing characters, so list that form as well. An entry that matches no key changes nothing. This key form is read from the connector code, not measured. Run the query in the database the connector connects to (its `database` setting, where the connector creates the state table), or write the table as `` `<db>`.`<zkDatabase>` ``:
 
 ```sql
 SELECT `key`, minOffset, maxOffset, state
@@ -260,7 +260,7 @@ ORDER BY `key`;
 
 For a connector with `exactlyOnce=false` that writes such a table, there is no state table to query. Stop its tasks cleanly before you redeploy `v1.7.0_gg2`, so that its offsets are committed and Kafka does not deliver a range again.
 
-[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) and [item 1 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check), to which it points, explain why the state table is shared; that explanation is not repeated here. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
+[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) and [item 1 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check), to which it points, explain why the state table is shared; that explanation is not repeated here. Their rule for the key with `enableDbTopicSplit=true` is shorter than the one in step 2 above and can miss a key, so follow step 2. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
 
 ---
 
