@@ -1179,3 +1179,47 @@ PUBLISHED-SHA-RUN-GREEN
 The green result was observed at 2026-10-20T18:18:32Z (`/tmp/gsd24/exec/watch-m.log`); 34 API requests remained.
 
 Matches text: n/a (gate check)
+
+### E-72: release run, tag and final refs
+
+Backs: PUB-10 (the tag names a SHA CI already passed; origin's final refs are exactly the expected set). Date (UTC) 2026-10-20.
+
+**Late re-check** (2026-10-20T18:20:47Z, 135 s after the green result at 18:18:32Z): `actions/runs?head_sha=M` still held exactly one `tests.yaml` run, 39472696952, green, with none cancelled and no run of another path. Origin `custom_build` was still M.
+
+**The tag push and the deletion, as run and in order:**
+
+```sh
+git tag v1.7.0_gg3 3376a18fd057dba329ceae7d8c74d1ba4e3d36f6         # lightweight, like v1.7.0_gg2
+git push origin refs/tags/v1.7.0_gg3:refs/tags/v1.7.0_gg3           # 2026-10-20T18:20:56Z, after the late re-check
+# 73 s later (18:22:11Z): M still has exactly one tests.yaml run, so the tag started none
+git push origin --delete refs/heads/sync/v1.7.0                     # 2026-10-20T18:22:20Z, only after the tag
+```
+
+```text
+ * [new tag]           v1.7.0_gg3 -> v1.7.0_gg3
+ - [deleted]           sync/v1.7.0
+true
+tags-ok True heads ['refs/heads/custom_build', 'refs/heads/main'] custom_build ['3376a18fd057dba329ceae7d8c74d1ba4e3d36f6\trefs/heads/custom_build'] main-unchanged True
+FINAL-REFS-OK
+```
+
+**Final origin refs** (`/tmp/gsd24/exec/origin-heads-final.txt`, `origin-tags-final.txt`):
+
+- Heads other than `dependabot/*`: exactly `custom_build` at `3376a18f` and `main` at `bec167d8`, unchanged. The five `dependabot/*` heads are byte-identical to the before-release snapshot: `clickHouseDriver-0.10.0`, `com.github.ben-manes.versions-0.66.0`, `gradle-wrapper-9.8.1`, `org.apache.commons-commons-lang3-3.21.0` and `org.apache.kafka-connect-api-4.4.0`.
+- Tags: exactly `pre-v1.6.0-sync` (6ac2d20c), `pre-v1.7.0-sync` (c61d90ce), `v1.6.0_gg1` (c61d90ce), `v1.7.0_gg1` (f328fd21), `pre-v1.7.0_gg2` (be6b8861), `v1.7.0_gg2` (a246ca01), `pre-v1.7.0_gg3` (6473e24f) and `v1.7.0_gg3` (3376a18f).
+
+**Cleanup:**
+
+- `/tmp/gsd24/cb` was removed (clean) and pruned. `git fetch origin --no-tags` shows `origin/custom_build` = local `custom_build` = `3376a18f`.
+- The main tree stayed on `sync/v1.7.0`, and the local `sync/v1.7.0` branch is kept.
+- `release.yaml` and `pre-release.yaml` were not dispatched.
+
+**Raw numbers on the tag:** `git diff --shortstat v1.7.0 v1.7.0_gg3` equals FORK-DELTA's gg3 rows as published in M:
+
+```text
+-- src build.gradle.kts gradle .github:  130 files changed, 22783 insertions(+), 534 deletions(-)
+-- src/main:                             33 files changed, 2245 insertions(+), 145 deletions(-)
+wide [130, 22783, 534] [130, 22783, 534] main [33, 2245, 145] [33, 2245, 145]
+```
+
+Matches text: n/a (gate check)
