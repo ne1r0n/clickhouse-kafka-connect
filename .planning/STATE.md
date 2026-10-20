@@ -5,16 +5,16 @@ milestone_name: Record-Data Exposure & Review Debt
 current_phase: 23
 current_phase_name: Declared-Nullability Hardening & Review Closure
 status: executing
-stopped_at: Completed 23-03-PLAN.md
-last_updated: "2026-10-20T11:51:59.238Z"
+stopped_at: Completed 23-04-PLAN.md
+last_updated: "2026-10-20T12:00:35.221Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 execution started
-state_head: 267d8cde3304240c326541afc10f23d631b7a224
+state_head: 31c69cf8a0f3ce8e1e64fe978239b92b4bd262c9
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20 after Phase 22)
 ## Current Position
 
 Phase: 23 (Declared-Nullability Hardening & Review Closure) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 23 execution started
 
@@ -152,6 +152,7 @@ Progress: [█████░░░░░] 50%
 | Phase 23 P01 | 15 min | 2 tasks | 7 files |
 | Phase 23 P02 | 14 min | 3 tasks | 7 files |
 | Phase 23 P03 | 8 min | 2 tasks | 3 files |
+| Phase 23 P04 | 35 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -202,6 +203,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 23]: A null root name in DeclaredNullability.apply is a structure mismatch, not IllegalArgumentException (COLS-12, RESEARCH Open Question 2)
 - [Phase 23]: D-08 flip keeps unexpectedExceptionInThePassFailsOpenWithOneMetadataWarning and its null-type input; NPE class-name assertion becomes (structure mismatch) under a scoped AGENTS.md exemption
 - [Phase 23]: 23-03: fallback-WARN column assertions use the sentinel root and the delimited column segment; both D-17 mutations seen red for 14 testcases (DEBT-10)
+- [Phase 23]: 23-04: DeclaredNullability.normalise is a single quote-aware pass; a backslash-n inside a backtick name or single-quoted label is kept, only the server's line break becomes a space (COLS-13, D-10)
 
 ### Pending Todos
 
@@ -233,8 +235,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T11:51:59.039Z
-Stopped at: Completed 23-03-PLAN.md
+Last session: 2026-10-20T12:00:35.024Z
+Stopped at: Completed 23-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
