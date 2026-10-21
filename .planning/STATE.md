@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 26
 current_phase_name: Size-Named Tuple Elements in Discovery
 status: executing
-stopped_at: Phase 26 context gathered
-last_updated: "2026-10-21T20:22:50.882Z"
+stopped_at: Completed 26-01-PLAN.md
+last_updated: "2026-10-21T20:59:08.200Z"
 last_activity: 2026-10-21
-last_activity_desc: Phase 25 complete, transitioned to Phase 26
-state_head: 37d2ef116fed82e03306e07a5a4544ef63b9371c
+last_activity_desc: Phase 26 execution started
+state_head: d4e2c0716d5479529d1e727dd3c095f6bc9dad5e
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
   percent: 20
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-21 after Phase 25)
 
 ## Current Position
 
-Phase: 26 (Size-Named Tuple Elements in Discovery) — READY TO EXECUTE
-Plan: Not started
+Phase: 26 (Size-Named Tuple Elements in Discovery) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-21 — Phase 25 complete, transitioned to Phase 26
+Last activity: 2026-10-21 — Phase 26 execution started
 
 Progress: [██░░░░░░░░] 20%
 
@@ -173,6 +173,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 25 P06 | 15min | 3 tasks | 7 files |
 | Phase 25 P07 | 22min | 3 tasks | 8 files |
 | Phase 25 P08 | 16min | 3 tasks | 6 files |
+| Phase 26 P01 | 14 min | 3 tasks | 102 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 25]: DEBT-14: a gradle call counts as the step's call only at command position after trailing-comment stripping (optional run: key, optional name=$( prefix, then ./gradlew, task as a whole word)
 - [Phase 25]: Standing merge gate for Phases 26-29: PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD; the cumulative gate .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD (default env) runs once more at the Phase 29 release gate; run the self-test with each gate. — D-15: the tail gate checks merge 2's provenance and walks a short range; the exemption rows keep the cumulative command valid.
 - [Phase 25]: Phase 25 baseline for Phases 26-28: local tag baseline-v1.7.0_gg4 = aa45070953137f612842e730c465937ac5c6ada5 (two green --rerun suite runs on latest x V2 with the 18 named skips; guava 33.7.2-jre on runtimeClasspath; origin/custom_build frozen at 69cd680b). Later phases show their change with git diff baseline-v1.7.0_gg4; Phase 29 names this baseline. — D-17
+- [Phase 26]: 26-01: double row CONFIRMED on ClickHouse 26.9.19.9; measured pre-fix affected set is the 25 predicted keys, all 13 s4_a keys and no look-alike
+- [Phase 26]: 26-01: NullableRoundTrip.describeRows reads through the shared DescribeFixtureCatalog.describeRawLines (one DESCRIBE reader)
 
 ### Pending Todos
 
@@ -252,9 +255,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T18:35:48.556Z
-Stopped at: Phase 26 context gathered
-Resume file: .planning/phases/26-size-named-tuple-elements-in-discovery/26-CONTEXT.md
+Last session: 2026-10-21T20:59:08.044Z
+Stopped at: Completed 26-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
