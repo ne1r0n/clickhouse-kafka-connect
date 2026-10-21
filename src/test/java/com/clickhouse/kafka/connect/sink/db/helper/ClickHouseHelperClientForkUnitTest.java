@@ -12,12 +12,11 @@ import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -309,36 +308,21 @@ class ClickHouseHelperClientForkUnitTest {
     }
 
     /**
-     * The {@code describeTableV2} loop for fixture rows, including the structural-row skip that
-     * {@code discover(...)} leaves out: a sub-column whose parent was skipped is skipped, a
-     * structural row is skipped, and only the rest become Columns.
+     * Discovery through {@link DescribeTableBuilder}, the loop both describe paths run, for
+     * hand-written (name, type) rows rendered as the JSON lines the server sends.
      */
-    private static Table discoverAsDescribeTableV2(String... nameAndTypePairs) {
-        List<Column> columns = new ArrayList<>();
-        Map<String, Column> columnsByName = new HashMap<>();
-        Map<String, String> declaredTypes = new HashMap<>();
-        Set<String> skippedCols = new HashSet<>();
-        int numColumns = 0;
+    private static Table discoverWithBuilder(String... nameAndTypePairs) {
+        DescribeTableBuilder builder = new DescribeTableBuilder(DATABASE, TABLE);
         for (int i = 0; i < nameAndTypePairs.length; i += 2) {
-            ClickHouseFieldDescriptor descriptor = newDescriptor(nameAndTypePairs[i], nameAndTypePairs[i + 1]);
-            if (!descriptor.isSubcolumn()) {
-                numColumns++;
-            } else if (skippedCols.contains(descriptor.getName().substring(0, descriptor.getName().lastIndexOf('.')))) {
-                skippedCols.add(descriptor.getName());
-                continue;
+            try {
+                assertTrue(
+                        builder.addRow(DescribeFixtureCatalog.describeLine(nameAndTypePairs[i], nameAndTypePairs[i + 1])),
+                        nameAndTypePairs[i] + " is a column the connector can handle");
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("fixture row is not well-formed JSON: " + nameAndTypePairs[i], e);
             }
-            if (ClickHouseHelperClient.shouldSkipDescribeRow(descriptor, columnsByName)) {
-                skippedCols.add(descriptor.getName());
-                continue;
-            }
-            if (!descriptor.isSubcolumn()) {
-                declaredTypes.put(descriptor.getName(), descriptor.getType());
-            }
-            Column column = Column.extractColumn(descriptor);
-            columns.add(column);
-            columnsByName.put(column.getName(), column);
         }
-        return ClickHouseHelperClient.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
+        return builder.build();
     }
 
     private static int warnCount(LogCapture... captures) {
@@ -632,7 +616,7 @@ class ClickHouseHelperClientForkUnitTest {
             String label, String rawType, boolean arrayWrapped, String unpaired, String paired, String[] rows) {
         try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
                 LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
-            Column root = discoverAsDescribeTableV2(rows).getRootColumnsMap().get(ROOT_SENTINEL);
+            Column root = discoverWithBuilder(rows).getRootColumnsMap().get(ROOT_SENTINEL);
 
             Column tuple = arrayWrapped ? root.getArrayType() : root;
             List<String> fieldNames =

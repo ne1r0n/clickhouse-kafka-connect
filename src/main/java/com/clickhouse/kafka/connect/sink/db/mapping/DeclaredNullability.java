@@ -215,6 +215,19 @@ public final class DeclaredNullability {
         }
     }
 
+    /**
+     * The one definition of a Tuple element's key: its declared name, or its one-based position when
+     * it is unnamed. It is shared by {@code collectTuple}, discovery's classifier and Phase 28's
+     * raw-name pairing, so all of them agree on which declared element a DESCRIBE sub-column is.
+     *
+     * @param element the element as parsed from the declared Tuple type
+     * @param index the zero-based position of {@code element} in its Tuple
+     */
+    public static String elementKey(ClickHouseColumn element, int index) {
+        String name = element.getColumnName();
+        return name == null || name.isEmpty() ? String.valueOf(index + 1) : name;
+    }
+
     private static boolean collectTuple(
             Column tuple, ClickHouseColumn parsed, List<Assignment> into, List<String> unpaired) {
         if (!parsed.isTuple() || tuple.getName() == null) {
@@ -225,8 +238,7 @@ public final class DeclaredNullability {
         List<ClickHouseColumn> elements = parsed.getNestedColumns();
         Map<String, ClickHouseColumn> byKey = new LinkedHashMap<>();
         for (int i = 0; i < elements.size(); i++) {
-            String name = elements.get(i).getColumnName();
-            byKey.put(name == null || name.isEmpty() ? String.valueOf(i + 1) : name, elements.get(i));
+            byKey.put(elementKey(elements.get(i), i), elements.get(i));
         }
 
         String prefix = tuple.getName() + NAME_SEPARATOR;

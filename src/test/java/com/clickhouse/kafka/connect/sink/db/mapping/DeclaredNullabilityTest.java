@@ -26,6 +26,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -1087,5 +1088,21 @@ class DeclaredNullabilityTest {
         }
         assertEquals(
                 Map.of("c", false, "c.a", false, "c.a[]", true, "c.b", false), nullabilityByPath(column));
+    }
+
+    @ParameterizedTest(name = "DESC-08 elementKey: {0}")
+    @CsvSource(
+            delimiter = '|',
+            value = {
+                "a named element|Tuple(size UInt8, v String)|0|size",
+                "the first unnamed element|Tuple(UInt8, String)|0|1",
+                "the second unnamed element|Tuple(UInt8, String)|1|2",
+                "a backtick-named element|Tuple(`my size` UInt8, v String)|0|my size"
+            })
+    @DisplayName("DESC-08 elementKey: a Tuple element's key is its name, or its one-based position when unnamed")
+    void elementKeyIsTheNameOrTheOneBasedPosition(String label, String type, int index, String expectedKey) {
+        ClickHouseColumn parsed = ClickHouseColumn.of(ROOT, type);
+
+        assertEquals(expectedKey, DeclaredNullability.elementKey(parsed.getNestedColumns().get(index), index), label);
     }
 }

@@ -33,6 +33,9 @@ public final class DescribeFixtureCatalog {
     private static final String DESCRIBE_INCLUDE_SUBCOLUMNS = "describe_include_subcolumns";
     private static final String CREATE_TABLE_FORMAT =
             "CREATE TABLE %s (id Int32, %s) ENGINE = MergeTree ORDER BY id";
+    private static final String DESCRIBE_LINE_FORMAT = "{\"name\":\"%s\",\"type\":\"%s\",\"default_type\":\"\","
+            + "\"default_expression\":\"\",\"comment\":\"\",\"codec_expression\":\"\","
+            + "\"ttl_expression\":\"\",\"is_subcolumn\":%d}";
     private static final String RESOURCE_PATH_FORMAT = "/" + RESOURCE_DIRECTORY + "/%s";
     private static final String NULL_TABLE_LINE = "table=null";
     private static final String TREE_INDENT = "  ";
@@ -113,6 +116,16 @@ public final class DescribeFixtureCatalog {
 
     public static String createTableSql(Fixture fixture, String qualifiedTableName) {
         return String.format(CREATE_TABLE_FORMAT, qualifiedTableName, fixture.columnsDdl());
+    }
+
+    /**
+     * One JSONEachRow DESCRIBE line in the server's key order, for a hand-written (name, type) pair.
+     * The type is inserted as given: the R-01 strings already hold the server's JSON escape (a
+     * backslash followed by n), which {@code fromJsonRow} keeps as text. Captured fixtures are the
+     * server's own bytes and never go through this method.
+     */
+    public static String describeLine(String name, String type) {
+        return String.format(DESCRIBE_LINE_FORMAT, name, type, name.contains(".") ? 1 : 0);
     }
 
     /**

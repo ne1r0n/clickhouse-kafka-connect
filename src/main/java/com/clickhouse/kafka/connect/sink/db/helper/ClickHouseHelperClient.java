@@ -528,60 +528,15 @@ public class ClickHouseHelperClient implements AutoCloseable {
                      .query(describeQuery))
                      .executeAndWait()) {
 
-            Set<String> skippedCols = new HashSet<>();
-            boolean hasDefaults = false;
-            int numColumns = 0;
-            List<Column> columns = new ArrayList<>();
-            Map<String, Column> columnsByName = new HashMap<>();
-            Map<String, String> declaredTypes = new HashMap<>();
+            DescribeTableBuilder builder = new DescribeTableBuilder(database, tableName);
             for (ClickHouseRecord r : response.records()) {
                 ClickHouseValue v = r.getValue(0);
-
-                ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(v.asString());
-                // Count what system.columns counts: top-level columns, including the ones skipped below
-                if (!fieldDescriptor.isSubcolumn()) {
-                    numColumns++;
-                }
-
-                if (fieldDescriptor.isAlias() || fieldDescriptor.isMaterialized() || fieldDescriptor.isEphemeral()) {
-                    LOGGER.debug("Skipping column {} as it is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                    skippedCols.add(fieldDescriptor.getName());
-                    continue;
-                }
-                if (fieldDescriptor.isSubcolumn()) {
-                    String parentName = fieldDescriptor.getName().substring(0, fieldDescriptor.getName().lastIndexOf("."));
-                    if (skippedCols.contains(parentName)) {
-                        LOGGER.debug("Skipping subcolumn {} as its parent column is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                        skippedCols.add(fieldDescriptor.getName());
-                        continue;
-                    }
-                }
-
-                if (shouldSkipDescribeRow(fieldDescriptor, columnsByName)) {
-                    LOGGER.debug("Skipping structural sub-column {}", fieldDescriptor.getName());
-                    skippedCols.add(fieldDescriptor.getName());
-                    continue;
-                }
-
-                if (!fieldDescriptor.isSubcolumn()) {
-                    declaredTypes.put(fieldDescriptor.getName(), fieldDescriptor.getType());
-                }
-
-                if (fieldDescriptor.hasDefault()) {
-                    hasDefaults = true;
-                }
-
-                Column column = Column.extractColumn(fieldDescriptor);
-                //If we run into a rare column we can't handle, just ignore the table and warn the user
-                if (column == null) {
-                    LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
+                if (!builder.addRow(v.asString())) {
                     return null;
                 }
-                columns.add(column);
-                columnsByName.put(column.getName(), column);
             }
 
-            return buildDescribedTable(database, tableName, hasDefaults, columns, numColumns, declaredTypes);
+            return builder.build();
         } catch (ClickHouseException | JsonProcessingException e) {
             LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
             return null;
@@ -600,62 +555,18 @@ public class ClickHouseHelperClient implements AutoCloseable {
             settings.setDatabase(database);
             setReplicaTagHeaderV2(settings);
 
-            boolean hasDefaults = false;
-            int numColumns = 0;
-            List<Column> columns = new ArrayList<>();
-            Map<String, Column> columnsByName = new HashMap<>();
-            Map<String, String> declaredTypes = new HashMap<>();
+            DescribeTableBuilder builder = new DescribeTableBuilder(database, tableName);
             try (QueryResponse queryResponse = client.query(describeQuery, settings).get();
                  InputStream describeStream = queryResponse.getInputStream();
                  BufferedReader br = new BufferedReader(new InputStreamReader(describeStream, StandardCharsets.UTF_8))) {
                 String line = null;
-                Set<String> skippedCols = new HashSet<>();
                 while ((line = br.readLine()) != null) {
-                    ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(line);
-                    // Count what system.columns counts: top-level columns, including the ones skipped below
-                    if (!fieldDescriptor.isSubcolumn()) {
-                        numColumns++;
-                    }
-
-                    if (fieldDescriptor.isAlias() || fieldDescriptor.isMaterialized() || fieldDescriptor.isEphemeral()) { // TODO: add subcolumn filter here?
-                        LOGGER.debug("Skipping column {} as it is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                        skippedCols.add(fieldDescriptor.getName());
-                        continue;
-                    }
-                    if (fieldDescriptor.isSubcolumn()) {
-                        String parentName = fieldDescriptor.getName().substring(0, fieldDescriptor.getName().lastIndexOf("."));
-                        if (skippedCols.contains(parentName)) {
-                            LOGGER.debug("Skipping subcolumn {} as its parent column is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                            skippedCols.add(fieldDescriptor.getName());
-                            continue;
-                        }
-                    }
-
-                    if (shouldSkipDescribeRow(fieldDescriptor, columnsByName)) {
-                        LOGGER.debug("Skipping structural sub-column {}", fieldDescriptor.getName());
-                        skippedCols.add(fieldDescriptor.getName());
-                        continue;
-                    }
-
-                    if (!fieldDescriptor.isSubcolumn()) {
-                        declaredTypes.put(fieldDescriptor.getName(), fieldDescriptor.getType());
-                    }
-
-                    if (fieldDescriptor.hasDefault()) {
-                        hasDefaults = true;
-                    }
-
-                    Column column = Column.extractColumn(fieldDescriptor);
-                    //If we run into a rare column we can't handle, just ignore the table and warn the user
-                    if (column == null) {
-                        LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
+                    if (!builder.addRow(line)) {
                         return null;
                     }
-                    columns.add(column);
-                    columnsByName.put(column.getName(), column);
                 }
             }
-            return buildDescribedTable(database, tableName, hasDefaults, columns, numColumns, declaredTypes);
+            return builder.build();
         } catch (Exception e) {
             LOGGER.error("describeTableV2 failed", e);
             return null;
