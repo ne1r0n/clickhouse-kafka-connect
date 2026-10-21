@@ -32,7 +32,7 @@
 | E-20 | SYNC-11 (merge 2 rehearsal) | pass |
 | E-21 | SYNC-11 (merge 2, tail gate, self-test) | pass |
 | E-22 | SYNC-12, BLD-15 (post-merge archive, dependencyInsight, advisories) | pass |
-| E-23 | DEBT-15 | pending (plan 25-08) |
+| E-23 | DEBT-15 | pass |
 | E-24 | SYNC-12 (two --rerun runs, baseline tag) | pending (plan 25-08) |
 | E-25 | OPS-04 (closing observation) | pending (plan 25-08) |
 
@@ -1142,5 +1142,36 @@ Differences from the research table: none that change a conclusion. Added by the
 `docs/FORK-DELTA.md` now holds the guava and httpclient5 rows in "Adopted wholesale" with these labels, and the "Fork dependency pins" and lz4 rows are compared with upstream's tail catalog (`a6f1df83`): upstream `lz4Java` is `1.11.4`, the fork's Jackson `2.22.4` and gson `2.14.0` are past upstream's `2.22.3` and `2.13.1`, and okhttp, org.json and mockito are upstream's own values.
 
 Timestamp: 2026-10-21T17:19:12Z
+
+Verdict: pass
+
+### E-23: DEBT-15 (slf4j-reload4j from the catalog)
+
+Commands as run (branch `sync/v1.7.0`, after commit `0a7a00d9`):
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --configuration runtimeClasspath --dependency org.slf4j:slf4j-reload4j > /tmp/gsd25/exec/insight-reload4j.txt 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd25/exec/testunit-t2.log 2>&1
+python3 -I -c '<mirror: for every data row of fork-anchors.txt, count lines of its path containing its pattern and compare with the count column>'
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD
+```
+
+```text
+commit: 9c9b480bff0cf6971afdcf309d1b2ddafba095e3  build(25-08): move slf4j-reload4j into the version catalog on the shared slf4j key, anchor row moved with it (DEBT-15, D-16)
+commit files (git diff --name-only 9c9b480b^ 9c9b480b): .planning/scripts/fork-anchors.txt, build.gradle.kts, docs/FORK-DELTA.md, gradle/libs.versions.toml
+catalog: + slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }   (after the slf4j-simple row; no new [versions] key; grep -c '^slf4j-reload4j *=' = 1)
+build.gradle.kts: - implementation("org.slf4j:slf4j-reload4j:2.0.20")  + implementation(libs.slf4j.reload4j)   (grep -cF 'org.slf4j:slf4j-reload4j:' = 0, was 1)
+fork-anchors.txt: - build.gradle.kts<TAB>slf4j-reload4j:2.0.20<TAB>1<TAB>BLD-08
+                  + gradle/libs.versions.toml<TAB>slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }<TAB>1<TAB>BLD-08
+                  + build.gradle.kts<TAB>implementation(libs.slf4j.reload4j)<TAB>1<TAB>BLD-08
+dependencyInsight runtimeClasspath: org.slf4j:slf4j-reload4j:2.0.20, Variant runtime, \--- runtimeClasspath
+testUnit --rerun: Test result: SUCCESS, 860 tests, 858 succeeded, 0 failed, 2 skipped, BUILD SUCCESSFUL
+anchors mirror: rows 72, bad [] (before the change: 71 rows)
+standing tail gate on the new tip: invariants: provenance_paths=3 anchor_commits=7 anchor_rows=72 marker_commits=19 anchor_exempt=0 result=PASS
+```
+
+FORK-DELTA's `slf4j-reload4j` row now says the coordinate comes from a fork-only catalog row on the shared `slf4j` key and lists `DEBT-15`.
+
+Timestamp: 2026-10-21T17:20:42Z
 
 Verdict: pass
