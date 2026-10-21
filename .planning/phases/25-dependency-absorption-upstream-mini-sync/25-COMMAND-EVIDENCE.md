@@ -17,7 +17,7 @@
 | E-05 | DEPS-02 (pre-flight) | pass |
 | E-06 | DEPS-03 (merge 1 rehearsal and exemption rows) | pass |
 | E-07 | DEPS-02, DEPS-03 (merge 1, cumulative gate, self-test) | pass |
-| E-08 | DEPS-02 (merged-tree Docker-free checks) | pending (plan 25-03) |
+| E-08 | DEPS-02 (merged-tree Docker-free checks) | pass |
 | E-09 | BLD-15 (unrepaired archive) | pending (plan 25-04) |
 | E-10 | BLD-15 (repair) | pending (plan 25-04) |
 | E-11 | BLD-15 (compare against v1.7.0_gg3) | pending (plan 25-04) |
@@ -280,5 +280,44 @@ verify-merge-invariants.sh and -selftest.sh: git diff --quiet pre-v1.7.0-deps HE
 X-4 correction recorded: the DEPS-03 gate is the default-env cumulative command `verify-merge-invariants.sh 54e63648 HEAD`; `pre-v1.7.0-deps` is a rollback tag only (a gate with MERGE_SHA = M1 fails invariant 1 on the legitimate bookkeeping), which supersedes the requirement's "PRE_TAG at the pre-merge rollback tag" wording. X-2: one anchor edit only (kafka 4.1.1 -> 4.4.0); the slf4j literal and its anchor row already say 2.0.20.
 
 Timestamp: 2026-10-21T15:55:33Z
+
+Verdict: pass
+
+### E-08: Docker-free checks on the merged tree (DEPS-02)
+
+Commands as run on M1 (`50f56289`) with no build-script change since:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd25/exec/testunit-m1.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain assemble --warning-mode all > /tmp/gsd25/exec/warn-m1.log 2>&1
+shasum -a 256 gradle/wrapper/gradle-wrapper.jar; curl -sSL --fail https://services.gradle.org/distributions/gradle-9.8.1-wrapper.jar.sha256
+git log --first-parent --merges --format=%s M1^2 ^M1^1        # keep "Merge pull request #N from ne1r0n/dependabot/"
+/tmp/gsd25/exec/spotless-numstat.sh v1.7.0_gg3 > spotless-gg3.txt; /tmp/gsd25/exec/spotless-numstat.sh HEAD > spotless-m1.txt   # git archive into a fresh dir, git init, spotlessApply --offline, git diff --numstat | sort -k3
+```
+
+```text
+testUnit: Test result: SUCCESS
+testUnit: Tests summary: 841 tests, 839 succeeded, 0 failed, 2 skipped
+assemble --warning-mode all: BUILD SUCCESSFUL, six warning kinds present:
+  The 'val name by creating' property delegate syntax has been deprecated. This is scheduled to be removed in Gradle 10.
+  The 'val name by extra(...)' or 'val name by extra { ... }' property delegate syntax has been deprecated. This is scheduled to be removed in Gradle 10.
+  The 'val name by getting(Type::class) { }' property delegate syntax has been deprecated. This is scheduled to be removed in Gradle 10.
+  The 'val name by registering(Type::class) { }' property delegate syntax has been deprecated. This is scheduled to be removed in Gradle 10.
+  The com.github.ben-manes.versions plugin id is deprecated; apply io.github.ben-manes.versions instead.
+  The Configuration.setVisible(boolean) method has been deprecated. This is scheduled to be removed in Gradle 11.
+build.gradle.kts unchanged since M1: git diff --quiet HEAD -- build.gradle.kts exits 0
+wrapper_jar_sha256: 3b8a25775a69158b5ad2b1d17a80a88dc7b40a352a73eb27d06c612a7ce68e98
+published_sha256:   3b8a25775a69158b5ad2b1d17a80a88dc7b40a352a73eb27d06c612a7ce68e98
+wrapper_sha256_matches: yes
+distributionUrl: https\://services.gradle.org/distributions/gradle-9.8.1-bin.zip
+distributionSha256Sum: absent (optional hardening, not this phase)
+nine_prs: 6,7,8,9,11,12,13,14,15
+spotless_numstat_lines: 46
+spotless_baseline_equal: yes
+```
+
+Notes: the published checksum URL answers 301 first, so the fetch needs `-L` (the plan's command had none). The `--warning-mode all` warnings are recorded and left unfixed (DEPS-F3). Spotless is baseline-equal: the numstat of `HEAD` equals that of `v1.7.0_gg3`, byte for byte, 46 files. The full suite is not run here by design: it waits for the Shadow repair (plan 25-07, E-19).
+
+Timestamp: 2026-10-21T16:06:49Z
 
 Verdict: pass
