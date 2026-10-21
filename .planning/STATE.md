@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-21 after starting milestone v1.7.0_gg4-hardening)
+See: .planning/PROJECT.md (updated 2026-10-21 after Phase 25)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 25 — Dependency Absorption & Upstream Mini-Sync
+**Current focus:** Phase 26 — Size-Named Tuple Elements in Discovery
 
 ## Current Position
 
@@ -226,7 +226,10 @@ None.
 - [CI]: The nightly `integrationTests.yaml` has been disabled by the user since 2026-10-16T09:38:23Z (Phase 21 OPS-01). The file stays upstream-identical. Phase 24 re-checks that no scheduled run followed.
 - [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
 - [Phase 23]: Backlog 999.4 is a pre-existing, high-severity defect for any table with a Tuple element named `size` or `size0`: discovery drops the element, and the inserts that were run (four shapes) failed with code 32 or 33; a wrong stored value is possible and not measured. Since COLS-14 it is named by a WARN at every DESCRIBE, but it is not fixed. The gg3 rollout note (item 2), the CHANGELOG (Known Issues) and FORK-DELTA (Known costs item 10) disclose it, measured as code 32 or 33 on the default route with client V2.
-- [Dependabot]: The repository has no `dependencies` label, but both `dependabot.yml` entries request it, so every Dependabot PR gets a "labels could not be found" comment. Updates still run. Fixing it means the user creates the label (D-11), or the fork drops the request. Tracked in PROJECT.md → Active, Phase 21 follow-ups.
+- [Dependabot]: the `dependencies` label exists since 2026-10-21 (Phase 25 OPS-04, user-created, API 200). PRs #4 (client 0.9.6 → 0.10.0) and #10 (protobuf-java 4.36.2) are still open and must stay unmerged on `origin/custom_build` until publication; E-25 (a post-label PR without the "labels could not be found" comment) is pending the next monthly run and is re-checked in Phase 29.
+- [Phase 25]: `origin/custom_build` is frozen at `69cd680b` (nine Dependabot merges absorbed as M1 `50f56289`); local `sync/v1.7.0` also holds M2 `38265d26` (upstream tail `a6f1df83`) and the baseline tag `baseline-v1.7.0_gg4` = `aa450709`. Nothing is pushed. Standing merge gate for later phases: `PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh`.
+- [Phase 25]: 25-REVIEW left three warnings open (WR-01 archive-step pin accepts `-x verifyConfluentArchive`/`--dry-run`/`|| true`/step `if:`; WR-02 `ConnectApiReferencesUnitTest` resolves inherited members on the test classpath and drops unresolved ones; WR-03 descriptor-only Kafka types unchecked) and four info items (stale `build/confluentArchive` dirs, `META-INF/versions/*` and `.zip`/`.war` nesting, brittle anchors, merge-carried hygiene incl. `pre-release.yaml` still pinning Gradle 7.4.2). Ledger: `25-REVIEW-DISPOSITION.md`. Trigger: the next edit of those guards (Phase 28 review debt).
+- [Phase 25]: the working tree keeps an unstaged CRLF diff on `gradlew.bat` after the Dependabot wrapper merge (committed blob equals origin's); plan verify strings must exclude it.
 
 ### Quick Tasks Completed
 
@@ -249,11 +252,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T17:29:40.246Z
+Last session: 2026-10-21T18:12:00Z
 Stopped at: Phase 25 complete, ready to plan Phase 26
 Resume file: None
 
 ## Operator Next Steps
 
-- Discuss and plan Phase 25 with /gsd-discuss-phase 25, then /gsd-plan-phase 25
-- Create the `dependencies` label in the GitHub UI when Phase 25 presents OPS-04
+- Discuss and plan Phase 26 with /gsd-discuss-phase 26, then /gsd-plan-phase 26
+- Do not merge, close or ignore Dependabot PRs #4 and #10 on `origin/custom_build` until the v1.7.0_gg4 publication (Phase 29); do not edit `.github/dependabot.yml`
+- Triage the three open 25-REVIEW warnings when the review-debt phase runs (`/gsd-code-review 25 --fix` or by hand); the ledger is `25-REVIEW-DISPOSITION.md`
