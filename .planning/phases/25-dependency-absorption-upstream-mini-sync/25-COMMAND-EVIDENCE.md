@@ -12,8 +12,8 @@
 |-------|-------------|---------|
 | E-01 | OPS-04 (facts at phase start) | pass |
 | E-02 | OPS-04 (operator answer) | pass |
-| E-03 | DEBT-13 (red run) | pending (plan 25-02) |
-| E-04 | DEBT-13 (green run, spotless, testUnit) | pending (plan 25-02) |
+| E-03 | DEBT-13 (red run) | pass |
+| E-04 | DEBT-13 (green run, spotless, testUnit) | pass |
 | E-05 | DEPS-02 (pre-flight) | pending (plan 25-03) |
 | E-06 | DEPS-03 (merge 1 rehearsal and exemption rows) | pending (plan 25-03) |
 | E-07 | DEPS-02, DEPS-03 (merge 1, cumulative gate, self-test) | pending (plan 25-03) |
@@ -91,5 +91,76 @@ OPS-04 label created: pass
 The user says the label exists, the status is 200 and the JSON `name` is exactly `dependencies`, so the agree line is `yes`. No label, PR or `dependabot.yml` change was made by an agent; no authenticated call was made. The closing observation (a Dependabot PR without the "labels could not be found" comment, or pending the next monthly run) is E-25 in plan 25-08, not this entry.
 
 Timestamp: 2026-10-21T15:11:05Z
+
+Verdict: pass
+
+### E-03: DEBT-13 red run against the old ktsCode
+
+Command as run (the three DEBT-13 tests added to `TestsWorkflowPinGuardUnitTest`, `ktsCode` still the old regex reader, nothing committed):
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun > /tmp/gsd25/exec/debt13-red.log 2>&1; echo $? > /tmp/gsd25/exec/debt13-red.rc
+```
+
+```text
+exit code: 1 (/tmp/gsd25/exec/debt13-red.rc)
+Test result: FAILURE
+Tests summary: 29 tests, 26 succeeded, 3 failed, 0 skipped
+XML: /tmp/gsd25/exec/debt13-red.xml (tests="29"; the 26 existing tests pass)
+```
+
+Failing tests (exactly the predicted three), each with its fixture-level failure messages from the XML:
+
+1. `DEBT-13: ktsCode keeps string literals, raw strings and line structure, and drops line, trailing and nested block comments` (4 failures)
+   - `expected: <[val x = 1 ]> but was: <[val x = 1 // see /* here]>`
+   - `expected: <[a  b]> but was: <[a  still */ b]>`
+   - `expected: <8> but was: <6>` (line count of the three-line block comment plus raw string text)
+   - `expected: <[val c = '"'; val d = 2 ]> but was: <[val c = '"'; val d = 2 // gone]>`
+2. `fixture: reportTestForks task rule accepts the task after a slash-star inside a string, a raw string or a line comment (DEBT-13, 21-REVIEW WR-02)` (4 failures): each of the string, line-comment, trailing-comment and raw-string fixtures got `tasks.register("reportTestForks") not found in build.gradle.kts outside comments`
+3. `fixture: reportTestForks task rule rejects a read inside a trailing comment and a task inside a nested block comment (DEBT-13, 21-REVIEW WR-02, WR-03)` (2 failures): `must reject ... but the rule accepted it` for both the trailing-comment read and the nested-comment task
+
+Old versus wanted:
+
+| Fixture | Wanted | Old result |
+|---------|--------|------------|
+| string `"org/apache/kafka/connect/**"` before the task, banner after | accept | rejected (phantom comment swallows the task) |
+| line comment `// ... lib/* ...` before the task | accept | rejected (phantom comment) |
+| trailing comment `// see /* here` before the task | accept | rejected (phantom comment) |
+| raw string holding both openers before the task | accept | rejected (phantom comment) |
+| read only in a trailing line comment after a constant print | reject | accepted (trailing comment survives) |
+| task inside a nested block comment | reject | accepted (first closer ends the comment early) |
+| ktsCode: trailing comment stripped; nested comment removed; line count kept; quote in a char literal does not open a string | as stated | all four wrong |
+
+`build.gradle.kts`, `.github`, `gradle` and `src/main` are unchanged (`git diff --quiet HEAD` clean).
+
+Timestamp: 2026-10-21T15:15:56Z
+
+Verdict: pass
+
+### E-04: DEBT-13 green run, per-file spotless and full testUnit
+
+Commands as run (`ktsCode` replaced by the one-pass scanner; states: code, string, char, raw string, line comment, block comment with a nesting depth):
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun > /tmp/gsd25/exec/debt13-green.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd25/exec/testunit-debt13.log 2>&1
+git worktree add --detach /tmp/gsd25/wt-fmt HEAD   # class copied in, then:
+(cd /tmp/gsd25/wt-fmt && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q spotlessApply)
+cmp /tmp/gsd25/wt-fmt/src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java
+git worktree remove --force /tmp/gsd25/wt-fmt
+```
+
+```text
+class run:  Test result: SUCCESS; Tests summary: 29 tests, 29 succeeded, 0 failed, 0 skipped (/tmp/gsd25/exec/debt13-green.xml)
+full run:   Test result: SUCCESS; Tests summary: 841 tests, 839 succeeded, 0 failed, 2 skipped (/tmp/gsd25/exec/testunit-debt13.log)
+spotlessApply in the worktree: exit 0, 47 files differ from HEAD = the 46 baseline files it reformats plus the class itself (copied in, so it differs from HEAD)
+cmp of the worktree class against the main-tree class: identical (spotless left it unchanged)
+```
+
+The 26 existing tests keep their method names, display names and assertions; the three DEBT-13 tests pass (red in E-03). The real-file pin `reportTestForksReadsMaxParallelForksFromTheTestTask` passes with the scanner.
+
+Research correction: research Pitfall 10 says `spotlessCheck` fails on "exactly the same 2 files". That is the truncated listing (`Violations also present in 44 other files`, `/tmp/p25/spot-w1.log` line 84), so the baseline is 46 files, as Phase 24 E-60 measured. The per-file check is therefore "the class is byte-identical after spotlessApply", not "spotlessCheck is clean".
+
+Timestamp: 2026-10-21T15:16:39Z
 
 Verdict: pass

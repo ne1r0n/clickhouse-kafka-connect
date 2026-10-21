@@ -1,6 +1,7 @@
 package com.clickhouse.kafka.connect.ci;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -79,6 +80,7 @@ class TestsWorkflowPinGuardUnitTest {
                     WORKFLOWS_DIR + "release.yaml");
     private static final String TEST_TASK_READ = "tasks.named<Test>(\"test\")";
     private static final String MAX_PARALLEL_FORKS = "maxParallelForks";
+    private static final String RAW_QUOTE = "\"\"\"";
     private static final String MSG_LINE_PREFIX = "msg=";
     private static final String NPROC_CONTEXT = "nproc=$(nproc)";
 
@@ -302,10 +304,110 @@ class TestsWorkflowPinGuardUnitTest {
         return Optional.empty();
     }
 
+    private enum KtsState {
+        CODE,
+        STRING,
+        CHAR,
+        RAW_STRING,
+        LINE_COMMENT,
+        BLOCK_COMMENT
+    }
+
+    /**
+     * Returns the code of a Kotlin build script with comments removed and line structure kept: the
+     * result has as many lines as {@code text.lines()}, and a line that held only a comment is blank.
+     * Recognised: string and char literals with backslash escapes, raw (triple-quoted) strings, line
+     * comments including trailing ones, and nested block comments. A comment opener inside a literal
+     * is therefore text, not a comment.
+     *
+     * <p>Not supported: a quote nested inside the braces of a string template ({@code "${f("x")}"}).
+     * The current script has none ({@code grep -nE '\$\{[^}]*"' build.gradle.kts} is empty).
+     */
     static List<String> ktsCode(String text) {
-        return text.replaceAll("(?s)/\\*.*?\\*/", "").lines()
-                .filter(line -> !line.stripLeading().startsWith("//"))
-                .collect(Collectors.toList());
+        StringBuilder code = new StringBuilder(text.length());
+        KtsState state = KtsState.CODE;
+        int depth = 0;
+        int i = 0;
+        while (i < text.length()) {
+            char c = text.charAt(i);
+            switch (state) {
+                case CODE:
+                    if (text.startsWith(RAW_QUOTE, i)) {
+                        code.append(RAW_QUOTE);
+                        i += RAW_QUOTE.length();
+                        state = KtsState.RAW_STRING;
+                    } else if (c == '"') {
+                        code.append(c);
+                        i++;
+                        state = KtsState.STRING;
+                    } else if (c == '\'') {
+                        code.append(c);
+                        i++;
+                        state = KtsState.CHAR;
+                    } else if (text.startsWith("//", i)) {
+                        i += 2;
+                        state = KtsState.LINE_COMMENT;
+                    } else if (text.startsWith("/*", i)) {
+                        i += 2;
+                        depth = 1;
+                        state = KtsState.BLOCK_COMMENT;
+                    } else {
+                        code.append(c);
+                        i++;
+                    }
+                    break;
+                case STRING:
+                case CHAR:
+                    code.append(c);
+                    i++;
+                    if (c == '\\' && i < text.length()) {
+                        code.append(text.charAt(i));
+                        i++;
+                    } else if (c == '\n' || c == (state == KtsState.STRING ? '"' : '\'')) {
+                        state = KtsState.CODE;
+                    }
+                    break;
+                case RAW_STRING:
+                    if (text.startsWith(RAW_QUOTE, i)) {
+                        code.append(RAW_QUOTE);
+                        i += RAW_QUOTE.length();
+                        while (i < text.length() && text.charAt(i) == '"') {
+                            code.append('"');
+                            i++;
+                        }
+                        state = KtsState.CODE;
+                    } else {
+                        code.append(c);
+                        i++;
+                    }
+                    break;
+                case LINE_COMMENT:
+                    if (c == '\n') {
+                        code.append(c);
+                        state = KtsState.CODE;
+                    }
+                    i++;
+                    break;
+                case BLOCK_COMMENT:
+                    if (text.startsWith("/*", i)) {
+                        depth++;
+                        i += 2;
+                    } else if (text.startsWith("*/", i)) {
+                        depth--;
+                        i += 2;
+                        if (depth == 0) {
+                            state = KtsState.CODE;
+                        }
+                    } else {
+                        if (c == '\n') {
+                            code.append(c);
+                        }
+                        i++;
+                    }
+                    break;
+            }
+        }
+        return code.toString().lines().collect(Collectors.toList());
     }
 
     static List<String> excludePaths(List<String> lines) {
@@ -844,5 +946,76 @@ class TestsWorkflowPinGuardUnitTest {
                                 plus(UPSTREAM, ".github/workflows/gone.yml"))),
                 rejects(rule, dependabot(UPSTREAM, List.of())),
                 rejects(rule));
+    }
+
+    private static final String SHADOW_BANNER = "/*\n * ShadowJar\n */";
+
+    private static String withBanner(String... head) {
+        return String.join("\n", head) + "\n" + REGISTER_BLOCK + "\n" + SHADOW_BANNER;
+    }
+
+    @Test
+    @DisplayName(
+            "DEBT-13: ktsCode keeps string literals, raw strings and line structure, and drops line,"
+                    + " trailing and nested block comments")
+    void ktsCodeKeepsStringsAndLineStructure() {
+        String glob = "val excludes = \"org/apache/kafka/connect/**\"";
+        String rawBoth = "val note = \"\"\"// line /* block\"\"\"";
+        String escaped = "val quoted = \"a\\\"/*\"";
+        String threeLineBlock = "a\n/* x\ny\nz */\nval raw = \"\"\"\nq\n\"\"\"\nb";
+        assertAll(
+                () -> assertEquals(List.of(glob), ktsCode(glob)),
+                () -> assertEquals(List.of(rawBoth), ktsCode(rawBoth)),
+                () -> assertEquals(List.of(escaped, "val after = 1"), ktsCode(escaped + "\nval after = 1")),
+                () -> assertEquals(List.of("val x = 1 "), ktsCode("val x = 1 // see /* here")),
+                () -> assertEquals(List.of("a  b"), ktsCode("a /* one /* two */ still */ b")),
+                () -> assertEquals(threeLineBlock.lines().count(), ktsCode(threeLineBlock).size()),
+                forkTaskEmptyInput(),
+                () ->
+                        assertEquals(
+                                List.of("val c = '\"'; val d = 2 "),
+                                ktsCode("val c = '\"'; val d = 2 // gone")),
+                () ->
+                        assertEquals(
+                                List.of("val c = '\\''; val d = 2 "),
+                                ktsCode("val c = '\\''; val d = 2 /* gone */")));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: reportTestForks task rule accepts the task after a slash-star inside a string, a raw"
+                    + " string or a line comment (DEBT-13, 21-REVIEW WR-02)")
+    void forkTaskRuleAcceptsTaskAfterSlashStarInStringOrComment() {
+        assertAll(
+                ktsAccepts(withBanner("val shadowExcludes = \"org/apache/kafka/connect/**\"")),
+                ktsAccepts(withBanner("// the archive holds lib/* entries only")),
+                ktsAccepts(withBanner("val skip = 1 // see /* here")),
+                ktsAccepts(withBanner("val note = \"\"\"// line /* block\"\"\"")));
+    }
+
+    private static Executable forkTaskEmptyInput() {
+        return () -> {
+            assertEquals(List.of(), ktsCode(""));
+            assertEquals(
+                    Optional.of(
+                            "tasks.register(\"reportTestForks\") not found in " + BUILD_SCRIPT
+                                    + " outside comments"),
+                    forkTaskProblem(ktsCode("")));
+        };
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: reportTestForks task rule rejects a read inside a trailing comment and a task"
+                    + " inside a nested block comment (DEBT-13, 21-REVIEW WR-02, WR-03)")
+    void forkTaskRuleRejectsTrailingCommentReadAndNestedCommentedTask() {
+        assertAll(
+                ktsRejects(
+                        String.join(
+                                "\n",
+                                "tasks.register(\"reportTestForks\") {",
+                                "    doLast { println(6) } // tasks.named<Test>(\"test\").maxParallelForks",
+                                "}")),
+                ktsRejects("/*\n/* inner */\n" + REGISTER_BLOCK + "\n*/"));
     }
 }
