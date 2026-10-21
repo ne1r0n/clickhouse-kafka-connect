@@ -21,7 +21,7 @@
 | E-09 | BLD-15 (unrepaired archive) | pass |
 | E-10 | BLD-15 (repair) | pass |
 | E-11 | BLD-15 (compare against v1.7.0_gg3) | pass |
-| E-12 | BLD-16 (worker jars and bless run) | pending (plan 25-05) |
+| E-12 | BLD-16 (worker jars and bless run) | pass |
 | E-13 | BLD-16 (reference test) | pending (plan 25-05) |
 | E-14 | CI-20 (verifyConfluentArchive controls) | pending (plan 25-06) |
 | E-15 | CI-20 (pin-guard red run) | pending (plan 25-06) |
@@ -478,5 +478,114 @@ D-01: the primary form (Shadow `configurations.add(...)`) shipped. Every differe
 X-1: guava 33.4.6-jre and its small dependencies are in the gg3 archive already (their VERSION lines read `x -> x`), so the allow-list holds version bumps only and no row allows an added library. `MANIFEST.MF` of the repaired inner jar is byte-identical to the gg3 one (`VERSION` unchanged in this phase). The outer entries (`manifest.json` ignoring `release_date` and `version`, `assets/logo.svg`, `doc/LICENSE`, `doc/README.md`) are equal.
 
 Timestamp: 2026-10-21T16:25:00Z
+
+Verdict: pass
+
+### E-12: The production worker's Kafka API and the bless run (BLD-16, D-10..D-13)
+
+Image: `confluentinc/cp-kafka-connect-base:7.9.7`, pulled by tag, digest recorded. The jars are untrusted downloaded data: copied with `docker create` and `docker cp` into new empty directories (`/tmp/gsd25/img/amd64/`, `/tmp/gsd25/img/native/`), hashed, and only read by `javap` and `zipfile` (the script runs as `python3 -I` from `.planning/scripts/`, never from inside the jar directories).
+
+```text
+docker pull --platform linux/amd64 confluentinc/cp-kafka-connect-base:7.9.7
+Digest: sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055
+docker run --rm --platform linux/amd64 --entrypoint uname ... -m      -> x86_64
+docker run --rm --platform linux/amd64 --entrypoint java ... -version -> openjdk version "17.0.19" 2026-04-21 / Temurin-17.0.19+10
+docker pull confluentinc/cp-kafka-connect-base:7.9.7                  (native, last, so the local tag ends native)
+Digest: sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055
+docker image inspect --format '{{index .RepoDigests 0}} {{.Architecture}} {{.Os}}' ...
+confluentinc/cp-kafka-connect-base@sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055 arm64 linux
+docker run --rm --entrypoint uname ... -m                             -> aarch64
+docker run --rm --entrypoint java ... -version                        -> openjdk version "17.0.19" 2026-04-21 / Temurin-17.0.19+10
+```
+
+Jars from `/usr/share/java/kafka/` (amd64 copy and native copy hashed separately; they are byte-identical, which resolves research A3):
+
+```text
+b57546e9160d5435238fded6f38756d621fac62bd9f64737c3f68e094ae01de4  img/amd64/connect-api-7.9.7-ccs.jar
+7e3071075dca79f0b3db3950be9de8d770fe5dd8649fac75ed25b2b39906eaac  img/amd64/connect-runtime-7.9.7-ccs.jar
+28423086fbbf8f91b2f1d335eeeca6675916e24adf2f813b3f9c47f87b49f962  img/amd64/kafka-clients-7.9.7-ccs.jar
+b57546e9160d5435238fded6f38756d621fac62bd9f64737c3f68e094ae01de4  img/native/connect-api-7.9.7-ccs.jar
+7e3071075dca79f0b3db3950be9de8d770fe5dd8649fac75ed25b2b39906eaac  img/native/connect-runtime-7.9.7-ccs.jar
+28423086fbbf8f91b2f1d335eeeca6675916e24adf2f813b3f9c47f87b49f962  img/native/kafka-clients-7.9.7-ccs.jar
+```
+
+Cache jars the build resolves (Gradle cache, `org.apache.kafka`):
+
+```text
+9e8fe3277d31410e3dd6c84b34967230bb5643b8424d3b96320ce1c43b4b5152  connect-api-4.1.1.jar
+1f13c2617cb3ff39924a6d7a1265b3582b09f35c146c1547b38ebd308c8b61eb  connect-api-4.4.0.jar
+00247122a572c3d3ae4eb60a50192a5811bc0181f51923d13018600f892e821d  kafka-clients-4.1.1.jar
+1ab07317eb6633241392449d329dbdc5d9251e6ffc4926860f42dd966e88bdf9  kafka-clients-4.4.0.jar
+```
+
+Bless run (`env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava` first; 107 class files under `build/classes/java/main`; the compile classpath is the 4.4.0 pair):
+
+```bash
+python3 -I .planning/scripts/connect-api-refs.py --classes build/classes/java/main \
+  --compile-classpath <4.4.0 connect-api>:<4.4.0 kafka-clients> \
+  --reference worker=/tmp/gsd25/img/native/connect-api-7.9.7-ccs.jar:/tmp/gsd25/img/native/kafka-clients-7.9.7-ccs.jar \
+  --reference 4.1.1=<4.1.1 jars> --reference 4.4.0=<4.4.0 jars> \
+  --write src/test/resources/connect-api-references.txt > /tmp/gsd25/exec/bless.txt; echo $?   # 0
+```
+
+```text
+SKIPPED-SUPERTYPE com/fasterxml/jackson/databind/JsonSerializer
+derived classes 39 members 137 total 176
+REFERENCE worker classes-missing 0 members-missing 0
+REFERENCE 4.1.1 classes-missing 0 members-missing 0
+REFERENCE 4.4.0 classes-missing 0 members-missing 0
+WROTE src/test/resources/connect-api-references.txt
+```
+
+The one `SKIPPED-SUPERTYPE` is a Jackson type a connector class extends; `javap` cannot load it from the compile classpath and it lies outside `org/apache/kafka/`. The derived set (39 `C` plus 137 `M` = 176 entries) equals the research prototype's `/tmp/p25/derive-java.out` line for line (`diff` empty). The committed list is `src/test/resources/connect-api-references.txt` (provenance header, then 176 sorted entries).
+
+Negative controls (`/tmp/gsd25/exec/bless-neg.txt`, no `--write`):
+
+```text
+REFERENCE ccs-api-only classes-missing 17 members-missing 37
+exit=1
+(research recorded 17 classes and 36 members; the live run counts 37 members, the same 17 classes)
+javap -cp <worker connect-api + kafka-clients> org.apache.kafka.connect.components.ConnectPlugin
+Error: class not found: org.apache.kafka.connect.components.ConnectPlugin     (exit 1)
+javap -cp <4.4.0 connect-api + kafka-clients> org.apache.kafka.connect.components.ConnectPlugin
+public interface org.apache.kafka.connect.components.ConnectPlugin extends org.apache.kafka.connect.components.Versioned {
+```
+
+Facts the Connect API wording needs (`javap -p -cp <connect-api jar> org.apache.kafka.connect.sink.SinkTask | grep -c onPartitionsRevoked`):
+
+```text
+connect-api-7.9.7-ccs.jar (worker, Kafka 3.9): 1   public void onPartitionsRevoked(java.util.Collection<org.apache.kafka.common.TopicPartition>);
+connect-api-4.1.1.jar: 0
+connect-api-4.4.0.jar: 0
+worker SinkTask bytecode: close(Collection) invokes onPartitionsRevoked(Collection); open(Collection) invokes onPartitionsAssigned(Collection)
+```
+
+This contradicts the plan's expectation that the worker's `SinkTask` lacks the method: the Kafka 3.9 worker API still declares `SinkTask.onPartitionsRevoked`; it is absent from the compile-time 4.1.1 and 4.4.0 jars. The wording in the D-14 commit follows this measurement (see the plan summary's deviations).
+
+`javap -c -p -cp /tmp/gsd25/img/native/connect-runtime-7.9.7-ccs.jar org.apache.kafka.connect.runtime.errors.DeadLetterQueueReporter` (full output `/tmp/gsd25/exec/dlq-javap.txt`):
+
+```text
+  void populateContextHeaders(org.apache.kafka.clients.producer.ProducerRecord<byte[], byte[]>, org.apache.kafka.connect.runtime.errors.ProcessingContext<org.apache.kafka.clients.consumer.ConsumerReco
+     152: invokevirtual #85                 // Method java/lang/Class.getName:()Ljava/lang/String;
+     182: invokevirtual #85                 // Method java/lang/Class.getName:()Ljava/lang/String;
+     202: invokevirtual #90                 // Method java/lang/Throwable.getMessage:()Ljava/lang/String;
+     219: invokespecial #91                 // Method stacktrace:(Ljava/lang/Throwable;)[B
+  private byte[] stacktrace(java.lang.Throwable);
+      26: invokevirtual #99                 // Method java/lang/Throwable.printStackTrace:(Ljava/io/PrintStream;)V
+```
+
+So `populateContextHeaders` exists in the worker's connect-runtime, calls `java/lang/Class.getName` twice (the `__connect.errors.class.name` and `__connect.errors.exception.class.name` header names), `java/lang/Throwable.getMessage` (`__connect.errors.exception.message`), and the private `stacktrace(Throwable)`, which calls `Throwable.printStackTrace(PrintStream)` (`__connect.errors.exception.stacktrace`).
+
+Archive re-assertion (plan 25-04's `/tmp/gsd25/exec/archive-m1-repaired.zip`):
+
+```text
+inner jars ['clickhouse-kafka-connect-v1.7.0_gg3/lib/clickhouse-kafka-connect-v1.7.0_gg3-confluent.jar']
+inner entries 7798 org/apache/kafka entries 0 nested jars 0
+outer entries under org/apache/kafka 0
+```
+
+Container cleanup: `docker ps -a --filter name=gsd25 --format '{{.Names}}'` prints nothing.
+
+Timestamp: 2026-10-21T16:24:57Z
 
 Verdict: pass
