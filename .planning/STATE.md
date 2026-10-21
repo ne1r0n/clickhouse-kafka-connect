@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 26
 current_phase_name: Size-Named Tuple Elements in Discovery
 status: executing
-stopped_at: Completed 26-02-PLAN.md
-last_updated: "2026-10-21T21:11:52.529Z"
+stopped_at: Completed 26-03-PLAN.md
+last_updated: "2026-10-21T21:27:57.897Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 26 execution started
-state_head: 4eec93e1b9c848d291b741908972271dc010f37f
+state_head: 6d92541975bdfc375a5f70a35366ea05358f3cec
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 after Phase 25)
 ## Current Position
 
 Phase: 26 (Size-Named Tuple Elements in Discovery) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-10-21 — Phase 26 execution started
 
@@ -175,6 +175,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 25 P08 | 16min | 3 tasks | 6 files |
 | Phase 26 P01 | 14 min | 3 tasks | 102 files |
 | Phase 26 P02 | 11 min | 3 tasks | 9 files |
+| Phase 26 P03 | 15 min | 3 tasks | 38 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,9 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 26]: 26-01: NullableRoundTrip.describeRows reads through the shared DescribeFixtureCatalog.describeRawLines (one DESCRIBE reader)
 - [Phase 26]: DescribeTableBuilder logs through the ClickHouseHelperClient logger and addRow throws JsonProcessingException unwrapped, so both describe paths keep their log names and catch blocks
 - [Phase 26]: A snapshot or suite difference after the extraction is a stop, not an expectation update; all 47 fixtures matched on the first run
+- [Phase 26]: 26-03: the size-name classifier is DescribeTableBuilder.decide, the parent reading is the public ParentShape, and the verdict reaches Table.updateParent as Column.declaredElement — DeclaredNullability gains no second public helper, and Table carries one extra condition instead of a parser
+- [Phase 26]: 26-03: a structural size twin never enters the skip set and never registers its raw type; an unreadable or unknown parent keeps gg3 behaviour with one metadata-only WARN per parent per DESCRIBE — a declared elements children must survive while a structural row below it is still dropped; failing closed never lets a structural row become a Column
+- [Phase 26]: 26-03: FORK-DELTA Adopted-wholesale file counts re-measured against v1.7.0 (37 identical, 14 import-only, 12 fork logic, 10 files only here) — Table.java, ParentShape and DescribeTableBuilder made the earlier counts false for this tree
 
 ### Pending Todos
 
@@ -258,8 +262,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T21:11:52.376Z
-Stopped at: Completed 26-02-PLAN.md
+Last session: 2026-10-21T21:27:57.725Z
+Stopped at: Completed 26-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
