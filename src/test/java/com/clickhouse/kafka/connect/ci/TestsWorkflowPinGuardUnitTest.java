@@ -2,6 +2,7 @@ package com.clickhouse.kafka.connect.ci;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -24,8 +25,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
 /**
- * Docker-free pin for 14-SECURITY T-14-16 and CI-11 to CI-13, plus the Dependabot entry of CI-15,
- * so a regression of the {@code tests.yaml} hardening fails {@code testUnit} before any CI run.
+ * Docker-free pin for 14-SECURITY T-14-16, CI-11 to CI-13, CI-15, CI-18, CI-19, CI-20, DEBT-13 and
+ * DEBT-14: the {@code tests.yaml} hardening, its Dependabot entry, the fork-count step and task, and
+ * the Confluent archive step and task. A regression fails {@code testUnit} before any CI run.
  * Deliberately extends nothing - extending {@code ClickHouseBase} would inherit its {@code
  * clickhouse} tag and drop this class out of {@code testUnit}.
  *
@@ -60,6 +62,9 @@ class TestsWorkflowPinGuardUnitTest {
             Pattern.compile("^tasks\\.register<Zip>\\(\"createConfluentArchive\"\\)\\s*\\{\\s*$");
     private static final Pattern CONTINUE_ON_ERROR =
             Pattern.compile("^\\s*continue-on-error:\\s*+(?!false\\b).*$");
+    // YAML and shell both need whitespace before '#', so "ubuntu-24.04#x" keeps its tail.
+    private static final Pattern TRAILING_COMMENT = Pattern.compile("\\s#.*$");
+    private static final Pattern FORKS_PROVIDER_DECLARATION = Pattern.compile("^\\s*val\\s+(\\w+)\\s*=.*$");
     private static final Pattern EXCLUDE_ITEM =
             Pattern.compile("^\\s*-\\s*[\"']?([^\"'#]+?)[\"']?\\s*(?:#.*)?$");
 
@@ -70,8 +75,8 @@ class TestsWorkflowPinGuardUnitTest {
     private static final String READ_ONLY_CONTENTS = "  contents: read";
     private static final String CHECKOUT = "actions/checkout@";
     private static final String NO_PERSISTED_CREDENTIALS = "persist-credentials: false";
-    private static final String GITHUB_ACTIONS_ECOSYSTEM = "- package-ecosystem: \"github-actions\"";
-    private static final String GRADLE_ECOSYSTEM = "- package-ecosystem: \"gradle\"";
+    private static final Pattern GITHUB_ACTIONS_ENTRY = ecosystemEntry("github-actions");
+    private static final Pattern GRADLE_ENTRY_PATTERN = ecosystemEntry("gradle");
     private static final String EXCLUDE_PATHS_KEY = "exclude-paths:";
     private static final String WORKFLOWS_DIR = ".github/workflows/";
     private static final List<String> UPSTREAM_WORKFLOWS =
@@ -92,6 +97,16 @@ class TestsWorkflowPinGuardUnitTest {
     private static final String RAW_QUOTE = "\"\"\"";
     private static final String MSG_LINE_PREFIX = "msg=";
     private static final String NPROC_CONTEXT = "nproc=$(nproc)";
+
+    // The same quote on both sides or none, and an optional whitespace-preceded trailing comment.
+    private static Pattern ecosystemEntry(String ecosystem) {
+        return Pattern.compile(
+                "^\\s*-\\s+package-ecosystem:\\s*([\"']?)" + Pattern.quote(ecosystem) + "\\1\\s*(?:\\s#.*)?$");
+    }
+
+    private static boolean isEntry(String line, Pattern entry) {
+        return entry.matcher(line).matches();
+    }
 
     private static List<String> nonCommentLines(Path file) throws IOException {
         return Files.readAllLines(file, StandardCharsets.UTF_8).stream()
@@ -146,7 +161,7 @@ class TestsWorkflowPinGuardUnitTest {
             }
         }
         for (String line : lines) {
-            if (line.contains(FLOATING_RUNNER)) {
+            if (TRAILING_COMMENT.matcher(line).replaceFirst("").contains(FLOATING_RUNNER)) {
                 return Optional.of(
                         "The floating runner label must not appear outside comments: '"
                                 + line.strip()
@@ -215,14 +230,12 @@ class TestsWorkflowPinGuardUnitTest {
     }
 
     static Optional<String> dependabotEcosystemProblem(List<String> lines) {
-        List<String> stripped = lines.stream().map(String::strip).collect(Collectors.toList());
-
-        if (!stripped.contains(GITHUB_ACTIONS_ECOSYSTEM)) {
-            return Optional.of("Missing '" + GITHUB_ACTIONS_ECOSYSTEM + "' in " + DEPENDABOT);
+        if (lines.stream().noneMatch(line -> isEntry(line, GITHUB_ACTIONS_ENTRY))) {
+            return Optional.of("Missing a package-ecosystem: github-actions entry in " + DEPENDABOT);
         }
-        if (!stripped.contains(GRADLE_ECOSYSTEM)) {
+        if (lines.stream().noneMatch(line -> isEntry(line, GRADLE_ENTRY_PATTERN))) {
             return Optional.of(
-                    "The existing '" + GRADLE_ECOSYSTEM + "' entry must stay in " + DEPENDABOT);
+                    "The existing package-ecosystem: gradle entry must stay in " + DEPENDABOT);
         }
         return Optional.empty();
     }
@@ -232,8 +245,12 @@ class TestsWorkflowPinGuardUnitTest {
     }
 
     private static Pattern gradlewCall(String task) {
+        // Command position only: after an optional "run:" key and an optional "name=$(" prefix, so a
+        // no-op (": ./gradlew"), a guard ("false && ./gradlew"), an echo or a comment is not the call.
         return Pattern.compile(
-                "^(?!\\s*(?:echo|printf)\\b).*\\./gradlew\\s.*\\b" + Pattern.quote(task) + "\\b.*$");
+                "^\\s*(?:run:\\s*)?(?:\\w+=\"?\\$\\()?\\./gradlew\\s.*(?<![\\w-])"
+                        + Pattern.quote(task)
+                        + "(?![\\w-]).*$");
     }
 
     /** The lines after the named step's header up to the first non-blank line at or below its indent. */
@@ -264,7 +281,11 @@ class TestsWorkflowPinGuardUnitTest {
             return Optional.of("No step named '" + stepName + "' in " + WORKFLOW);
         }
         Pattern call = gradlewCall(task);
-        if (block.get().stream().noneMatch(line -> call.matcher(line).matches())) {
+        boolean called =
+                block.get().stream()
+                        .map(line -> TRAILING_COMMENT.matcher(line).replaceFirst(""))
+                        .anyMatch(code -> call.matcher(code).matches());
+        if (!called) {
             return Optional.of(
                     "Step '" + stepName + "' in " + WORKFLOW + " must call './gradlew ... " + task
                             + "' in its run block");
@@ -316,16 +337,35 @@ class TestsWorkflowPinGuardUnitTest {
             }
             boolean readsTestTask = false;
             boolean readsForks = false;
-            for (int j = i + 1; j < lines.size() && !lines.get(j).equals("}"); j++) {
-                readsTestTask |= lines.get(j).contains(TEST_TASK_READ);
-                readsForks |= lines.get(j).contains(MAX_PARALLEL_FORKS);
+            String provider = null;
+            int end = i + 1;
+            while (end < lines.size() && !lines.get(end).equals("}")) {
+                String line = lines.get(end++);
+                readsTestTask |= line.contains(TEST_TASK_READ);
+                readsForks |= line.contains(MAX_PARALLEL_FORKS);
+                Matcher declaration = FORKS_PROVIDER_DECLARATION.matcher(line);
+                if (declaration.matches()
+                        && line.contains(TEST_TASK_READ)
+                        && line.contains(MAX_PARALLEL_FORKS)) {
+                    provider = declaration.group(1);
+                }
             }
-            if (readsTestTask && readsForks) {
-                return Optional.empty();
+            if (!readsTestTask || !readsForks) {
+                return Optional.of(
+                        "reportTestForks in " + BUILD_SCRIPT + " must read " + MAX_PARALLEL_FORKS
+                                + " from " + TEST_TASK_READ);
             }
-            return Optional.of(
-                    "reportTestForks in " + BUILD_SCRIPT + " must read " + MAX_PARALLEL_FORKS
-                            + " from " + TEST_TASK_READ);
+            Pattern printsProvider =
+                    Pattern.compile(
+                            "\\bprint(?:ln)?\\(\\s*" + Pattern.quote(String.valueOf(provider)) + "\\.get\\(\\)");
+            if (provider == null
+                    || lines.subList(i + 1, end).stream()
+                            .noneMatch(line -> printsProvider.matcher(line).find())) {
+                return Optional.of(
+                        "reportTestForks in " + BUILD_SCRIPT + " must print the " + MAX_PARALLEL_FORKS
+                                + " provider it reads from " + TEST_TASK_READ);
+            }
+            return Optional.empty();
         }
         return Optional.of(
                 "tasks.register(\"reportTestForks\") not found in " + BUILD_SCRIPT + " outside comments");
@@ -374,8 +414,8 @@ class TestsWorkflowPinGuardUnitTest {
     }
 
     static Optional<String> dependabotExcludeProblem(List<String> lines, Predicate<String> exists) {
-        if (lines.stream().noneMatch(line -> line.strip().equals(GITHUB_ACTIONS_ECOSYSTEM))) {
-            return Optional.of("No '" + GITHUB_ACTIONS_ECOSYSTEM + "' entry in " + DEPENDABOT);
+        if (lines.stream().noneMatch(line -> isEntry(line, GITHUB_ACTIONS_ENTRY))) {
+            return Optional.of("No package-ecosystem: github-actions entry in " + DEPENDABOT);
         }
         List<String> paths = excludePaths(lines);
         if (paths.isEmpty()) {
@@ -506,7 +546,7 @@ class TestsWorkflowPinGuardUnitTest {
     static List<String> excludePaths(List<String> lines) {
         int entry = -1;
         for (int i = 0; i < lines.size() && entry < 0; i++) {
-            if (lines.get(i).strip().equals(GITHUB_ACTIONS_ECOSYSTEM)) {
+            if (isEntry(lines.get(i), GITHUB_ACTIONS_ENTRY)) {
                 entry = i;
             }
         }
@@ -530,7 +570,9 @@ class TestsWorkflowPinGuardUnitTest {
                 }
                 continue;
             }
-            if (indent(line) <= keyIndent) {
+            // A sequence may start at its key's own indent; anything else at or below it ends the list.
+            if (indent(line) < keyIndent
+                    || (indent(line) == keyIndent && !LIST_ITEM.matcher(line).matches())) {
                 break;
             }
             Matcher item = EXCLUDE_ITEM.matcher(line);
@@ -652,12 +694,7 @@ class TestsWorkflowPinGuardUnitTest {
                     "    }",
                     "}");
 
-    private static final List<String> UPSTREAM =
-            List.of(
-                    ".github/workflows/increment-version.yml",
-                    ".github/workflows/integrationTests.yaml",
-                    ".github/workflows/pre-release.yaml",
-                    ".github/workflows/release.yaml");
+    private static final List<String> UPSTREAM = UPSTREAM_WORKFLOWS;
     private static final Set<String> EXISTING_WORKFLOWS =
             Set.copyOf(plus(UPSTREAM, ".github/workflows/tests.yaml"));
 
@@ -1226,5 +1263,136 @@ class TestsWorkflowPinGuardUnitTest {
                                 + "\n\n"
                                 + VERIFY_ARCHIVE_BLOCK),
                 archiveTasksReject(VERIFY_ARCHIVE_BLOCK));
+    }
+
+    private static final String ACTIONS_ENTRY = "  - package-ecosystem: \"github-actions\"";
+    private static final String GRADLE_ENTRY = "  - package-ecosystem: \"gradle\"";
+
+    private static List<String> withEntry(List<String> lines, String original, String replacement) {
+        return lines.stream()
+                .map(line -> line.equals(original) ? replacement : line)
+                .collect(Collectors.toList());
+    }
+
+    private static List<String> actionsEntryWithItems(int keyIndent, int itemIndent, List<String> paths) {
+        List<String> lines =
+                new ArrayList<>(
+                        List.of(
+                                "version: 2",
+                                "updates:",
+                                GRADLE_ENTRY,
+                                "    directory: \"/\"",
+                                ACTIONS_ENTRY,
+                                "    directory: \"/\"",
+                                " ".repeat(keyIndent) + "exclude-paths:"));
+        paths.forEach(path -> lines.add(" ".repeat(itemIndent) + "- \"" + path + "\""));
+        lines.addAll(List.of("    schedule:", "      interval: \"monthly\""));
+        return lines;
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: runs-on rule accepts a pinned runner whose trailing comment names the floating"
+                    + " label (DEBT-14, 21-REVIEW WR-01)")
+    void runsOnRuleAcceptsACommentThatNamesTheFloatingLabel() {
+        Function<List<String>, Optional<String>> rule = TestsWorkflowPinGuardUnitTest::runsOnProblem;
+        assertAll(
+                accepts(rule, "    runs-on: ubuntu-24.04 # was ubuntu-latest"),
+                rejects(rule, "    runs-on: ubuntu-latest # x"),
+                rejects(rule, "    runs-on: ubuntu-24.04#x"),
+                rejects(rule, "    runs-on: ubuntu-24.04", "      - run: echo ubuntu-latest"));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: gradle-step rules reject a no-op, guarded or commented-out gradle call (DEBT-14,"
+                    + " 21-REVIEW WR-03)")
+    void gradleStepRulesRejectNoOpGuardedOrCommentedCalls() {
+        Function<List<String>, Optional<String>> fork =
+                TestsWorkflowPinGuardUnitTest::forkCountStepProblem;
+        Function<List<String>, Optional<String>> archive =
+                TestsWorkflowPinGuardUnitTest::archiveStepProblem;
+        assertAll(
+                accepts(fork, forkStep(STEP_BODY)),
+                accepts(archive, archiveStep(ARCHIVE_CALL)),
+                rejects(fork, forkStep(List.of("          : ./gradlew reportTestForks"))),
+                rejects(fork, forkStep(List.of("          false && ./gradlew reportTestForks"))),
+                rejects(fork, forkStep(List.of("          x=1 # ./gradlew reportTestForks"))),
+                rejects(fork, forkStep(List.of("          # ./gradlew reportTestForks"))),
+                rejects(fork, forkStep(List.of("          echo \"./gradlew reportTestForks\""))),
+                rejects(archive, archiveStep("        run: : ./gradlew createConfluentArchive")),
+                rejects(archive, archiveStep("        run: true || ./gradlew createConfluentArchive")));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: reportTestForks task rule rejects a task that declares the forks provider but"
+                    + " prints something else (DEBT-14, 21-REVIEW WR-03)")
+    void forkTaskRuleRejectsATaskThatDoesNotPrintItsProvider() {
+        assertAll(
+                ktsAccepts(REGISTER_BLOCK),
+                ktsRejects(REGISTER_BLOCK.replace("println(forks.get())", "println(6)")),
+                ktsRejects(REGISTER_BLOCK.replace("println(forks.get())", "println(other.get())")));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: dependabot rules accept single quotes, a trailing comment, unquoted values and list"
+                    + " items at the key's indent (DEBT-14, 21-REVIEW IN-01)")
+    void dependabotRulesAcceptValidYamlSpellings() {
+        Function<List<String>, Optional<String>> ecosystem =
+                TestsWorkflowPinGuardUnitTest::dependabotEcosystemProblem;
+        Function<List<String>, Optional<String>> exclude = TestsWorkflowPinGuardUnitTest::excludeProblem;
+        List<String> base = dependabot(List.of(), UPSTREAM);
+        List<String> single = withEntry(base, ACTIONS_ENTRY, "  - package-ecosystem: 'github-actions'");
+        List<String> unquoted = withEntry(base, ACTIONS_ENTRY, "  - package-ecosystem: github-actions");
+        List<String> commented =
+                withEntry(
+                        base, ACTIONS_ENTRY, ACTIONS_ENTRY + " # keeps pins current");
+        List<String> gradleSingle = withEntry(base, GRADLE_ENTRY, "  - package-ecosystem: 'gradle'");
+        List<String> atKeyIndent = actionsEntryWithItems(4, 4, UPSTREAM);
+        List<String> reversed =
+                actionsEntryWithItems(
+                        4, 6, List.of(UPSTREAM.get(3), UPSTREAM.get(2), UPSTREAM.get(1), UPSTREAM.get(0)));
+        assertAll(
+                accepts(ecosystem, single),
+                accepts(exclude, single),
+                accepts(ecosystem, unquoted),
+                accepts(exclude, unquoted),
+                accepts(ecosystem, commented),
+                accepts(exclude, commented),
+                accepts(ecosystem, gradleSingle),
+                accepts(ecosystem, atKeyIndent),
+                accepts(exclude, atKeyIndent),
+                accepts(exclude, reversed));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: dependabot rules still reject mismatched quotes, an empty list and a list at the"
+                    + " entry's indent (DEBT-14, 21-REVIEW IN-01)")
+    void dependabotRulesStillRejectMismatchedQuotesAndMisplacedLists() {
+        Function<List<String>, Optional<String>> ecosystem =
+                TestsWorkflowPinGuardUnitTest::dependabotEcosystemProblem;
+        Function<List<String>, Optional<String>> exclude = TestsWorkflowPinGuardUnitTest::excludeProblem;
+        List<String> base = dependabot(List.of(), UPSTREAM);
+        List<String> mismatched = withEntry(base, ACTIONS_ENTRY, "  - package-ecosystem: \"github-actions'");
+        assertAll(
+                rejects(ecosystem, mismatched),
+                rejects(exclude, mismatched),
+                rejects(exclude, actionsEntryWithItems(4, 4, List.of())),
+                rejects(exclude, actionsEntryWithItems(4, 2, UPSTREAM)),
+                rejects(exclude, actionsEntryWithItems(6, 4, UPSTREAM)));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture list: the upstream workflow fixtures are the production constant (DEBT-14,"
+                    + " 21-REVIEW IN-02)")
+    void upstreamFixtureIsTheProductionConstant() {
+        assertSame(
+                UPSTREAM_WORKFLOWS,
+                UPSTREAM,
+                "the accept fixtures must be built from the rule's own UPSTREAM_WORKFLOWS constant");
     }
 }

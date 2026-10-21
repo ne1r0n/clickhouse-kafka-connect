@@ -26,8 +26,8 @@
 | E-14 | CI-20 (verifyConfluentArchive controls) | pass |
 | E-15 | CI-20 (pin-guard red run) | pass |
 | E-16 | CI-20 (pin-guard green run) | pass |
-| E-17 | DEBT-14 (pin-guard red run) | pending (plan 25-06) |
-| E-18 | DEBT-14 (pin-guard green run, accept-set changes) | pending (plan 25-06) |
+| E-17 | DEBT-14 (pin-guard red run) | pass |
+| E-18 | DEBT-14 (pin-guard green run, accept-set changes) | pass |
 | E-19 | DEPS-02 (step-4 suite gate) | pending (plan 25-07) |
 | E-20 | SYNC-11 (merge 2 rehearsal) | pending (plan 25-07) |
 | E-21 | SYNC-11 (merge 2, tail gate, self-test) | pending (plan 25-07) |
@@ -768,5 +768,88 @@ Tests summary: 854 tests, 852 succeeded, 0 failed, 2 skipped
 Spotless (per-file recipe, detached HEAD worktree, `spotlessApply` rewrote 47 baseline files, which shows it ran): the class is byte-identical after it (`cmp` silent). The worktree was removed.
 
 Timestamp: 2026-10-21T16:41:09Z
+
+Verdict: pass
+
+### E-17: DEBT-14 pin-guard red run
+
+Six DEBT-14 tests were added with the exact display names of the plan and no rule was touched. The sixth, "dependabot rules still reject mismatched quotes, an empty list and a list at the entry's indent", is the must-still-reject control and passes against the old rules.
+
+```text
+$ env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun   # debt14-red.{log,rc,xml}
+exit code: 1
+Tests summary: 39 tests, 34 succeeded, 5 failed, 0 skipped
+failed (exactly the five predicted):
+  fixture: runs-on rule accepts a pinned runner whose trailing comment names the floating label (DEBT-14, 21-REVIEW WR-01)
+      must accept 'runs-on: ubuntu-24.04 # was ubuntu-latest' but the rule said: The floating runner label must not appear outside comments: 'runs-on: ubuntu-24.04 # was ubuntu-latest'
+  fixture: gradle-step rules reject a no-op, guarded or commented-out gradle call (DEBT-14, 21-REVIEW WR-03)
+      must reject '... run: | / : ./gradlew reportTestForks' but the rule accepted it
+      must reject '... run: | / false && ./gradlew reportTestForks' but the rule accepted it
+      must reject '... run: | / x=1 # ./gradlew reportTestForks' but the rule accepted it
+      must reject '... run: | / # ./gradlew reportTestForks' but the rule accepted it
+      must reject '... Build and verify Confluent archive / run: : ./gradlew createConfluentArchive' but the rule accepted it
+      must reject '... Build and verify Confluent archive / run: true or-else ./gradlew createConfluentArchive' but the rule accepted it
+  fixture: reportTestForks task rule rejects a task that declares the forks provider but prints something else (DEBT-14, 21-REVIEW WR-03)
+      must reject 'tasks.register("reportTestForks") { ... val forks = tasks.named<Test>("test").map { it.maxParallelForks } / doLast { / println(6) ...' but the rule accepted it
+      must reject '... println(other.get()) ...' but the rule accepted it
+  fixture: dependabot rules accept single quotes, a trailing comment, unquoted values and list items at the key's indent (DEBT-14, 21-REVIEW IN-01)
+      8 fixture failures: 'github-actions' single-quoted (ecosystem rule and exclude rule), github-actions unquoted (both), "github-actions" with a trailing comment (both), 'gradle' single-quoted (ecosystem rule), and the exclude-paths list at the key's indent (exclude rule); the reversed upstream order passed
+  fixture list: the upstream workflow fixtures are the production constant (DEBT-14, 21-REVIEW IN-02)
+      the accept fixtures must be built from the rule's own UPSTREAM_WORKFLOWS constant
+passed (control): fixture: dependabot rules still reject mismatched quotes, an empty list and a list at the entry's indent (DEBT-14, 21-REVIEW IN-01)
+```
+
+(The true-or-else fixture is `run: true`, the shell OR operator and the call; the operator is spelled out here only to keep the Markdown table of E-18 parseable.) The predicted red set (39 tests, those five failing, the control passing) is matched.
+
+Timestamp: 2026-10-21T16:44:36Z
+
+Verdict: pass
+
+### E-18: DEBT-14 green run, spotless, testUnit and accept-set changes
+
+Rules changed: WR-01 `runsOnProblem` removes a whitespace-preceded trailing comment before it looks for the floating label; WR-03 `gradlewStepProblem` counts a line as the call only at command position after comment stripping (an optional `run:` key and an optional `name=\"$(` prefix, then `./gradlew`, and the task as a whole word); WR-03 `forkTaskProblem` captures the `val` that reads the test task's `maxParallelForks` and requires a `print` or `println` of its `.get()`; IN-01 the `github-actions` and `gradle` entries match single, double or no quotes (the same on both sides) with an optional trailing comment, and an `exclude-paths` list may start at its key's indent; IN-02 `UPSTREAM = UPSTREAM_WORKFLOWS`. The two "Missing"/"No entry" messages now say "a package-ecosystem: github-actions entry" instead of the double-quoted spelling. The class Javadoc names T-14-16, CI-11 to CI-13, CI-15, CI-18, CI-19, CI-20, DEBT-13 and DEBT-14.
+
+```text
+$ ... testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun   # debt14-green.{log,xml}
+Tests summary: 39 tests, 39 succeeded, 0 failed, 0 skipped
+$ ... testUnit --rerun   # testunit-debt14.log
+Test result: SUCCESS
+Tests summary: 860 tests, 858 succeeded, 0 failed, 2 skipped
+```
+
+Spotless (per-file recipe, detached HEAD worktree, `spotlessApply` rewrote 47 baseline files, which shows it ran): the class is byte-identical after it (`cmp` silent). The worktree was removed.
+
+#### Accept-set changes (DEBT-14)
+
+AGENTS.md's rule "only add new tests, never delete/weaken existing ones" and DEBT-14 (21-REVIEW WR-01, WR-03, IN-01) are the basis for every change below: no pre-existing `@Test`, `@DisplayName` or assertion changed (33 zero-argument test methods before this commit, all still present, six added), and the only widened accept sets are the rows marked `rejected` to `accepted`.
+
+| Input | Rule | Before (E-17) | After (E-18) | Basis |
+|-------|------|---------------|--------------|-------|
+| `runs-on: ubuntu-24.04 # was ubuntu-latest` | runsOnProblem | rejected | accepted | DEBT-14, 21-REVIEW WR-01: the label is inside a comment |
+| `- package-ecosystem: 'github-actions'` | dependabotEcosystemProblem, dependabotExcludeProblem | rejected | accepted | DEBT-14, 21-REVIEW IN-01: valid YAML spelling |
+| `- package-ecosystem: github-actions` | dependabotEcosystemProblem, dependabotExcludeProblem | rejected | accepted | DEBT-14, 21-REVIEW IN-01: valid YAML spelling |
+| `- package-ecosystem: "github-actions" # keeps pins current` | dependabotEcosystemProblem, dependabotExcludeProblem | rejected | accepted | DEBT-14, 21-REVIEW IN-01: trailing comment |
+| `- package-ecosystem: 'gradle'` | dependabotEcosystemProblem | rejected | accepted | DEBT-14, 21-REVIEW IN-01: same pattern for the gradle entry |
+| exclude-paths items at the key's indent (`    exclude-paths:` then `    - "..."`) | dependabotExcludeProblem | rejected | accepted | DEBT-14, 21-REVIEW IN-01: a sequence may start at its key's indent |
+| `: ./gradlew reportTestForks` | forkCountStepProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: a no-op is not the call |
+| `false && ./gradlew reportTestForks` | forkCountStepProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: a guarded call may never run |
+| `x=1 # ./gradlew reportTestForks` | forkCountStepProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: the call is in a comment |
+| `# ./gradlew reportTestForks` in the run block | forkCountStepProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: a commented-out call |
+| `run: : ./gradlew createConfluentArchive` | archiveStepProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: a no-op is not the call |
+| `run: true` then the shell OR operator then `./gradlew createConfluentArchive` | archiveStepProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: a guarded call |
+| provider declared, `println(6)` printed | forkTaskProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: the task must print the provider it reads |
+| provider declared, `println(other.get())` printed | forkTaskProblem | accepted | rejected | DEBT-14, 21-REVIEW WR-03: the task must print the provider it reads |
+| `runs-on: ubuntu-latest # x` | runsOnProblem | rejected | rejected | must-still-reject control: the floating runner is live code |
+| `runs-on: ubuntu-24.04#x` | runsOnProblem | rejected | rejected | must-still-reject control: no whitespace before `#`, so a wrong runner |
+| `runs-on: ubuntu-24.04` plus `- run: echo ubuntu-latest` | runsOnProblem | rejected | rejected | must-still-reject control: the label outside a comment |
+| `- package-ecosystem: "github-actions'` (mismatched quotes) | dependabotEcosystemProblem, dependabotExcludeProblem | rejected | rejected | must-still-reject control, DEBT-14 IN-01 |
+| an empty exclude-paths list | dependabotExcludeProblem | rejected | rejected | must-still-reject control, DEBT-14 IN-01 |
+| exclude-paths items at the entry's indent | dependabotExcludeProblem | rejected | rejected | must-still-reject control, DEBT-14 IN-01 |
+| exclude-paths key deeper than its items (a line below the key's indent ends the list) | dependabotExcludeProblem | rejected | rejected | must-still-reject control, DEBT-14 IN-01 |
+| `echo "./gradlew reportTestForks"` | forkCountStepProblem | rejected | rejected | must-still-reject control, pre-existing fixture |
+| the real fork-count call line (`./gradlew -q --console=plain reportTestForks` inside `forks="$(...)"`) | forkCountStepProblem | accepted | accepted | control: the real shape is still the call |
+| `run: ./gradlew createConfluentArchive` | archiveStepProblem | accepted | accepted | control: the real shape is still the call |
+
+Timestamp: 2026-10-21T16:45:03Z
 
 Verdict: pass
