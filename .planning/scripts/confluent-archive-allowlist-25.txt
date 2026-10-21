@@ -1,5 +1,6 @@
 # Allow-list for compare-confluent-archives.py (BLD-15, D-05), plan 25-04.
-# Archive A is v1.7.0_gg3 rebuilt from the tag; archive B is the repaired archive on the merge-1 tree.
+# Archive A is v1.7.0_gg3 rebuilt from the tag; archive B is the repaired archive on the merge-1 tree (plan 25-04) and, with the
+# guava, j2objc, jspecify and error_prone rows added by plan 25-08, on the merge-2 tip (upstream tail a6f1df83).
 # Format: glob<TAB>reason. A star matches across slashes (fnmatch). Paths of the outer zip carry the prefix "outer/".
 # Every row must match at least one difference (an unused row fails as STALE-ROW), and every reason names the
 # version bump it allows, read from the VERSION lines of the compare output (pom.properties of each bundled jar).
@@ -20,5 +21,16 @@ META-INF/DEPENDENCIES	httpclient5 5.6.2 -> 5.6.5 (the DEPENDENCIES report of the
 META-INF/maven/org.apache.httpcomponents.client5/httpclient5/*	httpclient5 5.6.2 -> 5.6.5 (pom.properties and pom.xml)
 META-INF/maven/org.apache.httpcomponents.core5/httpcore5/*	httpcore5 5.4.3 -> 5.4.4 (pom.properties and pom.xml)
 META-INF/maven/org.apache.httpcomponents.core5/httpcore5-h2/*	httpcore5-h2 5.4.3 -> 5.4.4 (pom.properties and pom.xml)
-com/google/errorprone/annotations/*	error_prone_annotations 2.38.0 -> 2.48.0 (classes)
-META-INF/maven/com.google.errorprone/error_prone_annotations/*	error_prone_annotations 2.38.0 -> 2.48.0 (pom.properties and pom.xml)
+com/google/errorprone/annotations/*	error_prone_annotations 2.38.0 -> 2.50.0 (classes)
+META-INF/maven/com.google.errorprone/error_prone_annotations/*	error_prone_annotations 2.38.0 -> 2.50.0 (pom.properties and pom.xml)
+com/google/common/*	guava 33.4.6-jre -> 33.7.2-jre (classes; upstream's guava override replaces client-v2's transitive 33.4.6-jre)
+com/google/thirdparty/*	guava 33.4.6-jre -> 33.7.2-jre (publicsuffix classes bundled in guava)
+META-INF/maven/com.google.guava/guava/*	guava 33.4.6-jre -> 33.7.2-jre (pom.properties and pom.xml)
+META-INF/proguard/base.pro	guava 33.4.6-jre -> 33.7.2-jre (guava's ProGuard rules)
+META-INF/proguard/collect.pro	guava 33.4.6-jre -> 33.7.2-jre (guava's ProGuard rules)
+META-INF/proguard/concurrent.pro	guava 33.4.6-jre -> 33.7.2-jre (guava's ProGuard rules)
+META-INF/proguard/io.pro	guava 33.4.6-jre -> 33.7.2-jre (33.7.2 no longer ships io.pro)
+module-info.class	guava 33.4.6-jre -> 33.7.2-jre (33.7.2 ships its module descriptor at the jar root, 33.4.6 under META-INF/versions/9; the root descriptor was jackson-annotations 2.22's and is now guava 33.7.2-jre's, same sha256 as in the guava jar)
+com/google/j2objc/*	j2objc-annotations 3.0.0 -> 3.1 (classes)
+META-INF/maven/com.google.j2objc/j2objc-annotations/*	j2objc-annotations 3.0.0 -> 3.1 (pom.properties and pom.xml)
+META-INF/versions/9/OSGI-INF/MANIFEST.MF	jspecify 1.0.0 -> 1.0.1 (guava 33.7.2-jre's dependency, selected by conflict resolution; 1.0.0 ships this OSGi manifest, 1.0.1 does not; jspecify has no pom.properties so no VERSION line)

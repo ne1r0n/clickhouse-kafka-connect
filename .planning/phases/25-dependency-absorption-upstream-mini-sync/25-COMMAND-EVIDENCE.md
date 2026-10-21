@@ -31,7 +31,7 @@
 | E-19 | DEPS-02 (step-4 suite gate) | pass |
 | E-20 | SYNC-11 (merge 2 rehearsal) | pass |
 | E-21 | SYNC-11 (merge 2, tail gate, self-test) | pass |
-| E-22 | SYNC-12, BLD-15 (post-merge archive, dependencyInsight, advisories) | pending (plan 25-08) |
+| E-22 | SYNC-12, BLD-15 (post-merge archive, dependencyInsight, advisories) | pass |
 | E-23 | DEBT-15 | pending (plan 25-08) |
 | E-24 | SYNC-12 (two --rerun runs, baseline tag) | pending (plan 25-08) |
 | E-25 | OPS-04 (closing observation) | pending (plan 25-08) |
@@ -1007,5 +1007,140 @@ worktree list: only the main tree (the rehearsal worktree removed)
 The cumulative gate was not run here (D-15: once in plan 25-03, once more at the Phase 29 release gate).
 
 Timestamp: 2026-10-21T17:09:30Z
+
+Verdict: pass
+
+### E-22: The merged tree's archive, dependencyInsight and advisories (SYNC-12, BLD-15)
+
+Commands as run (repository root, branch `sync/v1.7.0`, HEAD `d143a983`, the merge-2 tip; `state.json`, `gradlew.bat` and `milestone.lock` stayed unstaged):
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean createConfluentArchive > /tmp/gsd25/exec/archive-m2.log 2>&1
+cp build/confluent/clickhouse-kafka-connect-v1.7.0_gg3.zip /tmp/gsd25/exec/archive-m2.zip
+python3 -I .planning/scripts/compare-confluent-archives.py /tmp/gsd25/exec/archive-gg3.zip /tmp/gsd25/exec/archive-m2.zip .planning/scripts/confluent-archive-allowlist-25.txt > /tmp/gsd25/exec/cmp-m2-first.txt   # rc 1, before the new rows
+python3 -I .planning/scripts/compare-confluent-archives.py ... > /tmp/gsd25/exec/cmp-m2.txt                                                                           # rc 0, after
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --configuration runtimeClasspath --dependency com.google.guava:guava
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --configuration clickhouseDependencies --dependency com.google.guava:guava
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --configuration runtimeClasspath --dependency org.apache.httpcomponents.client5:httpclient5
+curl -sS NVD cves/2.0?cveId=CVE-2026-102554 and CVE-2026-64607; OSV /v1/vulns/{GHSA-xxph-c9ww-hj94,GHSA-hjcp-jmpx-g3qm,CVE-2026-102554}; OSV POST /v1/query (Maven, 4 coordinates); GitHub REST releases/tags/v33.7.2 of google/guava
+```
+
+```text
+guard: verifyConfluentArchive: 7798 inner entries, no nested jar, no Kafka API class
+build: BUILD SUCCESSFUL in 7s (20 actionable tasks: 20 executed)
+compare before the new rows: totals files-a 7376 files-b 7396; 1543 com/google/common, 24 com/google/j2objc, 4 com/google/thirdparty, 2 guava and 2 j2objc META-INF/maven, 4 META-INF/proguard, 1 META-INF/versions/9/OSGI-INF/MANIFEST.MF and 1 root module-info.class UNALLOWED (exit 1); every other difference already matched a merge-1 row
+```
+
+Allow-list rows added (`.planning/scripts/confluent-archive-allowlist-25.txt`; each names the bump read from a VERSION line, or traced by hash for the two files that have no VERSION line):
+
+```text
+com/google/common/*                                      guava 33.4.6-jre -> 33.7.2-jre (classes)
+com/google/thirdparty/*                                  guava 33.4.6-jre -> 33.7.2-jre (publicsuffix classes bundled in guava)
+META-INF/maven/com.google.guava/guava/*                  guava (pom.properties and pom.xml)
+META-INF/proguard/base.pro, collect.pro, concurrent.pro  guava's ProGuard rules (3 rows)
+META-INF/proguard/io.pro                                 guava (33.7.2 no longer ships it; ONLY-A)
+module-info.class                                        guava (see below)
+com/google/j2objc/*                                      j2objc-annotations 3.0.0 -> 3.1 (classes)
+META-INF/maven/com.google.j2objc/j2objc-annotations/*    j2objc-annotations 3.0.0 -> 3.1 (pom.properties and pom.xml)
+META-INF/versions/9/OSGI-INF/MANIFEST.MF                 jspecify 1.0.0 -> 1.0.1 (see below)
+(2 merge-1 rows retitled)                                error_prone_annotations 2.38.0 -> 2.50.0 (the VERSION line now reads 2.50.0, not 2.48.0)
+```
+
+Two differences the research table did not list, each traced to a jar by sha256 or by listing the Gradle cache copy, and each explained by a version bump:
+
+```text
+module-info.class (jar root): A = 182 bytes, sha256 4b671aff0fc1... = jackson-annotations-2.22.jar; B = 997 bytes, sha256 3c0cb029d620... = guava-33.7.2-jre.jar.
+  guava 33.4.6-jre kept its descriptor under META-INF/versions/9; 33.7.2-jre ships it at the root, so shadow's duplicate pick moved from jackson-annotations to guava. A root descriptor is ignored on the class path.
+META-INF/versions/9/OSGI-INF/MANIFEST.MF (ONLY-A): sha256 a844d62b02a9... is the file inside jspecify-1.0.0.jar; jspecify-1.0.1.jar has no such entry.
+  dependencyInsight (runtimeClasspath and clickhouseDependencies): org.jspecify:jspecify:1.0.0 -> 1.0.1, "By conflict resolution: between versions 1.0.1 and 1.0.0", reached through com.google.guava:guava:33.7.2-jre. jspecify has no pom.properties, so no VERSION line; org/jspecify/* is byte-identical in A and B (6 entries each).
+```
+
+The compare after the rows (`/tmp/gsd25/exec/cmp-m2.txt`, per-entry lines removed, 0 STALE-ROW):
+
+```text
+VERSION at.yawk.lz4:lz4-java 1.12.0 -> 1.12.0
+VERSION com.fasterxml.jackson.core:jackson-annotations 2.22 -> 2.22
+VERSION com.fasterxml.jackson.core:jackson-core 2.22.3 -> 2.22.4
+VERSION com.fasterxml.jackson.core:jackson-databind 2.22.3 -> 2.22.4
+VERSION com.google.code.gson:gson 2.13.1 -> 2.14.0
+VERSION com.google.errorprone:error_prone_annotations 2.38.0 -> 2.50.0
+VERSION com.google.guava:failureaccess 1.0.3 -> 1.0.3
+VERSION com.google.guava:guava 33.4.6-jre -> 33.7.2-jre
+VERSION com.google.guava:listenablefuture 9999.0-empty-to-avoid-conflict-with-guava -> 9999.0-empty-to-avoid-conflict-with-guava
+VERSION com.google.j2objc:j2objc-annotations 3.0.0 -> 3.1
+VERSION commons-codec:commons-codec 1.19.0 -> 1.19.0
+VERSION commons-io:commons-io 2.20.0 -> 2.20.0
+VERSION org.apache.commons:commons-compress 1.28.0 -> 1.28.0
+VERSION org.apache.commons:commons-lang3 3.20.0 -> 3.20.0
+VERSION org.apache.httpcomponents.client5:httpclient5 5.6.2 -> 5.6.5
+VERSION org.apache.httpcomponents.core5:httpcore5 5.4.3 -> 5.4.4
+VERSION org.apache.httpcomponents.core5:httpcore5-h2 5.4.3 -> 5.4.4
+VERSION org.slf4j:slf4j-api 2.0.7 -> 2.0.7
+MANIFEST.MF: identical
+totals files-a 7376 files-b 7396 only-a 91 only-b 111 changed 1820 same 5465
+nested jars in b: 0
+kafka classes in b: 0
+RESULT: PASS
+```
+
+dependencyInsight excerpts (`/tmp/gsd25/exec/insight-guava-runtime.txt`, `insight-guava-chdeps.txt`, `insight-httpclient5.txt`):
+
+```text
+runtimeClasspath:
+com.google.guava:guava:33.7.2-jre
+   Selection reasons:
+      - By conflict resolution: between versions 33.7.2-jre and 33.4.6-jre
+com.google.guava:guava:33.7.2-jre
+\--- runtimeClasspath
+com.google.guava:guava:33.4.6-jre -> 33.7.2-jre
+\--- com.clickhouse:client-v2:0.9.6
+     \--- runtimeClasspath
+
+clickhouseDependencies:
+com.google.guava:guava:33.7.2-jre   (same conflict-resolution reason)
+com.google.guava:guava:33.7.2-jre
+\--- clickhouseDependencies
+com.google.guava:guava:33.4.6-jre -> 33.7.2-jre
+\--- com.clickhouse:client-v2:0.9.6
+     \--- clickhouseDependencies
+
+httpclient5 (runtimeClasspath):
+org.apache.httpcomponents.client5:httpclient5:5.6.5
+   Selection reasons:
+      - By conflict resolution: between versions 5.6.5 and 5.4.4
+org.apache.httpcomponents.client5:httpclient5:5.6.5
+\--- runtimeClasspath
+org.apache.httpcomponents.client5:httpclient5:5.4.4 -> 5.6.5
++--- com.clickhouse:clickhouse-http-client:0.9.6
+\--- com.clickhouse:client-v2:0.9.6
+     \--- runtimeClasspath
+```
+
+Advisory facts, re-queried 2026-10-21 (NVD from 17:17:16Z, two calls 7 s apart; OSV and GitHub finished by 17:17:45Z; JSON in `/tmp/gsd25/exec/adv-*.json`). Each fact names its source. Where the live answer differs from the research table it is marked LIVE.
+
+```text
+CVE-2026-102554 = GHSA-xxph-c9ww-hj94 (guava)
+  NVD    (http 200) CNA cve-coordination@google.com; published 2026-10-09T16:17:20.410, last modified 2026-10-09T18:17:01.380; vulnStatus "Awaiting Analysis"; no CPE configuration listed.
+  NVD    description: CWE-770, Java object deserialization of CompactHashMap, CompactHashSet or MapMakerInternalMap, "Google Guava versions 4.0 through 33.7.1", Denial of Service via OutOfMemoryError.
+  NVD    metrics: CVSS 4.0 8.2 HIGH, CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N/... (source cve-coordination@google.com, type Secondary); SSVC (CISA coordinator): exploitation poc, automatable no, technical impact partial.
+  OSV    GET /v1/vulns/GHSA-xxph-c9ww-hj94 -> 404 "Vulnerability not found, but the following aliases were: CVE-2026-102554"   (LIVE: the GHSA id is not a record of its own)
+  OSV    GET /v1/vulns/CVE-2026-102554 -> 200; aliases [GHSA-xxph-c9ww-hj94]; published 2026-10-09T15:07:16.130Z; a GIT range (introduced 0, fixed commit b931fe9d6d5cf00bc55714ad3308d086f71850fe); no Maven range; the listed versions are failureaccess tags, not guava versions.
+  OSV    POST /v1/query Maven com.google.guava:guava 33.4.6-jre -> {} (no vulnerability); 33.7.2-jre -> {} (no vulnerability).
+  Guava release notes (GitHub REST google/guava v33.7.2, published 2026-09-29T14:53:52Z): the changelog names the advisory link GHSA-xxph-c9ww-hj94 and CVE-2026-102554 and says MapMaker, CompactHashMap and CompactHashSet deserialization no longer eagerly allocate as much memory as a payload requests (a0d0c36432).
+
+CVE-2026-64607 = GHSA-hjcp-jmpx-g3qm (httpclient5)
+  NVD    (http 200) CNA security@apache.org; published 2026-07-31T11:17:11.710, last modified 2026-08-13T17:17:33.733; vulnStatus "Modified".
+  NVD    description: classic I/O HttpClient fails to release the connection on an invalid or unsupported Content-Encoding value; "from 5.0-alpha1 through 5.6.2"; the async model is not affected.
+  NVD    CPE configuration: cpe:2.3:a:apache:httpclient versionStartIncluding 5.0.0, versionEndExcluding 5.6.3.
+  NVD    metrics: CVSS 3.1 5.3 MEDIUM CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L (source 134c704f-..., type Secondary); SSVC: exploitation none, automatable yes, technical impact partial.
+  OSV    GET /v1/vulns/GHSA-hjcp-jmpx-g3qm -> 200; aliases [CVE-2026-64607]; published 2026-07-31T12:30:30Z, modified 2026-09-10T03:50:12Z; ECOSYSTEM range introduced 5.0-alpha1, fixed 5.6.3.
+  OSV    POST /v1/query Maven org.apache.httpcomponents.client5:httpclient5 5.6.2 -> [GHSA-hjcp-jmpx-g3qm]; 5.6.5 -> {} (no vulnerability).
+```
+
+Differences from the research table: none that change a conclusion. Added by the live read: NVD lists no CPE configuration for the guava record (Awaiting Analysis) while its httpclient record lists `5.0.0` up to excluding `5.6.3`; OSV answers a direct GHSA lookup for the guava advisory with "not found" plus the CVE alias, and the OSV guava record carries no Maven range, which is why the Maven query for `33.4.6-jre` returns nothing. No exposure assessment is made here, and nothing is concluded about any source other than the ones named.
+
+`docs/FORK-DELTA.md` now holds the guava and httpclient5 rows in "Adopted wholesale" with these labels, and the "Fork dependency pins" and lz4 rows are compared with upstream's tail catalog (`a6f1df83`): upstream `lz4Java` is `1.11.4`, the fork's Jackson `2.22.4` and gson `2.14.0` are past upstream's `2.22.3` and `2.13.1`, and okhttp, org.json and mockito are upstream's own values.
+
+Timestamp: 2026-10-21T17:19:12Z
 
 Verdict: pass
