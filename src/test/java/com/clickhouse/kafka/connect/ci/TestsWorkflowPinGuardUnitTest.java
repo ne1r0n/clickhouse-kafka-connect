@@ -52,12 +52,14 @@ class TestsWorkflowPinGuardUnitTest {
     private static final Pattern WRITE_FLOW =
             Pattern.compile("^\\s*permissions:\\s*\\{[^}]*:\\s*write\\b[^}]*\\}.*$");
     private static final Pattern LIST_ITEM = Pattern.compile("^\\s*-\\s.*$");
-    private static final Pattern FORK_STEP =
-            Pattern.compile("^(\\s*)-\\s+name:\\s*Report test fork count\\s*(?:\\s#.*)?$");
-    private static final Pattern GRADLEW_REPORT =
-            Pattern.compile("^(?!\\s*(?:echo|printf)\\b).*\\./gradlew\\s.*\\breportTestForks\\b.*$");
     private static final Pattern REGISTER_FORKS =
             Pattern.compile("^tasks\\.register\\(\"reportTestForks\"\\)\\s*\\{\\s*$");
+    private static final Pattern REGISTER_VERIFY_ARCHIVE =
+            Pattern.compile("^tasks\\.register<JavaExec>\\(\"verifyConfluentArchive\"\\)\\s*\\{\\s*$");
+    private static final Pattern REGISTER_CREATE_ARCHIVE =
+            Pattern.compile("^tasks\\.register<Zip>\\(\"createConfluentArchive\"\\)\\s*\\{\\s*$");
+    private static final Pattern CONTINUE_ON_ERROR =
+            Pattern.compile("^\\s*continue-on-error:\\s*+(?!false\\b).*$");
     private static final Pattern EXCLUDE_ITEM =
             Pattern.compile("^\\s*-\\s*[\"']?([^\"'#]+?)[\"']?\\s*(?:#.*)?$");
 
@@ -78,6 +80,13 @@ class TestsWorkflowPinGuardUnitTest {
                     WORKFLOWS_DIR + "integrationTests.yaml",
                     WORKFLOWS_DIR + "pre-release.yaml",
                     WORKFLOWS_DIR + "release.yaml");
+    private static final String FORK_STEP_NAME = "Report test fork count";
+    private static final String FORK_TASK = "reportTestForks";
+    private static final String ARCHIVE_STEP = "Build and verify Confluent archive";
+    private static final String ARCHIVE_TASK = "createConfluentArchive";
+    private static final String VERIFY_TASK = "verifyConfluentArchive";
+    // Taken from the class itself, so renaming or moving it moves the pin with it (CI-20, D-09).
+    private static final String ARCHIVE_CHECK_MAIN = ConfluentArchiveCheck.class.getName();
     private static final String TEST_TASK_READ = "tasks.named<Test>(\"test\")";
     private static final String MAX_PARALLEL_FORKS = "maxParallelForks";
     private static final String RAW_QUOTE = "\"\"\"";
@@ -218,27 +227,69 @@ class TestsWorkflowPinGuardUnitTest {
         return Optional.empty();
     }
 
-    static Optional<String> forkCountStepProblem(List<String> lines) {
+    private static Pattern stepHeader(String stepName) {
+        return Pattern.compile("^(\\s*)-\\s+name:\\s*" + Pattern.quote(stepName) + "\\s*(?:\\s#.*)?$");
+    }
+
+    private static Pattern gradlewCall(String task) {
+        return Pattern.compile(
+                "^(?!\\s*(?:echo|printf)\\b).*\\./gradlew\\s.*\\b" + Pattern.quote(task) + "\\b.*$");
+    }
+
+    /** The lines after the named step's header up to the first non-blank line at or below its indent. */
+    static Optional<List<String>> stepBlock(List<String> lines, String stepName) {
+        Pattern header = stepHeader(stepName);
         for (int i = 0; i < lines.size(); i++) {
-            Matcher step = FORK_STEP.matcher(lines.get(i));
+            Matcher step = header.matcher(lines.get(i));
             if (!step.matches()) {
                 continue;
             }
             int stepIndent = step.group(1).length();
+            List<String> block = new ArrayList<>();
             for (int j = i + 1; j < lines.size(); j++) {
                 String line = lines.get(j);
                 if (!line.isBlank() && indent(line) <= stepIndent) {
                     break;
                 }
-                if (GRADLEW_REPORT.matcher(line).matches()) {
-                    return nprocProblem(lines);
-                }
+                block.add(line);
             }
-            return Optional.of(
-                    "Step 'Report test fork count' in " + WORKFLOW
-                            + " must call './gradlew ... reportTestForks' in its run block");
+            return Optional.of(block);
         }
-        return Optional.of("No step named 'Report test fork count' in " + WORKFLOW);
+        return Optional.empty();
+    }
+
+    static Optional<String> gradlewStepProblem(List<String> lines, String stepName, String task) {
+        Optional<List<String>> block = stepBlock(lines, stepName);
+        if (block.isEmpty()) {
+            return Optional.of("No step named '" + stepName + "' in " + WORKFLOW);
+        }
+        Pattern call = gradlewCall(task);
+        if (block.get().stream().noneMatch(line -> call.matcher(line).matches())) {
+            return Optional.of(
+                    "Step '" + stepName + "' in " + WORKFLOW + " must call './gradlew ... " + task
+                            + "' in its run block");
+        }
+        return Optional.empty();
+    }
+
+    static Optional<String> forkCountStepProblem(List<String> lines) {
+        Optional<String> problem = gradlewStepProblem(lines, FORK_STEP_NAME, FORK_TASK);
+        return problem.isPresent() ? problem : nprocProblem(lines);
+    }
+
+    static Optional<String> archiveStepProblem(List<String> lines) {
+        Optional<String> problem = gradlewStepProblem(lines, ARCHIVE_STEP, ARCHIVE_TASK);
+        if (problem.isPresent()) {
+            return problem;
+        }
+        boolean continuesOnError =
+                stepBlock(lines, ARCHIVE_STEP).orElse(List.of()).stream()
+                        .anyMatch(line -> CONTINUE_ON_ERROR.matcher(line).matches());
+        if (continuesOnError) {
+            return Optional.of(
+                    "Step '" + ARCHIVE_STEP + "' in " + WORKFLOW + " must not set continue-on-error");
+        }
+        return Optional.empty();
     }
 
     static Optional<String> nprocProblem(List<String> lines) {
@@ -278,6 +329,48 @@ class TestsWorkflowPinGuardUnitTest {
         }
         return Optional.of(
                 "tasks.register(\"reportTestForks\") not found in " + BUILD_SCRIPT + " outside comments");
+    }
+
+    /** The lines after the first line matching {@code register}, up to the first line equal to "}". */
+    private static Optional<List<String>> taskBlock(List<String> lines, Pattern register) {
+        for (int i = 0; i < lines.size(); i++) {
+            if (!register.matcher(lines.get(i)).matches()) {
+                continue;
+            }
+            int end = i + 1;
+            while (end < lines.size() && !lines.get(end).equals("}")) {
+                end++;
+            }
+            return Optional.of(lines.subList(i + 1, end));
+        }
+        return Optional.empty();
+    }
+
+    static Optional<String> archiveTaskProblem(List<String> lines) {
+        Optional<List<String>> verify = taskBlock(lines, REGISTER_VERIFY_ARCHIVE);
+        if (verify.isEmpty()) {
+            return Optional.of(
+                    "tasks.register<JavaExec>(\"" + VERIFY_TASK + "\") not found in " + BUILD_SCRIPT
+                            + " outside comments");
+        }
+        String mainClassLine = "mainClass.set(\"" + ARCHIVE_CHECK_MAIN + "\")";
+        if (verify.get().stream().noneMatch(line -> line.strip().equals(mainClassLine))) {
+            return Optional.of(
+                    VERIFY_TASK + " in " + BUILD_SCRIPT + " must run " + ARCHIVE_CHECK_MAIN
+                            + ", the class ConfluentArchiveCheckUnitTest exercises");
+        }
+        Optional<List<String>> create = taskBlock(lines, REGISTER_CREATE_ARCHIVE);
+        if (create.isEmpty()) {
+            return Optional.of(
+                    "tasks.register<Zip>(\"" + ARCHIVE_TASK + "\") not found in " + BUILD_SCRIPT
+                            + " outside comments");
+        }
+        String finalizer = "finalizedBy(\"" + VERIFY_TASK + "\")";
+        if (create.get().stream().noneMatch(line -> line.strip().equals(finalizer))) {
+            return Optional.of(
+                    ARCHIVE_TASK + " in " + BUILD_SCRIPT + " must be finalizedBy(\"" + VERIFY_TASK + "\")");
+        }
+        return Optional.empty();
     }
 
     static Optional<String> dependabotExcludeProblem(List<String> lines, Predicate<String> exists) {
@@ -1017,5 +1110,121 @@ class TestsWorkflowPinGuardUnitTest {
                                 "    doLast { println(6) } // tasks.named<Test>(\"test\").maxParallelForks",
                                 "}")),
                 ktsRejects("/*\n/* inner */\n" + REGISTER_BLOCK + "\n*/"));
+    }
+
+    private static final String ARCHIVE_STEP_HEADER = "      - name: " + ARCHIVE_STEP;
+    private static final String ARCHIVE_CALL = "        run: ./gradlew createConfluentArchive";
+    private static final String FINALIZED_BY = "    finalizedBy(\"verifyConfluentArchive\")";
+    private static final String CHECK_MAIN_LINE = "    mainClass.set(\"" + ARCHIVE_CHECK_MAIN + "\")";
+    private static final String CREATE_ARCHIVE_OPEN = "tasks.register<Zip>(\"createConfluentArchive\") {";
+    private static final String VERIFY_ARCHIVE_OPEN = "tasks.register<JavaExec>(\"verifyConfluentArchive\") {";
+    private static final String CREATE_ARCHIVE_BLOCK =
+            String.join(
+                    "\n",
+                    CREATE_ARCHIVE_OPEN,
+                    "    group = \"Confluent\"",
+                    "    dependsOn(\"prepareConfluentArchive\")",
+                    FINALIZED_BY,
+                    "}");
+    private static final String VERIFY_ARCHIVE_BLOCK =
+            String.join(
+                    "\n",
+                    VERIFY_ARCHIVE_OPEN,
+                    "    group = \"verification\"",
+                    CHECK_MAIN_LINE,
+                    "    argumentProviders.add(CommandLineArgumentProvider { listOf(\"a\") })",
+                    "}");
+    private static final String ARCHIVE_TASKS = CREATE_ARCHIVE_BLOCK + "\n\n" + VERIFY_ARCHIVE_BLOCK;
+
+    private static List<String> archiveStep(String... body) {
+        List<String> lines = new ArrayList<>(List.of("    steps:", ARCHIVE_STEP_HEADER));
+        lines.addAll(Arrays.asList(body));
+        return lines;
+    }
+
+    private static Executable archiveTasksAccept(String text) {
+        return accepts(text.replace("\n", " / "), archiveTaskProblem(ktsCode(text)));
+    }
+
+    private static Executable archiveTasksReject(String text) {
+        return rejects(text.replace("\n", " / "), archiveTaskProblem(ktsCode(text)));
+    }
+
+    @Test
+    @DisplayName(
+            "tests.yaml builds and verifies the Confluent archive in a named step that calls ./gradlew"
+                    + " createConfluentArchive (CI-20)")
+    void archiveStepBuildsAndVerifiesTheConfluentArchive() throws IOException {
+        assertNoProblem(archiveStepProblem(nonCommentLines(WORKFLOW)));
+    }
+
+    @Test
+    @DisplayName(
+            "build.gradle.kts registers verifyConfluentArchive running ConfluentArchiveCheck and"
+                    + " finalizes createConfluentArchive with it (CI-20)")
+    void buildScriptFinalizesCreateConfluentArchiveWithItsVerification() throws IOException {
+        assertNoProblem(
+                archiveTaskProblem(ktsCode(Files.readString(BUILD_SCRIPT, StandardCharsets.UTF_8))));
+    }
+
+    @Test
+    @DisplayName("fixture: Confluent archive rules accept the real step and task shapes (CI-20)")
+    void archiveRulesAcceptTheRealShapes() {
+        Function<List<String>, Optional<String>> rule =
+                TestsWorkflowPinGuardUnitTest::archiveStepProblem;
+        assertAll(
+                accepts(rule, archiveStep(ARCHIVE_CALL)),
+                accepts(rule, archiveStep("        run: |", "          ./gradlew --console=plain createConfluentArchive")),
+                accepts(
+                        rule,
+                        plus(
+                                archiveStep(ARCHIVE_CALL),
+                                "",
+                                "      - name: Run tests",
+                                "        run: ./gradlew test")),
+                accepts(rule, archiveStep(ARCHIVE_CALL, "        continue-on-error: false")),
+                archiveTasksAccept(ARCHIVE_TASKS),
+                archiveTasksAccept(VERIFY_ARCHIVE_BLOCK + "\n\n" + CREATE_ARCHIVE_BLOCK),
+                archiveTasksAccept(
+                        "// finalizedBy(\"other\")\n" + ARCHIVE_TASKS + "\n/* tasks.register<Zip>(\"x\") {\n*/"));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: Confluent archive rules reject a missing or renamed step, a renamed task, an echoed"
+                    + " call, continue-on-error, another main class and a dropped or misplaced finalizedBy"
+                    + " (CI-20)")
+    void archiveRulesRejectMissingRenamedOrUnfinalizedShapes() {
+        Function<List<String>, Optional<String>> rule =
+                TestsWorkflowPinGuardUnitTest::archiveStepProblem;
+        assertAll(
+                rejects(rule, "    steps:", "      - name: Run tests", "        run: ./gradlew test"),
+                rejects(
+                        rule,
+                        "    steps:",
+                        "      - name: Build Confluent archive",
+                        "        run: ./gradlew createConfluentArchive"),
+                rejects(rule, archiveStep("        run: ./gradlew confluentJar")),
+                rejects(rule, archiveStep("        run: |", "          echo \"./gradlew createConfluentArchive\"")),
+                rejects(rule, archiveStep(ARCHIVE_CALL, "        continue-on-error: true")),
+                archiveTasksReject(CREATE_ARCHIVE_BLOCK),
+                archiveTasksReject(
+                        ARCHIVE_TASKS.replace(
+                                VERIFY_ARCHIVE_OPEN,
+                                "tasks.register<JavaExec>(\"verifyConfluentArchives\") {")),
+                archiveTasksReject(
+                        ARCHIVE_TASKS.replace(
+                                ARCHIVE_CHECK_MAIN, "com.clickhouse.kafka.connect.ci.OtherCheck")),
+                archiveTasksReject(ARCHIVE_TASKS.replace(FINALIZED_BY + "\n", "")),
+                archiveTasksReject(
+                        ARCHIVE_TASKS.replace(FINALIZED_BY, "    // finalizedBy(\"verifyConfluentArchive\")")),
+                archiveTasksReject(
+                        "tasks.register<Copy>(\"prepareConfluentArchive\") {\n"
+                                + FINALIZED_BY
+                                + "\n}\n\n"
+                                + CREATE_ARCHIVE_BLOCK.replace(FINALIZED_BY + "\n", "")
+                                + "\n\n"
+                                + VERIFY_ARCHIVE_BLOCK),
+                archiveTasksReject(VERIFY_ARCHIVE_BLOCK));
     }
 }

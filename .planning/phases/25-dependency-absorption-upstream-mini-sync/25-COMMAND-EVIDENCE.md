@@ -24,8 +24,8 @@
 | E-12 | BLD-16 (worker jars and bless run) | pass |
 | E-13 | BLD-16 (reference test) | pass |
 | E-14 | CI-20 (verifyConfluentArchive controls) | pass |
-| E-15 | CI-20 (pin-guard red run) | pending (plan 25-06) |
-| E-16 | CI-20 (pin-guard green run) | pending (plan 25-06) |
+| E-15 | CI-20 (pin-guard red run) | pass |
+| E-16 | CI-20 (pin-guard green run) | pass |
 | E-17 | DEBT-14 (pin-guard red run) | pending (plan 25-06) |
 | E-18 | DEBT-14 (pin-guard green run, accept-set changes) | pending (plan 25-06) |
 | E-19 | DEPS-02 (step-4 suite gate) | pending (plan 25-07) |
@@ -714,5 +714,59 @@ Kafka API class: org/apache/kafka/connect/connector/ConnectRecord.class
 The nested control reports 26 violations where the planning-time prototype reported 25; only the first 20 violations are listed (the cap), so the split of the 26 into nested jars and any other class is not decomposed here; the `nested jar:` lines and the non-zero exit are the contract. A first attempt at the Kafka control failed to edit the file (BSD `sed` error) and so built the unmodified tree with exit 0; that run was discarded and redone with a Python edit, which is the run above.
 
 Timestamp: 2026-10-21T16:38:15Z
+
+Verdict: pass
+
+### E-15: CI-20 pin-guard red run (D-09)
+
+Refactor first, without behaviour change: `stepBlock` and `gradlewStepProblem(lines, stepName, task)` are built from `Pattern.quote(stepName)` and `Pattern.quote(task)` in the shapes of the former `FORK_STEP` and `GRADLEW_REPORT` (both dropped); `forkCountStepProblem` delegates to it and then to `nprocProblem` with byte-identical messages. `archiveStepProblem` and `archiveTaskProblem` were accept-all stubs for this run. Four CI-20 tests were added with the exact display names of the plan; the constant `ARCHIVE_CHECK_MAIN` is `ConfluentArchiveCheck.class.getName()`.
+
+```text
+$ env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun   # ci20-red.{log,rc,xml}
+exit code: 1
+Tests summary: 33 tests, 32 succeeded, 1 failed, 0 skipped
+failed: fixture: Confluent archive rules reject a missing or renamed step, a renamed task, an echoed call, continue-on-error, another main class and a dropped or misplaced finalizedBy (CI-20)
+```
+
+The two real-file CI-20 tests and the accept-fixture test passed against the stubs (the stubs accept everything), and all 29 pre-existing tests passed after the refactor. The reject test failed once per reject fixture (each message is "must reject '<fixture>' but the rule accepted it"):
+
+```text
+ 1 missing step:      steps: / - name: Run tests / run: ./gradlew test
+ 2 renamed step:      steps: / - name: Build Confluent archive / run: ./gradlew createConfluentArchive
+ 3 renamed task:      steps: / - name: Build and verify Confluent archive / run: ./gradlew confluentJar
+ 4 echoed call:       steps: / - name: Build and verify Confluent archive / run: | / echo "./gradlew createConfluentArchive"
+ 5 continue-on-error: steps: / - name: Build and verify Confluent archive / run: ./gradlew createConfluentArchive / continue-on-error: true
+ 6 missing register:  tasks.register<Zip>("createConfluentArchive") { ... finalizedBy("verifyConfluentArchive") } alone (no verifyConfluentArchive register)
+ 7 renamed register:  the same pair with tasks.register<JavaExec>("verifyConfluentArchives")
+ 8 other main class:  the same pair with mainClass.set("com.clickhouse.kafka.connect.ci.OtherCheck")
+ 9 dropped finalizedBy: createConfluentArchive block without the finalizedBy line
+10 commented finalizedBy: the line replaced by // finalizedBy("verifyConfluentArchive")
+11 misplaced finalizedBy: finalizedBy inside prepareConfluentArchive, not inside createConfluentArchive
+12 missing createConfluentArchive block: the verifyConfluentArchive block alone
+```
+
+Fixture 12 is one more than the plan's list of eleven; it covers the plan's "a missing createConfluentArchive block gives its own not-found message" and was seen red like the rest. The predicted red set (33 tests, exactly the reject-fixture test failing, one failure per reject fixture) is matched.
+
+Timestamp: 2026-10-21T16:40:58Z
+
+Verdict: pass
+
+### E-16: CI-20 pin-guard green run, per-file spotless and full testUnit
+
+Rules implemented. `archiveStepProblem` = `gradlewStepProblem(lines, ARCHIVE_STEP, ARCHIVE_TASK)`, then any `continue-on-error:` line in the step block whose value is not `false` is a problem. `archiveTaskProblem`: the `verifyConfluentArchive` JavaExec register must exist, its block (to the first line equal to `}`) must hold `mainClass.set("<ConfluentArchiveCheck.class.getName()>")`, and the `createConfluentArchive` block must hold `finalizedBy("verifyConfluentArchive")`; each failure has its own message.
+
+A first green run failed one of my accept fixtures (`continue-on-error: false` was rejected): the pattern `continue-on-error:\s*(?!false\b).*` let `\s*` backtrack to zero characters so the lookahead saw the space. The pattern was changed to the possessive `\s*+`; the fixture was not touched. This is the only rule defect met in the task.
+
+```text
+$ ... testUnit --tests '*TestsWorkflowPinGuardUnitTest' --rerun   # ci20-green.{log,xml}
+Tests summary: 33 tests, 33 succeeded, 0 failed, 0 skipped
+$ ... testUnit --rerun   # testunit-ci20.log
+Test result: SUCCESS
+Tests summary: 854 tests, 852 succeeded, 0 failed, 2 skipped
+```
+
+Spotless (per-file recipe, detached HEAD worktree, `spotlessApply` rewrote 47 baseline files, which shows it ran): the class is byte-identical after it (`cmp` silent). The worktree was removed.
+
+Timestamp: 2026-10-21T16:41:09Z
 
 Verdict: pass
