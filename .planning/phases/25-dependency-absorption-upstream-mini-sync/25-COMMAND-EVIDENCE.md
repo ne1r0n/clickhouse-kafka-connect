@@ -29,7 +29,7 @@
 | E-17 | DEBT-14 (pin-guard red run) | pass |
 | E-18 | DEBT-14 (pin-guard green run, accept-set changes) | pass |
 | E-19 | DEPS-02 (step-4 suite gate) | pass |
-| E-20 | SYNC-11 (merge 2 rehearsal) | pending (plan 25-07) |
+| E-20 | SYNC-11 (merge 2 rehearsal) | pass |
 | E-21 | SYNC-11 (merge 2, tail gate, self-test) | pending (plan 25-07) |
 | E-22 | SYNC-12, BLD-15 (post-merge archive, dependencyInsight, advisories) | pending (plan 25-08) |
 | E-23 | DEBT-15 | pending (plan 25-08) |
@@ -900,5 +900,67 @@ ClickHouseSinkTaskWithSchemaTest#[1] .. #[11]   (the 11 exactlyOnceStateMismatch
 Verify command of the plan (Task 1, `STEP4-SUITE-GREEN`): see the run below.
 
 Timestamp: 2026-10-21T16:56:30Z
+
+Verdict: pass
+
+### E-20: Merge 2 rehearsal (SYNC-11)
+
+Commands as run (main tree HEAD `89900043`, branch `sync/v1.7.0`; rehearsal in the throwaway worktree `/tmp/gsd25/wt-m2`, detached at that HEAD):
+
+```bash
+git ls-remote upstream main; git rev-parse refs/remotes/upstream/main; git ls-remote --tags upstream
+git merge-tree --write-tree --name-only HEAD a6f1df839c079180bc7c343b5823f205e204dafc > /tmp/gsd25/exec/m2-merge-tree.txt   # exit 1
+git worktree add --detach /tmp/gsd25/wt-m2 HEAD
+git -C /tmp/gsd25/wt-m2 merge --no-commit a6f1df839c079180bc7c343b5823f205e204dafc
+# resolve .gitignore (union) and gradle/libs.versions.toml ([versions] hunk), git add both, git commit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava compileIntegrationTestJava   # in the worktree
+# record commit in the worktree, then the unedited tail gate from the main tree:
+PRE_TAG=$(git rev-parse HEAD) UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt \
+  bash /tmp/gsd25/wt-m2/.planning/scripts/verify-merge-invariants.sh a9f9e8ff6275a474c09b876a71195efa30bc76be HEAD
+```
+
+```text
+ls_remote_upstream_main: a6f1df839c079180bc7c343b5823f205e204dafc refs/heads/main
+refs_remotes_upstream_main: a6f1df839c079180bc7c343b5823f205e204dafc
+upstream_tags_newer_than_v1.7.0: none (newest tag refs/tags/v1.7.0 = 379b8d018c090ba5279c2a9f86dbfe4934a19329)
+merge_tree_tree: 3360f9dcb81cdaf896bace85bd909aeae9e1d171 (exit 1)
+merge_tree_conflicted: .gitignore, gradle/libs.versions.toml   (Auto-merging build.gradle.kts, no marker)
+rehearsal_merge_sha: a9f9e8ff6275a474c09b876a71195efa30bc76be
+rehearsal_merge_parents: 899000433021cd3e4ad5119febafd5359217fb22 a6f1df839c079180bc7c343b5823f205e204dafc
+rehearsal_merge_changed_vs_first_parent: .gitignore, build.gradle.kts, gradle/libs.versions.toml (no added file)
+rehearsal_compile: compileJava compileIntegrationTestJava BUILD SUCCESSFUL in 9s (15 actionable tasks: 15 executed)
+rehearsal_records_sha: 4fabac3f16674fc03ec27de1c829de9be17f833b
+rehearsal_gate: invariants: provenance_paths=3 anchor_commits=2 anchor_rows=71 marker_commits=14 anchor_exempt=0 result=PASS
+rehearsal_gate_stderr_bytes: 0
+```
+
+The resolved `[versions]` block (identical to the resolution table in `.planning/MERGE-CHECKLIST-v1.7.0-tail.md` Section 1a): `clickHouseDriver = "0.9.6"`, `kafka = "4.4.0"  # FORK OVERRIDE (upstream 2.7.0)`, `gson = "2.14.0"`, `jackson = "2.22.4"`, `jacksonAnnotations = "2.22"`, `httpclient = "5.6.5"`, `lombok = "1.18.48"`, `lz4Java = "1.12.0"`, `guava = "33.7.2-jre"`; no `httpclientTest` line, no `httpclient5-test` library row.
+
+Catalog diff, resolved file against the first parent (the fork): the `httpclientTest` line removed, the `guava` version line added, the `httpclient5-test` library row replaced by the `guava` library row (4 changed lines). The resolved catalog against the second parent (upstream) differs only in fork values the plan keeps:
+
+```text
+-kafka = "2.7.0"
+-gson = "2.13.1"
+-jackson = "2.22.3"
++kafka = "4.4.0"  # FORK OVERRIDE (upstream 2.7.0)
++gson = "2.14.0"
++jackson = "2.22.4"
+-lombok = "1.18.46"
+-lz4Java = "1.11.4"
++lombok = "1.18.48"
++lz4Java = "1.12.0"
+-commonsLang3 = "3.20.0"
+-slf4j = "2.0.18"
++commonsLang3 = "3.21.0"
++slf4j = "2.0.20"
+-spotless = "8.10.1"
+-shadow = "8.3.5"
++spotless = "8.10.4"
++shadow = "9.6.1"
+```
+
+`build.gradle.kts` auto-merged: `implementation(libs.guava)`, `clickhouseDependencies(libs.guava) // temp to override client's with CVE`, and the integration-test `libs.httpclient5.test` became `libs.httpclient5`; the fork's Shadow repair and `verifyConfluentArchive` are untouched. `.gitignore` union against the first parent: a blank line, `# ecliose`, `.classpath`, `.project`, `.settings/` added after the fork's `/bin/`, `.vscode`, `.gsd` lines (upstream's typo kept; each non-blank line once; no conflict marker).
+
+Timestamp: 2026-10-21T17:12:00Z
 
 Verdict: pass
