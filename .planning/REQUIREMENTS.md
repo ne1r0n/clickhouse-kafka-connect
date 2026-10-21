@@ -38,7 +38,7 @@
   - an entry-by-entry SHA-256 compare against the `v1.7.0_gg3` archive (7,376 entries, 24-COMMAND-EVIDENCE E-04) differs only by an allow-listed set (version bumps, guava and its five small dependencies);
   - `MANIFEST.MF` is unchanged apart from versions (`addMultiReleaseAttribute` decision recorded);
   - the repair and the compare are recorded as evidence.
-- [ ] **BLD-16**: `connect-api` 4.4.0 is proven compile-time only:
+- [x] **BLD-16**: `connect-api` 4.4.0 is proven compile-time only:
   - the archive contains no Connect API classes;
   - the compiled connector references no Connect API member that is absent from the production worker's API, Apache Kafka 3.9 (`cp-kafka-connect-base:7.9.7`), nor any member added after 4.1.1 (bytecode evidence against both jars);
   - FORK-DELTA's "production Connect API version" sentence is corrected to say the worker supplies the API at runtime, and the `ClickHouseSinkTask` comment and the three DLQ-emulation Javadocs are updated.
@@ -136,7 +136,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEPS-02 | Phase 25 | Complete |
 | DEPS-03 | Phase 25 | Complete |
 | BLD-15 | Phase 25 | Complete |
-| BLD-16 | Phase 25 | Pending |
+| BLD-16 | Phase 25 | Complete |
 | CI-20 | Phase 25 | Pending |
 | SYNC-11 | Phase 25 | Pending |
 | SYNC-12 | Phase 25 | Pending |
