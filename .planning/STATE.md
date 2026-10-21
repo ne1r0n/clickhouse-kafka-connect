@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 26
 current_phase_name: Size-Named Tuple Elements in Discovery
 status: executing
-stopped_at: Completed 26-03-PLAN.md
-last_updated: "2026-10-21T21:27:57.897Z"
+stopped_at: Completed 26-04-PLAN.md
+last_updated: "2026-10-21T21:41:38.173Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 26 execution started
-state_head: 6d92541975bdfc375a5f70a35366ea05358f3cec
+state_head: d7def3d02a8d434ed6af1077b2d84e809a7cc1f6
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 after Phase 25)
 ## Current Position
 
 Phase: 26 (Size-Named Tuple Elements in Discovery) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-21 — Phase 26 execution started
 
@@ -176,6 +176,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 26 P01 | 14 min | 3 tasks | 102 files |
 | Phase 26 P02 | 11 min | 3 tasks | 9 files |
 | Phase 26 P03 | 15 min | 3 tasks | 38 files |
+| Phase 26 P04 | 25 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -220,6 +221,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 26]: 26-03: the size-name classifier is DescribeTableBuilder.decide, the parent reading is the public ParentShape, and the verdict reaches Table.updateParent as Column.declaredElement — DeclaredNullability gains no second public helper, and Table carries one extra condition instead of a parser
 - [Phase 26]: 26-03: a structural size twin never enters the skip set and never registers its raw type; an unreadable or unknown parent keeps gg3 behaviour with one metadata-only WARN per parent per DESCRIBE — a declared elements children must survive while a structural row below it is still dropped; failing closed never lets a structural row become a Column
 - [Phase 26]: 26-03: FORK-DELTA Adopted-wholesale file counts re-measured against v1.7.0 (37 identical, 14 import-only, 12 fork logic, 10 files only here) — Table.java, ParentShape and DescribeTableBuilder made the earlier counts false for this tree
+- [Phase 26]: Phase 26 plan 04: the round-trip matrix is the catalog minus x08, and a catalog key without a case fails at discovery — x08 is a JSON column whose typed-path rows DESC-05 drops by design; the unit table and the DESC-05 live pins cover it. Pinned both ways: the unchanged class fails exactly the 25 affected keys on the refactor(26-02) tree (E-08) and passes 46 of 46 on the fix tree (E-09).
+- [Phase 26]: Phase 26 plan 04: the rollback to gg3 and block-deduplication interaction stays assumed (research A5) in E-11 — Reasoned from the BEFORE/AFTER state machine, not measured; Phase 29 measures it or words it as a precaution and must not cite it as measured. An upgrade needs no clean stop (every failed put left rows=0, E-08).
 
 ### Pending Todos
 
@@ -262,8 +265,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T21:27:57.725Z
-Stopped at: Completed 26-03-PLAN.md
+Last session: 2026-10-21T21:41:38.012Z
+Stopped at: Completed 26-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
