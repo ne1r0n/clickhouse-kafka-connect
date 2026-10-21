@@ -25,11 +25,11 @@
 
 ### Dependency absorption and tagless mini-sync
 
-- [ ] **DEPS-02**: The working branch contains `origin/custom_build`'s nine Dependabot merges as one merge commit:
+- [x] **DEPS-02**: The working branch contains `origin/custom_build`'s nine Dependabot merges as one merge commit:
   - Gradle wrapper 9.8.1 (#8), `connect-api` 4.4.0 (#9), commons-lang3 3.21.0 (#6), ben-manes versions 0.66.0 (#7), gson 2.14.0 (#13), httpclient5 5.6.5 (#12), Shadow 9.6.1 (#11), jackson 2.22.4 (#14), slf4j 2.0.20 (#15), tip `69cd680b` (re-read with `git ls-remote origin custom_build` immediately before the merge);
   - the full suite (`./gradlew test`, ClickHouse `latest` × client V2) is green on the merged tree, with the same 18 named skips;
   - spotless is baseline-equal, and a `--warning-mode all` run is recorded for the Gradle 9.8.1 Kotlin DSL deprecations with no build-script change.
-- [ ] **DEPS-03**: The anchors invariant holds on the merged tree without editing `verify-merge-invariants.sh`:
+- [x] **DEPS-03**: The anchors invariant holds on the merged tree without editing `verify-merge-invariants.sh`:
   - `fork-anchors.txt` is updated in the merge commit itself (`kafka = "4.4.0"`, the slf4j literal);
   - every published Dependabot commit that violates a pre-merge anchor has a SHA-pinned row in `fork-anchor-exemptions.txt`, generated from the gate's own output;
   - the gate passes on the tip with `PRE_TAG` at the pre-merge rollback tag.
@@ -133,8 +133,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-02 | Phase 25 | Pending |
-| DEPS-03 | Phase 25 | Pending |
+| DEPS-02 | Phase 25 | Complete |
+| DEPS-03 | Phase 25 | Complete |
 | BLD-15 | Phase 25 | Pending |
 | BLD-16 | Phase 25 | Pending |
 | CI-20 | Phase 25 | Pending |

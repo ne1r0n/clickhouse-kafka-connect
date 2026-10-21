@@ -139,7 +139,7 @@ Phase artifacts: `milestones/v1.7.0_gg3-hardening-phases/` · Quick tasks: `mile
      - Two full `--rerun` suite runs on the phase tip are green. That tip is the baseline for Phases 26–28.
   5. *[operator]* The user has created the `dependencies` label and said so directly; a relayed answer is not accepted. The record then states one of two things. Either a Dependabot PR opened since then arrived without the "labels could not be found" comment, or the check is pending the next monthly run (Phase 29 re-checks it).
 
-**Plans:** 2/8 plans executed
+**Plans:** 3/8 plans executed
 
 Plans:
 **Wave 1**
@@ -149,7 +149,7 @@ Plans:
 - [x] 25-02-PLAN.md — DEBT-13: string- and comment-aware `ktsCode` scanner, fixtures seen red first, before any authored `build.gradle.kts` edit
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 25-03-PLAN.md — Pre-flight and merge 1 (`origin/custom_build` 69cd680b) with the kafka anchor edit and gate-generated exemption rows; cumulative gate, self-test, merged-tree Docker-free checks (DEPS-02, DEPS-03)
+- [x] 25-03-PLAN.md — Pre-flight and merge 1 (`origin/custom_build` 69cd680b) with the kafka anchor edit and gate-generated exemption rows; cumulative gate, self-test, merged-tree Docker-free checks (DEPS-02, DEPS-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 25-04-PLAN.md — BLD-15: Shadow 9.6.1 repair of `confluentJar` with two anchors; committed archive compare against `v1.7.0_gg3`
@@ -489,7 +489,7 @@ The four code phases split along the production files that change: the build and
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 2/8 | In Progress | - |
+| 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 3/8 | In Progress | - |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
