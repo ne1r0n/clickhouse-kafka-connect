@@ -22,7 +22,7 @@
 | E-10 | BLD-15 (repair) | pass |
 | E-11 | BLD-15 (compare against v1.7.0_gg3) | pass |
 | E-12 | BLD-16 (worker jars and bless run) | pass |
-| E-13 | BLD-16 (reference test) | pending (plan 25-05) |
+| E-13 | BLD-16 (reference test) | pass |
 | E-14 | CI-20 (verifyConfluentArchive controls) | pending (plan 25-06) |
 | E-15 | CI-20 (pin-guard red run) | pending (plan 25-06) |
 | E-16 | CI-20 (pin-guard green run) | pending (plan 25-06) |
@@ -587,5 +587,47 @@ outer entries under org/apache/kafka 0
 Container cleanup: `docker ps -a --filter name=gsd25 --format '{{.Names}}'` prints nothing.
 
 Timestamp: 2026-10-21T16:24:57Z
+
+Verdict: pass
+
+### E-13: The Connect-member reference test (BLD-16, D-13)
+
+`ConnectApiReferencesUnitTest` (package `com.clickhouse.kafka.connect.ci`, untagged, extends nothing) reads every class file under `com/clickhouse/kafka/connect/` with a `DataInputStream` constant-pool reader, produces the script's `C` and `M` strings, resolves connector-owned owners by reflection (superclass chain, then interfaces, descriptors built from the reflected types), and requires the derived set to be a subset of `src/test/resources/connect-api-references.txt` (read from the classpath as UTF-8).
+
+Research assumption A2 was half right: on the `testUnit` runtime classpath the connector's code source is the jar `build/libs/clickhouse-kafka-connect-v1.7.0_gg3.jar` (the test-fixtures dependency on the main project), not `build/classes/java/main`. The first run failed on the plan's "must be a directory" assertion (`The connector classes must be a directory, but were loaded from file:/.../build/libs/clickhouse-kafka-connect-v1.7.0_gg3.jar`), so the test now reads the code source through `java.nio.file.Path`, opening the jar as a zip file system when it is not a directory. Both forms are covered by the same `derivedReferences(Path)`.
+
+Red control: one `M` line removed from the working copy of the list (`M org/apache/kafka/common/config/AbstractConfig.getBoolean:(Ljava/lang/String;)Ljava/lang/Boolean;`, an entry inherited through a connector class), `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ConnectApiReferencesUnitTest' --rerun`, XML copied to `/tmp/gsd25/exec/refs-red.xml` (3 tests, 1 failure), then `git checkout -- src/test/resources/connect-api-references.txt`:
+
+```text
+ConnectApiReferencesUnitTest > BLD-16: every org.apache.kafka class and member the compiled connector references is in the blessed worker-API list FAILED
+    org.opentest4j.AssertionFailedError: The compiled connector references Kafka API entries missing from the blessed list /connect-api-references.txt. Each is a class or member the production worker's Connect API may lack:
+    M org/apache/kafka/common/config/AbstractConfig.getBoolean:(Ljava/lang/String;)Ljava/lang/Boolean;
+    Check each entry against the worker's connect-api and kafka-clients jars, then re-bless with: python3 -I .planning/scripts/connect-api-refs.py --classes build/classes/java/main --compile-classpath <connect-api>:<kafka-clients> --reference worker=<worker connect-api>:<worker kafka-clients> --write src/test/resources/connect-api-references.txt
+Tests summary: 3 tests, 2 succeeded, 1 failed, 0 skipped
+```
+
+Equality with the script (D-11 and D-13 producers agree): the real-file test temporarily wrote its derived set to `/tmp/gsd25/exec/derived-java.txt` (the write was removed before the commit; the committed class has no `/tmp/` path):
+
+```text
+$ grep -v '^#' src/test/resources/connect-api-references.txt | diff - /tmp/gsd25/exec/derived-java.txt   # empty, exit 0
+derived-java.txt: 176 lines
+```
+
+The five kind anchors are all in the blessed list and were found by the derivation without a swap: `C org/apache/kafka/connect/sink/SinkTask`, `M org/apache/kafka/connect/sink/SinkRecord.topic:()Ljava/lang/String;`, `M org/apache/kafka/connect/header/Headers.size:()I` (InterfaceMethodref), `M org/apache/kafka/connect/sink/SinkTask.context:Lorg/apache/kafka/connect/sink/SinkTaskContext;` (Fieldref), `M org/apache/kafka/common/config/AbstractConfig.getBoolean:(Ljava/lang/String;)Ljava/lang/Boolean;` (inherited through a connector class).
+
+Green:
+
+```text
+testUnit --tests '*ConnectApiReferencesUnitTest' --rerun
+Test result: SUCCESS
+Tests summary: 3 tests, 3 succeeded, 0 failed, 0 skipped
+testUnit --rerun
+Test result: SUCCESS
+Tests summary: 844 tests, 842 succeeded, 0 failed, 2 skipped
+```
+
+Spotless (per-file recipe, detached worktree `/tmp/gsd25/wt-fmt` at HEAD with the new class copied in, `spotlessApply` rewrote 47 baseline files, which shows it ran): the new class is byte-identical after `spotlessApply` (`cmp` silent). The worktree was removed and pruned.
+
+Timestamp: 2026-10-21T16:27:52Z
 
 Verdict: pass
