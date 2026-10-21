@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 25
 current_phase_name: Dependency Absorption & Upstream Mini-Sync
 status: executing
-stopped_at: Completed 25-05-PLAN.md
-last_updated: "2026-10-21T16:30:52.742Z"
+stopped_at: Completed 25-06-PLAN.md
+last_updated: "2026-10-21T16:46:36.069Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 25 execution started
-state_head: 8a598ba3f904771a167676ddb132dcac657f0512
+state_head: bcd492787bdab5676fc7d7725a22ead09501d079
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 25 (Dependency Absorption & Upstream Mini-Sync) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-10-21 — Phase 25 execution started
 
@@ -169,6 +169,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 25 P03 | 45min | 3 tasks | 4 files |
 | Phase 25 P04 | 15min | 2 tasks | 6 files |
 | Phase 25 P05 | 25min | 3 tasks | 9 files |
+| Phase 25 P06 | 15min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,9 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 25]: Generated exemption rows store the pattern without the gate's single-quote display wrapper
 - [Phase 25]: 25-04: confluentJar repaired with Shadow configurations.add (D-01 primary form), addMultiReleaseAttribute false (D-02), shadow block keeps assemble from building *-all.jar (D-03); compare against gg3 PASS with version-bump allow-list only
 - [Phase 25]: 25-05: the production worker's SinkTask (Kafka 3.9) still declares onPartitionsRevoked; wording follows E-12, not the plan's expectation
+- [Phase 25]: D-06/D-07: the Confluent archive rules live once in ConfluentArchiveCheck (test source set, JDK only), run by the verifyConfluentArchive JavaExec and exercised on synthetic archives by ConfluentArchiveCheckUnitTest
+- [Phase 25]: D-09: the pin guard takes verifyConfluentArchive's mainClass from ConfluentArchiveCheck.class.getName(), so the task cannot drift from the class the unit test exercises
+- [Phase 25]: DEBT-14: a gradle call counts as the step's call only at command position after trailing-comment stripping (optional run: key, optional name=$( prefix, then ./gradlew, task as a whole word)
 
 ### Pending Todos
 
@@ -240,8 +244,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T16:30:52.716Z
-Stopped at: Completed 25-05-PLAN.md
+Last session: 2026-10-21T16:46:36.042Z
+Stopped at: Completed 25-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
