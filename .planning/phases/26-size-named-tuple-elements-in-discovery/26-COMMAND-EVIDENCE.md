@@ -16,7 +16,7 @@
 | E-04 | DESC-07 (extraction: testUnit, snapshots, full suite, anchors) | pass |
 | E-05 | DESC-08 (red run on the extraction tree) | pass |
 | E-06 | DESC-08 (fix green, snapshot red set and re-capture) | pass |
-| E-07 | DESC-10 (fix commit: documents, anchors, gate, full suite) | pending (plan 26-03) |
+| E-07 | DESC-10 (fix commit: documents, anchors, gate, full suite) | pass |
 | E-08 | DESC-09 (round-trip on the pre-fix tree) | pending (plan 26-04) |
 | E-09 | DESC-09 (round-trip green on the fix tree) | pending (plan 26-04) |
 | E-10 | DESC-07 (manual CLIENT_VERSION=V1 run) | pending (plan 26-04) |
@@ -294,4 +294,42 @@ Sample snapshot diffs (n02, a declared `size0` Tuple element with a child; x03, 
 ```
 
 Timestamp: 2026-10-21T21:21:28Z
+Verdict: pass
+
+### E-07: The fix commit: documents, anchors, gate and full suite (DESC-10)
+
+Commands as run:
+
+```bash
+git add <explicit paths>; git write-tree > /tmp/gsd26/exec/fix-tree.txt   # a35d87b5...; git diff --quiet (minus gradlew.bat and .planning/state.json) held
+rm -rf build/test-results/test && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd26/exec/suite-26-03.log 2>&1
+git commit   # fix(26-03), explicit index only
+git worktree add --detach /tmp/gsd26/wt-fmt HEAD   # then spotlessApply there, cmp each Java file, git worktree remove --force
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD
+```
+
+```text
+fix commit: 7c00953e fix(26-03): 13 non-snapshot files and 25 re-captured .columns.txt snapshots
+  non-snapshot files: .planning/ROADMAP.md, .planning/phases/26-size-named-tuple-elements-in-discovery/26-COMMAND-EVIDENCE.md, .planning/scripts/fork-anchors.txt, CHANGELOG.md, docs/FORK-DELTA.md, src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java, src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java, src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java, src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java, src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.java, src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java, src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java, src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilderUnitTest.java
+tree-hash equality: HEAD^{tree} a35d87b514ee83136a04f5ee9b23b93e3b77035a == the tree the suite ran on (fix-tree.txt)
+full suite on that tree (client V2, ClickHouse 26.9.19.9): Test result: SUCCESS | Tests summary: 1663 tests, 1645 succeeded, 0 failed, 18 skipped | BUILD SUCCESSFUL in 2m 39s
+  XML files: 96, none older than the suite start; failures 0, errors 0, skipped 18 (the 7 named skips plus the 11 bracketed ClickHouseSinkTaskWithSchemaTest rows)
+  class counts: DescribeFixtureDriftLiveTest 94, DescribeFixturesUnitTest 95, DescribeFixtureSnapshotUnitTest 47, DescribeTableBuilderUnitTest 120, ClickHouseHelperClientForkUnitTest 51, DeclaredNullabilityTest 66, NullableTupleMatrixLiveTest 33
+  DESCRIBE_FIXTURE_DRIFT client=V2 server=26.9.19.9
+  live rows green: DESC-05: describeTable skips rows at any depth below a JSON column and keeps Tuple-in-Tuple sub-columns; DESC-02: bare .size subcolumns no longer leak into the root column set
+spotless: spotlessApply in a detached HEAD worktree leaves ParentShape, DeclaredNullability, DescribeTableBuilder, DescribeTableBuilderUnitTest and ClickHouseHelperClientForkUnitTest byte-identical (cmp); Column.java, Table.java and ClickHouseHelperClient.java differ only in the position of the lombok/org.slf4j import block, the baseline rewrite that predates this phase (E-04 recorded it for ClickHouseHelperClient.java; Table.java is kept in upstream's import order on purpose, since the fork line is the only change it carries)
+tail gate: invariants: provenance_paths=3 anchor_commits=29 anchor_rows=77 marker_commits=41 anchor_exempt=0 result=PASS
+CHANGELOG diff (new section only; everything from "# 1.7.0_gg3, 2026-10-20" down is unchanged):
++# 1.7.0_gg4, unreleased
++
++## Bug Fixes
++
++* A `Tuple` element named `size`, `size0` or `size` followed by digits, at any depth of a column's type, is no longer
++  dropped when the connector reads the table's columns, so the connector now writes the whole tuple for such a column.
++  Earlier releases wrote a shorter one, which the server rejected or, for some values, stored wrong. Rows stored by
++  earlier releases are not repaired (backlog 999.4).
++
+```
+
+Timestamp: 2026-10-21T21:26:17Z
 Verdict: pass
