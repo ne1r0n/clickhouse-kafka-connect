@@ -49,11 +49,14 @@ public class InMemoryDLQ implements ErrorReporter {
     }
 
     /**
-     * Renders the exception headers the way Kafka Connect 4.1.1's {@code
-     * DeadLetterQueueReporter.populateContextHeaders} does: the class name from {@code
-     * getClass().getName()}, the message from {@code getMessage()} and the stack trace from {@code
-     * printStackTrace} as UTF-8. connect-runtime is not on the test classpath, so the algorithm is
-     * reproduced here (22-RESEARCH F3).
+     * Renders the exception headers the way Kafka Connect's {@code
+     * DeadLetterQueueReporter.populateContextHeaders} does as read in 4.1.1's source (22-RESEARCH
+     * F3): the class name from {@code getClass().getName()}, the message from {@code getMessage()}
+     * and the stack trace from {@code printStackTrace} as UTF-8.
+     * The worker supplies the Connect API at runtime, and this reporter comes from the worker's
+     * connect-runtime (Kafka 3.9 on {@code cp-kafka-connect-base:7.9.7}), which is not on the test
+     * classpath, so the algorithm is reproduced here. javap of that worker's method shows the same
+     * three calls (Phase 25 E-12).
      */
     public static ConnectDlqHeaders connectHeaders(Throwable error) {
         return new ConnectDlqHeaders(
