@@ -14,8 +14,8 @@
 | E-02 | OPS-04 (operator answer) | pass |
 | E-03 | DEBT-13 (red run) | pass |
 | E-04 | DEBT-13 (green run, spotless, testUnit) | pass |
-| E-05 | DEPS-02 (pre-flight) | pending (plan 25-03) |
-| E-06 | DEPS-03 (merge 1 rehearsal and exemption rows) | pending (plan 25-03) |
+| E-05 | DEPS-02 (pre-flight) | pass |
+| E-06 | DEPS-03 (merge 1 rehearsal and exemption rows) | pass |
 | E-07 | DEPS-02, DEPS-03 (merge 1, cumulative gate, self-test) | pending (plan 25-03) |
 | E-08 | DEPS-02 (merged-tree Docker-free checks) | pending (plan 25-03) |
 | E-09 | BLD-15 (unrepaired archive) | pending (plan 25-04) |
@@ -162,5 +162,87 @@ The 26 existing tests keep their method names, display names and assertions; the
 Research correction: research Pitfall 10 says `spotlessCheck` fails on "exactly the same 2 files". That is the truncated listing (`Violations also present in 44 other files`, `/tmp/p25/spot-w1.log` line 84), so the baseline is 46 files, as Phase 24 E-60 measured. The per-file check is therefore "the class is byte-identical after spotlessApply", not "spotlessCheck is clean".
 
 Timestamp: 2026-10-21T15:16:39Z
+
+Verdict: pass
+
+### E-05: Pre-flight (refs, origin tip, latest, merge-tree)
+
+Commands as run (repository root, branch `sync/v1.7.0`, HEAD `ade4eb98`):
+
+```bash
+git for-each-ref refs/upstream; git update-ref -d refs/upstream/main; git update-ref -d refs/upstream/v1.6.0
+git for-each-ref refs/upstream; git rev-parse --verify upstream/main 2>/tmp/gsd25/exec/upstream-rp.err
+git ls-remote origin custom_build; git rev-parse origin/custom_build
+colima list; docker image inspect clickhouse/clickhouse-server:latest --format '{{.Id}} {{.Created}}'
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local -q "select version()"
+git merge-tree --write-tree HEAD 69cd680bf548bfb0329142752d37f8a6c3190c26; echo $?
+```
+
+```text
+refs_upstream_before: 789a57c24e71d972b55d3daad6f4393984251160 refs/upstream/main; 789a57c24e71d972b55d3daad6f4393984251160 refs/upstream/v1.6.0
+refs_upstream_after: none
+upstream_main: a6f1df839c079180bc7c343b5823f205e204dafc (stderr empty, no ambiguity warning)
+ls_remote_origin_custom_build: 69cd680bf548bfb0329142752d37f8a6c3190c26
+origin_custom_build_tracking_ref: 69cd680bf548bfb0329142752d37f8a6c3190c26
+colima: profile vz Running
+latest_image: sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b created 2026-10-14T18:05:21Z (not pulled)
+latest_version: 26.9.19.9
+merge_tree_m1_tree: 40488286a8831040061c90f6bed8f9ba85dc32ad
+merge_tree_m1_exit: 0
+```
+
+The only uncommitted tracked file at the start was the orchestrator's `.planning/state.json`, which this plan never stages.
+
+Timestamp: 2026-10-21T15:42:43Z
+
+Verdict: pass
+
+### E-06: Merge 1 rehearsal and the generated exemption rows
+
+Rehearsal in the throwaway worktree `/tmp/gsd25/wt-m1` (detached at `ade4eb98`): `git merge --no-commit --no-ff 69cd680bf548bfb0329142752d37f8a6c3190c26` ("Automatic merge went well; stopped before committing"), the one BLD-08 row of `fork-anchors.txt` moved from `kafka = "4.1.1"` to `kafka = "4.4.0"` (exactly one replacement, no slf4j edit), merge committed.
+
+```bash
+bash /tmp/gsd25/wt-m1/.planning/scripts/verify-merge-invariants.sh 54e63648 HEAD > m1-gate1.out 2> m1-gate1.err   # unedited gate, default env
+python3 -I /tmp/gsd25/exec/gen-exemptions.py m1-gate1.err m1-exemption-rows.tsv
+# rows appended under the DEPS-03 comment line, git commit --amend --no-edit, then the same gate command -> m1-gate2.{out,err}
+```
+
+```text
+gate 1 last line: invariants: provenance_paths=21 anchor_commits=589 anchor_rows=69 marker_commits=636 anchor_exempt=1 result=FAIL
+gate 1 stderr: 18 lines, all "ANCHOR VIOLATION: <short> <path> '<pattern>' expected N got M (<id>)"
+distinct SHAs: 17 (rows: 18)
+gate 1 wall time: 580 s
+rehearsal merge: b87fe42e7584b2e65fecedb7f709317814202c3c (parents ade4eb98060eec661ad0c8f97fc20d91dd5ca2e0 69cd680bf548bfb0329142752d37f8a6c3190c26)
+gate 2 last line: invariants: provenance_paths=21 anchor_commits=589 anchor_rows=69 marker_commits=636 anchor_exempt=19 result=PASS
+gate 2 stderr: empty
+gate 2 wall time: 626 s
+```
+
+Generated rows (full SHA, path, pattern, PR number; the reason field is `Dependabot #N on origin/custom_build, published before the DEPS-02 merge moved this anchor row; exempts only this row at this commit (DEPS-03)`):
+
+| SHA | Path | Pattern | PR |
+|-----|------|---------|----|
+| 69cd680bf548bfb0329142752d37f8a6c3190c26 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #14 |
+| af762b1b25b2107f9e7bd4a8766ea992f4632edf | gradle/libs.versions.toml | `kafka = "4.1.1"` | #15 |
+| 2555fd2b33345e8a4b2f52bd12ebdf430962e337 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #15 |
+| de27d2e916af7f942da5c13b72c5e8a21b59f66a | gradle/libs.versions.toml | `kafka = "4.1.1"` | #14 |
+| d20bae636a55c8ffce616b945738edb291f56924 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #11 |
+| 4b9ddf961ae3a028a143e6f920f2787d4be56ea4 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #12 |
+| 55845c3acac2b30b9a19a940749f84a5a7c56450 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #13 |
+| 83de3b78e84564328ec02a6a70b44b29d05e3d52 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #14 |
+| dba83534f32dc2545ac1e1a58047755d18f9e0f6 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #14 |
+| 5315776f7a150f241a0a6b469b0f74bf43c5db3a | gradle/libs.versions.toml | `kafka = "4.1.1"` | #14 |
+| 71ac96600829dd3503447b1ece42f6a074dcb446 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #7 |
+| 6e7fbbc79ccc021dd35ff5a8ff9a5363a0c8855a | gradle/libs.versions.toml | `kafka = "4.1.1"` | #6 |
+| 75ee14b0bcbb8e21e13f09b0c73e7b0bb3c0c74a | gradle/libs.versions.toml | `kafka = "4.1.1"` | #9 |
+| 6ad5b80c02024ecfe830df7a8a10bf505ecf93d1 | build.gradle.kts | `slf4j-reload4j:2.0.17` | #14 |
+| 6ad5b80c02024ecfe830df7a8a10bf505ecf93d1 | gradle/libs.versions.toml | `kafka = "4.1.1"` | #14 |
+| d84272d78faf137f978e1de23ce7f9d9391e7a39 | build.gradle.kts | `slf4j-reload4j:2.0.17` | #14 |
+| 6d3827a24f8f36b4297c778c5ef340d47cd46ec2 | build.gradle.kts | `slf4j-reload4j:2.0.17` | #14 |
+| 2ccd748678a67380d308a28c736cb7dbbab721b9 | build.gradle.kts | `slf4j-reload4j:2.0.17` | #14 |
+
+Correction to the plan text: the gate prints the pattern wrapped in single quotes (`'<pattern>'`) for display, while an exemption row stores it bare, as the existing `6473e24f` row does. The generator therefore strips that one pair of display quotes and fails if it is absent; the path and the pattern inside the quotes are otherwise byte for byte. Counts matched the research measurement exactly (18 rows, 17 SHAs, 14 `kafka` rows and 4 `slf4j-reload4j:2.0.17` rows, `anchor_exempt=19`).
+
+Timestamp: 2026-10-21T15:42:43Z
 
 Verdict: pass
