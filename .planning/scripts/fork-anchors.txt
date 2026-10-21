@@ -40,7 +40,8 @@ src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transfo
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
 VERSION	v1.7.0_gg3	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
-build.gradle.kts	slf4j-reload4j:2.0.20	1	BLD-08
+gradle/libs.versions.toml	slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }	1	BLD-08
+build.gradle.kts	implementation(libs.slf4j.reload4j)	1	BLD-08
 build.gradle.kts	jacocoForkReport	3	BLD-03
 build.gradle.kts	register<Test>("testUnit")	1	BLD-04
 build.gradle.kts	withCapability("org.lz4:lz4-java")	1	BLD-09
