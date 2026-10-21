@@ -20,7 +20,7 @@
 | E-08 | DEPS-02 (merged-tree Docker-free checks) | pass |
 | E-09 | BLD-15 (unrepaired archive) | pass |
 | E-10 | BLD-15 (repair) | pass |
-| E-11 | BLD-15 (compare against v1.7.0_gg3) | pending (plan 25-04) |
+| E-11 | BLD-15 (compare against v1.7.0_gg3) | pass |
 | E-12 | BLD-16 (worker jars and bless run) | pending (plan 25-05) |
 | E-13 | BLD-16 (reference test) | pending (plan 25-05) |
 | E-14 | CI-20 (verifyConfluentArchive controls) | pending (plan 25-06) |
@@ -393,5 +393,90 @@ fork-anchors.txt: two BLD-15 rows added in the same commit
 Notes: D-01's primary form (Shadow `configurations.add(...)`) shipped; the zipTree fallback was not needed to get a flat jar (E-11 shows whether any difference remained).
 
 Timestamp: 2026-10-21T16:13:00Z
+
+Verdict: pass
+
+### E-11: Archive compare against v1.7.0_gg3 (BLD-15, D-01, D-05)
+
+Baseline: `git worktree add --detach /tmp/gsd25/wt-gg3 v1.7.0_gg3` (HEAD `3376a18f`), `createConfluentArchive` there (Gradle 9.6.1, Shadow 8.3.5 as of the tag), zip copied to `/tmp/gsd25/exec/archive-gg3.zip`, worktree removed and pruned. It reproduces 24-COMMAND-EVIDENCE E-04:
+
+```text
+baseline inner jar sha256: c2514401f76729d17f61bab3d405288801c2b162dba10a58eead3d20e264b36e
+baseline inner jar file entries: 7376
+```
+
+Commands as run (the repaired archive is E-10's):
+
+```bash
+python3 -I .planning/scripts/compare-confluent-archives.py /tmp/gsd25/exec/archive-gg3.zip /tmp/gsd25/exec/archive-m1-repaired.zip .planning/scripts/confluent-archive-allowlist-25.txt > /tmp/gsd25/exec/cmp-m1.txt; echo $?   # 0
+python3 -I ... > /tmp/gsd25/exec/cmp-m1-again.txt; cmp cmp-m1.txt cmp-m1-again.txt                                                                                   # identical
+```
+
+Allow-list rows (`.planning/scripts/confluent-archive-allowlist-25.txt`, glob then reason):
+
+```text
+com/fasterxml/jackson/core/*  ->  jackson-core 2.22.3 -> 2.22.4 (classes)
+com/fasterxml/jackson/databind/*  ->  jackson-databind 2.22.3 -> 2.22.4 (classes)
+META-INF/versions/*/com/fasterxml/jackson/core/internal/shaded/fdp/*  ->  jackson-core 2.22.3 -> 2.22.4 (versioned shaded fdp package renamed v2_22_3 -> v2_22_4)
+META-INF/maven/com.fasterxml.jackson.core/jackson-core/*  ->  jackson-core 2.22.3 -> 2.22.4 (pom.properties and pom.xml)
+META-INF/maven/com.fasterxml.jackson.core/jackson-databind/*  ->  jackson-databind 2.22.3 -> 2.22.4 (pom.properties and pom.xml)
+com/google/gson/*  ->  gson 2.13.1 -> 2.14.0 (classes)
+META-INF/maven/com.google.code.gson/gson/*  ->  gson 2.13.1 -> 2.14.0 (pom.properties and pom.xml)
+META-INF/versions/9/module-info.class  ->  gson 2.13.1 -> 2.14.0 (module descriptor; gson is the jar whose module-info lands at this path)
+org/apache/hc/client5/*  ->  httpclient5 5.6.2 -> 5.6.5 (classes)
+org/apache/hc/core5/*  ->  httpcore5 and httpcore5-h2 5.4.3 -> 5.4.4 (classes)
+org/publicsuffix/list/*  ->  httpclient5 5.6.2 -> 5.6.5 (bundled public suffix list data)
+META-INF/DEPENDENCIES  ->  httpclient5 5.6.2 -> 5.6.5 (the DEPENDENCIES report of the jar that supplies it)
+META-INF/maven/org.apache.httpcomponents.client5/httpclient5/*  ->  httpclient5 5.6.2 -> 5.6.5 (pom.properties and pom.xml)
+META-INF/maven/org.apache.httpcomponents.core5/httpcore5/*  ->  httpcore5 5.4.3 -> 5.4.4 (pom.properties and pom.xml)
+META-INF/maven/org.apache.httpcomponents.core5/httpcore5-h2/*  ->  httpcore5-h2 5.4.3 -> 5.4.4 (pom.properties and pom.xml)
+com/google/errorprone/annotations/*  ->  error_prone_annotations 2.38.0 -> 2.48.0 (classes)
+META-INF/maven/com.google.errorprone/error_prone_annotations/*  ->  error_prone_annotations 2.38.0 -> 2.48.0 (pom.properties and pom.xml)
+```
+
+Compare output without the per-entry lines (the full output, with all 441 CHANGED / ONLY-A / ONLY-B lines, is `/tmp/gsd25/exec/cmp-m1.txt`; the same 441 differences all matched a row, no UNALLOWED line, no STALE-ROW line, no outer-entry difference, and no difference under `com/clickhouse/`):
+
+```text
+VERSION at.yawk.lz4:lz4-java 1.12.0 -> 1.12.0
+VERSION com.fasterxml.jackson.core:jackson-annotations 2.22 -> 2.22
+VERSION com.fasterxml.jackson.core:jackson-core 2.22.3 -> 2.22.4
+VERSION com.fasterxml.jackson.core:jackson-databind 2.22.3 -> 2.22.4
+VERSION com.google.code.gson:gson 2.13.1 -> 2.14.0
+VERSION com.google.errorprone:error_prone_annotations 2.38.0 -> 2.48.0
+VERSION com.google.guava:failureaccess 1.0.3 -> 1.0.3
+VERSION com.google.guava:guava 33.4.6-jre -> 33.4.6-jre
+VERSION com.google.guava:listenablefuture 9999.0-empty-to-avoid-conflict-with-guava -> 9999.0-empty-to-avoid-conflict-with-guava
+VERSION com.google.j2objc:j2objc-annotations 3.0.0 -> 3.0.0
+VERSION commons-codec:commons-codec 1.19.0 -> 1.19.0
+VERSION commons-io:commons-io 2.20.0 -> 2.20.0
+VERSION org.apache.commons:commons-compress 1.28.0 -> 1.28.0
+VERSION org.apache.commons:commons-lang3 3.20.0 -> 3.20.0
+VERSION org.apache.httpcomponents.client5:httpclient5 5.6.2 -> 5.6.5
+VERSION org.apache.httpcomponents.core5:httpcore5 5.4.3 -> 5.4.4
+VERSION org.apache.httpcomponents.core5:httpcore5-h2 5.4.3 -> 5.4.4
+VERSION org.slf4j:slf4j-api 2.0.7 -> 2.0.7
+MANIFEST.MF: identical
+totals files-a 7376 files-b 7395 only-a 51 only-b 70 changed 320 same 7005
+nested jars in b: 0
+kafka classes in b: 0
+RESULT: PASS
+```
+
+Determinism: two runs on the same inputs are byte-identical (`cmp` silent).
+
+Negative controls (all against the gg3 archive as A):
+
+| Control | Inputs | Exit | Proving line |
+|---|---|---|---|
+| unrepaired archive as B | `archive-m1-unrepaired.zip`, real allow-list | 1 | `nested jars in b: 25`, `RESULT: FAIL` |
+| one extra row | allow-list plus `com/example/never/*<TAB>control` | 1 | `STALE-ROW com/example/never/*` |
+| one real row removed | allow-list without the `jackson-core ... (classes)` row | 1 | 85 `UNALLOWED` lines, first `UNALLOWED CHANGED com/fasterxml/jackson/core/filter/FilteringGeneratorDelegate.class` |
+| a zip holding only a text file as B | `neg4.zip` with `note.txt` | 2 | `ERROR: .../neg4.zip: expected exactly one lib/*-confluent.jar, found 0` |
+
+D-01: the primary form (Shadow `configurations.add(...)`) shipped. Every difference is explained by a version bump read from the VERSION lines (jackson-core and jackson-databind 2.22.3 -> 2.22.4, gson 2.13.1 -> 2.14.0, httpclient5 5.6.2 -> 5.6.5, httpcore5 and httpcore5-h2 5.4.3 -> 5.4.4, error_prone_annotations 2.38.0 -> 2.48.0), so the zipTree provider fallback was not used. `META-INF/versions/9/module-info.class` was traced to gson (the sha256 of the changed file equals the one in `gson-2.14.0.jar`, and the old one equals `gson-2.13.1.jar`'s). `META-INF/DEPENDENCIES` was traced to httpclient5 the same way.
+
+X-1: guava 33.4.6-jre and its small dependencies are in the gg3 archive already (their VERSION lines read `x -> x`), so the allow-list holds version bumps only and no row allows an added library. `MANIFEST.MF` of the repaired inner jar is byte-identical to the gg3 one (`VERSION` unchanged in this phase). The outer entries (`manifest.json` ignoring `release_date` and `version`, `assets/logo.svg`, `doc/LICENSE`, `doc/README.md`) are equal.
+
+Timestamp: 2026-10-21T16:25:00Z
 
 Verdict: pass

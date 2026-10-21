@@ -1,0 +1,24 @@
+# Allow-list for compare-confluent-archives.py (BLD-15, D-05), plan 25-04.
+# Archive A is v1.7.0_gg3 rebuilt from the tag; archive B is the repaired archive on the merge-1 tree.
+# Format: glob<TAB>reason. A star matches across slashes (fnmatch). Paths of the outer zip carry the prefix "outer/".
+# Every row must match at least one difference (an unused row fails as STALE-ROW), and every reason names the
+# version bump it allows, read from the VERSION lines of the compare output (pom.properties of each bundled jar).
+# No row may match a com/clickhouse/ path, and no row may be a catch-all.
+# Research X-1: guava 33.4.6-jre and its dependencies are already in the gg3 archive, so no row allows an added library.
+com/fasterxml/jackson/core/*	jackson-core 2.22.3 -> 2.22.4 (classes)
+com/fasterxml/jackson/databind/*	jackson-databind 2.22.3 -> 2.22.4 (classes)
+META-INF/versions/*/com/fasterxml/jackson/core/internal/shaded/fdp/*	jackson-core 2.22.3 -> 2.22.4 (versioned shaded fdp package renamed v2_22_3 -> v2_22_4)
+META-INF/maven/com.fasterxml.jackson.core/jackson-core/*	jackson-core 2.22.3 -> 2.22.4 (pom.properties and pom.xml)
+META-INF/maven/com.fasterxml.jackson.core/jackson-databind/*	jackson-databind 2.22.3 -> 2.22.4 (pom.properties and pom.xml)
+com/google/gson/*	gson 2.13.1 -> 2.14.0 (classes)
+META-INF/maven/com.google.code.gson/gson/*	gson 2.13.1 -> 2.14.0 (pom.properties and pom.xml)
+META-INF/versions/9/module-info.class	gson 2.13.1 -> 2.14.0 (module descriptor; gson is the jar whose module-info lands at this path)
+org/apache/hc/client5/*	httpclient5 5.6.2 -> 5.6.5 (classes)
+org/apache/hc/core5/*	httpcore5 and httpcore5-h2 5.4.3 -> 5.4.4 (classes)
+org/publicsuffix/list/*	httpclient5 5.6.2 -> 5.6.5 (bundled public suffix list data)
+META-INF/DEPENDENCIES	httpclient5 5.6.2 -> 5.6.5 (the DEPENDENCIES report of the jar that supplies it)
+META-INF/maven/org.apache.httpcomponents.client5/httpclient5/*	httpclient5 5.6.2 -> 5.6.5 (pom.properties and pom.xml)
+META-INF/maven/org.apache.httpcomponents.core5/httpcore5/*	httpcore5 5.4.3 -> 5.4.4 (pom.properties and pom.xml)
+META-INF/maven/org.apache.httpcomponents.core5/httpcore5-h2/*	httpcore5-h2 5.4.3 -> 5.4.4 (pom.properties and pom.xml)
+com/google/errorprone/annotations/*	error_prone_annotations 2.38.0 -> 2.48.0 (classes)
+META-INF/maven/com.google.errorprone/error_prone_annotations/*	error_prone_annotations 2.38.0 -> 2.48.0 (pom.properties and pom.xml)
