@@ -54,9 +54,9 @@
 
 - [x] **DESC-06**: A live DESCRIBE spike on ClickHouse `latest` records the rows for the E-15 matrix (13 affected tables, 19 look-alikes, `s4_o01`) and the new shapes (`Array(Array(Tuple(size1, size0)))`, `Array(Tuple(size0 Tuple(a ...)))`, `Array(Tuple(size0 String, size String))`, `Array(Map(String, Tuple(size, size0)))`, `Tuple(keys, values)`), confirms or denies the structural-then-declared double row, and states the classifier rule before any code changes.
 - [x] **DESC-07**: The duplicated V1/V2 DESCRIBE loop is extracted into one fork-owned builder, behaviour-preserving and landing green first, so the 999.4 pin exercises the production loop instead of a copy (closes 23-REVIEW WR-02); one manual `CLIENT_VERSION=V1` run of the helper live tests is recorded.
-- [ ] **DESC-08**: A declared Tuple element named `size`, `size0` or `size<digits>` becomes a `Column` at both drop sites (`shouldSkipDescribeRow` and `Table.updateParent`'s `SIZE_FIELD_MATCHER`), classified on the parent's raw type, array depth and the row's own type; structural rows are still dropped (Array offsets, Nullable null map, Map `keys`/`values`, nested `.size1`, the DESC-05 ancestor walk under JSON/Dynamic), and a structural twin never enters the skip set; a Docker-free unit table of captured real DESCRIBE rows pins the rule.
-- [ ] **DESC-09**: Live round-trip: for every E-15 affected shape, records insert and the typed read-back equals the original records; the DESC-05 regression rows stay green; the D-04 pin flips (no unpaired-element WARN for these tables).
-- [ ] **DESC-10**: FORK-DELTA rows for `ClickHouseHelperClient` and `Table.java`, `fork-anchors.txt` rows, a CHANGELOG line, Known costs item 10 retired, and ROADMAP backlog 999.4 marked delivered in the same commit as the fix.
+- [x] **DESC-08**: A declared Tuple element named `size`, `size0` or `size<digits>` becomes a `Column` at both drop sites (`shouldSkipDescribeRow` and `Table.updateParent`'s `SIZE_FIELD_MATCHER`), classified on the parent's raw type, array depth and the row's own type; structural rows are still dropped (Array offsets, Nullable null map, Map `keys`/`values`, nested `.size1`, the DESC-05 ancestor walk under JSON/Dynamic), and a structural twin never enters the skip set; a Docker-free unit table of captured real DESCRIBE rows pins the rule.
+- [x] **DESC-09**: Live round-trip: for every E-15 affected shape, records insert and the typed read-back equals the original records; the DESC-05 regression rows stay green; the D-04 pin flips (no unpaired-element WARN for these tables).
+- [x] **DESC-10**: FORK-DELTA rows for `ClickHouseHelperClient` and `Table.java`, `fork-anchors.txt` rows, a CHANGELOG line, Known costs item 10 retired, and ROADMAP backlog 999.4 marked delivered in the same commit as the fix.
 
 ### Discovery defect 999.5 (raw identifier as the canonical name form)
 
@@ -142,9 +142,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SYNC-12 | Phase 25 | Complete |
 | DESC-06 | Phase 26 | Complete |
 | DESC-07 | Phase 26 | Complete |
-| DESC-08 | Phase 26 | Pending |
-| DESC-09 | Phase 26 | Pending |
-| DESC-10 | Phase 26 | Pending |
+| DESC-08 | Phase 26 | Complete |
+| DESC-09 | Phase 26 | Complete |
+| DESC-10 | Phase 26 | Complete |
 | NAME-01 | Phase 28 | Pending |
 | NAME-02 | Phase 28 | Pending |
 | NAME-03 | Phase 28 | Pending |

@@ -217,7 +217,7 @@ This phase pushes nothing. Shadow 9's `assemble` also builds a `*-all.jar` that 
      - backlog 999.4, marked delivered.
      The anchors invariant passes at every commit of the phase.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -233,7 +233,7 @@ Plans:
 - [x] 26-04-PLAN.md — DESC-09: live round-trip of 46 shapes and the R-01 value, pinned against the pre-fix tree; manual V1 run; rollout facts
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 26-05-PLAN.md — Phase gate: testUnit, full suite, tail gate and self-test, spotless, origin freeze
+- [x] 26-05-PLAN.md — Phase gate: testUnit, full suite, tail gate and self-test, spotless, origin freeze
 
 **Research flag**: The live DESCRIBE spike (DESC-06) precedes the classifier's plan, and it must confirm the `Array(Tuple(size0 ...))` double-row collision. The scope is decided: the user chose on 2026-10-21 to fix both drop sites, including `size<digits>` under an Array parent in `Table.java`.
 
@@ -507,7 +507,7 @@ The four code phases split along the production files that change: the build and
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 8/8 | Complete    | 2026-10-21 |
-| 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 4/5 | In Progress | - |
+| 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | In Progress | - |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
