@@ -4,17 +4,17 @@ milestone: v1.7.0_gg4-hardening
 milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 25
 current_phase_name: Dependency Absorption & Upstream Mini-Sync
-status: executing
-stopped_at: Completed 25-07-PLAN.md
-last_updated: "2026-10-21T17:10:53.348Z"
+status: verifying
+stopped_at: Completed 25-08-PLAN.md
+last_updated: "2026-10-21T17:29:40.271Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 25 execution started
-state_head: 054131be5ed1bd619d0cdc7ba505b6920da6a34f
+state_head: 31ca99adbba0887f5afe480d7cb890fe57275ab0
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 after starting milestone v1.7.0_gg
 
 Phase: 25 (Dependency Absorption & Upstream Mini-Sync) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-21 — Phase 25 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -171,6 +171,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 25 P05 | 25min | 3 tasks | 9 files |
 | Phase 25 P06 | 15min | 3 tasks | 7 files |
 | Phase 25 P07 | 22min | 3 tasks | 8 files |
+| Phase 25 P08 | 16min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 25]: D-09: the pin guard takes verifyConfluentArchive's mainClass from ConfluentArchiveCheck.class.getName(), so the task cannot drift from the class the unit test exercises
 - [Phase 25]: DEBT-14: a gradle call counts as the step's call only at command position after trailing-comment stripping (optional run: key, optional name=$( prefix, then ./gradlew, task as a whole word)
 - [Phase 25]: Standing merge gate for Phases 26-29: PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD; the cumulative gate .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD (default env) runs once more at the Phase 29 release gate; run the self-test with each gate. — D-15: the tail gate checks merge 2's provenance and walks a short range; the exemption rows keep the cumulative command valid.
+- [Phase 25]: Phase 25 baseline for Phases 26-28: local tag baseline-v1.7.0_gg4 = aa45070953137f612842e730c465937ac5c6ada5 (two green --rerun suite runs on latest x V2 with the 18 named skips; guava 33.7.2-jre on runtimeClasspath; origin/custom_build frozen at 69cd680b). Later phases show their change with git diff baseline-v1.7.0_gg4; Phase 29 names this baseline. — D-17
 
 ### Pending Todos
 
@@ -246,8 +248,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T17:10:53.324Z
-Stopped at: Completed 25-07-PLAN.md
+Last session: 2026-10-21T17:29:40.246Z
+Stopped at: Completed 25-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -48,7 +48,7 @@
   - one mechanical merge commit behind `verify-merge-invariants.sh` with a rollback tag at the pre-merge tip, conflicts only in `.gitignore` and `gradle/libs.versions.toml`;
   - the catalog hunk is resolved to the fork's values for shared keys (`kafka` 4.4.0, `lz4Java` 1.12.0, jackson 2.22.4, gson 2.14.0, lombok 1.18.48), `guava = "33.7.2-jre"` is added, and the orphan `httpclientTest` key is deleted;
   - `.planning/MERGE-CHECKLIST-v1.7.0-tail.md` records the resolution table and the conflicted paths.
-- [ ] **SYNC-12**: The post-sync tree is the baseline for every later phase: two full `--rerun` suite runs are green on `latest` × V2, `dependencyInsight` shows guava 33.7.2 on the runtime classpath, and FORK-DELTA records the guava addition and the httpclient5 pin with their advisories labelled by source.
+- [x] **SYNC-12**: The post-sync tree is the baseline for every later phase: two full `--rerun` suite runs are green on `latest` × V2, `dependencyInsight` shows guava 33.7.2 on the runtime classpath, and FORK-DELTA records the guava addition and the httpclient5 pin with their advisories labelled by source.
 
 ### Discovery defect 999.4 (Tuple element named `size`, `size0`, `size<digits>`)
 
@@ -79,7 +79,7 @@
 
 - [x] **DEBT-13**: `TestsWorkflowPinGuardUnitTest.ktsCode` strips comments string- and line-comment-aware, with fixtures for `/*` inside a string and inside a `//` comment (21-REVIEW WR-02); this lands before the first `build.gradle.kts` edit of the milestone.
 - [x] **DEBT-14**: The pin guard's `runs-on` rule ignores a trailing comment (21-REVIEW WR-01), the fork-count rules reject commented-out or guarded text (WR-03), the `dependabot.yml` reader tolerates valid YAML layouts (IN-01), and the fixture list is derived from the production constant (IN-02); each change is seen red on a fixture.
-- [ ] **DEBT-15**: The `slf4j-reload4j` literal in `build.gradle.kts` moves into the version catalog with its anchor row moved (21-REVIEW IN-04).
+- [x] **DEBT-15**: The `slf4j-reload4j` literal in `build.gradle.kts` moves into the version catalog with its anchor row moved (21-REVIEW IN-04).
 - [ ] **DEBT-16**: `schemaWithFixedStringMismatchTest` fails when `put` does not throw (22-REVIEW IN-04); `CountingHelperClient.useClientV2Calls` is asserted or removed (IN-05, test half); `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare NPE (23-REVIEW IN-03); no existing assertion is deleted or weakened.
 - [ ] **DEBT-17**: `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class this milestone adds, edited once in the last code phase, with the FORK-DELTA row in the same commit.
 
@@ -139,7 +139,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BLD-16 | Phase 25 | Complete |
 | CI-20 | Phase 25 | Complete |
 | SYNC-11 | Phase 25 | Complete |
-| SYNC-12 | Phase 25 | Pending |
+| SYNC-12 | Phase 25 | Complete |
 | DESC-06 | Phase 26 | Pending |
 | DESC-07 | Phase 26 | Pending |
 | DESC-08 | Phase 26 | Pending |
@@ -158,7 +158,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WRT-19 | Phase 27 | Pending |
 | DEBT-13 | Phase 25 | Complete |
 | DEBT-14 | Phase 25 | Complete |
-| DEBT-15 | Phase 25 | Pending |
+| DEBT-15 | Phase 25 | Complete |
 | DEBT-16 | Phase 27 | Pending |
 | DEBT-17 | Phase 28 | Pending |
 | OPS-04 | Phase 25 | Complete |
