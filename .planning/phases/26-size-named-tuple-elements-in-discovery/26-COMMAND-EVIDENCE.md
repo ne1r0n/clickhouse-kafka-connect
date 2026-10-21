@@ -17,8 +17,8 @@
 | E-05 | DESC-08 (red run on the extraction tree) | pass |
 | E-06 | DESC-08 (fix green, snapshot red set and re-capture) | pass |
 | E-07 | DESC-10 (fix commit: documents, anchors, gate, full suite) | pass |
-| E-08 | DESC-09 (round-trip on the pre-fix tree) | pending (plan 26-04) |
-| E-09 | DESC-09 (round-trip green on the fix tree) | pending (plan 26-04) |
+| E-08 | DESC-09 (round-trip on the pre-fix tree) | pass |
+| E-09 | DESC-09 (round-trip green on the fix tree) | pass |
 | E-10 | DESC-07 (manual CLIENT_VERSION=V1 run) | pending (plan 26-04) |
 | E-11 | Rollout facts for Phase 29 | pending (plan 26-04) |
 | E-12 | Phase gate | pending (plan 26-05) |
@@ -332,4 +332,148 @@ CHANGELOG diff (new section only; everything from "# 1.7.0_gg3, 2026-10-20" down
 ```
 
 Timestamp: 2026-10-21T21:26:17Z
+Verdict: pass
+
+### E-08: The round-trip on the pre-fix tree (DESC-09, rollout facts)
+
+The final `TupleSizeNamedElementRoundTripLiveTest` was copied unchanged into a detached worktree of the `refactor(26-02)` commit (the extraction commit, before any behaviour change) and run with that tree's own wrapper. The worktree was removed afterwards.
+
+Commands as run:
+
+```bash
+RF=$(git log -1 --format=%H --grep='^refactor(26-02)')
+git worktree add --detach /tmp/gsd26/wt-pre "$RF"
+cp src/test/java/com/clickhouse/kafka/connect/sink/TupleSizeNamedElementRoundTripLiveTest.java /tmp/gsd26/wt-pre/src/test/java/com/clickhouse/kafka/connect/sink/
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd26/wt-pre/gradlew -p /tmp/gsd26/wt-pre --console=plain test --tests '*TupleSizeNamedElementRoundTripLiveTest' --rerun > /tmp/gsd26/exec/roundtrip-pre.log 2>&1; echo $? > /tmp/gsd26/exec/roundtrip-pre.rc
+git worktree remove --force /tmp/gsd26/wt-pre && git worktree prune
+```
+
+```text
+worktree SHA: 9c1860464150c88a013e9373fdaf44e3821d9e3e (refactor(26-02))
+rc: 1  (Tests summary: 46 tests, 21 succeeded, 25 failed, 0 skipped)
+server: 26.9.19.9, image sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b (the E-01 image)
+failing set == "DESC-09 round-trip: k" for the 25 keys of A (E-02 affected_prefix), nothing else; the 21 other cases passed
+every failed put left rows=0 and named its server code: 24 x CANNOT_READ_ALL_DATA, 1 x ATTEMPT_TO_READ_AFTER_EOF (n03)
+r01 (the crafted value, outcome=stored match=no) was measured as stored size 1667391751 and hex(v) 78797A, expected 7 and 6162630378797A;
+  this equals the gg3 R-01 result recorded in 23-EVIDENCE ((1667391751,'xyz'), hex 78797A)
+TUPLE_SIZE_ROUND_TRIP key=s4_a01 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a02 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a03 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a04 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a05 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a06 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a07 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a08 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a09 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a10 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a11 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a12 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_a13 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=s4_u01 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u02 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u03 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u04 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u05 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u06 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u07 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u08 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u09 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u10 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u11 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u12 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u13 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u14 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u15 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u16 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u17 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u18 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u19 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_o01 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=n01 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=n02 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=n03 outcome=failed code=ATTEMPT_TO_READ_AFTER_EOF rows=0
+TUPLE_SIZE_ROUND_TRIP key=n04 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=n05 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x01 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=x02 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=x03 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=x04 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=x05 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=x06 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=x07 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
+TUPLE_SIZE_ROUND_TRIP key=r01 outcome=stored match=no
+```
+
+Timestamp: 2026-10-21T21:36:19Z
+Verdict: pass
+
+### E-09: The round-trip on the fix tree (DESC-09, D-08, D-09, D-11)
+
+The same class on the fix tree (HEAD `afd4c2e5` plus the new class; the fix is `7c00953e`). Each case also asserted zero WARN on the `ClickHouseHelperClient` and `DeclaredNullability` loggers across the sink task's discovery and a second direct `describeTable` (D-10 live half), and re-read the table after that second describe.
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*TupleSizeNamedElementRoundTripLiveTest' --rerun > /tmp/gsd26/exec/roundtrip-fix.log 2>&1
+cp build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.TupleSizeNamedElementRoundTripLiveTest.xml /tmp/gsd26/exec/roundtrip-fix.xml
+git worktree add --detach /tmp/gsd26/wt-fmt HEAD   # class copied in, spotlessApply, cmp: byte-identical; worktree removed
+```
+
+```text
+Tests summary: 46 tests, 46 succeeded, 0 failed, 0 skipped  (no x08 case; x08 is a JSON column, DESC-05, excluded with its reason in the class)
+server: 26.9.19.9 (same image as E-08)
+all 25 cases of A stored and matched; the 19 look-alikes, s4_o01 and n05 stored and matched, exactly as on the pre-fix tree
+r01: tupleElement(c, 'size') = 7 and hex(tupleElement(c, 'v')) = 6162630378797A
+findings: none (no case is pinned as observed; no non-A case failed on the fix tree for a reason outside the fix)
+TUPLE_SIZE_ROUND_TRIP key=s4_a01 outcome=stored match=yes rows=2
+TUPLE_SIZE_ROUND_TRIP key=s4_a02 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a03 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a04 outcome=stored match=yes rows=2
+TUPLE_SIZE_ROUND_TRIP key=s4_a05 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a06 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a07 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a08 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a09 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a10 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a11 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a12 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_a13 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u01 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u02 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u03 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u04 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u05 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u06 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u07 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u08 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u09 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u10 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u11 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u12 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u13 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u14 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u15 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u16 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u17 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u18 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_u19 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=s4_o01 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=n01 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=n02 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=n03 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=n04 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=n05 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x01 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x02 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x03 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x04 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x05 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x06 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=x07 outcome=stored match=yes rows=1
+TUPLE_SIZE_ROUND_TRIP key=r01 outcome=stored match=yes rows=1
+```
+
+First attempt, recorded as found: the first fix-tree run was 44 of 46: `s4_u12` and `s4_u13` (root columns `size UInt8` and `size0 UInt8`, look-alikes outside A) failed with "Data schema validation failed" because the test gave the root UInt8 column a Connect INT32; `validateDataSchema` compares a root column's Connect width with the column width and refuses INT32 for UInt8 (tuple elements are not checked). The test was corrected to use INT8 for those two root columns (a test-side choice, no `src/main` change); the table above is the run of the corrected class, and the pre-fix run above used the same corrected class.
+
+Timestamp: 2026-10-21T21:36:19Z
 Verdict: pass
