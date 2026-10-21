@@ -6,4 +6,5 @@ all c.v ARRAY
 tree id INT32 nullable=false
 tree c ARRAY nullable=false
 tree   [] c TUPLE nullable=false
+tree     c.size12 UINT8 nullable=false
 tree     c.v STRING nullable=false

@@ -14,8 +14,8 @@
 | E-02 | DESC-06 (spike record: double row, classifier rule, affected set) | pass |
 | E-03 | DESC-06 (drift premise and fixture guards, commit, tail gate) | pass |
 | E-04 | DESC-07 (extraction: testUnit, snapshots, full suite, anchors) | pass |
-| E-05 | DESC-08 (red run on the extraction tree) | pending (plan 26-03) |
-| E-06 | DESC-08 (fix green, snapshot red set and re-capture) | pending (plan 26-03) |
+| E-05 | DESC-08 (red run on the extraction tree) | pass |
+| E-06 | DESC-08 (fix green, snapshot red set and re-capture) | pass |
 | E-07 | DESC-10 (fix commit: documents, anchors, gate, full suite) | pending (plan 26-03) |
 | E-08 | DESC-09 (round-trip on the pre-fix tree) | pending (plan 26-04) |
 | E-09 | DESC-09 (round-trip green on the fix tree) | pending (plan 26-04) |
@@ -227,4 +227,71 @@ tail gate: invariants: provenance_paths=3 anchor_commits=25 anchor_rows=74 marke
 ```
 
 Timestamp: 2026-10-21T21:10:39Z
+Verdict: pass
+
+### E-05: Red run on the extraction tree (DESC-08, D-10)
+
+Commands as run (tree: `d1d32787`, no `src/main` file differs from HEAD; the only changes are the new `DescribeTableBuilderUnitTest` and the flipped pin in `ClickHouseHelperClientForkUnitTest`):
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*DescribeTableBuilderUnitTest' --tests '*ClickHouseHelperClientForkUnitTest' --rerun > /tmp/gsd26/exec/red-26-03.log 2>&1; echo $? > /tmp/gsd26/exec/red-26-03.rc
+```
+
+```text
+rc: 7 (non-zero)
+Test result: FAILURE | Tests summary: 151 tests, 96 succeeded, 55 failed, 0 skipped
+DescribeTableBuilderUnitTest: 100 tests (47 + 47 + 6), 52 failing; ClickHouseHelperClientForkUnitTest: 51 tests, 3 failing
+A (E-02 affected_prefix, 25 keys): s4_a01..s4_a13, n01..n04, x01..x07, r01
+predicted failing set: "DESC-08 declared elements: k" and "D-10 no WARN: k" for every k in A (50), the cascade-children test, the fail-closed test (52 in the builder class), and the three "D-10 (999.4 fixed): ..." rows
+actual failing set: equal to the prediction (symmetric difference empty); every other row passed, including the rows of the 19 look-alikes, s4_o01, n05 and x08, "DESC-08 cascade guard: a structural row below a declared element is still dropped", both "DESC-08 structural rows" tests and "DESC-05: no Column below a JSON root"
+sample failures:
+  DESC-08 declared elements: n02 -> n02: tupleFields of c must equal the declared elements in order ==> expected: <[size0, v]> but was: <[v]>
+  D-10 no WARN: x04 -> x04 ==> expected: <[]> but was: <[Declared Tuple element(s) [c.size1] of column c of table db.t (declared type Array(Tuple(size1 UInt64, v String))) have no matching DESCRIBE sub-column; ...]>
+  D-03, D-04: an unreadable parent fails closed with one metadata-only WARN -> expected: <1> but was: <0> (the premise assertThrows on ClickHouseColumn.of passed; no helper WARN exists yet)
+  DESC-08 cascade guard: the children of a declared size-named element are Columns -> c.size0 is not a field of c
+```
+
+Timestamp: 2026-10-21T21:16:34Z
+Verdict: pass
+
+### E-06: Fix green, snapshot red set and re-capture (DESC-08)
+
+Commands as run (working tree = the fix, nothing committed yet):
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*DescribeTableBuilderUnitTest' --tests '*ClickHouseHelperClientForkUnitTest' --tests '*DeclaredNullabilityTest' --rerun > /tmp/gsd26/exec/green-26-03.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd26/exec/testunit-26-03-precapture.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain captureDescribeFixtures > /tmp/gsd26/exec/capture-26-03.log 2>&1
+git diff --name-only -- src/test/resources/describe-fixtures
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd26/exec/testunit-26-03.log 2>&1
+```
+
+```text
+targeted run: Test result: SUCCESS | Tests summary: 237 tests, 237 succeeded, 0 failed, 0 skipped (DescribeTableBuilderUnitTest 120 = the 100 of E-05 + 17 rule rows + carrier + 2 Table.updateParent tests; ClickHouseHelperClientForkUnitTest 51; DeclaredNullabilityTest 66)
+precapture testUnit: Test result: FAILURE | Tests summary: 1126 tests, 1099 succeeded, 25 failed, 2 skipped
+  failing set == "DESC-07 snapshot: k" for the 25 keys of A (E-02 affected_prefix), nothing else; DescribeTableBuilderUnitTest 120 tests, 0 failures
+capture: server version 26.9.19.9 (unchanged), 47 DESCRIBE_FIXTURE lines, 47 with warns=0 unpaired_warn=no (E-01 had 25 with warns=1 unpaired_warn=yes)
+git diff --name-only -- src/test/resources/describe-fixtures: 25 files, exactly <k>.columns.txt for the keys of A; no .jsonl and no SERVER_VERSION.txt changed, so the 19 look-alikes, s4_o01, n05 and x08 snapshots are byte-identical to the pre-fix production
+snapshot diffs are pure additions (0 removed lines): the `all` and `tree` lines of the declared elements and their children
+testUnit after re-capture: Test result: SUCCESS | Tests summary: 1126 tests, 1124 succeeded, 0 failed, 2 skipped
+```
+
+Sample snapshot diffs (n02, a declared `size0` Tuple element with a child; x03, a Tuple of size-named elements):
+
+```text
+@@ -3,0 +4,2 @@ all c ARRAY
++all c.size0 ARRAY
++all c.size0.a ARRAY
+@@ -7,0 +10,2 @@ tree   [] c TUPLE nullable=false
++tree     c.size0 TUPLE nullable=false
++tree       c.size0.a UINT8 nullable=false
+@@ -3,0 +4,2 @@ all size TUPLE
++all size.size UINT8
++all size.size0 STRING
+@@ -5,0 +8,2 @@ tree size TUPLE nullable=false
++tree   size.size UINT8 nullable=false
++tree   size.size0 STRING nullable=false
+```
+
+Timestamp: 2026-10-21T21:21:28Z
 Verdict: pass

@@ -1,3 +1,12 @@
+# 1.7.0_gg4, unreleased
+
+## Bug Fixes
+
+* A `Tuple` element named `size`, `size0` or `size` followed by digits, at any depth of a column's type, is no longer
+  dropped when the connector reads the table's columns, so the connector now writes the whole tuple for such a column.
+  Earlier releases wrote a shorter one, which the server rejected or, for some values, stored wrong. Rows stored by
+  earlier releases are not repaired (backlog 999.4).
+
 # 1.7.0_gg3, 2026-10-20
 
 This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg2`. It lists only the fork's own changes

@@ -117,7 +117,7 @@ public class Table {
                 return;
             case ARRAY:
                 final String childName = child.getName();
-                if (SIZE_FIELD_MATCHER.test(childName) || childName.endsWith(".null"))
+                if ((SIZE_FIELD_MATCHER.test(childName) && !child.isDeclaredElement()) || childName.endsWith(".null"))
                     return;
 
                 Column parentArrayType = parent.getArrayType();

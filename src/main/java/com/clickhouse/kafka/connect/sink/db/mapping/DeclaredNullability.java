@@ -178,7 +178,7 @@ public final class DeclaredNullability {
      * at every depth, so the declared tree has to be read the same way: the wrapper node itself
      * reports non-nullable even when the type it holds is {@code Nullable(T)}.
      */
-    private static ClickHouseColumn unwrapSimpleAggregate(ClickHouseColumn parsed) {
+    static ClickHouseColumn unwrapSimpleAggregate(ClickHouseColumn parsed) {
         ClickHouseColumn node = parsed;
         while (node.getDataType() == ClickHouseDataType.SimpleAggregateFunction
                 && !node.getNestedColumns().isEmpty()) {

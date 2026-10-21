@@ -2,7 +2,9 @@ numColumns=2 hasDefaults=false
 all id INT32
 all c TUPLE
 all c.x ARRAY
+all c.x.size0 ARRAY
 tree id INT32 nullable=false
 tree c TUPLE nullable=false
 tree   c.x ARRAY nullable=false
 tree     [] c.x TUPLE nullable=false
+tree       c.x.size0 UINT8 nullable=false

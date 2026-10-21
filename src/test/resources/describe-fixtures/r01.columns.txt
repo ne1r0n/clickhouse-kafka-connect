@@ -1,7 +1,9 @@
 numColumns=2 hasDefaults=false
 all id INT32
 all c TUPLE
+all c.size UINT32
 all c.v STRING
 tree id INT32 nullable=false
 tree c TUPLE nullable=false
+tree   c.size UINT32 nullable=false
 tree   c.v STRING nullable=false

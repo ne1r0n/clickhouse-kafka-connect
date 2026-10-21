@@ -27,7 +27,6 @@ import com.clickhouse.kafka.connect.sink.Version;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
-import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -457,34 +456,34 @@ public class ClickHouseHelperClient implements AutoCloseable {
     }
 
     /**
-     * Returns true when {@code fieldDescriptor} is a structural DESCRIBE sub-column row that
-     * should not become its own {@link Column}: a {@code .null}/{@code .size0}/bare {@code .size}
-     * suffix (present on every {@code Nullable}/{@code Array} column, regardless of parent type),
-     * or a sub-column at any depth below a {@code JSON}/{@code Dynamic} ancestor (whose sub-paths are
-     * dynamic and not meaningful as standalone {@link Column}s; typed paths such as {@code j.b.c}
-     * have no {@code j.b} row of their own). Map and Tuple sub-columns are deliberately
-     * left un-skipped so {@link Table}'s own parent-routing keeps working.
+     * Returns true when {@code fieldDescriptor} is a structural DESCRIBE sub-column row that should
+     * not become its own {@link Column}. The rule lives in {@link DescribeTableBuilder#decide}: a
+     * {@code .null} row and a sub-column at any depth below a {@code JSON}/{@code Dynamic} ancestor
+     * (whose sub-paths are dynamic; typed paths such as {@code j.b.c} have no {@code j.b} row of
+     * their own) are dropped first, then a sub-column named {@code size}, {@code size0} or {@code
+     * size<digits>} is kept when the parent's declared type declares a Tuple element of that name
+     * and dropped when it is Array offsets or a String length. Map and Tuple sub-columns are
+     * deliberately left un-skipped so {@link Table}'s own parent-routing keeps working.
      *
      * <p>{@code columnsSoFar} is the loop-local map of top-level columns extracted so far in the
      * current DESCRIBE pass, keyed by column name - {@link Table} is immutable and is only
      * constructed once, after the loop, so there is no {@code Table} to query mid-loop. A parent
      * absent from the map (never added, or not yet seen) returns false rather than throwing.
+     * This form knows no raw types, so a size-named row whose parent it cannot read is decided as
+     * earlier releases did: {@code size} and {@code size0} dropped, {@code size<digits>} kept.
      */
     static boolean shouldSkipDescribeRow(ClickHouseFieldDescriptor fieldDescriptor, Map<String, Column> columnsSoFar) {
-        if (!fieldDescriptor.isSubcolumn()) {
-            return false;
-        }
-        String name = fieldDescriptor.getName();
-        if (name.endsWith(".null") || name.endsWith(".size0") || name.endsWith(".size")) {
-            return true;
-        }
-        for (int dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
-            Column ancestor = columnsSoFar.get(name.substring(0, dot));
-            if (ancestor != null && (ancestor.getType() == Type.JSON || ancestor.getType() == Type.DYNAMIC)) {
-                return true;
-            }
-        }
-        return false;
+        return shouldSkipDescribeRow(fieldDescriptor, columnsSoFar, Map.of());
+    }
+
+    /**
+     * As the two-argument form, with {@code rawTypes}: the raw DESCRIBE type of every row kept so
+     * far, keyed by name, from which a size-named row's parent is read.
+     */
+    static boolean shouldSkipDescribeRow(
+            ClickHouseFieldDescriptor fieldDescriptor, Map<String, Column> columnsSoFar, Map<String, String> rawTypes) {
+        return DescribeTableBuilder.decide(fieldDescriptor, columnsSoFar, rawTypes)
+                .skipsRow();
     }
 
     /**

@@ -563,7 +563,7 @@ class ClickHouseHelperClientForkUnitTest {
     }
 
     /** R-01 (23-EVIDENCE.md): DESCRIBE rows of tables whose Tuple element is named size or size0, root renamed to the sentinel. */
-    static Stream<Arguments> discoveryDropsSizeNamedElements() {
+    static Stream<Arguments> sizeNamedElementRows() {
         return Stream.of(
                 Arguments.of(
                         "Tuple element named size",
@@ -605,15 +605,11 @@ class ClickHouseHelperClientForkUnitTest {
                         }));
     }
 
-    // Known defect 999.4 (D-04): shouldSkipDescribeRow drops a DESCRIBE row ending in .size or .size0, so
-    // a Tuple element with that name never becomes a Column and the writer writes a short tuple
-    // (23-EVIDENCE.md R-01: code 33 CANNOT_READ_ALL_DATA). The unpaired-element WARN names the dropped
-    // element. The 999.4 fix flips this pin: the element then pairs and no WARN fires.
-    @ParameterizedTest(name = "COLS-14 unpaired-element WARN (D-04, known defect 999.4): {0}")
-    @MethodSource("discoveryDropsSizeNamedElements")
-    @DisplayName("COLS-14 unpaired-element WARN (D-04, known defect 999.4): discovery drops a size-named Tuple element and one WARN names it")
-    void sizeNamedTupleElementDroppedByDiscoveryIsNamedInOneWarning(
-            String label, String rawType, boolean arrayWrapped, String unpaired, String paired, String[] rows) {
+    @ParameterizedTest(name = "D-10 (999.4 fixed): {0}")
+    @MethodSource("sizeNamedElementRows")
+    @DisplayName("D-10 (999.4 fixed): a size-named Tuple element becomes a Column and discovery logs no WARN")
+    void sizeNamedTupleElementIsKeptByDiscoveryWithoutWarning(
+            String label, String rawType, boolean arrayWrapped, String sizeNamed, String paired, String[] rows) {
         try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
                 LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
             Column root = discoverWithBuilder(rows).getRootColumnsMap().get(ROOT_SENTINEL);
@@ -621,16 +617,8 @@ class ClickHouseHelperClientForkUnitTest {
             Column tuple = arrayWrapped ? root.getArrayType() : root;
             List<String> fieldNames =
                     tuple.getTupleFields().stream().map(Column::getName).toList();
-            assertFalse(fieldNames.contains(unpaired), label + ": the dropped element is not a Column");
-            assertTrue(fieldNames.contains(paired), label + ": the other element is a Column");
-            assertEquals(0, warnCount(helperLog), label);
-            List<LogCapture.CapturedEvent> warnings = nullabilityLog.events(WARN_LEVEL);
-            assertEquals(1, warnings.size(), label);
-            String message = warnings.get(0).message();
-            assertWarnNamesColumn(message, ROOT_SENTINEL);
-            assertTrue(message.contains("[" + unpaired + "]"), message);
-            assertTrue(message.contains(DISCOVERED_TABLE), message);
-            assertFalse(warnings.get(0).hasThrowable());
+            assertEquals(List.of(sizeNamed, paired), fieldNames, label + ": both elements are Columns in declared order");
+            assertEquals(0, warnCount(helperLog, nullabilityLog), label);
             for (Column field : tuple.getTupleFields()) {
                 assertFalse(field.isNullable(), field.getName() + " is declared non-nullable");
             }

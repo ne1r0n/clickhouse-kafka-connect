@@ -55,6 +55,8 @@ public class Column {
     private boolean hasDefault;
     @Setter(AccessLevel.PACKAGE) private boolean isNullable;
     private boolean isSubColumn;
+    // Only DescribeTableBuilder sets it: a declared Tuple element whose name is also a structural sub-column name.
+    @Setter private boolean declaredElement;
 
 
     private int precision;
