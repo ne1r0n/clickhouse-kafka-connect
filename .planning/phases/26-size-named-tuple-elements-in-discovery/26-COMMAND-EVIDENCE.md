@@ -12,7 +12,7 @@
 |-------|-------------|---------|
 | E-01 | DESC-06 (capture harness runs, server, WARN oracle) | pass |
 | E-02 | DESC-06 (spike record: double row, classifier rule, affected set) | pass |
-| E-03 | DESC-06 (drift premise and fixture guards, commit, tail gate) | pending (plan 26-01) |
+| E-03 | DESC-06 (drift premise and fixture guards, commit, tail gate) | pass |
 | E-04 | DESC-07 (extraction: testUnit, snapshots, full suite, anchors) | pending (plan 26-02) |
 | E-05 | DESC-08 (red run on the extraction tree) | pending (plan 26-03) |
 | E-06 | DESC-08 (fix green, snapshot red set and re-capture) | pending (plan 26-03) |
@@ -168,4 +168,31 @@ A4 result: `DescribeFixturesUnitTest` reports 95 tests, 0 failures, 0 errors (1 
 Parse-time note for Phase 28: `DescribeTableBuilder` and `ParentShape` (new production classes of this phase, plans 26-02 and 26-03) are the `jacocoForkReport` inputs that DEBT-17 adds in Phase 28; the list is not edited in Phase 26.
 
 Timestamp: 2026-10-21T20:55:23Z
+Verdict: pass
+
+### E-03: Drift premise, fixture guards, commit and tail gate (DESC-06, D-07)
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*DescribeFixtureDriftLiveTest' --tests '*NullableTupleMatrixLiveTest' --rerun > /tmp/gsd26/exec/drift-26-01.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd26/exec/testunit-26-01.log 2>&1
+git worktree add --detach /tmp/gsd26/wt-fmt HEAD   # then ./gradlew -q spotlessApply there, cmp each Java file, git worktree remove --force
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD
+```
+
+```text
+DescribeFixtureDriftLiveTest: 94 tests, 0 failures, 0 errors
+NullableTupleMatrixLiveTest: 33 tests, 0 failures, 0 errors (reads DESCRIBE through the shared DescribeFixtureCatalog.describeRawLines)
+DescribeFixturesUnitTest: 95 tests, 0 failures, 0 errors (E-02)
+DESCRIBE_FIXTURE_DRIFT client=V2 server=26.9.19.9
+testUnit: Test result: SUCCESS | Tests summary: 955 tests, 953 succeeded, 0 failed, 2 skipped   (baseline 860 plus the 95 guards)
+test commit: 40ffda7e test(26-01): capture harness, DESCRIBE fixtures and drift premise for size-named Tuple elements (DESC-06)
+  non-fixture files: .planning/phases/26-size-named-tuple-elements-in-discovery/26-COMMAND-EVIDENCE.md, build.gradle.kts, src/test/java/com/clickhouse/kafka/connect/sink/NullableRoundTrip.java, src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCapture.java, src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java, src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureDriftLiveTest.java, src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixturesUnitTest.java
+  fixture files: 95 under src/test/resources/describe-fixtures/ (47 .jsonl, 47 .columns.txt, SERVER_VERSION.txt); no src/main path in the commit
+spotless: spotlessApply in a detached HEAD worktree rewrote the 46 baseline files and gradlew.bat (line endings) and left the five new or edited Java files byte-identical (cmp)
+tail gate: invariants: provenance_paths=3 anchor_commits=21 anchor_rows=72 marker_commits=33 anchor_exempt=0 result=PASS
+```
+
+Timestamp: 2026-10-21T20:57:59Z
 Verdict: pass
