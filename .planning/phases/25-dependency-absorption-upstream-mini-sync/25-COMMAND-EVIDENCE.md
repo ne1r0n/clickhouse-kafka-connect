@@ -33,8 +33,8 @@
 | E-21 | SYNC-11 (merge 2, tail gate, self-test) | pass |
 | E-22 | SYNC-12, BLD-15 (post-merge archive, dependencyInsight, advisories) | pass |
 | E-23 | DEBT-15 | pass |
-| E-24 | SYNC-12 (two --rerun runs, baseline tag) | pending (plan 25-08) |
-| E-25 | OPS-04 (closing observation) | pending (plan 25-08) |
+| E-24 | SYNC-12 (two --rerun runs, baseline tag) | pass |
+| E-25 | OPS-04 (closing observation) | pending (no Dependabot PR opened since 2026-10-21T15:11:05Z; next monthly Dependabot run; Phase 29 re-checks) |
 
 ### E-01: OPS-04 facts at phase start (REST, GitHub clock)
 
@@ -1175,3 +1175,86 @@ FORK-DELTA's `slf4j-reload4j` row now says the coordinate comes from a fork-only
 Timestamp: 2026-10-21T17:20:42Z
 
 Verdict: pass
+
+### E-24: The post-absorption baseline (SYNC-12, D-17)
+
+Commands as run (repository root, branch `sync/v1.7.0`; B is the tree under test, `git rev-parse HEAD` = `aa45070953137f612842e730c465937ac5c6ada5`, tree `c6a5ae2a9b79cf634c58f250cf62af305efbcbac`; the last non-`.planning` commit is `9c9b480b`, the DEBT-15 commit; `state.json`, `gradlew.bat` and `milestone.lock` stayed unstaged throughout):
+
+```bash
+git status --porcelain --untracked-files=no -- . ':(exclude)gradlew.bat' ':(exclude).planning/state.json'   # empty
+git ls-remote origin custom_build      # 69cd680bf548bfb0329142752d37f8a6c3190c26
+docker image inspect clickhouse/clickhouse-server:latest --format '{{.Id}} {{.Created}}'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd25/exec/testunit-baseline.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean createConfluentArchive > /tmp/gsd25/exec/archive-final.log 2>&1
+python3 -I .planning/scripts/compare-confluent-archives.py /tmp/gsd25/exec/archive-gg3.zip /tmp/gsd25/exec/archive-final.zip .planning/scripts/confluent-archive-allowlist-25.txt > /tmp/gsd25/exec/cmp-final.txt
+rm -rf build/test-results/test
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd25/exec/baseline-test-1.log 2>&1 ; cp -R build/test-results/test /tmp/gsd25/exec/baseline-run1
+rm -rf build/test-results/test
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd25/exec/baseline-test-2.log 2>&1 ; cp -R build/test-results/test /tmp/gsd25/exec/baseline-run2
+/tmp/gsd25/exec/spotless-numstat.sh "$PWD" v1.7.0_gg3 > /tmp/gsd25/exec/spotless-gg3-final.txt   # SPOTLESS_NUMSTAT_AT recipe
+/tmp/gsd25/exec/spotless-numstat.sh "$PWD" HEAD       > /tmp/gsd25/exec/spotless-final.txt
+git tag baseline-v1.7.0_gg4 aa45070953137f612842e730c465937ac5c6ada5
+node "$HOME/.claude/gsd-core/bin/gsd-tools.cjs" query state.add-decision --phase 25 --summary-file /tmp/gsd25/exec/d17-summary.txt --rationale-file /tmp/gsd25/exec/d17-rationale.txt
+```
+
+```text
+B: aa45070953137f612842e730c465937ac5c6ada5
+freeze: git ls-remote origin custom_build = 69cd680bf548bfb0329142752d37f8a6c3190c26 (read before the runs and again after the tag; one read at tag time failed with "Connection to github.com closed by remote host" and was repeated at once with the same answer)
+latest_image: sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z (same id and date as E-05 and E-19; not re-pulled)
+colima: profile vz Running
+testUnit --rerun: Test result: SUCCESS, Tests summary: 860 tests, 858 succeeded, 0 failed, 2 skipped, BUILD SUCCESSFUL in 4s
+archive: verifyConfluentArchive: 7798 inner entries, no nested jar, no Kafka API class; the final zip is byte-identical to archive-m2.zip (cmp silent)
+compare (final): MANIFEST.MF: identical; totals files-a 7376 files-b 7396 only-a 91 only-b 111 changed 1820 same 5465; nested jars in b: 0; kafka classes in b: 0; RESULT: PASS (DEBT-15 does not touch the archive)
+run 1: BUILD SUCCESSFUL in 2m 38s; Tests summary: 1303 tests, 1285 succeeded, 0 failed, 18 skipped; xml files 92, tests 1303, failures 0, errors 0, skipped 18, stale 0; started 2026-10-21T17:21:18Z, ended 17:23:57Z; XML timestamps 17:21:21Z to 17:23:54Z
+run 2: BUILD SUCCESSFUL in 2m 39s; Tests summary: 1303 tests, 1285 succeeded, 0 failed, 18 skipped; xml files 92, tests 1303, failures 0, errors 0, skipped 18, stale 0; started 2026-10-21T17:24:05Z, ended 17:26:48Z; XML timestamps 17:24:11Z to 17:26:44Z
+ordering: run 2's earliest XML timestamp (17:24:11Z) is later than run 1's latest (17:23:54Z)
+server_version: 26.9.19.9 in both runs (exactly one distinct version)
+exact class counts: NullableTupleMatrixLiveTest 33, DeclaredNullabilityTest 62, ClickHouseHelperClientForkUnitTest 51, SimpleAggregateTupleRoundTripLiveTest 2, JsonAsStringKeyResidualLiveTest 4, ConnectApiReferencesUnitTest 3; DedupTokenRetryLiveTest, WriterErrorPathLiveTest and TestsWorkflowPinGuardUnitTest above their floors
+spotless: spotless-gg3-final.txt 46 lines, spotless-final.txt 46 lines, cmp silent (byte-equal, non-empty), both stderr files empty
+tag: baseline-v1.7.0_gg4 -> aa45070953137f612842e730c465937ac5c6ada5 (lightweight, local); git ls-remote --tags origin baseline-v1.7.0_gg4 prints nothing
+non-.planning diff B..HEAD: empty
+STATE.md: "- [Phase 25]: Phase 25 baseline for Phases 26-28: local tag baseline-v1.7.0_gg4 = aa45070953137f612842e730c465937ac5c6ada5 (...) — D-17" added through state.add-decision (not staged here)
+```
+
+The 18 skips, compared as a set of class#method names (7 named methods plus the 11 `ClickHouseSinkTaskWithSchemaTest#exactlyOnceStateMismatchTest` cases `[1]`..`[11]`), identical in both runs and to E-19:
+
+```text
+ClickHouseSinkTaskTest#clientNameTest()
+ClickHouseSinkTaskWithSchemaTest#schemaWithNestedTupleMapArrayAndVariant()
+ClickHouseSinkTaskWithSchemaTest#schemaWithTupleOfMapsWithVariantTest()
+ConvertToMapOrJsonPerformanceTestJson#testDeepNestedStructPerformance()
+ConvertToMapOrJsonPerformanceTestJson#testWideStructPerformance()
+InsertFormatPerformanceTest#compareInsertPerformance()
+JsonColumnTest#compareAllConfigurations()
+ClickHouseSinkTaskWithSchemaTest#[1] .. #[11]
+```
+
+Timestamp: 2026-10-21T17:28:28Z
+
+Verdict: pass
+
+### E-25: OPS-04 closing observation
+
+Commands as run (R = `https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect`; unauthenticated, no `gh`, no token, no label, PR or `dependabot.yml` change; GitHub clock `date: Wed, 21 Oct 2026 17:27:30 GMT`):
+
+```bash
+curl -sS -D /tmp/gsd25/exec/ops04-closing-label2.headers -o /tmp/gsd25/exec/ops04-closing-label2.json -w '%{http_code}' "$R/labels/dependencies"
+curl -sS -D /tmp/gsd25/exec/ops04-closing-pulls2.headers -o /tmp/gsd25/exec/ops04-closing-pulls2.json -w '%{http_code}' "$R/pulls?state=all&per_page=100&sort=created&direction=desc"
+```
+
+```text
+ops04_cutoff: 2026-10-21T15:11:05Z
+label_dependencies_http_closing: 200
+label_name_closing: dependencies (description "Dependency updates (Dependabot)")
+pulls_listed: 15 (numbers 1 to 15, all by dependabot[bot]; fewer than one page, so the list is complete)
+newest_pr_created_at: 2026-10-21T06:29:01Z (#15, closed)
+dependabot_prs_after_cutoff: none
+prs_with_labels_comment: not applicable (no PR created after the cutoff, so no comments were read; #4 and #10 are older than the label and keep their "labels could not be found" comments from E-01)
+x-ratelimit-remaining (last call): 56
+```
+
+The label exists and answers 200, but Dependabot has opened no pull request since the operator created it (the newest PR, #15, was opened about nine hours before the label), so there is nothing yet that shows whether a new PR gets the label without the "labels could not be found" comment. PRs #4 and #10 were created before the label and do not count either way. The check stays open for the next monthly Dependabot run; Phase 29 re-checks it.
+
+Timestamp: 2026-10-21T17:27:30Z
+
+Verdict: pending (no Dependabot PR opened since 2026-10-21T15:11:05Z; next monthly Dependabot run; Phase 29 re-checks)
