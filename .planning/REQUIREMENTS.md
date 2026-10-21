@@ -77,7 +77,7 @@
 
 ### Test and build hygiene
 
-- [ ] **DEBT-13**: `TestsWorkflowPinGuardUnitTest.ktsCode` strips comments string- and line-comment-aware, with fixtures for `/*` inside a string and inside a `//` comment (21-REVIEW WR-02); this lands before the first `build.gradle.kts` edit of the milestone.
+- [x] **DEBT-13**: `TestsWorkflowPinGuardUnitTest.ktsCode` strips comments string- and line-comment-aware, with fixtures for `/*` inside a string and inside a `//` comment (21-REVIEW WR-02); this lands before the first `build.gradle.kts` edit of the milestone.
 - [ ] **DEBT-14**: The pin guard's `runs-on` rule ignores a trailing comment (21-REVIEW WR-01), the fork-count rules reject commented-out or guarded text (WR-03), the `dependabot.yml` reader tolerates valid YAML layouts (IN-01), and the fixture list is derived from the production constant (IN-02); each change is seen red on a fixture.
 - [ ] **DEBT-15**: The `slf4j-reload4j` literal in `build.gradle.kts` moves into the version catalog with its anchor row moved (21-REVIEW IN-04).
 - [ ] **DEBT-16**: `schemaWithFixedStringMismatchTest` fails when `put` does not throw (22-REVIEW IN-04); `CountingHelperClient.useClientV2Calls` is asserted or removed (IN-05, test half); `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare NPE (23-REVIEW IN-03); no existing assertion is deleted or weakened.
@@ -156,7 +156,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WRT-17 | Phase 27 | Pending |
 | WRT-18 | Phase 27 | Pending |
 | WRT-19 | Phase 27 | Pending |
-| DEBT-13 | Phase 25 | Pending |
+| DEBT-13 | Phase 25 | Complete |
 | DEBT-14 | Phase 25 | Pending |
 | DEBT-15 | Phase 25 | Pending |
 | DEBT-16 | Phase 27 | Pending |

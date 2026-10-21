@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 25
 current_phase_name: Dependency Absorption & Upstream Mini-Sync
 status: executing
-stopped_at: Completed 25-01-PLAN.md
-last_updated: "2026-10-21T15:13:21.051Z"
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-10-21T15:17:19.478Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 25 execution started
-state_head: f7b481f30491752eeeecabb935ee51a1d5047e42
+state_head: 92b2be1eb955fa57bd93b1120c48adbad447e019
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 25 (Dependency Absorption & Upstream Mini-Sync) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-10-21 — Phase 25 execution started
 
@@ -165,6 +165,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 24 P06 | 47 min | 3 tasks | 1 files |
 | Phase 24 P07 | 25 min | 3 tasks | 2 files |
 | Phase 25 P01 | 67min | 3 tasks | 1 files |
+| Phase 25 P02 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 
 - Writer failure text stays value-free. In `doWriteColValue`, an `IOException` chain, a `ConnectException` and an exact `RuntimeException` pass through unchanged. Everything else becomes a metadata-only `DataException` with a `WithheldMessageException` cause, and the 184-case `WriterFailureClassificationUnitTest` pins the classification. A new writer message must not embed a record value.
 - Operator documents get an independent `gsd-code-reviewer` pass, spawned by the orchestrator, before any publication gate. Review rounds on fixes continue until a round finds nothing. An executor's inline review does not count as independent (Phase 24, quick 261020-vcr).
+- [Phase 25]: 25-02: ktsCode is a one-pass character scanner (no Kotlin parser); a quote inside a string template's braces is the one documented unsupported case
 
 ### Pending Todos
 
@@ -230,8 +232,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T15:13:21.029Z
-Stopped at: Completed 25-01-PLAN.md
+Last session: 2026-10-21T15:17:19.455Z
+Stopped at: Completed 25-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
