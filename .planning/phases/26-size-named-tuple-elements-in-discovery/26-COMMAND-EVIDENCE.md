@@ -13,7 +13,7 @@
 | E-01 | DESC-06 (capture harness runs, server, WARN oracle) | pass |
 | E-02 | DESC-06 (spike record: double row, classifier rule, affected set) | pass |
 | E-03 | DESC-06 (drift premise and fixture guards, commit, tail gate) | pass |
-| E-04 | DESC-07 (extraction: testUnit, snapshots, full suite, anchors) | pending (plan 26-02) |
+| E-04 | DESC-07 (extraction: testUnit, snapshots, full suite, anchors) | pass |
 | E-05 | DESC-08 (red run on the extraction tree) | pending (plan 26-03) |
 | E-06 | DESC-08 (fix green, snapshot red set and re-capture) | pending (plan 26-03) |
 | E-07 | DESC-10 (fix commit: documents, anchors, gate, full suite) | pending (plan 26-03) |
@@ -195,4 +195,36 @@ tail gate: invariants: provenance_paths=3 anchor_commits=21 anchor_rows=72 marke
 ```
 
 Timestamp: 2026-10-21T20:57:59Z
+Verdict: pass
+
+### E-04: The behaviour-preserving extraction (DESC-07, D-01, D-02)
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ClickHouseHelperClientForkUnitTest' --tests '*DeclaredNullabilityTest' --tests '*DescribeFixturesUnitTest' --rerun > /tmp/gsd26/exec/extract-t1.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd26/exec/testunit-26-02.log 2>&1
+git commit (explicit paths)   # refactor(26-02), 8 files
+rm -rf build/test-results/test && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd26/exec/suite-26-02.log 2>&1
+git worktree add --detach /tmp/gsd26/wt-fmt HEAD   # then ./gradlew -q spotlessApply there, cmp each Java file, git worktree remove --force
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD
+```
+
+```text
+extraction commit: 9c186046 refactor(26-02): extract the DESCRIBE loop into DescribeTableBuilder and the Tuple element key into DeclaredNullability.elementKey, no behaviour change (DESC-07, 23-REVIEW WR-02)
+  files: src/main/java/.../sink/db/helper/DescribeTableBuilder.java (new), src/main/java/.../sink/db/helper/ClickHouseHelperClient.java, src/main/java/.../sink/db/mapping/DeclaredNullability.java, .planning/scripts/fork-anchors.txt, src/test/java/.../sink/db/helper/DescribeFixtureCatalog.java, src/test/java/.../sink/db/helper/ClickHouseHelperClientForkUnitTest.java, src/test/java/.../sink/db/helper/DescribeFixtureSnapshotUnitTest.java (new), src/test/java/.../sink/db/mapping/DeclaredNullabilityTest.java
+  no docs file and no committed .jsonl or .columns.txt in the commit (git diff -- src/test/resources/describe-fixtures is empty)
+anchor rows: ClickHouseHelperClient shouldSkipDescribeRow (HLP-02) 3 -> 1; buildDescribedTable( (COLS-10) 3 -> 1; new rows 'new DescribeTableBuilder(' 2 (DESC-07) and DeclaredNullability 'elementKey(' 2 (DESC-08) under the '# Phase 26 (v1.7.0_gg4)' comment; 72 -> 74 rows; HLP-04 StandardCharsets.UTF_8 1 / InputStreamReader 2, COLS-10 DeclaredNullability.apply( 1 and two .inner checks unchanged; 'Set<String> skippedCols' 2 -> 0
+targeted testUnit (Task 1): Test result: SUCCESS (ForkUnit 51, DeclaredNullabilityTest 62, DescribeFixturesUnitTest 95)
+testUnit (Task 2): Test result: SUCCESS; ClickHouseHelperClientForkUnitTest 51, DeclaredNullabilityTest 66 (62 + 4 elementKey rows), DescribeFixtureSnapshotUnitTest 47, DescribeFixturesUnitTest 95, 0 failures, 0 errors; the three 999.4 pin rows pass through the builder
+  snapshot differences: none (all 47 keys equal their pre-extraction .columns.txt on the first run)
+full suite on 9c186046 (client V2, ClickHouse 26.9.19.9): Test result: SUCCESS | Tests summary: 1543 tests, 1525 succeeded, 0 failed, 18 skipped | BUILD SUCCESSFUL in 2m 40s
+  XML files: 95, none older than the commit; failures 0, errors 0, skipped 18 (the 7 named skips plus the 11 bracketed ClickHouseSinkTaskWithSchemaTest rows)
+  exact class counts: DescribeFixtureDriftLiveTest 94, DescribeFixturesUnitTest 95, DescribeFixtureSnapshotUnitTest 47, ClickHouseHelperClientForkUnitTest 51, DeclaredNullabilityTest 66, NullableTupleMatrixLiveTest 33, SimpleAggregateTupleRoundTripLiveTest 2, JsonAsStringKeyResidualLiveTest 4, ConnectApiReferencesUnitTest 3
+  server version in the DESCRIBE_FIXTURE_DRIFT line: 26.9.19.9 (single, client=V2)
+spotless: spotlessApply in a detached HEAD worktree rewrote 47 files, which shows it ran; the seven new or edited Java files are byte-identical (cmp) except ClickHouseHelperClient.java, whose only difference is the lombok/slf4j import order in its import block, a baseline rewrite that predates this plan (HEAD~1 has the same import order and the plan did not touch the import block). The worktree was removed and pruned.
+tail gate: invariants: provenance_paths=3 anchor_commits=25 anchor_rows=74 marker_commits=37 anchor_exempt=0 result=PASS
+```
+
+Timestamp: 2026-10-21T21:10:39Z
 Verdict: pass
