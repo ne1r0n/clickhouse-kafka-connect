@@ -30,7 +30,7 @@
 | E-18 | DEBT-14 (pin-guard green run, accept-set changes) | pass |
 | E-19 | DEPS-02 (step-4 suite gate) | pass |
 | E-20 | SYNC-11 (merge 2 rehearsal) | pass |
-| E-21 | SYNC-11 (merge 2, tail gate, self-test) | pending (plan 25-07) |
+| E-21 | SYNC-11 (merge 2, tail gate, self-test) | pass |
 | E-22 | SYNC-12, BLD-15 (post-merge archive, dependencyInsight, advisories) | pending (plan 25-08) |
 | E-23 | DEBT-15 | pending (plan 25-08) |
 | E-24 | SYNC-12 (two --rerun runs, baseline tag) | pending (plan 25-08) |
@@ -962,5 +962,50 @@ Catalog diff, resolved file against the first parent (the fork): the `httpclient
 `build.gradle.kts` auto-merged: `implementation(libs.guava)`, `clickhouseDependencies(libs.guava) // temp to override client's with CVE`, and the integration-test `libs.httpclient5.test` became `libs.httpclient5`; the fork's Shadow repair and `verifyConfluentArchive` are untouched. `.gitignore` union against the first parent: a blank line, `# ecliose`, `.classpath`, `.project`, `.settings/` added after the fork's `/bin/`, `.vscode`, `.gsd` lines (upstream's typo kept; each non-blank line once; no conflict marker).
 
 Timestamp: 2026-10-21T17:12:00Z
+
+Verdict: pass
+
+### E-21: Merge 2, the tail gate and the self-test (SYNC-11, D-15)
+
+Commands as run (main tree, branch `sync/v1.7.0`, pre-merge tip `bb88f23e3adbb49417e73c27e561e50d6bf17a5f`):
+
+```bash
+git status --porcelain --untracked-files=no -- . ':(exclude)gradlew.bat' ':(exclude).planning/state.json'   # empty
+git ls-remote upstream main    # a6f1df839c079180bc7c343b5823f205e204dafc, immediately before the merge
+git tag pre-v1.7.0-tail
+git merge --no-commit a6f1df839c079180bc7c343b5823f205e204dafc    # CONFLICT in .gitignore and gradle/libs.versions.toml
+git checkout "$(cat /tmp/gsd25/exec/m2-rehearsal.sha)" -- .gitignore gradle/libs.versions.toml
+git diff --name-only --diff-filter=U    # empty
+git commit -F /tmp/gsd25/exec/m2-msg.txt
+git checkout "$(cat /tmp/gsd25/exec/m2-records.sha)" -- .planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/MERGE-CHECKLIST-v1.7.0-tail.md   # then the rehearsal SHAs replaced by the real ones
+git commit    # record commit R2
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt \
+  .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD
+.planning/scripts/verify-merge-invariants-selftest.sh
+node "$HOME/.claude/gsd-core/bin/gsd-tools.cjs" query state.add-decision --phase 25 --summary-file /tmp/gsd25/exec/d15-summary.txt --rationale-file /tmp/gsd25/exec/d15-rationale.txt
+git worktree remove --force /tmp/gsd25/wt-m2; git worktree prune
+```
+
+```text
+tag: pre-v1.7.0-tail = bb88f23e3adbb49417e73c27e561e50d6bf17a5f (lightweight, local; git ls-remote --tags origin pre-v1.7.0-tail prints nothing)
+M2: 38265d26ce00e078b9e8c7d1198ade333a34f3ac
+M2 parents: bb88f23e3adbb49417e73c27e561e50d6bf17a5f (= pre-v1.7.0-tail) a6f1df839c079180bc7c343b5823f205e204dafc
+git diff --name-only M2^1 M2: .gitignore, build.gradle.kts, gradle/libs.versions.toml
+git diff --name-only --diff-filter=A M2^1 M2: (empty)
+git diff --quiet {rehearsal a9f9e8ff6275a474c09b876a71195efa30bc76be} M2 -- . ':(exclude).planning/phases/25-dependency-absorption-upstream-mini-sync': equal
+R2 (record commit after M2): 76da1b3c2509096ae9fb14eaa837b482dedf12de = .planning/MERGE-CHECKLIST-v1.7.0-tail.md, .planning/scripts/conflicted-paths-v1.7.0-tail.txt (2 files, nothing else)
+tail gate: invariants: provenance_paths=3 anchor_commits=2 anchor_rows=71 marker_commits=14 anchor_exempt=0 result=PASS
+tail gate stderr bytes: 0 (exit 0)
+self-test: exit 0, 16 PASS lines, 0 FAIL lines, last line "selftest: no failures"
+gate script and self-test vs pre-v1.7.0-deps: no diff
+grep -cF httpclientTest gradle/libs.versions.toml: 0 (baseline 2)
+grep -cF 'guava = "33.7.2-jre"' gradle/libs.versions.toml: 1 (baseline 0)
+STATE.md: "- [Phase 25]: Standing merge gate for Phases 26-29: PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df83... CONFLICTED_PATHS_FILE=... verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD; the cumulative gate ... 54e63648 HEAD ..." added through state.add-decision (not staged here)
+worktree list: only the main tree (the rehearsal worktree removed)
+```
+
+The cumulative gate was not run here (D-15: once in plan 25-03, once more at the Phase 29 release gate).
+
+Timestamp: 2026-10-21T17:40:00Z
 
 Verdict: pass
