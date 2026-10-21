@@ -33,7 +33,7 @@
   - `fork-anchors.txt` is updated in the merge commit itself (`kafka = "4.4.0"`, the slf4j literal);
   - every published Dependabot commit that violates a pre-merge anchor has a SHA-pinned row in `fork-anchor-exemptions.txt`, generated from the gate's own output;
   - the gate passes on the tip with `PRE_TAG` at the pre-merge rollback tag.
-- [ ] **BLD-15**: The shipped Confluent archive is intact under Shadow 9.6.1:
+- [x] **BLD-15**: The shipped Confluent archive is intact under Shadow 9.6.1:
   - `createConfluentArchive` built on the tip contains zero nested `*.jar` entries;
   - an entry-by-entry SHA-256 compare against the `v1.7.0_gg3` archive (7,376 entries, 24-COMMAND-EVIDENCE E-04) differs only by an allow-listed set (version bumps, guava and its five small dependencies);
   - `MANIFEST.MF` is unchanged apart from versions (`addMultiReleaseAttribute` decision recorded);
@@ -135,7 +135,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | DEPS-02 | Phase 25 | Complete |
 | DEPS-03 | Phase 25 | Complete |
-| BLD-15 | Phase 25 | Pending |
+| BLD-15 | Phase 25 | Complete |
 | BLD-16 | Phase 25 | Pending |
 | CI-20 | Phase 25 | Pending |
 | SYNC-11 | Phase 25 | Pending |
