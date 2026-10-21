@@ -899,7 +899,7 @@ ClickHouseSinkTaskWithSchemaTest#[1] .. #[11]   (the 11 exactlyOnceStateMismatch
 
 Verify command of the plan (Task 1, `STEP4-SUITE-GREEN`): see the run below.
 
-Timestamp: 2026-10-21T16:56:30Z
+Timestamp: 2026-10-21T16:55:00Z
 
 Verdict: pass
 
@@ -961,7 +961,7 @@ Catalog diff, resolved file against the first parent (the fork): the `httpclient
 
 `build.gradle.kts` auto-merged: `implementation(libs.guava)`, `clickhouseDependencies(libs.guava) // temp to override client's with CVE`, and the integration-test `libs.httpclient5.test` became `libs.httpclient5`; the fork's Shadow repair and `verifyConfluentArchive` are untouched. `.gitignore` union against the first parent: a blank line, `# ecliose`, `.classpath`, `.project`, `.settings/` added after the fork's `/bin/`, `.vscode`, `.gsd` lines (upstream's typo kept; each non-blank line once; no conflict marker).
 
-Timestamp: 2026-10-21T17:12:00Z
+Timestamp: 2026-10-21T16:57:00Z
 
 Verdict: pass
 
@@ -1006,6 +1006,6 @@ worktree list: only the main tree (the rehearsal worktree removed)
 
 The cumulative gate was not run here (D-15: once in plan 25-03, once more at the Phase 29 release gate).
 
-Timestamp: 2026-10-21T17:40:00Z
+Timestamp: 2026-10-21T17:09:30Z
 
 Verdict: pass
