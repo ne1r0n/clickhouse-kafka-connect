@@ -42,3 +42,8 @@ memory
 .vscode
 
 .gsd
+
+# ecliose
+.classpath
+.project
+.settings/
