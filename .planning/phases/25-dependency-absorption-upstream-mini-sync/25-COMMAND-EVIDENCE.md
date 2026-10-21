@@ -16,7 +16,7 @@
 | E-04 | DEBT-13 (green run, spotless, testUnit) | pass |
 | E-05 | DEPS-02 (pre-flight) | pass |
 | E-06 | DEPS-03 (merge 1 rehearsal and exemption rows) | pass |
-| E-07 | DEPS-02, DEPS-03 (merge 1, cumulative gate, self-test) | pending (plan 25-03) |
+| E-07 | DEPS-02, DEPS-03 (merge 1, cumulative gate, self-test) | pass |
 | E-08 | DEPS-02 (merged-tree Docker-free checks) | pending (plan 25-03) |
 | E-09 | BLD-15 (unrepaired archive) | pending (plan 25-04) |
 | E-10 | BLD-15 (repair) | pending (plan 25-04) |
@@ -244,5 +244,41 @@ Generated rows (full SHA, path, pattern, PR number; the reason field is `Dependa
 Correction to the plan text: the gate prints the pattern wrapped in single quotes (`'<pattern>'`) for display, while an exemption row stores it bare, as the existing `6473e24f` row does. The generator therefore strips that one pair of display quotes and fails if it is absent; the path and the pattern inside the quotes are otherwise byte for byte. Counts matched the research measurement exactly (18 rows, 17 SHAs, 14 `kafka` rows and 4 `slf4j-reload4j:2.0.17` rows, `anchor_exempt=19`).
 
 Timestamp: 2026-10-21T15:42:43Z
+
+Verdict: pass
+
+### E-07: Merge 1, the cumulative anchors gate and the self-test (DEPS-02, DEPS-03)
+
+Commands as run (branch `sync/v1.7.0`; the evidence commit of E-05/E-06, `a884032d`, was the pre-merge tip):
+
+```bash
+git ls-remote origin custom_build                      # 69cd680bf548bfb0329142752d37f8a6c3190c26, read immediately before the merge
+git tag pre-v1.7.0-deps                                # lightweight, local, never pushed
+git merge --no-commit --no-ff 69cd680bf548bfb0329142752d37f8a6c3190c26
+git checkout "$(cat /tmp/gsd25/exec/m1-rehearsal.sha)" -- .planning/scripts/fork-anchors.txt .planning/scripts/fork-anchor-exemptions.txt
+git commit -F /tmp/gsd25/exec/m1-msg.txt
+.planning/scripts/verify-merge-invariants.sh 54e63648 HEAD > m1-gate.out 2> m1-gate.err          # unedited, default env
+.planning/scripts/verify-merge-invariants-selftest.sh > m1-selftest.out 2>&1; echo $? > m1-selftest.rc
+git worktree remove --force /tmp/gsd25/wt-m1; git worktree prune
+```
+
+```text
+M1: 50f562895c7d1a2fb79c50457cb0635e9aa48f48
+parents: a884032d2cae660759efebeb5c2c6afc717cd188 (= pre-v1.7.0-deps), 69cd680bf548bfb0329142752d37f8a6c3190c26 (= the ls-remote value)
+git diff --name-only M1^1 M1: .planning/scripts/fork-anchor-exemptions.txt, .planning/scripts/fork-anchors.txt, build.gradle.kts, gradle/libs.versions.toml, gradle/wrapper/gradle-wrapper.jar, gradle/wrapper/gradle-wrapper.properties, gradlew.bat
+git show --cc --name-only --format= M1: .planning/scripts/fork-anchor-exemptions.txt, .planning/scripts/fork-anchors.txt
+M1:gradlew.bat blob == 69cd680b:gradlew.bat blob: 03754c4c3d9206f5c9ef69e41990dfe26a05251e
+git diff --quiet <rehearsal> M1 -- . ':(exclude).planning/phases/25-dependency-absorption-upstream-mini-sync': exit 0 (tree equals the rehearsal outside the phase directory)
+gate last line: invariants: provenance_paths=21 anchor_commits=590 anchor_rows=69 marker_commits=637 anchor_exempt=19 result=PASS
+gate stderr: empty; gate wall time: 586 s
+self-test: exit 0, 16 PASS cases, last line "selftest: no failures"; wall time: 723 s
+verify-merge-invariants.sh and -selftest.sh: git diff --quiet pre-v1.7.0-deps HEAD exits 0 (byte-identical)
+```
+
+`grep -cF 'kafka = "4.4.0"' .planning/scripts/fork-anchors.txt` is 1. `gradlew.bat` shows modified in `git status` (CRLF in the index versus `*.bat text eol=crlf`, research Pattern 1) and was never staged. The gate and the self-test ran concurrently, each into its own log files.
+
+X-4 correction recorded: the DEPS-03 gate is the default-env cumulative command `verify-merge-invariants.sh 54e63648 HEAD`; `pre-v1.7.0-deps` is a rollback tag only (a gate with MERGE_SHA = M1 fails invariant 1 on the legitimate bookkeeping), which supersedes the requirement's "PRE_TAG at the pre-merge rollback tag" wording. X-2: one anchor edit only (kafka 4.1.1 -> 4.4.0); the slf4j literal and its anchor row already say 2.0.20.
+
+Timestamp: 2026-10-21T15:55:33Z
 
 Verdict: pass
