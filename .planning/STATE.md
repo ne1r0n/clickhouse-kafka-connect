@@ -2,11 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg4-hardening
 milestone_name: Dependency Absorption, Discovery Defects & Review Debt
+current_phase: 25
+current_phase_name: Dependency Absorption & Upstream Mini-Sync
 status: planning
-current_phase: "25"
-current_phase_name: "Dependency Absorption & Upstream Mini-Sync"
-last_updated: "2026-10-21T11:12:30.000Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-10-21T12:11:27.108Z"
 last_activity: 2026-10-21
+last_activity_desc: Roadmap created for v1.7.0_gg4-hardening (Phases 25-29, 36/36 requirements mapped)
+state_head: a15c390d02d3a62a01372f5dace61b89e5a7686d
 progress:
   total_phases: 5
   completed_phases: 0
@@ -226,9 +229,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21
-Stopped at: Roadmap created for milestone `v1.7.0_gg4-hardening` (Phases 25-29, 36/36 requirements mapped); Phase 25 ready to plan
-Resume file: None
+Last session: 2026-10-21T12:11:27.088Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-dependency-absorption-upstream-mini-sync/25-CONTEXT.md
 
 ## Operator Next Steps
 
