@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 26
 current_phase_name: Size-Named Tuple Elements in Discovery
 status: executing
-stopped_at: Completed 26-01-PLAN.md
-last_updated: "2026-10-21T20:59:08.200Z"
+stopped_at: Completed 26-02-PLAN.md
+last_updated: "2026-10-21T21:11:52.529Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 26 execution started
-state_head: d4e2c0716d5479529d1e727dd3c095f6bc9dad5e
+state_head: 4eec93e1b9c848d291b741908972271dc010f37f
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-21 after Phase 25)
 ## Current Position
 
 Phase: 26 (Size-Named Tuple Elements in Discovery) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-21 — Phase 26 execution started
 
@@ -174,6 +174,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 25 P07 | 22min | 3 tasks | 8 files |
 | Phase 25 P08 | 16min | 3 tasks | 6 files |
 | Phase 26 P01 | 14 min | 3 tasks | 102 files |
+| Phase 26 P02 | 11 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 25]: Phase 25 baseline for Phases 26-28: local tag baseline-v1.7.0_gg4 = aa45070953137f612842e730c465937ac5c6ada5 (two green --rerun suite runs on latest x V2 with the 18 named skips; guava 33.7.2-jre on runtimeClasspath; origin/custom_build frozen at 69cd680b). Later phases show their change with git diff baseline-v1.7.0_gg4; Phase 29 names this baseline. — D-17
 - [Phase 26]: 26-01: double row CONFIRMED on ClickHouse 26.9.19.9; measured pre-fix affected set is the 25 predicted keys, all 13 s4_a keys and no look-alike
 - [Phase 26]: 26-01: NullableRoundTrip.describeRows reads through the shared DescribeFixtureCatalog.describeRawLines (one DESCRIBE reader)
+- [Phase 26]: DescribeTableBuilder logs through the ClickHouseHelperClient logger and addRow throws JsonProcessingException unwrapped, so both describe paths keep their log names and catch blocks
+- [Phase 26]: A snapshot or suite difference after the extraction is a stop, not an expectation update; all 47 fixtures matched on the first run
 
 ### Pending Todos
 
@@ -255,8 +258,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T20:59:08.044Z
-Stopped at: Completed 26-01-PLAN.md
+Last session: 2026-10-21T21:11:52.376Z
+Stopped at: Completed 26-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
