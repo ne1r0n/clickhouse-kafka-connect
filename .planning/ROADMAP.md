@@ -139,7 +139,7 @@ Phase artifacts: `milestones/v1.7.0_gg3-hardening-phases/` · Quick tasks: `mile
      - Two full `--rerun` suite runs on the phase tip are green. That tip is the baseline for Phases 26–28.
   5. *[operator]* The user has created the `dependencies` label and said so directly; a relayed answer is not accepted. The record then states one of two things. Either a Dependabot PR opened since then arrived without the "labels could not be found" comment, or the check is pending the next monthly run (Phase 29 re-checks it).
 
-**Plans:** 6/8 plans executed
+**Plans:** 7/8 plans executed
 
 Plans:
 **Wave 1**
@@ -161,7 +161,7 @@ Plans:
 - [x] 25-06-PLAN.md — CI-20: `verifyConfluentArchive` finalizer and the `tests.yaml` step, pinned red-first; DEBT-14 pin-guard advisories
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 25-07-PLAN.md — Step-4 suite gate (DEPS-02), then merge 2 (upstream tail a6f1df83) with its record commit, tail gate and self-test (SYNC-11)
+- [x] 25-07-PLAN.md — Step-4 suite gate (DEPS-02), then merge 2 (upstream tail a6f1df83) with its record commit, tail gate and self-test (SYNC-11)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 25-08-PLAN.md — SYNC-12 archive/dependencyInsight/advisory rows, DEBT-15 catalog move, two `--rerun` runs, `baseline-v1.7.0_gg4`, OPS-04 closing observation
@@ -489,7 +489,7 @@ The four code phases split along the production files that change: the build and
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 6/8 | In Progress | - |
+| 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 7/8 | In Progress | - |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |

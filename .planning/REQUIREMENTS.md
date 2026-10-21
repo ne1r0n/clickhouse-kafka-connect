@@ -43,7 +43,7 @@
   - the compiled connector references no Connect API member that is absent from the production worker's API, Apache Kafka 3.9 (`cp-kafka-connect-base:7.9.7`), nor any member added after 4.1.1 (bytecode evidence against both jars);
   - FORK-DELTA's "production Connect API version" sentence is corrected to say the worker supplies the API at runtime, and the `ClickHouseSinkTask` comment and the three DLQ-emulation Javadocs are updated.
 - [x] **CI-20**: `tests.yaml` builds `createConfluentArchive` and fails on any nested `*.jar` entry, so the next Shadow bump cannot empty the jar unnoticed; `TestsWorkflowPinGuardUnitTest` pins the step.
-- [ ] **SYNC-11**: Upstream's untagged tail is merged as a tagless mini-sync:
+- [x] **SYNC-11**: Upstream's untagged tail is merged as a tagless mini-sync:
   - the stale local refs `refs/upstream/main` and `refs/upstream/v1.6.0` are deleted first, and `UPSTREAM_REF` is the full SHA `a6f1df839c079180bc7c343b5823f205e204dafc`;
   - one mechanical merge commit behind `verify-merge-invariants.sh` with a rollback tag at the pre-merge tip, conflicts only in `.gitignore` and `gradle/libs.versions.toml`;
   - the catalog hunk is resolved to the fork's values for shared keys (`kafka` 4.4.0, `lz4Java` 1.12.0, jackson 2.22.4, gson 2.14.0, lombok 1.18.48), `guava = "33.7.2-jre"` is added, and the orphan `httpclientTest` key is deleted;
@@ -138,7 +138,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BLD-15 | Phase 25 | Complete |
 | BLD-16 | Phase 25 | Complete |
 | CI-20 | Phase 25 | Complete |
-| SYNC-11 | Phase 25 | Pending |
+| SYNC-11 | Phase 25 | Complete |
 | SYNC-12 | Phase 25 | Pending |
 | DESC-06 | Phase 26 | Pending |
 | DESC-07 | Phase 26 | Pending |
