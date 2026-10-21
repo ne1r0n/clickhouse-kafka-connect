@@ -1,0 +1,6 @@
+{"name":"id","type":"Int32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}
+{"name":"c","type":"Tuple(\n    size Tuple(\n        a UInt8,\n        b String))","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}
+{"name":"c.size","type":"Tuple(\n    a UInt8,\n    b String)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.size.a","type":"UInt8","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.size.b","type":"String","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.size.b.size","type":"UInt64","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}

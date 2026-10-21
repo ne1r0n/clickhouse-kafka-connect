@@ -1,0 +1,9 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all c ARRAY
+all c.size1 ARRAY
+all c.size1 ARRAY
+tree id INT32 nullable=false
+tree c ARRAY nullable=false
+tree   [] c ARRAY nullable=false
+tree     [] c TUPLE nullable=false

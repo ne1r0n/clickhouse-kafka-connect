@@ -1,0 +1,9 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all c TUPLE
+all c.1 UINT8
+all c.2 STRING
+tree id INT32 nullable=false
+tree c TUPLE nullable=false
+tree   c.1 UINT8 nullable=false
+tree   c.2 STRING nullable=false

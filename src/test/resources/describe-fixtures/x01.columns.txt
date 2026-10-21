@@ -1,0 +1,5 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all c TUPLE
+tree id INT32 nullable=false
+tree c TUPLE nullable=false

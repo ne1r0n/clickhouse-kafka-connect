@@ -428,6 +428,15 @@ tasks.register<JavaExec>("verifyConfluentArchive") {
     argumentProviders.add(CommandLineArgumentProvider { listOf(archive.get().asFile.absolutePath) })
 }
 
+// D-06: re-captures the DESCRIBE fixtures of Phase 26 against Docker; run by hand, wired into no other task.
+tasks.register<JavaExec>("captureDescribeFixtures") {
+    group = "verification"
+    description = "Re-captures the DESCRIBE TABLE fixtures under src/test/resources/describe-fixtures from the ClickHouse image"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.clickhouse.kafka.connect.sink.db.helper.DescribeFixtureCapture")
+    args(layout.projectDirectory.dir("src/test/resources/describe-fixtures").asFile.absolutePath)
+}
+
 tasks.register<Exec>("runClickHouseVersionClientMatrix") {
     group = "verification"
     description = "Runs tests for ClickHouse and client version matrix and writes logs to build/"

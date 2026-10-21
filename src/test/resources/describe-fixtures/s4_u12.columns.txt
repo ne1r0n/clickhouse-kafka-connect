@@ -1,0 +1,5 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all size UINT8
+tree id INT32 nullable=false
+tree size UINT8 nullable=false

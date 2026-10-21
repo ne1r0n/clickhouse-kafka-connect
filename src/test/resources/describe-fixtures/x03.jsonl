@@ -1,0 +1,5 @@
+{"name":"id","type":"Int32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}
+{"name":"size","type":"Tuple(\n    size UInt8,\n    size0 String)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}
+{"name":"size.size","type":"UInt8","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"size.size0","type":"String","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"size.size0.size","type":"UInt64","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}

@@ -1,0 +1,9 @@
+numColumns=3 hasDefaults=false
+all id INT32
+all n.size ARRAY
+all n.v ARRAY
+tree id INT32 nullable=false
+tree n.size ARRAY nullable=false
+tree   [] n.size UINT8 nullable=false
+tree n.v ARRAY nullable=false
+tree   [] n.v STRING nullable=false

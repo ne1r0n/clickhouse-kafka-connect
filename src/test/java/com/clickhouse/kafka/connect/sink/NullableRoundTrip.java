@@ -6,18 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.client.api.insert.InsertResponse;
 import com.clickhouse.client.api.insert.InsertSettings;
-import com.clickhouse.client.api.query.QueryResponse;
-import com.clickhouse.client.api.query.QuerySettings;
 import com.clickhouse.client.api.query.Records;
 import com.clickhouse.data.ClickHouseFormat;
 import com.clickhouse.kafka.connect.sink.db.CapturingClickHouseWriter;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
+import com.clickhouse.kafka.connect.sink.db.helper.DescribeFixtureCatalog;
 import com.clickhouse.kafka.connect.sink.helper.RowSnapshots;
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,8 +36,6 @@ final class NullableRoundTrip {
     static final String FALSE_TEXT = "0";
 
     private static final String ROW_ID_COLUMN = "id";
-    private static final String DESCRIBE_QUERY_FORMAT = "DESCRIBE TABLE `%s`.`%s`";
-    private static final String DESCRIBE_INCLUDE_SUBCOLUMNS = "describe_include_subcolumns";
     private static final String CAUSE_SEPARATOR = " | ";
     private static final String SERVER_VERSION_QUERY = "SELECT version() AS v";
     private static final String SERVER_VERSION_ALIAS = "v";
@@ -168,24 +162,16 @@ final class NullableRoundTrip {
     }
 
     /**
-     * Reads DESCRIBE exactly as {@code describeTableV2} does (JSONEachRow, sub-columns included,
-     * UTF-8 explicitly, rows through {@code fromJsonRow}), so the raw types are what discovery sees.
+     * Reads DESCRIBE exactly as {@code describeTableV2} does (through the one shared reader {@link
+     * DescribeFixtureCatalog#describeRawLines}: JSONEachRow, sub-columns included, UTF-8
+     * explicitly), then parses each row with {@code fromJsonRow}, so the raw types are what discovery
+     * sees.
      */
     static List<ClickHouseFieldDescriptor> describeRows(ClickHouseHelperClient chc, String tableName)
             throws Exception {
-        QuerySettings settings = new QuerySettings().setFormat(ClickHouseFormat.JSONEachRow);
-        settings.serverSetting(DESCRIBE_INCLUDE_SUBCOLUMNS, "1");
-        settings.setDatabase(chc.getDatabase());
         List<ClickHouseFieldDescriptor> rows = new ArrayList<>();
-        try (QueryResponse response = chc.getClient()
-                        .query(String.format(DESCRIBE_QUERY_FORMAT, chc.getDatabase(), tableName), settings)
-                        .get();
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(response.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                rows.add(ClickHouseFieldDescriptor.fromJsonRow(line));
-            }
+        for (String line : DescribeFixtureCatalog.describeRawLines(chc, tableName)) {
+            rows.add(ClickHouseFieldDescriptor.fromJsonRow(line));
         }
         return rows;
     }

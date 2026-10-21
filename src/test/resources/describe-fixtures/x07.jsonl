@@ -1,0 +1,10 @@
+{"name":"id","type":"Int32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}
+{"name":"c","type":"Map(String, Array(Tuple(\n    size UInt8,\n    v String)))","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}
+{"name":"c.size0","type":"UInt64","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.keys","type":"Array(String)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.keys.size","type":"Array(UInt64)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.values","type":"Array(Array(Tuple(\n    size UInt8,\n    v String)))","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.values.size1","type":"Array(UInt64)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.values.size","type":"Array(Array(UInt8))","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.values.v","type":"Array(Array(String))","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
+{"name":"c.values.v.size","type":"Array(Array(UInt64))","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1}
