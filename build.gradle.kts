@@ -361,7 +361,14 @@ tasks.withType<Jar> {
 }
 tasks.register<ShadowJar>("confluentJar") {
     archiveClassifier.set("confluent")
-    from(clickhouseDependencies, sourceSets.main.get().output)
+    // Shadow 9 copies jars given to from(...) as-is and unpacks only configurations.
+    configurations.add(clickhouseDependencies)
+    from(sourceSets.main.get().output)
+    addMultiReleaseAttribute.set(false)
+}
+
+shadow {
+    addShadowJarToAssembleLifecycle.set(false)
 }
 
 // Confluent Archive

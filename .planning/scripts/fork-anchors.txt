@@ -85,3 +85,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.j
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	declaredType.replace(ESCAPED_NEWLINE, SPACE)	0	COLS-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	private static final char BACKTICK	1	COLS-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	UNPAIRED_ELEMENT_WARNING	2	COLS-14
+# Phase 25 (v1.7.0_gg4): the Shadow 9 repair of confluentJar (BLD-15); the 0-count row fails an upstream sync that brings back the two-argument from(...) call.
+build.gradle.kts	configurations.add(clickhouseDependencies)	1	BLD-15
+build.gradle.kts	from(clickhouseDependencies, 	0	BLD-15
