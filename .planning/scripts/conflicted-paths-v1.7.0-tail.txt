@@ -1,0 +1,2 @@
+.gitignore
+gradle/libs.versions.toml
