@@ -21,7 +21,7 @@
 | E-09 | DESC-09 (round-trip green on the fix tree) | pass |
 | E-10 | DESC-07 (manual CLIENT_VERSION=V1 run) | pass |
 | E-11 | Rollout facts for Phase 29 | pass |
-| E-12 | Phase gate | pending (plan 26-05) |
+| E-12 | DESC-06..DESC-10 (phase gate) | pass |
 
 ### E-01: Capture harness runs (DESC-06, D-06)
 
@@ -518,4 +518,208 @@ Each line is a fact the Phase 29 operator note may use, with its provenance; onl
 Phase 28 note: `DescribeTableBuilder` and `ParentShape` are the `jacocoForkReport` inputs for DEBT-17.
 
 Timestamp: 2026-10-21T21:38:34Z
+Verdict: pass
+
+### E-12: Phase gate (DESC-06..DESC-10)
+
+Commands as run (HEAD `1f2f156182da83d8ba4bedd8d0a76952454e759d`, no commit between the first gate command and the tail gate; the last code commit is `0a6112fb`, everything after it is docs/evidence):
+
+```bash
+.planning/scripts/verify-merge-invariants-selftest.sh > /tmp/gsd26/exec/selftest.log 2>&1; echo $? > /tmp/gsd26/exec/selftest.rc    # background, started 2026-10-21T21:46:42Z
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd26/exec/testunit-gate.log 2>&1
+date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/gsd26/exec/suite-gate-start.txt; rm -rf build/test-results/test
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd26/exec/suite-gate.log 2>&1       # three runs, all JVM crashes (below)
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd26/exec/suite-gate.log 2>&1   # the run that counts
+cp -R build/test-results/test /tmp/gsd26/exec/suite-gate; python3 -I /tmp/gsd26/exec/suite-check.py /tmp/gsd26/exec/suite-gate "$(cat /tmp/gsd26/exec/suite-gate-start.txt)"
+docker image inspect clickhouse/clickhouse-server:latest --format '{{.Id}} {{.Created}}'
+/tmp/gsd26/exec/spotless-numstat.sh "$PWD" baseline-v1.7.0_gg4 > spotless-baseline.txt ; /tmp/gsd26/exec/spotless-numstat.sh "$PWD" HEAD > spotless-head.txt ; cmp
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd26/exec/gate-26-05.log
+git diff --quiet baseline-v1.7.0_gg4 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh
+git ls-remote origin custom_build ; git ls-remote --heads origin sync/v1.7.0 ; git ls-remote --tags origin baseline-v1.7.0_gg4
+git diff --stat baseline-v1.7.0_gg4 HEAD -- . ':(exclude).planning' > /tmp/gsd26/exec/diff-baseline.txt
+```
+
+testUnit (`--rerun`):
+
+```text
+Test result: SUCCESS
+Tests summary: 1126 tests, 1124 succeeded, 0 failed, 2 skipped
+BUILD SUCCESSFUL in 5s
+```
+
+Full suite, three runs on the default toolchain (Semeru 17.0.9, OpenJ9) that did NOT produce a result, then one run on HotSpot that did:
+
+```text
+run 1 (default JDK 17): Test result: FAILURE  Tests summary: 1595 tests, 1576 succeeded, 0 failed, 19 skipped  Gradle Test Executor 133 finished with non-zero exit value 255
+run 2 (default JDK 17): same totals, Gradle Test Executor 136 finished with non-zero exit value 255 (self-test still running)
+run 3 (default JDK 17): same totals, same exit value 255 (self-test finished, suite alone)
+crash site, from the javacore of runs 1 and 2: signal "gpf" in sun/instrument/InstrumentationImpl.retransformClasses0 <- Mockito InlineBytecodeGenerator.triggerRetransformation <- Mockito.spy at ClickHouseWriterTest.staleDescribeTableIsNotCachedAsCurrentSchema (ClickHouseWriterTest.java:445)
+host at the time: swap 28448M of 29696M used, 3885 free 16K pages (vm_stat), 32 GB RAM
+the core.*.dmp (~8 GB), javacore.*, Snap.*.trc and jitdump.* files of each crash were deleted one by one; git status shows no leftover
+run 4 (-PjavaVersion=21, HotSpot OpenJDK 21.0.12.1, the build's own javaVersion property): started 2026-10-21T22:04:22Z
+Test result: SUCCESS
+Tests summary: 1709 tests, 1691 succeeded, 0 failed, 18 skipped
+BUILD SUCCESSFUL in 2m 39s
+```
+
+Suite checker (`/tmp/gsd26/exec/suite-check.py`, the plan's verify script as a file), run-4 results:
+
+```text
+count sink.db.helper.DescribeFixtureDriftLiveTest 94 94
+count sink.db.helper.DescribeFixturesUnitTest 95 95
+count sink.db.helper.DescribeFixtureSnapshotUnitTest 47 47
+count sink.TupleSizeNamedElementRoundTripLiveTest 46 46
+count sink.db.helper.ClickHouseHelperClientForkUnitTest 51 51
+count sink.db.mapping.DeclaredNullabilityTest 66 66
+count sink.NullableTupleMatrixLiveTest 33 33
+count sink.SimpleAggregateTupleRoundTripLiveTest 2 2
+count sink.JsonAsStringKeyResidualLiveTest 4 4
+count ci.ConnectApiReferencesUnitTest 3 3
+DescribeTableBuilderUnitTest 120 DedupTokenRetryLiveTest 8 WriterErrorPathLiveTest 10 TestsWorkflowPinGuardUnitTest 39
+xml 97 tests 1709 failures 0 errors 0 skipped 18 stale 0 exact True skip-set-ok True desc05 True server ['26.9.19.9']
+```
+
+The 18 skips are the 11 `ClickHouseSinkTaskWithSchemaTest` bracketed-row skips plus the 7 named ones (`ClickHouseSinkTaskTest#clientNameTest()`, `ClickHouseSinkTaskWithSchemaTest#schemaWithNestedTupleMapArrayAndVariant()`, `...#schemaWithTupleOfMapsWithVariantTest()`, `ConvertToMapOrJsonPerformanceTestJson#testDeepNestedStructPerformance()` and `#testWideStructPerformance()`, `InsertFormatPerformanceTest#compareInsertPerformance()`, `JsonColumnTest#compareAllConfigurations()`). ClickHouseHelperClientForkLiveTest's DESC-05 and DESC-02 rows passed. No XML predates the recorded start 2026-10-21T22:04:22Z. Client V2, ClickHouse server 26.9.19.9.
+
+Image: `sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z`, equal to `image_id` in `src/test/resources/describe-fixtures/SERVER_VERSION.txt` (`version=26.9.19.9`): `latest` did not drift.
+
+Spotless (SPOTLESS_NUMSTAT_AT recipe): `spotless-baseline.txt` and `spotless-head.txt` are both 46 lines and byte-equal (`cmp` exit 0), i.e. the fork's own formatting drift is unchanged by the phase.
+
+Tail gate and self-test, same HEAD:
+
+```text
+invariants: provenance_paths=3 anchor_commits=36 anchor_rows=77 marker_commits=48 anchor_exempt=0 result=PASS
+selftest exit code 0, 16 PASS lines (ST1 .. ST9-exact-row), 0 FAIL lines, last line: selftest: no failures
+verify-merge-invariants.sh and verify-merge-invariants-selftest.sh: git diff --quiet against baseline-v1.7.0_gg4 exit 0
+```
+
+Freeze reads:
+
+```text
+git ls-remote origin custom_build         -> 69cd680bf548bfb0329142752d37f8a6c3190c26	refs/heads/custom_build
+git ls-remote --heads origin sync/v1.7.0  -> (nothing)
+git ls-remote --tags origin baseline-v1.7.0_gg4 -> (nothing)
+```
+
+`git diff --stat baseline-v1.7.0_gg4 HEAD -- . ':(exclude).planning'` (the whole sync/v1.7.0 non-planning delta; the non-planning commits of this phase are test(26-01), refactor(26-02), fix(26-03), test(26-04) and docs(26-04), which edits docs/FORK-DELTA.md; the rest is the earlier v1.7.0 phases):
+
+```text
+ CHANGELOG.md                                       |   9 +
+ build.gradle.kts                                   |   9 +
+ docs/FORK-DELTA.md                                 |  14 +-
+ .../sink/db/helper/ClickHouseHelperClient.java     | 144 +-----
+ .../sink/db/helper/DescribeTableBuilder.java       | 290 +++++++++++
+ .../kafka/connect/sink/db/mapping/Column.java      |   2 +
+ .../sink/db/mapping/DeclaredNullability.java       |  18 +-
+ .../kafka/connect/sink/db/mapping/ParentShape.java |  82 +++
+ .../kafka/connect/sink/db/mapping/Table.java       |   2 +-
+ .../kafka/connect/sink/NullableRoundTrip.java      |  28 +-
+ .../TupleSizeNamedElementRoundTripLiveTest.java    | 572 +++++++++++++++++++++
+ .../helper/ClickHouseHelperClientForkUnitTest.java |  70 +--
+ .../sink/db/helper/DescribeFixtureCapture.java     | 181 +++++++
+ .../sink/db/helper/DescribeFixtureCatalog.java     | 207 ++++++++
+ .../db/helper/DescribeFixtureDriftLiveTest.java    |  73 +++
+ .../db/helper/DescribeFixtureSnapshotUnitTest.java |  46 ++
+ .../sink/db/helper/DescribeFixturesUnitTest.java   | 121 +++++
+ .../db/helper/DescribeTableBuilderUnitTest.java    | 408 +++++++++++++++
+ .../sink/db/mapping/DeclaredNullabilityTest.java   |  17 +
+ .../resources/describe-fixtures/SERVER_VERSION.txt |   3 +
+ .../resources/describe-fixtures/n01.columns.txt    |  12 +
+ src/test/resources/describe-fixtures/n01.jsonl     |   6 +
+ .../resources/describe-fixtures/n02.columns.txt    |  12 +
+ src/test/resources/describe-fixtures/n02.jsonl     |   7 +
+ .../resources/describe-fixtures/n03.columns.txt    |  10 +
+ src/test/resources/describe-fixtures/n03.jsonl     |   7 +
+ .../resources/describe-fixtures/n04.columns.txt    |  15 +
+ src/test/resources/describe-fixtures/n04.jsonl     |   9 +
+ .../resources/describe-fixtures/n05.columns.txt    |   9 +
+ src/test/resources/describe-fixtures/n05.jsonl     |   5 +
+ .../resources/describe-fixtures/r01.columns.txt    |   9 +
+ src/test/resources/describe-fixtures/r01.jsonl     |   5 +
+ .../resources/describe-fixtures/s4_a01.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_a01.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_a02.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_a02.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_a03.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_a03.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_a04.columns.txt |  10 +
+ src/test/resources/describe-fixtures/s4_a04.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_a05.columns.txt |  13 +
+ src/test/resources/describe-fixtures/s4_a05.jsonl  |   9 +
+ .../resources/describe-fixtures/s4_a06.columns.txt |  11 +
+ src/test/resources/describe-fixtures/s4_a06.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_a07.columns.txt |  10 +
+ src/test/resources/describe-fixtures/s4_a07.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_a08.columns.txt |  10 +
+ src/test/resources/describe-fixtures/s4_a08.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_a09.columns.txt |  10 +
+ src/test/resources/describe-fixtures/s4_a09.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_a10.columns.txt |  12 +
+ src/test/resources/describe-fixtures/s4_a10.jsonl  |   7 +
+ .../resources/describe-fixtures/s4_a11.columns.txt |  12 +
+ src/test/resources/describe-fixtures/s4_a11.jsonl  |   7 +
+ .../resources/describe-fixtures/s4_a12.columns.txt |  12 +
+ src/test/resources/describe-fixtures/s4_a12.jsonl  |   7 +
+ .../resources/describe-fixtures/s4_a13.columns.txt |  10 +
+ src/test/resources/describe-fixtures/s4_a13.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_o01.columns.txt |  13 +
+ src/test/resources/describe-fixtures/s4_o01.jsonl  |   8 +
+ .../resources/describe-fixtures/s4_u01.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u01.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u02.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u02.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_u03.columns.txt |  13 +
+ src/test/resources/describe-fixtures/s4_u03.jsonl  |   9 +
+ .../resources/describe-fixtures/s4_u04.columns.txt |  10 +
+ src/test/resources/describe-fixtures/s4_u04.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u05.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u05.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u06.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u06.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u07.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u07.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u08.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u08.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u09.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u09.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u10.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u10.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u11.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u11.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u12.columns.txt |   5 +
+ src/test/resources/describe-fixtures/s4_u12.jsonl  |   2 +
+ .../resources/describe-fixtures/s4_u13.columns.txt |   5 +
+ src/test/resources/describe-fixtures/s4_u13.jsonl  |   2 +
+ .../resources/describe-fixtures/s4_u14.columns.txt |   6 +
+ src/test/resources/describe-fixtures/s4_u14.jsonl  |   3 +
+ .../resources/describe-fixtures/s4_u15.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u15.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_u16.columns.txt |   5 +
+ src/test/resources/describe-fixtures/s4_u16.jsonl  |   2 +
+ .../resources/describe-fixtures/s4_u17.columns.txt |  10 +
+ src/test/resources/describe-fixtures/s4_u17.jsonl  |   6 +
+ .../resources/describe-fixtures/s4_u18.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u18.jsonl  |   5 +
+ .../resources/describe-fixtures/s4_u19.columns.txt |   9 +
+ src/test/resources/describe-fixtures/s4_u19.jsonl  |   5 +
+ .../resources/describe-fixtures/x01.columns.txt    |  11 +
+ src/test/resources/describe-fixtures/x01.jsonl     |   6 +
+ .../resources/describe-fixtures/x02.columns.txt    |  12 +
+ src/test/resources/describe-fixtures/x02.jsonl     |   7 +
+ .../resources/describe-fixtures/x03.columns.txt    |   9 +
+ src/test/resources/describe-fixtures/x03.jsonl     |   5 +
+ .../resources/describe-fixtures/x04.columns.txt    |  10 +
+ src/test/resources/describe-fixtures/x04.jsonl     |   6 +
+ .../resources/describe-fixtures/x05.columns.txt    |  12 +
+ src/test/resources/describe-fixtures/x05.jsonl     |   6 +
+ .../resources/describe-fixtures/x06.columns.txt    |  10 +
+ src/test/resources/describe-fixtures/x06.jsonl     |   7 +
+ .../resources/describe-fixtures/x07.columns.txt    |  15 +
+ src/test/resources/describe-fixtures/x07.jsonl     |  10 +
+ .../resources/describe-fixtures/x08.columns.txt    |   5 +
+ src/test/resources/describe-fixtures/x08.jsonl     |   6 +
+ 114 files changed, 2834 insertions(+), 197 deletions(-)
+```
+
+Timestamp: 2026-10-21T22:09:02Z
 Verdict: pass
