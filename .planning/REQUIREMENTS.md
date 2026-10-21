@@ -133,48 +133,48 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-02 | — | Pending |
-| DEPS-03 | — | Pending |
-| BLD-15 | — | Pending |
-| BLD-16 | — | Pending |
-| CI-20 | — | Pending |
-| SYNC-11 | — | Pending |
-| SYNC-12 | — | Pending |
-| DESC-06 | — | Pending |
-| DESC-07 | — | Pending |
-| DESC-08 | — | Pending |
-| DESC-09 | — | Pending |
-| DESC-10 | — | Pending |
-| NAME-01 | — | Pending |
-| NAME-02 | — | Pending |
-| NAME-03 | — | Pending |
-| NAME-04 | — | Pending |
-| NAME-05 | — | Pending |
-| NAME-06 | — | Pending |
-| NAME-07 | — | Pending |
-| WRT-16 | — | Pending |
-| WRT-17 | — | Pending |
-| WRT-18 | — | Pending |
-| WRT-19 | — | Pending |
-| DEBT-13 | — | Pending |
-| DEBT-14 | — | Pending |
-| DEBT-15 | — | Pending |
-| DEBT-16 | — | Pending |
-| DEBT-17 | — | Pending |
-| OPS-04 | — | Pending |
-| OPS-05 | — | Pending |
-| OPS-06 | — | Pending |
-| PUB-11 | — | Pending |
-| ROLL-04 | — | Pending |
-| ROLL-05 | — | Pending |
-| PUB-12 | — | Pending |
-| PUB-13 | — | Pending |
+| DEPS-02 | Phase 25 | Pending |
+| DEPS-03 | Phase 25 | Pending |
+| BLD-15 | Phase 25 | Pending |
+| BLD-16 | Phase 25 | Pending |
+| CI-20 | Phase 25 | Pending |
+| SYNC-11 | Phase 25 | Pending |
+| SYNC-12 | Phase 25 | Pending |
+| DESC-06 | Phase 26 | Pending |
+| DESC-07 | Phase 26 | Pending |
+| DESC-08 | Phase 26 | Pending |
+| DESC-09 | Phase 26 | Pending |
+| DESC-10 | Phase 26 | Pending |
+| NAME-01 | Phase 28 | Pending |
+| NAME-02 | Phase 28 | Pending |
+| NAME-03 | Phase 28 | Pending |
+| NAME-04 | Phase 28 | Pending |
+| NAME-05 | Phase 28 | Pending |
+| NAME-06 | Phase 28 | Pending |
+| NAME-07 | Phase 28 | Pending |
+| WRT-16 | Phase 27 | Pending |
+| WRT-17 | Phase 27 | Pending |
+| WRT-18 | Phase 27 | Pending |
+| WRT-19 | Phase 27 | Pending |
+| DEBT-13 | Phase 25 | Pending |
+| DEBT-14 | Phase 25 | Pending |
+| DEBT-15 | Phase 25 | Pending |
+| DEBT-16 | Phase 27 | Pending |
+| DEBT-17 | Phase 28 | Pending |
+| OPS-04 | Phase 25 | Pending |
+| OPS-05 | Phase 29 | Pending |
+| OPS-06 | Phase 29 | Pending |
+| PUB-11 | Phase 29 | Pending |
+| ROLL-04 | Phase 29 | Pending |
+| ROLL-05 | Phase 29 | Pending |
+| PUB-12 | Phase 29 | Pending |
+| PUB-13 | Phase 29 | Pending |
 
 **Coverage:**
 - v1 requirements: 36 total
-- Mapped to phases: 0
-- Unmapped: 36 ⚠️ (filled by the roadmap)
+- Mapped to phases: 36 (Phase 25: 11, Phase 26: 5, Phase 27: 5, Phase 28: 8, Phase 29: 7)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-10-21*
-*Last updated: 2026-10-21 after initial definition*
+*Last updated: 2026-10-21 after roadmap creation (Phases 25-29, 36/36 mapped)*

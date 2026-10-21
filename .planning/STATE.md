@@ -3,10 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg4-hardening
 milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 status: planning
-last_updated: "2026-10-21T10:26:23.695Z"
+current_phase: "25"
+current_phase_name: "Dependency Absorption & Upstream Mini-Sync"
+last_updated: "2026-10-21T11:12:30.000Z"
 last_activity: 2026-10-21
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +22,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21 after starting milestone v1.7.0_gg4-hardening)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Defining requirements for `v1.7.0_gg4-hardening` (PROJECT.md → Current Milestone)
+**Current focus:** Phase 25 — Dependency Absorption & Upstream Mini-Sync (fix the pin-guard reader first, then absorb `origin/custom_build`'s nine Dependabot merges and upstream's tail `a6f1df83` before any code work)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-21 — Milestone v1.7.0_gg4-hardening started
+Phase: 25 of 29 (Dependency Absorption & Upstream Mini-Sync) — not started (ready to plan)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-21 — Roadmap created for v1.7.0_gg4-hardening (Phases 25-29, 36/36 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -223,9 +227,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-21
-Stopped at: Milestone `v1.7.0_gg3-hardening` closed. Audit `tech_debt`, then quick 261020-vcr, then re-audit passed; corrected note published at `6a2a87a5`; local milestone tag `v1.7.0_gg3-hardening`
+Stopped at: Roadmap created for milestone `v1.7.0_gg4-hardening` (Phases 25-29, 36/36 requirements mapped); Phase 25 ready to plan
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Discuss and plan Phase 25 with /gsd-discuss-phase 25, then /gsd-plan-phase 25
+- Create the `dependencies` label in the GitHub UI when Phase 25 presents OPS-04
