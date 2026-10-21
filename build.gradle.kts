@@ -410,6 +410,20 @@ tasks.register<Zip>("createConfluentArchive") {
     archiveAppendix.set(archiveFilename)
     archiveVersion.set(project.version.toString())
     destinationDirectory.set(layout.buildDirectory.dir("confluent"))
+    finalizedBy("verifyConfluentArchive")
+}
+
+// CI-20: fails the build when the Confluent archive nests jars or bundles a Kafka API class. The
+// rules live once, in ConfluentArchiveCheck (test source set), which ConfluentArchiveCheckUnitTest
+// also exercises on synthetic archives.
+tasks.register<JavaExec>("verifyConfluentArchive") {
+    group = "verification"
+    description = "Fails if the Confluent archive nests jars or bundles a Kafka API class"
+    val archive = tasks.named<Zip>("createConfluentArchive").flatMap { it.archiveFile }
+    inputs.file(archive)
+    classpath = sourceSets["test"].output.classesDirs
+    mainClass.set("com.clickhouse.kafka.connect.ci.ConfluentArchiveCheck")
+    argumentProviders.add(CommandLineArgumentProvider { listOf(archive.get().asFile.absolutePath) })
 }
 
 tasks.register<Exec>("runClickHouseVersionClientMatrix") {

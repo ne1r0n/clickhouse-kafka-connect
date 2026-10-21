@@ -16,6 +16,9 @@
 # The fork-count step prints the value the reportTestForks Gradle task reads from the test task, and
 # also emits a notice annotation, because job logs are not readable without repository admin rights
 # (CI-09, CI-14).
+#
+# The archive step builds createConfluentArchive, whose verifyConfluentArchive finalizer fails the job
+# on a nested jar or a bundled Kafka API class (CI-20).
 name: ClickHouse Kafka Connect Tests CI
 
 permissions:
@@ -65,6 +68,9 @@ jobs:
 
       - name: Compile integration-test sources
         run: ./gradlew compileIntegrationTestJava
+
+      - name: Build and verify Confluent archive
+        run: ./gradlew createConfluentArchive
 
       - name: Run tests
         run: ./gradlew test
