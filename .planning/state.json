@@ -1,12 +1,38 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg4-hardening",
-  "phases": [],
+  "milestone": "v1.7.0_gg4-hardening — Dependency Absorption, Discovery Defects & Review Debt",
+  "phases": [
+    {
+      "number": "25",
+      "name": "Dependency Absorption & Upstream Mini-Sync",
+      "status": "in_progress"
+    },
+    {
+      "number": "26",
+      "name": "Size-Named Tuple Elements in Discovery",
+      "status": "pending"
+    },
+    {
+      "number": "27",
+      "name": "Writer Failure Path & Test Debt",
+      "status": "pending"
+    },
+    {
+      "number": "28",
+      "name": "Raw Identifier Names in Discovery",
+      "status": "pending"
+    },
+    {
+      "number": "29",
+      "name": "Release & Publication",
+      "status": "pending"
+    }
+  ],
   "next": {
-    "command": "/gsd-discuss-phase",
-    "label": "Discuss the first phase",
-    "reason": "Project initialized — plan your first phase"
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 1 of 5 · 0% · executing"
   },
-  "updated_at": "2026-10-21T10:26:23.698Z"
+  "updated_at": "2026-10-21T14:00:40.206Z"
 }

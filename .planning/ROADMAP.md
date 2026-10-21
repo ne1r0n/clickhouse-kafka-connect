@@ -142,13 +142,28 @@ Phase artifacts: `milestones/v1.7.0_gg3-hardening-phases/` · Quick tasks: `mile
 **Plans:** 8 plans
 
 Plans:
+**Wave 1**
 - [ ] 25-01-PLAN.md — OPS-04 at the start: REST facts, the user creates the `dependencies` label (blocking-human), answer recorded verbatim; opens the evidence file
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 25-02-PLAN.md — DEBT-13: string- and comment-aware `ktsCode` scanner, fixtures seen red first, before any authored `build.gradle.kts` edit
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 25-03-PLAN.md — Pre-flight and merge 1 (`origin/custom_build` 69cd680b) with the kafka anchor edit and gate-generated exemption rows; cumulative gate, self-test, merged-tree Docker-free checks (DEPS-02, DEPS-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 25-04-PLAN.md — BLD-15: Shadow 9.6.1 repair of `confluentJar` with two anchors; committed archive compare against `v1.7.0_gg3`
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 25-05-PLAN.md — BLD-16: worker jars from `cp-kafka-connect-base:7.9.7`, javap bless script, committed reference list and `ConnectApiReferencesUnitTest`; D-14 wording commit
+
+**Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 25-06-PLAN.md — CI-20: `verifyConfluentArchive` finalizer and the `tests.yaml` step, pinned red-first; DEBT-14 pin-guard advisories
+
+**Wave 7** *(blocked on Wave 6 completion)*
 - [ ] 25-07-PLAN.md — Step-4 suite gate (DEPS-02), then merge 2 (upstream tail a6f1df83) with its record commit, tail gate and self-test (SYNC-11)
+
+**Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 25-08-PLAN.md — SYNC-12 archive/dependencyInsight/advisory rows, DEBT-15 catalog move, two `--rerun` runs, `baseline-v1.7.0_gg4`, OPS-04 closing observation
 
 **Research flag**: Measurement precedes the plans for the Shadow repair:
