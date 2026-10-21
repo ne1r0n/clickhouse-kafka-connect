@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 25
 current_phase_name: Dependency Absorption & Upstream Mini-Sync
 status: executing
-stopped_at: Phase 25 context gathered
-last_updated: "2026-10-21T14:00:40.181Z"
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-10-21T15:13:21.051Z"
 last_activity: 2026-10-21
-last_activity_desc: Roadmap created for v1.7.0_gg4-hardening (Phases 25-29, 36/36 requirements mapped)
-state_head: f4bac55aabd4796de3db471d056b146020b9f909
+last_activity_desc: Phase 25 execution started
+state_head: f7b481f30491752eeeecabb935ee51a1d5047e42
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 8
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21 after starting milestone v1.7.0_gg4-hardening)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 25 — Dependency Absorption & Upstream Mini-Sync (fix the pin-guard reader first, then absorb `origin/custom_build`'s nine Dependabot merges and upstream's tail `a6f1df83` before any code work)
+**Current focus:** Phase 25 — Dependency Absorption & Upstream Mini-Sync
 
 ## Current Position
 
-Phase: 25 (Dependency Absorption & Upstream Mini-Sync) — READY TO EXECUTE
-Plan: Not started
+Phase: 25 (Dependency Absorption & Upstream Mini-Sync) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-10-21 — Roadmap created for v1.7.0_gg4-hardening (Phases 25-29, 36/36 requirements mapped)
+Last activity: 2026-10-21 — Phase 25 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -164,6 +164,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 24 P05 | 20 min | 3 tasks | 10 files |
 | Phase 24 P06 | 47 min | 3 tasks | 1 files |
 | Phase 24 P07 | 25 min | 3 tasks | 2 files |
+| Phase 25 P01 | 67min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -229,9 +230,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T12:11:27.088Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-dependency-absorption-upstream-mini-sync/25-CONTEXT.md
+Last session: 2026-10-21T15:13:21.029Z
+Stopped at: Completed 25-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

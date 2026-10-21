@@ -139,11 +139,11 @@ Phase artifacts: `milestones/v1.7.0_gg3-hardening-phases/` · Quick tasks: `mile
      - Two full `--rerun` suite runs on the phase tip are green. That tip is the baseline for Phases 26–28.
   5. *[operator]* The user has created the `dependencies` label and said so directly; a relayed answer is not accepted. The record then states one of two things. Either a Dependabot PR opened since then arrived without the "labels could not be found" comment, or the check is pending the next monthly run (Phase 29 re-checks it).
 
-**Plans:** 8 plans
+**Plans:** 1/8 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 25-01-PLAN.md — OPS-04 at the start: REST facts, the user creates the `dependencies` label (blocking-human), answer recorded verbatim; opens the evidence file
+- [x] 25-01-PLAN.md — OPS-04 at the start: REST facts, the user creates the `dependencies` label (blocking-human), answer recorded verbatim; opens the evidence file
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 25-02-PLAN.md — DEBT-13: string- and comment-aware `ktsCode` scanner, fixtures seen red first, before any authored `build.gradle.kts` edit
@@ -489,7 +489,7 @@ The four code phases split along the production files that change: the build and
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 0/8 | Planned | - |
+| 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 1/8 | In Progress | - |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
