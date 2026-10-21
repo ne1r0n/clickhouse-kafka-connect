@@ -28,7 +28,7 @@
 | E-16 | CI-20 (pin-guard green run) | pass |
 | E-17 | DEBT-14 (pin-guard red run) | pass |
 | E-18 | DEBT-14 (pin-guard green run, accept-set changes) | pass |
-| E-19 | DEPS-02 (step-4 suite gate) | pending (plan 25-07) |
+| E-19 | DEPS-02 (step-4 suite gate) | pass |
 | E-20 | SYNC-11 (merge 2 rehearsal) | pending (plan 25-07) |
 | E-21 | SYNC-11 (merge 2, tail gate, self-test) | pending (plan 25-07) |
 | E-22 | SYNC-12, BLD-15 (post-merge archive, dependencyInsight, advisories) | pending (plan 25-08) |
@@ -851,5 +851,54 @@ AGENTS.md's rule "only add new tests, never delete/weaken existing ones" and DEB
 | `run: ./gradlew createConfluentArchive` | archiveStepProblem | accepted | accepted | control: the real shape is still the call |
 
 Timestamp: 2026-10-21T16:45:03Z
+
+Verdict: pass
+
+### E-19: Step-4 suite gate on the merge-1 tree (DEPS-02)
+
+Commands as run (repository root, branch `sync/v1.7.0`, HEAD `cff85486`, tree `3fb5ecc0dcc655289183776070e61786ef716644`; the only uncommitted tracked files were the orchestrator's `.planning/state.json` and the merge-1 `gradlew.bat`, never staged):
+
+```bash
+git status --porcelain --untracked-files=no -- . ':(exclude)gradlew.bat' ':(exclude).planning/state.json'   # empty
+docker image inspect clickhouse/clickhouse-server:latest --format '{{.Id}} {{.Created}}'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileIntegrationTestJava createConfluentArchive > /tmp/gsd25/exec/step4-build.log 2>&1
+rm -rf build/test-results/test
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd25/exec/suite-step4.log 2>&1
+cp -R build/test-results/test /tmp/gsd25/exec/suite-step4
+/tmp/gsd25/exec/spotless-numstat.sh "$PWD" v1.7.0_gg3 > /tmp/gsd25/exec/spotless-gg3-s4.txt   # SPOTLESS_NUMSTAT_AT recipe
+/tmp/gsd25/exec/spotless-numstat.sh "$PWD" HEAD       > /tmp/gsd25/exec/spotless-s4.txt
+```
+
+```text
+latest_image: sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z (same id and date as E-05; not re-pulled)
+colima: profile vz Running
+build: verifyConfluentArchive: 7798 inner entries, no nested jar, no Kafka API class
+build: BUILD SUCCESSFUL in 2s (compileIntegrationTestJava and createConfluentArchive)
+suite: BUILD SUCCESSFUL in 2m 39s (2026-10-21T16:51:24Z start, exit 0, 22 actionable tasks: 3 executed, 19 up-to-date)
+suite: Test result: SUCCESS
+suite: Tests summary: 1303 tests, 1285 succeeded, 0 failed, 18 skipped
+xml: files 92, tests 1303, failures 0, errors 0, skipped 18, stale files (older than the last non-.planning commit) 0
+server_version: 26.9.19.9 (DEDUP_TOKEN_RETRY and JSON_AS_STRING_RESIDUAL each logged it once; exactly one distinct version)
+ci.TestsWorkflowPinGuardUnitTest: 39 tests, 0 failures, 0 errors, 0 skipped
+ci.ConnectApiReferencesUnitTest: 3 tests, 0 failures, 0 errors, 0 skipped
+spotless: spotless-gg3-s4.txt 46 lines, spotless-s4.txt 46 lines, cmp silent (byte-equal, non-empty)
+```
+
+The 18 skips, compared as a set of class#method names (7 named methods plus 11 `ClickHouseSinkTaskWithSchemaTest#exactlyOnceStateMismatchTest` cases `[1]`..`[11]`):
+
+```text
+ClickHouseSinkTaskTest#clientNameTest()
+ClickHouseSinkTaskWithSchemaTest#schemaWithNestedTupleMapArrayAndVariant()
+ClickHouseSinkTaskWithSchemaTest#schemaWithTupleOfMapsWithVariantTest()
+ConvertToMapOrJsonPerformanceTestJson#testDeepNestedStructPerformance()
+ConvertToMapOrJsonPerformanceTestJson#testWideStructPerformance()
+InsertFormatPerformanceTest#compareInsertPerformance()
+JsonColumnTest#compareAllConfigurations()
+ClickHouseSinkTaskWithSchemaTest#[1] .. #[11]   (the 11 exactlyOnceStateMismatchTest cases)
+```
+
+Verify command of the plan (Task 1, `STEP4-SUITE-GREEN`): see the run below.
+
+Timestamp: 2026-10-21T16:56:30Z
 
 Verdict: pass
