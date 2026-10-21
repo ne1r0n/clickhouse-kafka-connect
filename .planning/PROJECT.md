@@ -29,11 +29,11 @@ Code: `src/main` is 10,523 LOC and the tests are 38,242 LOC (`src/test`, `src/te
 **Behaviour changes operators will see** (each in `docs/ROLLOUT-v1.7.0_gg3.md`):
 - A writer value-conversion failure now names the column, the Kafka and ClickHouse types and the exception class, without the record value. This applies to the task status, the DLQ stack-trace header and the `Error inserting records` logs; grep for ``Failed to write column ``. There is one measured exception: on the opt-in JSON-as-string route, a Jackson reference chain can name a Map key.
 - A `Nullable(Tuple)` whose element name holds a backslash-n or a line break now pairs and stores the row. Such tables encode differently than on `v1.7.0_gg2`, so a rollback needs a clean stop (item 4 of the note).
-- A new WARN names a declared Tuple element that has no DESCRIBE sub-column. It marks the pre-existing `size`/`size0` discovery defect (backlog 999.4).
+- A new WARN names a declared Tuple element that has no DESCRIBE sub-column. It marks the pre-existing `size`/`size0` discovery defect (backlog 999.4), fixed on the working branch in Phase 26 and unpublished until `v1.7.0_gg4`.
 - The MBean `version=` segment and the client name read `v1.7.0_gg3`.
 
 **Knowingly open in the published `v1.7.0_gg3`:**
-- **Backlog 999.4:** a Tuple element named `size` or `size0` is dropped at discovery. The inserts that were run failed with code 32 or 33. A wrong stored value is possible but was not measured.
+- **Backlog 999.4:** a Tuple element named `size` or `size0` is dropped at discovery. The inserts that were run failed with code 32 or 33. Phase 26 measured the pre-fix tree on `latest`: 24 of 25 affected shapes are rejected (23 `CANNOT_READ_ALL_DATA`, one `ATTEMPT_TO_READ_AFTER_EOF`) and the R-01 shape stores a wrong value. Fixed on the working branch (Phase 26), unpublished until `v1.7.0_gg4`.
 - **Backlog 999.5:** `fromJsonRow` doubles escaped name characters.
 
 Both are in FORK-DELTA Known costs items 10 and 11 and in the rollout note.
@@ -444,6 +444,8 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ `VERSION` is `v1.7.0_gg3`, committed with its anchor row, and the MBean `version=` segment and client name read it on a live task. `CHANGELOG.md` has a plain-language `1.7.0_gg3` section, and `docs/FORK-DELTA.md` has a row for every Phase 21–23 patch (no uncovered IDs) plus Known costs 6, 10 and 11 — Phase 24 (PUB-09)
 - ✓ The frozen tree is green twice on `latest` 26.9.19.9 × V2, the second run with `--rerun`: 0 failures, 0 errors, 18 named skips. `testUnit` is green with Docker stopped, and the anchors invariant passes — Phase 24 (SUITE-06)
 - ✓ `v1.7.0_gg3` is published. `origin/custom_build` = `3376a18f`, a non-force `--no-ff` merge of `sync/v1.7.0` (X = `8b1c318d`, rehearsed at X0 = `3ab55e1d`) onto `6473e24f`, made after the user's own direct `push` and `publish` answers (confirmed at 24-UAT test 2). The SHA's one `tests.yaml` run, 39472696952, is green. `pre-v1.7.0_gg3` (`6473e24f`) went out first, and `v1.7.0_gg3` only after the run was green — Phase 24 (PUB-10)
+- ✓ Backlog 999.4 is fixed on the working branch (unpublished until `v1.7.0_gg4`): a declared Tuple element named `size`, `size0` or `size<digits>` is kept at both discovery drop sites (`DescribeTableBuilder.decide`, `Table.updateParent`) while every structural DESCRIBE row is still dropped; the V1 and V2 DESCRIBE loops share one `DescribeTableBuilder`; 47 committed DESCRIBE fixtures plus a live drift premise pin the server's rows; the live round-trip of 46 shapes is green with zero WARN on `latest` x V2 and fails exactly the 25 measured keys on the pre-fix tree; FORK-DELTA Known costs item 10 is retired — Phase 26 (DESC-06..DESC-10)
+- ✓ 23-REVIEW WR-02 is closed: `discoverAsDescribeTableV2` is deleted and the 999.4 pin drives the production `DescribeTableBuilder` with raw JSON lines — Phase 26 (DESC-07)
 
 ### Active
 
@@ -553,10 +555,8 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 **Phase 23 follow-ups (emerged 2026-10-20, at Phase 23 discussion, research and review; findings in `23-REVIEW.md`; since Phase 24 each review finding is `deferred` in `23-REVIEW-DISPOSITION.md` (`open: 0`) and carried in `24-MILESTONE-CLOSE-RECORD.md`, except IN-04, fulfilled):**
 
-- [ ] Backlog 999.4 (high for an affected table): `shouldSkipDescribeRow` drops a Tuple element named `size` or `size0`, so the writer writes a short tuple. The inserts that were run (four shapes) failed with code 32 or 33. A wrong stored value is possible when the shorter bytes parse, but this was not measured. Since COLS-14 the unpaired-element WARN names the dropped element at every DESCRIBE. The fix touches upstream-region `ClickHouseHelperClient` and flips the D-04 pin (D-03)
 - [ ] Backlog 999.5: `ClickHouseFieldDescriptor.fromJsonRow` doubles every backslash in a column or element name, so a Kafka field must use the doubled form to match. Pre-existing; needs a decision on the intended name form and a rollout note (D-20)
 - [ ] 23-REVIEW WR-01: no test pins the `normalise` branch where an even backslash run before a backtick or single quote keeps the quote open; a mutation that always closes the quote passes the suite. The verifier checked the branch by hand and production is correct — a test gap, not a defect
-- [ ] 23-REVIEW WR-02: `discoverAsDescribeTableV2` copies the `describeTableV2` control flow (it already lacks the alias, materialized and ephemeral branches), so the 999.4 pin tests the copy rather than the shipped loop
 - [ ] 23-REVIEW IN-01..IN-03 (Info): the `apply` Javadoc still says "all or none"; the null-name early return sits inside the `try` and logs `null` in the column slot; the new live tests can pass vacuously or NPE on a missing DESCRIBE row
 - ~~23-REVIEW IN-04 (Info): the unpaired-element WARN does not say inserts will fail with `CANNOT_READ_ALL_DATA`~~ **Fulfilled in Phase 24 (`9d4cb9b2`)**: rollout item 2 says what the WARN marks, that it repeats at every DESCRIBE, and what to do. The WARN text is unchanged
 
@@ -596,7 +596,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - the `jacocoForkReport` gap;
 - the older notes' key rule.
 
-None is an unmet requirement. 999.4 is the one item that can fail inserts for an affected table, and possibly store a wrong value. It is pre-existing, named by a WARN, and disclosed.
+None is an unmet requirement. 999.4 is the one item that can fail inserts for an affected table, and possibly store a wrong value. It is pre-existing, named by a WARN, and disclosed; Phase 26 fixed it on the working branch, and the fix ships with `v1.7.0_gg4`.
 
 ### Out of Scope
 
@@ -790,6 +790,9 @@ None is an unmet requirement. 999.4 is the one item that can fail inserts for an
 | `buildMBeanName` extracted from `ProxySinkTask.getMBeanName()` as the phase's only production change | `getMBeanName()` is private, reads the client jar's implementation version inline, and is reachable only through a constructor requiring a live ClickHouse — the real jar reports a plain `0.9.6`, so the null-version and colon-version branches could never execute in a test | ✓ Phase 4 (D-02) — +12/−2, 8 of them Javadoc; rendered name byte-for-byte unchanged, independently diff-verified by both the code reviewer and the verifier |
 | Phase 25: absorb the user-merged Dependabot PRs as one merge (M1) behind the unedited anchors gate, with exemption rows generated from the gate's own stderr, and take upstream's untagged tail as a second mechanical merge (M2) with its own rollback tag | Two merges keep the Dependabot absorption and the upstream sync separately revertible (`pre-v1.7.0-deps`, `pre-v1.7.0-tail`); generated rows cannot forgive more than the gate reported | ✓ M1 `50f56289` (`anchor_exempt=19 result=PASS`), M2 `38265d26` (`provenance_paths=3 result=PASS`); nothing pushed (Phase 25) |
 | Phase 25: the Confluent archive rules live once in `ConfluentArchiveCheck` (test source set, JDK only), run by the `verifyConfluentArchive` finalizer of `createConfluentArchive` and in CI before the tests, and the pin guard takes the task's `mainClass` from the class itself | One implementation for the build, the unit test and CI, so the guard cannot drift from what the test exercises | ✓ 7,798 inner entries, 0 nested jars, 0 Kafka classes; both negative controls fire; 25-REVIEW WR-01 notes the step pin still accepts `-x`/`--dry-run` shapes (open) |
+| Phase 26: fix 999.4 behind a committed DESCRIBE spike — a 47-table DDL catalog, a hand-run capture harness, byte-exact fixtures with a live drift premise, and the measured affected set from the connector's own WARN — before any `src/main` change | The server's real rows, not memory, decide the classifier rule (the structural-then-declared double row was confirmed on `latest`); the same fixtures prove the V1/V2 extraction behaviour-preserving and give the fix an exact red set | ✓ E-02 confirmed the double row; 25 of 47 fixtures affected; snapshots went red on exactly those 25 (E-06) |
+| Phase 26: the classifier keeps a size-named row only when the parsed parent Tuple declares that key and the row is not an offsets row by type and depth, and fails closed (old behaviour plus one metadata-only WARN) when the parent type cannot be parsed (D-03/D-04) | A wrong Column list writes wrong RowBinary bytes for every row of an affected table, so an unparseable parent must not guess; 26-REVIEW WR-01 notes the name "fail closed" understates that the declared element is then still dropped | ✓ 120-row unit table, 46/46 live round-trip with zero WARN, pre-fix tree fails exactly the 25 measured keys |
+| Phase 26: the phase gate's full suite counts a HotSpot 21 run (`-PjavaVersion=21`) after three consecutive OpenJ9 `Mockito.spy` crashes on the default Semeru 17 under host memory pressure; the orchestrator's own Semeru gate passed on re-run | The crash is an environment fault at a known frame, not a test failure, and the tree was already green twice on Semeru 17 on the same code; all four runs are recorded in E-12 | ✓ 1709 tests, 0 failed, 18 skipped on `1f2f1561` (Semeru twice, HotSpot once) |
 | Phase 25: `connect-api` 4.4.0 is proven compile-time only by an offline bytecode check of the connector's 176 Kafka references against the `cp-kafka-connect-base:7.9.7` worker jars, pinned by `ConnectApiReferencesUnitTest`; wording states only what E-12 measured (the Kafka 3.9 worker still declares `onPartitionsRevoked`) | The production worker supplies the Connect API at runtime; an operator-facing claim needs a transcript behind it (D-14) | ✓ `REFERENCE worker classes-missing 0 members-missing 0`; 25-REVIEW WR-02/WR-03 note the unit test is a weaker pin than the bless run (open) |
 
 ## Evolution
@@ -810,4 +813,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-21 after Phase 25*
+*Last updated: 2026-10-22 after Phase 26*

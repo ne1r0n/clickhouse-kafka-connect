@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-21 after Phase 25)
+See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 26 — Size-Named Tuple Elements in Discovery
+**Current focus:** Phase 27 — Writer Failure Path & Test Debt
 
 ## Current Position
 
@@ -241,11 +241,14 @@ None.
 - [Publish]: `origin/custom_build` was `6473e24f` until the gg3 merge, then `3376a18f`, and is now `6a2a87a5` (the corrected-note merge). Dependabot PRs #4 (client 0.9.6 → 0.10.0), #6 (commons-lang3 3.21.0), #7 (ben-manes versions 0.66.0), #8 (Gradle wrapper 9.8.1) and #9 (Kafka `connect-api` 4.1.1 → 4.4.0) are open, using all 5 open-PR slots. #4 and #9 bump fork-only pins, and `dependabot.yml` has no `ignore` for them. Any merge on `origin/custom_build` diverges the next milestone's base, which then opens with a DEPS-01-shaped merge. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
 - [CI]: The nightly `integrationTests.yaml` has been disabled by the user since 2026-10-16T09:38:23Z (Phase 21 OPS-01). The file stays upstream-identical. Phase 24 re-checks that no scheduled run followed.
 - [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
-- [Phase 23]: Backlog 999.4 is a pre-existing, high-severity defect for any table with a Tuple element named `size` or `size0`: discovery drops the element, and the inserts that were run (four shapes) failed with code 32 or 33; a wrong stored value is possible and not measured. Since COLS-14 it is named by a WARN at every DESCRIBE, but it is not fixed. The gg3 rollout note (item 2), the CHANGELOG (Known Issues) and FORK-DELTA (Known costs item 10) disclose it, measured as code 32 or 33 on the default route with client V2.
+- [Phase 26]: Backlog 999.4 is fixed on `sync/v1.7.0` (fix commit `7c00953e`, phase tip `c61c5872`) and unpublished: the published `v1.7.0_gg3` still drops a declared `size`/`size0` element. Pre-fix measurement on `latest` (E-08): 24 of 25 affected shapes rejected (23 `CANNOT_READ_ALL_DATA`, one `ATTEMPT_TO_READ_AFTER_EOF`), R-01 stores a wrong value. Phase 29's rollout note takes the E-11 facts; fact (2) (rollback vs block deduplication) is assumed, not measured.
 - [Dependabot]: the `dependencies` label exists since 2026-10-21 (Phase 25 OPS-04, user-created, API 200). PRs #4 (client 0.9.6 → 0.10.0) and #10 (protobuf-java 4.36.2) are still open and must stay unmerged on `origin/custom_build` until publication; E-25 (a post-label PR without the "labels could not be found" comment) is pending the next monthly run and is re-checked in Phase 29.
 - [Phase 25]: `origin/custom_build` is frozen at `69cd680b` (nine Dependabot merges absorbed as M1 `50f56289`); local `sync/v1.7.0` also holds M2 `38265d26` (upstream tail `a6f1df83`) and the baseline tag `baseline-v1.7.0_gg4` = `aa450709`. Nothing is pushed. Standing merge gate for later phases: `PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh`.
 - [Phase 25]: 25-REVIEW left three warnings open (WR-01 archive-step pin accepts `-x verifyConfluentArchive`/`--dry-run`/`|| true`/step `if:`; WR-02 `ConnectApiReferencesUnitTest` resolves inherited members on the test classpath and drops unresolved ones; WR-03 descriptor-only Kafka types unchecked) and four info items (stale `build/confluentArchive` dirs, `META-INF/versions/*` and `.zip`/`.war` nesting, brittle anchors, merge-carried hygiene incl. `pre-release.yaml` still pinning Gradle 7.4.2). Ledger: `25-REVIEW-DISPOSITION.md`. Trigger: the next edit of those guards (Phase 28 review debt).
 - [Phase 25]: the working tree keeps an unstaged CRLF diff on `gradlew.bat` after the Dependabot wrapper merge (committed blob equals origin's); plan verify strings must exclude it.
+- [Phase 26]: 26-REVIEW left 2 warnings and 8 info items open (ledger `26-REVIEW-DISPOSITION.md`): WR-01 the unreadable-parent path keeps the pre-fix drop with one WARN under locked D-03/D-04, but the test name says "fails closed" and the CHANGELOG line omits the caveat; WR-02 `DescribeFixtureDriftLiveTest` compares raw DESCRIBE bytes against floating `latest`, so a server formatting change turns 94 cases red at once; IN-01 depth-2 Array shapes rely on the server printing the structural row before the declared one. `26-SECURITY.md` is `threats_open: 0`.
+- [Env]: the full suite crashed the OpenJ9 (Semeru 17) test JVM four times on 2026-10-21/22 at the known `Mockito.spy` frame, with host swap at about 97%; `-PjavaVersion=21` (HotSpot) passes, and a plain re-run passed once swap pressure eased. Expect the crash whenever the host is swapping; it is not a test failure.
+- [Release]: `VERSION` still reads `v1.7.0_gg3` and the CHANGELOG section for the 999.4 fix is unreleased; the bump belongs to Phase 29.
 
 ### Quick Tasks Completed
 
@@ -268,12 +271,13 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T22:11:02.503Z
+Last session: 2026-10-22T00:40:00.000Z
 Stopped at: Phase 26 complete, ready to plan Phase 27
 Resume file: None
 
 ## Operator Next Steps
 
-- Discuss and plan Phase 26 with /gsd-discuss-phase 26, then /gsd-plan-phase 26
+- Discuss and plan Phase 27 with /gsd-discuss-phase 27, then /gsd-plan-phase 27
+- Triage the ten open 26-REVIEW findings (WR-01 unreadable-parent wording and semantics under D-03/D-04, WR-02 byte-exact drift test against floating `latest`, IN-01..IN-08) in the review-debt phase or with `/gsd-code-review 26 --fix`; the ledger is `26-REVIEW-DISPOSITION.md`
 - Do not merge, close or ignore Dependabot PRs #4 and #10 on `origin/custom_build` until the v1.7.0_gg4 publication (Phase 29); do not edit `.github/dependabot.yml`
 - Triage the three open 25-REVIEW warnings when the review-debt phase runs (`/gsd-code-review 25 --fix` or by hand); the ledger is `25-REVIEW-DISPOSITION.md`
