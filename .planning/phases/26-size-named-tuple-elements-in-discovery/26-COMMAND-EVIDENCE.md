@@ -19,8 +19,8 @@
 | E-07 | DESC-10 (fix commit: documents, anchors, gate, full suite) | pass |
 | E-08 | DESC-09 (round-trip on the pre-fix tree) | pass |
 | E-09 | DESC-09 (round-trip green on the fix tree) | pass |
-| E-10 | DESC-07 (manual CLIENT_VERSION=V1 run) | pending (plan 26-04) |
-| E-11 | Rollout facts for Phase 29 | pending (plan 26-04) |
+| E-10 | DESC-07 (manual CLIENT_VERSION=V1 run) | pass |
+| E-11 | Rollout facts for Phase 29 | pass |
 | E-12 | Phase gate | pending (plan 26-05) |
 
 ### E-01: Capture harness runs (DESC-06, D-06)
@@ -353,7 +353,7 @@ worktree SHA: 9c1860464150c88a013e9373fdaf44e3821d9e3e (refactor(26-02))
 rc: 1  (Tests summary: 46 tests, 21 succeeded, 25 failed, 0 skipped)
 server: 26.9.19.9, image sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b (the E-01 image)
 failing set == "DESC-09 round-trip: k" for the 25 keys of A (E-02 affected_prefix), nothing else; the 21 other cases passed
-every failed put left rows=0 and named its server code: 24 x CANNOT_READ_ALL_DATA, 1 x ATTEMPT_TO_READ_AFTER_EOF (n03)
+every failed put (24 of the 25) left rows=0 and named its server code: 23 x CANNOT_READ_ALL_DATA, 1 x ATTEMPT_TO_READ_AFTER_EOF (n03); the 25th, r01, stored a wrong value
 r01 (the crafted value, outcome=stored match=no) was measured as stored size 1667391751 and hex(v) 78797A, expected 7 and 6162630378797A;
   this equals the gg3 R-01 result recorded in 23-EVIDENCE ((1667391751,'xyz'), hex 78797A)
 TUPLE_SIZE_ROUND_TRIP key=s4_a01 outcome=failed code=CANNOT_READ_ALL_DATA rows=0
@@ -476,4 +476,46 @@ TUPLE_SIZE_ROUND_TRIP key=r01 outcome=stored match=yes rows=1
 First attempt, recorded as found: the first fix-tree run was 44 of 46: `s4_u12` and `s4_u13` (root columns `size UInt8` and `size0 UInt8`, look-alikes outside A) failed with "Data schema validation failed" because the test gave the root UInt8 column a Connect INT32; `validateDataSchema` compares a root column's Connect width with the column width and refuses INT32 for UInt8 (tuple elements are not checked). The test was corrected to use INT8 for those two root columns (a test-side choice, no `src/main` change); the table above is the run of the corrected class, and the pre-fix run above used the same corrected class.
 
 Timestamp: 2026-10-21T21:36:19Z
+Verdict: pass
+
+### E-10: The manual client V1 run (DESC-07)
+
+One manual `CLIENT_VERSION=V1` run of the helper live tests, on the tree of commit `0a6112fb` (the fix `7c00953e` plus the round-trip class). `CLIENT_VERSION=V1` makes `ClickHouseTestHelpers.createClient(getBaseProps())` build a V1 helper, so the describe pins and the drift premise went through `describeTableV1`.
+
+Commands as run:
+
+```bash
+CLIENT_VERSION=V1 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*ClickHouseHelperClientForkLiveTest' --tests '*TableTest' --tests '*DescribeFixtureDriftLiveTest' --rerun > /tmp/gsd26/exec/v1-run.log 2>&1; echo $? > /tmp/gsd26/exec/v1-run.rc
+cp build/test-results/test/TEST-*.xml /tmp/gsd26/exec/v1-run/
+CLIENT_VERSION=V1 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*TupleSizeNamedElementRoundTripLiveTest' --rerun > /tmp/gsd26/exec/v1-roundtrip.log 2>&1   # extra, not a pass condition
+```
+
+```text
+rc: 0   (Tests summary: 113 tests, 113 succeeded, 0 failed, 0 skipped)
+ClickHouseHelperClientForkLiveTest: 12 tests, 0 failures, 0 errors
+TableTest: 7 tests, 0 failures, 0 errors
+DescribeFixtureDriftLiveTest: 94 tests, 0 failures, 0 errors
+DESCRIBE_FIXTURE_DRIFT client=V1 server=26.9.19.9
+  => all 47 fixture snapshots (and the 47 raw DESCRIBE row files) were checked through describeTableV1 (research A6)
+extra (not a pass condition): TupleSizeNamedElementRoundTripLiveTest with CLIENT_VERSION=V1, which switches the sink task's client too:
+  Tests summary: 46 tests, 46 succeeded, 0 failed, 0 skipped
+server: 26.9.19.9, image sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b
+```
+
+Timestamp: 2026-10-21T21:38:34Z
+Verdict: pass
+
+### E-11: Rollout facts for Phase 29
+
+Each line is a fact the Phase 29 operator note may use, with its provenance; only the lines marked `measured` may be worded as observed.
+
+(1) An upgrade from gg3 to this fix needs no clean stop, because the inserts that failed on the gg3 behaviour stored nothing: measured (E-08: all 24 failed puts on the pre-fix tree, 23 CANNOT_READ_ALL_DATA and 1 ATTEMPT_TO_READ_AFTER_EOF, left rows=0; 24-COMMAND-EVIDENCE E-15 for four shapes on gg3).
+(2) A rollback from the fixed release to gg3 needs a clean stop first, because batches the fix wrote carry the whole tuple and gg3 would rebuild a shorter block for the same offsets, which defeats block deduplication: assumed (research A5: reasoned from the BEFORE/AFTER state machine, not measured; Phase 29 measures it or words it as a precaution, and must not cite it as measured).
+(3) A short write that parsed on gg3 is a data tail nothing repairs, because the stored row holds the shifted value: measured (E-08: r01 stored size 1667391751 and hex(v) 78797A for the record written as size 7 and hex(v) 6162630378797A; 23-EVIDENCE R-01 recorded the same pair on gg3).
+(4) The new WARN text, for a declared type the parser cannot read, is `Could not read the declared type {} of column {} of table {}.{} ({}); its sub-columns named size, size0 or size followed by digits are treated as structural, as earlier releases did`, metadata only, once per parent per DESCRIBE pass, and it never fires for the 46 round-tripped catalog tables: measured (E-06: the fail-closed unit test, red in E-05 and green after the fix; E-09: zero WARN across the sink task's discovery and a second describeTable for every case).
+(5) The DESCRIBE Column list is the RowBinary wire format, so the fix changes the bytes of a retried batch for an affected table: measured (E-06: the snapshot diff, 25 `.columns.txt` files of the A tables gained their size-named element Columns, and E-08, where the same records are rejected before and accepted after).
+
+Phase 28 note: `DescribeTableBuilder` and `ParentShape` are the `jacocoForkReport` inputs for DEBT-17.
+
+Timestamp: 2026-10-21T21:38:34Z
 Verdict: pass
