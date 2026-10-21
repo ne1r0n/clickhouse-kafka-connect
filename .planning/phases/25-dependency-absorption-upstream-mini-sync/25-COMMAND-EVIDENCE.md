@@ -23,7 +23,7 @@
 | E-11 | BLD-15 (compare against v1.7.0_gg3) | pass |
 | E-12 | BLD-16 (worker jars and bless run) | pass |
 | E-13 | BLD-16 (reference test) | pass |
-| E-14 | CI-20 (verifyConfluentArchive controls) | pending (plan 25-06) |
+| E-14 | CI-20 (verifyConfluentArchive controls) | pass |
 | E-15 | CI-20 (pin-guard red run) | pending (plan 25-06) |
 | E-16 | CI-20 (pin-guard green run) | pending (plan 25-06) |
 | E-17 | DEBT-14 (pin-guard red run) | pending (plan 25-06) |
@@ -629,5 +629,90 @@ Tests summary: 844 tests, 842 succeeded, 0 failed, 2 skipped
 Spotless (per-file recipe, detached worktree `/tmp/gsd25/wt-fmt` at HEAD with the new class copied in, `spotlessApply` rewrote 47 baseline files, which shows it ran): the new class is byte-identical after `spotlessApply` (`cmp` silent). The worktree was removed and pruned.
 
 Timestamp: 2026-10-21T16:27:52Z
+
+Verdict: pass
+
+### E-14: verifyConfluentArchive positive run and negative controls (CI-20, D-06..D-08)
+
+Revision 1 shape: the archive rules exist once, in `ConfluentArchiveCheck` (JDK only, test source set, so it never ships). `verifyConfluentArchive` runs it as a `JavaExec` and `createConfluentArchive` is `finalizedBy` it; `ConfluentArchiveCheckUnitTest` (Docker-free, in `testUnit`) exercises the same class on synthetic archives.
+
+#### Archive-check unit test (red, then green)
+
+Red run, against an accept-all `check()` that counts the inner entries and records no violation (`run` complete):
+
+```text
+$ env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ConfluentArchiveCheckUnitTest' --rerun   # archive-check-red.{log,rc,xml}
+exit code: 1
+red: 6 tests, 5 failed (the five reject tests), 1 passed (the accept test)
+PASS CI-20: the archive check accepts one lib jar holding the connector and client classes and reports its inner entry count
+FAIL CI-20: the archive check rejects a jar nested inside the inner jar
+     expected: <[nested jar: dependency.jar]> but was: <[]>
+     expected: <[nested jar: lib/dependency.jar]> but was: <[]>
+FAIL CI-20: the archive check rejects Kafka Connect API and kafka-clients entries under org/apache/kafka/
+     expected: <[Kafka API class: org/apache/kafka/connect/sink/SinkTask.class]> but was: <[]>
+     expected: <[Kafka API class: org/apache/kafka/common/config/ConfigDef.class]> but was: <[]>
+FAIL CI-20: the archive check rejects an archive that does not hold exactly one lib jar
+     expected: <[expected exactly one jar under lib/ in the archive, found 0, no inner jar entries read from <tmp>/no-jar.zip, missing class: ...ClickHouseSinkConnector.class, missing class: ...Client.class]> but was: <[]>
+     expected: <[expected exactly one jar under lib/ in the archive, found 2]> but was: <[]>
+FAIL CI-20: the archive check rejects an inner jar that is empty or lacks the connector or client class
+     expected: <[no inner jar entries read from <tmp>/empty.zip, missing class: ...ClickHouseSinkConnector.class, missing class: ...Client.class]> but was: <[]>
+     expected: <[missing class: com/clickhouse/client/api/Client.class]> but was: <[]>
+     expected: <[missing class: com/clickhouse/kafka/connect/ClickHouseSinkConnector.class]> but was: <[]>
+FAIL CI-20: a failing archive check exits 1 with the violation and entry counts and lists at most 20 violations
+     expected: <1> but was: <0>
+     expected: <> but was: <verifyConfluentArchive: 27 inner entries, no nested jar, no Kafka API class>
+     header plus exactly 20 listed violations ==> expected: <21> but was: <0>
+```
+
+Note: the very first red attempt used a stub that did not count the inner entries, so the accept test also failed (6 of 6, `expected: <3> but was: <0>`); that was a defect of my stub, not of the prediction. The stub was corrected to count entries as the plan describes and the red run above is the second one. No fixture was changed between the two runs.
+
+Green, with the rules implemented (violation order: shape line, per inner entry `nested jar:` and `Kafka API class:`, empty floor, missing classes):
+
+```text
+$ ... testUnit --tests '*ConfluentArchiveCheckUnitTest' --rerun   # archive-check-green.{log,xml}
+Tests summary: 6 tests, 6 succeeded, 0 failed, 0 skipped
+```
+
+#### Task, step and positive run
+
+- `build.gradle.kts`: `finalizedBy("verifyConfluentArchive")` inside the `createConfluentArchive` block; new `tasks.register<JavaExec>("verifyConfluentArchive")` (group `verification`, archive provider taken at configuration time, `classpath = sourceSets["test"].output.classesDirs`, `mainClass.set("com.clickhouse.kafka.connect.ci.ConfluentArchiveCheck")`, a `CommandLineArgumentProvider` for the path). 14 lines added, no import, no zip-reading Kotlin.
+- `.github/workflows/tests.yaml`: step `Build and verify Confluent archive` (`run: ./gradlew createConfluentArchive`) between `Compile integration-test sources` and `Run tests`, plus a three-line header comment sentence. No `uses:`, `if:`, `continue-on-error`, permission or upload added.
+- Spotless (per-file recipe, detached HEAD worktree, `spotlessApply` rewrote 47 baseline files, which shows it ran): both new classes byte-identical after it (`cmp` silent).
+- Commit: `18a13377` (`build(25-06): verify the Confluent archive whenever it is built...`).
+
+```text
+$ env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive   # verify-pos.log, exit 0
+> Task :verifyConfluentArchive
+verifyConfluentArchive: 7798 inner entries, no nested jar, no Kafka API class
+BUILD SUCCESSFUL
+$ ... testUnit --rerun --tests '*TestsWorkflowPinGuardUnitTest'   # pin-after-t1.log
+Tests summary: 29 tests, 29 succeeded, 0 failed, 0 skipped
+```
+
+#### Negative controls (detached HEAD worktree `/tmp/gsd25/wt-neg`, removed afterwards)
+
+```text
+nested: confluentJar block replaced with the one from v1.7.0_gg3 (from(clickhouseDependencies, sourceSets.main.get().output), no Shadow 9 repair)
+$ env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive   # verify-neg-nested.{log,rc}
+exit code: 1
+Confluent archive check failed (26 violations of 158 entries):
+nested jar: client-v2-0.9.6.jar
+nested jar: clickhouse-http-client-0.9.6.jar
+nested jar: httpclient5-5.6.5.jar
+nested jar: clickhouse-client-0.9.6.jar
+(20 "nested jar:" lines listed, the cap)
+
+kafka: clickhouseDependencies(libs.kafka.connect.api) added to the dependencies block
+$ env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive   # verify-neg-kafka.{log,rc}
+exit code: 1
+Confluent archive check failed (4560 violations of 12930 entries):
+Kafka API class: org/apache/kafka/connect/components/ConnectPlugin.class
+Kafka API class: org/apache/kafka/connect/components/Versioned.class
+Kafka API class: org/apache/kafka/connect/connector/ConnectRecord.class
+```
+
+The nested control reports 26 violations where the planning-time prototype reported 25; only the first 20 violations are listed (the cap), so the split of the 26 into nested jars and any other class is not decomposed here; the `nested jar:` lines and the non-zero exit are the contract. A first attempt at the Kafka control failed to edit the file (BSD `sed` error) and so built the unmodified tree with exit 0; that run was discarded and redone with a Python edit, which is the run above.
+
+Timestamp: 2026-10-21T16:38:15Z
 
 Verdict: pass
