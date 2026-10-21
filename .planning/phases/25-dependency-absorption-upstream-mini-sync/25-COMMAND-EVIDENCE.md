@@ -18,8 +18,8 @@
 | E-06 | DEPS-03 (merge 1 rehearsal and exemption rows) | pass |
 | E-07 | DEPS-02, DEPS-03 (merge 1, cumulative gate, self-test) | pass |
 | E-08 | DEPS-02 (merged-tree Docker-free checks) | pass |
-| E-09 | BLD-15 (unrepaired archive) | pending (plan 25-04) |
-| E-10 | BLD-15 (repair) | pending (plan 25-04) |
+| E-09 | BLD-15 (unrepaired archive) | pass |
+| E-10 | BLD-15 (repair) | pass |
 | E-11 | BLD-15 (compare against v1.7.0_gg3) | pending (plan 25-04) |
 | E-12 | BLD-16 (worker jars and bless run) | pending (plan 25-05) |
 | E-13 | BLD-16 (reference test) | pending (plan 25-05) |
@@ -319,5 +319,79 @@ spotless_baseline_equal: yes
 Notes: the published checksum URL answers 301 first, so the fetch needs `-L` (the plan's command had none). The `--warning-mode all` warnings are recorded and left unfixed (DEPS-F3). Spotless is baseline-equal: the numstat of `HEAD` equals that of `v1.7.0_gg3`, byte for byte, 46 files. The full suite is not run here by design: it waits for the Shadow repair (plan 25-07, E-19).
 
 Timestamp: 2026-10-21T16:06:49Z
+
+Verdict: pass
+
+### E-09: The unrepaired Shadow 9.6.1 archive on the merge-1 tree (BLD-15 before)
+
+Tree: `6d59b920` (merge 1 `50f56289` plus evidence commits), `build.gradle.kts` still holding the two-argument `from(...)` call (the repair is `bddb838d`, below). The archive was copied to `/tmp/gsd25/exec/archive-m1-unrepaired.zip` before the next build.
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean createConfluentArchive > /tmp/gsd25/exec/archive-m1-unrepaired.log 2>&1
+python3 -I - archive-m1-unrepaired.zip   # zipfile in memory: outer lib/*.jar, then the inner jar's file entries and *.jar entries
+```
+
+```text
+BUILD SUCCESSFUL in 3s   (10 actionable tasks: 10 executed)
+outer lib jars: 1  (clickhouse-kafka-connect-v1.7.0_gg3/lib/clickhouse-kafka-connect-v1.7.0_gg3-confluent.jar)
+inner jar file entries (directories excluded): 135
+nested *.jar entries: 25
+  client-v2-0.9.6.jar  clickhouse-http-client-0.9.6.jar  httpclient5-5.6.5.jar  clickhouse-client-0.9.6.jar
+  lz4-java-1.12.0.jar  gson-2.14.0.jar  jackson-databind-2.22.4.jar  jackson-core-2.22.4.jar
+  jackson-annotations-2.22.jar  httpcore5-h2-5.4.4.jar  httpcore5-5.4.4.jar  slf4j-api-2.0.7.jar
+  clickhouse-data-0.9.6.jar  commons-compress-1.28.0.jar  commons-codec-1.19.0.jar  commons-io-2.20.0.jar
+  commons-lang3-3.20.0.jar  RoaringBitmap-1.0.6.jar  asm-9.7.jar  guava-33.4.6-jre.jar
+  failureaccess-1.0.3.jar  listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar  jspecify-1.0.0.jar
+  error_prone_annotations-2.48.0.jar  j2objc-annotations-3.0.0.jar
+```
+
+Notes: the build is green while the inner jar nests 25 dependency jars, so the worker would find no usable classes of them. Research counted 158 inner entries; that figure includes directory entries, and the 135 here are files only (the same counting the 7,376 / 7,395 figures use).
+
+Timestamp: 2026-10-21T16:08:00Z
+
+Verdict: pass
+
+### E-10: The repaired archive (BLD-15, D-01..D-04)
+
+Repair commit: `bddb838d` (`build(25-04): repair confluentJar under Shadow 9.6.1 and pin it with two anchors (BLD-15, D-01..D-04)`). It is the only non-merge first-parent commit touching `build.gradle.kts` after `test(25-02)` (`92b2be1e`, an ancestor).
+
+```diff
+ tasks.register<ShadowJar>("confluentJar") {
+     archiveClassifier.set("confluent")
+-    from(clickhouseDependencies, sourceSets.main.get().output)
++    // Shadow 9 copies jars given to from(...) as-is and unpacks only configurations.
++    configurations.add(clickhouseDependencies)
++    from(sourceSets.main.get().output)
++    addMultiReleaseAttribute.set(false)
++}
++
++shadow {
++    addShadowJarToAssembleLifecycle.set(false)
+ }
+```
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean createConfluentArchive > /tmp/gsd25/exec/archive-m1-repaired.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain assemble --dry-run > /tmp/gsd25/exec/assemble-dry.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*TestsWorkflowPinGuardUnitTest'
+grep -cF 'configurations.add(clickhouseDependencies)' build.gradle.kts; grep -cF 'from(clickhouseDependencies,' build.gradle.kts
+```
+
+```text
+BUILD SUCCESSFUL in 7s   (10 actionable tasks: 10 executed)
+outer lib jars: 1
+inner jar sha256: 72849d239fa1b4fca9668d56cd7ef3d6af1436b42ac94af0c84db23733ae65ca
+inner jar file entries: 7395   nested *.jar: 0   org/apache/kafka/ entries: 0
+com/clickhouse/kafka/connect/ClickHouseSinkConnector.class: present
+META-INF/MANIFEST.MF: 'Manifest-Version: 1.0\r\nImplementation-Title: ClickHouse-Kafka-Connect\r\nImplementation-Version: v1.7.0_gg3\r\n\r\n'   (no Multi-Release)
+assemble --dry-run tasks: :protobufDummy :extractIncludeProto :extractProto :generateProto :generateVersionFile :compileJava :processProtoResources :processResources :classes :jar :assemble   (no shadowJar)
+TestsWorkflowPinGuardUnitTest: tests=29 skipped=0 failures=0 errors=0
+anchor counts: configurations.add(clickhouseDependencies) = 1; from(clickhouseDependencies, = 0
+fork-anchors.txt: two BLD-15 rows added in the same commit
+```
+
+Notes: D-01's primary form (Shadow `configurations.add(...)`) shipped; the zipTree fallback was not needed to get a flat jar (E-11 shows whether any difference remained).
+
+Timestamp: 2026-10-21T16:13:00Z
 
 Verdict: pass
