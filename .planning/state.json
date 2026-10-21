@@ -1,33 +1,12 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg3-hardening — Record-Data Exposure & Review Debt",
-  "phases": [
-    {
-      "number": "21",
-      "name": "Dependabot Integration & CI Hygiene",
-      "status": "complete"
-    },
-    {
-      "number": "22",
-      "name": "Writer Record-Data Exposure",
-      "status": "complete"
-    },
-    {
-      "number": "23",
-      "name": "Declared-Nullability Hardening & Review Closure",
-      "status": "complete"
-    },
-    {
-      "number": "24",
-      "name": "Release & Publication",
-      "status": "complete"
-    }
-  ],
+  "milestone": "v1.7.0_gg4-hardening",
+  "phases": [],
   "next": {
-    "command": "/gsd-progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-10-20T21:13:06.506Z"
+  "updated_at": "2026-10-21T10:26:23.698Z"
 }

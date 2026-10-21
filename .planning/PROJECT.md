@@ -125,15 +125,31 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
-## Next Milestone Goals
+## Current Milestone: v1.7.0_gg4-hardening Dependency Absorption, Discovery Defects & Review Debt
 
-Not defined yet: `/gsd-new-milestone` starts with questioning. Candidates:
+**Goal:** Absorb the Dependabot majors and minors now on `origin/custom_build` plus upstream's untagged dependency tail, fix the two known discovery defects (backlogs 999.4 and 999.5), clear every review advisory carried from `v1.7.0_gg3-hardening`, and publish `v1.7.0_gg4` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
-- **The next upstream sync,** once upstream tags past `v1.7.0`, in the shape of `v1.7.0_gg1-sync`.
-- **The Dependabot backlog.** PRs #6–#9 are open, and #4 and #9 bump fork-only pins. Any merge on `origin/custom_build` means the next milestone opens with a DEPS-01-shaped merge.
-- **Backlogs 999.4 and 999.5.** Both are known defects in upstream-region discovery code, and the rollout note covers them.
-- **The carried review advisories** in `milestones/v1.7.0_gg3-hardening-phases/24-release-publication/24-MILESTONE-CLOSE-RECORD.md`: the residual from 22-REVIEW WR-01 (Jackson), the pin-guard robustness items, and the `jacocoForkReport` class list.
-- **Still Future Requirements:** ClickHouse client `0.10.0` (PR #4), and the upstream workflows still on `@v3`-era actions.
+**Target features:**
+
+- **Dependency absorption (first).** A DEPS-01-shaped merge of `origin/custom_build` (`d20bae63`, 15 commits past the published `6a2a87a5`) into the working branch, plus PR #10 (protobuf-java 3.25.9 → 4.36.2, testFixtures only) once the user merges it. The suite gates the two majors that reach production code: Kafka `connect-api` 4.1.1 → 4.4.0 (#9, a fork-only pin) and the Shadow plugin 8.3.5 → 9.6.1 (#11). The rest are Gradle wrapper 9.8.1 (#8), commons-lang3 3.21.0 (#6), ben-manes versions 0.66.0 (#7), gson 2.14.0 (#13) and httpclient5 5.6.5 (#12). FORK-DELTA's pin rows and the fork-anchors invariant follow. The client stays `0.9.6`, and PR #4 stays open and unignored.
+- **Tagless upstream mini-sync.** `upstream/main` is 12 commits past `v1.7.0` with no new tag: an explicit guava dependency that closes a CVE (`30521f74`), an lz4-java bump, httpclient5 5.6.5, and the four bumps the fork already took in Phase 14. Merge it in the usual sync shape (scratch branch, rollback tag, `verify-merge-invariants.sh`, two full runs), so the next tagged sync starts small and the guava CVE is closed on the record.
+- **Backlog 999.4.** `shouldSkipDescribeRow` keeps a declared Tuple element named `size` or `size0` while still dropping the structural rows (`c.name.size`, `d.null`, `e.size0` under `Array(Tuple)`), with a live round-trip pin, the DESC-05 regression check, a FORK-DELTA row, an anchors row, and the D-04 WARN pin flipped. 23-REVIEW WR-02 lands with it: the pin stops exercising a copy of the DESCRIBE loop.
+- **Backlog 999.5.** Decide the intended name form for a backslash in a column or element name, fix `ClickHouseFieldDescriptor.fromJsonRow`, pin both forms live, and write the rollout item, since an operator's Kafka field names may depend on the doubled form. 23-REVIEW WR-01 (the escaped-quote `normalise` pin) lands with it.
+- **Carried review advisories, all 17** (`milestones/v1.7.0_gg3-hardening-phases/24-release-publication/24-MILESTONE-CLOSE-RECORD.md`): 21-REVIEW WR-01..WR-03 and IN-01, IN-02, IN-04 (pin-guard robustness, slf4j binding drift); 22-REVIEW WR-01 (exclude `JsonProcessingException` from the `IOException` pass-through, with a sentinel Map-key test) and IN-01..IN-05; 23-REVIEW IN-01..IN-03. Plus the two other carried items: the `jacocoForkReport` class list (add `DeclaredNullability` and `WithheldMessageException`) and 24-REVIEW IN-03 (planning identifiers in a live test).
+- **Operator and docs items.** The user creates the `dependencies` label in the GitHub UI (D-11); the milestone verifies the Dependabot "labels could not be found" comment stops. The published `docs/ROLLOUT-v1.7.0_gg1.md` and `ROLLOUT-v1.7.0_gg2.md` get the corrected `enableDbTopicSplit=true` key rule and state-table query. The stale local ref `refs/upstream/main` (at the v1.6.0 merge) is deleted, so `upstream/main` stops being ambiguous.
+- **Release.** `VERSION=v1.7.0_gg4`, CHANGELOG, FORK-DELTA, a rollout note (the 999.4 and 999.5 behaviour changes, the `connect-api` major, the guava addition), an independent `gsd-code-reviewer` pass on the operator documents before the publication gate, a `--no-ff` merge into `custom_build` after human approval, CI green on the published SHA, and the tag pushed after that run is green.
+
+**Baseline at milestone start (2026-10-21):**
+- `origin/custom_build` = `d20bae63`: the published `6a2a87a5` plus seven Dependabot merges the user made on 2026-10-20 and 2026-10-21 (#8, #9, #6, #7, #13, #12, #11). CI is green on the first four; the runs for `55845c3a`, `4b9ddf96` and `d20bae63` were in progress at 06:26 UTC.
+- Local `sync/v1.7.0` carries the `v1.7.0_gg3-hardening` close (4 commits past `6a2a87a5`) and none of the Dependabot commits, so the two have diverged (14 and 4 by first parent before the #11 merge).
+- `upstream/main` = `a6f1df83`, 12 commits past `v1.7.0` (`379b8d01`), no new tag.
+- Dependabot PRs #4 (client 0.10.0) and #10 (protobuf-java 4.36.2) are open. #5 (JUnit 6.1.3) was closed unmerged on 2026-10-16.
+- The nightly `integrationTests.yaml` is still disabled in settings. No seeds, no pending todos.
+
+**Out of this milestone:**
+- ClickHouse client `0.10.0`: PR #4 is left open, unmerged and not ignored, and the client stays `0.9.6` (the user's call, 2026-10-21).
+- A tagged upstream sync: there is no tag past `v1.7.0`.
+- New connector features, and running the upgrade on production connectors.
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg3-hardening</code> Record-Data Exposure & Review Debt (shipped 2026-10-20)</summary>
@@ -431,7 +447,7 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 ### Active
 
-<!-- No milestone is active. The open `[ ]` items below are candidates for the next milestone. Struck-through items are history. -->
+<!-- Milestone `v1.7.0_gg4-hardening` is active (started 2026-10-21). Every open `[ ]` item below is in its scope except client 0.10.0; its REQ-IDs are in `REQUIREMENTS.md`. Struck-through items are history. -->
 
 **v1.6.0_gg1-sync:** all 53 requirements shipped and moved to Validated.
 
@@ -556,6 +572,12 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 **Quick 261020-vcr follow-ups (emerged 2026-10-20, at review rounds 4–6):**
 
 - [ ] `docs/ROLLOUT-v1.7.0_gg1.md` and `ROLLOUT-v1.7.0_gg2.md` are protected and already published. Both keep a shorter `enableDbTopicSplit=true` key rule ("list `'<db><dbTopicSplitChar><topic>'` instead of `'<topic>'`") and a state-table query with two slots, and both can miss a key: per `RecordConvertor.convert`, a topic that the split character divides into exactly two parts is keyed under its own name. The gg3 note tells the reader to follow its own item 4 step 2. Correct the older notes only if an operator still uses them
+
+**Milestone-start items (emerged 2026-10-20/21, at `v1.7.0_gg4-hardening` start):**
+
+- [ ] The user merged seven Dependabot PRs straight onto `origin/custom_build` on 2026-10-20 and 2026-10-21: Gradle wrapper 9.8.1 (#8), `connect-api` 4.4.0 (#9, fork-only pin), commons-lang3 3.21.0 (#6), ben-manes versions 0.66.0 (#7), gson 2.14.0 (#13), httpclient5 5.6.5 (#12) and Shadow 9.6.1 (#11), tip `d20bae63`. Local `sync/v1.7.0` lacks them. They must be merged into the working branch and the suite must pass on them before any release. PR #10 (protobuf-java 4.36.2, testFixtures only) is to be merged the same way
+- [ ] `upstream/main` is 12 untagged commits past `v1.7.0`, among them an explicit guava dependency for a CVE (`30521f74`). A tagless mini-sync in the usual shape takes them
+- [ ] The stale local ref `refs/upstream/main` (`789a57c2`, the v1.6.0 merge) makes `upstream/main` ambiguous in git commands; delete it
 
 **Quality gates:** all three met — moved to Validated at the Phase 5 transition.
 
@@ -785,4 +807,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-21 after v1.7.0_gg3-hardening milestone*
+*Last updated: 2026-10-21 after starting milestone v1.7.0_gg4-hardening*

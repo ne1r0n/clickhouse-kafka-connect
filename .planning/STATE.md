@@ -1,37 +1,33 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg3-hardening
-milestone_name: Record-Data Exposure & Review Debt
-status: Awaiting next milestone
-stopped_at: Milestone v1.7.0_gg3-hardening closed (override closeout, re-audit passed) — awaiting next milestone
-last_updated: "2026-10-20T21:13:06.488Z"
+milestone: v1.7.0_gg4-hardening
+milestone_name: Dependency Absorption, Discovery Defects & Review Debt
+status: planning
+last_updated: "2026-10-21T10:26:23.695Z"
 last_activity: 2026-10-21
-last_activity_desc: Milestone v1.7.0_gg3-hardening completed and archived
-state_head: 8fdfcbfd777c63400f658cbee1c4d9fe79d76ec3
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
-current_phase: 24
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-21 after the v1.7.0_gg3-hardening milestone)
+See: .planning/PROJECT.md (updated 2026-10-21 after starting milestone v1.7.0_gg4-hardening)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Planning the next milestone (`/gsd-new-milestone`); candidates in PROJECT.md → Next Milestone Goals
+**Current focus:** Defining requirements for `v1.7.0_gg4-hardening` (PROJECT.md → Current Milestone)
 
 ## Current Position
 
-Phase: Milestone v1.7.0_gg3-hardening complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-21 — Milestone v1.7.0_gg3-hardening completed and archived
+Status: Defining requirements
+Last activity: 2026-10-21 — Milestone v1.7.0_gg4-hardening started
 
 ## Performance Metrics
 
