@@ -18,10 +18,12 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -38,6 +40,9 @@ class DescribeFixturesUnitTest {
 
     private static final Path FIXTURE_DIRECTORY =
             Paths.get("src", "test", "resources", DescribeFixtureCatalog.RESOURCE_DIRECTORY);
+    private static final String BUILD_SCRIPT = "build.gradle.kts";
+    private static final Pattern DRIFT_TAG_DECLARATION =
+            Pattern.compile("val describeFixtureDriftTag = \"([^\"]+)\"");
     private static final Pattern SIZE_NAMED = Pattern.compile("size[0-9]*");
     private static final char BACKSLASH = '\\';
     private static final char NAME_SEPARATOR = '.';
@@ -52,6 +57,25 @@ class DescribeFixturesUnitTest {
             rows.add(ClickHouseFieldDescriptor.fromJsonRow(line));
         }
         return rows;
+    }
+
+    @Test
+    @DisplayName("WR-02 drift tag: build.gradle.kts and DescribeFixtureDriftLiveTest name the same tag, once in the build")
+    void theDriftTagInTheBuildEqualsTheTagOfTheDriftTest() throws IOException {
+        String build = Files.readString(Paths.get(BUILD_SCRIPT));
+        Matcher declaration = DRIFT_TAG_DECLARATION.matcher(build);
+        assertTrue(declaration.find(), BUILD_SCRIPT + " must declare describeFixtureDriftTag");
+
+        assertEquals(DescribeFixtureDriftLiveTest.DRIFT_TAG, declaration.group(1), "the Gradle tag and the Java tag");
+        assertEquals(
+                1,
+                build.split(Pattern.quote("\"" + declaration.group(1) + "\""), -1).length - 1,
+                "the tag string is written once in the build; the tasks must use describeFixtureDriftTag");
+        assertTrue(
+                Stream.of(DescribeFixtureDriftLiveTest.class.getAnnotationsByType(Tag.class))
+                        .map(Tag::value)
+                        .anyMatch(declaration.group(1)::equals),
+                "DescribeFixtureDriftLiveTest carries the tag the build excludes from test");
     }
 
     @Test

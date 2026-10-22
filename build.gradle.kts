@@ -223,6 +223,8 @@ tasks.withType<Test> {
         tasks.getByName("check").dependsOn(this)
     }
     systemProperty("file.encoding", "windows-1252") // run tests with different encoding
+    // DescribeFixturesUnitTest reads this script to guard the drift tag, so editing it must re-run the tests.
+    inputs.file(layout.projectDirectory.file("build.gradle.kts"))
 
     testLogging {
         events("passed", "skipped", "failed")

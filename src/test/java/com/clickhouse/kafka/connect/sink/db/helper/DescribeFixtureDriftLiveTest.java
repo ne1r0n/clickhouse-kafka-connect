@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 @Tag(DescribeFixtureDriftLiveTest.DRIFT_TAG)
 class DescribeFixtureDriftLiveTest extends ClickHouseBase {
 
-    // Must equal describeFixtureDriftTag in build.gradle.kts.
+    // Must equal describeFixtureDriftTag in build.gradle.kts; DescribeFixturesUnitTest asserts it.
     static final String DRIFT_TAG = "describe-drift";
 
     private static final String DRIFT_PREFIX = "DESCRIBE_FIXTURE_DRIFT";
