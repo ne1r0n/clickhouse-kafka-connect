@@ -243,6 +243,38 @@ class DescribeTableBuilderUnitTest {
     }
 
     @Test
+    @DisplayName("DESC-08: a structural size1 row and a declared size1 element register the declared one in either row order")
+    void theDeclaredElementWinsTheSharedNameInEitherRowOrder() throws Exception {
+        String root = "Array(Array(Tuple(size1 Tuple(a UInt8), v String)))";
+        String[] structuralFirst = {
+            "c", root, "c.size0", "UInt64", "c.size1", "Array(UInt64)",
+            "c.size1", "Array(Array(Tuple(a UInt8)))", "c.size1.a", "Array(Array(UInt8))", "c.v", "Array(Array(String))"
+        };
+        String[] declaredFirst = {
+            "c", root, "c.size0", "UInt64", "c.size1", "Array(Array(Tuple(a UInt8)))",
+            "c.size1", "Array(UInt64)", "c.size1.a", "Array(Array(UInt8))", "c.v", "Array(Array(String))"
+        };
+
+        Table first = buildRows(structuralFirst);
+        Table second = buildRows(declaredFirst);
+
+        for (Table table : List.of(first, second)) {
+            assertTrue(table.getAllColumnsMap().get("c.size1").isDeclaredElement(), "c.size1 is the declared element");
+            assertEquals(Type.ARRAY, table.getAllColumnsMap().get("c.size1").getType());
+            assertTrue(tupleFieldNamesAtAnyDepth(table).contains("c.size1"), "c.size1 is a field of the Tuple");
+        }
+        assertEquals(tupleFieldNamesAtAnyDepth(first), tupleFieldNamesAtAnyDepth(second));
+        assertEquals(
+                first.getAllColumnsMap().get("c.size1").getArrayType().getArrayType().getTupleFields().stream()
+                        .map(Column::getName)
+                        .toList(),
+                second.getAllColumnsMap().get("c.size1").getArrayType().getArrayType().getTupleFields().stream()
+                        .map(Column::getName)
+                        .toList(),
+                "the declared element keeps its own children");
+    }
+
+    @Test
     @DisplayName("DESC-05: no Column below a JSON root")
     void noColumnBelowAJsonRoot() throws Exception {
         assertEquals(
