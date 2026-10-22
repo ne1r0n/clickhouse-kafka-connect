@@ -1,16 +1,16 @@
 ---
 phase: 26-size-named-tuple-elements-in-discovery
-verified: 2026-10-22T00:00:00Z
+verified: 2026-10-22T14:30:00Z
 status: passed
 score: 5/5 must-haves verified
-covered_files: [".planning/phases/26-size-named-tuple-elements-in-discovery/26-01-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-01-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-02-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-02-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-03-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-03-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-04-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-04-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-05-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-05-SUMMARY.md", ".planning/scripts/fork-anchors.txt", "CHANGELOG.md", "docs/FORK-DELTA.md", "src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java", "src/test/java/com/clickhouse/kafka/connect/sink/TupleSizeNamedElementRoundTripLiveTest.java", "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java", "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilderUnitTest.java"]
-covered_digest: "v3:sha256:1ebd755c97d8b86de4380cc572c86f82f352a4928af8f91be58af8811325e366"
+covered_files: [".planning/phases/26-size-named-tuple-elements-in-discovery/26-01-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-01-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-02-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-02-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-03-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-03-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-04-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-04-SUMMARY.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-05-PLAN.md", ".planning/phases/26-size-named-tuple-elements-in-discovery/26-05-SUMMARY.md", ".planning/scripts/fork-anchors.txt", "CHANGELOG.md", "build.gradle.kts", "docs/FORK-DELTA.md", "src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.java", "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java", "src/test/java/com/clickhouse/kafka/connect/sink/TupleSizeNamedElementRoundTripLiveTest.java", "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java", "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureDriftLiveTest.java", "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureSnapshotUnitTest.java", "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixturesUnitTest.java", "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilderUnitTest.java"]
+covered_digest: "v3:sha256:3921c870a10a96b9a5c340113ce470de7b383011d62f731260786f3adc41078b"
 behavior_unverified: 0
 overrides_applied: 0
 coincidental_reliance_items:
   - truth: "Array(Array(Tuple(size1 ...))) shapes (n01, s4_a10, x05) round-trip with the declared element winning over the structural twin"
     reason: incidental-ordering
-    harden: "DescribeTableBuilder.columnsByName.put and Table.registerValidColumn let the last same-named row win; the declared row wins only because this server prints the structural row first. Make the winner order-independent (26-REVIEW IN-01); the drift premise (DescribeFixtureDriftLiveTest) is the only guard today."
+    harden: "Narrowed since the last report. The Table map is now order independent (IN-01 fix a58c66da, merge in registerValidColumn, pinned by theDeclaredElementWinsTheSharedNameInEitherRowOrder). The residual is DescribeTableBuilder.columnsByName.put, still last-wins (26-REVIEW IN-12): it only feeds the JSON/Dynamic ancestor walk, so it matters only for a declared JSON or Dynamic element named size<digits> at Array depth 2 or more, printed before its structural twin. Not reproduced and no known server shape reaches it. Apply the same declared-wins merge in the builder and add a JSON-element case to the order test."
 ---
 
 # Phase 26: Size-Named Tuple Elements in Discovery Verification Report
@@ -18,7 +18,16 @@ coincidental_reliance_items:
 **Phase Goal:** A table whose Tuple declares an element named `size`, `size0` or `size<digits>` accepts inserts, and the typed read-back equals the records. Discovery keeps the declared element at both drop sites and still drops every structural DESCRIBE row. The pins drive the production DESCRIBE loop, which clients V1 and V2 now share. This closes backlog 999.4 and FORK-DELTA Known costs item 10.
 **Verified:** 2026-10-22
 **Status:** passed
-**Re-verification:** No, initial verification
+**Re-verification:** Yes, regeneration after the code-review `--fix` pass (commits `a58c66da..0a1c79f8`) and the incremental review `4271be66`. The prior report was `passed` 5/5 with no `gaps:` section, so every truth was re-checked against the current tree, not carried over.
+
+## What changed since the prior report
+
+Diff `80275a4a..HEAD` outside `.planning` touches 12 files, 132 insertions and 38 deletions:
+
+- **Production code:** `Table.registerValidColumn` now uses `allColumnsMap.merge` (a registered declared element survives a later structural twin); `DescribeTableBuilder` and `DeclaredNullability` get comment and Javadoc edits only.
+- **Docs and build:** `CHANGELOG.md` names both WARNs of the unreadable-parent path; `docs/FORK-DELTA.md` item 10 says the drift premise runs on demand only and the Table row describes the merge; `build.gradle.kts` adds `inputs.file(build.gradle.kts)` to every `Test` task.
+- **Tests:** `theDeclaredElementWinsTheSharedNameInEitherRowOrder` (builder unit), `theDriftTagInTheBuildEqualsTheTagOfTheDriftTest` (fixtures unit), snapshot test renamed and described as regression-only, round-trip test closes its client on every path, fixture capture writes atomically in effect.
+- No `src` change since `0a1c79f8` (the commits after it are docs only), so the JUnit XML of the full run is current.
 
 ## Goal Achievement
 
@@ -26,11 +35,11 @@ coincidental_reliance_items:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Spike record before any `src/main` change: DESCRIBE rows for the E-15 matrix and the new shapes, double row confirmed or denied, classifier rule stated | VERIFIED | Commit `40ffda7e` (26-01) touches no `src/main` file (0 matches); first `src/main` change is `9c186046`. 47 fixtures committed under `src/test/resources/describe-fixtures/` (jsonl, columns.txt, SERVER_VERSION). Evidence E-02 records `double_row: CONFIRMED` (n02 `c.size0` printed twice, structural `UInt64` first, declared second), the 9-step classifier rule, and measured affected set = predicted (25 keys). The rule in E-02 matches `DescribeTableBuilder.decide` line for line. |
-| 2 | V1 and V2 share one fork-owned builder; extraction is its own no-behaviour-change commit, green first; 999.4 pin drives the builder; one manual `CLIENT_VERSION=V1` run recorded | VERIFIED | `ClickHouseHelperClient.describeTableV1` (line ~530) and `describeTableV2` (line ~557) both construct `DescribeTableBuilder` and call `addRow`; the duplicated loops are gone from the diff. Extraction is separate commit `9c186046`, before fix `7c00953e`. `ClickHouseHelperClientForkUnitTest` line 315 drives `new DescribeTableBuilder(...)`. E-04 records testUnit, snapshots and full suite green on the extraction; E-10 records V1 run: 113 tests, 0 failed, `DescribeFixtureDriftLiveTest client=V1`, plus an extra V1 round-trip 46/46. |
-| 3 | Docker-free unit table of captured real DESCRIBE rows pins the rule at both drop sites; declared element becomes Column; structural rows (offsets, null map, Map keys/values, nested `.size1`, DESC-05 JSON/Dynamic walk) still dropped; structural twin never enters skip set | VERIFIED | `DescribeTableBuilderUnitTest` (120 tests, 0 fail in JUnit XML): per-fixture "declared elements" and "no WARN" rows over all 47 keys, cascade guards (declared element children are Columns; structural row below declared still dropped), null-map/keys rows, nested `size1` registered once and in no Tuple, DESC-05 "no Column below a JSON root", rule table, `Table.updateParent` flagged vs unflagged child. Code: `RowDecision.entersSkipSet()` excludes `SKIP_STRUCTURAL_SIZE`; `Table.updateParent` ARRAY branch reads `!child.isDeclaredElement()`. E-05 shows the new tests red on the pre-fix tree with the failing set equal to the prediction (52 + 3), E-06 shows green after the fix. |
-| 4 | Live: every E-15 affected shape inserts and typed read-back equals originals; DESC-05 rows green; D-04 pin flipped (no unpaired-element WARN) | VERIFIED | `TupleSizeNamedElementRoundTripLiveTest` JUnit XML: 46 tests, 0 failures (class asserts typed read-back via `NullableRoundTrip.selectAndAssert` and zero WARN on the helper and DeclaredNullability loggers). E-08: same class on the extraction tree fails exactly the 25 affected keys (23 CANNOT_READ_ALL_DATA, 1 ATTEMPT_TO_READ_AFTER_EOF, r01 stores wrong value 1667391751). E-09: 46/46 on the fix tree, r01 stores size 7. D-04 pin renamed to `sizeNamedTupleElementIsKeptByDiscoveryWithoutWarning` (line 611) and green. Full suite `build/test-results`: test 1709 tests, 0 failures, 0 errors, 18 skipped; testUnit 1126, 0 failures. |
-| 5 | Same commit as the fix: FORK-DELTA rows (`ClickHouseHelperClient`, `Table.java`), `fork-anchors.txt` rows, CHANGELOG line, Known costs item 10 retired, backlog 999.4 delivered; anchors invariant passes | VERIFIED | `git show --stat 7c00953e` contains ROADMAP.md (+1 `**Delivered:**` line on Phase 999.4), fork-anchors.txt, CHANGELOG.md (+9, "1.7.0_gg4, unreleased" Bug Fixes), docs/FORK-DELTA.md (14 changed lines: two new rows plus item 10 rewritten as "Backlog 999.4 is closed"), plus the code. Anchor rows for `new DescribeTableBuilder(`, `elementKey(`, `!child.isDeclaredElement()`, count-0 row for upstream's old `Table` condition, and `declaredElement`. Anchors invariant recorded green at every commit in E-12 (tail gate and selftest). |
+| 1 | Spike record before any `src/main` change: DESCRIBE rows for the E-15 matrix and the new shapes, double row confirmed or denied, classifier rule stated | VERIFIED | Unchanged by the fix pass. Commit `40ffda7e` (26-01) touches no `src/main` file; the first `src/main` change is `9c186046`. 47 fixtures stay under `src/test/resources/describe-fixtures/`. E-02 records `double_row: CONFIRMED` and the classifier rule, and the current `DescribeTableBuilder.decide` still implements it step for step (read in full: null suffix and JSON/Dynamic ancestor, size-name test, parent raw type, `contains` shortcut, `ParentShape.parse`, `declaresElement`, `isOffsetsRow`). |
+| 2 | V1 and V2 share one fork-owned builder; extraction is its own no-behaviour-change commit, green first; 999.4 pin drives the builder; one manual `CLIENT_VERSION=V1` run recorded | VERIFIED | `ClickHouseHelperClient` lines 530 and 557 construct `new DescribeTableBuilder(database, tableName)` in `describeTableV1` and `describeTableV2`; the anchor row `new DescribeTableBuilder(` count 2 holds on the current file. `shouldSkipDescribeRow` delegates to `DescribeTableBuilder.decide` (line 485). Extraction was commit `9c186046`, before the fix `7c00953e`. V1 run recorded in E-10 and re-confirmed by UAT check 19 (`client=V1`, all 47 snapshots through `describeTableV1`). |
+| 3 | Docker-free unit table of captured real DESCRIBE rows pins the rule at both drop sites; declared element becomes Column; structural rows still dropped; structural twin never enters skip set | VERIFIED | Re-ran now: `./gradlew testUnit -PjavaVersion=21 --tests *DescribeTableBuilderUnitTest *DescribeFixturesUnitTest *DescribeFixtureSnapshotUnitTest *ClickHouseHelperClientForkUnitTest *TableTest` gave 315 tests, 315 succeeded, 0 failed. Code: `RowDecision.entersSkipSet()` excludes `SKIP_STRUCTURAL_SIZE`; `Table.updateParent` ARRAY branch reads `(SIZE_FIELD_MATCHER.test(childName) && !child.isDeclaredElement()) \|\| childName.endsWith(".null")`; `.null` rows and anything below a JSON or Dynamic ancestor are `SKIP_STRUCTURAL`. The new order test builds both row orders and asserts the declared `c.size1` Column, its Tuple membership and its children are identical. |
+| 4 | Live: every E-15 affected shape inserts and typed read-back equals originals; DESC-05 rows green; D-04 pin flipped | VERIFIED | `build/test-results/test` XML (timestamp 2026-10-22T11:53Z, after the last `src` commit at 08:19Z): `TupleSizeNamedElementRoundTripLiveTest` 46 tests, 0 failures, 0 errors. Pre-fix red / post-fix green stays recorded in E-08 / E-09 (25 affected keys failed before, 46/46 after). UAT `26-UAT.md` 24 passed, 0 issues. Whole-tree XML total: 1617 tests, 0 failed, 0 errors, 18 skipped. The count is lower than the prior 1709 because `DescribeFixtureDriftLiveTest` (94) is now tag-gated to `describeFixtureDrift` (WR-02 / IN-09 fix); `build.gradle.kts:370` excludes the tag from `test`, and the new `theDriftTagInTheBuildEqualsTheTagOfTheDriftTest` guards the tag string. |
+| 5 | Same commit as the fix: FORK-DELTA rows, `fork-anchors.txt` rows, CHANGELOG line, Known costs item 10 retired, backlog 999.4 delivered; anchors invariant passes | VERIFIED | Unchanged in `7c00953e` (ROADMAP `**Delivered:**` line, anchors, CHANGELOG, FORK-DELTA). The fix pass only refined wording. Anchor rows checked against the current files by direct count: `new DescribeTableBuilder(` 2/2, `elementKey(` 2/2, `!child.isDeclaredElement()` 1/1, upstream's old `Table` condition 0/0, `private boolean declaredElement;` 1/1, `shouldSkipDescribeRow` 3/3, `DeclaredNullability.apply(` 1/1, `buildDescribedTable(` 1/1. I did not run `verify-merge-invariants.sh` (it walks every commit of a range); the per-row counts above are its anchor check at HEAD. |
 
 **Score:** 5/5 truths verified, 0 present-but-behavior-unverified.
 
@@ -38,30 +47,36 @@ coincidental_reliance_items:
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `sink/db/helper/DescribeTableBuilder.java` | Shared DESCRIBE row loop plus classifier | VERIFIED | 290 lines, `decide` is pure; wired from both describe paths; data flows from real `DESCRIBE` rows to `build()` |
-| `sink/db/mapping/ParentShape.java` | Parent type parse (array depth, Tuple element keys, offsets-row test) | VERIFIED | Used by `decide`; text-built comparisons, no integer parse |
-| `sink/db/mapping/Table.java` | Second drop site honors declared flag | VERIFIED | One-line change; unflagged `size<digits>` still ignored |
-| `sink/db/mapping/Column.java` | `declaredElement` carrier | VERIFIED | Set only by builder (`KEEP_DECLARED`) |
-| `DeclaredNullability.elementKey` | Single Tuple-element key definition | VERIFIED | Used by `collectTuple` and `ParentShape.declaresElement` |
-| `src/test/resources/describe-fixtures/` | 47 captured fixtures | VERIFIED | Drift live test 94/94, unit 95/95, snapshot 47/47 |
-| `captureDescribeFixtures` in `build.gradle.kts` | Manual JavaExec, wired to nothing else | VERIFIED | Present, group verification |
+| `sink/db/helper/DescribeTableBuilder.java` | Shared DESCRIBE row loop plus classifier | VERIFIED | Read in full; `decide` is static and pure; both describe paths call it through the builder; data flows from `fromJsonRow` rows to `build()` |
+| `sink/db/mapping/ParentShape.java` | Parent type parse | VERIFIED | Called by `decide`; unchanged by the fix pass |
+| `sink/db/mapping/Table.java` | Second drop site honours declared flag; order-independent registration | VERIFIED | `registerValidColumn` merge keeps a declared element against a structural twin; `updateParent` ARRAY check unchanged |
+| `sink/db/mapping/Column.java` | `declaredElement` carrier | VERIFIED | `@Setter private boolean declaredElement` (line 59), set only by the builder for `KEEP_DECLARED` |
+| `DeclaredNullability.elementKey` | Single Tuple-element key definition | VERIFIED | Anchor count 2 |
+| `src/test/resources/describe-fixtures/` | 47 captured fixtures | VERIFIED | Snapshot unit test 47/47, fixtures unit test 96/96 |
+| `captureDescribeFixtures`, `describeFixtureDrift` in `build.gradle.kts` | Manual tasks, not in `test`/`check` | VERIFIED | Tag declared once (line 213), excluded from `test` (line 370), included by the on-demand task |
 
 ### Key Link Verification
 
 | From | To | Via | Status |
 |------|----|----|--------|
 | `describeTableV1` / `describeTableV2` | `DescribeTableBuilder.addRow/build` | direct calls | WIRED |
-| `DescribeTableBuilder.decide` | `ParentShape.parse` / `DeclaredNullability.elementKey` | direct calls | WIRED |
-| `DescribeTableBuilder` | `Column.setDeclaredElement` -> `Table.updateParent` | flag read at ARRAY branch | WIRED |
-| `shouldSkipDescribeRow` | `DescribeTableBuilder.decide` | delegation (kept for tests, see advisory IN-02) | WIRED |
+| `DescribeTableBuilder.decide` | `ParentShape.parse`, `ParentShape.declaresElement/isOffsetsRow` | direct calls | WIRED |
+| `DescribeTableBuilder.addRow` | `Column.setDeclaredElement` -> `Table.updateParent` | flag read at ARRAY branch | WIRED |
+| `DescribeTableBuilder.build` | `ClickHouseHelperClient.buildDescribedTable` -> `DeclaredNullability.apply` | package-private static call | WIRED |
+| `shouldSkipDescribeRow` | `DescribeTableBuilder.decide` | delegation, test-only callers (IN-02, skipped by decision) | WIRED |
 
 ### Data-Flow Trace (Level 4)
 
-Raw DESCRIBE JSON line -> `ClickHouseFieldDescriptor.fromJsonRow` -> `decide` (rawTypes of kept parents) -> `Column` list -> `buildDescribedTable` -> `Table` tuple fields -> RowBinary writer -> typed SELECT read-back equals records (46 live cases). FLOWING, no static fallbacks.
+Raw DESCRIBE JSON line -> `ClickHouseFieldDescriptor.fromJsonRow` -> `decide` (kept parents' raw types) -> `Column` list -> `buildDescribedTable` -> `Table` tuple fields -> RowBinary writer -> typed SELECT read-back equals records (46 live cases in the current XML). FLOWING, no static fallback.
 
 ### Behavioral Spot-Checks
 
-Not re-run live (Docker). Read the JUnit XML of the final tree instead: `build/test-results/test` 1709/0 failed/18 skipped; `testUnit` 1126/0 failed/2 skipped; per-class counts match E-12 (RoundTrip 46, Builder 120, FixturesUnit 95, Snapshot 47, Drift 94, HelperClientForkUnit 51, DeclaredNullability 66). Pre-fix red / post-fix green was independently recorded (E-05/E-06, E-08/E-09).
+| Behavior | Command | Result | Status |
+|----------|---------|--------|--------|
+| Rule, both drop sites, order independence, drift-tag guard, helper pins | `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew testUnit -PjavaVersion=21 --tests '*DescribeTableBuilderUnitTest' '*DescribeFixturesUnitTest' '*DescribeFixtureSnapshotUnitTest' '*ClickHouseHelperClientForkUnitTest' '*TableTest'` | 315 tests, 315 succeeded, 0 failed | PASS |
+| Live round-trip, whole suite on the post-fix tree | JUnit XML in `build/test-results/test` (run on this tree, not re-run by me) | RoundTrip 46/0; builder 121, fixtures 96, snapshot 47, helper fork unit 51, all 0 failed; total 1617 tests, 0 failed, 0 errors, 18 skipped | PASS |
+
+The full suite was not launched by me, as instructed. The four `src` files the fix pass changed in behaviour terms reduce to one: `Table.registerValidColumn`, covered by the order test and by the live XML produced after it.
 
 ### Probe Execution
 
@@ -72,36 +87,39 @@ No phase-declared probes (`probe-*.sh`). Skipped.
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
 | DESC-06 | 26-01 | Live DESCRIBE spike, classifier rule stated before code | SATISFIED | Truth 1 |
-| DESC-07 | 26-02 | Shared builder extraction, behavior-preserving, green first, V1 manual run | SATISFIED | Truth 2 |
+| DESC-07 | 26-02 | Shared builder extraction, behaviour-preserving, green first, V1 manual run | SATISFIED | Truth 2 |
 | DESC-08 | 26-03 | Both drop sites keep declared element; structural rows dropped; unit table | SATISFIED | Truth 3 |
 | DESC-09 | 26-04 | Live round-trip of every affected shape; D-04 flip | SATISFIED | Truth 4 |
 | DESC-10 | 26-03 | FORK-DELTA, anchors, CHANGELOG, item 10, 999.4 in the fix commit | SATISFIED | Truth 5 |
 
-All five IDs are marked `[x]` and "Phase 26 / Complete" in REQUIREMENTS.md; no requirement mapped to Phase 26 is unclaimed by a plan (no orphans).
+All five IDs appear in plan frontmatter, are `[x]` in REQUIREMENTS.md (lines 55-59) and "Phase 26 / Complete" in its traceability table (lines 143-147). No requirement mapped to Phase 26 is unclaimed (no orphans).
 
 ### Anti-Patterns Found
 
-Debt-marker scan (TBD/FIXME/XXX/TODO/HACK) over every added line in the phase's src/main and src/test files: none. No stubs, no empty implementations.
+Debt-marker scan (TBD, FIXME, XXX, TODO, HACK) over every added line of `git diff 80275a4a..HEAD -- src build.gradle.kts`: none. No stubs or empty implementations.
 
 | File | Pattern | Severity | Impact |
 |------|---------|----------|--------|
-| `ClickHouseHelperClient.shouldSkipDescribeRow` (both overloads) | No `src/main` caller; two-arg form uses `Map.of()` (weaker rule than production) | Info | 26-REVIEW IN-02, open; not a goal blocker |
+| `ClickHouseHelperClient.shouldSkipDescribeRow` (both overloads) | No `src/main` caller; two-arg form passes `Map.of()` | Info | 26-REVIEW IN-02, skipped by decision (anchor HLP-02 pins it); not a goal blocker |
+| `DescribeTableBuilder` <-> `ClickHouseHelperClient` | Two-class cycle via `buildDescribedTable` | Info | IN-06, skipped by decision (anchor COLS-10) |
+| `DescribeTableBuilder.columnsByName.put` | Last-wins, unlike `Table` | Info | IN-12, open, not reproduced (see below) |
 
 ### Advisory / Open Review Items (not blocking)
 
-26-REVIEW has 2 warnings and 8 info items, all dispositioned `open`; no blockers, and 26-SECURITY is `verified` with `threats_open: 0`.
+26-REVIEW (incremental, `4271be66`): 0 critical, 0 warning, 4 info. Disposition ledger: WR-01, WR-02, IN-01, IN-03, IN-04, IN-05, IN-07..IN-11 fixed; IN-02 and IN-06 skipped by decision; IN-12 and IN-13 open. 26-SECURITY remains `verified`.
 
-- **WR-01 (warning):** the unreadable-parent path (type the pinned client cannot parse, or no raw type for the parent) keeps the pre-phase behavior, so a declared `size`/`size0` element is still dropped there with one metadata-only WARN. This is the locked decision D-03/D-04 in 26-CONTEXT (rejected alternative: refusing the table), and FORK-DELTA states it honestly. The test name and a `DescribeFixturesUnitTest` comment say "fails closed", and the CHANGELOG line says "at any depth" without the caveat. Wording issue, not a goal failure: every one of the 47 captured parents parses (E-02 A4), so no known shape takes this path.
-- **WR-02 (warning):** the drift live test compares raw DESCRIBE bytes against a floating `latest` image; a server formatting change would turn the suite red for non-connector reasons (known `latest` drift, see project memory).
-- **Coincidental reliance (incidental ordering):** see frontmatter. Depth-2 Array shapes are correct because this server prints the structural row before the declared one; nothing in the code enforces that order. The drift test guards it. Advisory only; it does not change the score or status.
+- **IN-12 (open, info):** the builder's own name map is still last-wins, so it can disagree with `Table`. It is read only by the JSON/Dynamic ancestor walk (DESC-05). It would matter only for a declared JSON or Dynamic element named `size<digits>` at Array depth 2 or more, printed before a structural twin. The server prints the structural row first today, and the review did not verify that any server accepts such a shape. No affected fixture or live case exists, so no must-have is falsified. Recorded as the narrowed `coincidental_reliance_items` entry.
+- **IN-13 (open, info):** the new `allColumnsMap.merge(` in upstream-owned `Table.registerValidColumn` has no `fork-anchors.txt` row. I confirmed it: rows 95-96 cover only the `updateParent` check. A future upstream sync that restores `allColumnsMap.put(...)` keeps the anchors green; only `theDeclaredElementWinsTheSharedNameInEitherRowOrder` (declared-first order) would fail. The merge gate does not protect this line. This is a rebasability gap in the fork's own safety net, not a failure of the phase goal, and the goal truths hold today. Suggested fix: add `Table.java<TAB>allColumnsMap.merge(<TAB>1<TAB>DESC-08` and a count-0 row for `allColumnsMap.put(column.getName(), column)`.
+- **Drift premise is on demand only (known, documented):** `DescribeFixtureDriftLiveTest` no longer runs in `test`, so committed fixtures can go stale against `latest` unnoticed until `describeFixtureDrift` is run. FORK-DELTA item 10 states this.
+- **Unreadable-parent path (D-03/D-04, documented):** a bare `size`/`size0` element whose parent type cannot be parsed or is absent is still dropped with metadata-only WARNs. CHANGELOG and FORK-DELTA now say so without the earlier "fails closed" wording. No known shape takes this path (every one of the 47 captured parents parses).
 
 ### Human Verification Required
 
-None. No `<verify><human-check>` blocks exist in any of the five PLAN files, and every behavior-dependent truth (declared element survives and round-trips; structural rows still dropped; cascade guard) has a passing behavioral test, red on the pre-fix tree and green on the fix tree.
+None. No `<verify><human-check>` blocks exist in the five PLAN files. Every behavior-dependent truth has a passing behavioral test: red on the pre-fix tree and green on the fix tree (E-05/E-06, E-08/E-09), and green again in the XML of the post-fix-pass tree. UAT recorded 24 of 24 passed with 0 issues.
 
 ### Gaps Summary
 
-No gaps. The goal is achieved in the codebase: both drop sites keep declared size-named Tuple elements and still drop structural rows, V1 and V2 share the production `DescribeTableBuilder` that the pins drive, and all 46 live round-trip cases (25 formerly failing) store and read back equal. Environment notes: the working tree carries the expected `gradlew.bat` CRLF diff and `.planning/state.json`; the OpenJ9 `Mockito.spy` crash recorded in E-12 is a known environment fault, not a test failure. `VERSION` still reads `v1.7.0_gg3`; the CHANGELOG section is `1.7.0_gg4, unreleased`, and the bump belongs to the publication phase, not this one.
+No gaps. The goal is achieved on the current tree: both drop sites keep declared size-named Tuple elements and still drop structural rows, V1 and V2 share the production `DescribeTableBuilder` that the pins drive, and all 46 live round-trip cases store and read back equal. The fix pass strengthened the one order dependency the prior report flagged (the `Table` map) and left a narrower, unreproduced residual in the builder (IN-12) plus an unanchored upstream-owned line (IN-13). Both are advisory and neither falsifies a must-have. Environment notes: the working tree carries only the expected `gradlew.bat` CRLF diff and `.planning/state.json`; `VERSION` still reads `v1.7.0_gg3` and its bump belongs to the publication phase.
 
 ---
 
