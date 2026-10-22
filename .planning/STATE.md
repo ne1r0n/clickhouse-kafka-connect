@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 27
 current_phase_name: Writer Failure Path & Test Debt
 status: executing
-stopped_at: Phase 27 context gathered
-last_updated: "2026-10-22T21:04:27.522Z"
-last_activity: 2026-10-22
-last_activity_desc: Phase 26 UAT passed and verification regenerated, ready to plan Phase 27
-state_head: e6710e2de403394d6d23cd852327988d967287dc
+stopped_at: Completed 27-01-PLAN.md
+last_updated: "2026-10-22T21:43:35.495Z"
+last_activity: 2026-10-23
+last_activity_desc: Phase 27 execution started
+state_head: adb243357b834a1227c8ac00d377db6da470bf8b
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 18
-  completed_plans: 13
+  completed_plans: 14
   percent: 40
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 
 ## Current Position
 
-Phase: 27 (Writer Failure Path & Test Debt) — READY TO EXECUTE
-Plan: Not started
+Phase: 27 (Writer Failure Path & Test Debt) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-22 — Phase 26 UAT passed and verification regenerated, ready to plan Phase 27
+Last activity: 2026-10-23 — Phase 27 execution started
 
 Progress: [████░░░░░░] 40%
 
@@ -179,6 +179,7 @@ Progress: [████░░░░░░] 40%
 | Phase 26 P03 | 15 min | 3 tasks | 38 files |
 | Phase 26 P04 | 25 min | 2 tasks | 3 files |
 | Phase 26 P05 | 30 min | 2 tasks | 1 files |
+| Phase 27 P01 | 7 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -226,6 +227,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 26]: Phase 26 plan 04: the round-trip matrix is the catalog minus x08, and a catalog key without a case fails at discovery — x08 is a JSON column whose typed-path rows DESC-05 drops by design; the unit table and the DESC-05 live pins cover it. Pinned both ways: the unchanged class fails exactly the 25 affected keys on the refactor(26-02) tree (E-08) and passes 46 of 46 on the fix tree (E-09).
 - [Phase 26]: Phase 26 plan 04: the rollback to gg3 and block-deduplication interaction stays assumed (research A5) in E-11 — Reasoned from the BEFORE/AFTER state machine, not measured; Phase 29 measures it or words it as a precaution and must not cite it as measured. An upgrade needs no clean stop (every failed put left rows=0, E-08).
 - [Phase 26]: 26-05: gate suite run on HotSpot 21 (-PjavaVersion=21) after three deterministic OpenJ9 Mockito GPF crashes on the default Semeru 17 toolchain under host memory pressure; no test or build file changed
+- [Phase 27]: 27-01: fourth WRT-16 shape is a plain IOException (PLAIN_IO_CONTROL); Jackson-over-plain-IOException and IOException-over-Jackson are accepted residuals pinned in 27-02
+- [Phase 27]: 27-01: JsonProcessingException realised as JsonMappingException (protected ctors in jackson-core 2.22.4; project Jackson is 2.22.4)
 
 ### Pending Todos
 
@@ -271,9 +274,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T19:19:40.885Z
-Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-writer-failure-path-test-debt/27-CONTEXT.md
+Last session: 2026-10-22T21:43:35.190Z
+Stopped at: Completed 27-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
