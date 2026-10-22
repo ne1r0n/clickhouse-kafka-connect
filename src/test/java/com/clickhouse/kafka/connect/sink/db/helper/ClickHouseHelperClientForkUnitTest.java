@@ -293,7 +293,7 @@ class ClickHouseHelperClientForkUnitTest {
                 numColumns++;
             }
         }
-        return ClickHouseHelperClient.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
+        return DescribeTableBuilder.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
     }
 
     /** Discovery where every root row's own type is its declared type, as DESCRIBE reports it. */

@@ -1,6 +1,7 @@
 package com.clickhouse.kafka.connect.sink.db.helper;
 
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.ParentShape;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
@@ -25,9 +26,11 @@ import org.slf4j.LoggerFactory;
  */
 public final class DescribeTableBuilder {
 
-    // Keeps the logger name of the loop this class replaced, so log configuration and LogCapture
-    // attachments that target ClickHouseHelperClient keep matching.
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseHelperClient.class);
+    // The logger name of the loop this class replaced, kept as a string so log configuration and LogCapture
+    // attachments that target ClickHouseHelperClient keep matching without this class depending on it.
+    private static final String LOGGER_NAME = "com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LOGGER_NAME);
 
     static final String UNREADABLE_PARENT_WARNING = "Could not read the declared type {} of column {} of table "
             + "{}.{} ({}); its sub-columns named size, size0 or size followed by digits are treated as structural, "
@@ -291,7 +294,31 @@ public final class DescribeTableBuilder {
 
     /** Builds the {@link Table} from the rows added so far. */
     public Table build() {
-        return ClickHouseHelperClient.buildDescribedTable(
-                database, tableName, hasDefaults, columns, numColumns, declaredTypes);
+        return buildDescribedTable(database, tableName, hasDefaults, columns, numColumns, declaredTypes);
+    }
+
+    /**
+     * Builds the {@link Table} for one DESCRIBE pass, then takes the nullability of every root column
+     * that contains a Tuple from its declared type (COLS-10). It runs once per DESCRIBE, before the
+     * Table is published and never per record, so a retried batch sees the same Table as the first
+     * attempt. The Table itself is upstream-identical.
+     *
+     * @param declaredTypes the raw DESCRIBE type of each root column, keyed by column name; a root
+     *     with no entry keeps the nullability DESCRIBE reported for it
+     */
+    static Table buildDescribedTable(
+            String database,
+            String tableName,
+            boolean hasDefaults,
+            List<Column> columns,
+            int numColumns,
+            Map<String, String> declaredTypes) {
+        Table table = new Table(database, tableName, hasDefaults, columns, numColumns);
+        for (Column root : table.getRootColumnsList()) {
+            if (DeclaredNullability.containsTuple(root)) {
+                DeclaredNullability.apply(root, declaredTypes.get(root.getName()), database, tableName);
+            }
+        }
+        return table;
     }
 }

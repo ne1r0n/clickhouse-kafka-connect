@@ -25,7 +25,6 @@ import com.clickhouse.data.ClickHouseValue;
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.Version;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
-import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
@@ -484,31 +483,6 @@ public class ClickHouseHelperClient implements AutoCloseable {
             ClickHouseFieldDescriptor fieldDescriptor, Map<String, Column> columnsSoFar, Map<String, String> rawTypes) {
         return DescribeTableBuilder.decide(fieldDescriptor, columnsSoFar, rawTypes)
                 .skipsRow();
-    }
-
-    /**
-     * Builds the {@link Table} for one DESCRIBE pass, then takes the nullability of every root column
-     * that contains a Tuple from its declared type (COLS-10). It runs once per DESCRIBE, before the
-     * Table is published and never per record, so a retried batch sees the same Table as the first
-     * attempt. The Table itself is upstream-identical.
-     *
-     * @param declaredTypes the raw DESCRIBE type of each root column, keyed by column name; a root
-     *     with no entry keeps the nullability DESCRIBE reported for it
-     */
-    static Table buildDescribedTable(
-            String database,
-            String tableName,
-            boolean hasDefaults,
-            List<Column> columns,
-            int numColumns,
-            Map<String, String> declaredTypes) {
-        Table table = new Table(database, tableName, hasDefaults, columns, numColumns);
-        for (Column root : table.getRootColumnsList()) {
-            if (DeclaredNullability.containsTuple(root)) {
-                DeclaredNullability.apply(root, declaredTypes.get(root.getName()), database, tableName);
-            }
-        }
-        return table;
     }
 
     public Table describeTableV1(String database, String tableName) {
