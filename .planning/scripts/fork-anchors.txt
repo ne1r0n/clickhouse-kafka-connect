@@ -94,4 +94,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	elementKey(	2	DESC-08
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	!child.isDeclaredElement()	1	DESC-08
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	if (SIZE_FIELD_MATCHER.test(childName) || childName.endsWith(".null"))	0	DESC-08
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	allColumnsMap.merge(	1	DESC-08
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	allColumnsMap.put(column.getName(), column)	0	DESC-08
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	private boolean declaredElement;	1	DESC-08
