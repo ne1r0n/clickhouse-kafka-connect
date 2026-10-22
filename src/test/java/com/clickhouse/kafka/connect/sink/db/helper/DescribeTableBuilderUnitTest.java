@@ -251,8 +251,9 @@ class DescribeTableBuilderUnitTest {
     }
 
     @Test
-    @DisplayName("D-03, D-04: an unreadable parent fails closed with one metadata-only WARN")
-    void anUnreadableParentFailsClosedWithOneMetadataOnlyWarning() throws Exception {
+    @DisplayName("D-03, D-04: an unreadable parent keeps the earlier behaviour (the size-named element is dropped,"
+            + " the table is still served) with one metadata-only WARN")
+    void anUnreadableParentKeepsTheEarlierBehaviourWithOneMetadataOnlyWarning() throws Exception {
         assertThrows(
                 RuntimeException.class,
                 () -> ClickHouseColumn.of("c.x", DeclaredNullability.normalise(UNREADABLE_TUPLE_TYPE)),
@@ -269,6 +270,8 @@ class DescribeTableBuilderUnitTest {
                     "c.x.v.size", "UInt64");
 
             Column unreadable = table.getAllColumnsMap().get("c.x");
+            // Not fail-closed on purpose (D-03 rejected refusing the table): the declared size and size0 elements
+            // are still dropped, so the Tuple stays short exactly as in earlier releases and the WARNs are the signal.
             assertEquals(List.of("c.x.v"), fieldNamesOf(unreadable));
 
             List<LogCapture.CapturedEvent> helperWarnings = helperLog.events(WARN_LEVEL);

@@ -30,7 +30,8 @@ import org.junit.jupiter.params.provider.MethodSource;
  * Docker-free guards over the committed DESCRIBE fixtures (DESC-06, research assumption A4): the
  * resource directory matches the catalog exactly, every committed row parses the way discovery
  * parses it, and the raw type of every parent of a size-named sub-column row parses, because a
- * parent that does not parse would take the fail-closed path of the classifier. Deliberately
+ * parent that does not parse would take the undecidable path of the classifier, which keeps the
+ * earlier behaviour (drops a bare {@code size} or {@code size0} element) instead of deciding. Deliberately
  * extends nothing: extending {@code ClickHouseBase} would exclude this class from {@code testUnit}.
  */
 class DescribeFixturesUnitTest {
