@@ -5,11 +5,11 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Unreadable-parent path is fail-open (silently re-creates the short tuple) but is documented and tested as \"fails closed\""
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Byte-for-byte drift tests against a floating `latest` image can turn the whole suite red for reasons unrelated to the connector"
   - id: IN-01
     severity: info
@@ -43,17 +43,17 @@ findings:
     severity: info
     disposition: open
     title: "Client leak if table setup fails in the round-trip test"
-open: 10
+open: 8
 total: 10
-recorded: 2026-10-21T22:28:47.255Z
+recorded: 2026-10-22T06:42:18.392Z
 ---
 
 # Phase 26: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
+| WR-01 | warning | fixed | 26-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 26-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
