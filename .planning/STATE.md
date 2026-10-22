@@ -6,9 +6,9 @@ current_phase: 27
 current_phase_name: Writer Failure Path & Test Debt
 status: planning
 stopped_at: Phase 26 complete, ready to plan Phase 27
-last_updated: "2026-10-21T22:32:16.264Z"
+last_updated: "2026-10-22T12:10:00.000Z"
 last_activity: 2026-10-22
-last_activity_desc: Phase 26 complete, transitioned to Phase 27
+last_activity_desc: Phase 26 UAT passed and verification regenerated, ready to plan Phase 27
 state_head: e7e4312f5939d1cbc48951cebfea396a5adcee42
 progress:
   total_phases: 5
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 Phase: 27 — Writer Failure Path & Test Debt
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-22 — Phase 26 complete, transitioned to Phase 27
+Last activity: 2026-10-22 — Phase 26 UAT passed and verification regenerated, ready to plan Phase 27
 
 Progress: [████░░░░░░] 40%
 
@@ -246,8 +246,8 @@ None.
 - [Phase 25]: `origin/custom_build` is frozen at `69cd680b` (nine Dependabot merges absorbed as M1 `50f56289`); local `sync/v1.7.0` also holds M2 `38265d26` (upstream tail `a6f1df83`) and the baseline tag `baseline-v1.7.0_gg4` = `aa450709`. Nothing is pushed. Standing merge gate for later phases: `PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh`.
 - [Phase 25]: 25-REVIEW left three warnings open (WR-01 archive-step pin accepts `-x verifyConfluentArchive`/`--dry-run`/`|| true`/step `if:`; WR-02 `ConnectApiReferencesUnitTest` resolves inherited members on the test classpath and drops unresolved ones; WR-03 descriptor-only Kafka types unchecked) and four info items (stale `build/confluentArchive` dirs, `META-INF/versions/*` and `.zip`/`.war` nesting, brittle anchors, merge-carried hygiene incl. `pre-release.yaml` still pinning Gradle 7.4.2). Ledger: `25-REVIEW-DISPOSITION.md`. Trigger: the next edit of those guards (Phase 28 review debt).
 - [Phase 25]: the working tree keeps an unstaged CRLF diff on `gradlew.bat` after the Dependabot wrapper merge (committed blob equals origin's); plan verify strings must exclude it.
-- [Phase 26]: 26-REVIEW left 2 warnings and 8 info items open (ledger `26-REVIEW-DISPOSITION.md`): WR-01 the unreadable-parent path keeps the pre-fix drop with one WARN under locked D-03/D-04, but the test name says "fails closed" and the CHANGELOG line omits the caveat; WR-02 `DescribeFixtureDriftLiveTest` compares raw DESCRIBE bytes against floating `latest`, so a server formatting change turns 94 cases red at once; IN-01 depth-2 Array shapes rely on the server printing the structural row before the declared one. `26-SECURITY.md` is `threats_open: 0`.
-- [Env]: the full suite crashed the OpenJ9 (Semeru 17) test JVM four times on 2026-10-21/22 at the known `Mockito.spy` frame, with host swap at about 97%; `-PjavaVersion=21` (HotSpot) passes, and a plain re-run passed once swap pressure eased. Expect the crash whenever the host is swapping; it is not a test failure.
+- [Phase 26]: 26-REVIEW has 2 open info items after the `--fix` pass (commits `a58c66da..0a1c79f8`: 9 fixed, IN-02 and IN-06 skipped by decision) and the 2026-10-22 re-review (`4271be66`): IN-12 `DescribeTableBuilder.columnsByName` stays last-wins, reachable only by a declared JSON or Dynamic element named `size<digits>` at Array depth 2 or more, not reproduced; IN-13 the fork-owned `allColumnsMap.merge` in upstream `Table.registerValidColumn` has no `fork-anchors.txt` row, so an upstream sync could revert it unnoticed by the merge gate. Ledger `26-REVIEW-DISPOSITION.md`; `26-SECURITY.md` is `threats_open: 0`; `26-VERIFICATION.md` regenerated 2026-10-22 (passed, 5/5) after the fixes; `26-UAT.md` complete (24 passed, 0 issues).
+- [Env]: the full suite crashed the OpenJ9 (Semeru 17) test JVM five times on 2026-10-21/22 at the known `Mockito.spy` frame, with host swap at about 97%; `-PjavaVersion=21` (HotSpot) passes, and a plain re-run passed once swap pressure eased. Expect the crash whenever the host is swapping; it is not a test failure.
 - [Release]: `VERSION` still reads `v1.7.0_gg3` and the CHANGELOG section for the 999.4 fix is unreleased; the bump belongs to Phase 29.
 
 ### Quick Tasks Completed
@@ -271,13 +271,13 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T00:40:00.000Z
-Stopped at: Phase 26 complete, ready to plan Phase 27
+Last session: 2026-10-22T12:10:00.000Z
+Stopped at: Phase 26 UAT passed (24/24) and verification regenerated after the review fixes, ready to plan Phase 27
 Resume file: None
 
 ## Operator Next Steps
 
 - Discuss and plan Phase 27 with /gsd-discuss-phase 27, then /gsd-plan-phase 27
-- Triage the ten open 26-REVIEW findings (WR-01 unreadable-parent wording and semantics under D-03/D-04, WR-02 byte-exact drift test against floating `latest`, IN-01..IN-08) in the review-debt phase or with `/gsd-code-review 26 --fix`; the ledger is `26-REVIEW-DISPOSITION.md`
+- Triage the two open 26-REVIEW info items (IN-12 builder name-map order for a declared JSON/Dynamic `size<digits>` element, IN-13 missing `fork-anchors.txt` row for the `merge` in `Table.registerValidColumn`) in the review-debt phase; the ledger is `26-REVIEW-DISPOSITION.md`
 - Do not merge, close or ignore Dependabot PRs #4 and #10 on `origin/custom_build` until the v1.7.0_gg4 publication (Phase 29); do not edit `.github/dependabot.yml`
 - Triage the three open 25-REVIEW warnings when the review-debt phase runs (`/gsd-code-review 25 --fix` or by hand); the ledger is `25-REVIEW-DISPOSITION.md`
