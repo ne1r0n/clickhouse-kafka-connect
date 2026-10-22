@@ -476,27 +476,32 @@ public class TupleSizeNamedElementRoundTripLiveTest extends ClickHouseBase {
     void everyCatalogShapeStoresAndReadsBackEqualWithoutAWarning(
             String key, RoundTripCase roundTripCase, TestInfo testInfo) throws Exception {
         Map<String, String> props = getBaseProps();
-        ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         Fixture fixture = DescribeFixtureCatalog.fixture(key);
-        ClickHouseTestHelpers.dropTable(chc, key);
-        // The table must exist before start(): ClickHouseWriter.start() fails against an empty database.
-        NullableRoundTrip.createTable(
-                chc, key, DescribeFixtureCatalog.createTableSql(fixture, CREATE_TABLE_FORMAT_PLACEHOLDER));
-        props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
-        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
-                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
-            putAll(props, chc, roundTripCase);
-            assertReadBackPrintingOutcome(chc, roundTripCase);
+        try (ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props)) {
+            try {
+                ClickHouseTestHelpers.dropTable(chc, key);
+                // The table must exist before start(): ClickHouseWriter.start() fails against an empty database.
+                NullableRoundTrip.createTable(
+                        chc, key, DescribeFixtureCatalog.createTableSql(fixture, CREATE_TABLE_FORMAT_PLACEHOLDER));
+                props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
+                try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                        LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+                    putAll(props, chc, roundTripCase);
+                    assertReadBackPrintingOutcome(chc, roundTripCase);
 
-            chc.describeTable(chc.getDatabase(), key);
-            assertReadBack(chc, roundTripCase);
+                    chc.describeTable(chc.getDatabase(), key);
+                    assertReadBack(chc, roundTripCase);
 
-            assertEquals(List.of(), warnMessages(helperLog), "discovery of " + key + " must not warn (helper logger)");
-            assertEquals(
-                    List.of(), warnMessages(nullabilityLog), "discovery of " + key + " must not warn (nullability)");
-        } finally {
-            ClickHouseTestHelpers.dropTable(chc, key);
-            chc.close();
+                    assertEquals(
+                            List.of(), warnMessages(helperLog), "discovery of " + key + " must not warn (helper logger)");
+                    assertEquals(
+                            List.of(),
+                            warnMessages(nullabilityLog),
+                            "discovery of " + key + " must not warn (nullability)");
+                }
+            } finally {
+                ClickHouseTestHelpers.dropTable(chc, key);
+            }
         }
     }
 
