@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,9 +66,19 @@ public final class DescribeFixtureCapture {
             capture(Paths.get(args[0]));
             return SUCCESS_EXIT;
         } catch (Exception e) {
-            System.out.println("DescribeFixtureCapture failed: " + e.getClass().getName());
+            Throwable cause = rootCause(e);
+            System.out.println("DescribeFixtureCapture failed: " + e.getClass().getName() + ", root cause "
+                    + cause.getClass().getName() + ": " + cause.getMessage());
             return FAILURE_EXIT;
         }
+    }
+
+    private static Throwable rootCause(Throwable error) {
+        Throwable cause = error;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause;
     }
 
     private static void capture(Path outputDirectory) throws Exception {
@@ -110,8 +121,9 @@ public final class DescribeFixtureCapture {
     private static void captureAll(
             ClickHouseContainer db, String image, ClickHouseHelperClient chc, Path outputDirectory)
             throws Exception {
-        Files.createDirectories(outputDirectory);
-        deleteStaleFixtureFiles(outputDirectory);
+        // Nothing is written until every fixture has been captured, so a failure partway through leaves the
+        // committed directory, and the version stamp that describes it, exactly as it was.
+        Map<Path, List<String>> captured = new LinkedHashMap<>();
         String version = chc.version();
         String imageId = db.getContainerInfo().getImageId();
         System.out.println(SERVER_PREFIX + " version=" + version + " image=" + image + " image_id=" + imageId
@@ -134,15 +146,20 @@ public final class DescribeFixtureCapture {
                 warns = warnEvents.size();
                 unpaired = warnEvents.stream().anyMatch(e -> e.message().contains(UNPAIRED_WARNING_TEXT));
             }
-            write(outputDirectory.resolve(key + DescribeFixtureCatalog.JSONL_SUFFIX), rawLines);
-            write(outputDirectory.resolve(key + DescribeFixtureCatalog.COLUMNS_SUFFIX), snapshot);
+            captured.put(outputDirectory.resolve(key + DescribeFixtureCatalog.JSONL_SUFFIX), rawLines);
+            captured.put(outputDirectory.resolve(key + DescribeFixtureCatalog.COLUMNS_SUFFIX), snapshot);
             System.out.println(FIXTURE_PREFIX + " key=" + key + " source=" + fixture.source() + " rows="
                     + rawLines.size() + " double_rows=" + doubleRows(rawLines) + " warns=" + warns
                     + " unpaired_warn=" + (unpaired ? "yes" : "no"));
         }
-        write(
+        captured.put(
                 outputDirectory.resolve(DescribeFixtureCatalog.SERVER_VERSION_FILE),
                 List.of("version=" + version, "image=" + image, "image_id=" + imageId));
+        Files.createDirectories(outputDirectory);
+        deleteStaleFixtureFiles(outputDirectory);
+        for (Map.Entry<Path, List<String>> file : captured.entrySet()) {
+            write(file.getKey(), file.getValue());
+        }
     }
 
     private static String doubleRows(List<String> rawLines) throws IOException {
