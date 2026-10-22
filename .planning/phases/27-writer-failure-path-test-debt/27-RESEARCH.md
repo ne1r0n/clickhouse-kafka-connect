@@ -466,20 +466,24 @@ Not applicable: this is not a rename, rebrand or migration phase. Removing plann
 | A5 | The `Array(JSON)`/`Tuple(JSON)` nested route is safe after the fix because the child's own `doWriteColValue` catch converts the Jackson failure to a `DataException` before the parent lambda wraps (`catch (IOException)` wrappers at `ClickHouseWriter.java:747, 775, 819` only see IOExceptions that passed through) | Pitfalls | Medium-low: if a Jackson `IOException` could escape a child unconverted it would be wrapped in an exact `RuntimeException` and pass through again. A single nested-JSON unit row would confirm; recommended but optional. |
 | A6 | The `insertFormat=json` route (`writeRecordsJson`, `OBJECT_MAPPER.writeValueAsBytes(cleaned)` at `ClickHouseWriter.java:1473`) can also raise a Jackson failure whose text names a Map key, and is not covered by this phase | Open Questions | Out of scope by the phase goal ("on the opt-in JSON-as-string route"); recorded so the user can add it to the backlog. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should the lookup-miss text be operator-visible?**
+1. **Should the lookup-miss text be operator-visible?** (RESOLVED)
    - What we know: with D-06 the thrown `IllegalArgumentException` is wrapped by `WithheldMessageException.of(e)`, so its message (column name, "label not found") appears nowhere an operator reads. The operator sees the class `IllegalArgumentException` and the already-present column in the `DataException` prefix.
    - What's unclear: whether roadmap criterion 3 ("a message that names the column and a lookup-miss cause") is satisfied by the `Column`-level message plus the class change, or whether the user wants the text surfaced.
    - Recommendation: implement D-05/D-06 as locked; prove the message at `Column` level and the class at writer level; state this limit in the evidence and the ledger row. Surfacing the text would need a pass-through type (a `DataException` thrown from `Column`), which is a different decision from D-06.
+   - **RESOLVED:** taken as recommended. The exact text is pinned at `Column` level (ColumnTest) and the `IllegalArgumentException` class at writer level; the limit is stated in E-07 and ledger row L-54 and flagged to the user. Recorded in `27-03-PLAN.md`, "Decisions recorded in this plan", bullet "Research Open Question 1, taken as recommended and flagged to the user".
 
-2. **Does the FORK-DELTA line 217 sentence (release history of `v1.7.0_gg3`) get an amendment?**
+2. **Does the FORK-DELTA line 217 sentence (release history of `v1.7.0_gg3`) get an amendment?** (RESOLVED)
    - What we know: CONTEXT's canonical refs list "the release-history sentence naming `JsonAsStringKeyResidualLiveTest`" among the edited docs, but D-03 names only item 6 and the `doWriteColValue` row.
    - Recommendation: append "(closed in `v1.7.0_gg4`)" so the sentence stays true; do not touch `docs/ROLLOUT-v1.7.0_gg3.md`.
+   - **RESOLVED:** taken as recommended. The sentence keeps its wording and gains a parenthetical saying the route is closed in `v1.7.0_gg4`; `docs/ROLLOUT-v1.7.0_gg3.md` is not touched. Recorded in `27-02-PLAN.md`, "Decisions recorded in this plan", bullet "Release-history sentence (research Open Question 2)".
 
-3. **A fourth WRT-16 shape.** See F-5; planner picks the duplicate control or the Jackson-under-plain-`IOException` variant.
+3. **A fourth WRT-16 shape.** See F-5; planner picks the duplicate control or the Jackson-under-plain-`IOException` variant. (RESOLVED)
+   - **RESOLVED:** the fourth WRT-16 row is the duplicate control `PLAIN_IO_CONTROL`, the literal roadmap shape. Recorded in `27-01-PLAN.md`, "Decisions recorded in this plan", bullet "Fourth WRT-16 shape (research Open Question 3)". The Jackson-under-plain-`IOException` variant, and a Jackson exception over a plain non-timeout `IOException`, are not WRT-16 rows (a classification row cannot tell a pass-through from a conversion, since both are NON_RETRIABLE). Both still pass through after WRT-17, so plan 27-02 pins them as same-instance accepted-residual rows and scopes the FORK-DELTA and CHANGELOG closure wording to them. Recorded in `27-02-PLAN.md`, "Decisions recorded in this plan", bullet "Accepted residual: a Jackson exception that shares its chain with a non-Jackson IOException".
 
-4. **Jackson failure on the `insertFormat=json` route** (A6). Not in scope; consider a backlog item.
+4. **Jackson failure on the `insertFormat=json` route** (A6). Not in scope; consider a backlog item. (RESOLVED)
+   - **RESOLVED:** out of scope. Ledger `27-BEHAVIOUR-LEDGER.md` lists it under "Out of scope, for the user" as an unmeasured backlog candidate, and threat T-27-07 accepts it. Recorded in `27-02-PLAN.md`, "Decisions recorded in this plan", bullet "Out of scope, recorded (research Open Question 4, A6)".
 
 ## Environment Availability
 

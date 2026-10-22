@@ -11,7 +11,7 @@
     {
       "number": "26",
       "name": "Size-Named Tuple Elements in Discovery",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "27",
@@ -32,7 +32,7 @@
   "next": {
     "command": "/gsd-progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 2 of 5 · 20% · executing"
+    "reason": "Phase 3 of 5 · 40% · executing"
   },
-  "updated_at": "2026-10-21T20:22:50.901Z"
+  "updated_at": "2026-10-22T21:04:27.540Z"
 }

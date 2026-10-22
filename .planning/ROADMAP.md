@@ -279,7 +279,23 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare `NullPointerException`.
      A diff check shows that no existing assertion was deleted or weakened, and the anchors invariant passes at every commit.
 
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+**Wave 1**
+- [ ] 27-01-PLAN.md — WRT-16: tracer Jackson row through the real put path; four Jackson-group classification rows green on the unchanged writer; phase base (E-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 27-02-PLAN.md — WRT-17: red-first Docker-free and live pins, user checkpoint on the helper widening, per-link JacksonException exclusion with the flip, D-11 scrub, FORK-DELTA, CHANGELOG and anchor in one fix commit
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 27-03-PLAN.md — WRT-18: lookup miss in Column.convertEnumValues (IllegalArgumentException naming the column) and the column-named no-content text, red first, one fix commit
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 27-04-PLAN.md — WRT-19: exact ClassCastException pin, metadata helpers on the shared prefix, comment-only planning-ID scrub of src/main, standing guard seen red
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 27-05-PLAN.md — DEBT-16: FixedString assertThrows and premise assertNotNull proven by mutation, counter removed; phase gate and assertion diff check
 
 **Research flag**: Standard patterns: the WRT-14 pin-first order and the Phase 22 L-47 precedent.
 
