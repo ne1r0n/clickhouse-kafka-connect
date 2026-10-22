@@ -207,13 +207,19 @@ tasks.withType<JavaCompile> {
     options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
 }
 
+// Phase 26 WR-02: DescribeFixtureDriftLiveTest compares byte-for-byte against the floating `latest` server, so an
+// upstream formatting change turns it red for reasons unrelated to the connector. It is tagged and kept out of
+// `test` and `check`; `describeFixtureDrift` runs it on demand.
+val describeFixtureDriftTag = "describe-drift"
+val describeFixtureDriftTask = "describeFixtureDrift"
+
 tasks.withType<Test> {
     if (System.getenv("CLICKHOUSE_CLUSTER_NAME") != null) {
         maxParallelForks = 1
     } else {
         maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).takeIf { it > 0 } ?: 1
     }
-    if (name != "testUnit") {
+    if (name != "testUnit" && name != describeFixtureDriftTask) {
         tasks.getByName("check").dependsOn(this)
     }
     systemProperty("file.encoding", "windows-1252") // run tests with different encoding
@@ -274,6 +280,20 @@ tasks.register<Test>("testUnit") {
     useJUnitPlatform {
         excludeTags("clickhouse")
     }
+    extensions.configure<JacocoTaskExtension> { isEnabled = false }
+}
+
+// Phase 26 WR-02: the live DESCRIBE drift check, run by hand or from a separate non-gating job; needs Docker.
+// Same classpath, forks, logging and launcher as `test`; never up to date because the input is a floating image.
+tasks.register<Test>(describeFixtureDriftTask) {
+    group = "verification"
+    description = "Runs DescribeFixtureDriftLiveTest against the floating ClickHouse image; not part of test or check"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        includeTags(describeFixtureDriftTag)
+    }
+    outputs.upToDateWhen { false }
     extensions.configure<JacocoTaskExtension> { isEnabled = false }
 }
 
@@ -344,6 +364,9 @@ tasks.register<JacocoReport>("jacocoForkReport") {
 
 // D-16: both reports hang off test only; never wired to check or a coverage-verification rule.
 tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags(describeFixtureDriftTag)
+    }
     finalizedBy(tasks.named("jacocoTestReport"), tasks.named("jacocoForkReport"))
 }
 
