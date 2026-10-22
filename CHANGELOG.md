@@ -7,8 +7,9 @@
   Earlier releases wrote a shorter one, which the server rejected or, for some values, stored wrong. Rows stored by
   earlier releases are not repaired (backlog 999.4). One case keeps the earlier behaviour: if the declared type of the
   parent cannot be read, a `Tuple` element named `size` or `size0` is still dropped, so that tuple is still written
-  short. The connector logs one WARN per such parent (`Could not read the declared type ...`), and the table is still
-  served.
+  short. The connector logs a `Could not read the declared type ...` WARN per such parent and a `Declared Tuple
+  element(s) ... have no matching DESCRIBE sub-column` WARN naming the dropped elements, and the table is still served.
+  A parent is also unreadable when it is absent from the described rows, not only when its type cannot be parsed.
 
 # 1.7.0_gg3, 2026-10-20
 
