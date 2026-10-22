@@ -9,15 +9,15 @@ findings:
     title: "Production dead code kept only for tests"
   - id: IN-06
     severity: info
-    disposition: skipped
+    disposition: fixed
     title: "`DescribeTableBuilder` and `ClickHouseHelperClient` depend on each other"
   - id: IN-12
     severity: info
-    disposition: open
+    disposition: fixed
     title: "The IN-01 fix leaves the builder's own name map order dependent, and its stated reason overlooks a declared JSON or Dynamic element"
   - id: IN-13
     severity: info
-    disposition: open
+    disposition: fixed
     title: "The new `allColumnsMap.merge` in upstream-owned `Table.registerValidColumn` has no fork-anchors row"
   - id: IN-01
     severity: info
@@ -63,9 +63,9 @@ findings:
     severity: warning
     disposition: fixed
     title: "Byte-for-byte drift tests against a floating `latest` image can turn the whole suite red for reasons unrelated to the connector"
-open: 2
+open: 0
 total: 15
-recorded: 2026-10-22T11:54:02.605Z
+recorded: 2026-10-22T13:48:28.450Z
 ---
 
 # Phase 26: Code Review Disposition
@@ -73,9 +73,9 @@ recorded: 2026-10-22T11:54:02.605Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | IN-02 | info | skipped | 26-REVIEW-FIX.md |
-| IN-06 | info | skipped | 26-REVIEW-FIX.md |
-| IN-12 | info | open | - |
-| IN-13 | info | open | - |
+| IN-06 | info | fixed | 26-REVIEW-FIX.md |
+| IN-12 | info | fixed | 26-REVIEW-FIX.md |
+| IN-13 | info | fixed | 26-REVIEW-FIX.md |
 | IN-01 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
 | IN-03 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
 | IN-04 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
