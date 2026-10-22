@@ -169,7 +169,12 @@ public final class DescribeTableBuilder {
             rawTypes.put(fieldDescriptor.getName(), fieldDescriptor.getType());
         }
         columns.add(column);
-        columnsByName.put(column.getName(), column);
+        // Same rule as Table.registerValidColumn, so the two maps cannot disagree on which row owns a shared
+        // name: a structural size<digits> twin printed after a declared element must not replace it.
+        columnsByName.merge(
+                column.getName(),
+                column,
+                (kept, added) -> kept.isDeclaredElement() && !added.isDeclaredElement() ? kept : added);
         return true;
     }
 
