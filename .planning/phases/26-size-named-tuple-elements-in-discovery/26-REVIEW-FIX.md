@@ -1,12 +1,12 @@
 ---
 phase: 26-size-named-tuple-elements-in-discovery
-fixed_at: 2026-10-22T11:40:00+03:00
+fixed_at: 2026-10-22T14:30:00+03:00
 review_path: .planning/phases/26-size-named-tuple-elements-in-discovery/26-REVIEW.md
 iteration: 1
 fix_scope: all
-findings_in_scope: 11
-fixed: 9
-skipped: 2
+findings_in_scope: 4
+fixed: 3
+skipped: 1
 status: partial
 ---
 
@@ -17,210 +17,92 @@ status: partial
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 11 (IN-01 to IN-11; no Critical or Warning findings)
-- Fixed: 9 (IN-01, IN-03, IN-04, IN-05, IN-07, IN-08, IN-09, IN-10, IN-11)
-- Skipped: 2 (IN-02, IN-06)
+- Findings in scope: 4 (IN-02, IN-06, IN-12, IN-13; no Critical or Warning findings)
+- Fixed: 3 (IN-06, IN-12, IN-13)
+- Skipped: 1 (IN-02)
 
-**Previously fixed (earlier pass, scope `critical_warning`):** WR-01 in `595d0dc7` (the unreadable-parent path keeps the earlier
-behaviour; wording, test name, CHANGELOG and FORK-DELTA corrected) and WR-02 in `eb4e6821` (the byte-for-byte drift tests moved behind
-the `describe-drift` tag and the `describeFixtureDrift` task). Both were re-reviewed as correct in this REVIEW.md.
+**Previously fixed (earlier passes, not repeated here):** WR-01, WR-02 and IN-01, IN-03, IN-04, IN-05, IN-07 to IN-11
+(commits `595d0dc7`, `eb4e6821`, `a58c66da` to `0a1c79f8`); the review above re-verified them as correct.
 
-**Isolation:** no worktree, temp branch or recovery sentinel was created (`workflow.use_worktrees` treated as false, as instructed). All
-edits and commits are on `sync/v1.7.0` in the main checkout with explicit paths. The unrelated uncommitted `.planning/state.json` and
-`gradlew.bat` were never staged or touched. Verification ran in the main checkout and is reproducible from it.
+**Isolation:** the fixes were made in a dedicated worktree on the temp branch `gsd-reviewfix/26-85754`
+(`workflow.use_worktrees` is unset in `.planning/config.json`, so the default applies) and fast-forwarded onto
+`sync/v1.7.0` by the cleanup tail. The unrelated uncommitted `.planning/state.json` and `gradlew.bat` were never staged
+(`gradlew.bat` shows as dirty in every checkout of this repo because of line endings; it was reverted after each Gradle run).
+
+**Verification:** ran in the isolated worktree (reproducible from the main checkout once the commits are fast-forwarded).
+`./gradlew testUnit` over the whole unit set: 1128 tests, 1126 succeeded, 0 failed, 2 skipped (skips come from unrelated test classes, for example
+`ConvertToMapOrJsonPerformanceTestJson`, which I did not touch). `compileTestJava compileIntegrationTestJava` clean. The merge-invariant gate
+(`PRE_TAG=pre-v1.7.0-tail ... verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD`) ended
+`anchor_commits=68 anchor_rows=79 marker_commits=80 result=PASS` at the final commit, and also passed after each
+anchor-touching commit (rows 77, then 79). `verify-merge-invariants-selftest.sh` (unchanged by these commits) was started
+but stopped after ST1 to ST3 passed, because each of its 16 cases re-runs the roughly two minute gate; it was not run to completion. `spotlessApply` was run and every file it reformatted that I had not changed
+(the 46 pre-existing violations) was reverted; in `ClickHouseHelperClient.java` the import reordering it produced was
+discarded and only the intended lines are in the diff.
 
 ## Fixed Issues
 
-### IN-01: Structural `size<digits>` rows share a name with the declared element and the last registration wins
+### IN-06: `DescribeTableBuilder` and `ClickHouseHelperClient` depend on each other
 
 **Status:** fixed
-**Commit:** `a58c66da` (code and test), `4ecb58bd` (FORK-DELTA Table row)
-**Files changed:**
-- `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java`
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilderUnitTest.java`
-- `docs/FORK-DELTA.md`
+**Files modified:** `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java`, `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java`, `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClientForkUnitTest.java`, `.planning/scripts/fork-anchors.txt`, `docs/FORK-DELTA.md`
+**Commit:** 1427ce83
+**Applied fix:** `buildDescribedTable` (its only production caller is `DescribeTableBuilder.build`) moved verbatim into
+`DescribeTableBuilder`, and the builder's logger is now `LoggerFactory.getLogger(LOGGER_NAME)` with the constant
+`com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient`, so the logger identity (and every
+`LogCapture.attach(ClickHouseHelperClient.class)` in the tests) is unchanged while the class reference is gone. The builder
+no longer references `ClickHouseHelperClient` at all; the client only constructs the builder. The now-unused
+`DeclaredNullability` import was dropped from the client. The one test caller (`discover(...)` in
+`ClickHouseHelperClientForkUnitTest`) points at `DescribeTableBuilder.buildDescribedTable`. In the same commit the two
+COLS-10 anchor rows moved to `DescribeTableBuilder.java` (`DeclaredNullability.apply(` count 1; `buildDescribedTable(`
+count 2, the definition plus the call in `build()`), the Phase 19 comment above them says where they went, and the
+FORK-DELTA nullability row lists `DescribeTableBuilder.java` in place of `ClickHouseHelperClient.java`. Behaviour is
+unchanged: the method body, its call order and the log source are identical.
 
-`Table.registerValidColumn` now registers with `allColumnsMap.merge`, keeping an already registered declared element when a later
-structural row of the same name arrives, and otherwise behaving as before (last registration wins). Declared-first and
-structural-first row order therefore give the same `allColumnsMap` entry, and the children of `c.size1.*` bind to the declared Column in
-both. The variant that stops adding `KEEP_STRUCTURAL_SIZE` rows to `columns` was not used because it changes the committed `.columns.txt`
-snapshots; this one does not (`DescribeFixtureSnapshotUnitTest` 47/47 unchanged). `DescribeTableBuilder.columnsByName` was deliberately not
-changed: it is read only by the JSON/Dynamic ancestor walk, and a structural `size<digits>` twin is never JSON or Dynamic, so the builder
-map has no order dependence that matters.
+### IN-12: The IN-01 fix leaves the builder's own name map order dependent, and its stated reason overlooks a declared JSON or Dynamic element
 
-New Docker-free test `theDeclaredElementWinsTheSharedNameInEitherRowOrder` (`DescribeTableBuilderUnitTest`) feeds
-`Array(Array(Tuple(size1 Tuple(a UInt8), v String)))` with the structural `c.size1` row before and after the declared one and asserts the
-declared Column is registered, is a Tuple field, and keeps its children in both orders. Seen red: with `Table.java` reverted the test
-fails with `c.size1 is the declared element ==> expected: <true> but was: <false>`. The `fork-anchors.txt` count for
-`!child.isDeclaredElement()` in `Table.java` is still 1. The FORK-DELTA `Table.updateParent` row now mentions the rule (second commit).
+**Status:** fixed (the change is a consistency guard; its reviewer-described failure is not reachable, see below)
+**Files modified:** `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java`
+**Commit:** f71899ae
+**Applied fix:** `columnsByName.put(...)` became the same `merge` rule `Table.registerValidColumn` uses
+(`kept.isDeclaredElement() && !added.isDeclaredElement() ? kept : added`), so the builder's map and `Table`'s map cannot
+disagree on which row owns a shared name.
+**Note on the finding's premise and on tests:** I tried to write the suggested test (a declared JSON element with a
+structural twin printed after it) and it could not be made to differ from the old behaviour. A structural `size<digits>`
+twin only exists below an Array parent of depth two or more (`ParentShape.isOffsetsRow`); the declared element there is
+typed `Array(Array(JSON))`, whose `Column.getType()` is `ARRAY`, and `hasJsonOrDynamicAncestor` only fires on a Column
+whose own type is `JSON` or `DYNAMIC`. A declared `JSON` element at depth 0 has no structural twin, so both rows would
+be classified as declared and last-wins already gives the same result. So the merge changes nothing observable through
+`addRow`, and no new test was added (an assertion that passes with and without the change would pin nothing). The
+existing `theDeclaredElementWinsTheSharedNameInEitherRowOrder` still covers the `Table` side. Human verification is not
+needed for behaviour (none changes) but a reviewer may prefer to drop this commit as redundant.
 
-Verification: `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*DescribeTableBuilderUnitTest" --tests "*DescribeFixturesUnitTest" --tests "*DescribeFixtureSnapshotUnitTest" --tests "*DeclaredNullabilityTest" --tests "*TableTest"` -> 336 tests, 336 succeeded.
-
-### IN-03: Stale class Javadoc in `DeclaredNullability` describes the fixed defect as current
-
-**Status:** fixed
-**Commit:** `7c974050`
-**Files changed:**
-- `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java`
-
-Class Javadoc reworded: the example of a dropped element is now "a bare `size` or `size0` element whose parent's declared type could
-not be read, see `DescribeTableBuilder`"; the bare 999.4 reference is gone. Comment only. Verification: `./gradlew compileJava` OK;
-covered by the later full runs.
-
-### IN-04: The snapshot characterization test is described as "pre-extraction" but its snapshots are regenerated by the code under test
-
-**Status:** fixed
-**Commit:** `91f2be3c`
-**Files changed:**
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureSnapshotUnitTest.java`
-
-Test method renamed to `builderReproducesTheCommittedColumnSnapshot`, `@DisplayName` and assertion message now say "reproduces the
-committed Column snapshot", and the class Javadoc states that the snapshots are regression-only (re-captured from the production path
-after the DESC-08 fix) and names `DescribeTableBuilderUnitTest#tupleFieldsEqualTheDeclaredElements` and the live round trip as the
-correctness oracle. No other file referenced the old name. Verification: `--tests "*DescribeFixtureSnapshotUnitTest"` -> 47 tests, 47
-succeeded.
-
-### IN-05: The same name ambiguity remains for a Tuple element named `null`
-
-**Status:** fixed (no defect; documented, no behaviour change)
-**Commit:** `b83fc321`
-**Files changed:**
-- `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java`
-
-The risk is not reachable. Reproduced on ClickHouse 26.9.19.9 (`clickhouse-local` from the `latest` image):
-`CREATE TABLE t (c Tuple(\`null\` UInt8, v String))` and the `Array(Tuple(...))` form both fail with `Code: 36 ... Tuple element name
-'null' is reserved because it would conflict with the subcolumn name used for Nullable null maps ... (BAD_ARGUMENTS)`. The same fact is
-already recorded in the 999.4 ROADMAP entry and in `26-RESEARCH.md` / `26-COMMAND-EVIDENCE.md`. A `.null` row can therefore only be a
-Nullable null map, and dropping it unconditionally is correct. No backlog item was added because there is nothing to track. The only
-change is a comment on `NULL_SUFFIX` in `DescribeTableBuilder` recording this and the server version it was checked on. Verification:
-`./gradlew compileJava` OK; no code change.
-
-### IN-07: `DescribeFixtureCapture` rewrites fixtures non-atomically and reports failures by class name only
+### IN-13: The new `allColumnsMap.merge` in upstream-owned `Table.registerValidColumn` has no fork-anchors row
 
 **Status:** fixed
-**Commit:** `28b3885c`
-**Files changed:**
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCapture.java`
-
-`captureAll` now collects every file in a `LinkedHashMap<Path, List<String>>` and writes them, `SERVER_VERSION.txt` last, only after the
-last fixture succeeded; `deleteStaleFixtureFiles` also moved to that point, so a failure partway through leaves the committed directory and
-its version stamp untouched. The failure line now prints the exception class plus the root cause class and message (Docker and pull
-failures carry no record values; the harness handles only committed DDL and schema rows).
-
-Verification (Docker): `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew captureDescribeFixtures` -> BUILD SUCCESSFUL, server 26.9.19.9, and
-`git status` showed no change under `src/test/resources` (byte-identical output). With `CLICKHOUSE_VERSION=0.0.0.0` the capture fails with
-`DescribeFixtureCapture failed: ...ContainerFetchException, root cause ...NotFoundException: Status 404 ... not found` and leaves the
-fixture directory unchanged.
-
-### IN-08: Client leak if table setup fails in the round-trip test
-
-**Status:** fixed
-**Commit:** `d5ecf24e`
-**Files changed:**
-- `src/test/java/com/clickhouse/kafka/connect/sink/TupleSizeNamedElementRoundTripLiveTest.java`
-
-`chc` is now a try-with-resources resource; `dropTable` and `NullableRoundTrip.createTable` moved inside an inner `try` whose `finally`
-drops the table, so `close()` runs even when setup or the drop throws. The assertions are unchanged. Verification:
-`env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*TupleSizeNamedElementRoundTripLiveTest"` -> 46 tests, 46 succeeded.
-
-### IN-09: The drift premise has no automated runner after WR-02, and one FORK-DELTA sentence still reads as if it does
-
-**Status:** fixed (documentation only)
-**Commit:** `35082aa1`
-**Files changed:**
-- `docs/FORK-DELTA.md`
-
-Known costs item 10 now says the rule is pinned Docker-free and "on demand, live by the drift premise (`describeFixtureDrift`, which is
-not part of `test` or CI, so the committed fixtures can go stale against `latest` until someone runs it)". The reviewer's other option
-(a separate non-gating CI job) was not taken: it changes `.github/workflows/tests.yaml`, which the WR-02 fix deliberately kept out of
-scope and which widens the rebase surface. This stays an open trade-off for the operator.
-
-### IN-10: The CHANGELOG caveat says "one WARN per such parent" but a second, different WARN is also emitted
-
-**Status:** fixed
-**Commit:** `42393c5a`
-**Files changed:**
-- `CHANGELOG.md`
-
-The 1.7.0_gg4 caveat now names both WARNs (`Could not read the declared type ...` per parent, and `Declared Tuple element(s) ... have no
-matching DESCRIBE sub-column` naming the dropped elements) and says a parent is also unreadable when it is absent from the described
-rows. Text matches `UNREADABLE_PARENT_WARNING` and `DeclaredNullability.UNPAIRED_ELEMENT_WARNING`.
-
-### IN-11: The `describe-drift` tag string is duplicated across Java and Gradle with no guard
-
-**Status:** fixed
-**Commit:** `0a1c79f8`
-**Files changed:**
-- `build.gradle.kts`
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixturesUnitTest.java`
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureDriftLiveTest.java`
-
-Took the additive route (no new constant plumbing). New Docker-free test `theDriftTagInTheBuildEqualsTheTagOfTheDriftTest` in
-`DescribeFixturesUnitTest` reads `build.gradle.kts`, extracts `val describeFixtureDriftTag = "..."`, and asserts that it equals
-`DescribeFixtureDriftLiveTest.DRIFT_TAG`, that the literal appears once in the build (the tasks must use the variable), and that the drift
-class carries that tag via `getAnnotationsByType(Tag.class)`. Seen red: changing the Gradle value to `describe-drifts` fails with
-`expected: <describe-drift> but was: <describe-drifts>`. Gradle did not treat `build.gradle.kts` as a test input (the first red attempt
-stayed `testUnit UP-TO-DATE`), so one line, `inputs.file(layout.projectDirectory.file("build.gradle.kts"))`, was added to the
-`withType<Test>` block so an edit to the script re-runs the tests; `./gradlew check --dry-run` still lists `:test` and no
-`describeFixtureDrift`. The comment on `DRIFT_TAG` now points at the new test. Verification: `testUnit --tests "*DescribeFixturesUnitTest"`
--> 96 tests, 96 succeeded.
+**Files modified:** `.planning/scripts/fork-anchors.txt`, `docs/FORK-DELTA.md`
+**Commit:** 9bc34174
+**Applied fix:** two rows for `Table.java` under DESC-08: `allColumnsMap.merge(` at count 1, and the count-0 row for
+upstream's replaced line `allColumnsMap.put(column.getName(), column)` (the file has no other `allColumnsMap.put`). The
+FORK-DELTA `Table.updateParent` row now names both new rows. The gate was re-run on the commit: `anchor_rows=79 result=PASS`.
 
 ## Skipped Issues
 
 ### IN-02: Production dead code kept only for tests
 
-**Status:** skipped
-**Commit:** none
-**Files changed:** none
-
-Reason: both `shouldSkipDescribeRow` overloads are dead in `src/main` but the fork-anchor inventory
-(`.planning/scripts/fork-anchors.txt`, row `ClickHouseHelperClient.java  shouldSkipDescribeRow  3  HLP-02`, read by invariant 3 of
-`verify-merge-invariants.sh`) pins the name at count 3, and FORK-DELTA (lines 47 and 217) and `MERGE-CHECKLIST.md` name the method as the
-sync landmark. Deleting the overloads would also rewrite about 20 calls in `ClickHouseHelperClientForkUnitTest` and drop a line from
-`DescribeTableBuilderUnitTest`, and would need a gate and documentation change. That is more than an Info cleanup, so it is left for a
-deliberate change that edits the anchor row in the same commit. `ParentShape.arrayDepth()` was left alone as well: it is only an
-accessor, and narrowing it alone would not resolve the finding.
-
-### IN-06: `DescribeTableBuilder` and `ClickHouseHelperClient` depend on each other
-
-**Status:** skipped
-**Commit:** none
-**Files changed:** none
-
-Reason: `buildDescribedTable` carries the only `DeclaredNullability.apply(` call in `ClickHouseHelperClient.java`, which the
-fork-anchor inventory pins at count 1 (COLS-10, `.planning/scripts/fork-anchors.txt`). Moving the method to `DescribeTableBuilder`
-makes that anchor count 0 and fails the merge-invariant gate unless the anchor row, the COLS-10 and DESC-07 documentation and
-`ClickHouseHelperClientForkUnitTest` (its `discover` helper calls `ClickHouseHelperClient.buildDescribedTable`) move in the same
-change. The cycle works today and is a cosmetic coupling, so a pure move is not worth a gate edit inside an Info pass.
-
-## Verification runs
-
-All in the main checkout, ClickHouse `latest` (26.9.19.9), client V2, Docker via colima.
-
-| Command | Result |
-|---------|--------|
-| `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*DescribeTableBuilderUnitTest" ...` (after IN-01, with the five classes listed under IN-01) | 336 tests, 336 succeeded |
-| same filter with `Table.java` reverted (seen-red check for IN-01) | 121 run, 1 failed as expected |
-| `./gradlew testUnit --tests "*DescribeFixturesUnitTest"` with the Gradle tag changed (seen-red for IN-11) | 1 failed as expected, then reverted |
-| `./gradlew cleanTestUnit testUnit` (final tree) | 1128 tests, 1126 succeeded, 0 failed, 2 skipped |
-| `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew cleanTest test` (final tree), run 1 | 1503 run, 0 failed, then `Gradle Test Executor 106` exit 255 (OpenJ9 GPF, core dump) |
-| same, run 2 | same crash, `Gradle Test Executor 107` exit 255 |
-| `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew cleanTest test -PjavaVersion=21` (final tree) | BUILD SUCCESSFUL, 1617 tests, 1599 succeeded, 0 failed, 18 skipped |
-| `./gradlew check --dry-run` | lists `:test`, no `describeFixtureDrift` |
-
-The two exit-255 runs are the known intermittent OpenJ9 Mockito crash; each left an 8 GB core dump plus javacore, Snap and jitdump files in
-the repo root, all deleted, and the second occurrence triggered the `-PjavaVersion=21` re-run. Nothing was run with `describeFixtureDrift`
-because no fixture, rule or snapshot changed (the capture round-trip under IN-07 produced byte-identical fixtures).
-
-**Spotless.** `./gradlew spotlessApply` was run once on the final tree and then reverted for every file. The repo is already off-format
-(46 files, mostly import order, including the two known `src/integrationTest` files plus many `src/main`, `src/test` and
-`src/testFixtures` files), so applying it would have rewritten files this pass did not otherwise change. For the files this pass changed
-it was a no-op, except `Table.java`, where it only reorders pre-existing imports and does not touch the added lines; that reformat was
-discarded. After the revert `git status` shows only the two unrelated modifications (`.planning/state.json`, `gradlew.bat`).
-
-## Out of scope
-
-Nothing in `.github/workflows/tests.yaml` or `VERSION` was touched, and no CHANGELOG entry was added except the IN-10 wording fix.
+**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java:475-487`, `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.java:49`
+**Reason:** skipped: the anchor rows could be edited, but the removal is not a narrow fix and would weaken the fork's
+sync tooling. `shouldSkipDescribeRow` is the named landmark in `.planning/MERGE-CHECKLIST.md` (item 13), in three
+FORK-DELTA rows and the Known-costs sync notes (FORK-DELTA lines 47 and 217), and in the HLP-02 anchor (count 3); the
+anchor is the only guard that a sync does not bring back an upstream copy of the skip rule, and the review's own fix says
+to delete the anchor row with the overloads. The two-argument overload is also pinned by 14 call sites in
+`ClickHouseHelperClientForkUnitTest` that assert the unreadable-parent default of the old rule, which would each have to be
+rewritten to `DescribeTableBuilder.decide(...).skipsRow()` with an explicit raw-type map, plus `arrayDepth()` is a public
+method of a public class. That is a deliberate API and documentation change across the fork's merge tooling, not a
+behaviour-preserving cleanup, and the project constraint is to keep changes additive and small for rebasability. It should
+be done as its own change that also rewrites the MERGE-CHECKLIST landmark.
+**Original issue:** Both `shouldSkipDescribeRow` overloads have no caller under `src/main`; the two-argument form passes
+`Map.of()` as `rawTypes`, so it is a weaker rule than the one production runs, and tests that call it pin behaviour
+production never executes. `ParentShape.arrayDepth()` is public but referenced only in a Javadoc `{@link}`.
 
 ---
 
