@@ -1,13 +1,13 @@
 ---
 phase: 26-size-named-tuple-elements-in-discovery
-fixed_at: 2026-10-22T09:50:00+03:00
+fixed_at: 2026-10-22T11:40:00+03:00
 review_path: .planning/phases/26-size-named-tuple-elements-in-discovery/26-REVIEW.md
 iteration: 1
-fix_scope: critical_warning
-findings_in_scope: 2
-fixed: 2
-skipped: 0
-status: all_fixed
+fix_scope: all
+findings_in_scope: 11
+fixed: 9
+skipped: 2
+status: partial
 ---
 
 # Phase 26: Code Review Fix Report
@@ -17,127 +17,210 @@ status: all_fixed
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 2 (WR-01, WR-02)
-- Fixed: 2
-- Skipped: 0
+- Findings in scope: 11 (IN-01 to IN-11; no Critical or Warning findings)
+- Fixed: 9 (IN-01, IN-03, IN-04, IN-05, IN-07, IN-08, IN-09, IN-10, IN-11)
+- Skipped: 2 (IN-02, IN-06)
 
-**Isolation:** no worktree was created. `workflow.use_worktrees` is absent from `.planning/config.json` (default true),
-but the dispatching instruction fixed the repo root as the working directory and asked for explicit-path commits on
-`sync/v1.7.0`, so I edited and committed there directly (deviation from the default worktree setup, noted here). No temp
-branch or recovery sentinel exists, so there was nothing to clean up. All verification ran in the main checkout and is
-reproducible from it.
+**Previously fixed (earlier pass, scope `critical_warning`):** WR-01 in `595d0dc7` (the unreadable-parent path keeps the earlier
+behaviour; wording, test name, CHANGELOG and FORK-DELTA corrected) and WR-02 in `eb4e6821` (the byte-for-byte drift tests moved behind
+the `describe-drift` tag and the `describeFixtureDrift` task). Both were re-reviewed as correct in this REVIEW.md.
+
+**Isolation:** no worktree, temp branch or recovery sentinel was created (`workflow.use_worktrees` treated as false, as instructed). All
+edits and commits are on `sync/v1.7.0` in the main checkout with explicit paths. The unrelated uncommitted `.planning/state.json` and
+`gradlew.bat` were never staged or touched. Verification ran in the main checkout and is reproducible from it.
 
 ## Fixed Issues
 
-### WR-01: Unreadable-parent path is fail-open (silently re-creates the short tuple) but is documented and tested as "fails closed"
-
-**Status:** fixed (documentation and test-name correction; production behaviour deliberately unchanged)
-**Commit:** `595d0dc7`
-**Files changed:**
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilderUnitTest.java`
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixturesUnitTest.java`
-- `CHANGELOG.md`
-- `docs/FORK-DELTA.md`
-
-**Route taken:** keep the behaviour, make every claim accurate (the reviewer's second option).
-
-**Why not fail closed (`addRow` returns false):**
-- The behaviour-preservation constraint in `.claude/CLAUDE.md` limits code changes to genuine bug fixes because the fork
-  runs in production. The undecidable path is the pre-phase behaviour for this case (earlier releases dropped every bare
-  `size`/`size0` row), so it is not a regression introduced by Phase 26.
-- Decision D-03 in `26-CONTEXT.md` weighed exactly this and rejected "refuse the table" because it "turns a parse edge
-  case into a whole-table outage for shapes that store fine today". The code, `DescribeTableBuilder` Javadoc
-  ("as earlier releases did"), the unreadable-parent WARN text and the FORK-DELTA row all already implement and describe
-  that decision. Only the word "closed" in the test name and one comment, plus a missing CHANGELOG caveat, were wrong.
-- Reachability looks lower than the review suggests: the parent root column must itself be parsed by
-  `Column.extractColumn`, so a type the client cannot parse generally fails at the root, not at a sub-column. I did not
-  prove this against a server, so it is stated here as an assessment, not a measurement.
-
-**Reviewer claims checked against the code:**
-- Line references `DescribeTableBuilder.java:200-219`, `DescribeTableBuilderUnitTest.java:254-285` and
-  `DescribeFixturesUnitTest.java:33` were correct.
-- The test pins `assertEquals(List.of("c.x.v"), fieldNamesOf(unreadable))`, a short Tuple with the table served. Confirmed.
-- FORK-DELTA rows already said "keeps the earlier behaviour"; confirmed accurate, but I made the consequence explicit.
-- CHANGELOG said "at any depth ... no longer dropped" with no caveat. Confirmed; caveat added.
-- The suggested snippet was not applied; it would also have made the table unservable for a case D-03 chose to keep serving.
-
-**Applied changes:**
-- Renamed `anUnreadableParentFailsClosedWithOneMetadataOnlyWarning` to
-  `anUnreadableParentKeepsTheEarlierBehaviourWithOneMetadataOnlyWarning`, rewrote its `@DisplayName`, and added a comment
-  above the unchanged assertion saying the short Tuple is intended (D-03). No assertion was changed, weakened or removed.
-- `DescribeFixturesUnitTest` class Javadoc: "fail-closed path" replaced by the undecidable path that keeps the earlier
-  behaviour.
-- `CHANGELOG.md` (1.7.0_gg4 entry): added the caveat that an unreadable parent type still drops a `size`/`size0` element,
-  logs one WARN per parent, and still serves the table.
-- `docs/FORK-DELTA.md` (Known costs item 10): states that the short tuple is still written for that case, by D-03.
-
-**Verification commands:**
-- `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*DescribeTableBuilderUnitTest" --tests "*DescribeFixturesUnitTest"`
-  -> BUILD SUCCESSFUL, 215 tests, 215 succeeded. The renamed test is present in the XML result with the new display name.
-- `./gradlew spotlessCheck` -> fails only on two pre-existing files that this fix did not touch
-  (`src/integrationTest/.../ClickHouseCloudTest.java`, `ClickHouseSinkConnectorIntegrationTest.java`); none of the
-  changed files is listed.
-
-### WR-02: Byte-for-byte drift tests against a floating `latest` image can turn the whole suite red for reasons unrelated to the connector
+### IN-01: Structural `size<digits>` rows share a name with the declared element and the last registration wins
 
 **Status:** fixed
-**Commit:** `eb4e6821`
+**Commit:** `a58c66da` (code and test), `4ecb58bd` (FORK-DELTA Table row)
 **Files changed:**
-- `build.gradle.kts`
-- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureDriftLiveTest.java`
+- `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java`
+- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilderUnitTest.java`
 - `docs/FORK-DELTA.md`
 
-**Applied fix (tag plus Gradle exclusion, the least invasive option):**
-- `DescribeFixtureDriftLiveTest` gets `@Tag("describe-drift")`. It still inherits `@Tag("clickhouse")` from
-  `ClickHouseBase`, so it was already outside `testUnit`; that is unchanged.
-- `build.gradle.kts`: the `test` task now uses `useJUnitPlatform { excludeTags("describe-drift") }`, and a new
-  `describeFixtureDrift` `Test` task (same test classes and classpath, `includeTags("describe-drift")`, never up to date,
-  JaCoCo off) runs it on demand. Because the shared `withType<Test>` block wires every test task into `check`, that
-  wiring now skips `describeFixtureDrift` too (as it already did for `testUnit`); `check --dry-run` confirms `check`
-  runs `test` and not the drift task. The existing `reportTestForks`, JaCoCo and matrix tasks use `test` and are
-  unaffected. The CI workflow runs `./gradlew test`, so the drift check no longer gates CI.
-- The failure message now names the live server version and the committed `SERVER_VERSION.txt` version. It is built
-  lazily through a `Supplier`, so the extra server round trip for `version()` happens only on a failing case.
-- Javadoc on the test class documents the tag, why it is excluded, and the run command
-  (`env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew describeFixtureDrift`). The FORK-DELTA fixtures row documents the same.
-- No test was deleted or weakened; the Docker-free fixture tests (`DescribeFixturesUnitTest`,
-  `DescribeFixtureSnapshotUnitTest`, `DescribeTableBuilderUnitTest`) remain in the main suite.
+`Table.registerValidColumn` now registers with `allColumnsMap.merge`, keeping an already registered declared element when a later
+structural row of the same name arrives, and otherwise behaving as before (last registration wins). Declared-first and
+structural-first row order therefore give the same `allColumnsMap` entry, and the children of `c.size1.*` bind to the declared Column in
+both. The variant that stops adding `KEEP_STRUCTURAL_SIZE` rows to `columns` was not used because it changes the committed `.columns.txt`
+snapshots; this one does not (`DescribeFixtureSnapshotUnitTest` 47/47 unchanged). `DescribeTableBuilder.columnsByName` was deliberately not
+changed: it is read only by the JSON/Dynamic ancestor walk, and a structural `size<digits>` twin is never JSON or Dynamic, so the builder
+map has no order dependence that matters.
 
-**Trade-off to note:** the drift check no longer runs in `./gradlew test` or in CI. Someone must run
-`describeFixtureDrift` by hand, or a separate non-gating CI job must be added (not done here: it would change the CI
-workflow, which is outside this fix's scope and rebase surface).
+New Docker-free test `theDeclaredElementWinsTheSharedNameInEitherRowOrder` (`DescribeTableBuilderUnitTest`) feeds
+`Array(Array(Tuple(size1 Tuple(a UInt8), v String)))` with the structural `c.size1` row before and after the declared one and asserts the
+declared Column is registered, is a Tuple field, and keeps its children in both orders. Seen red: with `Table.java` reverted the test
+fails with `c.size1 is the declared element ==> expected: <true> but was: <false>`. The `fork-anchors.txt` count for
+`!child.isDeclaredElement()` in `Table.java` is still 1. The FORK-DELTA `Table.updateParent` row now mentions the rule (second commit).
 
-**Verification commands:**
-- `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew describeFixtureDrift` -> BUILD SUCCESSFUL, 94 tests, 94 succeeded
-  (against `latest`, 26.9.19.9, client V2, Docker via colima `vz`).
-- `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*DescribeTableBuilderUnitTest" --tests "*DescribeFixturesUnitTest" --tests "*DescribeFixtureDriftLiveTest" --tests "*DescribeFixtureSnapshotUnitTest"`
-  -> BUILD SUCCESSFUL, 262 tests; the 94 drift cases were not run by `test` (215 + 47 only), proving the exclusion.
-- `./gradlew check --dry-run` -> lists `:test`, no `describeFixtureDrift`.
-- Seen-red check of the new message: prefixed one line of `describe-fixtures/n01.jsonl` with a space, ran
-  `describeFixtureDrift` -> 93 passed, 1 failed with `fixture n01: the live DESCRIBE rows differs from the committed
-  file (live server 26.9.19.9, committed 26.9.19.9); re-capture with ...`. The fixture was reverted with
-  `git checkout -- src/test/resources/describe-fixtures/n01.jsonl`; `git status` shows no fixture change.
-- `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew describeFixtureDrift testUnit` -> BUILD SUCCESSFUL; drift 94/94;
-  testUnit 1126 tests, 1124 succeeded, 0 failed, 2 skipped.
-- `./gradlew spotlessCheck` -> only the same two pre-existing, untouched integrationTest files are flagged. I did not run
-  `spotlessApply`, because it would have reformatted those two unrelated files.
+Verification: `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*DescribeTableBuilderUnitTest" --tests "*DescribeFixturesUnitTest" --tests "*DescribeFixtureSnapshotUnitTest" --tests "*DeclaredNullabilityTest" --tests "*TableTest"` -> 336 tests, 336 succeeded.
 
-## Out of Scope (fix_scope = critical_warning)
+### IN-03: Stale class Javadoc in `DeclaredNullability` describes the fixed defect as current
 
-Left untouched, as instructed: IN-01 (structural/declared `size<digits>` registration order), IN-02 (dead
-`shouldSkipDescribeRow` overloads, `ParentShape.arrayDepth()`), IN-03 (stale `DeclaredNullability` Javadoc), IN-04
-(snapshot test described as pre-extraction), IN-05 (Tuple element named `null`), IN-06 (builder/client dependency
-cycle), IN-07 (non-atomic `DescribeFixtureCapture`), IN-08 (client leak in `TupleSizeNamedElementRoundTripLiveTest`).
+**Status:** fixed
+**Commit:** `7c974050`
+**Files changed:**
+- `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java`
 
-Note for IN-03 and IN-02: WR-01 kept the undecidable path, so the `DeclaredNullability` 999.4 wording and the two-argument
-`shouldSkipDescribeRow` rule (which documents "as earlier releases did") remain accurate for that path.
+Class Javadoc reworded: the example of a dropped element is now "a bare `size` or `size0` element whose parent's declared type could
+not be read, see `DescribeTableBuilder`"; the bare 999.4 reference is gone. Comment only. Verification: `./gradlew compileJava` OK;
+covered by the later full runs.
 
-## Environment notes
+### IN-04: The snapshot characterization test is described as "pre-extraction" but its snapshots are regenerated by the code under test
 
-- The working tree still has the unrelated uncommitted modifications to `.planning/state.json` and `gradlew.bat`; they
-  were not staged, reverted or touched.
-- No OpenJ9 Mockito crash or core dump occurred in any run.
-- `26-REVIEW-FIX.md` is not committed; the orchestrator handles that.
+**Status:** fixed
+**Commit:** `91f2be3c`
+**Files changed:**
+- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureSnapshotUnitTest.java`
+
+Test method renamed to `builderReproducesTheCommittedColumnSnapshot`, `@DisplayName` and assertion message now say "reproduces the
+committed Column snapshot", and the class Javadoc states that the snapshots are regression-only (re-captured from the production path
+after the DESC-08 fix) and names `DescribeTableBuilderUnitTest#tupleFieldsEqualTheDeclaredElements` and the live round trip as the
+correctness oracle. No other file referenced the old name. Verification: `--tests "*DescribeFixtureSnapshotUnitTest"` -> 47 tests, 47
+succeeded.
+
+### IN-05: The same name ambiguity remains for a Tuple element named `null`
+
+**Status:** fixed (no defect; documented, no behaviour change)
+**Commit:** `b83fc321`
+**Files changed:**
+- `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java`
+
+The risk is not reachable. Reproduced on ClickHouse 26.9.19.9 (`clickhouse-local` from the `latest` image):
+`CREATE TABLE t (c Tuple(\`null\` UInt8, v String))` and the `Array(Tuple(...))` form both fail with `Code: 36 ... Tuple element name
+'null' is reserved because it would conflict with the subcolumn name used for Nullable null maps ... (BAD_ARGUMENTS)`. The same fact is
+already recorded in the 999.4 ROADMAP entry and in `26-RESEARCH.md` / `26-COMMAND-EVIDENCE.md`. A `.null` row can therefore only be a
+Nullable null map, and dropping it unconditionally is correct. No backlog item was added because there is nothing to track. The only
+change is a comment on `NULL_SUFFIX` in `DescribeTableBuilder` recording this and the server version it was checked on. Verification:
+`./gradlew compileJava` OK; no code change.
+
+### IN-07: `DescribeFixtureCapture` rewrites fixtures non-atomically and reports failures by class name only
+
+**Status:** fixed
+**Commit:** `28b3885c`
+**Files changed:**
+- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCapture.java`
+
+`captureAll` now collects every file in a `LinkedHashMap<Path, List<String>>` and writes them, `SERVER_VERSION.txt` last, only after the
+last fixture succeeded; `deleteStaleFixtureFiles` also moved to that point, so a failure partway through leaves the committed directory and
+its version stamp untouched. The failure line now prints the exception class plus the root cause class and message (Docker and pull
+failures carry no record values; the harness handles only committed DDL and schema rows).
+
+Verification (Docker): `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew captureDescribeFixtures` -> BUILD SUCCESSFUL, server 26.9.19.9, and
+`git status` showed no change under `src/test/resources` (byte-identical output). With `CLICKHOUSE_VERSION=0.0.0.0` the capture fails with
+`DescribeFixtureCapture failed: ...ContainerFetchException, root cause ...NotFoundException: Status 404 ... not found` and leaves the
+fixture directory unchanged.
+
+### IN-08: Client leak if table setup fails in the round-trip test
+
+**Status:** fixed
+**Commit:** `d5ecf24e`
+**Files changed:**
+- `src/test/java/com/clickhouse/kafka/connect/sink/TupleSizeNamedElementRoundTripLiveTest.java`
+
+`chc` is now a try-with-resources resource; `dropTable` and `NullableRoundTrip.createTable` moved inside an inner `try` whose `finally`
+drops the table, so `close()` runs even when setup or the drop throws. The assertions are unchanged. Verification:
+`env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*TupleSizeNamedElementRoundTripLiveTest"` -> 46 tests, 46 succeeded.
+
+### IN-09: The drift premise has no automated runner after WR-02, and one FORK-DELTA sentence still reads as if it does
+
+**Status:** fixed (documentation only)
+**Commit:** `35082aa1`
+**Files changed:**
+- `docs/FORK-DELTA.md`
+
+Known costs item 10 now says the rule is pinned Docker-free and "on demand, live by the drift premise (`describeFixtureDrift`, which is
+not part of `test` or CI, so the committed fixtures can go stale against `latest` until someone runs it)". The reviewer's other option
+(a separate non-gating CI job) was not taken: it changes `.github/workflows/tests.yaml`, which the WR-02 fix deliberately kept out of
+scope and which widens the rebase surface. This stays an open trade-off for the operator.
+
+### IN-10: The CHANGELOG caveat says "one WARN per such parent" but a second, different WARN is also emitted
+
+**Status:** fixed
+**Commit:** `42393c5a`
+**Files changed:**
+- `CHANGELOG.md`
+
+The 1.7.0_gg4 caveat now names both WARNs (`Could not read the declared type ...` per parent, and `Declared Tuple element(s) ... have no
+matching DESCRIBE sub-column` naming the dropped elements) and says a parent is also unreadable when it is absent from the described
+rows. Text matches `UNREADABLE_PARENT_WARNING` and `DeclaredNullability.UNPAIRED_ELEMENT_WARNING`.
+
+### IN-11: The `describe-drift` tag string is duplicated across Java and Gradle with no guard
+
+**Status:** fixed
+**Commit:** `0a1c79f8`
+**Files changed:**
+- `build.gradle.kts`
+- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixturesUnitTest.java`
+- `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureDriftLiveTest.java`
+
+Took the additive route (no new constant plumbing). New Docker-free test `theDriftTagInTheBuildEqualsTheTagOfTheDriftTest` in
+`DescribeFixturesUnitTest` reads `build.gradle.kts`, extracts `val describeFixtureDriftTag = "..."`, and asserts that it equals
+`DescribeFixtureDriftLiveTest.DRIFT_TAG`, that the literal appears once in the build (the tasks must use the variable), and that the drift
+class carries that tag via `getAnnotationsByType(Tag.class)`. Seen red: changing the Gradle value to `describe-drifts` fails with
+`expected: <describe-drift> but was: <describe-drifts>`. Gradle did not treat `build.gradle.kts` as a test input (the first red attempt
+stayed `testUnit UP-TO-DATE`), so one line, `inputs.file(layout.projectDirectory.file("build.gradle.kts"))`, was added to the
+`withType<Test>` block so an edit to the script re-runs the tests; `./gradlew check --dry-run` still lists `:test` and no
+`describeFixtureDrift`. The comment on `DRIFT_TAG` now points at the new test. Verification: `testUnit --tests "*DescribeFixturesUnitTest"`
+-> 96 tests, 96 succeeded.
+
+## Skipped Issues
+
+### IN-02: Production dead code kept only for tests
+
+**Status:** skipped
+**Commit:** none
+**Files changed:** none
+
+Reason: both `shouldSkipDescribeRow` overloads are dead in `src/main` but the fork-anchor inventory
+(`.planning/scripts/fork-anchors.txt`, row `ClickHouseHelperClient.java  shouldSkipDescribeRow  3  HLP-02`, read by invariant 3 of
+`verify-merge-invariants.sh`) pins the name at count 3, and FORK-DELTA (lines 47 and 217) and `MERGE-CHECKLIST.md` name the method as the
+sync landmark. Deleting the overloads would also rewrite about 20 calls in `ClickHouseHelperClientForkUnitTest` and drop a line from
+`DescribeTableBuilderUnitTest`, and would need a gate and documentation change. That is more than an Info cleanup, so it is left for a
+deliberate change that edits the anchor row in the same commit. `ParentShape.arrayDepth()` was left alone as well: it is only an
+accessor, and narrowing it alone would not resolve the finding.
+
+### IN-06: `DescribeTableBuilder` and `ClickHouseHelperClient` depend on each other
+
+**Status:** skipped
+**Commit:** none
+**Files changed:** none
+
+Reason: `buildDescribedTable` carries the only `DeclaredNullability.apply(` call in `ClickHouseHelperClient.java`, which the
+fork-anchor inventory pins at count 1 (COLS-10, `.planning/scripts/fork-anchors.txt`). Moving the method to `DescribeTableBuilder`
+makes that anchor count 0 and fails the merge-invariant gate unless the anchor row, the COLS-10 and DESC-07 documentation and
+`ClickHouseHelperClientForkUnitTest` (its `discover` helper calls `ClickHouseHelperClient.buildDescribedTable`) move in the same
+change. The cycle works today and is a cosmetic coupling, so a pure move is not worth a gate edit inside an Info pass.
+
+## Verification runs
+
+All in the main checkout, ClickHouse `latest` (26.9.19.9), client V2, Docker via colima.
+
+| Command | Result |
+|---------|--------|
+| `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew test --tests "*DescribeTableBuilderUnitTest" ...` (after IN-01, with the five classes listed under IN-01) | 336 tests, 336 succeeded |
+| same filter with `Table.java` reverted (seen-red check for IN-01) | 121 run, 1 failed as expected |
+| `./gradlew testUnit --tests "*DescribeFixturesUnitTest"` with the Gradle tag changed (seen-red for IN-11) | 1 failed as expected, then reverted |
+| `./gradlew cleanTestUnit testUnit` (final tree) | 1128 tests, 1126 succeeded, 0 failed, 2 skipped |
+| `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew cleanTest test` (final tree), run 1 | 1503 run, 0 failed, then `Gradle Test Executor 106` exit 255 (OpenJ9 GPF, core dump) |
+| same, run 2 | same crash, `Gradle Test Executor 107` exit 255 |
+| `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew cleanTest test -PjavaVersion=21` (final tree) | BUILD SUCCESSFUL, 1617 tests, 1599 succeeded, 0 failed, 18 skipped |
+| `./gradlew check --dry-run` | lists `:test`, no `describeFixtureDrift` |
+
+The two exit-255 runs are the known intermittent OpenJ9 Mockito crash; each left an 8 GB core dump plus javacore, Snap and jitdump files in
+the repo root, all deleted, and the second occurrence triggered the `-PjavaVersion=21` re-run. Nothing was run with `describeFixtureDrift`
+because no fixture, rule or snapshot changed (the capture round-trip under IN-07 produced byte-identical fixtures).
+
+**Spotless.** `./gradlew spotlessApply` was run once on the final tree and then reverted for every file. The repo is already off-format
+(46 files, mostly import order, including the two known `src/integrationTest` files plus many `src/main`, `src/test` and
+`src/testFixtures` files), so applying it would have rewritten files this pass did not otherwise change. For the files this pass changed
+it was a no-op, except `Table.java`, where it only reorders pre-existing imports and does not touch the added lines; that reformat was
+discarded. After the revert `git status` shows only the two unrelated modifications (`.planning/state.json`, `gradlew.bat`).
+
+## Out of scope
+
+Nothing in `.github/workflows/tests.yaml` or `VERSION` was touched, and no CHANGELOG entry was added except the IN-10 wording fix.
 
 ---
 
