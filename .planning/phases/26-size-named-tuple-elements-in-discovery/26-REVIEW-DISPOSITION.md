@@ -3,14 +3,26 @@ phase: 26
 review: 26-REVIEW.md
 titles: json
 findings:
-  - id: IN-01
-    severity: info
-    disposition: fixed
-    title: "Structural `size<digits>` rows share a name with the declared element and the last registration wins"
   - id: IN-02
     severity: info
     disposition: skipped
     title: "Production dead code kept only for tests"
+  - id: IN-06
+    severity: info
+    disposition: skipped
+    title: "`DescribeTableBuilder` and `ClickHouseHelperClient` depend on each other"
+  - id: IN-12
+    severity: info
+    disposition: open
+    title: "The IN-01 fix leaves the builder's own name map order dependent, and its stated reason overlooks a declared JSON or Dynamic element"
+  - id: IN-13
+    severity: info
+    disposition: open
+    title: "The new `allColumnsMap.merge` in upstream-owned `Table.registerValidColumn` has no fork-anchors row"
+  - id: IN-01
+    severity: info
+    disposition: fixed
+    title: "Structural `size<digits>` rows share a name with the declared element and the last registration wins"
   - id: IN-03
     severity: info
     disposition: fixed
@@ -23,10 +35,6 @@ findings:
     severity: info
     disposition: fixed
     title: "The same name ambiguity remains for a Tuple element named `null`"
-  - id: IN-06
-    severity: info
-    disposition: skipped
-    title: "`DescribeTableBuilder` and `ClickHouseHelperClient` depend on each other"
   - id: IN-07
     severity: info
     disposition: fixed
@@ -55,26 +63,28 @@ findings:
     severity: warning
     disposition: fixed
     title: "Byte-for-byte drift tests against a floating `latest` image can turn the whole suite red for reasons unrelated to the connector"
-open: 0
-total: 13
-recorded: 2026-10-22T08:30:50.170Z
+open: 2
+total: 15
+recorded: 2026-10-22T11:54:02.605Z
 ---
 
 # Phase 26: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-01 | info | fixed | 26-REVIEW-FIX.md |
 | IN-02 | info | skipped | 26-REVIEW-FIX.md |
-| IN-03 | info | fixed | 26-REVIEW-FIX.md |
-| IN-04 | info | fixed | 26-REVIEW-FIX.md |
-| IN-05 | info | fixed | 26-REVIEW-FIX.md |
 | IN-06 | info | skipped | 26-REVIEW-FIX.md |
-| IN-07 | info | fixed | 26-REVIEW-FIX.md |
-| IN-08 | info | fixed | 26-REVIEW-FIX.md |
-| IN-09 | info | fixed | 26-REVIEW-FIX.md |
-| IN-10 | info | fixed | 26-REVIEW-FIX.md |
-| IN-11 | info | fixed | 26-REVIEW-FIX.md |
+| IN-12 | info | open | - |
+| IN-13 | info | open | - |
+| IN-01 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-03 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-04 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-05 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-07 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-08 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-09 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-10 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
+| IN-11 | info | fixed | 26-REVIEW-FIX.md (not in the current review) |
 | WR-01 | warning | fixed | 26-REVIEW-FIX.md (not in the current review) |
 | WR-02 | warning | fixed | 26-REVIEW-FIX.md (not in the current review) |
 
