@@ -33,6 +33,8 @@ public final class DescribeTableBuilder {
             + "{}.{} ({}); its sub-columns named size, size0 or size followed by digits are treated as structural, "
             + "as earlier releases did";
 
+    // Safe to drop unconditionally: the server rejects a Tuple element named null (code 36, BAD_ARGUMENTS,
+    // checked on 26.9.19.9), so a .null row can only be a Nullable null map, never a declared element.
     private static final String NULL_SUFFIX = ".null";
     private static final String SIZE = "size";
     private static final String SIZE_ZERO = "size0";
