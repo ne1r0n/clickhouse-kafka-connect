@@ -16,8 +16,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 /**
  * Docker-free characterization of {@link DescribeTableBuilder} (DESC-07): it feeds the server's
  * raw DESCRIBE rows of every committed fixture to the builder and compares the Column snapshot
- * with the {@code .columns.txt} that the pre-extraction production {@code describeTable} wrote.
- * Deliberately extends nothing, so the class stays in {@code testUnit}.
+ * with the committed {@code .columns.txt}.
+ *
+ * <p>The snapshots are regression-only: they were re-captured from the production describe path
+ * after the DESC-08 fix, so a classifier change that is re-captured passes this test unnoticed. The
+ * correctness oracle is {@code DescribeTableBuilderUnitTest#tupleFieldsEqualTheDeclaredElements}
+ * (the declared DDL) and the live round trip. Deliberately extends nothing, so the class stays in
+ * {@code testUnit}.
  */
 class DescribeFixtureSnapshotUnitTest {
 
@@ -30,8 +35,8 @@ class DescribeFixtureSnapshotUnitTest {
 
     @ParameterizedTest(name = "DESC-07 snapshot: {0}")
     @MethodSource("fixtureKeys")
-    @DisplayName("DESC-07 snapshot: the builder over a committed fixture renders the pre-extraction Column snapshot")
-    void builderRendersThePreExtractionSnapshot(String key) throws Exception {
+    @DisplayName("DESC-07 snapshot: the builder over a committed fixture reproduces the committed Column snapshot")
+    void builderReproducesTheCommittedColumnSnapshot(String key) throws Exception {
         DescribeTableBuilder builder = new DescribeTableBuilder(DB, TABLE);
         for (String line : resourceLines(key + JSONL_SUFFIX)) {
             assertTrue(builder.addRow(line), key + ": every committed row is a column the connector can handle");
@@ -41,6 +46,6 @@ class DescribeFixtureSnapshotUnitTest {
         assertEquals(
                 resourceLines(key + COLUMNS_SUFFIX),
                 renderColumns(table),
-                key + ": the builder must reproduce the snapshot the pre-extraction production describeTable wrote");
+                key + ": the builder must reproduce the committed Column snapshot");
     }
 }
