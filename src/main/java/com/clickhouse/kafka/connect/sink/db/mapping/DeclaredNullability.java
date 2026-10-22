@@ -30,7 +30,8 @@ import org.slf4j.LoggerFactory;
  * returns false without a log.
  *
  * <p>A Tuple Column never legitimately lacks a declared element; when one is missing, discovery
- * dropped it (for example backlog 999.4, an element named {@code size} or {@code size0}). That is
+ * dropped it (for example a bare {@code size} or {@code size0} element whose parent's declared type
+ * could not be read, see {@code DescribeTableBuilder}). That is
  * not a mismatch that fails open: the pass logs one metadata-only WARN naming the unpaired elements
  * and still applies the declared nullability to the elements that paired, because falling back
  * cannot repair the missing element's bytes and would bring back the double flag.
