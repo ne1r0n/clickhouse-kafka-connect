@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 28
 current_phase_name: Raw Identifier Names in Discovery
 status: executing
-stopped_at: Phase 28 context gathered
-last_updated: "2026-10-23T09:26:00.613Z"
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-10-23T09:36:16.375Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 28 execution started
-state_head: 1403eddb9ee5a03e077bef422a5eb54d05025d20
+state_head: 65461e59155926aef3769c7aeda4e96d9a7370fa
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 18
+  completed_plans: 19
   percent: 60
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 28 (Raw Identifier Names in Discovery) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 28
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-10-23 — Phase 28 execution started
 
 Progress: [██████░░░░] 60%
@@ -185,6 +185,7 @@ Progress: [██████░░░░] 60%
 | Phase 27 P03 | 9 min | 3 tasks | 8 files |
 | Phase 27 P04 | 18 min | 3 tasks | 13 files |
 | Phase 27 P05 | 22 min | 3 tasks | 6 files |
+| Phase 28 P01 | 11 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -240,6 +241,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 27]: 27-04: ClickHouseWriter derives write-failure metadata through sourceTypeName(Data) and valueClassName(Data), and the ClassCastException format is WRITE_TYPE_MISMATCH_FAILURE_FORMAT on the shared prefix; no text changed, the two builders stay separate — The exact pin was committed green first; a fork-anchors row (83) stops an upstream sync from silently restoring the inline format
 - [Phase 27]: 27-04: the planning-ID guard is a Docker-free unit test (SourcePlanningIdGuardUnitTest) over src/main/java, not a verify-merge-invariants.sh addition — That script and its self-test are read-only in this milestone, the rule has nothing to do with merge provenance, and a unit test fails testUnit on every run
 - [Phase 27]: Plan 27-05: Spotless expectation recorded as measured (ClickHouseWriter.java 10/11, ClickHouseSinkTaskWithSchemaTest.java 28/29) because the imports this phase adds are used; the plan's 9/12 and 27/29 hold only for unused imports — Spotless keeps and moves a used import block as one hunk, so the figures grow by one line against the unused-import measurement; no new violation appears and the 46 pre-existing ones are the same set (E-13).
+- [Phase 28]: 28-01: the normalise run==1 guard is an equivalent mutant (startsWith at the run start implies a run of one); its row is a behaviour pin without a mutation proof
 
 ### Pending Todos
 
@@ -285,9 +287,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T06:07:59.969Z
-Stopped at: Phase 28 context gathered
-Resume file: .planning/phases/28-raw-identifier-names-in-discovery/28-CONTEXT.md
+Last session: 2026-10-23T09:36:16.030Z
+Stopped at: Completed 28-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
