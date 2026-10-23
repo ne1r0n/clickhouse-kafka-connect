@@ -1369,3 +1369,81 @@ integration_test: excluded (PT-16): AGENTS.md lists `./gradlew clean integration
 Verify command 4 (SUITE-GATE-RECORDED) runs after this entry is committed; its output is in E-61.
 
 Matches text: n/a (gate check)
+
+### E-61: anchors gate, OPS-01, OPS-04, pre-push checks, dry-run merge, rollback and spotless
+
+Backs: nothing in a document; these are the PUB-13 publication checks on the tree E-60 gated (D-01, D-06, OPS-01, OPS-04, OPS-05). Date (UTC) 2026-10-23, 19:30 to 20:00. All five commands ran on HEAD `1c25892560ac53565a5c7ba6a43c1fbbb34027d5`, the E-60 commit; `git diff --name-only 153cb7103d0cb48c86db816040690dfc9ee4a073 HEAD` lists only `.planning/` paths, so E-60's `gated_head` still describes this tree (the first check below proves it). X is the HEAD after this entry is committed; it differs from `1c258925` by this file alone. Each command is its own verify command and none of them moved HEAD; nothing was committed from the start of the anchors gate until the self-test had ended.
+
+Cumulative anchors gate and self-test (verify command 1), default environment, started in the background (gate, then self-test) at 2026-10-23T19:30:27Z; the gate wrote its line at about 19:44Z and the self-test ended about 19:59Z:
+
+```sh
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD > /tmp/gsd29/exec/gate-29-07.log 2>&1
+bash .planning/scripts/verify-merge-invariants-selftest.sh > /tmp/gsd29/exec/selftest-29-07.log 2>&1
+git diff --quiet c1dc6e5983fe93745526cecd89d3b7e7cff63c7d HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh
+```
+
+```text
+invariants: provenance_paths=21 anchor_commits=827 anchor_rows=94 marker_commits=886 anchor_exempt=19 result=PASS
+selftest: no failures
+ANCHORS-GATE-ON-X-OK
+```
+
+The gate log is that single line. The self-test log has 17 lines (16 `PASS` lines, 0 `FAIL`, then the last line above). Against E-09 (bump commit) `anchor_rows=94` and `anchor_exempt=19` are unchanged; `anchor_commits` and `marker_commits` grew from 766 and 825 to 827 and 886 because the tip carries the plan 29-02 to 29-06 commits. Neither script, `fork-anchor-exemptions.txt` nor `fork-anchors.txt` (beyond the VERSION row) was edited since `P29_BASE`.
+
+OPS-01, OPS-04 and the pre-push checks (verify command 2), unauthenticated GitHub REST:
+
+```text
+OPS-01-04-OK
+X=1c25892560ac53565a5c7ba6a43c1fbbb34027d5 rate=55
+PUSH-READY
+```
+
+What the markers assert: `integrationTests.yaml` has `state` `disabled_manually` and no `schedule` run was created after 2026-10-16T09:38:23Z (OPS-01); `GET /labels/dependencies` answers 200 (OPS-04; the close record's reminder 2 stays open, because no Dependabot pull request was opened after the label); HEAD is `sync/v1.7.0`; `.planning/.gsd-ws-arg` is not tracked; `push.followTags` is not `true` and `remote.origin.push` and `remote.origin.mirror` are unset; after `git fetch --quiet origin --no-tags`, origin's `custom_build` is `69cd680bf548bfb0329142752d37f8a6c3190c26`, origin has no `sync/v1.7.0`, no ref of origin holds X, the changed-file list since 69cd680b is not empty and no private-key, AWS-key or GitHub-token pattern matches any file changed since 69cd680b at X; at least 20 API requests remained (55). Origin's non-Dependabot heads at that moment were `custom_build` (`69cd680b`) and `main` (`bec167d8`); 2 Dependabot heads and 8 tags were listed. `git rev-list --left-right --count origin/custom_build...HEAD` reads `0 271`.
+
+Dry-run merge and rollback on it (verify command 3), in a throwaway worktree at 69cd680b:
+
+```sh
+git worktree add --quiet --detach /tmp/gsd29/dry 69cd680bf548bfb0329142752d37f8a6c3190c26
+git -C /tmp/gsd29/dry -c user.name=demo -c user.email=demo@example.invalid merge --quiet --no-ff --no-edit "$X"
+bash /tmp/gsd29/rollback-demo.sh "$PWD" "$D" /tmp/gsd29/rb-demo
+git worktree remove --force /tmp/gsd29/dry && git worktree prune
+```
+
+```text
+D=c95b32395d274d5a1d69859cfe8d9e0e0f7aff99 X=1c25892560ac53565a5c7ba6a43c1fbbb34027d5
+MERGE-DRY-RUN-OK
+ok-line True missing []
+ROLLBACK-ON-TIP-OK
+```
+
+The dry-run merge `D` has parents `69cd680bf548bfb0329142752d37f8a6c3190c26` and X, and `git diff --quiet D X` exits 0, so its tree is the tree of X. The rollback script log (`/tmp/gsd29/exec/rollback-on-X.log`):
+
+```text
+target=c95b32395d274d5a1d69859cfe8d9e0e0f7aff99 stale-start=69cd680b
+dirty: status --porcelain lines=2
+fetch --tags exit=0
+local tag kept after fetch: 69cd680b
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=1
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-7 headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+gg1 corrected rule after rollback: absent
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+No worktree was left behind (`git worktree list` names neither `/tmp/gsd29/dry` nor `/tmp/gsd29/rb-demo`).
+
+Spotless, baseline-equal form (verify command 4): `spotlessApply` was run in a `git archive` copy of `P29_BASE` and of HEAD, and the sorted `git diff --numstat` of each copy was compared.
+
+```text
+numstat-lines=      47
+SPOTLESS-BASELINE-EQUAL-ON-X
+```
+
+Both numstat files have 47 lines and are byte-equal (`cmp -s`), so the tip's `spotlessApply` rewrite equals the 47-file rewrite already present at `P29_BASE`; Phase 29 added none. This is the baseline-equal form of the AGENTS.md pre-PR spotless obligation, not a clean `spotlessCheck`.
+
+Matches text: n/a (gate check)
