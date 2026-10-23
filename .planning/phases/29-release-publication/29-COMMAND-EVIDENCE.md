@@ -943,3 +943,64 @@ Escape forms read off those lines (server `26.9.19.9`):
 - **Mapping.** `describeTable` maps all eight tables. The enum keys it builds are the raw labels `a`, the character, `b` (`PROBE-ENUMKEYS`: `a\u0008b`, `a\u000Cb`, `a\u0000b`, `a\u0007b` in the probe's escaped print form) and the Tuple element names are `t.a`, the raw character, `b` (`PROBE-COL`). No insert was run: whether a record written under these names lands is not measured here, and the test-side pin for these four characters is still the one carried in FORK-DELTA Known costs item 11.
 
 Matches text: pending (29-05)
+
+### E-25: KeeperMap state-table query and DELETE examples with a prefixed key (ROLL-05)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md` (items 1 and 2), `docs/ROLLOUT-v1.7.0_gg2.md` (item 1) and `docs/ROLLOUT-v1.7.0_gg4.md` item 4 (the in-flight check), written in plans 29-03 and 29-04. The first block is the state-table query of `docs/ROLLOUT-v1.7.0_gg3.md` item 4 step 2, copied byte for byte (lines 251-255 of that note, `/tmp/gsd29/probe/sql/keeper-self-check.sql`; `cmp` against `sed -n 251,255p` printed no difference). The second block is the `DELETE` example block of item 2 of the gg1 note as it reads in this commit, extracted from the note by the script that wrote this entry; the two statements in it are the lines 105 and 108 of the gg1 note at `P29_BASE` (`/tmp/gsd29/probe/sql/keeper-delete-keys.sql` and `keeper-delete-topics.sql`), and only the comment lines changed. Placeholders: `<zkDatabase>`, `<topic>`, `<partition>`, `<db>` and `<dbTopicSplitChar>`.
+
+```sql
+SELECT `key`, minOffset, maxOffset, state
+FROM `<zkDatabase>`
+WHERE state != 'AFTER_PROCESSING'
+  AND arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>', '<topic>')
+ORDER BY `key`;
+```
+
+```sql
+-- EXAMPLE: delete the state rows of the affected topic-partitions
+-- (with enableDbTopicSplit=true, a topic that dbTopicSplitChar divides into exactly two parts is keyed '<topic>-<partition>'
+-- and any other topic '<db><dbTopicSplitChar><topic>-<partition>'; read from the connector code, not measured)
+DELETE FROM `<zkDatabase>` WHERE `key` IN ('<topic>-<partition>', '<topic>-<partition>');
+
+-- EXAMPLE: or delete the state rows of every partition of the affected topics
+-- (with enableDbTopicSplit=true, also list '<db><dbTopicSplitChar><topic>' as in item 1)
+DELETE FROM `<zkDatabase>` WHERE arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>');
+```
+
+Method (`keeperSelfCheck`, gg4 worktree, server `26.9.19.9`, client V2, image as in E-20; XML `/tmp/gsd29/exec/keeper.xml`, `tests="1" skipped="0" failures="0" errors="0"`): `new KeeperStateProvider(new ClickHouseSinkConfig(props))` with `zkPath` `/kafka-connect` and `zkDatabase` `connect_state` against the server's embedded Keeper (the `keeper_map.xml` that `ClickHouseBase` mounts) creates the table; the provider then writes five state records: `orders` partition 0 `AFTER_PROCESSING` (offsets 0 to 9), `orders` partition 1 `BEFORE_PROCESSING` (10 to 19), `orders-v2` partition 0 `BEFORE_PROCESSING` (0 to 4), `db1.orders` partition 2 `BEFORE_PROCESSING` (20 to 29) and `other` partition 0 `BEFORE_PROCESSING` (0 to 4). The key `db1.orders-2` is the prefixed key form with `dbTopicSplitChar` `.`; the probe writes it as a state record itself, so which key the connector writes for a topic is not measured here but read from `RecordConvertor.convert` (a topic that splits into exactly two parts keeps its own name, `parts.length == 2`) and `Processing.doLogic` (`topic = database + dbTopicSplitChar + topic`). Substitution map for the query: `<zkDatabase>` = `connect_state`, the two `'<topic>'` entries = `'orders'` and `'db1.orders'`. The query runs in the connection database, where the table lives.
+
+```sql
+SELECT `key`, minOffset, maxOffset, state
+FROM `connect_state`
+WHERE state != 'AFTER_PROCESSING'
+  AND arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('orders', 'db1.orders')
+ORDER BY `key`;
+```
+
+Then `orders` partition 1 and `db1.orders` partition 2 are set to `AFTER_PROCESSING` and the query runs again. For the two `DELETE` examples the probe creates two further state tables (`connect_state_dk` at `zkPath` `/kafka-connect-dk` and `connect_state_dt` at `/kafka-connect-dt`), writes the same five records into each, runs one statement against each and lists the keys that remain (a key listing, `SELECT key FROM <table> ORDER BY key` with the identifiers backtick-quoted). The statements as run, with the placeholders replaced:
+
+```sql
+DELETE FROM `connect_state_dk` WHERE `key` IN ('orders-1', 'db1.orders-2');
+DELETE FROM `connect_state_dt` WHERE arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('orders', 'db1.orders');
+```
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain test --tests '*Phase29RolloutProbe.keeperSelfCheck' --rerun
+cp /tmp/gsd29/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/keeper.xml
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/keeper.xml
+```
+
+```text
+PROBE-VERSION tree=gg4 version=26.9.19.9
+PROBE-KEEPER-TABLE tree=gg4 engine=KeeperMap('/kafka-connect') PRIMARY KEY key
+PROBE-KEEPER case=in-flight keys=db1.orders-2,orders-1
+PROBE-KEEPER case=all-after keys=
+PROBE-KEEPER-DELETE form=keys outcome=ok
+PROBE-KEEPER case=after-delete-keys keys=orders-0,orders-v2-0,other-0
+PROBE-KEEPER-DELETE form=topics outcome=ok
+PROBE-KEEPER case=after-delete-topics keys=orders-v2-0,other-0
+```
+
+Result. The query returns exactly the two in-flight keys of the two listed topic forms, `db1.orders-2` and `orders-1`. It does not return `orders-0` (already `AFTER_PROCESSING`), `orders-v2-0` (a topic that merely shares the prefix `orders`) or `other-0`, and it returns nothing once both ranges are `AFTER_PROCESSING`. Both `DELETE` examples succeeded on the KeeperMap table (`outcome=ok`; the lightweight `DELETE` is supported on this engine on this server). The first removed exactly `orders-1` and `db1.orders-2` and left `orders-0`, `orders-v2-0` and `other-0`. The second, run with the prefixed topic added as its comment says, removed every partition of `orders` and of `db1.orders` and left `orders-v2-0` and `other-0`. The state table is the one the connector's own `KeeperStateProvider` creates (`ENGINE = KeeperMap('/kafka-connect') PRIMARY KEY key`). The notes may therefore call the query and both examples run on a scratch state table, and must keep the key form as read from code.
+
+Matches text: pending (29-04)
