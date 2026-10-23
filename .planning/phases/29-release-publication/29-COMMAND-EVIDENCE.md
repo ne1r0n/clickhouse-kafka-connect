@@ -1254,3 +1254,41 @@ consistency scope=all docs=['changelog', 'fork-delta', 'note'] failed=0
 ```
 
 Matches text: n/a (gate check)
+
+
+### E-50: gg1 DELETE example with the trailing-split-character comment (29-REVIEW IN-02)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg1.md` item 2, the `DELETE` example block, written in plan 29-06 (review round 1, fix IN-02). The only change against the block of E-25 is the second and third comment line of the first example, which now also names the key form without the trailing split characters that item 1 of the same note lists. Both statements are unchanged, so the run of E-25 applies to them; the probe `keeperSelfCheck` was run once more on the gg4 tip worktree against the same server to show that nothing differs (XML `/tmp/gsd29/exec/keeper-r2.xml`, `tests="1" skipped="0" failures="0" errors="0"`). The block as it reads in the note:
+
+```sql
+-- EXAMPLE: delete the state rows of the affected topic-partitions
+-- (with enableDbTopicSplit=true, a topic that dbTopicSplitChar divides into exactly two parts is keyed '<topic>-<partition>'
+-- and any other topic '<db><dbTopicSplitChar><topic>-<partition>'; a topic that ends with the split character can also be keyed
+-- without the trailing characters, as in item 1; read from the connector code, not measured)
+DELETE FROM `<zkDatabase>` WHERE `key` IN ('<topic>-<partition>', '<topic>-<partition>');
+
+-- EXAMPLE: or delete the state rows of every partition of the affected topics
+-- (with enableDbTopicSplit=true, also list '<db><dbTopicSplitChar><topic>' as in item 1)
+DELETE FROM `<zkDatabase>` WHERE arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>');
+```
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain test --tests '*Phase29RolloutProbe.keeperSelfCheck' --rerun
+cp /tmp/gsd29/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/keeper-r2.xml
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/keeper-r2.xml
+```
+
+```text
+PROBE-VERSION tree=gg4 version=26.9.19.9
+PROBE-KEEPER-TABLE tree=gg4 engine=KeeperMap('/kafka-connect') PRIMARY KEY key
+PROBE-KEEPER case=in-flight keys=db1.orders-2,orders-1
+PROBE-KEEPER case=all-after keys=
+PROBE-KEEPER-DELETE form=keys outcome=ok
+PROBE-KEEPER case=after-delete-keys keys=orders-0,orders-v2-0,other-0
+PROBE-KEEPER-DELETE form=topics outcome=ok
+PROBE-KEEPER case=after-delete-topics keys=orders-v2-0,other-0
+```
+
+Result. The probe lines equal those of E-25 line for line: the first `DELETE` removed exactly `orders-1` and `db1.orders-2`, the second removed every partition of `orders` and of `db1.orders`, and `orders-v2-0` and `other-0` stayed. The key form without trailing split characters named in the new comment is read from the connector code and is not measured, as the comment says.
+
+Matches text: yes

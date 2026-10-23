@@ -104,7 +104,8 @@ Step 2 as an example (both statements were run on ClickHouse 26.9.19.9 against a
 ```sql
 -- EXAMPLE: delete the state rows of the affected topic-partitions
 -- (with enableDbTopicSplit=true, a topic that dbTopicSplitChar divides into exactly two parts is keyed '<topic>-<partition>'
--- and any other topic '<db><dbTopicSplitChar><topic>-<partition>'; read from the connector code, not measured)
+-- and any other topic '<db><dbTopicSplitChar><topic>-<partition>'; a topic that ends with the split character can also be keyed
+-- without the trailing characters, as in item 1; read from the connector code, not measured)
 DELETE FROM `<zkDatabase>` WHERE `key` IN ('<topic>-<partition>', '<topic>-<partition>');
 
 -- EXAMPLE: or delete the state rows of every partition of the affected topics
