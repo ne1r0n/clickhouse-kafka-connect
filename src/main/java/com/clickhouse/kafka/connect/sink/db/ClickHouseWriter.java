@@ -345,7 +345,7 @@ public class ClickHouseWriter implements DBWriter {
                                 // record.getFields() has no Field named colName even though
                                 // record.getJsonMap() has a value for it (e.g. a synthetic
                                 // column not backed by a Field) - objSchema.name() below would
-                                // NPE with no actionable message (WR-03).
+                                // NPE with no actionable message.
                                 validSchema = false;
                                 LOGGER.error(String.format(
                                         "Column [%s] has a value but no matching Kafka Connect field schema", colName));
@@ -568,7 +568,8 @@ public class ClickHouseWriter implements DBWriter {
     private static final String DATETIME_PARSE_FAILURE_LOG_FORMAT = "Error parsing date time string for column '{}' "
             + "(ClickHouse type {}, Kafka type {}): exception {}, value length {}";
     private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
-    // Built from Column metadata and class names only: this text reaches Connect status and DLQ topics, so it carries no value and no value length (D-07, D-08).
+    // Built from Column metadata and class names only: this text reaches Connect status and DLQ
+    // topics, so it carries no value and no value length.
     private static final String WRITE_FAILURE_COLUMN_PREFIX = "Failed to write column `";
     private static final String WRITE_VALUE_CONVERSION_FAILURE_FORMAT = WRITE_FAILURE_COLUMN_PREFIX
             + "%s`: Kafka value of type %s (value class: %s) could not be written as ClickHouse type %s: %s";
@@ -583,7 +584,7 @@ public class ClickHouseWriter implements DBWriter {
     private static final String NESTED_NULL_SLOT_TUPLE_FIELD_FORMAT = "tuple field '%s'";
 
     /**
-     * Builds the {@link DataException} message for a null in a nested non-nullable slot (WRT-08).
+     * Builds the {@link DataException} message for a null in a nested non-nullable slot.
      * Built only from {@code Column} metadata: it reaches logs, Connect status and DLQ headers, so
      * it must never carry a field value, array element or map key.
      */
@@ -613,7 +614,7 @@ public class ClickHouseWriter implements DBWriter {
 
     /**
      * A null in a nested non-nullable ARRAY or MAP slot is written as an empty container whatever
-     * {@code defaultsSupport} says, mirroring upstream #820's top-level rule (D-09).
+     * {@code defaultsSupport} says, mirroring upstream #820's top-level rule.
      */
     private static boolean isNullCoercedToEmpty(Column slot) {
         return slot.getType() == Type.ARRAY || slot.getType() == Type.MAP;
@@ -621,7 +622,7 @@ public class ClickHouseWriter implements DBWriter {
 
     /**
      * Builds the message thrown by {@code doInsertRawBinaryV1}/{@code V2} when {@code
-     * validateDataSchema} reports an invalid schema (TYPE-06). A JSON column is the one case where
+     * validateDataSchema} reports an invalid schema. A JSON column is the one case where
      * that generic failure has an actionable, known cause under RowBinary's default (flag-off)
      * configuration - see the {@code case JSON:} write path's own {@code RuntimeException} in
      * {@link #doWriteColValue}, which this reuses the same escape-hatch wording for - so name it
@@ -730,7 +731,7 @@ public class ClickHouseWriter implements DBWriter {
                         // doWriteDates/Decimal's own null handling instead of dereferencing null.
                         // Scoped to Nullable columns: for a non-nullable Map the null is upstream
                         // #820's empty map, whose size byte doWriteCol already wrote, so a second
-                        // marker here would desync the RowBinary stream (WRT-06).
+                        // marker here would desync the RowBinary stream.
                         BinaryStreamUtils.writeNull(stream);
                         break;
                     }
@@ -794,8 +795,8 @@ public class ClickHouseWriter implements DBWriter {
                     break;
                 case TUPLE:
                     if (value.getObject() == null) {
-                        // A slot takes the null marker only when its Column reports it nullable (D-10);
-                        // since COLS-10 that flag follows the declared type, Nullable(Tuple(...)) included.
+                        // A slot takes the null marker only when its Column reports it nullable;
+                        // that flag follows the declared type, Nullable(Tuple(...)) included.
                         if (!col.isNullable()) {
                             throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_TUPLE));
                         }
@@ -1604,7 +1605,7 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     protected Map<String, Object> cleanupExtraFields(Map<String, Object> m, Table t) {
-        // The metadata-free predicate goes first so that mode never reads the bypass flag (JSONP-08);
+        // The metadata-free predicate goes first so that mode never reads the bypass flag;
         // a null config still throws here, because the predicate returns false for it.
         if (shouldSkipTableMetadata() || csc.isBypassFieldCleanup()) {
             return m;
@@ -1818,13 +1819,13 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     /**
-     * The one predicate every metadata-free guard site reads (D-05). Keyed on {@code
+     * The one predicate every metadata-free guard site reads. Keyed on {@code
      * csc.isJsonInsertFormatExplicit()} and nothing else - {@code csc.getInsertFormat()} also
      * matches the upstream unset-{@code insertFormat} default-branch typo (falls through to the
      * JSON enum constant), and keying on that would widen the bypass to every default-configured
      * connector in production. Its own null check makes only this predicate safe to call on an
      * unstarted writer; it does not make its callers null-safe, since {@code cleanupExtraFields}
-     * reads the config again after it (JSONP-08).
+     * reads the config again after it.
      */
     private boolean shouldSkipTableMetadata() {
         return csc != null && csc.isJsonInsertFormatExplicit();
