@@ -572,6 +572,8 @@ public class ClickHouseWriter implements DBWriter {
     private static final String WRITE_FAILURE_COLUMN_PREFIX = "Failed to write column `";
     private static final String WRITE_VALUE_CONVERSION_FAILURE_FORMAT = WRITE_FAILURE_COLUMN_PREFIX
             + "%s`: Kafka value of type %s (value class: %s) could not be written as ClickHouse type %s: %s";
+    private static final String WRITE_TYPE_MISMATCH_FAILURE_FORMAT = WRITE_FAILURE_COLUMN_PREFIX
+            + "%s`: cannot convert Kafka value of type %s (value class: %s) to ClickHouse type %s";
     private static final String DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT = "(Potentially) Not implemented conversion from %s to %s for column '%s'";
     private static final String MISSING_NON_NULLABLE_MESSAGE_FORMAT = "column '%s' (%s): no value provided for a non-nullable column without a default; "
             + "add the field, make the column Nullable, or give it a DEFAULT";
@@ -660,11 +662,17 @@ public class ClickHouseWriter implements DBWriter {
         return false;
     }
 
+    private static String sourceTypeName(Data value) {
+        return value == null ? "null" : String.valueOf(value.getFieldType());
+    }
+
+    private static String valueClassName(Data value) {
+        return (value == null || value.getObject() == null) ? "null" : value.getObject().getClass().getName();
+    }
+
     private static String buildValueConversionFailureMessage(Column col, Type columnType, Data value, Exception cause) {
-        String sourceType = value == null ? "null" : String.valueOf(value.getFieldType());
-        String valueClass = (value == null || value.getObject() == null) ? "null" : value.getObject().getClass().getName();
-        return String.format(WRITE_VALUE_CONVERSION_FAILURE_FORMAT, col.getName(), sourceType, valueClass, columnType,
-                cause.getClass().getName());
+        return String.format(WRITE_VALUE_CONVERSION_FAILURE_FORMAT, col.getName(), sourceTypeName(value),
+                valueClassName(value), columnType, cause.getClass().getName());
     }
 
     protected void doWriteColValue(Column col, OutputStream stream, Data value, boolean defaultsSupport) throws IOException {
@@ -900,11 +908,8 @@ public class ClickHouseWriter implements DBWriter {
             // ClassCastException naming only Java types. Rethrow with the failing column and its types
             // as a non-retryable DataException so the context reaches Connect status / DLQ / JMX metrics
             // instead of only the logs. Record values are never included.
-            String sourceType = value == null ? "null" : String.valueOf(value.getFieldType());
-            String valueClass = (value == null || value.getObject() == null) ? "null" : value.getObject().getClass().getName();
-            String message = String.format(
-                    "Failed to write column `%s`: cannot convert Kafka value of type %s (value class: %s) to ClickHouse type %s",
-                    col.getName(), sourceType, valueClass, columnType);
+            String message = String.format(WRITE_TYPE_MISMATCH_FAILURE_FORMAT, col.getName(), sourceTypeName(value),
+                    valueClassName(value), columnType);
             LOGGER.error(message, e);
             throw new DataException(message, e);
         } catch (Exception e) {
