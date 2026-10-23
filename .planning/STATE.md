@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 29
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-10-23T18:03:30.467Z"
+stopped_at: Completed 29-03-PLAN.md
+last_updated: "2026-10-23T18:20:59.431Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 29 execution started
-state_head: 469016f102f6dd060378cdfd4bcc1bb9ca397e49
+state_head: 864e6b25d25e1019073079653db46720d746f28b
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 32
-  completed_plans: 26
+  completed_plans: 27
   percent: 80
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 29 (Release & Publication) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 29 execution started
 
@@ -194,6 +194,7 @@ Progress: [████████░░] 80%
 | Phase 28 P06 | 71 min | 3 tasks | 8 files |
 | Phase 29 P01 | 27 min | 4 tasks | 4 files |
 | Phase 29 P02 | 10 min | 3 tasks | 1 files |
+| Phase 29 P03 | 11min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -262,6 +263,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 29]: The rollback target 69cd680b builds a green archive with 25 nested jars (PRE-NESTED-JARS=25); the gg4 note must say to redeploy the archive built at v1.7.0_gg3 and never build one from the rolled-back tip (PT-03)
 - [Phase 29]: Rollout note states the suspects-query over-flags as s4_o01 and x08 (a JSON column with a typed size-named Tuple path), measured on the 47-table catalog
 - [Phase 29]: Rollout note says an affected shape fails on gg3 with server code 32 or 33, never a per-shape code: this server printed 33 for five shapes and 32 for n03
+- [Phase 29]: The gg4 note must carry the gg3 name query together with a companion query: the gg3 query misses the root carriage-return table and both double-quote tables, and the union over-flags only a Tuple element name holding a backtick (E-22). — Measured on 26.9.19.9 with client V2: the gg3 query lists 13 of the 16 differing tables plus n5_bt_tuple; the companion lists the other three; both are empty on the look-alike database.
+- [Phase 29]: The gg1 and gg2 notes may say the state-table query and both DELETE examples were run on a scratch KeeperMap state table, but the enableDbTopicSplit key rule stays labelled read from the connector code (E-25). — The probe wrote the prefixed key db1.orders-2 as a state record itself; the query and both DELETE examples succeeded and kept other keys, including a topic that shares a prefix.
 
 ### Pending Todos
 
@@ -307,8 +310,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T18:03:29.597Z
-Stopped at: Completed 29-02-PLAN.md
+Last session: 2026-10-23T18:20:58.912Z
+Stopped at: Completed 29-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
