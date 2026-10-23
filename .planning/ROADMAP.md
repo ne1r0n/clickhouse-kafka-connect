@@ -342,7 +342,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - backlog 999.5, marked delivered.
      `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class Phases 25–28 added. The list is edited once, its FORK-DELTA row is in the same commit, and the generated fork report shows those classes. The anchors invariant passes at every commit.
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -352,7 +352,7 @@ Plans:
 - [x] 28-02-PLAN.md — NAME-02: live name-matrix spike (12 entries x root, Tuple, Array(Tuple), Nullable(Tuple), Map-value Tuple, enum label; V2 and V1 current forms), committed DESCRIBE rows with Docker-free guard and drift premise, spike record E-04; test-only preparation for 28-03 (the matrix discovery assertion and the raw-name fixture constants)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 28-03-PLAN.md — NAME-03 + NAME-04 in one fix commit: names-only decode in fromJsonRow, shared UTF-8 reader for V1 and V2, normalise rewritten, IN-01/IN-02; red-first matrix rows and changed pins, coupling proof, COLS-13 twins on the raw name; the named exemption list of changed pins (X-01..X-12, S-01..S-03) with its sign-off in E-06
+- [x] 28-03-PLAN.md — NAME-03 + NAME-04 in one fix commit: names-only decode in fromJsonRow, shared UTF-8 reader for V1 and V2, normalise rewritten, IN-01/IN-02; red-first matrix rows and changed pins, coupling proof, COLS-13 twins on the raw name; the named exemption list of changed pins (X-01..X-12, S-01..S-03) with its sign-off in E-06
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 28-04-PLAN.md — NAME-05: RawIdentifierNameLiveTest, raw form lands with typed read-back, doubled root stores DEFAULT, doubled element fails loudly in every Tuple shape; red on the pre-fix production
@@ -544,7 +544,7 @@ The four code phases split along the production files that change: the build and
 | 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 8/8 | Complete    | 2026-10-21 |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-23 |
-| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 2/6 | In Progress | - |
+| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 3/6 | In Progress | - |
 | 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 
 ---

@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 28
 current_phase_name: Raw Identifier Names in Discovery
 status: executing
-stopped_at: Completed 28-02-PLAN.md
-last_updated: "2026-10-23T09:48:31.247Z"
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-10-23T10:10:18.852Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 28 execution started
-state_head: 7652e8928145e8eb9ae9e8ffaa43bb057d0e7c20
+state_head: 7cef1e606076213b459957243340255bf0206159
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 20
+  completed_plans: 21
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 28 (Raw Identifier Names in Discovery) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 28 execution started
 
@@ -187,6 +187,7 @@ Progress: [██████░░░░] 60%
 | Phase 27 P05 | 22 min | 3 tasks | 6 files |
 | Phase 28 P01 | 11 min | 2 tasks | 2 files |
 | Phase 28 P02 | 10 min | 3 tasks | 32 files |
+| Phase 28 P03 | 21 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -244,6 +245,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 27]: Plan 27-05: Spotless expectation recorded as measured (ClickHouseWriter.java 10/11, ClickHouseSinkTaskWithSchemaTest.java 28/29) because the imports this phase adds are used; the plan's 9/12 and 27/29 hold only for unused imports — Spotless keeps and moves a used import block as one hunk, so the figures grow by one line against the unused-import measurement; no new violation appears and the 46 pre-existing ones are the same set (E-13).
 - [Phase 28]: 28-01: the normalise run==1 guard is an equivalent mutant (startsWith at the run start implies a run of one); its row is a behaviour pin without a mutation proof
 - [Phase 28]: 28-02: V2 and V1 current forms are read from the production describeTable of explicitly built clients; the live suite asserts only before/after-stable server premises, byte equality is the describe-drift test
+- [Phase 28]: 28-03: fromJsonRow decodes only the name (streaming parse, other strings sliced as the server's literal JSON text, bound via treeToValue); both describe clients share one UTF-8 raw-line reader
+- [Phase 28]: 28-03: DeclaredNullability.normalise rewritten around package-private unescapeJsonLayer so plan 28-05's enum-label parser reuses the same JSON-layer decoder; decode and pairing key land in one commit
 
 ### Pending Todos
 
@@ -289,8 +292,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T09:48:30.900Z
-Stopped at: Completed 28-02-PLAN.md
+Last session: 2026-10-23T10:10:18.344Z
+Stopped at: Completed 28-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
