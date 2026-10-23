@@ -96,7 +96,7 @@ Phase artifacts: `milestones/v1.7.0_gg3-hardening-phases/` · Quick tasks: `mile
 
 - [x] **Phase 25: Dependency Absorption & Upstream Mini-Sync** - Fix the pin-guard reader first, then merge `custom_build`'s nine Dependabot commits and upstream's tail `a6f1df83`. Prove the Shadow 9 archive intact and `connect-api` 4.4.0 compile-time only, add a CI guard against nested jars, and close the pin-guard and slf4j advisories. The user creates the `dependencies` label (completed 2026-10-21)
 - [x] **Phase 26: Size-Named Tuple Elements in Discovery** - Backlog 999.4: a declared Tuple element named `size`, `size0` or `size<digits>` survives discovery at both drop sites and round-trips live. The V1/V2 DESCRIBE loop becomes one tested builder (completed 2026-10-22)
-- [ ] **Phase 27: Writer Failure Path & Test Debt** - A Jackson failure on the JSON-as-string route no longer carries a Map key, and an unknown Enum label names its column. The remaining 22-REVIEW and 24-REVIEW advisories and the carried test-debt items close without weakening any test
+- [x] **Phase 27: Writer Failure Path & Test Debt** - A Jackson failure on the JSON-as-string route no longer carries a Map key, and an unknown Enum label names its column. The remaining 22-REVIEW and 24-REVIEW advisories and the carried test-debt items close without weakening any test (completed 2026-10-23)
 - [ ] **Phase 28: Raw Identifier Names in Discovery** - Backlog 999.5: names are matched under the raw identifier from `CREATE TABLE`, with pairing re-keyed and `normalise` rewritten. Both name forms are pinned live, and the fork coverage list is completed once
 - [ ] **Phase 29: Release & Publication** - `v1.7.0_gg4` is published with an independently reviewed rollout note, two green suite runs, an origin-freeze check and one green CI run on the published SHA before the tags
 
@@ -279,7 +279,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare `NullPointerException`.
      A diff check shows that no existing assertion was deleted or weakened, and the anchors invariant passes at every commit.
 
-**Plans:** 5/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -342,7 +342,26 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - backlog 999.5, marked delivered.
      `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class Phases 25–28 added. The list is edited once, its FORK-DELTA row is in the same commit, and the generated fork report shows those classes. The anchors invariant passes at every commit.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+- [ ] 28-01-PLAN.md — NAME-01: tracer phase base (E-01, full suite on latest) and the escaped-quote pin on the current normalise, red under the always-close mutation
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 28-02-PLAN.md — NAME-02: live name-matrix spike (12 entries x root, Tuple, Array(Tuple), Nullable(Tuple), Map-value Tuple, enum label; V2 and V1 current forms), committed DESCRIBE rows with Docker-free guard and drift premise, spike record E-04; test-only preparation for 28-03 (the matrix discovery assertion and the raw-name fixture constants)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 28-03-PLAN.md — NAME-03 + NAME-04 in one fix commit: names-only decode in fromJsonRow, shared UTF-8 reader for V1 and V2, normalise rewritten, IN-01/IN-02; red-first matrix rows and changed pins, coupling proof, COLS-13 twins on the raw name; the named exemption list of changed pins (X-01..X-12, S-01..S-03) with its sign-off in E-06
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 28-04-PLAN.md — NAME-05: RawIdentifierNameLiveTest, raw form lands with typed read-back, doubled root stores DEFAULT, doubled element fails loudly in every Tuple shape; red on the pre-fix production
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 28-05-PLAN.md — NAME-06 + NAME-07: escape-aware enum-label scan in Column, raw and legacy label pins red first; FORK-DELTA, CHANGELOG, Known costs item 11 and backlog 999.5 in the fix commit; manual CLIENT_VERSION=V1 run; Phase 29 handoff record
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 28-06-PLAN.md — DEBT-17: 21-class jacocoForkReport and jacoco_summary.py edited once with ForkCoverageScopeUnitTest and the FORK-DELTA row; phase gate and the assertion diff check against 28-03's named exemption list
 
 **Research flag**: The live name-matrix spike (NAME-02) precedes the plans for the decode and the `normalise` rewrite, because the coupling to pairing and to enum labels is inferred, not measured. The canonical form is decided: on 2026-10-21 the user chose the raw identifier, with no dual-form alias, and operators rename. NAME-06's outcome, fix or document, follows the measurement. If a fix would reach beyond `Column`'s enum-label parsing, it stops for a user decision.
 
@@ -524,8 +543,8 @@ The four code phases split along the production files that change: the build and
 |-------|-----------|----------------|--------|-----------|
 | 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 8/8 | Complete    | 2026-10-21 |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
-| 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | In Progress | - |
-| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
+| 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-23 |
+| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 0/6 | Planned | - |
 | 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 
 ---
