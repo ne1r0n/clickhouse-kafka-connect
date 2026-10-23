@@ -4,17 +4,17 @@ milestone: v1.7.0_gg4-hardening
 milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 27
 current_phase_name: Writer Failure Path & Test Debt
-status: executing
-stopped_at: Completed 27-04-PLAN.md
-last_updated: "2026-10-23T00:46:41.986Z"
+status: verifying
+stopped_at: Completed 27-05-PLAN.md
+last_updated: "2026-10-23T01:11:07.848Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 27 execution started
-state_head: 03792012cece369c0814bfe358a6b1514919cece
+state_head: 1b206208f268332603a4ef99cf7f80481d2140e6
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 18
-  completed_plans: 17
+  completed_plans: 18
   percent: 40
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 
 Phase: 27 (Writer Failure Path & Test Debt) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-23 — Phase 27 execution started
 
 Progress: [████░░░░░░] 40%
@@ -183,6 +183,7 @@ Progress: [████░░░░░░] 40%
 | Phase 27 P02 | 153 min | 3 tasks | 8 files |
 | Phase 27 P03 | 9 min | 3 tasks | 8 files |
 | Phase 27 P04 | 18 min | 3 tasks | 13 files |
+| Phase 27 P05 | 22 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -237,6 +238,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 27]: 27-03: Open Question 1 decided as recommended: the Enum lookup-miss text is proven at Column level; at writer level the operator sees the IllegalArgumentException class and the column, because WithheldMessageException withholds the message
 - [Phase 27]: 27-04: ClickHouseWriter derives write-failure metadata through sourceTypeName(Data) and valueClassName(Data), and the ClassCastException format is WRITE_TYPE_MISMATCH_FAILURE_FORMAT on the shared prefix; no text changed, the two builders stay separate — The exact pin was committed green first; a fork-anchors row (83) stops an upstream sync from silently restoring the inline format
 - [Phase 27]: 27-04: the planning-ID guard is a Docker-free unit test (SourcePlanningIdGuardUnitTest) over src/main/java, not a verify-merge-invariants.sh addition — That script and its self-test are read-only in this milestone, the rule has nothing to do with merge provenance, and a unit test fails testUnit on every run
+- [Phase 27]: Plan 27-05: Spotless expectation recorded as measured (ClickHouseWriter.java 10/11, ClickHouseSinkTaskWithSchemaTest.java 28/29) because the imports this phase adds are used; the plan's 9/12 and 27/29 hold only for unused imports — Spotless keeps and moves a used import block as one hunk, so the figures grow by one line against the unused-import measurement; no new violation appears and the 46 pre-existing ones are the same set (E-13).
 
 ### Pending Todos
 
@@ -282,8 +284,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T00:46:41.667Z
-Stopped at: Completed 27-04-PLAN.md
+Last session: 2026-10-23T01:11:07.513Z
+Stopped at: Completed 27-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

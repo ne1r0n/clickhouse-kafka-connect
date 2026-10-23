@@ -70,17 +70,17 @@
 
 ### Writer failure path and enum advisories
 
-- [ ] **WRT-16**: `WriterFailureClassificationUnitTest` gains rows for a `JsonProcessingException` alone, over a `SocketTimeoutException`, over a timeout-text `IOException`, and a plain `IOException`, green on the unchanged writer first; the existing 184 cases are byte-identical.
-- [ ] **WRT-17**: `JacksonException` is excluded per link of the cause chain from the `IOException` pass-through in `ClickHouseWriter`, so on the opt-in JSON-as-string route a sentinel Map key reaches none of the task status, the DLQ stack-trace header and the `Error inserting records` throwable, while a timeout beneath a Jackson exception stays retriable; `JsonAsStringKeyResidualLiveTest` is flipped deliberately; the exception sentence in FORK-DELTA Known costs item 6 is removed (closes 22-REVIEW WR-01).
-- [ ] **WRT-18**: An unknown Enum label is reported with the column name and a lookup-miss cause instead of `NullPointerException` (22-REVIEW IN-01), and the `No content in enum` text names the column (IN-02); both stay value-free and the `Failed to write column ` prefix is byte-identical.
-- [ ] **WRT-19**: The metadata-derivation duplication in `ClickHouseWriter` is removed (22-REVIEW IN-03), planning-only identifiers leave `src/main` comments (IN-05, src half), and `JsonAsStringKeyResidualLiveTest`'s Javadoc and display names carry no planning IDs (24-REVIEW IN-03).
+- [x] **WRT-16**: `WriterFailureClassificationUnitTest` gains rows for a `JsonProcessingException` alone, over a `SocketTimeoutException`, over a timeout-text `IOException`, and a plain `IOException`, green on the unchanged writer first; the existing 184 cases are byte-identical.
+- [x] **WRT-17**: `JacksonException` is excluded per link of the cause chain from the `IOException` pass-through in `ClickHouseWriter`, so on the opt-in JSON-as-string route a sentinel Map key reaches none of the task status, the DLQ stack-trace header and the `Error inserting records` throwable, while a timeout beneath a Jackson exception stays retriable; `JsonAsStringKeyResidualLiveTest` is flipped deliberately; the exception sentence in FORK-DELTA Known costs item 6 is removed (closes 22-REVIEW WR-01).
+- [x] **WRT-18**: An unknown Enum label is reported with the column name and a lookup-miss cause instead of `NullPointerException` (22-REVIEW IN-01), and the `No content in enum` text names the column (IN-02); both stay value-free and the `Failed to write column ` prefix is byte-identical.
+- [x] **WRT-19**: The metadata-derivation duplication in `ClickHouseWriter` is removed (22-REVIEW IN-03), planning-only identifiers leave `src/main` comments (IN-05, src half), and `JsonAsStringKeyResidualLiveTest`'s Javadoc and display names carry no planning IDs (24-REVIEW IN-03).
 
 ### Test and build hygiene
 
 - [x] **DEBT-13**: `TestsWorkflowPinGuardUnitTest.ktsCode` strips comments string- and line-comment-aware, with fixtures for `/*` inside a string and inside a `//` comment (21-REVIEW WR-02); this lands before the first `build.gradle.kts` edit of the milestone.
 - [x] **DEBT-14**: The pin guard's `runs-on` rule ignores a trailing comment (21-REVIEW WR-01), the fork-count rules reject commented-out or guarded text (WR-03), the `dependabot.yml` reader tolerates valid YAML layouts (IN-01), and the fixture list is derived from the production constant (IN-02); each change is seen red on a fixture.
 - [x] **DEBT-15**: The `slf4j-reload4j` literal in `build.gradle.kts` moves into the version catalog with its anchor row moved (21-REVIEW IN-04).
-- [ ] **DEBT-16**: `schemaWithFixedStringMismatchTest` fails when `put` does not throw (22-REVIEW IN-04); `CountingHelperClient.useClientV2Calls` is asserted or removed (IN-05, test half); `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare NPE (23-REVIEW IN-03); no existing assertion is deleted or weakened.
+- [x] **DEBT-16**: `schemaWithFixedStringMismatchTest` fails when `put` does not throw (22-REVIEW IN-04); `CountingHelperClient.useClientV2Calls` is asserted or removed (IN-05, test half); `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare NPE (23-REVIEW IN-03); no existing assertion is deleted or weakened.
 - [ ] **DEBT-17**: `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class this milestone adds, edited once in the last code phase, with the FORK-DELTA row in the same commit.
 
 ### Operator items
@@ -152,14 +152,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAME-05 | Phase 28 | Pending |
 | NAME-06 | Phase 28 | Pending |
 | NAME-07 | Phase 28 | Pending |
-| WRT-16 | Phase 27 | Pending |
-| WRT-17 | Phase 27 | Pending |
-| WRT-18 | Phase 27 | Pending |
-| WRT-19 | Phase 27 | Pending |
+| WRT-16 | Phase 27 | Complete |
+| WRT-17 | Phase 27 | Complete |
+| WRT-18 | Phase 27 | Complete |
+| WRT-19 | Phase 27 | Complete |
 | DEBT-13 | Phase 25 | Complete |
 | DEBT-14 | Phase 25 | Complete |
 | DEBT-15 | Phase 25 | Complete |
-| DEBT-16 | Phase 27 | Pending |
+| DEBT-16 | Phase 27 | Complete |
 | DEBT-17 | Phase 28 | Pending |
 | OPS-04 | Phase 25 | Complete |
 | OPS-05 | Phase 29 | Pending |
