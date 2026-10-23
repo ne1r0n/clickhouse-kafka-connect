@@ -807,20 +807,26 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
         NullableRoundTrip.createTable(chc, tableName, twin.ddl(CELL_COLUMN + " " + NULLABLE_BACKSLASH_N_NAME_DDL));
         props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
         try {
+            ClickHouseFieldDescriptor cellRow = null;
             for (ClickHouseFieldDescriptor row : NullableRoundTrip.describeRows(chc, tableName)) {
                 if (CELL_COLUMN.equals(row.getName())) {
-                    assertEquals(NULLABLE_BACKSLASH_N_NAME_RAW, row.getType(), PREMISE_MESSAGE);
+                    cellRow = row;
                 }
             }
+            assertNotNull(cellRow, PREMISE_MESSAGE + ": DESCRIBE returned no row named " + CELL_COLUMN);
+            assertEquals(NULLABLE_BACKSLASH_N_NAME_RAW, cellRow.getType(), PREMISE_MESSAGE);
             try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
                 Table table = chc.describeTable(chc.getDatabase(), tableName);
 
                 assertEquals(List.of(), log.events("WARN"), "the declared-nullability pass must not fall back");
                 Map<String, Column> columns = table.getAllColumnsMap();
-                assertTrue(columns.get(CELL_COLUMN).isNullable());
-                assertFalse(columns
-                        .get(CELL_COLUMN + PATH_SEPARATOR + BACKSLASH_N_ELEMENT)
-                        .isNullable());
+                Column cell = columns.get(CELL_COLUMN);
+                assertNotNull(cell, CELL_COLUMN);
+                assertTrue(cell.isNullable());
+                String elementKey = CELL_COLUMN + PATH_SEPARATOR + BACKSLASH_N_ELEMENT;
+                Column element = columns.get(elementKey);
+                assertNotNull(element, elementKey);
+                assertFalse(element.isNullable());
             }
 
             Schema cellSchema = SchemaBuilder.struct()
@@ -893,7 +899,10 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                 Table table = chc.describeTable(chc.getDatabase(), tableName);
 
                 assertEquals(List.of(), log.events("WARN"), "the declared-nullability pass must not fall back");
-                assertTrue(table.getAllColumnsMap().get("n.p\\\\nq.t").isNullable());
+                String nestedKey = "n.p\\\\nq.t";
+                Column nested = table.getAllColumnsMap().get(nestedKey);
+                assertNotNull(nested, nestedKey);
+                assertTrue(nested.isNullable());
             }
         } finally {
             ClickHouseTestHelpers.dropTable(chc, tableName);
