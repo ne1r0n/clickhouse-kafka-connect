@@ -15,8 +15,8 @@
 | E-03 | WRT-17 red run on the unchanged writer, A1 gate, residual probe and predicate seen-red | pass |
 | E-04 | WRT-17 predicate sign-off and flip decision | pass |
 | E-05 | WRT-17 fix, full suite, commit, gate | pass |
-| E-06 | WRT-18 red run | pending |
-| E-07 | WRT-18 fix, full suite, commit, gate | pending |
+| E-06 | WRT-18 red run | pass |
+| E-07 | WRT-18 fix, full suite, commit, gate | pass |
 | E-08 | WRT-19 exact ClassCastException pin and refactor | pending |
 | E-09 | WRT-19 guard red on the unscrubbed tree and scrub commits | pending |
 | E-10 | WRT-19 guard commit and mutation proof | pending |
@@ -207,4 +207,77 @@ src_main_since_phase_base: only the fix(27-02) commit touches src/main
 Deviation, Spotless expectation: the plan expects `9<TAB>12` for ClickHouseWriter.java. That figure reproduces only when the two new imports are unused: Spotless `removeUnusedImports` then deletes both (0 additions, 2 deletions). Re-measured on the phase-base file with the two imports added and no usage: `9<TAB>12`. With the fix in place both imports are used (`JacksonException` in the loop condition, `ConnectException` in the condition and the Javadoc link), Spotless keeps them, and the `org.*` import block moves as one hunk: `10<TAB>11`. The imports sit exactly where the plan places them, no other file moved, and the 46 pre-existing violations are the same set.
 
 2026-10-23T00:15:50Z
+Verdict: pass
+
+### E-06: WRT-18 red run on the unchanged Column
+
+Commands as run (src/main unchanged from HEAD, nothing committed):
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ColumnTest' --tests '*WriterValueFreeFailureUnitTest' --rerun > /tmp/gsd27/exec/red-27-03.log 2>&1   # rc=1
+cp build/test-results/testUnit/TEST-...ColumnTest.xml /tmp/gsd27/exec/red-27-03-column.xml
+cp build/test-results/testUnit/TEST-...WriterValueFreeFailureUnitTest.xml /tmp/gsd27/exec/red-27-03-writer.xml
+```
+
+```text
+plan_head_before: daffc6fbd6fa474341e6175984e35f77ed9bce62
+column_red: (37 tests, 4 failed, the 33 existing rows green)
+  unknownEnum8LabelIsALookupMissNamingTheColumn()
+    -> AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  unknownEnum16LabelIsALookupMissNamingTheColumn()
+    -> AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  nullEnumLabelIsALookupMiss()
+    -> AssertionFailedError: Expected java.lang.IllegalArgumentException to be thrown, but nothing was thrown.
+  enumWithoutValuesNamesTheColumn()
+    -> AssertionFailedError: expected: <No content in enum column c_enum> but was: <No content in enum>
+writer_red: (29 tests, 3 failed, the 26 other rows green)
+  WRT-18 value-free: an unknown Enum8 label throws a DataException naming the column and IllegalArgumentException, with no label in any text
+    -> AssertionFailedError: expected message ends ...ClickHouse type Enum8: java.lang.IllegalArgumentException but was ...: java.lang.NullPointerException
+  WRT-18 value-free: an unknown Enum16 label throws a DataException naming the column and IllegalArgumentException, with no label in any text
+    -> AssertionFailedError: expected message ends ...ClickHouse type Enum16: java.lang.IllegalArgumentException but was ...: java.lang.NullPointerException
+  D-14: an Enum8 column without enum values throws the fixed text with no label in any text
+    -> AssertionFailedError: expected: <No content in enum column c_enum> but was: <No content in enum>
+removed_lines_vs_phase_head: WriterValueFreeFailureUnitTest removes exactly one line, the old NO_ENUM_CONTENT_MESSAGE value
+src_main_vs_HEAD: identical
+```
+
+2026-10-23T00:19:10Z
+Verdict: pass
+
+### E-07: WRT-18 fix, full suite on the staged tree, commit, gate
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd27/exec/green-27-03.log 2>&1   # 1172 tests, 0 failed
+git add <6 explicit paths>; git write-tree > /tmp/gsd27/exec/fix-tree-27-03.txt; date -u > /tmp/gsd27/exec/suite-27-03-start.txt; git diff --quiet -- src docs CHANGELOG.md .planning/scripts
+rm -rf build/test-results/test; env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd27/exec/suite-27-03.log 2>&1   # rc=0
+git commit (staged index, hooks on)
+/tmp/gsd27/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd27/exec/spotless-27-03.txt
+PRE_TAG=pre-v1.7.0-tail ... .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd27/exec/gate-27-03.log
+```
+
+```text
+fix_commit: c1e83945d6ef337007b848739cb32de1a6ddd514  fix(27-03): report an unknown Enum label as a lookup miss naming the column (WRT-18, 22-REVIEW IN-01, IN-02)
+fix_files: .planning/scripts/fork-anchors.txt CHANGELOG.md docs/FORK-DELTA.md Column.java ColumnTest.java WriterValueFreeFailureUnitTest.java
+tree_equality: staged-tree 1516b9a8ccec0ba9000acf099101e203909f8c4a == HEAD^{tree} of the fix commit
+testunit: Tests summary: 1172 tests, 1170 succeeded, 0 failed, 2 skipped
+suite: 1661 tests, 0 failures, 0 errors, 18 skipped, 96 XML files, start 2026-10-23T00:20:17Z, no stale XML, BUILD SUCCESSFUL in 2m 39s, one server version 26.9.19.9, client V2
+suite_skips: the 18 as a set: 11 ClickHouseSinkTaskWithSchemaTest bracketed cases + clientNameTest, schemaWithNestedTupleMapArrayAndVariant, schemaWithTupleOfMapsWithVariantTest, testDeepNestedStructPerformance, testWideStructPerformance, compareInsertPerformance, compareAllConfigurations
+class_counts: WriterFailureClassificationUnitTest=216 WriterValueFreeFailureUnitTest=29 JsonAsStringKeyResidualLiveTest=4 NullableTupleMatrixLiveTest=33 ColumnTest=37 ClickHouseWriterColumnContextTest=8
+spotless: 46 lines as at the phase base; Column.java (13/14) and ColumnTest.java (5/7) byte-equal to the base; the only difference is ClickHouseWriter.java at 10<TAB>11 (base 9<TAB>10), the figure plan 27-02 already left (E-05), not the plan's 9<TAB>12
+gate: invariants: provenance_paths=3 anchor_commits=83 anchor_rows=82 marker_commits=95 anchor_exempt=0 result=PASS
+wt_anchors: rows 82 bad []
+src_main_since_phase_base: only fix(27-02) and fix(27-03) touch src/main
+open_question_1: decided as recommended. The lookup-miss text is proven at Column level (exact text, label absent); at writer level the operator sees the IllegalArgumentException class and the column already named by the DataException prefix, because WithheldMessageException withholds the IllegalArgumentException's message. Making the text operator-visible would need a pass-through type thrown from Column, a different decision from D-06. Flagged to the user (ledger L-54).
+context_deviations:
+- D-06: CONTEXT says the UNKNOWN_ENUM_LABEL expectations in WriterValueFreeFailureUnitTest and WriterFailureClassificationUnitTest change from the NullPointerException class to IllegalArgumentException. In the code WriterValueFreeFailureUnitTest has no unknown-label row, and WriterFailureClassificationUnitTest.UNKNOWN_ENUM_LABEL asserts only RetryClass.NON_RETRIABLE (research F-3). No existing expectation changes class; the class pins are the new rows of this plan, and UNKNOWN_ENUM_LABEL stays byte-identical.
+- D-01: CONTEXT gives the project's Jackson as 2.21. gradle/libs.versions.toml pins jackson = "2.22.4" (research F-8). D-01's rationale (Jackson 2.12+) still holds; E-02 already records the version.
+```
+
+Deviation, Spotless expectation: same as E-05. The plan expects `9<TAB>12` for ClickHouseWriter.java; the measured `10<TAB>11` comes from plan 27-02's used imports, not from this plan (which touches neither ClickHouseWriter.java nor any import).
+
+Deviation, process: an unscoped `./gradlew spotlessApply` run mid-task reformatted the 46 pre-existing violating files (Column.java, ColumnTest.java and WriterValueFreeFailureUnitTest.java included). Every file outside this plan's three Java files was restored with `git checkout -- <path>`, and the three were restored and the plan's edits re-applied by hand, before anything was staged. The staged diff is the plan's own (Column.java 10/3, WriterValueFreeFailureUnitTest.java 21/1, ColumnTest.java 40/0), and the Spotless numstat above confirms no file moved relative to the base other than ClickHouseWriter.java.
+
+2026-10-23T00:25:29Z
 Verdict: pass
