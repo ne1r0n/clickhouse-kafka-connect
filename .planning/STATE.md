@@ -4,17 +4,17 @@ milestone: v1.7.0_gg4-hardening
 milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 29
 current_phase_name: Release & Publication
-status: executing
+status: verifying
 stopped_at: Completed 29-05-PLAN.md
-last_updated: "2026-10-23T20:18:12.116Z"
+last_updated: "2026-10-23T21:01:44.489Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 29 execution started
-state_head: f226b4ae75d8165f1aefa1c9dd22525a2feef975
+state_head: 895b9f9d9a0d7ca489fcd1b6f0b6781c0f9c0ff7
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 32
-  completed_plans: 31
+  completed_plans: 32
   percent: 80
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 
 Phase: 29 (Release & Publication) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-23 — Phase 29 execution started
 
 Progress: [████████░░] 80%

@@ -95,7 +95,7 @@
 - [x] **ROLL-04**: `docs/ROLLOUT-v1.7.0_gg4.md` covers, with every quantifier matched to a measurement and every command run live: 999.4 (suspects query before, WARN grep after, no clean stop on upgrade, clean stop before rollback, the unrepaired data tail); 999.5 (canonical form, per-character old/new name table, rename instruction, unchanged detection query, root-silent versus element-loud, clean stop in both directions); the removed Map-key exception; `connect-api` 4.4.0 (not bundled, worker version governs); Shadow 9 and Gradle 9.8.1 (no operator action, archive compare as evidence); the guava and httpclient5 advisories labelled by source; the MBean `version=` segment.
 - [x] **ROLL-05**: `docs/ROLLOUT-v1.7.0_gg1.md` and `docs/ROLLOUT-v1.7.0_gg2.md` carry the corrected `enableDbTopicSplit=true` key rule and state-table query from the gg3 note.
 - [x] **PUB-12**: An orchestrator-spawned, fresh-context `gsd-code-reviewer` reviews every operator document before the publication gate, repeated until a round finds nothing (at most three rounds), with dispositions recorded and no reused finding IDs.
-- [ ] **PUB-13**: Two full `--rerun` suite runs are green on `latest` × V2 on the release tip; the anchors gate passes on the tip; the rehearsed merge tree equals the published merge tree; the `--no-ff` merge into `custom_build` lands after human approval; the published SHA has exactly one `tests.yaml` run and it is green; tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` are pushed after that run; the scratch branch is deleted from `origin`.
+- [x] **PUB-13**: Two full `--rerun` suite runs are green on `latest` × V2 on the release tip; the anchors gate passes on the tip; the rehearsed merge tree equals the published merge tree; the `--no-ff` merge into `custom_build` lands after human approval; the published SHA has exactly one `tests.yaml` run and it is green; tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` are pushed after that run; the scratch branch is deleted from `origin`.
 
 ## v2 Requirements
 
@@ -168,7 +168,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ROLL-04 | Phase 29 | Complete |
 | ROLL-05 | Phase 29 | Complete |
 | PUB-12 | Phase 29 | Complete |
-| PUB-13 | Phase 29 | Pending |
+| PUB-13 | Phase 29 | Complete |
 
 **Coverage:**
 - v1 requirements: 36 total
