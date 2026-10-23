@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 29
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 29-03-PLAN.md
-last_updated: "2026-10-23T18:20:59.431Z"
+stopped_at: Completed 29-04-PLAN.md
+last_updated: "2026-10-23T18:36:03.297Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 29 execution started
-state_head: 864e6b25d25e1019073079653db46720d746f28b
+state_head: 8fc5c87ac94bb933c5600ab853ed402ca6c79b80
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 32
-  completed_plans: 27
+  completed_plans: 28
   percent: 80
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 29 (Release & Publication) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 29 execution started
 
@@ -195,6 +195,7 @@ Progress: [████████░░] 80%
 | Phase 29 P01 | 27 min | 4 tasks | 4 files |
 | Phase 29 P02 | 10 min | 3 tasks | 1 files |
 | Phase 29 P03 | 11min | 3 tasks | 4 files |
+| Phase 29 P04 | 10min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -265,6 +266,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 29]: Rollout note says an affected shape fails on gg3 with server code 32 or 33, never a per-shape code: this server printed 33 for five shapes and 32 for n03
 - [Phase 29]: The gg4 note must carry the gg3 name query together with a companion query: the gg3 query misses the root carriage-return table and both double-quote tables, and the union over-flags only a Tuple element name holding a backtick (E-22). — Measured on 26.9.19.9 with client V2: the gg3 query lists 13 of the 16 differing tables plus n5_bt_tuple; the companion lists the other three; both are empty on the look-alike database.
 - [Phase 29]: The gg1 and gg2 notes may say the state-table query and both DELETE examples were run on a scratch KeeperMap state table, but the enableDbTopicSplit key rule stays labelled read from the connector code (E-25). — The probe wrote the prefixed key db1.orders-2 as a state record itself; the query and both DELETE examples succeeded and kept other keys, including a topic that shares a prefix.
+- [Phase 29]: Item 7 of the gg4 note names ' M gradlew.bat' as the one expected line of git status --porcelain in a fresh checkout of the published tip (committed CRLF blob against .gitattributes text eol=crlf), measured in the E-30 dry run
+- [Phase 29]: NOTE-FINAL-OK address scan must mask the server version 26.9.19.9 (four dotted numbers match the IP pattern); plans 29-06 and 29-07 re-running the scan need the same mask
 
 ### Pending Todos
 
@@ -310,8 +313,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T18:20:58.912Z
-Stopped at: Completed 29-03-PLAN.md
+Last session: 2026-10-23T18:36:02.751Z
+Stopped at: Completed 29-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
