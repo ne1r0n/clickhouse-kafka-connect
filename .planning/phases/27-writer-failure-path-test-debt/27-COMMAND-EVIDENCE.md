@@ -206,5 +206,5 @@ src_main_since_phase_base: only the fix(27-02) commit touches src/main
 
 Deviation, Spotless expectation: the plan expects `9<TAB>12` for ClickHouseWriter.java. That figure reproduces only when the two new imports are unused: Spotless `removeUnusedImports` then deletes both (0 additions, 2 deletions). Re-measured on the phase-base file with the two imports added and no usage: `9<TAB>12`. With the fix in place both imports are used (`JacksonException` in the loop condition, `ConnectException` in the condition and the Javadoc link), Spotless keeps them, and the `org.*` import block moves as one hunk: `10<TAB>11`. The imports sit exactly where the plan places them, no other file moved, and the 46 pre-existing violations are the same set.
 
-2026-10-23T00:24:00Z
+2026-10-23T00:15:50Z
 Verdict: pass
