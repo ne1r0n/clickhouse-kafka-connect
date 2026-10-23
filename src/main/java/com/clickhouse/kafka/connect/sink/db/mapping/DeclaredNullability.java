@@ -55,6 +55,15 @@ public final class DeclaredNullability {
     private static final char BACKTICK = '`';
     private static final char SINGLE_QUOTE = '\'';
     private static final char NO_QUOTE = 0;
+    private static final char LINE_FEED = '\n';
+    private static final char TAB = '\t';
+    private static final char CARRIAGE_RETURN = '\r';
+    private static final String SIMPLE_JSON_ESCAPES = "\\\"/bfnrt";
+    private static final String SIMPLE_JSON_ESCAPE_CHARS = "\\\"/\b\f\n\r\t";
+    private static final int UNICODE_DIGITS = 4;
+    private static final int HEX_RADIX = 16;
+    private static final char MAX_ASCII = 0x7f;
+    private static final String UNNAMED_COLUMN = "<unnamed>";
     private static final String NAME_SEPARATOR = ".";
     private static final String STRUCTURE_MISMATCH = "structure mismatch";
 
@@ -64,56 +73,115 @@ public final class DeclaredNullability {
     private record Assignment(Column column, boolean nullable) {}
 
     /**
-     * The multi-line form of a non-nullable Tuple type does not parse until the server's line break
-     * is a space. Public so tests normalise exactly as production does.
+     * Turns the type text that {@code fromJsonRow} returns into one that {@link ClickHouseColumn#of}
+     * parses, with the element names as the identifiers written in {@code CREATE TABLE}.
      *
-     * <p>{@code fromJsonRow} keeps JSON escapes as text, and the JSON layer doubles every backslash
-     * inside a quoted name or label. So the line break is the only backslash-n outside quotes, and a
-     * backslash-n inside a backtick-quoted name or a single-quoted label is part of that name and is
-     * kept. Inside quotes a backslash run is copied with the next character, which closes the quote
-     * only when half the run length is even. A type with no backslash inside quotes normalises
-     * exactly as the plain replace of the line break did. One linear pass; an unterminated quote
-     * leaves the rest of the type unchanged.
+     * <p>The text carries two escape layers: the server's JSON escaping of the whole value, and the
+     * SQL escaping of each quoted name or label inside it. The first is decoded here, by {@link
+     * #unescapeJsonLayer}. Then, outside quotes, the line break of the multi-line form of a
+     * non-nullable Tuple type becomes a space. Inside a backtick or single quote, a backslash-n,
+     * backslash-t or backslash-r (the SQL escapes of a line feed, a tab and a carriage return) become
+     * those characters, because the column parser does not read them; every other backslash pair
+     * stays for {@code ClickHouseColumn.of}, and a pair is consumed together so an escaped quote never
+     * closes the quote.
+     *
+     * <p>Total: one linear pass over each layer, no exception path. A backslash with nothing after
+     * it, an escape the JSON layer does not know and an unterminated quote are copied unchanged. Public
+     * so tests normalise exactly as production does.
      */
     public static String normalise(String declaredType) {
-        int length = declaredType.length();
+        String decoded = unescapeJsonLayer(declaredType);
+        int length = decoded.length();
         StringBuilder normalised = new StringBuilder(length);
         char quote = NO_QUOTE;
         int i = 0;
         while (i < length) {
-            char c = declaredType.charAt(i);
-            if (c == BACKSLASH) {
-                int end = i;
-                while (end < length && declaredType.charAt(end) == BACKSLASH) {
-                    end++;
-                }
-                int run = end - i;
-                if (quote == NO_QUOTE && run == 1 && declaredType.startsWith(ESCAPED_NEWLINE, i)) {
+            char c = decoded.charAt(i);
+            if (quote == NO_QUOTE) {
+                if (c == LINE_FEED) {
                     normalised.append(SPACE);
-                    i += ESCAPED_NEWLINE.length();
-                    continue;
-                }
-                normalised.append(declaredType, i, end);
-                i = end;
-                if (quote != NO_QUOTE && i < length) {
-                    char escaped = declaredType.charAt(i);
-                    normalised.append(escaped);
-                    i++;
-                    if (escaped == quote && (run / 2) % 2 == 0) {
-                        quote = NO_QUOTE;
+                } else {
+                    if (c == BACKTICK || c == SINGLE_QUOTE) {
+                        quote = c;
                     }
+                    normalised.append(c);
                 }
-                continue;
+                i++;
+            } else if (c == BACKSLASH && i + 1 < length) {
+                normalised.append(quotedEscape(decoded.charAt(i + 1), c));
+                i += 2;
+            } else {
+                if (c == quote) {
+                    quote = NO_QUOTE;
+                }
+                normalised.append(c);
+                i++;
             }
-            if (quote == NO_QUOTE && (c == BACKTICK || c == SINGLE_QUOTE)) {
-                quote = c;
-            } else if (c == quote) {
-                quote = NO_QUOTE;
-            }
-            normalised.append(c);
-            i++;
         }
         return normalised.toString();
+    }
+
+    /** The text of a SQL escape inside a quote: the character for n, t and r, the pair otherwise. */
+    private static String quotedEscape(char escaped, char backslash) {
+        switch (escaped) {
+            case 'n':
+                return String.valueOf(LINE_FEED);
+            case 't':
+                return String.valueOf(TAB);
+            case 'r':
+                return String.valueOf(CARRIAGE_RETURN);
+            default:
+                return String.valueOf(backslash) + escaped;
+        }
+    }
+
+    /**
+     * Decodes the JSON escapes of {@code text}: the escaped backslash, double quote and slash, the
+     * escapes b, f, n, r and t, and the u escape with four hex digits. Any other or truncated escape is
+     * copied as it is. Total and linear. Package-private so that the other parsers of a declared type
+     * decode the same layer the same way.
+     */
+    static String unescapeJsonLayer(String text) {
+        if (text.indexOf(BACKSLASH) < 0) {
+            return text;
+        }
+        int length = text.length();
+        StringBuilder decoded = new StringBuilder(length);
+        int i = 0;
+        while (i < length) {
+            char c = text.charAt(i);
+            if (c != BACKSLASH || i + 1 >= length) {
+                decoded.append(c);
+                i++;
+                continue;
+            }
+            char escaped = text.charAt(i + 1);
+            int simple = SIMPLE_JSON_ESCAPES.indexOf(escaped);
+            if (simple >= 0) {
+                decoded.append(SIMPLE_JSON_ESCAPE_CHARS.charAt(simple));
+                i += 2;
+            } else if (escaped == 'u' && isUnicodeEscape(text, i + 2)) {
+                decoded.append((char) Integer.parseInt(text.substring(i + 2, i + 2 + UNICODE_DIGITS), HEX_RADIX));
+                i += 2 + UNICODE_DIGITS;
+            } else {
+                decoded.append(c).append(escaped);
+                i += 2;
+            }
+        }
+        return decoded.toString();
+    }
+
+    private static boolean isUnicodeEscape(String text, int digitsStart) {
+        if (digitsStart + UNICODE_DIGITS > text.length()) {
+            return false;
+        }
+        for (int i = digitsStart; i < digitsStart + UNICODE_DIGITS; i++) {
+            char digit = text.charAt(i);
+            if (digit > MAX_ASCII || Character.digit(digit, HEX_RADIX) < 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** True when {@code column} is, or holds as an Array element or Map value, a Tuple. */
@@ -134,8 +202,9 @@ public final class DeclaredNullability {
     }
 
     /**
-     * Overwrites {@code isNullable} on the Tuple nodes and leaves of {@code root} from {@code
-     * declaredType}, all or none.
+     * Overwrites {@code isNullable} on the Tuple nodes and leaves that pair with {@code declaredType}; a
+     * structure mismatch applies nothing, while declared Tuple elements missing from the Column tree
+     * are logged and skipped.
      *
      * @return true when the nullability was applied; false when it was left as DESCRIBE reported it
      *     (no root or no declared type, a type that does not parse, trees that do not pair or hold a
@@ -146,11 +215,11 @@ public final class DeclaredNullability {
             return false;
         }
         String columnName = root.getName();
+        if (columnName == null) {
+            LOGGER.warn(FALLBACK_WARNING, UNNAMED_COLUMN, database, table, declaredType, STRUCTURE_MISMATCH);
+            return false;
+        }
         try {
-            if (columnName == null) {
-                LOGGER.warn(FALLBACK_WARNING, columnName, database, table, declaredType, STRUCTURE_MISMATCH);
-                return false;
-            }
             ClickHouseColumn parsed = ClickHouseColumn.of(columnName, normalise(declaredType));
             List<Assignment> assignments = new ArrayList<>();
             List<String> unpaired = new ArrayList<>();

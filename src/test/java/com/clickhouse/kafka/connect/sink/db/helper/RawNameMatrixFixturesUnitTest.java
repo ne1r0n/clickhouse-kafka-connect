@@ -1,13 +1,24 @@
 package com.clickhouse.kafka.connect.sink.db.helper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.clickhouse.data.ClickHouseColumn;
 import com.clickhouse.kafka.connect.sink.db.helper.RawNameMatrix.Entry;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
+import com.clickhouse.kafka.connect.sink.db.mapping.Table;
+import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -28,6 +39,18 @@ class RawNameMatrixFixturesUnitTest {
 
     private static final Path MATRIX_DIRECTORY =
             Paths.get("src", "test", "resources", RawNameMatrix.RESOURCE_DIRECTORY);
+    private static final String WARN_LEVEL = "WARN";
+    private static final String FIELD_NAME = "name";
+    private static final String FIELD_TYPE = "type";
+    private static final String FIELD_DEFAULT_EXPRESSION = "default_expression";
+    private static final String FIELD_IS_SUBCOLUMN = "is_subcolumn";
+    private static final String DESCRIBED_DATABASE = "matrix_db";
+    private static final String DESCRIBED_TABLE = "matrix_table";
+    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final String COMMENT_SENTINEL = "zzCOMMENTq7";
+    private static final String MALFORMED_ROW_FORMAT = "{\"name\":\"x\",\"type\":\"Int32\",\"default_type\":\"\","
+            + "\"default_expression\":\"\",\"comment\":\"%s\",\"codec_expression\":\"\","
+            + "\"ttl_expression\":\"\",\"is_subcolumn\":?}";
 
     static Stream<Entry> entries() {
         return RawNameMatrix.ENTRIES.stream();
@@ -63,5 +86,82 @@ class RawNameMatrixFixturesUnitTest {
                 committed(entry.key() + RawNameMatrix.NAMES_SUFFIX),
                 committed(entry.key() + RawNameMatrix.ENUM_SUFFIX),
                 committed(RawNameMatrix.CONTROL_KEY + RawNameMatrix.NAMES_SUFFIX));
+    }
+
+    private static void assertRowDecodes(Entry entry, String line) throws IOException {
+        ClickHouseFieldDescriptor descriptor = ClickHouseFieldDescriptor.fromJsonRow(line);
+        String where = "entry " + entry.key() + " row " + line;
+        assertEquals(RawNameMatrix.decodedField(line, FIELD_NAME), descriptor.getName(), where + ": name");
+        assertEquals(
+                RawNameMatrix.innerLiteral(line, FIELD_TYPE),
+                descriptor.getType(),
+                where + ": the type text keeps the server's JSON escapes");
+        assertEquals(
+                RawNameMatrix.decodedField(line, FIELD_TYPE),
+                JSON.readValue("\"" + descriptor.getType() + "\"", String.class),
+                where + ": the JSON decode of the type text is the decoded type");
+        assertEquals(
+                RawNameMatrix.innerLiteral(line, FIELD_DEFAULT_EXPRESSION),
+                descriptor.getDefaultExpression(),
+                where + ": the default expression keeps the server's JSON escapes");
+        JsonNode subcolumn = JSON.readTree(line).get(FIELD_IS_SUBCOLUMN);
+        assertEquals(subcolumn.asInt() == 1, descriptor.isSubcolumn(), where + ": is_subcolumn");
+    }
+
+    @ParameterizedTest(name = "NAME-03: fromJsonRow yields the raw name and keeps the type text for entry {0}")
+    @MethodSource("entries")
+    void fromJsonRowYieldsTheRawNameAndKeepsTheTypeText(Entry entry) throws IOException {
+        for (String line : committed(entry.key() + RawNameMatrix.NAMES_SUFFIX)) {
+            assertRowDecodes(entry, line);
+        }
+        for (String line : committed(entry.key() + RawNameMatrix.ENUM_SUFFIX)) {
+            assertRowDecodes(entry, line);
+        }
+    }
+
+    @ParameterizedTest(name = "NAME-04: discovery pairs under the raw name without a WARN for entry {0}")
+    @MethodSource("entries")
+    void discoveryPairsUnderTheRawName(Entry entry) throws IOException {
+        List<String> lines = committed(entry.key() + RawNameMatrix.NAMES_SUFFIX);
+        Table table;
+        List<LogCapture.CapturedEvent> warnings = new ArrayList<>();
+        try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+            DescribeTableBuilder builder = new DescribeTableBuilder(DESCRIBED_DATABASE, DESCRIBED_TABLE);
+            for (String line : lines) {
+                assertTrue(builder.addRow(line), "entry " + entry.key() + " row " + line + ": the row is kept");
+            }
+            table = builder.build();
+            warnings.addAll(helperLog.events(WARN_LEVEL));
+            warnings.addAll(nullabilityLog.events(WARN_LEVEL));
+        }
+        RawNameMatrix.assertDiscoveredUnderRawNames(entry, table, warnings);
+
+        String tupleType = lines.stream()
+                .filter(line -> RawNameMatrix.TUPLE_COLUMN.equals(RawNameMatrix.decodedField(line, FIELD_NAME)))
+                .map(line -> RawNameMatrix.innerLiteral(line, FIELD_TYPE))
+                .findFirst()
+                .orElseThrow();
+        ClickHouseColumn declared =
+                ClickHouseColumn.of(RawNameMatrix.TUPLE_COLUMN, DeclaredNullability.normalise(tupleType));
+        assertEquals(
+                RawNameMatrix.elementName(entry),
+                DeclaredNullability.elementKey(declared.getNestedColumns().get(0), 0),
+                "entry " + entry.key() + ": the declared element key is the raw element name");
+    }
+
+    @Test
+    @DisplayName("NAME-03: a malformed row fails without echoing its comment")
+    void aMalformedRowFailsWithoutEchoingItsComment() {
+        String line = String.format(MALFORMED_ROW_FORMAT, COMMENT_SENTINEL);
+
+        JsonProcessingException failure =
+                assertThrows(JsonProcessingException.class, () -> ClickHouseFieldDescriptor.fromJsonRow(line));
+
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            assertFalse(
+                    String.valueOf(t.getMessage()).contains(COMMENT_SENTINEL),
+                    "the failure must not carry the row: " + t.getClass().getSimpleName());
+        }
     }
 }

@@ -3,7 +3,7 @@ package com.clickhouse.kafka.connect.sink;
 import static com.clickhouse.kafka.connect.sink.NullableRoundTrip.DEFAULT_VALUE_TEXT;
 import static com.clickhouse.kafka.connect.sink.NullableRoundTrip.FALSE_TEXT;
 import static com.clickhouse.kafka.connect.sink.NullableRoundTrip.TRUE_TEXT;
-import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ELEMENT;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ELEMENT_NAME;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ENUM_LABEL_DDL;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ENUM_LABEL_RAW;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_NAME_DDL;
@@ -823,7 +823,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                 Column cell = columns.get(CELL_COLUMN);
                 assertNotNull(cell, CELL_COLUMN);
                 assertTrue(cell.isNullable());
-                String elementKey = CELL_COLUMN + PATH_SEPARATOR + BACKSLASH_N_ELEMENT;
+                String elementKey = CELL_COLUMN + PATH_SEPARATOR + BACKSLASH_N_ELEMENT_NAME;
                 Column element = columns.get(elementKey);
                 assertNotNull(element, elementKey);
                 assertFalse(element.isNullable());
@@ -831,7 +831,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
 
             Schema cellSchema = SchemaBuilder.struct()
                     .optional()
-                    .field(BACKSLASH_N_ELEMENT, Schema.INT32_SCHEMA)
+                    .field(BACKSLASH_N_ELEMENT_NAME, Schema.INT32_SCHEMA)
                     .field(TUPLE_STRING_ELEMENT, Schema.STRING_SCHEMA)
                     .build();
             Schema schema = SchemaBuilder.struct()
@@ -839,7 +839,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                     .field(CELL_COLUMN, cellSchema)
                     .build();
             int id = 1;
-            Struct cellValue = new Struct(cellSchema).put(BACKSLASH_N_ELEMENT, 7).put(TUPLE_STRING_ELEMENT, "nm");
+            Struct cellValue = new Struct(cellSchema).put(BACKSLASH_N_ELEMENT_NAME, 7).put(TUPLE_STRING_ELEMENT, "nm");
             SinkRecord record = new SinkRecord(
                     tableName, 0, null, null, schema, new Struct(schema).put(ROW_ID_COLUMN, id).put(CELL_COLUMN, cellValue), id);
 
@@ -899,7 +899,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
                 Table table = chc.describeTable(chc.getDatabase(), tableName);
 
                 assertEquals(List.of(), log.events("WARN"), "the declared-nullability pass must not fall back");
-                String nestedKey = "n.p\\\\nq.t";
+                String nestedKey = "n.p\\nq.t";
                 Column nested = table.getAllColumnsMap().get(nestedKey);
                 assertNotNull(nested, nestedKey);
                 assertTrue(nested.isNullable());

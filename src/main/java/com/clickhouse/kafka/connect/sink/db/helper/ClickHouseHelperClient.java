@@ -21,17 +21,16 @@ import com.clickhouse.client.http.config.ClickHouseHttpOption;
 import com.clickhouse.config.ClickHouseOption;
 import com.clickhouse.data.ClickHouseFormat;
 import com.clickhouse.data.ClickHouseRecord;
-import com.clickhouse.data.ClickHouseValue;
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.Version;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
@@ -502,15 +501,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
                      .executeAndWait()) {
 
             DescribeTableBuilder builder = new DescribeTableBuilder(database, tableName);
-            for (ClickHouseRecord r : response.records()) {
-                ClickHouseValue v = r.getValue(0);
-                if (!builder.addRow(v.asString())) {
-                    return null;
-                }
-            }
-
-            return builder.build();
-        } catch (ClickHouseException | JsonProcessingException e) {
+            return readDescribeRows(builder, response.getInputStream());
+        } catch (ClickHouseException | IOException e) {
             LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
             return null;
         }
@@ -530,20 +522,31 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
             DescribeTableBuilder builder = new DescribeTableBuilder(database, tableName);
             try (QueryResponse queryResponse = client.query(describeQuery, settings).get();
-                 InputStream describeStream = queryResponse.getInputStream();
-                 BufferedReader br = new BufferedReader(new InputStreamReader(describeStream, StandardCharsets.UTF_8))) {
-                String line = null;
-                while ((line = br.readLine()) != null) {
-                    if (!builder.addRow(line)) {
-                        return null;
-                    }
-                }
+                 InputStream describeStream = queryResponse.getInputStream()) {
+                return readDescribeRows(builder, describeStream);
             }
-            return builder.build();
         } catch (Exception e) {
             LOGGER.error("describeTableV2 failed", e);
             return null;
         }
+    }
+
+    /**
+     * Feeds the raw JSONEachRow lines of a DESCRIBE response, read as UTF-8, to the builder. Both
+     * clients read the same lines, so the builder decodes names once and the same way for each.
+     *
+     * @return the table, or null as soon as a row describes a column the connector cannot handle
+     */
+    private static Table readDescribeRows(DescribeTableBuilder builder, InputStream describeStream) throws IOException {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(describeStream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (!builder.addRow(line)) {
+                    return null;
+                }
+            }
+        }
+        return builder.build();
     }
 
     public void alterTableAddColumns(String database, String tableName, List<String> columnDefs, Map<String, String> clickhouseSettings) {

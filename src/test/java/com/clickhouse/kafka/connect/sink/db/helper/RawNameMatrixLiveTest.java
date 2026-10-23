@@ -4,7 +4,11 @@ import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
 import com.clickhouse.kafka.connect.sink.ClickHouseBase;
 import com.clickhouse.kafka.connect.sink.db.helper.RawNameMatrix.Entry;
 import com.clickhouse.kafka.connect.sink.db.helper.RawNameMatrix.Results;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
+import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
+import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -35,6 +39,7 @@ class RawNameMatrixLiveTest extends ClickHouseBase {
     private static final String CONTROL_TABLE_SUFFIX = "_c";
     private static final String CELLS_FILE_FORMAT = "cells-%s.txt";
     private static final String VERSION_LINE_FORMAT = "version=%s";
+    private static final String WARN_LEVEL = "WARN";
 
     private ClickHouseHelperClient chcV2;
     private ClickHouseHelperClient chcV1;
@@ -93,6 +98,26 @@ class RawNameMatrixLiveTest extends ClickHouseBase {
             ClickHouseTestHelpers.dropTable(chcV2, namesTable);
             ClickHouseTestHelpers.dropTable(chcV2, enumTable);
             ClickHouseTestHelpers.dropTable(chcV2, controlTable);
+        }
+    }
+
+    @ParameterizedTest(name = "NAME-03 client V1: describeTable returns the raw identifiers of entry {0}")
+    @MethodSource("entries")
+    void clientV1DescribesTheRawIdentifiers(Entry entry) {
+        String namesTable = createTopicName(TABLE_PREFIX + entry.key() + NAMES_TABLE_SUFFIX);
+        try {
+            RawNameMatrix.createTable(chcV2, RawNameMatrix.namesTableDdl(entry), namesTable);
+            Table table;
+            List<LogCapture.CapturedEvent> warnings = new ArrayList<>();
+            try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
+                    LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
+                table = chcV1.describeTable(chcV1.getDatabase(), namesTable);
+                warnings.addAll(helperLog.events(WARN_LEVEL));
+                warnings.addAll(nullabilityLog.events(WARN_LEVEL));
+            }
+            RawNameMatrix.assertDiscoveredUnderRawNames(entry, table, warnings);
+        } finally {
+            ClickHouseTestHelpers.dropTable(chcV2, namesTable);
         }
     }
 
