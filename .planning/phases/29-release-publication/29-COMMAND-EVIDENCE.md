@@ -398,7 +398,7 @@ ops01: disabled_manually, 0 schedule runs after the disable
 origin_custom_build_tip: 69cd680bf548bfb0329142752d37f8a6c3190c26
 left_count: 0
 
-git rev-list --left-right --count origin/custom_build...HEAD   ->  0	211     (left 0, right 211 at HEAD feb6e8a0)
+git rev-list --left-right --count origin/custom_build...HEAD   ->  0	211     (left 0, right 211, measured with HEAD at d56ef46a)
 git merge-base --is-ancestor 69cd680b HEAD                      ->  PRE is an ancestor of HEAD (exit 0)
 
 git ls-remote --heads origin
