@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 29
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 29-04-PLAN.md
-last_updated: "2026-10-23T18:36:03.297Z"
+stopped_at: Completed 29-05-PLAN.md
+last_updated: "2026-10-23T18:47:03.993Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 29 execution started
-state_head: 8fc5c87ac94bb933c5600ab853ed402ca6c79b80
+state_head: 2ecd7ef91f04b4e06ddec4a71b9b7369aabc3ee1
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 32
-  completed_plans: 28
+  completed_plans: 29
   percent: 80
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 29 (Release & Publication) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 29 execution started
 
@@ -196,6 +196,7 @@ Progress: [████████░░] 80%
 | Phase 29 P02 | 10 min | 3 tasks | 1 files |
 | Phase 29 P03 | 11min | 3 tasks | 4 files |
 | Phase 29 P04 | 10min | 3 tasks | 2 files |
+| Phase 29 P05 | 8 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 29]: The gg1 and gg2 notes may say the state-table query and both DELETE examples were run on a scratch KeeperMap state table, but the enableDbTopicSplit key rule stays labelled read from the connector code (E-25). — The probe wrote the prefixed key db1.orders-2 as a state record itself; the query and both DELETE examples succeeded and kept other keys, including a topic that shares a prefix.
 - [Phase 29]: Item 7 of the gg4 note names ' M gradlew.bat' as the one expected line of git status --porcelain in a fresh checkout of the published tip (committed CRLF blob against .gitattributes text eol=crlf), measured in the E-30 dry run
 - [Phase 29]: NOTE-FINAL-OK address scan must mask the server version 26.9.19.9 (four dotted numbers match the IP pattern); plans 29-06 and 29-07 re-running the scan need the same mask
+- [Phase 29]: 29-05: CHANGELOG 1.7.0_gg4 dated 2026-10-23 (A13); FORK-DELTA after-gg4 raw numbers 277/29679/643 and 37/2877/241 measured on the branch, v1.7.0 baseline kept, tail a6f1df83 inside them — Pitfall 9: one canonical wording per fact, checked by consistency.py over the note, CHANGELOG and FORK-DELTA; plan 29-08 reproduces the rows on the tag
+- [Phase 29]: 29-05: 16 review findings of Phases 25-28 carried in 29-MILESTONE-CLOSE-RECORD.md; 28-REVIEW IN-03 fixed at aad30ee6; the 25-28 dispositions read open: 0 — D-05: a release phase makes no src or test edit, so findings are deferred with reason, owner and trigger
 
 ### Pending Todos
 
@@ -313,8 +316,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T18:36:02.751Z
-Stopped at: Completed 29-04-PLAN.md
+Last session: 2026-10-23T18:47:03.290Z
+Stopped at: Completed 29-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

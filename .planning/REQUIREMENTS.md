@@ -91,7 +91,7 @@
 
 ### Release and publication
 
-- [ ] **PUB-11**: `VERSION=v1.7.0_gg4` with its anchor row in the same commit and a `clean` build; `CHANGELOG.md` has a `1.7.0_gg4` section; FORK-DELTA rows and raw numbers are refreshed once, in this phase.
+- [x] **PUB-11**: `VERSION=v1.7.0_gg4` with its anchor row in the same commit and a `clean` build; `CHANGELOG.md` has a `1.7.0_gg4` section; FORK-DELTA rows and raw numbers are refreshed once, in this phase.
 - [x] **ROLL-04**: `docs/ROLLOUT-v1.7.0_gg4.md` covers, with every quantifier matched to a measurement and every command run live: 999.4 (suspects query before, WARN grep after, no clean stop on upgrade, clean stop before rollback, the unrepaired data tail); 999.5 (canonical form, per-character old/new name table, rename instruction, unchanged detection query, root-silent versus element-loud, clean stop in both directions); the removed Map-key exception; `connect-api` 4.4.0 (not bundled, worker version governs); Shadow 9 and Gradle 9.8.1 (no operator action, archive compare as evidence); the guava and httpclient5 advisories labelled by source; the MBean `version=` segment.
 - [x] **ROLL-05**: `docs/ROLLOUT-v1.7.0_gg1.md` and `docs/ROLLOUT-v1.7.0_gg2.md` carry the corrected `enableDbTopicSplit=true` key rule and state-table query from the gg3 note.
 - [ ] **PUB-12**: An orchestrator-spawned, fresh-context `gsd-code-reviewer` reviews every operator document before the publication gate, repeated until a round finds nothing (at most three rounds), with dispositions recorded and no reused finding IDs.
@@ -164,7 +164,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPS-04 | Phase 25 | Complete |
 | OPS-05 | Phase 29 | Pending |
 | OPS-06 | Phase 29 | Complete |
-| PUB-11 | Phase 29 | Pending |
+| PUB-11 | Phase 29 | Complete |
 | ROLL-04 | Phase 29 | Complete |
 | ROLL-05 | Phase 29 | Complete |
 | PUB-12 | Phase 29 | Pending |
