@@ -213,3 +213,33 @@ pre-release.yaml: 28:      - name: Setup and execute Gradle 'createConfluentArch
 So, on the rolled-back tree, a build is green and the archive is wrong: `release.yaml` and `pre-release.yaml` would both build it, and `tests.yaml` would not notice. The only sound artifact step on rollback is to redeploy the archive built at tag `v1.7.0_gg3` (D-03); an archive built from the rolled-back branch tip must not be deployed.
 
 Matches text: pending (29-04, 29-05)
+
+### E-05: phase base on the bump commit (PT-14)
+
+Backs: nothing in a document; this is the reference the 29-07 suite gate compares against (decisions PT-14 and PT-15). Both runs started on the tree of the bump commit `112fbdb5` plus the 29-01 evidence and allow-list commits (HEAD `ebc1740a`; only `.planning/` differs from the bump commit), before the cumulative gate of E-09, so the machine was not shared with the gate. Both commands set the declared matrix on their own command line: ClickHouse `latest`, client V2, the cluster variable unset.
+
+```sh
+rm -rf build/test-results/test build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 ./gradlew --console=plain testUnit --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 ./gradlew --console=plain test --rerun
+cp -R build/test-results/testUnit /tmp/gsd29/exec/testunit-base ; cp -R build/test-results/test /tmp/gsd29/exec/suite-base
+```
+
+```text
+testunit run: BUILD SUCCESSFUL in 13s     (2026-10-23T17:29:58Z to 17:30:11Z)
+suite run:    BUILD SUCCESSFUL in 2m 36s  (suite XML timestamps 2026-10-23T17:30:17Z to 17:32:48Z)
+testunit_base: 1278 tests, 0 failed, 2 skipped
+suite_base: 1865 tests, 103 xml, 0 failed, 18 skipped
+testunit_base_class_counts_sha256: 6f209d0b95b008fbf1fa3daeb75fcaee5a4a743b0b355b7affeef25a2557a254
+suite_base_class_counts_sha256: 3d849967dc1c29e230820a5c94f2a22626b6f9fe758ad868ca8f30fcce0d980f
+server_version: 26.9.19.9
+image: sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z
+suite_env: CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 CLICKHOUSE_CLUSTER_NAME=unset
+suite_jvm_clickhouse_version: latest
+```
+
+The class-count digest is the SHA-256 of the sorted lines `<xml file name> <tests> <skipped>` joined by a line feed, over `TEST-*.xml` of the run's result directory (59 XML files for `testUnit`, 103 for the full suite); the 29-07 gate recomputes it over its own XML and compares. The suite XML logs exactly one `server version=` value (`26.9.19.9`) and six `ClickHouseTestHelpers Version:` lines, all `latest`, so the pinned `CLICKHOUSE_VERSION` reached the test JVM. `CLIENT_VERSION=V2` was set by the command and has no log line in the test JVM: its arrival is inferred from the same `env` invocation, and V2 is also the code default (`extractClientVersion()` returns V2 for anything but `V1`). `integrationTest` is not part of the base (PT-16): the source set is accepted as compile-only, and `compileIntegrationTestJava` runs in the 29-07 gate and in `tests.yaml`. `ConnectApiReferencesUnitTest` passed in this `testUnit` run (3 tests, 0 failures); E-06 cites that as the OPS-06 input.
+
+Totals agree with `28-VERIFICATION` (1865 tests in the full suite); the E-13 totals of Phase 28 (1835) predate the 28 review-fix tests and are not used (PT-14).
+
+Matches text: n/a (gate check)
