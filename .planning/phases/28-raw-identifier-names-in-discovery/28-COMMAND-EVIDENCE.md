@@ -18,8 +18,8 @@
 | E-06 | NAME-03/04 changed pins red on the unchanged production, coupling proof | pass |
 | E-07 | NAME-03/04 fix commit, full suite, old-name loud failure, re-render, gate | pass |
 | E-08 | NAME-05 pins red on the pre-fix production, green, commit, gate | pass |
-| E-09 | NAME-06 red run and green | pending |
-| E-10 | NAME-06/07 fix commit, documents, full suite, manual CLIENT_VERSION=V1 run, gate | pending |
+| E-09 | NAME-06 red run and green | pass |
+| E-10 | NAME-06/07 fix commit, documents, full suite, manual CLIENT_VERSION=V1 run, gate | pass |
 | E-11 | DEBT-17 tracer | pending |
 | E-12 | DEBT-17 commit and generated fork report | pending |
 | E-13 | Phase gate and the assertion diff check | pending |
@@ -503,4 +503,92 @@ gate: invariants: provenance_paths=3 anchor_commits=122 anchor_rows=90 marker_co
 Deviation (Rule 1, plan prediction error, recorded here and in the SUMMARY). The plan's doubled-element design (one container named in the doubled form, the other three raw, no substring) predicted that the pin is red before the fix except in 6 cases. The first measurement on the pre-fix production (kept as `prefix-red-28-04-design1.xml` and `predict-28-04-design1.out`) showed all 32 element cases GREEN: before the fix the doubled form is the one that matches, so the three raw-named containers of the same record fail the put on their own, and the pin passed for a reason that has nothing to do with the container under test. That is a vacuous pin, which T-28-11 forbids. The pin was strengthened, not loosened: `assertPutFails` now also requires the cause chain to hold `column '<container path>.<raw element name>'` (the writer's report of the missing value for the container under test, in the raw form). With that substring all 32 cases pass on HEAD and all 32 fail on the pre-fix production (the pre-fix failure names another column, or the table is unmapped for dq), so `element_green` is empty; `predict-28-04.py` states the rule. The raw and doubled-root sets equal the plan's prediction unchanged.
 
 2026-10-23T10:21:00Z
+Verdict: pass
+
+### E-09: NAME-06 red run on the unchanged Column and green
+
+Commands as run (first half, Task 1):
+
+```bash
+# prediction from $B/cells-post-28-03/cells-*.txt: an entry is predicted red when its enum_label V2 form is not the decoded label
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*RawNameMatrixFixturesUnitTest' --rerun > /tmp/gsd28/exec/red-28-05-unit.log 2>&1   # XML copied to red-28-05-unit.xml
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawIdentifierNameLiveTest' --rerun > /tmp/gsd28/exec/red-28-05-live.log 2>&1   # XML copied to red-28-05-live.xml
+# Column.extractEnumValues replaced by the escape-aware scan over DeclaredNullability.unescapeJsonLayer
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawNameMatrixFixturesUnitTest' --tests '*RawIdentifierNameLiveTest' --rerun > /tmp/gsd28/exec/green-28-05.log 2>&1
+git diff -- src/main > /tmp/gsd28/exec/column-28-05.patch
+```
+
+```text
+prediction (predict-28-05.out): enum_red: ['bs', 'bsn', 'lf', 'tab', 'cr', 'sl', 'dq', 'ap', 'btbsn']
+red on the unchanged Column, enumKeysAreTheRawLabels (RawNameMatrixFixturesUnitTest 50 tests, 41 succeeded, 9 failed):
+  red set: ap bs bsn btbsn cr dq lf sl tab (equals the prediction; ctl, bt, na green; no other case red)
+  bs, bsn, lf, tab, cr, sl, dq, btbsn: AssertionFailedError "the enum keys are the labels as written in CREATE TABLE" (the map held the pre-fix key form)
+  ap: NumberFormatException (the split mis-grouped on the escaped apostrophe: table's enum type unreadable)
+red on the unchanged Column, rawEnumLabelLandsAndReadsBackTyped (RawIdentifierNameLiveTest 64 tests, 55 succeeded, 9 failed):
+  red set: ap bs bsn btbsn cr dq lf sl tab (equals the prediction; no other case red)
+  bs, bsn, lf, tab, cr, sl, dq, btbsn: RuntimeException "Number of records: 1", root cause IllegalArgumentException (the Phase 27 lookup miss, message withheld by the sink)
+  ap: RuntimeException "Connection to ClickHouse is not active." (the table is unmapped, so the put fails before any lookup)
+green on the scan (one run of the test task): Tests summary: 114 tests, 114 succeeded, 0 failed, 0 skipped (RawNameMatrixFixturesUnitTest 50, RawIdentifierNameLiveTest 64)
+src/main: git diff --name-only HEAD -- src/main lists only Column.java; Utils.splitIgnoringQuotes( 1 -> 0, DeclaredNullability.unescapeJsonLayer( 0 -> 1, MALFORMED_ENUM_TYPE_MESSAGE 2, Dynamic 1, ENUM_LABEL_NOT_FOUND_FORMAT 2, NO_ENUM_CONTENT_FORMAT 2
+```
+
+Second half (Task 2), commands as run:
+
+```bash
+git checkout HEAD -- src/main        # the scan is saved in column-28-05.patch
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ColumnTest' --rerun > /tmp/gsd28/exec/rest-red-28-05.log 2>&1   # XML copied to rest-red-28-05-column.xml
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawIdentifierNameLiveTest' --rerun >> /tmp/gsd28/exec/rest-red-28-05.log 2>&1   # XML copied to rest-red-28-05-live.xml
+git apply /tmp/gsd28/exec/column-28-05.patch; git diff -- src/main > /tmp/gsd28/exec/diff-now-28-05.patch; cmp diff-now-28-05.patch column-28-05.patch
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd28/exec/testunit-28-05.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawIdentifierNameLiveTest' --rerun > /tmp/gsd28/exec/live-28-05.log 2>&1
+```
+
+```text
+red on the unchanged Column (ColumnTest 38 tests, 37 succeeded, 1 failed): enumLabelsHoldingAParenthesisACommaOrAnEqualsSignAreRead() is the only red case
+red on the unchanged Column (RawIdentifierNameLiveTest 73 tests, 56 succeeded, 17 failed = the 9 raw cases of E-09 plus 8 legacy cases):
+  legacyEnumLabelKeyFailsLoudly red for bs bsn btbsn cr dq lf sl tab (8 of 9); green for ap, whose table is unmapped on the unchanged Column, so the put fails as the pin expects
+patch identity: the re-applied diff of src/main is byte-identical to column-28-05.patch (cmp exit 0)
+green on the scan: testUnit 1245 tests, 1243 succeeded, 0 failed, 2 skipped (ColumnTest 38, 0 failed); RawIdentifierNameLiveTest 73 tests, 73 succeeded, 0 failed
+Phase 27 WRT-18 lookup-miss pins green: unknownEnum8LabelIsALookupMissNamingTheColumn, unknownEnum16LabelIsALookupMissNamingTheColumn, nullEnumLabelIsALookupMiss, enumWithoutValuesNamesTheColumn
+scope guard: git diff --name-only HEAD -- src/main lists only Column.java; git diff HEAD -- Utils.java is empty
+```
+
+2026-10-23T10:26:29Z
+Verdict: pass
+
+### E-10: NAME-06/07 fix commit, documents, full suite, manual CLIENT_VERSION=V1 run, gate
+
+Commands as run:
+
+```bash
+git add <Column.java, ColumnTest.java, RawNameMatrixFixturesUnitTest.java, RawIdentifierNameLiveTest.java, .planning/scripts/fork-anchors.txt, docs/FORK-DELTA.md, CHANGELOG.md, .planning/ROADMAP.md>
+git write-tree > /tmp/gsd28/exec/fix-tree-28-05.txt
+rm -rf build/test-results/test build/raw-name-matrix
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd28/exec/suite-28-05.log 2>&1      # then cp -R build/test-results/test suite-28-05, build/raw-name-matrix cells-post-28-05
+CLIENT_VERSION=V1 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawIdentifierNameLiveTest' --tests '*RawNameMatrixLiveTest' --tests '*TableTest' --rerun > /tmp/gsd28/exec/v1-run-28-05.log 2>&1
+git commit            # fix(28-05)
+/tmp/gsd28/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd28/exec/spotless-28-05.txt
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd28/exec/gate-28-05.log 2>&1
+python3 -I /tmp/gsd28/exec/wholesale.py <PB|WT> > /tmp/gsd28/exec/wholesale-28-05.txt
+```
+
+```text
+fix_commit: d7361cbb482f8f1435b3152f45870fba89fc45c8
+files: Column.java (src/main); ColumnTest.java, RawNameMatrixFixturesUnitTest.java, RawIdentifierNameLiveTest.java (src/test); .planning/scripts/fork-anchors.txt, docs/FORK-DELTA.md, CHANGELOG.md, .planning/ROADMAP.md
+tree_equality: git rev-parse HEAD^{tree} = fix-tree-28-05.txt (the tree the counted suite and the counted V1 run ran on)
+suite: 1832 tests in 100 XML files, 0 failures, 0 errors, 18 skipped (the 18 named skips), one server version 26.9.19.9, BUILD SUCCESSFUL in 2m 41s
+class_counts: NullableTupleMatrixLiveTest=33 DeclaredNullabilityTest=69 RawNameMatrixFixturesUnitTest=50 RawNameMatrixLiveTest=25 RawIdentifierNameLiveTest=73 TableTest=7 ColumnTest=38 WriterValueFreeFailureUnitTest=29 DescribeTableBuilderUnitTest=121 ClickHouseHelperClientForkUnitTest=51 DescribeFixturesUnitTest=96 DescribeFixtureSnapshotUnitTest=47 SourcePlanningIdGuardUnitTest=18
+v1_run: Tests summary: 105 tests, 105 succeeded, 0 failed, 0 skipped, in 3 XML files (RawIdentifierNameLiveTest, RawNameMatrixLiveTest, TableTest)
+v1_evidence: the 41 writer stack frames recorded in the RawIdentifierNameLiveTest XML of the V1 run name doInsertRawBinaryV1(ClickHouseWriter.java:1420); the same class in the default full-suite run names doInsertRawBinaryV2(ClickHouseWriter.java:1324), so the CLIENT_VERSION=V1 run took the V1 write path
+re_render: cells-post-28-05: 72 cells (12 entries x 6 shapes), V2 and V1 each equal the decoded form
+wholesale (wholesale-28-05.txt): at the phase base f3b1c487: 37 identical, 14 import-only, 12 fork logic (reproduces the FORK-DELTA figures); working tree: 36 identical, 14 import-only, 13 fork logic, the difference being ClickHouseFieldDescriptor.java
+changelog: the 1.7.0_gg4 section holds 4 bullets (3 + the new Bug Fixes bullet naming CREATE TABLE and backlog 999.5); the text from '# 1.7.0_gg3, 2026-10-20' down is unchanged
+spotless: base 46 lines, head 46 lines, no new file, no changed line; Column.java's measured line is 13 14 in both the base and head (the edit did not change it)
+gate: invariants: provenance_paths=3 anchor_commits=125 anchor_rows=92 marker_commits=137 anchor_exempt=0 result=PASS
+wt_anchors: rows 92 bad []
+```
+
+Deviation (Rule 3, recorded here and in the SUMMARY). The first fix commit (`714e17c0`, suite and V1 run green on its tree) added `import java.util.Map;` to ColumnTest. ColumnTest is one of the 46 files already red under Spotless, and the extra import line moved its numstat line from `5 7` to `6 8`, which the phase's Spotless rule allows only for Column.java and ClickHouseHelperClient.java. The import was replaced by `java.util.Map.of(` in the new row, the commit was amended (not pushed) to `d7361cbb`, and the full suite, the V1 run, the re-render, Spotless and the gate were all re-run on the amended tree; the figures above are those of the second run (the first run's were identical: 1832 tests, 105 tests).
+
+2026-10-23T10:44:00Z
 Verdict: pass
