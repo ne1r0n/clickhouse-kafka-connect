@@ -22,7 +22,7 @@
 | E-10 | NAME-06/07 fix commit, documents, full suite, manual CLIENT_VERSION=V1 run, gate | pass |
 | E-11 | DEBT-17 tracer | pass |
 | E-12 | DEBT-17 commit and generated fork report | pass |
-| E-13 | Phase gate and the assertion diff check | pending |
+| E-13 | Phase gate and the assertion diff check | pass |
 
 ### E-01: Phase base
 
@@ -346,8 +346,9 @@ Red evidence cells hold the testcase name and the first failure line measured on
 | S-01 | javadoc | test(28-02) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java` | `BACKSLASH_N_ELEMENT` | n/a | Javadoc reworded, value unchanged | not a test |
 | S-02 | javadoc | test(28-02) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java` | `REAL_NEWLINE_ELEMENT` | n/a | Javadoc reworded, value unchanged | not a test |
 | S-03 | refactor | test(28-02) | `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java` | `resourceLines` | n/a | the one-argument form delegates to the new two-argument overload; messages unchanged | not a test |
+| S-04 | refactor | test(28-02) | `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java` | `RESOURCE_PATH_FORMAT` | n/a | path format takes the directory as first argument; the one-argument form's path is unchanged | not a test |
 
-exemption_signoff: X-01..X-12 (pin) and S-01..S-03 (javadoc, refactor) are the complete list; every pin was red on HEAD's production above and is green on the fix; no other existing test member changed; surfaced to the user for the 28-06 end-of-phase human-check, not decided by them (Phase 22 L-47 precedent)
+exemption_signoff: X-01..X-12 (pin) and S-01..S-04 (javadoc, refactor) are the complete list; every pin was red on HEAD's production above and is green on the fix; no other existing test member changed; surfaced to the user for the 28-06 end-of-phase human-check, not decided by them (Phase 22 L-47 precedent); S-04 added during plan 28-06's gate: the assertion diff check found the private constant `RESOURCE_PATH_FORMAT` changed by test(28-02) together with S-03's overload and unlisted; the user chose to add it as a 16th row (option 1), relayed to the executor by the coordinator, and that choice stands as the sign-off of the 16-row list
 
 2026-10-23T09:57:17Z
 Verdict: pass
@@ -764,4 +765,105 @@ The summary's class table (`summary-28-06.md`; 21 rows, no Line figure n/a). `He
 ```
 
 2026-10-23T10:54:05Z
+Verdict: pass
+
+### E-13: Phase gate and the assertion diff check
+
+Commands as run (step numbers are the plan's):
+
+```bash
+.planning/scripts/verify-merge-invariants-selftest.sh > /tmp/gsd28/exec/selftest.log 2>&1; echo $? > /tmp/gsd28/exec/selftest.rc      # background, step 1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd28/exec/testunit-gate.log 2>&1              # step 2
+rm -rf build/test-results/test; env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd28/exec/suite-gate.log 2>&1   # step 3
+cp -R build/test-results/test /tmp/gsd28/exec/suite-gate
+/tmp/gsd28/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd28/exec/spotless-gate.txt                                                   # step 4
+git ls-remote origin refs/heads/custom_build; git ls-remote --heads origin sync/v1.7.0                                                # step 5
+git diff --name-only f3b1c48774bc855913ee69c67b18508f23d84367 HEAD -- src/main; git diff --quiet f3b1c48774bc855913ee69c67b18508f23d84367 HEAD -- <frozen paths>                                              # step 6
+git diff -U0 f3b1c48774bc855913ee69c67b18508f23d84367 HEAD -- src/test > /tmp/gsd28/exec/diff-src-test.txt; python3 -I /tmp/gsd28/exec/assertion-diff-16.py f3b1c48774bc855913ee69c67b18508f23d84367 /tmp/gsd28/exec/diff-src-test.txt <this file>   # step 7
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd28/exec/gate-28-06-final.log 2>&1   # step 8
+```
+
+```text
+testUnit: Tests summary: 1248 tests, 1246 succeeded, 0 failed, 2 skipped (BUILD SUCCESSFUL)
+suite: 1835 tests in 101 XML files, 0 failures, 0 errors, 18 skipped (the 18 named skips: 11 ClickHouseSinkTaskWithSchemaTest bracket cases and the 7 named methods), one server version 26.9.19.9, started 2026-10-23T10:54:54Z, BUILD SUCCESSFUL in 2m 43s
+class_counts: ForkCoverageScopeUnitTest=3 RawIdentifierNameLiveTest=73 RawNameMatrixFixturesUnitTest=50 RawNameMatrixLiveTest=25 NullableTupleMatrixLiveTest=33 DeclaredNullabilityTest=69 ColumnTest=38 TableTest=7 WriterValueFreeFailureUnitTest=29 WriterFailureClassificationUnitTest=216 DescribeTableBuilderUnitTest=121 ClickHouseHelperClientForkUnitTest=51 DescribeFixturesUnitTest=96 DescribeFixtureSnapshotUnitTest=47 SourcePlanningIdGuardUnitTest=18 TestsWorkflowPinGuardUnitTest=39
+spotless: base 46 lines, head 46 lines, no new file, no changed line
+selftest: exit 0, 16 PASS, 0 FAIL, 0 SKIP, last line "selftest: no failures" (it shared the machine with the two Gradle runs, so it finished late)
+tail gate: invariants: provenance_paths=3 anchor_commits=130 anchor_rows=94 marker_commits=142 anchor_exempt=0 result=PASS
+freeze: origin/custom_build 69cd680bf548bfb0329142752d37f8a6c3190c26 = E-01 origin_custom_build_tip; "git ls-remote --heads origin sync/v1.7.0" printed nothing
+scope: src/main changed in exactly ClickHouseFieldDescriptor.java, ClickHouseHelperClient.java, Column.java, DeclaredNullability.java; Processing, the state classes, ClickHouseSinkConfig, ClickHouseWriter, ROLLOUT gg1 to gg3, VERSION and tests.yaml equal the phase base; docs/ROLLOUT-v1.7.0_gg4.md absent; both gate scripts equal baseline-v1.7.0_gg4
+```
+
+Exemption list change made at this gate (S-04). The first run of the diff check, with the plan's command
+and E-06's 15 rows, reported one problem and nothing else:
+
+```text
+problems [('unlisted', 'test(28-02)', 'src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java', 'RESOURCE_PATH_FORMAT')]
+```
+
+The private constant `RESOURCE_PATH_FORMAT` was changed by test(28-02) together with S-03's `resourceLines`
+overload (it now takes the directory as its first format argument) and had no list row. No assertion is involved.
+The gate stopped as the plan requires and the question went to the user, who chose to add it as a 16th row
+(option 1); the coordinator relayed that choice, and it is also the sign-off of the 16-row list. E-06 now has
+S-04 and the `exemption_signoff:` line reads "X-01..X-12 (pin) and S-01..S-04 (javadoc, refactor)". The plan's check
+command hard-codes `len(L)==15` and the S-01..S-03 sign-off text, so it ran from a local copy,
+`/tmp/gsd28/exec/assertion-diff-16.py`, whose only differences are `len(L)==16` and `S-01..S-04`
+(`diff` of the two files shows exactly those two lines). 28-06-PLAN.md is unchanged.
+
+Step 7 output of the check with 16 rows, before this entry existed (only `tables` False, as expected):
+
+```text
+list 16 signoff True changed [('test(28-02)', 'RESOURCE_PATH_FORMAT'), ('test(28-02)', 'resourceLines'), ('test(28-02)', 'REAL_NEWLINE_ELEMENT'), ('test(28-02)', 'BACKSLASH_N_ELEMENT'), ('fix(28-03)', 'backslashNInTupleElementNameRoundTripsWithoutFallback'), ('fix(28-03)', 'describeReturnsTheCapturedBackslashNEscapingAndPairs'), ('fix(28-03)', 'backslashNInsideABacktickNameSurvivesNormaliseAndPairs'), ('fix(28-03)', 'realNewlineInsideABacktickNameSurvivesNormaliseAndPairs'), ('fix(28-03)', 'backslashNInsideAnEnumLabelIsKeptAndPairs'), ('fix(28-03)', 'backslashNInNamesOnTwoLevelsSurvivesNormaliseAndPairs'), ('fix(28-03)', 'namesEndingInABackslashSurviveNormaliseAndPair'), ('fix(28-03)', 'nullableTupleWithABackslashNNameIsUnchangedAndPairs'), ('fix(28-03)', 'normaliseIsTotalAndKeepsNonAsciiNames'), ('fix(28-03)', 'escapedBacktickInsideANameKeepsTheQuoteOpen'), ('fix(28-03)', 'twoBackslashesBeforeNOutsideQuotesAreNotALineBreak'), ('fix(28-03)', 'rootWithANullNameIsAStructureMismatch')] unused [] problems [] files_with_removals ['src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java', 'src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java', 'src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java', 'src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java'] extra [] lowered [] tables False
+```
+
+#### assertion diff check
+
+One row per test file with removed lines (`git diff -U0 f3b1c48774bc855913ee69c67b18508f23d84367 HEAD -- src/test`; the diff also holds every file the phase added, which have no removed lines):
+
+| File | Removed lines | @Test / @ParameterizedTest at PB, HEAD | assert calls at PB, HEAD | Covered by |
+|------|---------------|-----------------------------------------|---------------------------|------------|
+| DeclaredNullabilityTest.java | 18 | 58, 61 | 213, 216 | X-01 to X-10 |
+| NullableTupleMatrixLiveTest.java | 5 | 8, 8 | 30, 30 | X-11, X-12 and its one import swap (the static import of `BACKSLASH_N_ELEMENT` replaced by the raw-name constant, used by X-11) |
+| DeclaredNullabilityFixtures.java | 4 | 0, 0 | 2, 2 | S-01, S-02 |
+| DescribeFixtureCatalog.java | 2 | 0, 0 | 0, 0 | S-03, S-04 |
+
+The three extra tests and three extra assert calls in DeclaredNullabilityTest are rows added by plans 28-01 and 28-03; no test or assert call was removed anywhere.
+
+#### predicate changes to existing assertions
+
+| ID | Member | Change | Same strictness | Red line (E-06) |
+|----|--------|--------|-----------------|------------------|
+| X-01 | backslashNInsideABacktickNameSurvivesNormaliseAndPairs | expected normalised literal one escape layer fewer; flag key `c.` + `BACKSLASH_N_ELEMENT_NAME` | yes: same `assertCapturedShapePairs` call, exact literal, exact flag map, no WARN | expected `Tuple(  'a\\nb' Int32, ...` but was `'a\\\\nb'` |
+| X-02 | realNewlineInsideABacktickNameSurvivesNormaliseAndPairs | expected literal holds the line feed; flag key `c.` + `REAL_NEWLINE_ELEMENT_NAME` | yes: same call | expected literal with the line feed, E-06 |
+| X-03 | backslashNInsideAnEnumLabelIsKeptAndPairs | expected literal one escape layer fewer; keys unchanged | yes | expected `Enum8('x\\ny' = 1 ...` but was `'x\\\\ny'` |
+| X-04 | backslashNInNamesOnTwoLevelsSurvivesNormaliseAndPairs | expected literal one escape layer fewer; keys under the raw `outerName` | yes | expected `'p\\nq' Tuple('r\\ns' ...` |
+| X-05 | namesEndingInABackslashSurviveNormaliseAndPair | expected literal one escape layer fewer; keys `c.e` + backslash and `c.f` + backslash + `n` | yes | expected `'e\\' ... 'f\\n'` but was `'e\\\\' ... 'f\\\\n'` |
+| X-06 | nullableTupleWithABackslashNNameIsUnchangedAndPairs | expected literal one escape layer fewer instead of the RAW constant; raw key; display name now says "loses one escape layer" (method name kept) | yes | expected `Nullable(Tuple('a\\nb' Int32, d String))` |
+| X-07 | normaliseIsTotalAndKeepsNonAsciiNames | unterminated row expects the decoded line feed; non-ASCII row one escape layer fewer; empty-type row unchanged | yes: same `assertEquals` rows, exact | expected `Tuple('a<LF>...` |
+| X-08 | escapedBacktickInsideANameKeepsTheQuoteOpen | expected re-derived for the rewritten `normalise` (pinned on the old one by plan 28-01, E-02) | yes: same `assertEquals`, exact | expected `'a\'\\nb'` but was `'a\\'\\\\nb'` |
+| X-09 | twoBackslashesBeforeNOutsideQuotesAreNotALineBreak | expected one escape layer fewer, input unchanged | yes: same `assertEquals`, exact | expected `Tuple(a Int32,\n b String)` but was `\\n` |
+| X-10 | rootWithANullNameIsAStructureMismatch | the WARN's column slot reads `<unnamed>` instead of `null` (23-REVIEW IN-02) | yes: same `assertWarnNamesColumn`, exact | WR-02 column segment: "... for column null of table db.t ..." |
+| X-11 | backslashNInTupleElementNameRoundTripsWithoutFallback (NullableTupleMatrixLiveTest) | element lookup key, cell schema field and Struct put use `BACKSLASH_N_ELEMENT_NAME` | yes: same premise, no-WARN, nullability and typed read-back assertions | `c.a\nb ==> expected: not <null>` (PLAIN and DEFAULT); E-07: the old-name twin fails loudly on the fix |
+| X-12 | describeReturnsTheCapturedBackslashNEscapingAndPairs (NullableTupleMatrixLiveTest) | nested key `n.p` + backslash + `nq.t` (raw) | yes: same assertions | `n.p\nq.t ==> expected: not <null>`; E-07: the old-name twin fails loudly on the fix |
+| S-01 | BACKSLASH_N_ELEMENT (DeclaredNullabilityFixtures) | Javadoc reworded, value unchanged | no assertion | n/a |
+| S-02 | REAL_NEWLINE_ELEMENT (DeclaredNullabilityFixtures) | Javadoc reworded, value unchanged | no assertion | n/a |
+| S-03 | resourceLines (DescribeFixtureCatalog) | the one-argument form delegates to the new two-argument overload; messages unchanged | no assertion | n/a |
+| S-04 | RESOURCE_PATH_FORMAT (DescribeFixtureCatalog) | path format takes the directory as first argument; the one-argument form's path is unchanged | no assertion | n/a |
+
+X-10: the column slot reads `<unnamed>` instead of `null`, the IN-02 change; the old production printed `null` (E-06 red line). The old-name loud failure for X-11 and X-12 is E-07's measurement; X-08 and X-09 were pinned green on the old `normalise` by plan 28-01 (E-02); with their changed expectations they are red on the unchanged production in E-06 and green on the fix. The member `rootWithANullNameIsAStructureMismatch` is the one the check's `tables` field looks for by name.
+
+no other predicate changed
+
+Non-planning commits since the phase base (`git log --format=%s f3b1c48774bc855913ee69c67b18508f23d84367..HEAD -- . ':(exclude).planning'`):
+
+```text
+build(28-06): list every fork class in the fork coverage report (DEBT-17)
+fix(28-05): key Enum labels under the raw label and close backlog 999.5 (NAME-06, NAME-07)
+test(28-04): pin both name forms live for every spiked character (NAME-05)
+fix(28-03): match column and element names under the raw identifier in discovery (NAME-03, NAME-04, 23-REVIEW IN-01, IN-02)
+test(28-02): add the raw-name matrix spike, its captured DESCRIBE rows and their drift premise (NAME-02)
+test(28-01): pin the escaped-quote branch of normalise on the current code (NAME-01, 23-REVIEW WR-01)
+```
+
+2026-10-23T11:55:54Z
 Verdict: pass
