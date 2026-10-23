@@ -1,11 +1,66 @@
-# 1.7.0_gg4, unreleased
+# 1.7.0_gg4, 2026-10-23
+
+This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg3`, plus upstream's untagged tail
+`a6f1df83`. It lists only the fork's own changes since `v1.7.0_gg3`. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for
+everything the fork patches on top of upstream, and work through
+[docs/ROLLOUT-v1.7.0_gg4.md](docs/ROLLOUT-v1.7.0_gg4.md), the operator checklist with a self-check per item, before
+upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start with the `1.7.0_gg3` checklist.
+
+## Important Changes
+
+* Rename producer fields before you upgrade. The connector now matches a Kafka record field to a column name, a `Tuple`
+  element name or an `Enum` label as it is written in `CREATE TABLE`, on client V1 and on client V2. A field that is
+  still named in the earlier, escaped form (a doubled backslash, a backslash and a letter for a line feed, a tab or a
+  carriage return, a backslash before a slash) no longer matches: after the upgrade a root field under the earlier name
+  stores the column's DEFAULT with no error and no log line, and a `Tuple` element under it fails the record. Rename
+  those fields to the names written in `CREATE TABLE`. Let the old release consume everything that was produced under
+  the earlier names, stop it cleanly, switch the producers, then upgrade. Tables that earlier releases could not map
+  (a double quote in a name on client V2, a tab or a carriage return in a name on client V1) are mapped now, so records
+  for them start to land. Rows stored by earlier releases are not repaired.
+* A rollback to `v1.7.0_gg3` with batches in flight needs a clean stop for a table with a `Tuple` element named `size`,
+  `size0` or `size` followed by digits, and for a table whose field names changed under the notice above. The upgrade
+  needs a clean stop for a table whose `Tuple` element named `size` stored a shifted row on `v1.7.0_gg3`, and for the
+  producers' rename. No other change in this release needs one. The rollout checklist has the query that finds batches
+  in flight and the procedure.
+* Two writer failure texts change. On connectors whose `clickhouseSettings` set
+  `input_format_binary_read_json_as_string` to `1` or `true`, the JSON library's own message, which could name a `Map`
+  key, no longer reaches the task status, the stack-trace header of the dead letter queue or the `Error inserting
+  records` log lines. An unknown `Enum8` or `Enum16` label now fails as `java.lang.IllegalArgumentException` where it
+  was `java.lang.NullPointerException`. An alert that matches `through reference chain`, `No serializer found` or
+  `NullPointerException` for these failures stops matching; `Failed to write column ` keeps matching.
+* The bundled dependencies moved: guava `33.7.2-jre` (was `33.4.6-jre`), httpclient5 `5.6.5` (was `5.6.2`), httpcore5
+  `5.4.4`, Jackson `2.22.4` and gson `2.14.0`. The connector is compiled against `connect-api` `4.4.0`, which the
+  archive does not bundle, so the Connect worker's version governs at runtime. The oldest worker the connector is
+  verified against is Apache Kafka 3.9, as shipped in `confluentinc/cp-kafka-connect-base:7.9.7`, by a static check of
+  every Kafka reference of the compiled connector. KIP-1161 applies only from Kafka 4.2 workers, and none of the
+  connector's seven list-type configuration keys carries a validator for it to tighten.
+* The JMX MBean name's `version=` segment changes from `v1.7.0_gg3` to `v1.7.0_gg4`, and the client name sent on every
+  request is now `clickhouse-kafka-connect/v1.7.0_gg4`. The HTTP client token in the user agent changes with the
+  httpclient5 version. Dashboards, alerts and exporter rules that spell out the old values stop matching.
+* A rollback goes back to the archive built at tag `v1.7.0_gg3`. The build of the rolled-back branch tip ends green but
+  writes an archive whose inner jar nests 25 dependency jars instead of their classes, so never deploy an archive built
+  from the rolled-back branch tip.
+
+## Known Issues
+
+* If the declared type of a column cannot be read, the connector keeps the earlier behaviour for that column: it drops
+  the sub-columns named `size`, `size0` or `size` followed by digits, so a `Tuple` with such an element is still written
+  short. It logs `Could not read the declared type ...` once per column and table description.
+* Not measured on a record: a column name, `Tuple` element name or `Enum` label that holds a control character other
+  than a line feed, a tab or a carriage return, and a name that holds a `.`. For a backspace, a form feed, a NUL and a
+  bell the table description was measured and the table is mapped, but no insert was run.
+* A Jackson exception whose cause chain also holds a non-Jackson `IOException` still passes through with its message, so
+  that a timeout keeps its retry. On the JSON-as-string route that chain comes only from a record value whose own getter
+  throws such an exception, and Connect's value types have no such getter.
+* On the `insertFormat=json` route a Jackson failure can still occur. Whether its text carries a `Map` key into the
+  task status, the dead letter queue or the logs was not measured.
 
 ## Bug Fixes
 
 * A `Tuple` element named `size`, `size0` or `size` followed by digits, at any depth of a column's type, is no longer
   dropped when the connector reads the table's columns, so the connector now writes the whole tuple for such a column.
   Earlier releases wrote a shorter one, which the server rejected or, for some values, stored wrong. Rows stored by
-  earlier releases are not repaired (backlog 999.4). One case keeps the earlier behaviour: if the declared type of the
+  earlier releases are not repaired. One case keeps the earlier behaviour: if the declared type of the
   parent cannot be read, a `Tuple` element named `size` or `size0` is still dropped, so that tuple is still written
   short. The connector logs a `Could not read the declared type ...` WARN per such parent and a `Declared Tuple
   element(s) ... have no matching DESCRIBE sub-column` WARN naming the dropped elements, and the table is still served.
@@ -31,8 +86,27 @@
   by another label. Earlier releases on client V1, the default, left a table with a tab or a carriage return in a name
   unmapped, read a slash or a double quote in a name as a replacement character so no field matched it, and logged a
   fallback WARN for a line feed. A record that still uses the escaped form now gets the DEFAULT at the root and fails
-  for a `Tuple` element, so rename such fields before upgrading (backlog 999.5). Rows stored by earlier releases are not
-  repaired.
+  for a `Tuple` element, so rename such fields before upgrading. Rows stored by earlier releases are not repaired.
+
+## Build and CI
+
+* The Confluent archive is built with Gradle wrapper `9.8.1` and Shadow `9.6.1`. The archive task is repaired, because
+  Shadow 9 turned the earlier build line into a green build of an archive whose inner jar nests the dependency jars. A
+  new archive check fails the build on a nested jar, on an `org/apache/kafka` entry or on a missing connector or client
+  class, and the CI workflow runs it after the archive task.
+* `connect-api` `4.4.0` is compile-only. A unit test lists every Kafka class and member the compiled connector
+  references and fails when a new reference is not on the reference list.
+* Upstream's guava override and httpclient5 pin came in with its untagged tail, and nine Dependabot merges (Connect API,
+  Gradle wrapper, Shadow, httpclient5, gson, Jackson, slf4j, commons-lang3 and the versions plugin) landed on the
+  fork's branch after `v1.7.0_gg3`. The shipped archive differs from the `v1.7.0_gg3` one only in the bundled versions
+  above and in the connector's own classes, which the compare checked entry by entry.
+* `slf4j-reload4j` is declared through the version catalog and moves with the other `slf4j` libraries.
+* The workflow pin-guard test strips comments string- and line-comment-aware, accepts a trailing comment on the pinned
+  runner label, rejects commented-out fork-count text, and reads the `dependabot.yml` layouts that YAML allows.
+* A test fails when a line of `src/main` carries a planning identifier.
+* The fork coverage report lists 21 classes.
+* Two Gradle tasks capture and compare the server's `DESCRIBE` rows for 47 fixture tables: `captureDescribeFixtures`
+  writes them, and `describeFixtureDrift` fails when a newer server changes a row. Both need Docker and run on demand.
 
 # 1.7.0_gg3, 2026-10-20
 

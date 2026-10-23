@@ -1067,3 +1067,21 @@ Two lines differ from the Phase 24 run, and both come from the same file. `dirty
 Afterwards `git worktree list` shows the main working tree and the two kept probe worktrees `wt-gg3` and `wt-tip` only (no `dry` and no `rb-demo` entry), no `gg4-rollback-demo-*` branch is left, and `git ls-remote --tags origin` lists no `pre-v1.7.0_gg4`.
 
 Matches text: yes
+
+### E-40: CHANGELOG section check
+
+Backs: `CHANGELOG.md`, the `# 1.7.0_gg4` section (plan 29-05 Task 1). Date used in the heading (UTC, the day the section was written): 2026-10-23 (assumption A13: the publication day, compared again in the 29-07 bundle). The check (verify command 1 of Task 1, a Python read of `CHANGELOG.md` and of `git show c1dc6e59:CHANGELOG.md`, then `python3 -I /tmp/gsd29-scripts/consistency.py changelog`) asserts: a dated heading, everything from `# 1.7.0_gg3, 2026-10-20` down byte-identical to `P29_BASE`, the four sections in order, the rename notice as the first Important Changes bullet (`CREATE TABLE`, a rename instruction and `DEFAULT`), the links and facts of the section, no planning identifier, at least four Bug Fixes bullets and no line over 120 characters; the script then compares the note and the section on `v1.7.0_gg4`, the client name, `33.7.2-jre`, `5.6.5`, `cp-kafka-connect-base:7.9.7`, `KIP-1161` and `CREATE TABLE`.
+
+```sh
+bash /tmp/gsd29-scripts/p05/cmd1.sh
+```
+
+```text
+heading True tail-unchanged True sections ['Important Changes', 'Known Issues', 'Bug Fixes', 'Build and CI'] rename-first True missing [] planning-ids [] bug-fix-bullets 4 long-lines []
+consistency scope=changelog docs=['changelog', 'note'] failed=0
+CHANGELOG-GG4-OK
+```
+
+Writing the section exposed one wrong sentence in the note, and it was fixed there (not in the evidence). Item 1 of `docs/ROLLOUT-v1.7.0_gg4.md` listed "a tab, carriage return, slash or double quote on client V1" as tables that were not mapped. `28-BEHAVIOUR-LEDGER.md` L-59 and the 72-row table behind it, and the table of the same paragraph, say that on client V1 only a tab and a carriage return left the table unmapped, while a slash or a double quote came back as the replacement character U+FFFD, so the table was mapped and no field matched. The sentence now reads that way. Plan 29-04's five verify commands were re-run after the edit and printed `NOTE-FRAME-OK`, `ITEMS-1-7-OK`, `ITEMS-2-4-OK` and `ITEMS-5-6-OK`; the address and secret scan of the fifth (server version masked) printed no hit.
+
+Matches text: n/a (gate check)

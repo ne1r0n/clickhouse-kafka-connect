@@ -44,7 +44,7 @@ Measured on ClickHouse 26.9.19.9, per character, for the name of a root column a
 | slash | `a\/b` (backslash, slash) | the slash came back as the replacement character U+FFFD, so no field matched | `a/b` |
 | double quote | the table was not mapped | the double quote came back as the replacement character U+FFFD, so no field matched | `a"b` |
 
-A name that holds a backtick together with a backslash follows the backslash row. A backtick, an apostrophe and non-ASCII letters in a column or element name gave the same name on both releases (measured on both clients). A table that was not mapped (a double quote on client V2, and a tab, carriage return, slash or double quote on client V1) is mapped now, so records for it start to land (ledger L-59, L-60).
+A name that holds a backtick together with a backslash follows the backslash row. A backtick, an apostrophe and non-ASCII letters in a column or element name gave the same name on both releases (measured on both clients). A table that was not mapped (a double quote on client V2, and a tab or a carriage return on client V1) is mapped now, so records for it start to land; on client V1 a slash or a double quote in a name was read as the replacement character, so that table was mapped but no field matched it (ledger L-59, L-60).
 
 **Root silent, element loud.** After the upgrade a field that is still named in the earlier form is handled as follows. A root field is ignored and the column's `DEFAULT` is stored, with no error and no WARN. A field for a Tuple element, in a Tuple, an Array of Tuples, a Nullable Tuple or a Map value Tuple, is not found, and the put fails and stores no row. The root cause is a `DataException`, and its text names a field and never a value (ledger L-62):
 
