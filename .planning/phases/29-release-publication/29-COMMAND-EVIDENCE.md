@@ -155,7 +155,7 @@ RESULT: PASS
 
 The `VERSION` lines equal the Phase 25 E-22 lines for the third-party half; the guava `33.4.6-jre -> 33.7.2-jre`, httpclient5 `5.6.2 -> 5.6.5`, httpcore5 and httpcore5-h2 `5.4.3 -> 5.4.4`, jackson-core and jackson-databind `2.22.3 -> 2.22.4`, gson `2.13.1 -> 2.14.0`, j2objc `3.0.0 -> 3.1` and error_prone `2.38.0 -> 2.50.0` changes are the ones the note's dependency item may state; lz4-java, slf4j-api, commons-lang3 and the others are unchanged. No `UNALLOWED` and no `STALE-ROW` line.
 
-Matches text: pending (29-05)
+Matches text: yes
 
 ### E-04: the archive of the rollback tree pre-v1.7.0_gg4 (D-03)
 
@@ -212,7 +212,7 @@ pre-release.yaml: 28:      - name: Setup and execute Gradle 'createConfluentArch
 
 So, on the rolled-back tree, a build is green and the archive is wrong: `release.yaml` and `pre-release.yaml` would both build it, and `tests.yaml` would not notice. The only sound artifact step on rollback is to redeploy the archive built at tag `v1.7.0_gg3` (D-03); an archive built from the rolled-back branch tip must not be deployed.
 
-Matches text: pending (29-05)
+Matches text: yes
 
 ### E-05: phase base on the bump commit (PT-14)
 
@@ -368,7 +368,7 @@ Net for httpclient5: the identity (`CVE-2026-64607` / `GHSA-hjcp-jmpx-g3qm`, med
 
 **Correction of the first read (recorded, not worded away).** The first OSV version queries of this entry, made at about 2026-10-23T17:31Z while the OSV record of the guava CVE was being re-indexed (its `modified` is `2026-10-23T17:27:08Z`), returned `{}` for httpclient5 `5.6.2` in the name form and in the purl form, which differed from research R2.5 (the id for `5.6.2`, `{}` for `5.6.5`). That first version of this entry said so and drew a wording limit from it. The same queries repeated at 2026-10-23T17:50Z, twice each and in three request forms, return `GHSA-hjcp-jmpx-g3qm` for `5.6.2` and nothing for `5.6.5`, which is the research answer; the guava queries returned `{}` for both versions in every read. The repeated, later reads are the record, and this entry was corrected in a follow-up commit for that reason. The document may say that OSV's version query lists the httpclient5 advisory for `5.6.2` and not for `5.6.5`, labelled by source and read date. The guava record's `modified` timestamp differs from the research capture (the 2026-10-21T09:31:55Z value is now only the `vanir_signatures_modified` field), with no change to the identity or the fixed version.
 
-Matches text: pending (29-05)
+Matches text: yes
 
 ### E-08: OPS-04, OPS-01 and the OPS-05 first read
 
@@ -942,7 +942,7 @@ Escape forms read off those lines (server `26.9.19.9`):
 - **BEL.** `system.columns.type` holds the raw character U+0007 (shown as `<U+0007>`), and the DESCRIBE JSON writes it as `\u0007` in the label's type string, in the parent Tuple's type string and in the sub-column name.
 - **Mapping.** `describeTable` maps all eight tables. The enum keys it builds are the raw labels `a`, the character, `b` (`PROBE-ENUMKEYS`: `a\u0008b`, `a\u000Cb`, `a\u0000b`, `a\u0007b` in the probe's escaped print form) and the Tuple element names are `t.a`, the raw character, `b` (`PROBE-COL`). No insert was run: whether a record written under these names lands is not measured here, and the test-side pin for these four characters is still the one carried in FORK-DELTA Known costs item 11.
 
-Matches text: pending (29-05)
+Matches text: yes
 
 ### E-25: KeeperMap state-table query and DELETE examples with a prefixed key (ROLL-05)
 
@@ -1083,5 +1083,174 @@ CHANGELOG-GG4-OK
 ```
 
 Writing the section exposed one wrong sentence in the note, and it was fixed there (not in the evidence). Item 1 of `docs/ROLLOUT-v1.7.0_gg4.md` listed "a tab, carriage return, slash or double quote on client V1" as tables that were not mapped. `28-BEHAVIOUR-LEDGER.md` L-59 and the 72-row table behind it, and the table of the same paragraph, say that on client V1 only a tab and a carriage return left the table unmapped, while a slash or a double quote came back as the replacement character U+FFFD, so the table was mapped and no field matched. The sentence now reads that way. Plan 29-04's five verify commands were re-run after the edit and printed `NOTE-FRAME-OK`, `ITEMS-1-7-OK`, `ITEMS-2-4-OK` and `ITEMS-5-6-OK`; the address and secret scan of the fifth (server version masked) printed no hit.
+
+Matches text: n/a (gate check)
+
+### E-41: FORK-DELTA coverage audit
+
+Backs: the "Pinned by" cells of `docs/FORK-DELTA.md` for the Phase 25 to 28 requirement IDs with a code, build or test effect (plan 29-05, task 2). Date (UTC) 2026-10-23. Method of E-31 in the Phase 24 evidence, re-created as `/tmp/gsd29-scripts/cov.py` (scratch, not committed): for each of the 26 IDs the script lists the table rows whose last cell (Pinned by) names it, and for each row of `.planning/scripts/fork-anchors.txt` whose backs-ID is one of them it checks that the ID is named in such a cell. The 26: BLD-15, BLD-16, CI-20, DEBT-13, DEBT-14, DEBT-15, DEBT-16, DEBT-17, DEPS-02, DEPS-03, SYNC-11, SYNC-12, DESC-06, DESC-07, DESC-08, DESC-09, WRT-16, WRT-17, WRT-18, WRT-19 and NAME-01 to NAME-06. Before the rows were edited the audit found no row for BLD-16 (only in row text), DEBT-13, DEBT-14, DEBT-16, DEPS-02, DEPS-03 and DESC-09; they were added to the Pinned-by cells of the `onPartitionsRevoked` row and the dependency-pins row (BLD-16, DEPS-02, DEPS-03), the CI row (DEBT-13, DEBT-14), the test-doubles row (DEBT-16) and the describe-builder row (DESC-09), each with the sentence or test class that backs it. HEAD is the Task 1 commit `aad30ee6` plus the uncommitted FORK-DELTA edits of this task.
+
+```sh
+python3 -I /tmp/gsd29-scripts/cov.py "$PWD"
+```
+
+```text
+BLD-15 1 | `confluentJar` unpacks `clickhouseDependencies` 
+BLD-16 2 | `onPartitionsRevoked(Collection<TopicPartition>); Fork dependency pins in the version catalog: Kaf
+CI-20 2 | A single-job CI workflow: ClickHouse `latest` wi; `createConfluentArchive` is finalized by `verify
+DEBT-13 1 | A single-job CI workflow: ClickHouse `latest` wi
+DEBT-14 1 | A single-job CI workflow: ClickHouse `latest` wi
+DEBT-15 1 | `org.slf4j:slf4j-reload4j` (resolved `2.0.20`) i
+DEBT-16 1 | Hand-written test doubles instead of inline Mock
+DEBT-17 1 | Five fork build additions, re-applied onto upstr
+DEPS-02 1 | Fork dependency pins in the version catalog: Kaf
+DEPS-03 1 | Fork dependency pins in the version catalog: Kaf
+SYNC-11 1 | Upstream's guava override: `guava = "33.7.2-jre"
+SYNC-12 2 | Upstream's guava override: `guava = "33.7.2-jre"; Upstream's httpclient5 pin: `httpclient = "5.6.5
+DESC-06 2 | Both describe paths feed one fork-owned `Describ; `captureDescribeFixtures` (a `JavaExec` task, ru
+DESC-07 2 | Both describe paths feed one fork-owned `Describ; `captureDescribeFixtures` (a `JavaExec` task, ru
+DESC-08 3 | Both describe paths feed one fork-owned `Describ; `Table.updateParent`'s `ARRAY` branch ignores a ; Tuple element nullability comes from the declare
+DESC-09 1 | Both describe paths feed one fork-owned `Describ
+WRT-16 1 | `doWriteColValue`'s generic catch passes the ori
+WRT-17 1 | `doWriteColValue`'s generic catch passes the ori
+WRT-18 1 | `Column.convertEnumValues` reports a label that 
+WRT-19 2 | `doWriteColValue`'s generic catch passes the ori; `SourcePlanningIdGuardUnitTest` fails `testUnit`
+NAME-01 1 | Discovery matches a column or Tuple element unde
+NAME-02 2 | Discovery matches a column or Tuple element unde; `RawNameMatrix` (twelve entries: the nine charac
+NAME-03 3 | Discovery matches a column or Tuple element unde; Both describe paths, client V1 and client V2, re; `RawNameMatrix` (twelve entries: the nine charac
+NAME-04 3 | Discovery matches a column or Tuple element unde; Tuple element nullability comes from the declare; `RawNameMatrix` (twelve entries: the nine charac
+NAME-05 1 | Discovery matches a column or Tuple element unde
+NAME-06 2 | Discovery matches a column or Tuple element unde; `RawNameMatrix` (twelve entries: the nine charac
+anchor rows backed by a Phase 25-28 ID: 25 missing: 0
+uncovered IDs: [] anchor rows missing: 0
+```
+
+Matches text: n/a (gate check)
+
+### E-42: FORK-DELTA path resolution
+
+Backs: every `.planning/` path that `docs/FORK-DELTA.md` cites (plan 29-05, task 2). Date (UTC) 2026-10-23. Same command as E-32 in the Phase 24 evidence. The documents named in the new text (`29-COMMAND-EVIDENCE.md`, the two new ledgers) are named by file only, because the phase folders move when the milestone is archived; the paths the document does spell out all resolve. The new paths against the Phase 24 list are `.planning/phases/25-dependency-absorption-upstream-mini-sync/25-COMMAND-EVIDENCE.md` (cited by the Phase 25 rows), `.planning/scripts/compare-confluent-archives.py`, `.planning/scripts/confluent-archive-allowlist-29.txt` and `.planning/scripts/verify-merge-invariants-selftest.sh`.
+
+```sh
+grep -o '\.planning/[A-Za-z0-9_./-]*[A-Za-z0-9_-]' docs/FORK-DELTA.md | sort -u | while read -r p; do [ -n "$(git ls-files -- "$p")" ] && echo "OK   $p" || echo "DEAD $p"; done
+```
+
+```text
+OK   .planning/MERGE-CHECKLIST-v1.7.0.md
+OK   .planning/MERGE-CHECKLIST.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/13-fork-hardening-on-the-merged-tree/13-BEHAVIOUR-LEDGER.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/13-fork-hardening-on-the-merged-tree/13-REVIEW-DISPOSITION.md
+OK   .planning/milestones/v1.7.0_gg1-sync-phases/14-dependency-bumps-ci/14-REVIEW-DISPOSITION.md
+OK   .planning/phases/25-dependency-absorption-upstream-mini-sync/25-COMMAND-EVIDENCE.md
+OK   .planning/REQUIREMENTS.md
+OK   .planning/scripts/compare-confluent-archives.py
+OK   .planning/scripts/confluent-archive-allowlist-29.txt
+OK   .planning/scripts/fork-anchor-exemptions.txt
+OK   .planning/scripts/fork-anchors.txt
+OK   .planning/scripts/verify-merge-invariants-selftest.sh
+OK   .planning/scripts/verify-merge-invariants.sh
+```
+
+No `DEAD` line.
+
+Matches text: n/a (gate check)
+
+### E-43: raw numbers, recount, skip inventory and consistency
+
+Backs: `docs/FORK-DELTA.md` "The raw numbers" (two new `after gg4` rows, two new commands, the tail sentence, the comparison and "One number does bear" paragraphs), the Adopted-wholesale `src/main` row and the Named skip inventory (plan 29-05, task 2), and the agreement of the rollout note, the CHANGELOG section and FORK-DELTA (research Pitfall 9). Date (UTC) 2026-10-23. HEAD is the Task 1 commit `aad30ee6` plus the uncommitted FORK-DELTA edits of this task, on `sync/v1.7.0`. Nothing under `src`, `build.gradle.kts`, `gradle` or `.github` changed since `P29_BASE` (the last such change is Phase 28's `2575092a`), checked by the last command below. The tag `v1.7.0_gg4` does not exist yet, so the gg4 figures are measured against HEAD; plan 29-08 re-runs the two tag commands once the tag exists. The published gg1, gg2, gg3 and before rows reproduce on their tags and branch point.
+
+```sh
+git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github   # and the other scopes below
+git diff --shortstat v1.7.0 a6f1df839c079180bc7c343b5823f205e204dafc      # the upstream tail, whole tree and wider scope
+python3 -I /tmp/gsd29-scripts/recount.py "$PWD" HEAD v1.7.0
+```
+
+```text
+$ git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github
+ 277 files changed, 29679 insertions(+), 643 deletions(-)
+$ git diff --shortstat v1.7.0 HEAD -- src/main
+ 37 files changed, 2877 insertions(+), 241 deletions(-)
+$ git diff --shortstat v1.6.0 pre-v1.7.0-sync -- src build.gradle.kts gradle .github
+ 84 files changed, 9476 insertions(+), 451 deletions(-)
+$ git diff --shortstat v1.7.0 v1.7.0_gg1 -- src build.gradle.kts gradle .github
+ 95 files changed, 13587 insertions(+), 484 deletions(-)
+$ git diff --shortstat v1.7.0 v1.7.0_gg2 -- src build.gradle.kts gradle .github
+ 119 files changed, 18802 insertions(+), 529 deletions(-)
+$ git diff --shortstat v1.7.0 v1.7.0_gg3 -- src build.gradle.kts gradle .github
+ 130 files changed, 22783 insertions(+), 534 deletions(-)
+$ git diff --shortstat v1.6.0 pre-v1.7.0-sync -- src/main
+ 30 files changed, 1368 insertions(+), 98 deletions(-)
+$ git diff --shortstat v1.7.0 v1.7.0_gg1 -- src/main
+ 31 files changed, 1826 insertions(+), 130 deletions(-)
+$ git diff --shortstat v1.7.0 v1.7.0_gg2 -- src/main
+ 32 files changed, 2042 insertions(+), 143 deletions(-)
+$ git diff --shortstat v1.7.0 v1.7.0_gg3 -- src/main
+ 33 files changed, 2245 insertions(+), 145 deletions(-)
+$ git diff --shortstat v1.7.0 HEAD -- src/test
+ 229 files changed, 26236 insertions(+), 106 deletions(-)
+$ git diff --shortstat v1.7.0 HEAD -- src/testFixtures
+ 3 files changed, 68 insertions(+), 12 deletions(-)
+$ git diff --shortstat v1.7.0 HEAD -- src/main
+ 37 files changed, 2877 insertions(+), 241 deletions(-)
+$ git diff --shortstat v1.7.0 HEAD -- build.gradle.kts
+ 1 file changed, 248 insertions(+), 11 deletions(-)
+$ git diff --shortstat v1.7.0 HEAD -- gradle
+ 3 files changed, 17 insertions(+), 16 deletions(-)
+$ git diff --shortstat v1.7.0 HEAD -- .github
+ 4 files changed, 233 insertions(+), 257 deletions(-)
+$ git diff --shortstat v1.7.0 a6f1df839c079180bc7c343b5823f205e204dafc -- src build.gradle.kts gradle .github
+ 2 files changed, 11 insertions(+), 9 deletions(-)
+$ git diff --shortstat v1.7.0 a6f1df839c079180bc7c343b5823f205e204dafc
+ 3 files changed, 16 insertions(+), 9 deletions(-)
+$ git diff --quiet c1dc6e59 HEAD -- src build.gradle.kts gradle .github; echo $?
+0
+```
+
+The gg1, gg2, gg3 and before rows keep their published figures; the two new rows carry 277/29679/643 and 37/2877/241. The scopes add up: 229 + 3 + 37 + 1 + 3 + 4 = 277 files and 26236 + 68 + 2877 + 248 + 17 + 233 = 29679 insertions. The upstream tail `a6f1df83` differs from `v1.7.0` by 2 files, 11 insertions and 9 deletions in the wider scope, so it is inside the after-gg4 figure.
+
+The byte-identical and import-order counts (a file is byte-identical when `git diff --quiet v1.7.0 HEAD -- <file>` exits 0; of the others it is import-order-only when its content without `import ` lines and blank lines equals upstream's), `/tmp/gsd29-scripts/recount.py` (the Phase 24 script, unchanged):
+
+```text
+files present at v1.7.0 : 63
+byte-identical at HEAD : 36
+differ: 27  (import-order only: 14 , carry fork logic: 13 )
+absent at HEAD : 0 []
+files only here (added since v1.7.0): 10
+    MetadataFreeJsonWriter.java
+    DescribeTableBuilder.java
+    DeclaredNullability.java
+    ParentShape.java
+    ConvertToMapOrJson.java
+    HeaderToValue.java
+    HeaderToValueConfig.java
+    HeadersToValue.java
+    TableOperationFilter.java
+    WithheldMessageException.java
+differing src/main files in total: 37
+import-only: ClickHouseSinkConnector.java, Record.java, StructToJsonMap.java, EmptyRecordConvertor.java, RecordConvertor.java, SchemaRecordConvertor.java, SchemalessRecordConvertor.java, DBWriter.java, InMemoryDBWriter.java, TableMappingRefresher.java, InMemoryState.java, ExtractTopic.java, ExtractTopicConfig.java, MBeanServerUtils.java
+logic: ClickHouseSinkConfig.java, ClickHouseSinkTask.java, ProxySinkTask.java, Data.java, ClickHouseWriter.java, ClickHouseFieldDescriptor.java, ClickHouseHelperClient.java, Column.java, Table.java, Type.java, Utils.java, SinkTaskStatistics.java, org.apache.kafka.connect.transforms.Transformation
+```
+
+The same script at `v1.7.0_gg3` printed 38 byte-identical, 25 differing (14 import-only, 11 with fork logic) and 8 files only here, so since gg3 `ClickHouseFieldDescriptor` and `Table` moved from byte-identical to fork logic and `DescribeTableBuilder` and `ParentShape` were added. The Adopted-wholesale `src/main` row already read 36 of 63, 27 that differ, 14 import-only, 13 with fork logic and ten more files (Phase 26 wrote it), so it is unchanged; the "One number does bear" paragraph now says 37 files, 14 and 23.
+
+The two Named-skip greps:
+
+```sh
+grep -rho '@Disabled' src/test/java | wc -l
+grep -rho 'Assumptions.assumeTrue' src/test/java | wc -l
+```
+
+```text
+       7
+       1
+```
+
+Seven disabled methods plus the eleven parameterized cases behind the one assumption still make 18; the inventory table is unchanged.
+
+Consistency of the three documents (the note, the CHANGELOG section and FORK-DELTA), `python3 -I /tmp/gsd29-scripts/consistency.py all`: `v1.7.0_gg4`, `33.7.2-jre`, `5.6.5` and `cp-kafka-connect-base:7.9.7` in each, the client name and `KIP-1161` in the note and the CHANGELOG, `CREATE TABLE` in the note's first 15 lines and in the first Important Changes bullet, and `pre-v1.7.0_gg4`, the nested-jar count (E-04 `PRE-NESTED-JARS=25`) and the server version (E-05) in the note and FORK-DELTA.
+
+```text
+consistency scope=all docs=['changelog', 'fork-delta', 'note'] failed=0
+```
 
 Matches text: n/a (gate check)
