@@ -412,7 +412,32 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - the tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` reach `origin` only after that run;
      - the scratch branch is deleted from `origin`.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+**Wave 1**
+- [ ] 29-01-PLAN.md — PUB-11, OPS-05, OPS-06, ROLL-04: tracer VERSION bump with its anchor row; archive compare under a new allow-list and the rollback-tree hazard; phase base (latest x V2) and cumulative anchors gate; D-10, OPS-06 and OPS-01/04/05 re-reads
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 29-02-PLAN.md — ROLL-04: 999.4 measured on both trees (Column-tree diff, inserts, in-flight retries per direction, suspects query, WARN/alert/config greps)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 29-03-PLAN.md — ROLL-04, ROLL-05: 999.5 and enum labels on both trees, detection queries (gg3 unchanged + companion), control-character DESCRIBE, KeeperMap self-check; gg1/gg2/gg3 note corrections
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 29-04-PLAN.md — ROLL-04, OPS-06: docs/ROLLOUT-v1.7.0_gg4.md (seven items, measured/read/inferred labels), rollback proven on a dry-run merge
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 29-05-PLAN.md — PUB-11: CHANGELOG 1.7.0_gg4, FORK-DELTA refreshed once, milestone close record, Phase 25-28 disposition flips
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 29-06-PLAN.md — PUB-12: orchestrator-run review rounds (fresh gsd-code-reviewer, at most 3), dispositions, documents frozen
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 29-07-PLAN.md — PUB-13, OPS-05: frozen-tree suite gate (two --rerun runs), publication checks, push approval, scratch push and its one green run
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 29-08-PLAN.md — PUB-13, OPS-05: publication dry run, publish approval, --no-ff merge, one green run, both tags by name, scratch branch deleted
 
 **Research flag**: Standard; this phase follows Phase 24. Before the note states them, re-check two inputs: the Kafka 4.4.0 upgrade notes (not yet published at research time) and the guava advisory identity.
 
