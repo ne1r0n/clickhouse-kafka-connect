@@ -18,10 +18,10 @@ files_reviewed_list:
 findings:
   critical: 1
   warning: 10
-  info: 8
-  total: 19
+  info: 9
+  total: 20
 status: issues_found
-rounds: 3
+rounds: 4
 ---
 
 # Phase 29: Code Review Report
@@ -204,6 +204,28 @@ round: 3 findings: 2
 (c) The CREATE TABLE-name rename notice is present and correct: holds. The banner, item 1 and the first Important Changes bullet are unchanged except for the added rollback sentence, which agrees with the note's order (IN-08 is about its completeness only).
 (d) exactlyOnce=false connectors are handled correctly and no false "safe" remains: holds. Line 246 now names the clean stop for every table the item 2 query lists, for either `exactlyOnce` setting, and line 248 still gives the labelled-inferred recognition of a clean stop for `exactlyOnce=false`; no sentence added by the fixes calls any connector type safe.
 (e) The static checks and greps the note quotes are accurate: holds. No `sql` or `sh` block changed. The residual WARN text still equals `UNREADABLE_PARENT_WARNING`, and the sentence added under it ("drops only `size` and `size0` of that parent") is confirmed by `DescribeTableBuilder.decide` (`SKIP_UNDECIDABLE` for the bare names, `KEEP_UNDECIDABLE` for `size<digits>`).
+
+## Round 4
+
+Scope: `git diff 966620cc2690a3b372c8ff668dbbfe3615be7bf2 HEAD` over `docs/ROLLOUT-v1.7.0_gg4.md` (line 112 and line 250) and the `1.7.0_gg4` section of `CHANGELOG.md` (lines 20-24); commits 0bcef5d6 (IN-07) and ac903f11 (IN-08). The two commits touch only prose; no `sql` or `sh` block changed. Each edit was read against the rollback and upgrade orders in note item 4 and item 1, the close record carry (line 157), and the exactlyOnce=false paragraph of item 4.
+
+Verdicts on the two round 3 findings. IN-07 fixed and correct: line 112 (upgrade direction) and line 250 (rollback direction) now both start the unpausable-producer window at the connector stop ("after the connector has stopped"), which is the point after which neither release drains the record before the other release starts. The duplicate sentence ("A record that was produced under the names of this release and is still in a topic when `v1.7.0_gg3` starts ... in the same way") is gone, and the single remaining statement keeps one "inferred, to be pinned live" label. No other sentence in the note or close record still says "after you saw no lag" (grep over `docs`, `CHANGELOG.md` and the close record finds none). The close record line 157 says "a producer that cannot be paused leaves a window in both directions" without a start point, so it does not disagree. IN-08 fixed and correct in substance: the CHANGELOG rollback sentence now carries the pause, the drain and stop, the in-flight check with its "switch them back only when it is empty" gate, the redeploy of `v1.7.0_gg3`, the resume, and the window for a producer that cannot be paused, with a pointer to the checklist. It now matches the sequence in note line 250 and item 4 step 3. One scoping gap in the new text is below.
+
+### IN-09: The CHANGELOG rollback sentence gates the switch-back on an "in-flight check" that exists only for `exactlyOnce=true`
+
+**File:** `CHANGELOG.md:20-22` (against `docs/ROLLOUT-v1.7.0_gg4.md:250` and the closing paragraph of item 4)
+**Issue:** The added text says to "run the in-flight check of the rollout checklist (item 4) and switch them back only when it is empty". The check is the KeeperMap state-table query, which the note scopes to "each connector with `exactlyOnce=true` that writes a table of either shape". For a connector with `exactlyOnce=false` the note says "there is no state table to query" and asks for a clean stop (no lag, paused or deleted through the REST interface) instead. A reader of the CHANGELOG alone, with an `exactlyOnce=false` connector, is told to run a check that does not exist for it and to wait for an empty result; the other direction (an `exactlyOnce=true` connector on a table with neither shape and unchanged field names) is told to run a check the note does not require. The sentence is not a false "safe", it is an unscoped gate, and the sentence that follows points to the checklist.
+**Fix:** Write "run the in-flight check of the rollout checklist (item 4) for each `exactlyOnce=true` connector, and a clean stop for each `exactlyOnce=false` one, and switch them back only when it is empty or done". Alternatively shorten to "complete the clean-stop procedure of the rollout checklist (item 4), then switch them back".
+
+round: 4 findings: 1
+
+## Mandated confirmations (PUB-12)
+
+(a) No TRUNCATE advice that would wipe other connectors' state remains: holds. The two fix commits add no `TRUNCATE`, `DROP`, `ALTER` or `DELETE`; item 4 still ends "Do not empty or edit the state table to get past a non-empty result".
+(b) Rollback uses tag `pre-v1.7.0_gg4` and the nested-jar archive hazard is stated correctly: holds. Item 7 is not in the diff; its steps 1 and 3 still point at the item 4 order, which the two commits leave in the same sequence (pause, drain, stop, check, switch back, redeploy, resume).
+(c) The CREATE TABLE-name rename notice is present and correct: holds. The first Important Changes bullet keeps the forms, the client V2 and client V1 scope, the silent DEFAULT and the order; the rollback tail now agrees with note line 250 (IN-09 is about the scope of the check only).
+(d) exactlyOnce=false connectors are handled correctly and no false "safe" remains: holds. Note line 248 and the closing paragraph of item 4 are unchanged and still give the labelled-inferred clean-stop recognition; the CHANGELOG sentence is the one place that does not distinguish the two settings (IN-09), and it calls nothing safe.
+(e) The static checks and greps the note quotes are accurate: holds. No `sql` or `sh` block changed in the two commits, so the entries of 29-COMMAND-EVIDENCE.md still cover every command and query in the note.
 
 ---
 
