@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 27
 current_phase_name: Writer Failure Path & Test Debt
 status: executing
-stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-10-23T00:26:31.247Z"
+stopped_at: Completed 27-04-PLAN.md
+last_updated: "2026-10-23T00:46:41.986Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 27 execution started
-state_head: d477b2ad4ba08e573c41e07a4d3ee5bf1a90c1ec
+state_head: 03792012cece369c0814bfe358a6b1514919cece
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 40
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 27 (Writer Failure Path & Test Debt) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 27 execution started
 
@@ -182,6 +182,7 @@ Progress: [████░░░░░░] 40%
 | Phase 27 P01 | 7 min | 2 tasks | 2 files |
 | Phase 27 P02 | 153 min | 3 tasks | 8 files |
 | Phase 27 P03 | 9 min | 3 tasks | 8 files |
+| Phase 27 P04 | 18 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -234,6 +235,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 27]: 27-02: assertJacksonRouteReached accepts the Jackson class directly or as a WithheldMessageException original class (user sign-off flip-as-shown, E-04)
 - [Phase 27]: 27-02: a Jackson exception sharing its chain with a non-Jackson IOException stays a pinned accepted residual (user-accepted at plan time, probe in E-03)
 - [Phase 27]: 27-03: Open Question 1 decided as recommended: the Enum lookup-miss text is proven at Column level; at writer level the operator sees the IllegalArgumentException class and the column, because WithheldMessageException withholds the message
+- [Phase 27]: 27-04: ClickHouseWriter derives write-failure metadata through sourceTypeName(Data) and valueClassName(Data), and the ClassCastException format is WRITE_TYPE_MISMATCH_FAILURE_FORMAT on the shared prefix; no text changed, the two builders stay separate — The exact pin was committed green first; a fork-anchors row (83) stops an upstream sync from silently restoring the inline format
+- [Phase 27]: 27-04: the planning-ID guard is a Docker-free unit test (SourcePlanningIdGuardUnitTest) over src/main/java, not a verify-merge-invariants.sh addition — That script and its self-test are read-only in this milestone, the rule has nothing to do with merge provenance, and a unit test fails testUnit on every run
 
 ### Pending Todos
 
@@ -279,8 +282,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T00:26:30.927Z
-Stopped at: Completed 27-03-PLAN.md
+Last session: 2026-10-23T00:46:41.667Z
+Stopped at: Completed 27-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
