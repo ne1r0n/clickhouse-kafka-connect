@@ -358,4 +358,4 @@ Rolling back brings back:
 - the `v1.7.0_gg3` MBean `version=` segment and client name ([item 5](#item-5-jmx-mbean-name-and-client-name));
 - the `v1.7.0_gg3` bundled dependency versions, because you redeploy its archive ([item 6](#item-6-dependencies-build-and-the-connect-worker));
 - the earlier, shorter key rule for `enableDbTopicSplit=true` in [`ROLLOUT-v1.7.0_gg1.md`](ROLLOUT-v1.7.0_gg1.md) and [`ROLLOUT-v1.7.0_gg2.md`](ROLLOUT-v1.7.0_gg2.md), which can miss a key; take the rule from step 2 of item 4 of the gg3 note;
-- on the branch, the gg4 documents themselves: this note, the CHANGELOG section and the FORK-DELTA rows.
+- on the branch, the gg4 documents are gone: this note, the CHANGELOG section and the FORK-DELTA rows (read the note with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg4.md`).
