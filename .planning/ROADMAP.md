@@ -97,7 +97,7 @@ Phase artifacts: `milestones/v1.7.0_gg3-hardening-phases/` · Quick tasks: `mile
 - [x] **Phase 25: Dependency Absorption & Upstream Mini-Sync** - Fix the pin-guard reader first, then merge `custom_build`'s nine Dependabot commits and upstream's tail `a6f1df83`. Prove the Shadow 9 archive intact and `connect-api` 4.4.0 compile-time only, add a CI guard against nested jars, and close the pin-guard and slf4j advisories. The user creates the `dependencies` label (completed 2026-10-21)
 - [x] **Phase 26: Size-Named Tuple Elements in Discovery** - Backlog 999.4: a declared Tuple element named `size`, `size0` or `size<digits>` survives discovery at both drop sites and round-trips live. The V1/V2 DESCRIBE loop becomes one tested builder (completed 2026-10-22)
 - [x] **Phase 27: Writer Failure Path & Test Debt** - A Jackson failure on the JSON-as-string route no longer carries a Map key, and an unknown Enum label names its column. The remaining 22-REVIEW and 24-REVIEW advisories and the carried test-debt items close without weakening any test (completed 2026-10-23)
-- [ ] **Phase 28: Raw Identifier Names in Discovery** - Backlog 999.5: names are matched under the raw identifier from `CREATE TABLE`, with pairing re-keyed and `normalise` rewritten. Both name forms are pinned live, and the fork coverage list is completed once
+- [x] **Phase 28: Raw Identifier Names in Discovery** - Backlog 999.5: names are matched under the raw identifier from `CREATE TABLE`, with pairing re-keyed and `normalise` rewritten. Both name forms are pinned live, and the fork coverage list is completed once (completed 2026-10-23)
 - [ ] **Phase 29: Release & Publication** - `v1.7.0_gg4` is published with an independently reviewed rollout note, two green suite runs, an origin-freeze check and one green CI run on the published SHA before the tags
 
 ## Phase Details
@@ -342,7 +342,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - backlog 999.5, marked delivered.
      `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class Phases 25–28 added. The list is edited once, its FORK-DELTA row is in the same commit, and the generated fork report shows those classes. The anchors invariant passes at every commit.
 
-**Plans:** 6/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**
@@ -545,7 +545,7 @@ The four code phases split along the production files that change: the build and
 | 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 8/8 | Complete    | 2026-10-21 |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-23 |
-| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 6/6 | In Progress | - |
+| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 6/6 | Complete    | 2026-10-23 |
 | 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 
 ---
