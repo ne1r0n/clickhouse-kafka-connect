@@ -73,6 +73,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(FromVersionConditionExtension.class)
@@ -907,13 +908,13 @@ public class ClickHouseSinkTaskWithSchemaTest extends ClickHouseBase {
         ClickHouseSinkTask chst = new ClickHouseSinkTask();
         chst.start(props);
         try {
-            chst.put(sr);
-        } catch (RuntimeException e) {
+            RuntimeException e = assertThrows(RuntimeException.class, () -> chst.put(sr));
             // Under WRT-13 (D-05) the deepest cause is the value-free copy, so the exact original class is checked through it, which is as strict as before.
             WithheldMessageException withheld = assertInstanceOf(WithheldMessageException.class, Utils.getRootCause(e), "Could not detect size mismatch for FixedString");
             assertEquals(IllegalArgumentException.class.getName(), withheld.getOriginalClassName(), "Could not detect size mismatch for FixedString");
+        } finally {
+            chst.stop();
         }
-        chst.stop();
     }
 
     @Test
