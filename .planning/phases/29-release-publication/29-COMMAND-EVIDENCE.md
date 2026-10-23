@@ -489,7 +489,7 @@ D994-DIFFERING=n01,n02,n03,n04,r01,s4_a01,s4_a02,s4_a03,s4_a04,s4_a05,s4_a06,s4_
 
 Result: the two trees differ for exactly the 25 affected keys (`s4_a01`..`s4_a13`, `n01`..`n04`, `x01`..`x07`, `r01`) and for none of the 19 look-alikes, `s4_o01`, `n05` or `x08`. Warnings: on gg3 every one of the 25 differing tables logged exactly one unpaired-element WARN and no table logged an unreadable-parent WARN (the text does not exist there); on gg4 no table of the 47 logged either WARN, `x08` included (its counts, 0 and 0, are the same on both trees). This is the affected set that research R4 and Phase 26 E-02 give; it was measured here, not copied.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-11: one live insert per shape, gg3 versus gg4 (999.4)
 
@@ -533,7 +533,7 @@ PROBE-INSERT tree=gg4 table=s4_u05 outcome=stored code=- rows=1 match=yes
 
 Verdicts. gg3 to gg4 is an upgrade for these shapes: the six failing shapes stored nothing on gg3 (so no row of them exists from gg3), and `r01` shows that a shorter write which parses stores a wrong value (gg3 writes only the string, so the server reads the `UInt32` size from the first four bytes it finds: the length byte 7 and `abc`, which is 1667391751 in little-endian order, and then reads `xyz` as `v` from the remaining bytes, the length byte 3 and `xyz`), the one case of this kind that was measured. The controls store identically on both. The server codes are the ones this server printed for these records: 33 for five shapes and 32 for `n03`; they are not the assignment per shape that the gg3 note gives (code 32 for `Tuple(size UInt16, v String)`, `Array(Tuple(size UInt16, v String))` and `Array(Tuple(size1 UInt16, v String))`, code 33 for `Array(Tuple(v String, size1 UInt16))`), so a document that names a code per shape would contradict this measurement; the code is 32 or 33, depending on where the parse runs out of bytes, which depends on the record. Neither measurement shows a different outcome class (a failed insert with 0 rows).
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-12: in-flight retries across the release change, both directions (999.4, D-04)
 
@@ -587,7 +587,7 @@ Verdicts, worded from these lines only:
 - **Upgrade (gg3 to gg4), failing shapes.** The shapes that failed on gg3 stored nothing (E-11, rows 0), so there is no earlier row for a gg4 retry to meet; it stores the row once.
 - **Upgrade (gg3 to gg4), the shape that stored a shifted row.** With the gg3 `r01` row landed under the token, the gg4 retry of the same range is dropped on a table with a deduplication window (outcome `dropped`, one row, `value=landed`): the shifted row stays and the correct row is not stored. On a table without a window the retry is stored as a second row (two rows, `value=both`): the shifted row and the correct one. Whether a window applies is the table's own setting; no window is assumed here.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-13: the size-element suspects query on the catalog and on look-alikes (999.4)
 
@@ -625,7 +625,7 @@ SIZEQ-OVERFLAG=s4_o01,x08
 
 Result. On the catalog database the query lists 27 tables: the 25 of `D994-DIFFERING` (E-10) and two over-flags, `s4_o01` (`Array(Map(String, Tuple(size1 UInt8)))`, the one the gg3 note names) and `x08` (`JSON(a Tuple(size UInt8, v String))`: the type text holds `(size UInt8`, but a JSON column's typed paths are dropped from the table description by design, so its Column tree is identical on gg3 and gg4 and neither logs the WARN, E-10). It lists none of the 19 `s4_u` look-alikes and nothing for `n05`, and it returns an empty list on the database that holds only `s4_u01`..`s4_u19` and `n05`, which is what the note's "Empty result" sentence needs. The query reads the declared type text only, so a table it lists is a suspect, not a finding: of the 27, 25 differ between the releases and 2 do not.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-14: WARN greps for the size-element fix
 
@@ -659,7 +659,7 @@ exit=1
 
 Result. On the file that holds the lines, the first command printed exactly the unpaired-element line and the second exactly the unreadable-parent line (exit 0 each, and neither printed the other's line or an unrelated line); on the file with the unrelated lines only, both printed nothing (exit 1). The unpaired-element line is a real message of the gg3 connector (E-10); on gg4 neither WARN was logged for any of the 47 catalog tables (E-10), so on a gg4 log both commands are expected to print nothing for these shapes. The unreadable-parent line has been shown to match its grep, not to occur in a run.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-15: alert-rule and config greps for the writer-text changes
 
@@ -696,7 +696,7 @@ exit=1
 
 Result. The alert-rule command listed each of the three texts once (one line per rule file, in the order the directory is read), printed nothing for the directory that held only the unrelated rule (exit 1), and did not list `rule-escaped.yml`, whose matcher writes the space as `\s`: the search compares literal text, so a rule that writes a character of these texts with a regular-expression escape is not found and has to be read by hand. The config command listed both files that set the option (the `1` and the `true` form) and not the unrelated configuration, and printed nothing for the directory that held only the unrelated one (exit 1).
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-20: names and enum labels, gg3 versus gg4 (999.5)
 
@@ -826,7 +826,7 @@ Verdicts, worded from these lines only:
 - **Rollback (gg4 to gg3), a batch retried under the raw name form.** The same three outcomes in the same order: dropped with the landed row kept, failed with `DataException` on the element (`column 't.x\\\\y'` in the escaped print form) with the landed row kept, and one `DEFAULTED` row on the table without a window.
 - Both directions: a name that does not match is not an error for a root column. With a window the token drops the batch before the default matters; without one the default is stored.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-22: the escaped-name queries, gg3 unchanged and the companion (999.5, PT-04)
 
@@ -1003,7 +1003,7 @@ PROBE-KEEPER case=after-delete-topics keys=orders-v2-0,other-0
 
 Result. The query returns exactly the two in-flight keys of the two listed topic forms, `db1.orders-2` and `orders-1`. It does not return `orders-0` (already `AFTER_PROCESSING`), `orders-v2-0` (a topic that merely shares the prefix `orders`) or `other-0`, and it returns nothing once both ranges are `AFTER_PROCESSING`. Both `DELETE` examples succeeded on the KeeperMap table (`outcome=ok`; the lightweight `DELETE` is supported on this engine on this server). The first removed exactly `orders-1` and `db1.orders-2` and left `orders-0`, `orders-v2-0` and `other-0`. The second, run with the prefixed topic added as its comment says, removed every partition of `orders` and of `db1.orders` and left `orders-v2-0` and `other-0`. The state table is the one the connector's own `KeeperStateProvider` creates (`ENGINE = KeeperMap('/kafka-connect') PRIMARY KEY key`). The notes may therefore call the query and both examples run on a scratch state table, and must keep the key form as read from code.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-30: item 7 rollback on a dry-run merge of the tip (D-03)
 

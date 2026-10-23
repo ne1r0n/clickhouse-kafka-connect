@@ -123,15 +123,57 @@ The queries read table definitions and cannot see your producers. To find out wh
 
 ### What changed
 
-This item is written in the next commit of this release.
+The gg3 note listed a known defect: the table description dropped a Tuple element named `size` or `size0` at any depth of a column's type, and an element named `size` followed by digits wherever an `Array` encloses its Tuple, so the connector wrote fewer fields than the table declares. `v1.7.0_gg4` keeps those elements, so the connector writes every field that the table declares.
+
+- **Which tables change.** Measured on ClickHouse 26.9.19.9 with client V2, the real table-description code of both releases was run over the same 47 fixture tables on one server. The column descriptions differ for exactly 25 of them, all of them tables with a Tuple element named `size`, `size0` or `size` followed by digits, and they are identical for the other 22: look-alikes such as `size1` outside an `Array`, `sizes` and `Size`, a Tuple with elements named `keys` and `values`, and the two over-flag shapes below. On `v1.7.0_gg3` each of the 25 logged one unpaired-element WARN; on `v1.7.0_gg4` none of the 47 logged it.
+- **What an insert does.** Measured with one record per table. On `v1.7.0_gg3` five shapes (`Tuple(size UInt16, v String)`, `Array(Tuple(size UInt16, v String))`, `Array(Tuple(size1 UInt16, v String))`, `Array(Tuple(v String, size1 UInt16))` and `Tuple(size Tuple(a UInt8, b String))`) and `Array(Tuple(size0 String, size String))` failed with the server error code 32 or 33 and stored no row; the code depends on where the parse runs out of bytes and so on the shape and the record, and in this measurement it was 33 for five of the six and 32 for one. One shape, `Tuple(size UInt32, v String)`, stored a row that is not the record: `v1.7.0_gg3` wrote only the string, so the server read the `UInt32` from the first bytes it found and stored a wrong value (a `size` of 1667391751 for a record whose `size` is 7) and a shortened `v`. On `v1.7.0_gg4` all of these store the record and read back equal. Three look-alike shapes stored the record equal on both releases. The fork's own live test, which inserts one record into each of 46 tables of the catalog and reads each row back, passes on `v1.7.0_gg4` (measured on the same server version).
+- **The unpaired-element WARN is gone for these shapes.** The line `have no matching DESCRIBE sub-column` of the gg3 note is no longer logged for them. The WARN is still in the code for any other element that has no matching sub-column (read from connector code).
+- **One residual, read from connector code.** If the connector cannot read a column's declared type, it keeps the earlier behaviour for that column and drops its sub-columns named `size`, `size0` or `size` followed by digits. It then logs the WARN below once per column and table description.
+- **Rows stored earlier are not repaired.** A table that earlier releases failed to write holds no row to repair. A row that an earlier release stored shifted, as in the `Tuple(size UInt32, v String)` measurement, stays as it was written. A shorter write that happens to parse was measured for that one shape only.
+
+The residual WARN reads:
+
+```text
+Could not read the declared type <type> of column <column> of table <db>.<table> (<reason>); its sub-columns named size, size0 or size followed by digits are treated as structural, as earlier releases did
+```
+
+No fixture table logged this line, so the text is shown to match its search below and has not been seen in a run.
 
 ### Am I affected?
 
-Empty result: see the next commit.
+Two checks, both read-only. The first reads the declared type text of your columns and lists suspects, with the query of item 2 of the gg3 note, unchanged. Replace `<db>` with the database the connector writes to:
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '[(,] ?size0? [A-Za-z]')
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''),
+                 'Array\\((?:[^()]|\\((?:[^()]|\\((?:[^()]|\\([^()]*\\))*\\))*\\)|\\()*?[(,] ?size[0-9]+ [A-Za-z]')
+      )
+ORDER BY `table`;
+```
+
+The meaning of the result flipped with the upgrade. Before it, each listed table is a table whose inserts fail or store a shifted row. After it, each listed table is a table that this release now writes in full. **Empty result:** no column of `<db>` has a declared type with an element of that shape, as far as the type text shows, so this item does not concern that database. **Non-empty result:** each listed table is a suspect. The query reads text, so it has two known over-flags, and a table it lists is not necessarily one that changes. Measured on the server named above, it listed 27 of the 47 fixture tables: the 25 that change and two that do not, `s4_o01`, whose column has the type `Array(Map(String, Tuple(size1 UInt8)))`, and `x08`, whose column is `JSON(a Tuple(size UInt8, v String))`. A `JSON` column's typed paths are dropped from the table description on purpose, so its description is the same on both releases. The query listed none of the 19 look-alike tables and nothing for a database that held only look-alikes.
+
+The second check reads connector logs. Replace `<connector-log-file>` with a log file that covers a task start. On a `v1.7.0_gg3` log it names the tables that had the defect:
+
+```sh
+grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
+```
+
+**Empty result:** that log shows no unpaired element for any table the connector described. It says nothing about a period the file does not cover, and `v1.7.0_gg2` never logs the line. On a `v1.7.0_gg4` log an empty result is expected for the shapes of this item (none of the 47 fixture tables logged the line). **Non-empty result:** each line names a table and the element paths that the connector could not pair, and on a `v1.7.0_gg4` log it is a different cause than the names of this item. The residual of "What changed" has its own line:
+
+```sh
+grep -F 'Could not read the declared type' <connector-log-file>
+```
+
+**Empty result:** the connector read the declared type of every table it described. **Non-empty result:** each line names a column whose sub-columns named `size`, `size0` or `size` followed by digits the connector drops, as earlier releases did. Run on a scratch log that held the real `v1.7.0_gg3` line and a line built from the message constant between unrelated lines, each command printed exactly its own line, and on a file of unrelated lines both printed nothing.
 
 ### What to do
 
-See the next commit.
+Nothing is needed for the fix itself. For a table the query lists, check the rows that were stored before the upgrade: a table whose shape stored a shifted row keeps it. Read [item 4](#item-4-in-flight-batches) before a rollback.
 
 ---
 
@@ -139,15 +181,44 @@ See the next commit.
 
 ### What changed
 
-This item is written in the next commit of this release.
+Two failure texts change. Both change text only: a batch that fails this way failed in `v1.7.0_gg3` too, and the retry handling does not change.
+
+**The Map key of the gg3 note is gone on the JSON-as-string route.** This route is on for a connector whose `clickhouseSettings` sets `input_format_binary_read_json_as_string` to `1` or `true`. In `v1.7.0_gg3`, a failure of the JSON library on that route was passed on with its message, and when the message named a path through a Map, the Map key, which is record data, reached the Connect task status, the DLQ header `__connect.errors.exception.stacktrace` and the throwable of the `Error inserting records` ERROR logs (item 1 of the gg3 note). In `v1.7.0_gg4` the failure is reported like any other value-conversion failure, with the message withheld (ledger L-52):
+
+```text
+Failed to write column `<column>`: Kafka value of type <Kafka type> (value class: <Java class>) could not be written as ClickHouse type JSON: <Jackson exception class>
+Caused by: <Jackson exception class> (message withheld: may contain record data)
+```
+
+So the text `(through reference chain: ...)` and the Jackson message no longer appear in those three places. This is read from connector code, and the suite pins that the Map key reaches none of the three. The retry classification is unchanged, and a Jackson exception over a timeout still keeps its retry. There is one accepted residual, as `FORK-DELTA.md` states it in Known costs: a Jackson exception whose cause chain also holds a non-Jackson `IOException`, beneath or above it, still passes through with its message. On this route that chain comes only from a record value whose own getter throws it, and Connect's value types have no getter that Jackson calls.
+
+The route of an explicit `insertFormat=json` can raise a Jackson failure too. This release does not change that route, and whether its text carries a Map key into the task status, the DLQ header or the logs is not measured.
+
+**An unknown Enum label is an `IllegalArgumentException`.** For an `Enum8` or `Enum16` column on the RowBinary route, on both clients, the class in the `Failed to write column` text is now `java.lang.IllegalArgumentException`, where it was `java.lang.NullPointerException` (ledger L-54). The column is named in the text, and the `Caused by:` line carries the class and no message. The lookup-miss text of the connector (`Enum label not found for column <column>`) is withheld on this path, as every message is, so an operator reads the exception class and the column and not that sentence. That is a known limit of this release: showing it would need a different kind of exception, a decision that has not been taken. The retry classification is unchanged (not retriable). A record that sends a label in the earlier key form after the upgrade fails this way ([item 1](#item-1-names-and-enum-labels-as-written-in-create-table)).
 
 ### Am I affected?
 
-Empty result: see the next commit.
+Two checks. Both only read files. The first finds the connectors on the JSON-as-string route. Replace `<connector-config-directory>` with the directory that holds your connector configurations:
+
+```sh
+grep -rnF 'input_format_binary_read_json_as_string' <connector-config-directory>
+```
+
+**Empty result:** no configuration file in that directory sets the option, so the route is off for those connectors and nothing in the first change applies to them. **Non-empty result:** each listed line is a connector whose `clickhouseSettings` mentions the option. It is on the route when the value is `1` or `true`. The search covers files only. If you create connectors through the Connect REST interface and keep no file, read each connector's stored configuration the way you usually do and look for the same name. Run on a scratch directory, the command listed both the `=1` and the `=true` form and not an unrelated configuration, and printed nothing for a directory that held only the unrelated one.
+
+The second finds alert rules and log matchers on texts that stopped appearing. Replace `<alert-rule-directory>` with the directory that holds your rules:
+
+```sh
+grep -rnF -e 'through reference chain' -e 'No serializer found' -e 'NullPointerException' <alert-rule-directory>
+```
+
+**Empty result:** no matcher in that directory uses any of the three texts, and nothing needs to change. **Non-empty result:** each listed line uses a text that a connector on the JSON-as-string route or an unknown Enum label no longer produces in these places. A matcher on `NullPointerException` also catches other failures, so read what the rule is for before you change it. The search compares literal text, so a matcher that writes a character of these texts with a regular-expression escape (for example `through\sreference\schain`) is not listed; read such rules yourself. Run on scratch directories, the command listed each of the three texts once, printed nothing for a directory that held only an unrelated rule, and did not list the rule that wrote the space as `\s`.
 
 ### What to do
 
-See the next commit.
+- Alert on `Failed to write column ` and on the exception class instead of the texts that stopped: the Jackson class names for the JSON-as-string route and `java.lang.IllegalArgumentException` for an unknown Enum label. `Failed to write column ` finds every value-conversion failure of the writer.
+- For a connector on the JSON-as-string route, the Map key no longer reaches the three places, except through the accepted residual above. Keep handling those places as you handle record data if your records can hold a value whose own getter throws an `IOException`.
+- If you use the `insertFormat=json` route, treat the same three places as able to carry a Jackson message, since that was not measured.
 
 ---
 
@@ -155,15 +226,40 @@ See the next commit.
 
 ### What changed
 
-This item is written in the next commit of this release.
+A batch that one release leaves in `BEFORE_PROCESSING` is retried by the other release under the same `insert_deduplication_token`, which the connector builds from the topic, the partition and the first and last offset of the batch, with `exactlyOnce=false` as well as `exactlyOnce=true` (read from connector code, and used in every measurement below). A range that is already in `AFTER_PROCESSING` is dropped and not inserted again. Whether a clean stop matters depends on whether the other release reads the record's fields in the same way and builds the same bytes. Each measurement below ran on ClickHouse 26.9.19.9 with client V2 and `errors.tolerance` at its default, and with the row of the other release landed by SQL under the token the connector sends, because one server cannot be shared between two releases. Each change below is answered for both directions.
+
+- **Names and Enum labels ([item 1](#item-1-names-and-enum-labels-as-written-in-create-table)), both directions.** A batch that is retried across the release change meets the other release's name rule. Measured for the backslash name on client V2 only, in both directions with the same three outcomes. On a table with a deduplication window and with the other release's row landed, the retry of a root field is dropped by the token and the landed row stays, and the retry of a Tuple element fails before any insert with a `DataException` (`column '<path>' (INT32): no value provided for a non-nullable column without a default; ...`) and the landed row stays. On a table without a window and with nothing landed, the retry of a root field stores one row that holds the column's `DEFAULT`. So the rename and the backlog precondition of item 1 apply in both directions, and a clean stop is what leaves no range in flight. The other eleven name forms and client V1 were not run in this way.
+- **Size-named Tuple elements ([item 2](#item-2-tuple-elements-named-size)), upgrade.** For the shapes that failed on `v1.7.0_gg3` no clean stop is needed: they stored no row, so a range that `v1.7.0_gg3` left in flight holds nothing, and the retry by `v1.7.0_gg4` lands once. The shape that stored a shifted row is different. Measured: with the row of `v1.7.0_gg3` landed under the token, the retry by `v1.7.0_gg4` is dropped on a table with a deduplication window, so the shifted row stays and the correct row is not stored, and on a table without a window the correct row is stored as a second row. Whether a window applies is the table's own setting. Stop cleanly first for a table of that shape.
+- **Size-named Tuple elements, rollback: stop cleanly first.** A range that `v1.7.0_gg4` left in `BEFORE_PROCESSING` is retried by `v1.7.0_gg3` under the same token. The bytes of `v1.7.0_gg3` are short, and the server rejects them before it looks at the token. Measured for one affected shape with the rows of `v1.7.0_gg4` landed by SQL: the retry failed with the server error code 33 and left exactly the one landed row, so the task fails, or the batch goes to the dead letter queue, although the rows had landed. A table whose declared type differs only by a name that is not size-named has the same bytes on both releases, and its retry was dropped by the token with one row left. The code is 32 or 33 depending on the shape and the record, so do not match one code.
+- **Writer error text and Enum error text ([item 3](#item-3-writer-error-text)).** On the upgrade, no clean stop is needed, because only the text of a failure changes and not a byte of the batch or its token (read from connector code). On a rollback, no clean stop is needed for the same reason.
+- **The MBean version and the client name ([item 5](#item-5-jmx-mbean-name-and-client-name)).** On the upgrade, no clean stop is needed, because the version is not part of the batch or of its token (read from connector code). On a rollback, no clean stop is needed for the same reason.
+- **Bundled dependency patch bumps ([item 6](#item-6-dependencies-build-and-the-connect-worker)).** On the upgrade, no clean stop is needed, and on a rollback, no clean stop is needed, because no change in the bytes sent to ClickHouse is expected. That is inferred, to be pinned live: it is not measured, and the suite and the JSON-route live tests are green on the release tip.
 
 ### Am I affected?
 
-Empty result: see the next commit.
+You are affected if a connector writes a table that a query of [item 1](#item-1-names-and-enum-labels-as-written-in-create-table) or of [item 2](#item-2-tuple-elements-named-size) lists, or if its producers still use the earlier field names of item 1, and you upgrade or want to roll back. **Empty result of those queries:** no table of that database has those shapes, so neither change needs a clean stop for that database. A connector with `exactlyOnce=false` has no state table to query, so the check below does not exist for it, but the failure does: a range that Kafka delivers again to `v1.7.0_gg3` for a table of the size-named shape is expected to fail with code 32 or 33 even when `v1.7.0_gg4` stored its rows. The measurements above ran with the token that `exactlyOnce=false` also sends. Stop its tasks cleanly, so that the offsets are committed, before you redeploy `v1.7.0_gg3`.
 
 ### What to do
 
-See the next commit.
+Before an upgrade, rename the producer fields as [item 1](#item-1-names-and-enum-labels-as-written-in-create-table) says, and for a table of the shifted shape of [item 2](#item-2-tuple-elements-named-size) stop the connector cleanly first. Before a rollback, rename the producer fields back, and for each connector with `exactlyOnce=true` that writes a table of either shape:
+
+1. Stop or pause the connector with your usual procedure, and wait until its tasks have stopped.
+2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries. With `enableDbTopicSplit=true`, also add the entry `'<db><dbTopicSplitChar><topic>'` for each topic, where `<db>` is the connector's `database` setting: the connector keys a topic that its `dbTopicSplitChar` divides into exactly two parts under the topic name itself, and any other topic under that prefixed form. A topic name that ends with `dbTopicSplitChar` can also be keyed without those trailing characters, so list that form as well. An entry that matches no key changes nothing. This key form is read from the connector code, not measured. Run the query in the database the connector connects to (its `database` setting, where the connector creates the state table), or write the table as `` `<db>`.`<zkDatabase>` ``:
+
+```sql
+SELECT `key`, minOffset, maxOffset, state
+FROM `<zkDatabase>`
+WHERE state != 'AFTER_PROCESSING'
+  AND arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>', '<topic>')
+ORDER BY `key`;
+```
+
+   **Empty result:** no batch of the listed topics is in flight, so it is safe to redeploy `v1.7.0_gg3`. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not redeploy `v1.7.0_gg3` yet. On a state table created by the connector's own `KeeperStateProvider` of this release, measured on the server named above, the query returned the two in-flight keys of the two listed topic forms (one plain, one with the `<db><dbTopicSplitChar>` prefix), left out a key that was already `AFTER_PROCESSING` and a topic that merely shares a prefix, and returned nothing once both ranges were `AFTER_PROCESSING`. The test wrote the prefixed key itself, so which key the connector writes for a topic is read from the connector code. The query only reads, so you can run it as often as you like.
+3. If the result is not empty, start the `v1.7.0_gg4` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then continue with step 2 of [item 7](#item-7-rollback).
+
+For a connector with `exactlyOnce=false` that writes such a table, there is no state table to query. Stop its tasks cleanly before you redeploy `v1.7.0_gg3`, so that its offsets are committed and Kafka does not deliver a range again.
+
+[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) and [item 1 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check), to which it points, explain why the state table is shared; that explanation is not repeated here. Both notes carry the key rule of step 2 above. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
 
 ---
 
