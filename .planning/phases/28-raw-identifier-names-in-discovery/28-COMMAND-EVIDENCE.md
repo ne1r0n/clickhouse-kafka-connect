@@ -12,7 +12,7 @@
 |-------|-------------|---------|
 | E-01 | Phase base | pass |
 | E-02 | NAME-01 pin green on the current code and red under the always-close mutation | pass |
-| E-03 | NAME-02 tracer and capture runs | pending |
+| E-03 | NAME-02 tracer and capture runs | pass |
 | E-04 | NAME-02 spike record | pending |
 | E-05 | NAME-03/04 tracer red then green, and the testUnit red set of the fix | pending |
 | E-06 | NAME-03/04 changed pins red on the unchanged production, coupling proof | pending |
@@ -95,4 +95,44 @@ gate: invariants: provenance_paths=3 anchor_commits=109 anchor_rows=83 marker_co
 Notes: the two literals of the new test were compared with 23-REVIEW.md lines 49 and 50 with `grep -F` (one match each). No src/main file differs from the phase base at the test commit. The real server literal for the same shape is captured by the NAME-02 spike in plan 28-02 (entry `btbsn`).
 
 2026-10-23T09:36:00Z
+Verdict: pass
+
+### E-03: NAME-02 tracer and capture runs
+
+Commands as run:
+
+```bash
+rm -rf build/raw-name-matrix
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawNameMatrixLiveTest' --rerun > /tmp/gsd28/exec/tracer-28-02.log 2>&1   # ctl and bs only
+# all twelve entries, twice (run 1, run 2), each preceded by rm -rf build/raw-name-matrix
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawNameMatrixLiveTest' --rerun > /tmp/gsd28/exec/live-28-02-run{1,2}.log 2>&1
+cp -R build/raw-name-matrix /tmp/gsd28/exec/capture-run{1,2}
+diff -r -x 'cells-*' /tmp/gsd28/exec/capture-run1 /tmp/gsd28/exec/capture-run2
+cp /tmp/gsd28/exec/capture-run2/*.jsonl /tmp/gsd28/exec/capture-run2/SERVER_VERSION.txt src/test/resources/raw-name-matrix/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*RawNameMatrixFixturesUnitTest' --rerun > /tmp/gsd28/exec/fixtures-28-02.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain describeFixtureDrift --tests '*RawNameMatrixDriftLiveTest' > /tmp/gsd28/exec/drift-28-02.log 2>&1
+git commit (31 files)  -> test(28-02)
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd28/exec/testunit-28-02.log 2>&1
+/tmp/gsd28/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd28/exec/spotless-28-02.txt
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd28/exec/gate-28-02.log 2>&1
+```
+
+```text
+tracer: RawNameMatrixLiveTest 3 tests, 3 succeeded, 0 failed (ctl, bs, server version); seven capture files; bs root cell V2 form r + two backslashes + z, decoded r + one backslash + z
+run1: RawNameMatrixLiveTest 13 tests, 13 succeeded, 0 failed, 0 skipped
+run2: RawNameMatrixLiveTest 13 tests, 13 succeeded, 0 failed, 0 skipped
+diff_r_jsonl_and_version: silent (the cells-*.txt files were also byte-identical across the two runs)
+files_copied: 24 .jsonl (<key>-names.jsonl and <key>-enum.jsonl for ctl bs bsn lf tab cr sl dq bt na ap btbsn) + SERVER_VERSION.txt (version=26.9.19.9), cp from capture-run2, no edit
+fixtures: RawNameMatrixFixturesUnitTest 13 tests, 13 succeeded, 0 failed
+drift: RawNameMatrixDriftLiveTest 12 tests, 12 succeeded, 0 failed (describeFixtureDrift)
+testunit: 1206 tests, 1204 succeeded, 0 failed, 2 skipped
+test_commit: f028c57e (test(28-02), 31 files: 4 new test classes, DescribeFixtureCatalog.java, DeclaredNullabilityFixtures.java, 24 rows + SERVER_VERSION.txt)
+spotless: spotless-28-02.txt: base 46 head 46 new [] changed []
+gate: invariants: provenance_paths=3 anchor_commits=113 anchor_rows=83 marker_commits=125 anchor_exempt=0 result=PASS
+src_main: git diff --quiet HEAD -- src/main exit 0
+```
+
+Notes: no DDL was rejected by the server for any of the twelve entries and every server premise (P1 to P3) held for all of them. The cells files are not committed.
+
+2026-10-23T09:46:07Z
 Verdict: pass
