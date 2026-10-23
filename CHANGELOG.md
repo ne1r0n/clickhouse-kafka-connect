@@ -18,10 +18,11 @@ upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start wi
   under it fails the record. Rename those fields to the names written in `CREATE TABLE`. Pause the producers, let the
   old release consume everything that was produced under the earlier names, stop it cleanly, switch the producers,
   then upgrade and resume them. A rollback runs the same order with the versions swapped: pause the producers, keep
-  them on the new names until the connector has consumed what they produced and stopped, then switch them back and
-  redeploy `v1.7.0_gg3` (see the rollout checklist, item 4). Tables that earlier releases could not map (a double quote
-  in a name on client V2, a tab or a carriage return in a name on client V1) are mapped now, so records for them start
-  to land. Rows stored by earlier releases are not repaired.
+  them on the new names until the connector has consumed what they produced and stopped, run the in-flight check of
+  the rollout checklist (item 4) and switch them back only when it is empty, then redeploy `v1.7.0_gg3` and resume
+  them. A producer that cannot be paused leaves a window in both directions (see the checklist). Tables that earlier
+  releases could not map (a double quote in a name on client V2, a tab or a carriage return in a name on client V1)
+  are mapped now, so records for them start to land. Rows stored by earlier releases are not repaired.
 * A rollback to `v1.7.0_gg3` with batches in flight needs a clean stop for a table with a `Tuple` element named
   `size`, `size0` or `size` followed by digits, and for a table whose field names changed under the notice above. The
   upgrade needs a clean stop for every table with such a `Tuple` element, except a table that has exactly one of the six
