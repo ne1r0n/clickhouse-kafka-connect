@@ -78,3 +78,138 @@ PROBE-AGENT tree=gg4 agent=clickhouse-kafka-connect/v1.7.0_gg4 clickhouse-java-v
 ```
 
 Matches text: pending (29-04)
+
+### E-03: the shipped archive, tag v1.7.0_gg3 versus the gg4 tip (PUB-11, ROLL-04)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md` (the dependencies item and the "the archive you deploy" sentences) and the `CHANGELOG.md` and `docs/FORK-DELTA.md` archive numbers (written in plans 29-04 and 29-05). Archive A is `createConfluentArchive` built at tag `v1.7.0_gg3` (`3376a18f`, worktree `/tmp/gsd29/wt-gg3`); archive B is built at the gg4 tip after the bump commit (`547c37a1`, worktree `/tmp/gsd29/wt-tip`). Both were built with `clean createConfluentArchive`, each in its own worktree, and each build directory held exactly one zip, copied into its own new, empty directory. Both builds: `BUILD SUCCESSFUL` (gg3 in 5s on Gradle 9.6.1, the gg3 wrapper; tip in 10s on Gradle 9.8.1).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-gg3/gradlew -p /tmp/gsd29/wt-gg3 --console=plain clean createConfluentArchive
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain clean createConfluentArchive
+shasum -a 256 /tmp/gsd29/archives/gg3/*.zip /tmp/gsd29/archives/tip/*.zip
+python3 -I .planning/scripts/compare-confluent-archives.py /tmp/gsd29/archives/gg3/*.zip /tmp/gsd29/archives/tip/*.zip .planning/scripts/confluent-archive-allowlist-25.txt
+python3 -I .planning/scripts/compare-confluent-archives.py /tmp/gsd29/archives/gg3/*.zip /tmp/gsd29/archives/tip/*.zip .planning/scripts/confluent-archive-allowlist-29.txt
+```
+
+```text
+91c5fa657087e4171d40dc1902e985de8753011da3b6acf327107dd3f067d7aa  clickhouse-kafka-connect-v1.7.0_gg3.zip   (A, tag v1.7.0_gg3)
+1365e5040bfbbc41150033a284208a647ff88deb13018e99745c3916719fa405  clickhouse-kafka-connect-v1.7.0_gg4.zip   (B, gg4 tip)
+```
+
+First compare, with the unchanged Phase 25 allow-list (exit 1, as expected): `RESULT: FAIL`, 22 `UNALLOWED` lines, no `STALE-ROW`. The 22 are `META-INF/MANIFEST.MF` and 21 `com/clickhouse/` paths, nothing else:
+
+```text
+UNALLOWED CHANGED META-INF/MANIFEST.MF
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/Version.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$1.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$2.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor$ClickHouseFieldDescriptorBuilder.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient$ClickHouseClientBuilder.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class
+UNALLOWED ONLY-B com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder$RowDecision.class
+UNALLOWED ONLY-B com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/Column$1.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/Column$ColumnBuilder.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/Column.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class
+UNALLOWED ONLY-B com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/Table$1.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/Table$TableDesc.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/db/mapping/Table.class
+UNALLOWED CHANGED com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class
+```
+
+This is the research R5.1 set (20 fork classes) plus `Version.class` and the manifest, as the plan expected (flagged assumption A3). `git diff --name-only v1.7.0_gg3 HEAD -- src/main` lists 12 files: `ClickHouseSinkTask`, `ClickHouseWriter`, `ClickHouseFieldDescriptor`, `ClickHouseHelperClient`, `DescribeTableBuilder`, `Column`, `DeclaredNullability`, `ParentShape`, `Table`, `HeaderToValue`, `WithheldMessageException`, `SinkTaskStatistics`. Every non-`Version` row below names a class whose outer source file is in that list; `ClickHouseSinkTask`, `HeaderToValue` and `WithheldMessageException` changed comments in place and moved no line, so their class files are byte-identical (no row).
+
+The Phase 29 allow-list `.planning/scripts/confluent-archive-allowlist-29.txt` (50 rows) is the 28 non-comment rows of `confluent-archive-allowlist-25.txt` unchanged and in order, then 21 exact-path `com/clickhouse/` rows (each reason names its requirement: DESC-07/DESC-08 for the size-name classifier and `DescribeTableBuilder`, NAME-03/NAME-04 for the column and element name match, NAME-06/NAME-07 for the Enum labels, WRT-17/WRT-18/WRT-19 for the writer, the comment-only line shift for `SinkTaskStatistics`, the release identity for `Version.class`), then `META-INF/MANIFEST.MF`. Neither the compare script nor the Phase 25 allow-list was edited. Second compare, with the Phase 29 allow-list (exit 0; the output is 2067 lines, sha256 `2b680121df5407787eb9691862c73b84fa11d5576364d895a1ddddd24a278c2f`; the summary block is quoted in full):
+
+```text
+VERSION at.yawk.lz4:lz4-java 1.12.0 -> 1.12.0
+VERSION com.fasterxml.jackson.core:jackson-annotations 2.22 -> 2.22
+VERSION com.fasterxml.jackson.core:jackson-core 2.22.3 -> 2.22.4
+VERSION com.fasterxml.jackson.core:jackson-databind 2.22.3 -> 2.22.4
+VERSION com.google.code.gson:gson 2.13.1 -> 2.14.0
+VERSION com.google.errorprone:error_prone_annotations 2.38.0 -> 2.50.0
+VERSION com.google.guava:failureaccess 1.0.3 -> 1.0.3
+VERSION com.google.guava:guava 33.4.6-jre -> 33.7.2-jre
+VERSION com.google.guava:listenablefuture 9999.0-empty-to-avoid-conflict-with-guava -> 9999.0-empty-to-avoid-conflict-with-guava
+VERSION com.google.j2objc:j2objc-annotations 3.0.0 -> 3.1
+VERSION commons-codec:commons-codec 1.19.0 -> 1.19.0
+VERSION commons-io:commons-io 2.20.0 -> 2.20.0
+VERSION org.apache.commons:commons-compress 1.28.0 -> 1.28.0
+VERSION org.apache.commons:commons-lang3 3.20.0 -> 3.20.0
+VERSION org.apache.httpcomponents.client5:httpclient5 5.6.2 -> 5.6.5
+VERSION org.apache.httpcomponents.core5:httpcore5 5.4.3 -> 5.4.4
+VERSION org.apache.httpcomponents.core5:httpcore5-h2 5.4.3 -> 5.4.4
+VERSION org.slf4j:slf4j-api 2.0.7 -> 2.0.7
+MANIFEST.MF: differs only in Implementation-Version
+totals files-a 7376 files-b 7399 only-a 91 only-b 114 changed 1839 same 5446
+nested jars in b: 0
+kafka classes in b: 0
+RESULT: PASS
+```
+
+The `VERSION` lines equal the Phase 25 E-22 lines for the third-party half; the guava `33.4.6-jre -> 33.7.2-jre`, httpclient5 `5.6.2 -> 5.6.5`, httpcore5 and httpcore5-h2 `5.4.3 -> 5.4.4`, jackson-core and jackson-databind `2.22.3 -> 2.22.4`, gson `2.13.1 -> 2.14.0`, j2objc `3.0.0 -> 3.1` and error_prone `2.38.0 -> 2.50.0` changes are the ones the note's dependency item may state; lz4-java, slf4j-api, commons-lang3 and the others are unchanged. No `UNALLOWED` and no `STALE-ROW` line.
+
+Matches text: pending (29-04, 29-05)
+
+### E-04: the archive of the rollback tree pre-v1.7.0_gg4 (D-03)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, item 7 (rolling back brings back; the warning against building an archive from the rolled-back tip) (plan 29-04). The rollback target is `69cd680bf548bfb0329142752d37f8a6c3190c26` (`Merge pull request #14 from ne1r0n/dependabot/gradle/jackson-2.22.4`, `origin/custom_build`); the tag `pre-v1.7.0_gg4` does not exist yet (it is pushed at publication). Its archive was built in a throwaway worktree at that SHA (`/tmp/gsd29/wt-pre`, removed afterwards with `git worktree remove --force` and `git worktree prune`), with `clean createConfluentArchive`. The inner jars of the three zips were read in memory with Python `zipfile` under `python3 -I`; nothing was extracted.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-pre/gradlew -p /tmp/gsd29/wt-pre --console=plain clean createConfluentArchive
+python3 -I -   # zipfile read of the inner *-confluent.jar of /tmp/gsd29/archives/{pre,gg3,tip}/*.zip, in memory
+git diff --stat v1.7.0_gg3 69cd680bf548bfb0329142752d37f8a6c3190c26
+git show 69cd680bf548bfb0329142752d37f8a6c3190c26:.github/workflows/tests.yaml | grep -n -i -E "archive|createConfluent|gradle-version"
+git show 69cd680bf548bfb0329142752d37f8a6c3190c26:.github/workflows/release.yaml | grep -n -E "createConfluentArchive|gradle-version|arguments"
+git show 69cd680bf548bfb0329142752d37f8a6c3190c26:.github/workflows/pre-release.yaml | grep -n -E "createConfluentArchive|gradle-version|arguments"
+```
+
+```text
+BUILD SUCCESSFUL in 2s   (build-pre.log; Gradle exit 0)
+4b7856c3fa104c9fba3c23fc68dd3d5770b313342b1706eca8b6f2b9ac44aa94  clickhouse-kafka-connect-v1.7.0_gg3.zip   (pre: the zip is still named v1.7.0_gg3 because VERSION at 69cd680b is v1.7.0_gg3)
+
+INNER tree=pre file_entries=135 jar_entries=25 connector_class=True
+INNER tree=gg3 file_entries=7376 jar_entries=0 connector_class=True
+INNER tree=tip file_entries=7399 jar_entries=0 connector_class=True
+```
+
+The 25 nested entries of the `pre` inner jar are: `RoaringBitmap-1.0.6.jar`, `asm-9.7.jar`, `clickhouse-client-0.9.6.jar`, `clickhouse-data-0.9.6.jar`, `clickhouse-http-client-0.9.6.jar`, `client-v2-0.9.6.jar`, `commons-codec-1.19.0.jar`, `commons-compress-1.28.0.jar`, `commons-io-2.20.0.jar`, `commons-lang3-3.20.0.jar`, `error_prone_annotations-2.48.0.jar`, `failureaccess-1.0.3.jar`, `gson-2.14.0.jar`, `guava-33.4.6-jre.jar`, `httpclient5-5.6.5.jar`, `httpcore5-5.4.4.jar`, `httpcore5-h2-5.4.4.jar`, `j2objc-annotations-3.0.0.jar`, `jackson-annotations-2.22.jar`, `jackson-core-2.22.4.jar`, `jackson-databind-2.22.4.jar`, `jspecify-1.0.0.jar`, `listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar`, `lz4-java-1.12.0.jar`, `slf4j-api-2.0.7.jar`. That is the Shadow 9.6.1 two-argument `from(...)` outcome that Phase 25 repaired: the build is green, the connector class is present, and the jar holds the dependencies as nested jars instead of merged classes (135 file entries against 7376 for the archive at tag `v1.7.0_gg3`). The archive built at tag `v1.7.0_gg3` holds none, and so does the gg4 tip's (E-03).
+
+PRE-NESTED-JARS=25
+
+`git diff --stat v1.7.0_gg3 69cd680bf548bfb0329142752d37f8a6c3190c26` (what the rollback tree differs from the tag in; the tail, 22 files changed, 1087 insertions, 175 deletions):
+
+```text
+ .planning/PROJECT.md | .planning/REQUIREMENTS.md | .planning/ROADMAP.md | .planning/STATE.md | the Phase 24 planning files
+ .planning/state.json                               |  10 +-
+ CHANGELOG.md                                       |  11 +-
+ build.gradle.kts                                   |   2 +-
+ docs/FORK-DELTA.md                                 |   6 +-
+ docs/ROLLOUT-v1.7.0_gg3.md                         |  38 ++--
+ gradle/libs.versions.toml                          |  16 +-
+ gradle/wrapper/gradle-wrapper.jar                  | Bin 48462 -> 48749 bytes
+ gradle/wrapper/gradle-wrapper.properties           |   2 +-
+ gradlew.bat                                        | 194 ++++++++++++---------
+ 22 files changed, 1087 insertions(+), 175 deletions(-)
+```
+
+Workflow facts at `69cd680b`:
+
+```text
+tests.yaml:      no line matches "archive", "createConfluent" or "gradle-version" (grep exit 1): the push workflow builds no archive.
+release.yaml:    31:      - name: Execute 'createConfluentArchive' task
+                 32:        run: ./gradlew createConfluentArchive          (no gradle-version line: it uses the wrapper)
+pre-release.yaml: 28:      - name: Setup and execute Gradle 'createConfluentArchive' task
+                 31:          arguments: createConfluentArchive
+                 32:          gradle-version: '7.4.2'
+```
+
+So, on the rolled-back tree, a build is green and the archive is wrong: `release.yaml` and `pre-release.yaml` would both build it, and `tests.yaml` would not notice. The only sound artifact step on rollback is to redeploy the archive built at tag `v1.7.0_gg3` (D-03); an archive built from the rolled-back branch tip must not be deployed.
+
+Matches text: pending (29-04, 29-05)
