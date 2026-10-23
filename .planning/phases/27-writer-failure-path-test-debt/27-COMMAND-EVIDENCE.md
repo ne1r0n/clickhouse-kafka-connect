@@ -17,9 +17,9 @@
 | E-05 | WRT-17 fix, full suite, commit, gate | pass |
 | E-06 | WRT-18 red run | pass |
 | E-07 | WRT-18 fix, full suite, commit, gate | pass |
-| E-08 | WRT-19 exact ClassCastException pin and refactor | pending |
-| E-09 | WRT-19 guard red on the unscrubbed tree and scrub commits | pending |
-| E-10 | WRT-19 guard commit and mutation proof | pending |
+| E-08 | WRT-19 exact ClassCastException pin and refactor | pass |
+| E-09 | WRT-19 guard red on the unscrubbed tree and scrub commits | pass |
+| E-10 | WRT-19 guard commit and mutation proof | pass |
 | E-11 | DEBT-16 FixedString mismatch red proof and counter removal | pending |
 | E-12 | DEBT-16 premise-loop mutation proof | pending |
 | E-13 | Phase gate and assertion diff check | pending |
@@ -280,4 +280,95 @@ Deviation, Spotless expectation: same as E-05. The plan expects `9<TAB>12` for C
 Deviation, process: an unscoped `./gradlew spotlessApply` run mid-task reformatted the 46 pre-existing violating files (Column.java, ColumnTest.java and WriterValueFreeFailureUnitTest.java included). Every file outside this plan's three Java files was restored with `git checkout -- <path>`, and the three were restored and the plan's edits re-applied by hand, before anything was staged. The staged diff is the plan's own (Column.java 10/3, WriterValueFreeFailureUnitTest.java 21/1, ColumnTest.java 40/0), and the Spotless numstat above confirms no file moved relative to the base other than ClickHouseWriter.java.
 
 2026-10-23T00:25:29Z
+Verdict: pass
+
+### E-08: WRT-19 exact ClassCastException pin and the metadata refactor
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ClickHouseWriterColumnContextTest' --rerun > /tmp/gsd27/exec/cce-pin.log 2>&1   # on the writer as it stood after 27-03
+git commit (test file only)
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd27/exec/refactor-27-04.log 2>&1
+git add <3 explicit paths>; git write-tree > /tmp/gsd27/exec/refactor-tree-27-04.txt; date -u > /tmp/gsd27/exec/suite-27-04-start.txt
+rm -rf build/test-results/test; env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd27/exec/suite-27-04.log 2>&1   # twice rc=1 (OpenJ9 GPF), then -PjavaVersion=21 rc=0
+git commit (staged index, hooks on)
+```
+
+```text
+test_commit: c6b2101e4e31ef4f4a6ba74671502cea7d5aa4ff  test(27-04): pin the exact ClassCastException failure text (WRT-19, D-09)
+refactor_commit: b78d869162c39b89ae286e29415fccb7a4f3fdec  refactor(27-04): derive write-failure metadata once and build the ClassCastException text from the shared prefix (WRT-19, 22-REVIEW IN-03)
+pin_run: Tests summary: 9 tests, 9 succeeded, 0 failed, 0 skipped (ClickHouseWriterColumnContextTest, on the unrefactored writer)
+a2: not refuted. The measured text equals the writer's format applied to these inputs character for character, so the constant holds the plan's text as written.
+refactor_commit_adjacent: git rev-list --count test..refactor = 1; the test commit changes no src/main file
+grep_counts_before_after (ClickHouseWriter.java): 'String sourceType =' 2 -> 0; 'String valueClass =' 2 -> 0; 'sourceTypeName(' 0 -> 3; 'valueClassName(' 0 -> 3; 'WRITE_TYPE_MISMATCH_FAILURE_FORMAT' 0 -> 2; '"Failed to write column ' 2 -> 1; 'WRITE_VALUE_CONVERSION_FAILURE_FORMAT' 2 -> 2
+testunit: Tests summary: 1173 tests, 1171 succeeded, 0 failed, 2 skipped
+tree_equality: staged-tree 71ab2b8d64b313d555ed95960acf7810261345f9 == HEAD^{tree} of the refactor commit
+suite: 1662 tests, 0 failures, 0 errors, 18 skipped, 96 XML files, start 2026-10-23T00:34:44Z, no stale XML, BUILD SUCCESSFUL in 2m 39s, one server version 26.9.19.9, client V2
+suite_skips: the 18 as a set (11 ClickHouseSinkTaskWithSchemaTest bracketed cases + the 7 named)
+class_counts: WriterFailureClassificationUnitTest=216 WriterValueFreeFailureUnitTest=29 JsonAsStringKeyResidualLiveTest=4 NullableTupleMatrixLiveTest=33 ColumnTest=37 ClickHouseWriterColumnContextTest=9
+wt_anchors: rows 83 bad []
+```
+
+Deviation, test JVM: the first two full-suite runs on the staged tree ended rc=1 after 1540 tests with 0 failed, 'Process Gradle Test Executor 164 finished with non-zero exit value 255'. The javacore of the first run shows the known OpenJ9 GPF in Mockito inline mocking (Test worker in InstrumentationImpl.retransformClasses0 via InlineBytecodeGenerator.mockClass), at the machine's swap pressure (28.7 of 29.7 GB used). The core.*, javacore.*, Snap.* and jitdump.* files of each run were deleted one by one (never git clean). Logs kept: suite-27-04-run1-gpf.log, suite-27-04-run2-gpf.log. The third run used the documented escape -PjavaVersion=21 on the same staged tree (tree equality holds) and ended BUILD SUCCESSFUL with the counts above. The plan's expectation of 1661 total grew to 1662 by the one new pin test.
+
+Deviation, Spotless expectation: not measured in this task (the plan measures it in Task 3). Plan 27-02 left ClickHouseWriter.java at 10<TAB>11, not 9<TAB>12, and this task changes no import.
+
+2026-10-23T00:38:00Z
+Verdict: pass
+
+### E-09: WRT-19 guard red on the unscrubbed tree and the scrub commits
+
+Commands as run:
+
+```bash
+python3 -I -c '<PLANNING-ID MIRROR>' > /tmp/gsd27/exec/hits-before.txt   # rc=1: 27 hits, expected
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*SourcePlanningIdGuardUnitTest' --rerun > /tmp/gsd27/exec/guard-red.log 2>&1   # rc=1, copy class XML to guard-red.xml
+mv SourcePlanningIdGuardUnitTest.java /tmp/gsd27/exec/guard-hold/   # so each scrub compile sees exactly the commit's tree
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava compileTestJava > /tmp/gsd27/exec/compile-scrub-{1,2}.log 2>&1   # once per scrub commit
+git commit (2 explicit src/main paths, then 6)
+mv guard-hold/SourcePlanningIdGuardUnitTest.java src/test/java/com/clickhouse/kafka/connect/ci/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*SourcePlanningIdGuardUnitTest' --rerun > /tmp/gsd27/exec/guard-green.log 2>&1
+```
+
+```text
+hits_before: 27 (ClickHouseWriter 11, SinkTaskStatistics 4, DescribeTableBuilder 4, ClickHouseHelperClient 2, DeclaredNullability 2, ParentShape 2, HeaderToValue 1, WithheldMessageException 1); the first line of hits-before.txt reads 27
+guard_red: Tests summary: 18 tests, 17 succeeded, 1 failed; the only failure is 'src/main carries no planning identifier on any line', and its message names all eight files
+scrub_commit_1: 5c3eb2d14eb2a21da8a9ce2e5c6977a56b6378e6  chore(27-04): drop planning identifiers from the writer-path comments (WRT-19, 22-REVIEW IN-05); 2 src/main files; comment-only check: changed 25, non-comment []; compileJava compileTestJava BUILD SUCCESSFUL (compile-scrub-1.log); wt_anchors rows 83 bad []
+scrub_commit_2: e50f3e7bb0113e95c35e293aea648a0c73536898  chore(27-04): drop planning identifiers from the remaining src/main comments (WRT-19, 22-REVIEW IN-05); 6 src/main files; comment-only check: changed 29, non-comment []; compileJava compileTestJava BUILD SUCCESSFUL (compile-scrub-2.log); wt_anchors rows 83 bad []
+mirror_after: 0 hits
+upstream_820: still present in ClickHouseWriter.java
+guard_green: Tests summary: 18 tests, 18 succeeded, 0 failed, 0 skipped (Test result: SUCCESS)
+```
+
+2026-10-23T00:39:43Z
+Verdict: pass
+
+### E-10: WRT-19 guard commit and mutation proof
+
+Commands as run:
+
+```bash
+git commit (guard file and docs/FORK-DELTA.md)
+printf '// planted (D-99)\n' >> src/main/java/com/clickhouse/kafka/connect/transforms/HeaderToValue.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*SourcePlanningIdGuardUnitTest' --rerun > /tmp/gsd27/exec/guard-planted.log 2>&1   # rc=1
+git checkout -- src/main/java/com/clickhouse/kafka/connect/transforms/HeaderToValue.java; git diff --quiet HEAD -- src/main
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd27/exec/testunit-27-04.log 2>&1
+/tmp/gsd27/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd27/exec/spotless-27-04.txt
+PRE_TAG=pre-v1.7.0-tail ... .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd27/exec/gate-27-04.log
+```
+
+```text
+guard_commit: cafd512cc6883153d669f6095410fe25f3c5bac6  test(27-04): guard src/main against planning identifiers (WRT-19, D-14); files: SourcePlanningIdGuardUnitTest.java, docs/FORK-DELTA.md (Test harness row)
+planted_run: Test result: FAILURE; src/main/java/com/clickhouse/kafka/connect/transforms/HeaderToValue.java:237: // planted (D-99) ==> expected: <[]> but was: <[...HeaderToValue.java:237: // planted (D-99)]>
+revert: git checkout -- HeaderToValue.java; git diff --quiet HEAD -- src/main exits 0
+testunit: Tests summary: 1191 tests, 1189 succeeded, 0 failed, 2 skipped
+spotless: 46 lines as at the phase base; the new guard file does not appear; the only difference is ClickHouseWriter.java at 10<TAB>11 (base 9<TAB>10), the figure plan 27-02 already left (E-05), not the plan's 9<TAB>12
+gate: invariants: provenance_paths=3 anchor_commits=91 anchor_rows=83 marker_commits=103 anchor_exempt=0 result=PASS
+src_main_since_phase_base: git log b8f67b3b..HEAD -- src/main lists fix(27-02), fix(27-03), refactor(27-04) and the two chore(27-04) commits, and nothing else
+```
+
+Deviation, Spotless expectation: same as E-05 and E-07. The plan expects `9<TAB>12` for ClickHouseWriter.java; the measured `10<TAB>11` comes from plan 27-02's used imports, and this plan adds no import. Every other line equals the base.
+
+2026-10-23T00:42:40Z
 Verdict: pass
