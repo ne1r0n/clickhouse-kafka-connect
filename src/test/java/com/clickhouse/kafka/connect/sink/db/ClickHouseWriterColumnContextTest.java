@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Test;
 public class ClickHouseWriterColumnContextTest {
 
     private static final String CONTEXT_PREFIX = "Failed to write column";
+    private static final String CLASS_CAST_FAILURE_TEXT = "Failed to write column `effective_at`: cannot convert Kafka"
+            + " value of type STRING (value class: java.lang.String) to ClickHouse type UINT64";
 
     private static ClickHouseWriter newWriter() {
         return new ClickHouseWriter(new SinkTaskStatistics(null, 0));
@@ -57,6 +59,19 @@ public class ClickHouseWriterColumnContextTest {
         // Asserting DataException above is itself the non-retryable guarantee: DataException extends
         // ConnectException, not RetriableException, so the framework routes a bad record to the DLQ
         // rather than retrying it forever.
+    }
+
+    @Test
+    public void classCastFailureTextIsPinnedExactly() {
+        ClickHouseWriter writer = newWriter();
+        Column column = Column.extractColumn("effective_at", "UInt64", false, false, false);
+        Data value = new Data(Schema.STRING_SCHEMA, "definitely-not-a-number");
+
+        DataException thrown = assertThrows(DataException.class,
+                () -> writer.doWriteColValue(column, new ByteArrayOutputStream(), value, false));
+
+        assertEquals(CLASS_CAST_FAILURE_TEXT, thrown.getMessage());
+        assertInstanceOf(ClassCastException.class, thrown.getCause());
     }
 
     @Test
