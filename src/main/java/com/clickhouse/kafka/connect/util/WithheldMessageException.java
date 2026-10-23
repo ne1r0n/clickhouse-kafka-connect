@@ -12,7 +12,7 @@ import java.util.Set;
  * the text. Messages of conversion failures (an invalid UUID string, an unparseable number) embed
  * the record value, and an exception's message reaches the Connect task status, the DLQ headers
  * and the logs, so the writer attaches this copy as the cause of its value-free exception instead
- * of the original (WRT-13, D-05, D-06).
+ * of the original.
  *
  * <p>Invariants:
  * <ul>

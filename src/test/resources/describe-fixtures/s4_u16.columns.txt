@@ -1,0 +1,5 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all c Enum8
+tree id INT32 nullable=false
+tree c Enum8 nullable=false

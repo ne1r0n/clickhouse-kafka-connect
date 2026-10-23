@@ -1,7 +1,6 @@
 package com.clickhouse.kafka.connect.sink.db.mapping;
 
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
-import com.clickhouse.kafka.connect.util.Utils;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -40,6 +39,17 @@ public class Column {
 
     private static final int DECIMAL128_MAX_PRECISION = 38;
     private static final Logger LOGGER = LoggerFactory.getLogger(Column.class);
+    // An enum label is record data, so both texts carry the column name only.
+    private static final String ENUM_LABEL_NOT_FOUND_FORMAT = "Enum label not found for column %s";
+    private static final String NO_ENUM_CONTENT_FORMAT = "No content in enum column %s";
+    private static final String MALFORMED_ENUM_TYPE_MESSAGE = "Enum type could not be read";
+    private static final char ENUM_LABEL_QUOTE = '\'';
+    private static final char ENUM_LABEL_ESCAPE = '\\';
+    private static final char ENUM_CODE_SEPARATOR = '=';
+    private static final char ENUM_ENTRY_SEPARATOR = ',';
+    private static final char ENUM_LIST_OPEN = '(';
+    private static final char ENUM_LIST_CLOSE = ')';
+    private static final char ENUM_NEGATIVE_SIGN = '-';
 
 
     // Confluent converter union schema markers
@@ -55,6 +65,8 @@ public class Column {
     private boolean hasDefault;
     @Setter(AccessLevel.PACKAGE) private boolean isNullable;
     private boolean isSubColumn;
+    // Only DescribeTableBuilder sets it: a declared Tuple element whose name is also a structural sub-column name.
+    @Setter private boolean declaredElement;
 
 
     private int precision;
@@ -369,14 +381,104 @@ public class Column {
     }
 
     private static Map<String, Integer> extractEnumValues(String valueType) {
-        Map <String, Integer> data = new HashMap<>();
-        List<String> values = Utils.splitIgnoringQuotes(valueType.substring(valueType.indexOf("(") + 1, valueType.indexOf(")")), ',');
-        for (String value : values) {
-            String[] val = value.split("=", 2);
-            String key = val[0].trim();
-            data.put(key.substring(1, key.length() - 1), Integer.parseInt(val[1].trim()));
+        // The type text still holds the server's JSON layer; it is decoded once, before the scan.
+        String text = DeclaredNullability.unescapeJsonLayer(valueType);
+        int length = text.length();
+        int open = text.indexOf(ENUM_LIST_OPEN);
+        if (open < 0) {
+            throw malformedEnumType();
         }
-        return data;
+        Map<String, Integer> data = new HashMap<>();
+        int i = open + 1;
+        while (true) {
+            i = skipWhitespace(text, i);
+            if (i >= length || text.charAt(i) != ENUM_LABEL_QUOTE) {
+                throw malformedEnumType();
+            }
+            StringBuilder label = new StringBuilder();
+            i++;
+            while (i < length && text.charAt(i) != ENUM_LABEL_QUOTE) {
+                char c = text.charAt(i);
+                if (c == ENUM_LABEL_ESCAPE) {
+                    if (i + 1 >= length) {
+                        throw malformedEnumType();
+                    }
+                    label.append(unescapedLabelChar(text.charAt(i + 1)));
+                    i += 2;
+                } else {
+                    label.append(c);
+                    i++;
+                }
+            }
+            i = skipWhitespace(text, i + 1);
+            if (i >= length || text.charAt(i) != ENUM_CODE_SEPARATOR) {
+                throw malformedEnumType();
+            }
+            i = skipWhitespace(text, i + 1);
+            int codeStart = i;
+            if (i < length && text.charAt(i) == ENUM_NEGATIVE_SIGN) {
+                i++;
+            }
+            int digitsStart = i;
+            while (i < length && Character.isDigit(text.charAt(i))) {
+                i++;
+            }
+            if (i == digitsStart) {
+                throw malformedEnumType();
+            }
+            try {
+                data.put(label.toString(), Integer.parseInt(text.substring(codeStart, i)));
+            } catch (NumberFormatException e) {
+                throw malformedEnumType();
+            }
+            i = skipWhitespace(text, i);
+            if (i >= length) {
+                throw malformedEnumType();
+            }
+            char next = text.charAt(i);
+            if (next == ENUM_LIST_CLOSE) {
+                return data;
+            }
+            if (next != ENUM_ENTRY_SEPARATOR) {
+                throw malformedEnumType();
+            }
+            i++;
+        }
+    }
+
+    private static int skipWhitespace(String text, int from) {
+        int i = from;
+        while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
+            i++;
+        }
+        return i;
+    }
+
+    private static char unescapedLabelChar(char escaped) {
+        switch (escaped) {
+            case 'n':
+                return '\n';
+            case 't':
+                return '\t';
+            case 'r':
+                return '\r';
+            case 'b':
+                return '\b';
+            case 'f':
+                return '\f';
+            case '0':
+                return '\0';
+            case '\\':
+            case '\'':
+                return escaped;
+            default:
+                // An escape the server does not write must not become a silent, possibly colliding key.
+                throw malformedEnumType();
+        }
+    }
+
+    private static IllegalArgumentException malformedEnumType() {
+        return new IllegalArgumentException(MALFORMED_ENUM_TYPE_MESSAGE);
     }
 
     public static String connectTypeToClickHouseType(Schema connectSchema) {
@@ -523,10 +625,14 @@ public class Column {
 
     public Integer convertEnumValues(String value) {
         if ( this.enumValues != null ) {
-            return enumValues.get(value);
+            Integer code = enumValues.get(value);
+            if (code == null) {
+                throw new IllegalArgumentException(String.format(ENUM_LABEL_NOT_FOUND_FORMAT, name));
+            }
+            return code;
         }
-        // The label is record data and this exact RuntimeException reaches Connect status unchanged, so the text is fixed (D-14).
-        throw new RuntimeException("No content in enum");
+        // This exact RuntimeException reaches Connect status unchanged, which is why the text carries the column only.
+        throw new RuntimeException(String.format(NO_ENUM_CONTENT_FORMAT, name));
     }
 
     public String toString() {

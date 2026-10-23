@@ -38,14 +38,15 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg3	1	BLD-07
+VERSION	v1.7.0_gg4	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
-build.gradle.kts	slf4j-reload4j:2.0.20	1	BLD-08
+gradle/libs.versions.toml	slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }	1	BLD-08
+build.gradle.kts	implementation(libs.slf4j.reload4j)	1	BLD-08
 build.gradle.kts	jacocoForkReport	3	BLD-03
 build.gradle.kts	register<Test>("testUnit")	1	BLD-04
 build.gradle.kts	withCapability("org.lz4:lz4-java")	1	BLD-09
 build.gradle.kts	clickhouse.jdbc	0	BLD-13
-gradle/libs.versions.toml	kafka = "4.1.1"	1	BLD-08
+gradle/libs.versions.toml	kafka = "4.4.0"	1	BLD-08
 gradle/libs.versions.toml	clickhouse-jdbc	0	BLD-13
 src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	@Tag("clickhouse")	1	HARN-01
 src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	sharedContainerStarts()	2	HARN-03
@@ -67,21 +68,49 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WRITE_V
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	of type " + columnType, e);	0	WRT-12
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	skipEmptyCdcRecord(	3	JSONP-09
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Skipping empty CDC record (no values) topic [{}] partition [{}] offset [{}]	1	JSONP-09
-# Phase 19 (v1.7.0_gg2): rows for the 999.1 fixes (Column.java Enum and Tuple branches, the declared-nullability pass wired into ClickHouseHelperClient).
+# Phase 19 (v1.7.0_gg2): rows for the 999.1 fixes (Column.java Enum and Tuple branches, the declared-nullability pass; since Phase 26 it runs in DescribeTableBuilder.buildDescribedTable, so its rows moved there with the code).
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	.isNullable(isNull)	3	COLS-10
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	@Setter(AccessLevel.PACKAGE) private boolean isNullable;	1	COLS-10
-src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	DeclaredNullability.apply(	1	COLS-10
-src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	buildDescribedTable(	3	COLS-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java	DeclaredNullability.apply(	1	COLS-10
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.java	buildDescribedTable(	2	COLS-10
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	unwrapSimpleAggregate(	2	COLS-10
 # Phase 22 (v1.7.0_gg3): rows for WRT-13, the value-free DataException of the generic catch in doWriteColValue, its WithheldMessageException cause and the fixed Column.convertEnumValues text (the last row is negative so an upstream sync cannot bring the label back).
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WRITE_VALUE_CONVERSION_FAILURE_FORMAT	2	WRT-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WithheldMessageException.of(	1	WRT-13
 src/main/java/com/clickhouse/kafka/connect/util/WithheldMessageException.java	public final class WithheldMessageException extends RuntimeException	1	WRT-13
 src/main/java/com/clickhouse/kafka/connect/util/WithheldMessageException.java	(message withheld: may contain record data)	1	WRT-13
-src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	throw new RuntimeException("No content in enum");	1	WRT-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	No content in enum %s	0	WRT-13
 # Phase 23 (v1.7.0_gg3): rows for the declared-nullability hardening (COLS-12 null totality; COLS-13 and COLS-14 rows follow).
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	column == null || column.getType() == null	2	COLS-12
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	declaredType.replace(ESCAPED_NEWLINE, SPACE)	0	COLS-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	private static final char BACKTICK	1	COLS-13
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	UNPAIRED_ELEMENT_WARNING	2	COLS-14
+# Phase 25 (v1.7.0_gg4): the Shadow 9 repair of confluentJar (BLD-15); the 0-count row fails an upstream sync that brings back the two-argument from(...) call.
+build.gradle.kts	configurations.add(clickhouseDependencies)	1	BLD-15
+build.gradle.kts	from(clickhouseDependencies, 	0	BLD-15
+# Phase 26 (v1.7.0_gg4): the DESCRIBE loop moves into DescribeTableBuilder (DESC-07, one anchor on its call) and the Tuple element key gets its one public definition (DESC-08); rows move in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	new DescribeTableBuilder(	2	DESC-07
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	elementKey(	2	DESC-08
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	!child.isDeclaredElement()	1	DESC-08
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	if (SIZE_FIELD_MATCHER.test(childName) || childName.endsWith(".null"))	0	DESC-08
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	allColumnsMap.merge(	1	DESC-08
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	allColumnsMap.put(column.getName(), column)	0	DESC-08
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	private boolean declaredElement;	1	DESC-08
+# Phase 27 (v1.7.0_gg4): the Jackson exclusion in passesThroughUnchanged (WRT-17); the Column.convertEnumValues lookup miss and the column-named no-content text (WRT-18), whose rows replace the Phase 22 throw-line row; the ClassCastException text built from the shared prefix (WRT-19); rows move in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	!(t instanceof JacksonException)	1	WRT-17
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	NO_ENUM_CONTENT_FORMAT	2	WRT-18
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	ENUM_LABEL_NOT_FOUND_FORMAT	2	WRT-18
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	return enumValues.get(value);	0	WRT-18
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WRITE_TYPE_MISMATCH_FAILURE_FORMAT	2	WRT-19
+# Phase 28 (v1.7.0_gg4): the names-only decode in fromJsonRow and the shared UTF-8 describe reader (NAME-03); the rewritten normalise, its JSON-layer helper and the null-name placeholder (NAME-04); the escape-aware enum-label scan in Column (NAME-06); the fork coverage list (DEBT-17); rows move in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java	json.replace(	0	NAME-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java	currentTokenLocation()	1	NAME-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	readDescribeRows(	3	NAME-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	ClickHouseValue v = r.getValue(0);	0	NAME-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	(run / 2) % 2 == 0	0	NAME-04
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	unescapeJsonLayer(	2	NAME-04
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	UNNAMED_COLUMN	2	NAME-04
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	Utils.splitIgnoringQuotes(	0	NAME-06
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	DeclaredNullability.unescapeJsonLayer(	1	NAME-06
+build.gradle.kts	"com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class",	1	DEBT-17
+build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.class",	1	DEBT-17

@@ -62,8 +62,13 @@ public final class ThrowableTexts {
     }
 
     /**
-     * Renders {@code printStackTrace} as the Connect task status and Connect 4.1.1's DLQ {@code
-     * exception.stacktrace} header do (22-RESEARCH F3). The charset is explicit UTF-8 on both the
+     * Renders {@code printStackTrace} as the Connect task status and Kafka Connect's DLQ {@code
+     * exception.stacktrace} header do, per {@code DeadLetterQueueReporter.populateContextHeaders} as
+     * read in 4.1.1's source (22-RESEARCH F3).
+     * The worker supplies the Connect API at runtime, and that reporter comes from the worker's
+     * connect-runtime (Kafka 3.9 on {@code cp-kafka-connect-base:7.9.7}); javap of its private
+     * {@code stacktrace} method shows a {@code Throwable.printStackTrace(PrintStream)} call (Phase 25
+     * E-12). The charset is explicit UTF-8 on both the
      * print and the decode side, because the test JVM runs windows-1252 and would otherwise turn a
      * non-BMP character in a value into question marks, hiding it from a sentinel check.
      */

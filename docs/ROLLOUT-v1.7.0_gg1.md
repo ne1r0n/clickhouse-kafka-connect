@@ -1,5 +1,7 @@
 # Rollout checklist: `v1.6.0_gg1` to `v1.7.0_gg1`
 
+This copy corrects items 1 and 2 of the copy in tag `v1.7.0_gg1`: the key that the state table holds for a topic when `enableDbTopicSplit=true`. The earlier text told you to list the prefixed form in place of the topic, which misses the key of a topic that `dbTopicSplitChar` divides into exactly two parts. The correction is in `v1.7.0_gg4`. No query and no `DELETE` statement changed; item 1 now also says that its query was run, and item 2 that its examples were. If you hold the tagged copy, read those two items here.
+
 This checklist is for anyone building or running the connector from this fork who is moving from `v1.6.0_gg1` to `v1.7.0_gg1`. Release `v1.7.0_gg1` builds on upstream `1.7.0`. The fork's own changes since `v1.6.0_gg1` are listed in [`../CHANGELOG.md`](../CHANGELOG.md), and the full list of what the fork patches on top of upstream is in [`FORK-DELTA.md`](FORK-DELTA.md).
 
 It is a checklist, not a deployment record: it names no host, connector, cluster or production version. Every environment-specific value is a placeholder such as `<db>`, `<connector-name>`, `<zkDatabase>`, `<topic>` or `<partition>`. Replace them with your own.
@@ -49,7 +51,7 @@ The required/precautionary split rests on an inference: ClickHouse block dedupli
 You are affected if any connector runs with `exactlyOnce=true`. Then:
 
 1. Stop or pause the connector cleanly.
-2. In the connector's database, query the KeeperMap state table. The table is named by the connector's `zkDatabase` setting (default `connect_state`) and stored under its `zkPath` (default `/kafka-connect`). **The table is shared:** every `exactlyOnce` connector with the same `zkDatabase` and `zkPath` writes into it, and a row's `key` names a topic and partition, not a connector. Scope the query to the topics this connector consumes:
+2. In the connector's database, query the KeeperMap state table. The table is named by the connector's `zkDatabase` setting (default `connect_state`) and stored under its `zkPath` (default `/kafka-connect`). **The table is shared:** every `exactlyOnce` connector with the same `zkDatabase` and `zkPath` writes into it, and a row's `key` names a topic and partition, not a connector. Scope the query to the topics this connector consumes. Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries:
 
 ```sql
 SELECT `key`, minOffset, maxOffset, state
@@ -59,11 +61,11 @@ WHERE state != 'AFTER_PROCESSING'
 ORDER BY `key`;
 ```
 
-The `key` column holds `<topic>-<partition>`. The `arrayStringConcat(...)` expression strips the trailing `-<partition>`, so `'orders'` matches `orders-0` but not `orders-v2-0`. With `enableDbTopicSplit=true` the topic part is prefixed by `<db>` and the configured `dbTopicSplitChar`, so list `'<db><dbTopicSplitChar><topic>'` instead of `'<topic>'`. Without the topic filter the result also lists the in-flight batches of every other connector on the table and may never become empty. The state values the connector writes are `BEFORE_PROCESSING` and `AFTER_PROCESSING`.
+The `key` column holds `<topic>-<partition>`. The `arrayStringConcat(...)` expression strips the trailing `-<partition>`, so `'orders'` matches `orders-0` but not `orders-v2-0`. With `enableDbTopicSplit=true`, also add the entry `'<db><dbTopicSplitChar><topic>'` for each topic, where `<db>` is the connector's `database` setting: the connector keys a topic that its `dbTopicSplitChar` divides into exactly two parts under the topic name itself, and any other topic under that prefixed form. A topic name that ends with `dbTopicSplitChar` can also be keyed without those trailing characters, so list that form as well. An entry that matches no key changes nothing. This key form is read from the connector code, not measured. Run the query in the database the connector connects to (its `database` setting, where the connector creates the state table), or write the table as `` `<db>`.`<zkDatabase>` ``. Without the topic filter the result also lists the in-flight batches of every other connector on the table and may never become empty. The state values the connector writes are `BEFORE_PROCESSING` and `AFTER_PROCESSING`.
 
-**Empty result:** no batch is in flight and nothing is waiting for a retry, so it is safe to upgrade. **Non-empty result:** each listed `key` has a batch that may or may not have reached ClickHouse; do not upgrade yet.
+**Empty result:** no batch of the listed topics is in flight, so it is safe to upgrade. **Non-empty result:** each listed `key` has a batch that may or may not have reached ClickHouse; do not upgrade yet.
 
-The query is derived from the connector's source (the table is created as `` `key` String, minOffset BIGINT, maxOffset BIGINT, state String `` with the KeeperMap engine). KeeperMap needs `keeper_map_path_prefix` configured on the server, so the query was not executed against a live KeeperMap table when this document was written; run it on your own server and report any mismatch.
+The query is derived from the connector's source (the table is created as `` `key` String, minOffset BIGINT, maxOffset BIGINT, state String `` with the KeeperMap engine). KeeperMap needs `keeper_map_path_prefix` configured on the server. This query was run, byte for byte, on ClickHouse 26.9.19.9 against a state table that the connector's own state provider created (the `v1.7.0_gg4` classes), with one plain topic entry and one prefixed topic entry. It returned exactly the in-flight keys of those two forms, left out a topic that merely shares a prefix, another topic and an `AFTER_PROCESSING` key, and returned nothing once both ranges were `AFTER_PROCESSING`. The test wrote the two key forms as state records itself; which key the connector writes is the rule above, read from its code. The query only reads, so you can run it as often as you like. Run it on your own server as well and report any mismatch.
 
 ### What to do
 
@@ -97,14 +99,17 @@ Step 1 always; step 2 only for connectors with `exactlyOnce=true`. To recover th
 1. Stop the connector, then reset the consumer group offsets of the affected topic-partitions to the position from which data must be recovered.
 2. Clear the KeeperMap state rows for those topic-partitions. Skipping this step makes the connector see the replayed ranges as already stored (state `AFTER_PROCESSING`) and drop them.
 
-Step 2 as an example (not run, adjust to your own topic-partitions):
+Step 2 as an example (both statements were run on ClickHouse 26.9.19.9 against a scratch state table that the connector's own state provider created, the `v1.7.0_gg4` classes, the second with the additional `'<db><dbTopicSplitChar><topic>'` entry that its comment asks for; each removed exactly the keys it names and left the others, including a topic that merely shares a prefix; adjust to your own topic-partitions):
 
 ```sql
 -- EXAMPLE: delete the state rows of the affected topic-partitions
--- (with enableDbTopicSplit=true each key is '<db><dbTopicSplitChar><topic>-<partition>')
+-- (with enableDbTopicSplit=true, a topic that dbTopicSplitChar divides into exactly two parts is keyed '<topic>-<partition>'
+-- and any other topic '<db><dbTopicSplitChar><topic>-<partition>'; a topic that ends with the split character can also be keyed
+-- without the trailing characters, as in item 1; read from the connector code, not measured)
 DELETE FROM `<zkDatabase>` WHERE `key` IN ('<topic>-<partition>', '<topic>-<partition>');
 
 -- EXAMPLE: or delete the state rows of every partition of the affected topics
+-- (with enableDbTopicSplit=true, also list '<db><dbTopicSplitChar><topic>' as in item 1)
 DELETE FROM `<zkDatabase>` WHERE arrayStringConcat(arrayPopBack(splitByChar('-', `key`)), '-') IN ('<topic>');
 ```
 

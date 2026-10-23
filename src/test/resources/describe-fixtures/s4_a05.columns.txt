@@ -1,0 +1,13 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all c MAP
+all c.keys ARRAY
+all c.values ARRAY
+all c.values TUPLE
+all c.values.size ARRAY
+all c.values.v ARRAY
+tree id INT32 nullable=false
+tree c MAP nullable=false
+tree   {} c.values TUPLE nullable=false
+tree     c.values.size UINT8 nullable=false
+tree     c.values.v STRING nullable=false

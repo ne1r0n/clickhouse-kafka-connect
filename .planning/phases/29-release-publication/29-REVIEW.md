@@ -1,0 +1,234 @@
+---
+phase: 29-release-publication
+reviewed: 2026-10-23T20:30:00Z
+depth: standard
+diff_base: c1dc6e5983fe93745526cecd89d3b7e7cff63c7d
+files_reviewed: 10
+files_reviewed_list:
+  - docs/ROLLOUT-v1.7.0_gg4.md
+  - docs/ROLLOUT-v1.7.0_gg1.md
+  - docs/ROLLOUT-v1.7.0_gg2.md
+  - docs/ROLLOUT-v1.7.0_gg3.md
+  - CHANGELOG.md
+  - docs/FORK-DELTA.md
+  - VERSION
+  - .planning/scripts/fork-anchors.txt
+  - .planning/scripts/confluent-archive-allowlist-29.txt
+  - .planning/phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md
+findings:
+  critical: 1
+  warning: 10
+  info: 9
+  total: 20
+status: issues_found
+rounds: 4
+---
+
+# Phase 29: Code Review Report
+
+**Reviewed:** 2026-10-23
+**Depth:** standard
+**Files Reviewed:** 10
+**Status:** issues_found
+
+## Summary
+
+Scope: `git diff c1dc6e5983fe93745526cecd89d3b7e7cff63c7d HEAD` over `docs`, `CHANGELOG.md`, `VERSION`, `fork-anchors.txt` and the Phase 29 allow-list, plus the close record. `src/main` was read where a document makes a claim about connector behaviour (`RecordConvertor`, `Processing`, `DescribeTableBuilder`, `ClickHouseWriter.passesThroughUnchanged`, `Column.convertEnumValues`, `ConnectApiReferencesUnitTest`, the seven LIST keys, the Kafka 4.4.0 `ConfigDef.parseType`).
+
+What holds: every `sql` and `sh` block of the gg4 note is byte-present in `29-COMMAND-EVIDENCE.md`; the anchors mirror re-run on this HEAD gives 94 rows, 0 bad; the numbers of the gg4 note (14 and 4 table counts, 25 of 47, 27 suspects, 22 differing files, 25 nested jars, 135 against 7376 entries, nine Dependabot merges, 21 coverage classes, 37 / 14 / 23 file split) agree with E-03, E-04, E-10, E-13, E-22, E-43 and the tree; the enableDbTopicSplit key rule (two-part topic keyed by its own name, any other topic keyed `<db><char><topic>`) agrees with `RecordConvertor.convert` and `Processing.doLogic`; the Kafka 4.4.0 `ConfigDef.parseType` has no list-duplicate or null handling, so the KIP-1161 reading (validator based) is supported; the gg1/gg2/gg3 diffs change no query and no `DELETE`.
+
+The defects are in operator procedure and in claims that go past their evidence. One Critical: the rollback instruction for the name change has the operator rename the producers back before the connector is stopped and drained, which makes the still-running gg4 connector store column DEFAULTs silently. Eight Warnings: a drain check that exists only for rollback but is called from the upgrade path, two places where the size-element measurements are generalised, a unit-test overclaim that the close record itself contradicts, an incomplete dependency list stated as exhaustive, a residual description that differs between three documents, a false "safe" in the gg1 note for connectors with more than two topics, and an upgrade order with an open window. Four Info items.
+
+## Round 1
+
+### CR-01: Item 4 tells the operator to rename the producers back before the connector is stopped and drained, so gg4 (or gg3 after redeploy) reads records under the wrong name rule
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:244` (also `:337`, `:349`; compare `:112`)
+**Issue:** "What to do" of item 4 reads "Before a rollback, rename the producer fields back, and for each connector with `exactlyOnce=true` ... 1. Stop or pause the connector". Read in order, the producers go back to the earlier (escaped) names while the gg4 connector is still consuming. gg4 then handles every new record under the earlier names as item 1 says it does: a root field is ignored and the column `DEFAULT` is stored with no error and no WARN, a Tuple element fails the put. Item 7 step 1 sends the reader through item 4 and so inherits the order. The same gap exists for the backlog: records already in the topic that were produced under the new names, and not yet consumed when gg4 is stopped, are read by the redeployed gg3 under its old rule, with the same silent DEFAULT. Item 1 step 2 gives the operator a drain-then-switch order for the upgrade direction (marked inferred for a backlog); the rollback direction has none, and item 7's closing bullet ("producers must be renamed back before the old release reads their records") states only the final condition. This is silent wrong data in a production rollback, so it is Critical.
+**Fix:** Give the rollback its own order in item 4 (and point item 7 step 1 at it): keep the producers on the new names until gg4 has consumed everything produced under them (no lag), stop the connector cleanly, run the in-flight check, then switch the producers back, then redeploy `v1.7.0_gg3`. For example, replace the sentence at line 244 with:
+```text
+Before a rollback, do not rename the producers yet. Let `v1.7.0_gg4` consume everything that was produced under the new names (no lag on those topics), stop the connector cleanly, and for each connector with `exactlyOnce=true` that writes a table of either shape run steps 1 to 3 below. Only then switch the producers back to the earlier names and redeploy `v1.7.0_gg3`. Records produced under the new names that are still in a topic when `v1.7.0_gg3` starts are read under the old rule (a root field stores the column's DEFAULT; this order is inferred, to be pinned live).
+```
+
+### WR-01: The in-flight check procedure of item 4 is written for rollback only, yet items 1 and 2 and the upgrade bullets depend on "stop the connector cleanly (item 4)"
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:112`, `:231-232`, `:244-258`
+**Issue:** For the upgrade, item 1 step 2 says "stop the connector cleanly (item 4)" and item 4 bullets 1 and 2 say "a clean stop is what leaves no range in flight" and "Stop cleanly first for a table of that shape". But the only procedure in item 4 is headed "Before a rollback": the query result is judged "safe to redeploy `v1.7.0_gg3`", and step 3 says "start the `v1.7.0_gg4` jar again" and "continue with step 2 of item 7". An operator going from gg3 to gg4 has no way to confirm that no range is in flight (a stopped task that was killed, or a worker restart, leaves `BEFORE_PROCESSING`), and the sentences they would follow name the wrong release. The gg3 note avoided this because its upgrade needed no clean stop; gg4 introduces a clean-stop requirement for every connector that writes a rename-affected table, with no usable check for it. For `exactlyOnce=false` the note says only "stop its tasks cleanly", with no way to tell that the offsets were committed.
+**Fix:** Add an upgrade-direction paragraph to item 4 that reuses the same query (it is release independent) and says "empty result: safe to start `v1.7.0_gg4`; non-empty: start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly, run the query again". Keep the rollback wording as it is. For `exactlyOnce=false`, say how a clean stop is recognised (the consumer group has no lag and the task stopped through the Connect REST pause or delete).
+
+### WR-02: The rollback bullet states that gg3's short bytes are "rejected before the token", which is false for the shape that gg3 stored shifted
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:233` (and `:240`, `:350`)
+**Issue:** The bullet says "The bytes of `v1.7.0_gg3` are short, and the server rejects them before it looks at the token", then "Measured for one affected shape" (E-12 `rb_a01`, `Tuple(size UInt16, v String)`). Item 2 of the same note (line 129) says that for `Tuple(size UInt32, v String)` the gg3 bytes do parse: the server stored a shifted row. For that shape the rollback retry is not rejected. By the same mechanism as the measured upgrade case (E-12: dropped on a table with a window, stored as a second row on a table without one), a gg3 retry of a range gg4 already stored is dropped or stored again as a shifted row; this direction was not run. `:240` ("expected to fail with code 32 or 33") and `:350` ("the stored shifted row of one shape") repeat the failing-only picture for every size-named shape. The instruction (stop cleanly first) is the safe direction, so no operator action is wrong, but the stated mechanism is wider than what was measured and contradicts line 129.
+**Fix:** In the rollback bullet scope the mechanism: "For a shape whose short bytes cannot be parsed, the server rejects them before it looks at the token (measured for one such shape). For a shape whose short bytes do parse, such as `Tuple(size UInt32, v String)`, the retry is dropped by the token on a table with a deduplication window and stored as an extra shifted row on a table without one; this direction was not run (inferred from the upgrade measurement, to be pinned live)."
+
+### WR-03: The note never says which of the 25 differing tables were inserted, and the upgrade rule "for the shapes that failed" cannot be applied by an operator
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:129`, `:232`; `CHANGELOG.md:20-24`
+**Issue:** Item 2 says "Measured with one record per table" and then lists seven shapes plus three look-alikes. E-11 inserted ten tables, seven of them among the 25 tables whose description differs (E-10); the other 18 of the 25 were detected by the description and the WARN only. The note does not say so. Item 4 then reasons "For the shapes that failed on `v1.7.0_gg3` no clean stop is needed" and "The shape that stored a shifted row is different ... for a table of that shape", and the CHANGELOG repeats "a table whose `Tuple` element named `size` stored a shifted row on `v1.7.0_gg3`". Item 2 itself says a shorter write that happens to parse "was measured for that one shape only". An operator cannot know, for any of the 18 uninserted shapes (several of them have integer-typed neighbours, like the shifted one), whether gg3 failed or stored a shifted row, so the "no clean stop needed" branch is not decidable and the safe branch is not the default. This is the quantifier class that earlier reviewers (24-REVIEW WR-04, WR-08, WR-09) raised against the gg3 note.
+**Fix:** In item 2 state the count ("7 of the 25 were inserted; the other 18 were detected only"). In item 4 and in the CHANGELOG make the safe branch the default: "Stop cleanly first for every table the item 2 query lists. For the shapes that were inserted and failed on `v1.7.0_gg3` (listed above) nothing is in flight; for the shape that stored a shifted row, and for every one of the 18 shapes that were not inserted, a range in flight can meet a shifted row (inferred, to be pinned live)."
+
+### WR-04: "A unit test repeats the check on every build" overclaims what `ConnectApiReferencesUnitTest` does, and the close record says the note claims less
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:293`; `CHANGELOG.md:97-98`; `docs/FORK-DELTA.md:72`; `.planning/phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md:20`
+**Issue:** The test (read in full) compares the references derived from the compiled classes with a committed list, `connect-api-references.txt`. It does not open any worker jar. The list was checked against the 7.9.7, 4.1.1 and 4.4.0 jars once, by a script outside the build (E-06, E-13 of Phase 25). So the test does not "repeat the check" against the worker; it detects a new reference that is not on the list. The note's wording is the opposite of the close record's carry of 25-REVIEW WR-02: "the current reference list was checked statically ... and the rollout note states only that", and WR-03 of the same review calls "every referenced class and member" stronger than the test guarantees (descriptor-only and unresolved inherited members are not covered). The CHANGELOG sentence "lists every Kafka class and member the compiled connector references" and FORK-DELTA's "every one of the 176 references" carry the same word without the limit. An operator would read the note as "the build keeps proving the worker compatibility".
+**Fix:** Note (line 293): "A unit test fails the build when the compiled connector references a Kafka class or member that is not on the committed list; the list was checked once against the worker jars named above, and the test does not read any worker jar." CHANGELOG: "fails when a new reference is not on the reference list (the list was checked once against the worker jars)". Keep the close record as it is.
+
+### WR-05: The dependency table and the CHANGELOG list are presented as complete and omit jspecify (and, in the CHANGELOG, j2objc and error_prone)
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:295-306`; `CHANGELOG.md:31-36`, `:99-102`
+**Issue:** Item 6 says "every other difference is a dependency version change from the table below or one of 21 classes" and the table is headed "Bundled versions that changed (from the same compare)". The Phase 29 allow-list itself names one more change: row `META-INF/versions/9/OSGI-INF/MANIFEST.MF`, "jspecify 1.0.0 -> 1.0.1 (guava 33.7.2-jre's dependency ... jspecify has no pom.properties so no VERSION line)", and FORK-DELTA row 114 states the same move. The compare prints `VERSION` lines only from `pom.properties`, so jspecify is invisible there; the table copied the VERSION lines. The sentence "every other difference is ... from the table" is therefore false. The CHANGELOG is shorter still: its Important Changes bullet lists guava, httpclient5, httpcore5, Jackson and gson, and its Build and CI bullet says the archive "differs ... only in the bundled versions above"; j2objc `3.1` and error_prone `2.50.0` (in the note's table) and jspecify `1.0.1` are not "above". A scanner report on the archive will show libraries that the documents say did not change.
+**Fix:** Add a table row `jspecify | 1.0.0 | 1.0.1` with the source "from the allow-list row and the dependency resolution; it has no `pom.properties`, so the compare prints no VERSION line", change the sentence to "every other difference is one of the version changes in the table below or one of 21 classes", and extend the CHANGELOG list with `j2objc-annotations` `3.1`, `error_prone_annotations` `2.50.0` and `jspecify` `1.0.1` (or write "the bundled versions listed in the rollout note").
+
+### WR-06: The unreadable-declared-type residual is described three different ways (which names, how often, which WARNs)
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:131`, `:166`, `:172`; `CHANGELOG.md:46-48` against `:60-67`; `docs/FORK-DELTA.md` (row of `DescribeTableBuilder`, Known costs item 10)
+**Issue:** Read against `DescribeTableBuilder.decide` and `warnUnreadableParent`: (1) names: when the parent type is unreadable, `size` and `size0` rows are dropped (`SKIP_UNDECIDABLE`), while `size<digits>` rows are kept unmarked for `Table` to ignore, which `Table` does only under an `ARRAY` or `MAP` parent. The note and the CHANGELOG Known Issues bullet say "`size`, `size0` or `size` followed by digits" are dropped, the CHANGELOG Bug Fixes bullet says "`size` or `size0`". (2) frequency: the code warns once per unreadable parent path per DESCRIBE pass (`warnedParents`, keyed by the parent, which can be a nested path); the note and the Known Issues bullet say "once per column and table description". (3) WARNs: the CHANGELOG Bug Fixes bullet says the fallback also emits the `have no matching DESCRIBE sub-column` WARN (26-REVIEW IN-10 was fixed to say so), the note says the residual "has its own line" and that a hit of the first grep on a gg4 log is "a different cause than the names of this item". An operator who finds the `have no matching` line on a gg4 log is told it is not this item, when the CHANGELOG says it can be. FORK-DELTA says "one metadata-only WARN per parent per DESCRIBE".
+**Fix:** Pick the code's wording and use it in all three: "for each parent whose declared type cannot be read (or that is absent from the described rows), once per table description, the connector logs `Could not read the declared type ...`, drops that parent's sub-columns named `size` or `size0`, and keeps `size<digits>` sub-columns for the existing Array/Map rule; the `have no matching DESCRIBE sub-column` WARN can accompany it". Then change line 166 to "on a gg4 log it can also come from this residual; check for the `Could not read the declared type` line of the same table".
+
+### WR-07: The gg1 note still gives a false "safe to upgrade" for a connector with more than two topics
+
+**File:** `docs/ROLLOUT-v1.7.0_gg1.md:54`, `:62`, `:64`, `:66`
+**Issue:** The gg1 note was corrected for the key rule, but its step 2 still says only "Scope the query to the topics this connector consumes" over a query with two `'<topic>'` slots and no instruction about the number of entries. The result sentence is unscoped: "**Empty result:** no batch is in flight and nothing is waiting for a retry, so it is safe to upgrade." A connector with three topics (a list or a regex) whose operator fills two slots gets an empty result for the listed topics and the note says nothing is in flight. This is the false "safe" for multi-topic connectors that 24-REVIEW WR-07 removed from the gg3 and gg2 notes (their text is "one entry for each topic the connector consumes" and "no batch of the listed topics"); the gg1 note was edited in this change set and left behind.
+**Fix:** In the `enableDbTopicSplit` paragraph of item 1 (line 64) add the same first sentence as the gg2 note ("Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries") and change line 66 to "**Empty result:** no batch of the listed topics is in flight, so it is safe to upgrade."
+
+### WR-08: The upgrade order for the producer rename leaves an open window with no instruction to stop the producers
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:112`; `CHANGELOG.md:16-17`; `.planning/phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md:157`
+**Issue:** Step 2 reads: let the old release consume everything produced under the earlier names "until the connector has no lag", stop the connector cleanly, switch the producers, then upgrade. A live producer keeps writing under the earlier names for as long as it has not been switched, so records produced after the lag was observed and before the switch sit in the topic under the earlier names; the upgraded connector reads them under the new rule (root: DEFAULT with no log line; Tuple element: failed put). Switching the producers before the drain is not possible either, because the old release would then see the new names. The sequence is only correct if the producers are paused between "no lag" and the switch, and the note does not say so. The close record carries this order as "inferred for a backlog", but the window does not depend on the backlog; it is a property of the order as written.
+**Fix:** Write the order as: pause the producers of the affected topics (or accept that records produced from this point under the earlier names are lost to the new rule), wait for no lag, stop the connector cleanly, switch the producers, upgrade and start the connector, resume the producers. Mirror the sentence in the CHANGELOG bullet.
+
+### IN-01: "Rolling back brings back" ends with a bullet about the gg4 documents, which a rollback removes
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:356`
+**Issue:** The list header is "Rolling back brings back:" and the last bullet is "on the branch, the gg4 documents themselves: this note, the CHANGELOG section and the FORK-DELTA rows". The paragraph above (line 345) says the rollback "removes this document from the branch", and `git read-tree` of the `pre-v1.7.0_gg4` tree removes the note, the CHANGELOG section and the FORK-DELTA rows. The bullet states the opposite of what happens.
+**Fix:** "- on the branch, the gg4 documents are gone: this note, the CHANGELOG section and the FORK-DELTA rows (read the note with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg4.md`)."
+
+### IN-02: The gg1 `DELETE` example comment omits the trailing-split-character form that item 1 of the same note lists
+
+**File:** `docs/ROLLOUT-v1.7.0_gg1.md:105-110`
+**Issue:** Item 1 (line 64) says a topic that ends with `dbTopicSplitChar` "can also be keyed without those trailing characters". The first `DELETE` comment gives only two forms (the topic name itself, and `<db><char><topic>`), and the second comment says "also list ... as in item 1", which does cover it. A reader who copies the first statement misses that key. The failure direction is a state row that stays, so the replayed range is dropped as already stored, which is the data-recovery failure that step 2 exists to prevent.
+**Fix:** Add to the first comment: "(a topic that ends with the split character can also be keyed without the trailing characters, as in item 1)".
+
+### IN-03: The CHANGELOG states "No other change in this release needs one" without the label the note gives the dependency claim
+
+**File:** `CHANGELOG.md:22-24` (against `docs/ROLLOUT-v1.7.0_gg4.md:236`)
+**Issue:** The note says no clean stop is needed for the bundled dependency bumps and labels it "inferred, to be pinned live: it is not measured". The CHANGELOG sentence has no label, and the close record lists the claim under "Inferred claims of the note". D-09 asks for labels on the note; the CHANGELOG is the document operators read first and drops it.
+**Fix:** "No other change in this release is expected to need one (the dependency bumps are inferred, not measured; see the rollout checklist)."
+
+### IN-04: The rename banner and the CHANGELOG bullet do not say that most of the escaped forms were client V2 only
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:3`; `CHANGELOG.md:11-19`
+**Issue:** The banner and the first Important Changes bullet describe the earlier form as a doubled backslash, a backslash and a letter, a backslash before a slash. The item 1 table shows that this was client V2; on client V1 (the connector's default in `ClickHouseSinkConfig`, `props.getOrDefault(CLIENT_VERSION, "V1")`) a backslash and a line feed already matched the raw name, so for them nothing changes, while the V1 changes are different (tab, carriage return, slash, double quote). A V1 operator reads "must be renamed before you upgrade" and either does needless work or cannot tell whether the notice is about them.
+**Fix:** Add one clause to both: "(client V2; on client V1 only the tab, carriage return, slash and double quote cases and the Enum labels change, see the table in item 1)".
+
+round: 1 findings: 13
+
+## Mandated confirmations (PUB-12)
+
+(a) No TRUNCATE advice that would wipe other connectors' state remains: holds. The only `TRUNCATE` in the three operator notes is gg1 line 115, "Do not `TRUNCATE` the table", with the shared-table reason; the gg2, gg3 and gg4 notes contain no `TRUNCATE`, `DROP`, `ALTER` or unscoped `DELETE`, and the two `DELETE` examples in gg1 are key-scoped and were run (E-25).
+(b) Rollback uses tag `pre-v1.7.0_gg4` and states the nested-jar hazard correctly: holds. Item 7 uses `git read-tree -u --reset pre-v1.7.0_gg4` (E-30), redeploys the archive built at tag `v1.7.0_gg3`, and states 25 nested jars, 135 against 7376 entries and the release workflow behaviour exactly as E-04 reads them (the `pre-release.yaml` Gradle 7.4.2 pin is correctly left out of the note and is in FORK-DELTA); the ordering of the name rename inside the rollback is not correct, see CR-01, and WR-02 and IN-01 touch item 7.
+(c) The CREATE TABLE-name rename notice is present and correct: holds, with a scope caveat. It is the opening paragraph of the note and the first Important Changes bullet, names `CREATE TABLE`, the forms (E-20), the DEFAULT with no log line, and the drain-then-switch order; IN-04 (client scope) and WR-08 (producer window) are the points.
+(d) exactlyOnce=false connectors are handled correctly and no false "safe" remains in the gg4 note: holds. Item 4 says the state table does not exist for them, that the failure does, and tells the operator to stop the tasks cleanly before redeploying; the multi-topic query text of the gg4 note is correct. The gg1 note still has the multi-topic false "safe" (WR-07), and the clean-stop check for an upgrade is missing (WR-01).
+(e) The static checks and greps the note quotes are accurate: holds. All nine `sql` and `sh` blocks of the gg4 note are present verbatim in E-13, E-14, E-15, E-22, E-23 and E-25; the two WARN greps match the constants in `DescribeTableBuilder` and the real gg3 line; the alert-rule grep has its literal-text limit stated; the anchors mirror re-run on this HEAD prints 94 rows, 0 bad. The interpretation of a hit of the first grep on a gg4 log is the one point that disagrees with the CHANGELOG (WR-06).
+
+## Round 2
+
+Scope: `git diff 0600b5915364b8af17bc8f7badf58c1d4d33efe5 HEAD` (15 fix commits) over the gg4 note, the gg1 note, the CHANGELOG section, FORK-DELTA, the close record and the evidence map. Each round 1 fix was read against `DescribeTableBuilder` (`decide`, `warnUnreadableParent`, `warnedParents`), `ClickHouseSinkConfig` (client default `V1`), `git diff pre-v1.7.0_gg4 HEAD` over `sink/processing`, `sink/state`, `QueryIdentifier` and `sink/data` (empty, so the "release independent" claim of the new upgrade-direction check holds), and E-11, E-12 and E-50.
+
+Verdicts on the 13 round 1 findings. Fixed and correct: WR-01 (the upgrade-direction check reuses a release independent query), WR-02 (the rollback mechanism is now scoped to shapes whose short bytes cannot be parsed, and the other branch is labelled inferred), WR-03 (the 7 of 25 count, the six failing shapes and the safe default agree with E-11: six failed, `r01` stored shifted, three controls), WR-04 (note, CHANGELOG and FORK-DELTA now agree with what the test does), WR-05 (jspecify row and CHANGELOG list), WR-06 (the three documents now follow the code: `size`/`size0` dropped, `size<digits>` kept, once per parent per pass, the unpaired-element WARN can accompany it), WR-07 (gg1 now has the per-topic entry sentence and the scoped result), WR-08 for the upgrade direction, IN-01, IN-02 (E-50 block equals the note block), IN-03, IN-04 (client V1 is the default in `ClickHouseSinkConfig`). CR-01 is fixed for the order it describes and the order is correct step by step (below), with two gaps that are findings WR-09 and WR-10.
+
+Rollback order, step by step: (1) pause the producers of the affected topics, still on the new names: no new record under any name enters the topic; (2) wait for no lag: everything produced under the new names has been read by gg4 under the new rule; (3) stop cleanly and run the check; a non-empty result restarts gg4, not gg3, with the producers still paused; (4) only then switch the producers back and redeploy gg3, then resume. With the producers paused there is no step at which gg3 or gg4 reads a record under the wrong rule, so no silent-DEFAULT window remains for a producer that can be paused. The window remains for a producer that cannot be paused (WR-10).
+
+### WR-09: Item 4 "What to do" still says to stop cleanly before an upgrade only for the shifted shape, which contradicts the bullet and the CHANGELOG that WR-03 made the default for every listed table
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:244` (against `:232` and `CHANGELOG.md` second Important Changes bullet)
+**Issue:** The WR-03 fix changed the Item 4 bullet (line 232) to "Stop cleanly first for every table that the query of item 2 lists" and the CHANGELOG to "a clean stop for every table with such a `Tuple` element, except the six shapes that were measured to fail". The first sentence of "What to do" (line 244) was not touched: "Before an upgrade, rename the producer fields ..., and for a table of the shifted shape of item 2 stop the connector cleanly first." An operator who reads only "What to do", the part the note's own structure tells them to act on, stops cleanly only for `Tuple(size UInt32, v String)`-like tables, which is the narrow, undecidable branch (18 of the 25 shapes were never inserted, so the operator cannot recognise a "shifted shape") that WR-03 removed. Line 246 then says how to confirm a clean stop but not for which tables. The CHANGELOG sentence also drops the bullet's qualifier "a table of exactly one of those shapes" for the six exceptions, so a table with one failing-shape column and one unmeasured-shape column reads as an exception.
+**Fix:** Replace the first sentence of line 244 with: "Before an upgrade, rename the producer fields as item 1 says, and stop the connector cleanly first for every table that the query of item 2 lists, except a table that has exactly one of the six shapes that were measured to fail on `v1.7.0_gg3` (listed in item 2)." Add "a table that has exactly one of" to the CHANGELOG exception.
+
+### WR-10: The rollback order names no consequence for a producer that cannot be paused, although the upgrade order does, and the CHANGELOG carries only the upgrade order
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:248`; `docs/ROLLOUT-v1.7.0_gg4.md:342`; `CHANGELOG.md` first Important Changes bullet
+**Issue:** Item 1 step 2 states that a producer that cannot be paused leaves a window (a record written under the earlier names after no lag was seen is read by the new release under the new rule). The rollback paragraph at line 248 says "pause the producers of the affected topics" and gives no such statement. The window exists in the rollback direction in the same form and is worse: a producer that keeps writing under the new names while `v1.7.0_gg3` starts has every such record read under the old rule, a silent DEFAULT for a root field and a failed put for a Tuple element, and there is no order of "switch back" that closes it (switching back first makes `v1.7.0_gg4` read the old names). The operator who cannot pause is told nothing, so the note reads as if the order were sufficient for every producer. The CHANGELOG gives the upgrade order in the first bullet and for the rollback only "needs a clean stop"; the order that CR-01 made Critical is in the note and the close record but not in the document operators read first.
+**Fix:** Add to line 248, after "wait until the connector has no lag on those topics": "A producer that cannot be paused leaves a window in this direction too: a record it writes under the names of this release after you saw no lag is read by `v1.7.0_gg3` under its own rule (a root field stores the column's `DEFAULT` with no log line, a Tuple element fails the put). The order above cannot close it; plan the producer's pause." Add one sentence to the CHANGELOG first bullet: "A rollback runs the order in reverse: keep the producers on the new names until the connector has consumed what they produced and stopped, then switch them back (see the rollout checklist, item 4)."
+
+### IN-05: The residual WARN quoted in item 2 says `size<digits>` sub-columns are treated as structural, while the sentence above it and the code say they are kept for the Array and Map rule
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:131`, `:137`, `:172`
+**Issue:** After the WR-06 fix the prose says the connector drops `size`/`size0` and keeps `size<digits>` for the existing Array and Map rule. The quoted WARN (the constant `UNREADABLE_PARENT_WARNING`, which is correct as a quote) still reads "its sub-columns named size, size0 or size followed by digits are treated as structural, as earlier releases did". An operator who matches a log line to the note sees a text that appears to contradict the sentence the note gives for it, and the note does not say that the log text is broader than the behaviour. The text of the constant was not part of the fix, so this is a documentation gap only.
+**Fix:** After the code block at line 137 add: "The text names all three forms; the connector drops only `size` and `size0` of that parent, as the paragraph above says (read from connector code)."
+
+### IN-06: The close record's rename-order carry says the rollback "runs the same order in reverse", which does not match the order the note gives
+
+**File:** `.planning/phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md:157`
+**Issue:** The record lists the upgrade as pause, drain, stop, switch, upgrade, resume and says "the rollback runs the same order in reverse, with the producers kept on the new names until the connector has drained and stopped". The note's rollback is pause, drain, stop, check, switch back, redeploy, resume: the same sequence with the version swapped, not the reverse of the upgrade sequence (the reverse would switch the producers first). The parenthesis that follows the phrase states the right facts, so no operator is misled, but the record is the document a later reviewer uses to decide what the inferred claim is.
+**Fix:** Replace "runs the same order in reverse, with" with "runs the same order with the versions swapped:".
+
+round: 2 findings: 4
+
+## Mandated confirmations (PUB-12)
+
+(a) No TRUNCATE advice that would wipe other connectors' state remains: holds. The fix commits add no `TRUNCATE`, `DROP`, `ALTER` or unscoped `DELETE`; `Do not TRUNCATE the table` in the gg1 note stays, the only changed `DELETE` text is a comment line (E-50, probe lines equal E-25), and item 4 still ends "Do not empty or edit the state table to get past a non-empty result".
+(b) Rollback uses tag `pre-v1.7.0_gg4` and the nested-jar archive hazard is stated correctly: holds. The 25 nested jars and 135 against 7376 entries match E-04; item 7 steps 1 and 3 now point at the item 4 order, and the bullet on the gg4 documents (IN-01) now says they are gone. The order inside the rollback is correct for a producer that can be paused; see WR-10 for one that cannot.
+(c) The CREATE TABLE-name rename notice is present and correct: holds. The banner, the first Important Changes bullet and item 1 name the forms, state the client V2 scope with the client V1 changes (tab, carriage return, slash, double quote; V1 is the default in `ClickHouseSinkConfig`), the silent DEFAULT and the pause, drain, stop, switch, upgrade, resume order; WR-10 is the one gap (a producer that cannot be paused, in the rollback direction).
+(d) exactlyOnce=false connectors are handled correctly and no false "safe" remains: holds. Item 4 says no state table exists for them, gives a labelled-inferred recognition of a clean stop (no lag plus a pause or delete through the REST interface) in the upgrade and the rollback direction, and the gg1 note's query result is now scoped to the listed topics. WR-09 is a contradiction about which tables need the clean stop, not a false "safe" for a connector type.
+(e) The static checks and greps the note quotes are accurate: holds. No `sql` or `sh` block changed except the gg1 `DELETE` comment, which is backed by E-50; the new upgrade-direction check reuses the query of step 2, and its claim that the state records, the key rule and the token are the same code in gg3 and gg4 is confirmed by an empty `git diff pre-v1.7.0_gg4 HEAD` over `sink/processing`, `sink/state`, `QueryIdentifier` and `sink/data`; the two WARN greps are unchanged and the residual grep text matches `UNREADABLE_PARENT_WARNING` (IN-05 is about its wording only).
+
+
+## Round 3
+
+Scope: `git diff 65de7b1e02f0fc566982454b6cf25ea205c9482b HEAD` (four fix commits e420d5fc, 00fa73f2, 15ce9220, dc281a54) over `docs/ROLLOUT-v1.7.0_gg4.md`, the `1.7.0_gg4` section of `CHANGELOG.md` and `29-MILESTONE-CLOSE-RECORD.md`. Each fix was read against `DescribeTableBuilder` (`decide`, `undecidable`, `structural`, `warnUnreadableParent`, `UNREADABLE_PARENT_WARNING`), the Item 2 measurement text (E-11 shapes: six failed, one stored shifted) and the other places that state the same rule (note lines 112, 234, 235, 246, 250 and item 7, CHANGELOG, FORK-DELTA, close record).
+
+Verdicts on the four round 2 findings. WR-09 fixed and correct: note line 246 now reads "stop the connector cleanly first for every table that the query of item 2 lists, except a table that has exactly one of the six shapes that were measured to fail on `v1.7.0_gg3` (listed in item 2)"; it agrees with the bullet at line 234 ("a table of exactly one of those shapes"), the CHANGELOG exception, and the close record line 159. The six shapes are listed in the "What an insert does" bullet of item 2, so the back-reference resolves. FORK-DELTA states no clean-stop rule, so there is nothing to disagree with. WR-10 fixed and correct in substance: line 250 now states the window for a producer that cannot be paused, with the label "inferred, to be pinned live", and the CHANGELOG carries the rollback order with a pointer to item 4; item 7 step 1 and step 3 already point at that order, and the close record carries the window "in both directions". IN-05 fixed and correct: the added sentence ("the connector drops only `size` and `size0` of that parent") matches `decide`, where an unreadable or absent parent gives `undecidable(bare)` = `SKIP_UNDECIDABLE` for `size`/`size0` and `KEEP_UNDECIDABLE` for `size<digits>`, and it is labelled "read from connector code". IN-06 fixed and correct: "the same order with the versions swapped" is the sequence of the note (pause, drain, stop, check, switch back, redeploy, resume).
+
+Rollback order re-walked with the changed text: the producers are paused on the new names, gg4 drains, stops, the check runs, only then do the producers go back and gg3 start. For a producer that can be paused no step lets either release read a record under the wrong rule. For one that cannot, the note now says so for both directions. No new error against code or evidence was found in the four commits; the two items below are wording and cross-document completeness.
+
+### IN-07: The new unpausable-producer sentence in the rollback paragraph says "after you saw no lag" and repeats the sentence that follows it
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:250`
+**Issue:** The added sentence says a record the producer writes under the names of this release "after you saw no lag is read by `v1.7.0_gg3` under its own rule". A record written after the lag was observed but before the connector stopped is still consumed by `v1.7.0_gg4`, under the right rule; the window that reaches `v1.7.0_gg3` opens when the connector stops, not when the lag was seen (the sentence in item 1 step 2 for the upgrade direction has the same shape). The statement is conservative, so no operator step is wrong. The paragraph also now says the same thing twice: this sentence, and the later "A record that was produced under the names of this release and is still in a topic when `v1.7.0_gg3` starts is read by `v1.7.0_gg3` under its own rule in the same way (inferred, to be pinned live)". An operator reading line 250 meets the same window described in two places with two different starting points.
+**Fix:** Say "a record it writes under the names of this release after the connector has stopped is read by `v1.7.0_gg3` under its own rule", and fold the later "A record that was produced ... in the same way" sentence into it, keeping one "inferred, to be pinned live" label.
+
+### IN-08: The CHANGELOG rollback sentence leaves out the in-flight check, the resume, and the window for a producer that cannot be paused
+
+**File:** `CHANGELOG.md:20-23` (against `docs/ROLLOUT-v1.7.0_gg4.md:112` and `:250`)
+**Issue:** The added CHANGELOG text reads "A rollback runs the same order with the versions swapped: pause the producers, keep them on the new names until the connector has consumed what they produced and stopped, then switch them back and redeploy `v1.7.0_gg3`". The note's order has two more elements that the CHANGELOG does not: the check for a range in flight between "stopped" and "switch back" (a non-empty result restarts `v1.7.0_gg4`, not `v1.7.0_gg3`), and the resume of the producers after the connector has started. Neither the upgrade order nor the rollback order in the CHANGELOG carries the caveat that a producer which cannot be paused leaves a window, although the note and the close record state it for both directions. The CHANGELOG points to item 4 for the details, so this is an omission that a reader of the CHANGELOG alone could act on (switch back right after the stop, skipping the check).
+**Fix:** After "redeploy `v1.7.0_gg3`" add "and resume them, after the in-flight check of the rollout checklist, item 4, is empty; a producer that cannot be paused leaves a window in both directions (see the checklist)".
+
+round: 3 findings: 2
+
+## Mandated confirmations (PUB-12)
+
+(a) No TRUNCATE advice that would wipe other connectors' state remains: holds. The four fix commits add no `TRUNCATE`, `DROP`, `ALTER` or `DELETE`; they touch prose only, and item 4 still ends "Do not empty or edit the state table to get past a non-empty result".
+(b) Rollback uses tag `pre-v1.7.0_gg4` and the nested-jar archive hazard is stated correctly: holds. Item 7 is unchanged by the fixes (`git read-tree -u --reset pre-v1.7.0_gg4`, 25 nested jars, never deploy an archive built from the rolled-back tip); steps 1 and 3 agree with the item 4 order and with the new sentence on the unpausable producer.
+(c) The CREATE TABLE-name rename notice is present and correct: holds. The banner, item 1 and the first Important Changes bullet are unchanged except for the added rollback sentence, which agrees with the note's order (IN-08 is about its completeness only).
+(d) exactlyOnce=false connectors are handled correctly and no false "safe" remains: holds. Line 246 now names the clean stop for every table the item 2 query lists, for either `exactlyOnce` setting, and line 248 still gives the labelled-inferred recognition of a clean stop for `exactlyOnce=false`; no sentence added by the fixes calls any connector type safe.
+(e) The static checks and greps the note quotes are accurate: holds. No `sql` or `sh` block changed. The residual WARN text still equals `UNREADABLE_PARENT_WARNING`, and the sentence added under it ("drops only `size` and `size0` of that parent") is confirmed by `DescribeTableBuilder.decide` (`SKIP_UNDECIDABLE` for the bare names, `KEEP_UNDECIDABLE` for `size<digits>`).
+
+## Round 4
+
+Scope: `git diff 966620cc2690a3b372c8ff668dbbfe3615be7bf2 HEAD` over `docs/ROLLOUT-v1.7.0_gg4.md` (line 112 and line 250) and the `1.7.0_gg4` section of `CHANGELOG.md` (lines 20-24); commits 0bcef5d6 (IN-07) and ac903f11 (IN-08). The two commits touch only prose; no `sql` or `sh` block changed. Each edit was read against the rollback and upgrade orders in note item 4 and item 1, the close record carry (line 157), and the exactlyOnce=false paragraph of item 4.
+
+Verdicts on the two round 3 findings. IN-07 fixed and correct: line 112 (upgrade direction) and line 250 (rollback direction) now both start the unpausable-producer window at the connector stop ("after the connector has stopped"), which is the point after which neither release drains the record before the other release starts. The duplicate sentence ("A record that was produced under the names of this release and is still in a topic when `v1.7.0_gg3` starts ... in the same way") is gone, and the single remaining statement keeps one "inferred, to be pinned live" label. No other sentence in the note or close record still says "after you saw no lag" (grep over `docs`, `CHANGELOG.md` and the close record finds none). The close record line 157 says "a producer that cannot be paused leaves a window in both directions" without a start point, so it does not disagree. IN-08 fixed and correct in substance: the CHANGELOG rollback sentence now carries the pause, the drain and stop, the in-flight check with its "switch them back only when it is empty" gate, the redeploy of `v1.7.0_gg3`, the resume, and the window for a producer that cannot be paused, with a pointer to the checklist. It now matches the sequence in note line 250 and item 4 step 3. One scoping gap in the new text is below.
+
+### IN-09: The CHANGELOG rollback sentence gates the switch-back on an "in-flight check" that exists only for `exactlyOnce=true`
+
+**File:** `CHANGELOG.md:20-22` (against `docs/ROLLOUT-v1.7.0_gg4.md:250` and the closing paragraph of item 4)
+**Issue:** The added text says to "run the in-flight check of the rollout checklist (item 4) and switch them back only when it is empty". The check is the KeeperMap state-table query, which the note scopes to "each connector with `exactlyOnce=true` that writes a table of either shape". For a connector with `exactlyOnce=false` the note says "there is no state table to query" and asks for a clean stop (no lag, paused or deleted through the REST interface) instead. A reader of the CHANGELOG alone, with an `exactlyOnce=false` connector, is told to run a check that does not exist for it and to wait for an empty result; the other direction (an `exactlyOnce=true` connector on a table with neither shape and unchanged field names) is told to run a check the note does not require. The sentence is not a false "safe", it is an unscoped gate, and the sentence that follows points to the checklist.
+**Fix:** Write "run the in-flight check of the rollout checklist (item 4) for each `exactlyOnce=true` connector, and a clean stop for each `exactlyOnce=false` one, and switch them back only when it is empty or done". Alternatively shorten to "complete the clean-stop procedure of the rollout checklist (item 4), then switch them back".
+
+round: 4 findings: 1
+
+## Mandated confirmations (PUB-12)
+
+(a) No TRUNCATE advice that would wipe other connectors' state remains: holds. The two fix commits add no `TRUNCATE`, `DROP`, `ALTER` or `DELETE`; item 4 still ends "Do not empty or edit the state table to get past a non-empty result".
+(b) Rollback uses tag `pre-v1.7.0_gg4` and the nested-jar archive hazard is stated correctly: holds. Item 7 is not in the diff; its steps 1 and 3 still point at the item 4 order, which the two commits leave in the same sequence (pause, drain, stop, check, switch back, redeploy, resume).
+(c) The CREATE TABLE-name rename notice is present and correct: holds. The first Important Changes bullet keeps the forms, the client V2 and client V1 scope, the silent DEFAULT and the order; the rollback tail now agrees with note line 250 (IN-09 is about the scope of the check only).
+(d) exactlyOnce=false connectors are handled correctly and no false "safe" remains: holds. Note line 248 and the closing paragraph of item 4 are unchanged and still give the labelled-inferred clean-stop recognition; the CHANGELOG sentence is the one place that does not distinguish the two settings (IN-09), and it calls nothing safe.
+(e) The static checks and greps the note quotes are accurate: holds. No `sql` or `sh` block changed in the two commits, so the entries of 29-COMMAND-EVIDENCE.md still cover every command and query in the note.
+
+---
+
+_Reviewed: 2026-10-23T18:57:00Z_
+_Reviewer: Claude (gsd-code-reviewer)_
+_Depth: standard_

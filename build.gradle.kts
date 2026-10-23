@@ -94,6 +94,7 @@ dependencies {
     implementation(libs.lz4.java)
     implementation(libs.gson)
     implementation(libs.httpclient5)
+    implementation(libs.guava)
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
@@ -102,8 +103,8 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.jackson.annotations)
 
-    // FORK OVERRIDE (D-16): no upstream catalog entry for this coordinate.
-    implementation("org.slf4j:slf4j-reload4j:2.0.20")
+    // FORK OVERRIDE (D-16): fork-only catalog entry, upstream's catalog has none for this coordinate.
+    implementation(libs.slf4j.reload4j)
 
     /*
         Will in side the Confluent Archive
@@ -113,6 +114,7 @@ dependencies {
     clickhouseDependencies(libs.clickhouse.client.v2)
     clickhouseDependencies(libs.lz4.java)
     clickhouseDependencies(libs.clickhouse.http.client)
+    clickhouseDependencies(libs.guava) // temp to override client's with CVE
     clickhouseDependencies(libs.gson)
     clickhouseDependencies(libs.jackson.core)
     clickhouseDependencies(libs.jackson.databind)
@@ -176,7 +178,7 @@ testing {
                 implementation(libs.testcontainers.toxiproxy)
                 implementation(libs.okhttp)
                 implementation(libs.json)
-                implementation(libs.httpclient5.test)
+                implementation(libs.httpclient5)
                 implementation(libs.clickhouse.client)
                 implementation(libs.clickhouse.client.v2)
                 implementation(libs.clickhouse.http.client)
@@ -205,16 +207,24 @@ tasks.withType<JavaCompile> {
     options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
 }
 
+// Phase 26 WR-02: DescribeFixtureDriftLiveTest compares byte-for-byte against the floating `latest` server, so an
+// upstream formatting change turns it red for reasons unrelated to the connector. It is tagged and kept out of
+// `test` and `check`; `describeFixtureDrift` runs it on demand.
+val describeFixtureDriftTag = "describe-drift"
+val describeFixtureDriftTask = "describeFixtureDrift"
+
 tasks.withType<Test> {
     if (System.getenv("CLICKHOUSE_CLUSTER_NAME") != null) {
         maxParallelForks = 1
     } else {
         maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).takeIf { it > 0 } ?: 1
     }
-    if (name != "testUnit") {
+    if (name != "testUnit" && name != describeFixtureDriftTask) {
         tasks.getByName("check").dependsOn(this)
     }
     systemProperty("file.encoding", "windows-1252") // run tests with different encoding
+    // DescribeFixturesUnitTest reads this script to guard the drift tag, so editing it must re-run the tests.
+    inputs.file(layout.projectDirectory.file("build.gradle.kts"))
 
     testLogging {
         events("passed", "skipped", "failed")
@@ -275,13 +285,27 @@ tasks.register<Test>("testUnit") {
     extensions.configure<JacocoTaskExtension> { isEnabled = false }
 }
 
+// Phase 26 WR-02: the live DESCRIBE drift check, run by hand or from a separate non-gating job; needs Docker.
+// Same classpath, forks, logging and launcher as `test`; never up to date because the input is a floating image.
+tasks.register<Test>(describeFixtureDriftTask) {
+    group = "verification"
+    description = "Runs DescribeFixtureDriftLiveTest against the floating ClickHouse image; not part of test or check"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        includeTags(describeFixtureDriftTag)
+    }
+    outputs.upToDateWhen { false }
+    extensions.configure<JacocoTaskExtension> { isEnabled = false }
+}
+
 jacoco {
     toolVersion = "0.8.15"
 }
 
 // D-13: hand-picked, named include list of the fork-changed classes (COV-02).
 // Exact class names, not bare prefix globs, so neighbours such as
-// TableMappingRefresher, KeyToValue, ExtractTopic, or ClickHouseFieldDescriptor
+// TableMappingRefresher, KeyToValue or ExtractTopic
 // can never be pulled in.
 val forkChangedClasses = listOf(
     "com/clickhouse/kafka/connect/transforms/TableOperationFilter.class",
@@ -313,7 +337,19 @@ val forkChangedClasses = listOf(
     "com/clickhouse/kafka/connect/ClickHouseSinkConnector.class",
     "com/clickhouse/kafka/connect/ClickHouseSinkConnector\$*.class",
     "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils.class",
-    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils\$*.class"
+    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.class",
+    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter\$*.class",
+    "com/clickhouse/kafka/connect/util/WithheldMessageException.class",
+    "com/clickhouse/kafka/connect/util/WithheldMessageException\$*.class"
 )
 
 tasks.named<JacocoReport>("jacocoTestReport") {
@@ -342,6 +378,9 @@ tasks.register<JacocoReport>("jacocoForkReport") {
 
 // D-16: both reports hang off test only; never wired to check or a coverage-verification rule.
 tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags(describeFixtureDriftTag)
+    }
     finalizedBy(tasks.named("jacocoTestReport"), tasks.named("jacocoForkReport"))
 }
 
@@ -361,7 +400,14 @@ tasks.withType<Jar> {
 }
 tasks.register<ShadowJar>("confluentJar") {
     archiveClassifier.set("confluent")
-    from(clickhouseDependencies, sourceSets.main.get().output)
+    // Shadow 9 copies jars given to from(...) as-is and unpacks only configurations.
+    configurations.add(clickhouseDependencies)
+    from(sourceSets.main.get().output)
+    addMultiReleaseAttribute.set(false)
+}
+
+shadow {
+    addShadowJarToAssembleLifecycle.set(false)
 }
 
 // Confluent Archive
@@ -403,6 +449,29 @@ tasks.register<Zip>("createConfluentArchive") {
     archiveAppendix.set(archiveFilename)
     archiveVersion.set(project.version.toString())
     destinationDirectory.set(layout.buildDirectory.dir("confluent"))
+    finalizedBy("verifyConfluentArchive")
+}
+
+// CI-20: fails the build when the Confluent archive nests jars or bundles a Kafka API class. The
+// rules live once, in ConfluentArchiveCheck (test source set), which ConfluentArchiveCheckUnitTest
+// also exercises on synthetic archives.
+tasks.register<JavaExec>("verifyConfluentArchive") {
+    group = "verification"
+    description = "Fails if the Confluent archive nests jars or bundles a Kafka API class"
+    val archive = tasks.named<Zip>("createConfluentArchive").flatMap { it.archiveFile }
+    inputs.file(archive)
+    classpath = sourceSets["test"].output.classesDirs
+    mainClass.set("com.clickhouse.kafka.connect.ci.ConfluentArchiveCheck")
+    argumentProviders.add(CommandLineArgumentProvider { listOf(archive.get().asFile.absolutePath) })
+}
+
+// D-06: re-captures the DESCRIBE fixtures of Phase 26 against Docker; run by hand, wired into no other task.
+tasks.register<JavaExec>("captureDescribeFixtures") {
+    group = "verification"
+    description = "Re-captures the DESCRIBE TABLE fixtures under src/test/resources/describe-fixtures from the ClickHouse image"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.clickhouse.kafka.connect.sink.db.helper.DescribeFixtureCapture")
+    args(layout.projectDirectory.dir("src/test/resources/describe-fixtures").asFile.absolutePath)
 }
 
 tasks.register<Exec>("runClickHouseVersionClientMatrix") {

@@ -1,0 +1,1 @@
+No external API integration: Phase 25 merges Dependabot commits and upstream's tail, repairs the build and adds unit tests; its GitHub, NVD and OSV REST reads are one-off unauthenticated evidence lookups, and the Kafka Connect API is a compile-time dependency checked by bytecode, not a shipped integration.

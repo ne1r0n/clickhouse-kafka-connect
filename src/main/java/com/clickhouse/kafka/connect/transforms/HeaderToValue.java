@@ -139,7 +139,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         final Struct oldValue = (Struct) record.value();
 
         // Lazily initialize the schema, or rebuild it if the incoming record's schema has
-        // changed since the cache was built (D-02: stale schema cache guard).
+        // changed since the cache was built (stale schema cache guard).
         if (valueSchema == null || oldValue.schema() != sourceSchema) {
             sourceSchema = oldValue.schema();
             valueSchema = buildSchema(sourceSchema);

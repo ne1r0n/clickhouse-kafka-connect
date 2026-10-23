@@ -1,0 +1,9 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all size TUPLE
+all size.size UINT8
+all size.size0 STRING
+tree id INT32 nullable=false
+tree size TUPLE nullable=false
+tree   size.size UINT8 nullable=false
+tree   size.size0 STRING nullable=false

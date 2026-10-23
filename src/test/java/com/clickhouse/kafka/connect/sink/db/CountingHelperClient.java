@@ -3,14 +3,14 @@ package com.clickhouse.kafka.connect.sink.db;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 
 /**
- * A real {@link ClickHouseHelperClient} that counts the three calls {@code
- * ClickHouseWriter.doInsertRawBinary} makes on it: {@code isUseClientV2}, {@code pinReplica} and
- * {@code unpinReplica}. Its constructor opens no connection and starts no thread of its own, so the
- * dummy builder target is never contacted. It deliberately uses no Mockito: inline-mocking {@code
- * ClickHouseHelperClient} crashed the Semeru/OpenJ9 test JVM natively inside {@code
- * retransformClasses} in the full suite (Phase 18 deferred item, HARN-08). Callers close it with
- * try-with-resources; the inherited {@code close()} closes the V2 client. It holds no static mutable
- * state, so counts never leak between tests.
+ * A real {@link ClickHouseHelperClient} that answers {@code isUseClientV2} with its constructor
+ * flag and counts {@code pinReplica} and {@code unpinReplica}, the other two calls
+ * {@code ClickHouseWriter.doInsertRawBinary} makes on it. Its constructor opens no connection and
+ * starts no thread of its own, so the dummy builder target is never contacted. It deliberately uses
+ * no Mockito: inline-mocking {@code ClickHouseHelperClient} crashed the Semeru/OpenJ9 test JVM
+ * natively inside {@code retransformClasses} in the full suite (Phase 18 deferred item, HARN-08).
+ * Callers close it with try-with-resources; the inherited {@code close()} closes the V2 client. It
+ * holds no static mutable state, so counts never leak between tests.
  */
 public final class CountingHelperClient extends ClickHouseHelperClient {
 
@@ -18,7 +18,6 @@ public final class CountingHelperClient extends ClickHouseHelperClient {
     private static final int DUMMY_PORT = 8123;
 
     private final boolean useClientV2;
-    private int useClientV2Calls = 0;
     private int pinCalls = 0;
     private int unpinCalls = 0;
 
@@ -29,7 +28,6 @@ public final class CountingHelperClient extends ClickHouseHelperClient {
 
     @Override
     public boolean isUseClientV2() {
-        useClientV2Calls++;
         return useClientV2;
     }
 
@@ -41,10 +39,6 @@ public final class CountingHelperClient extends ClickHouseHelperClient {
     @Override
     public void unpinReplica() {
         unpinCalls++;
-    }
-
-    public int useClientV2Calls() {
-        return useClientV2Calls;
     }
 
     public int pinCalls() {

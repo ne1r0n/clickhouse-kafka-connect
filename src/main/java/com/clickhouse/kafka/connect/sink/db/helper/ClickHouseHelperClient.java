@@ -21,19 +21,16 @@ import com.clickhouse.client.http.config.ClickHouseHttpOption;
 import com.clickhouse.config.ClickHouseOption;
 import com.clickhouse.data.ClickHouseFormat;
 import com.clickhouse.data.ClickHouseRecord;
-import com.clickhouse.data.ClickHouseValue;
 import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
 import com.clickhouse.kafka.connect.sink.Version;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
-import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
-import com.clickhouse.kafka.connect.sink.db.mapping.Type;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
@@ -361,7 +358,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
      * A backslash (or run of backslashes) sitting immediately before a quote character - either
      * one already present in the filter, or the end of the filter (which {@link
      * #buildTableFilterClause(String)} always follows with its own closing quote) - is the only
-     * position where a backslash can interact with our quote-doubling below (CR-01).
+     * position where a backslash can interact with our quote-doubling below.
      */
     private static final Pattern BACKSLASH_RUN_BEFORE_QUOTE_OR_END = Pattern.compile("\\\\+(?='|\\z)");
 
@@ -371,7 +368,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
      * #showTables(String)}. Returns the empty string when {@code targetTableFilter} is exactly the
      * empty string (the connector default).
      *
-     * <p>Escaping (CR-01, D-19): every single quote is doubled, ClickHouse's own escape for a
+     * <p>Escaping: every single quote is doubled, ClickHouse's own escape for a
      * literal quote inside a string literal. Backslashes are otherwise passed through unchanged so
      * regex character classes like {@code \d+}/{@code \w+} keep matching exactly as {@code match()}
      * interprets them - EXCEPT that a run of backslashes directly before a quote (either one
@@ -457,59 +454,34 @@ public class ClickHouseHelperClient implements AutoCloseable {
     }
 
     /**
-     * Returns true when {@code fieldDescriptor} is a structural DESCRIBE sub-column row that
-     * should not become its own {@link Column}: a {@code .null}/{@code .size0}/bare {@code .size}
-     * suffix (present on every {@code Nullable}/{@code Array} column, regardless of parent type),
-     * or a sub-column at any depth below a {@code JSON}/{@code Dynamic} ancestor (whose sub-paths are
-     * dynamic and not meaningful as standalone {@link Column}s; typed paths such as {@code j.b.c}
-     * have no {@code j.b} row of their own). Map and Tuple sub-columns are deliberately
-     * left un-skipped so {@link Table}'s own parent-routing keeps working.
+     * Returns true when {@code fieldDescriptor} is a structural DESCRIBE sub-column row that should
+     * not become its own {@link Column}. The rule lives in {@link DescribeTableBuilder#decide}: a
+     * {@code .null} row and a sub-column at any depth below a {@code JSON}/{@code Dynamic} ancestor
+     * (whose sub-paths are dynamic; typed paths such as {@code j.b.c} have no {@code j.b} row of
+     * their own) are dropped first, then a sub-column named {@code size}, {@code size0} or {@code
+     * size<digits>} is kept when the parent's declared type declares a Tuple element of that name
+     * and dropped when it is Array offsets or a String length. Map and Tuple sub-columns are
+     * deliberately left un-skipped so {@link Table}'s own parent-routing keeps working.
      *
      * <p>{@code columnsSoFar} is the loop-local map of top-level columns extracted so far in the
      * current DESCRIBE pass, keyed by column name - {@link Table} is immutable and is only
      * constructed once, after the loop, so there is no {@code Table} to query mid-loop. A parent
      * absent from the map (never added, or not yet seen) returns false rather than throwing.
+     * This form knows no raw types, so a size-named row whose parent it cannot read is decided as
+     * earlier releases did: {@code size} and {@code size0} dropped, {@code size<digits>} kept.
      */
     static boolean shouldSkipDescribeRow(ClickHouseFieldDescriptor fieldDescriptor, Map<String, Column> columnsSoFar) {
-        if (!fieldDescriptor.isSubcolumn()) {
-            return false;
-        }
-        String name = fieldDescriptor.getName();
-        if (name.endsWith(".null") || name.endsWith(".size0") || name.endsWith(".size")) {
-            return true;
-        }
-        for (int dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
-            Column ancestor = columnsSoFar.get(name.substring(0, dot));
-            if (ancestor != null && (ancestor.getType() == Type.JSON || ancestor.getType() == Type.DYNAMIC)) {
-                return true;
-            }
-        }
-        return false;
+        return shouldSkipDescribeRow(fieldDescriptor, columnsSoFar, Map.of());
     }
 
     /**
-     * Builds the {@link Table} for one DESCRIBE pass, then takes the nullability of every root column
-     * that contains a Tuple from its declared type (COLS-10). It runs once per DESCRIBE, before the
-     * Table is published and never per record, so a retried batch sees the same Table as the first
-     * attempt. The Table itself is upstream-identical.
-     *
-     * @param declaredTypes the raw DESCRIBE type of each root column, keyed by column name; a root
-     *     with no entry keeps the nullability DESCRIBE reported for it
+     * As the two-argument form, with {@code rawTypes}: the raw DESCRIBE type of every row kept so
+     * far, keyed by name, from which a size-named row's parent is read.
      */
-    static Table buildDescribedTable(
-            String database,
-            String tableName,
-            boolean hasDefaults,
-            List<Column> columns,
-            int numColumns,
-            Map<String, String> declaredTypes) {
-        Table table = new Table(database, tableName, hasDefaults, columns, numColumns);
-        for (Column root : table.getRootColumnsList()) {
-            if (DeclaredNullability.containsTuple(root)) {
-                DeclaredNullability.apply(root, declaredTypes.get(root.getName()), database, tableName);
-            }
-        }
-        return table;
+    static boolean shouldSkipDescribeRow(
+            ClickHouseFieldDescriptor fieldDescriptor, Map<String, Column> columnsSoFar, Map<String, String> rawTypes) {
+        return DescribeTableBuilder.decide(fieldDescriptor, columnsSoFar, rawTypes)
+                .skipsRow();
     }
 
     public Table describeTableV1(String database, String tableName) {
@@ -528,61 +500,9 @@ public class ClickHouseHelperClient implements AutoCloseable {
                      .query(describeQuery))
                      .executeAndWait()) {
 
-            Set<String> skippedCols = new HashSet<>();
-            boolean hasDefaults = false;
-            int numColumns = 0;
-            List<Column> columns = new ArrayList<>();
-            Map<String, Column> columnsByName = new HashMap<>();
-            Map<String, String> declaredTypes = new HashMap<>();
-            for (ClickHouseRecord r : response.records()) {
-                ClickHouseValue v = r.getValue(0);
-
-                ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(v.asString());
-                // Count what system.columns counts: top-level columns, including the ones skipped below
-                if (!fieldDescriptor.isSubcolumn()) {
-                    numColumns++;
-                }
-
-                if (fieldDescriptor.isAlias() || fieldDescriptor.isMaterialized() || fieldDescriptor.isEphemeral()) {
-                    LOGGER.debug("Skipping column {} as it is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                    skippedCols.add(fieldDescriptor.getName());
-                    continue;
-                }
-                if (fieldDescriptor.isSubcolumn()) {
-                    String parentName = fieldDescriptor.getName().substring(0, fieldDescriptor.getName().lastIndexOf("."));
-                    if (skippedCols.contains(parentName)) {
-                        LOGGER.debug("Skipping subcolumn {} as its parent column is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                        skippedCols.add(fieldDescriptor.getName());
-                        continue;
-                    }
-                }
-
-                if (shouldSkipDescribeRow(fieldDescriptor, columnsByName)) {
-                    LOGGER.debug("Skipping structural sub-column {}", fieldDescriptor.getName());
-                    skippedCols.add(fieldDescriptor.getName());
-                    continue;
-                }
-
-                if (!fieldDescriptor.isSubcolumn()) {
-                    declaredTypes.put(fieldDescriptor.getName(), fieldDescriptor.getType());
-                }
-
-                if (fieldDescriptor.hasDefault()) {
-                    hasDefaults = true;
-                }
-
-                Column column = Column.extractColumn(fieldDescriptor);
-                //If we run into a rare column we can't handle, just ignore the table and warn the user
-                if (column == null) {
-                    LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
-                    return null;
-                }
-                columns.add(column);
-                columnsByName.put(column.getName(), column);
-            }
-
-            return buildDescribedTable(database, tableName, hasDefaults, columns, numColumns, declaredTypes);
-        } catch (ClickHouseException | JsonProcessingException e) {
+            DescribeTableBuilder builder = new DescribeTableBuilder(database, tableName);
+            return readDescribeRows(builder, response.getInputStream());
+        } catch (ClickHouseException | IOException | RuntimeException e) {
             LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
             return null;
         }
@@ -600,66 +520,33 @@ public class ClickHouseHelperClient implements AutoCloseable {
             settings.setDatabase(database);
             setReplicaTagHeaderV2(settings);
 
-            boolean hasDefaults = false;
-            int numColumns = 0;
-            List<Column> columns = new ArrayList<>();
-            Map<String, Column> columnsByName = new HashMap<>();
-            Map<String, String> declaredTypes = new HashMap<>();
+            DescribeTableBuilder builder = new DescribeTableBuilder(database, tableName);
             try (QueryResponse queryResponse = client.query(describeQuery, settings).get();
-                 InputStream describeStream = queryResponse.getInputStream();
-                 BufferedReader br = new BufferedReader(new InputStreamReader(describeStream, StandardCharsets.UTF_8))) {
-                String line = null;
-                Set<String> skippedCols = new HashSet<>();
-                while ((line = br.readLine()) != null) {
-                    ClickHouseFieldDescriptor fieldDescriptor = ClickHouseFieldDescriptor.fromJsonRow(line);
-                    // Count what system.columns counts: top-level columns, including the ones skipped below
-                    if (!fieldDescriptor.isSubcolumn()) {
-                        numColumns++;
-                    }
-
-                    if (fieldDescriptor.isAlias() || fieldDescriptor.isMaterialized() || fieldDescriptor.isEphemeral()) { // TODO: add subcolumn filter here?
-                        LOGGER.debug("Skipping column {} as it is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                        skippedCols.add(fieldDescriptor.getName());
-                        continue;
-                    }
-                    if (fieldDescriptor.isSubcolumn()) {
-                        String parentName = fieldDescriptor.getName().substring(0, fieldDescriptor.getName().lastIndexOf("."));
-                        if (skippedCols.contains(parentName)) {
-                            LOGGER.debug("Skipping subcolumn {} as its parent column is either an alias, materialized view, or ephemeral", fieldDescriptor.getName());
-                            skippedCols.add(fieldDescriptor.getName());
-                            continue;
-                        }
-                    }
-
-                    if (shouldSkipDescribeRow(fieldDescriptor, columnsByName)) {
-                        LOGGER.debug("Skipping structural sub-column {}", fieldDescriptor.getName());
-                        skippedCols.add(fieldDescriptor.getName());
-                        continue;
-                    }
-
-                    if (!fieldDescriptor.isSubcolumn()) {
-                        declaredTypes.put(fieldDescriptor.getName(), fieldDescriptor.getType());
-                    }
-
-                    if (fieldDescriptor.hasDefault()) {
-                        hasDefaults = true;
-                    }
-
-                    Column column = Column.extractColumn(fieldDescriptor);
-                    //If we run into a rare column we can't handle, just ignore the table and warn the user
-                    if (column == null) {
-                        LOGGER.error("Unable to handle column: {}", fieldDescriptor.getName());
-                        return null;
-                    }
-                    columns.add(column);
-                    columnsByName.put(column.getName(), column);
-                }
+                 InputStream describeStream = queryResponse.getInputStream()) {
+                return readDescribeRows(builder, describeStream);
             }
-            return buildDescribedTable(database, tableName, hasDefaults, columns, numColumns, declaredTypes);
         } catch (Exception e) {
             LOGGER.error("describeTableV2 failed", e);
             return null;
         }
+    }
+
+    /**
+     * Feeds the raw JSONEachRow lines of a DESCRIBE response, read as UTF-8, to the builder. Both
+     * clients read the same lines, so the builder decodes names once and the same way for each.
+     *
+     * @return the table, or null as soon as a row describes a column the connector cannot handle
+     */
+    private static Table readDescribeRows(DescribeTableBuilder builder, InputStream describeStream) throws IOException {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(describeStream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (!builder.addRow(line)) {
+                    return null;
+                }
+            }
+        }
+        return builder.build();
     }
 
     public void alterTableAddColumns(String database, String tableName, List<String> columnDefs, Map<String, String> clickhouseSettings) {

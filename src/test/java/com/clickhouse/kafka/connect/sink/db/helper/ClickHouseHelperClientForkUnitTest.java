@@ -12,12 +12,11 @@ import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -294,7 +293,7 @@ class ClickHouseHelperClientForkUnitTest {
                 numColumns++;
             }
         }
-        return ClickHouseHelperClient.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
+        return DescribeTableBuilder.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
     }
 
     /** Discovery where every root row's own type is its declared type, as DESCRIBE reports it. */
@@ -309,36 +308,21 @@ class ClickHouseHelperClientForkUnitTest {
     }
 
     /**
-     * The {@code describeTableV2} loop for fixture rows, including the structural-row skip that
-     * {@code discover(...)} leaves out: a sub-column whose parent was skipped is skipped, a
-     * structural row is skipped, and only the rest become Columns.
+     * Discovery through {@link DescribeTableBuilder}, the loop both describe paths run, for
+     * hand-written (name, type) rows rendered as the JSON lines the server sends.
      */
-    private static Table discoverAsDescribeTableV2(String... nameAndTypePairs) {
-        List<Column> columns = new ArrayList<>();
-        Map<String, Column> columnsByName = new HashMap<>();
-        Map<String, String> declaredTypes = new HashMap<>();
-        Set<String> skippedCols = new HashSet<>();
-        int numColumns = 0;
+    private static Table discoverWithBuilder(String... nameAndTypePairs) {
+        DescribeTableBuilder builder = new DescribeTableBuilder(DATABASE, TABLE);
         for (int i = 0; i < nameAndTypePairs.length; i += 2) {
-            ClickHouseFieldDescriptor descriptor = newDescriptor(nameAndTypePairs[i], nameAndTypePairs[i + 1]);
-            if (!descriptor.isSubcolumn()) {
-                numColumns++;
-            } else if (skippedCols.contains(descriptor.getName().substring(0, descriptor.getName().lastIndexOf('.')))) {
-                skippedCols.add(descriptor.getName());
-                continue;
+            try {
+                assertTrue(
+                        builder.addRow(DescribeFixtureCatalog.describeLine(nameAndTypePairs[i], nameAndTypePairs[i + 1])),
+                        nameAndTypePairs[i] + " is a column the connector can handle");
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("fixture row is not well-formed JSON: " + nameAndTypePairs[i], e);
             }
-            if (ClickHouseHelperClient.shouldSkipDescribeRow(descriptor, columnsByName)) {
-                skippedCols.add(descriptor.getName());
-                continue;
-            }
-            if (!descriptor.isSubcolumn()) {
-                declaredTypes.put(descriptor.getName(), descriptor.getType());
-            }
-            Column column = Column.extractColumn(descriptor);
-            columns.add(column);
-            columnsByName.put(column.getName(), column);
         }
-        return ClickHouseHelperClient.buildDescribedTable(DATABASE, TABLE, false, columns, numColumns, declaredTypes);
+        return builder.build();
     }
 
     private static int warnCount(LogCapture... captures) {
@@ -579,7 +563,7 @@ class ClickHouseHelperClientForkUnitTest {
     }
 
     /** R-01 (23-EVIDENCE.md): DESCRIBE rows of tables whose Tuple element is named size or size0, root renamed to the sentinel. */
-    static Stream<Arguments> discoveryDropsSizeNamedElements() {
+    static Stream<Arguments> sizeNamedElementRows() {
         return Stream.of(
                 Arguments.of(
                         "Tuple element named size",
@@ -621,32 +605,20 @@ class ClickHouseHelperClientForkUnitTest {
                         }));
     }
 
-    // Known defect 999.4 (D-04): shouldSkipDescribeRow drops a DESCRIBE row ending in .size or .size0, so
-    // a Tuple element with that name never becomes a Column and the writer writes a short tuple
-    // (23-EVIDENCE.md R-01: code 33 CANNOT_READ_ALL_DATA). The unpaired-element WARN names the dropped
-    // element. The 999.4 fix flips this pin: the element then pairs and no WARN fires.
-    @ParameterizedTest(name = "COLS-14 unpaired-element WARN (D-04, known defect 999.4): {0}")
-    @MethodSource("discoveryDropsSizeNamedElements")
-    @DisplayName("COLS-14 unpaired-element WARN (D-04, known defect 999.4): discovery drops a size-named Tuple element and one WARN names it")
-    void sizeNamedTupleElementDroppedByDiscoveryIsNamedInOneWarning(
-            String label, String rawType, boolean arrayWrapped, String unpaired, String paired, String[] rows) {
+    @ParameterizedTest(name = "D-10 (999.4 fixed): {0}")
+    @MethodSource("sizeNamedElementRows")
+    @DisplayName("D-10 (999.4 fixed): a size-named Tuple element becomes a Column and discovery logs no WARN")
+    void sizeNamedTupleElementIsKeptByDiscoveryWithoutWarning(
+            String label, String rawType, boolean arrayWrapped, String sizeNamed, String paired, String[] rows) {
         try (LogCapture helperLog = LogCapture.attach(ClickHouseHelperClient.class);
                 LogCapture nullabilityLog = LogCapture.attach(DeclaredNullability.class)) {
-            Column root = discoverAsDescribeTableV2(rows).getRootColumnsMap().get(ROOT_SENTINEL);
+            Column root = discoverWithBuilder(rows).getRootColumnsMap().get(ROOT_SENTINEL);
 
             Column tuple = arrayWrapped ? root.getArrayType() : root;
             List<String> fieldNames =
                     tuple.getTupleFields().stream().map(Column::getName).toList();
-            assertFalse(fieldNames.contains(unpaired), label + ": the dropped element is not a Column");
-            assertTrue(fieldNames.contains(paired), label + ": the other element is a Column");
-            assertEquals(0, warnCount(helperLog), label);
-            List<LogCapture.CapturedEvent> warnings = nullabilityLog.events(WARN_LEVEL);
-            assertEquals(1, warnings.size(), label);
-            String message = warnings.get(0).message();
-            assertWarnNamesColumn(message, ROOT_SENTINEL);
-            assertTrue(message.contains("[" + unpaired + "]"), message);
-            assertTrue(message.contains(DISCOVERED_TABLE), message);
-            assertFalse(warnings.get(0).hasThrowable());
+            assertEquals(List.of(sizeNamed, paired), fieldNames, label + ": both elements are Columns in declared order");
+            assertEquals(0, warnCount(helperLog, nullabilityLog), label);
             for (Column field : tuple.getTupleFields()) {
                 assertFalse(field.isNullable(), field.getName() + " is declared non-nullable");
             }

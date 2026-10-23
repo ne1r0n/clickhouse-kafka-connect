@@ -1,5 +1,7 @@
 # Rollout checklist: `v1.7.0_gg1` to `v1.7.0_gg2`
 
+This copy corrects [item 1](#item-1-in-flight-batches-and-the-deduplication-token) of the copy in tag `v1.7.0_gg2`. Step 2 of its "What to do" now carries the key rule for `enableDbTopicSplit=true` and the database the query runs in, instead of sending you to the gg1 note, whose earlier rule could miss a key. The correction is in `v1.7.0_gg4`. No query changed. If you hold the tagged copy, read that step here.
+
 If you are coming from a release before `v1.7.0_gg1`, work through [`ROLLOUT-v1.7.0_gg1.md`](ROLLOUT-v1.7.0_gg1.md) first and return here afterwards.
 
 This note covers only what changed between `v1.7.0_gg1` and `v1.7.0_gg2`. Both releases are built on the same upstream base, `1.7.0`. The fork's own changes are listed in [`../CHANGELOG.md`](../CHANGELOG.md), and [`FORK-DELTA.md`](FORK-DELTA.md) lists everything the fork patches on top of upstream.
@@ -75,7 +77,7 @@ You are affected by the in-flight half if any connector runs with `exactlyOnce=t
 ### What to do
 
 1. Stop or pause each connector with `exactlyOnce=true` with your usual procedure, and wait until its tasks have stopped.
-2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace each `<topic>` with one of your topics, writing the same topic twice if you have only one:
+2. Query the shared KeeperMap state table for the topics that connector consumes. The table is named by the connector's `zkDatabase` setting. Replace the `'<topic>'` entries with one entry for each topic the connector consumes, adding an entry per further topic and writing a single topic in both entries. With `enableDbTopicSplit=true`, also add the entry `'<db><dbTopicSplitChar><topic>'` for each topic, where `<db>` is the connector's `database` setting: the connector keys a topic that its `dbTopicSplitChar` divides into exactly two parts under the topic name itself, and any other topic under that prefixed form. A topic name that ends with `dbTopicSplitChar` can also be keyed without those trailing characters, so list that form as well. An entry that matches no key changes nothing. This key form is read from the connector code, not measured. Run the query in the database the connector connects to (its `database` setting, where the connector creates the state table), or write the table as `` `<db>`.`<zkDatabase>` ``:
 
 ```sql
 SELECT `key`, minOffset, maxOffset, state
@@ -85,7 +87,7 @@ WHERE state != 'AFTER_PROCESSING'
 ORDER BY `key`;
 ```
 
-   **Empty result:** no batch of those topics is in flight, so it is safe to upgrade. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not upgrade yet. On a state table created by the connector itself, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like. The [gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check) explains why the table is shared and how the key looks with `enableDbTopicSplit=true`; those explanations are not repeated here.
+   **Empty result:** no batch of those topics is in flight, so it is safe to upgrade. **Non-empty result:** each listed `key` is a topic and partition with a batch that may or may not have reached ClickHouse; do not upgrade yet. On a state table created by the connector itself, the query returned the one in-flight key of the listed topic, left out a topic that merely shares its prefix, and returned nothing once that range was `AFTER_PROCESSING`. The query only reads, so you can run it as often as you like. The [gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check) explains why the table is shared; that explanation is not repeated here.
 3. If the result is not empty, start the `v1.7.0_gg1` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again. Repeat until it is empty, then upgrade.
 4. If you upgraded with a range in flight, its earlier content stays. After the upgrade, run the detection queries of items 2 and 3 for the tables of that range and re-load from the source whatever turns out to be wrong. The connector does not rewrite stored rows.
 

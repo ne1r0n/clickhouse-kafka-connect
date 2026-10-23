@@ -1,5 +1,94 @@
 # Milestones
 
+## v1.7.0_gg3-hardening Record-Data Exposure & Review Debt (Shipped: 2026-10-20)
+
+**Phases completed:** 4 phases (21–24), 23 plans, 60 tasks, plus quick task `261020-vcr`
+
+**Delivered:** The last known record-data exposure is closed (backlog 999.3). A writer value-conversion failure now names the column, the Kafka and ClickHouse types and the exception class, and the record value no longer reaches the task status, the DLQ headers or the `Error inserting records` logs. Retry classification is pinned unchanged. Every advisory carried from 17-REVIEW and 19-REVIEW is closed: `DeclaredNullability` is null-safe and quote-aware, and it warns on an unpaired element. The pin guard and its tests are fixed as well. Further work in this milestone:
+- The three Dependabot bumps on `origin/custom_build` were absorbed without a rebase.
+- The writer tests no longer use Mockito inline mocking.
+- The user disabled the inherited-red nightly workflow and revoked the read-only token.
+
+The result shipped as `v1.7.0_gg3`. Three more review rounds then corrected its rollout note, and it was republished as `6a2a87a5` the same day.
+
+**Stats:**
+
+- **Git range:** `c4521f81` (milestone start) → `8fdfcbfd` (quick 261020-vcr bookkeeping), 177 first-parent commits on `sync/v1.7.0`. There was no upstream sync: `upstream/main` is still `v1.7.0`.
+- **Timeline:** 2026-10-16 → 2026-10-20 (5 days). Published 2026-10-20, closed 2026-10-21.
+- **Files changed:** 135 in total (+27,419 / −324), mostly `.planning/`. Of those, 26 are in `src/`, the build, `gradle/` and `.github/` (+4,183 / −207). `src/main` changed in 4 files (+227 / −26); the one new file is `WithheldMessageException`.
+- **Codebase:** 10,523 LOC of main Java and 38,242 LOC of test Java.
+- **Fork delta over upstream** (`docs/FORK-DELTA.md` raw numbers), wider scope then `src/main`:
+  - files: 119 → 130 and 32 → 33;
+  - insertions: 18,802 → 22,783 and 2,042 → 2,245;
+  - deletions: 529 → 534 and 145.
+- **Suite:** 1281 tests on ClickHouse `latest` (26.9.19.9), with 0 failures, 0 errors and 18 named skips. It passed twice, the second time with `--rerun`. `testUnit` runs 838 tests with Docker stopped.
+- **Requirements:** 20/20 complete. The milestone audit first came back `tech_debt`, because seven review findings on the published rollout note had no owner or trigger. After quick task 261020-vcr it passed on re-audit: requirements 20/20, phases 4/4, integration 12/12, flows 5/5.
+- **Published:**
+  - `v1.7.0_gg3` is the `--no-ff` merge `3376a18f` (parents `6473e24f` and X = `8b1c318d`). Its tags `v1.7.0_gg3` and `pre-v1.7.0_gg3` (rollback → `6473e24f`) are on `origin`.
+  - On top of it, `custom_build` is `6a2a87a5`, a docs-only `--no-ff` merge of the corrected note. No tag was added or moved.
+- **CI:**
+  - Run [`39472696952`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/39472696952) on `3376a18f` is green, and the rehearsal SHA had its own green run.
+  - Run [`39496482074`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/39496482074) on `6a2a87a5` is green.
+  - Each is the only run on its SHA.
+
+**Closeout type:** `override_closeout`
+
+**Known verification overrides:** 0 newly acknowledged, 0 carried forward from a prior close. The open-artifact audit was clear. The override has one reason, which the user accepted at close.
+
+All four phase verifications read stale. Each `VERIFICATION.md` has `status: passed`, but its covered-file digest no longer matches. The cause is that later work edited files these phases covered:
+- for Phases 21–23, `docs/FORK-DELTA.md` and `.planning/scripts/fork-anchors.txt`, edited in Phases 22–24;
+- for Phase 24, the rollout note, `CHANGELOG.md` and `docs/FORK-DELTA.md`, edited in quick 261020-vcr.
+
+That is sequential drift, not a failed check. No covered `src` file changed after its phase's verification. Every UAT passed (7/7), and all four `SECURITY.md` files read `threats_open: 0`.
+
+The final tree is covered by:
+- the suite gate;
+- the anchors gate on the published tip (`result=PASS`, 548 commits);
+- the three review rounds of the quick task;
+- the two CI runs.
+
+**Known gaps:** none against requirements. These follow-ups are carried into `PROJECT.md` → Requirements → Active. Each review advisory has its owner and re-open trigger in `24-MILESTONE-CLOSE-RECORD.md`:
+
+- **Backlog 999.4:** discovery drops a Tuple element named `size` or `size0`. The inserts that were run failed with code 32 or 33, and a wrong stored value is possible but was not measured. A WARN names the element, and FORK-DELTA Known costs item 10 and rollout item 2 disclose it.
+- **Backlog 999.5:** `fromJsonRow` doubles escaped name characters. FORK-DELTA Known costs item 11 records it.
+- **22-REVIEW WR-01:** an accepted, measured residual. On the opt-in JSON-as-string route a Jackson reference chain can name a Map key.
+- **Deferred advisories:**
+  - 21-REVIEW: WR-01..WR-03, IN-01, IN-02, IN-04;
+  - 22-REVIEW: IN-01..IN-05;
+  - 23-REVIEW: WR-01, WR-02, IN-01..IN-03;
+  - 24-REVIEW: IN-03;
+  - `jacocoForkReport` omits two fork classes.
+- **Older rollout notes:** the gg1 and gg2 notes, both published and protected, keep a shorter `enableDbTopicSplit=true` key rule. The gg3 note tells the reader to follow its own item 4 step 2.
+- **User reminders:** create the `dependencies` label, and decide Dependabot PRs #4 and #9 (fork-only pins) and #6–#8.
+
+**Key accomplishments:**
+
+- **Closed backlog 999.3.** `doWriteColValue`'s generic catch throws a metadata-only `DataException` (``Failed to write column `<name>` ...``) with a `WithheldMessageException` cause, which keeps the frames and withholds every message.
+  - IO chains, `ConnectException` and exact `RuntimeException` pass through.
+  - Sentinel tests were seen red before the twelve-file fix `c713a837`, and they pass live and Docker-free.
+  - A 184-case `WriterFailureClassificationUnitTest`, green before and after, pins the retry classification as byte-identical.
+- **Hardened `DeclaredNullability`.**
+  - `apply` and `containsTuple` are total for a null root or a null type.
+  - `normalise` is one quote-aware pass, so a backslash-n inside a quoted element name or an enum label pairs.
+  - An unpaired declared element logs one metadata-only WARN and still applies to the elements that paired. This exposed backlog 999.4.
+  - The fallback-WARN assertions now use a sentinel column, and they were seen red under two mutations.
+- **Integrated Dependabot and closed CI debt.**
+  - Lombok 1.18.48, Spotless 8.10.4 and slf4j-reload4j 2.0.20 came in through merge `82524e12`. The one anchor drift is forgiven by a SHA- and row-pinned exemption list, proven by twelve fail-first self-tests.
+  - The pin guard now fails if the fork-count step or `reportTestForks` disappears. It accepts a commented `runs-on`, and it no longer treats step text as a write scope.
+  - The user disabled the nightly workflow, confirmed the Dependabot entry and revoked the token.
+- **Removed the last inline Mockito mock** of a connector class from the writer tests. A hand-written `CountingHelperClient` and a `ScriptedWriteFailureWriter` replace it, which closes the OpenJ9 `retransformClasses` crash risk. Every 17-REVIEW and 19-REVIEW finding is fixed or closed with a commit pointer.
+- **Measured the release before writing about it.**
+  - Running the real gg2 and gg3 class trees over 44 fixture tables showed 14 `Nullable(Tuple)` shapes that encode differently.
+  - A gg2 retry of such a range fails with code 33, so a rollback needs a clean stop for that shape.
+  - The Jackson Map-key residual is pinned by `JsonAsStringKeyResidualLiveTest`.
+  - `docs/ROLLOUT-v1.7.0_gg3.md` ships seven three-part items, every query proven against an oracle and a look-alike database, and the item 7 rollback proven on a dry-run merge.
+- **Published `v1.7.0_gg3`, then corrected its note.**
+  - The frozen tree was gated twice (1281 tests), rehearsed on CI, and published as `3376a18f` after the user's direct approvals. The rollback tag went out first, and the release tag only after green.
+  - Review rounds 3–6 found 14 more findings in the operator documents. One of them would have given a false "safe to roll back" for connectors with three or more topics or with `enableDbTopicSplit=true`.
+  - Quick task 261020-vcr fixed all of them. It republished the note as `6a2a87a5` after a second direct `publish`, with one green run and no tag moved.
+
+---
+
 ## v1.7.0_gg2-hardening Follow-up Hardening & CI Hygiene (Shipped: 2026-10-14)
 
 **Phases completed:** 5 phases (16–20), 29 plans, 59 tasks

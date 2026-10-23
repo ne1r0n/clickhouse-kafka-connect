@@ -1,6 +1,6 @@
 # Rollout checklist: `v1.7.0_gg2` to `v1.7.0_gg3`
 
-This copy corrects the text of the copy in tag `v1.7.0_gg3` in four items: [item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size), [item 3](#item-3-backslashes-and-line-breaks-in-names), [item 4](#item-4-in-flight-batches) and [item 7](#item-7-rollback). No query and no git command changed. Item 4 now also covers connectors with `exactlyOnce=false` and with `enableDbTopicSplit=true`, and item 7 has you work through item 4 before you change the branch. If you hold the tagged copy, read those items here.
+This copy corrects the text of the copy in tag `v1.7.0_gg3` in four items: [item 2](#item-2-the-unpaired-element-warn-and-tuple-elements-named-size), [item 3](#item-3-backslashes-and-line-breaks-in-names), [item 4](#item-4-in-flight-batches) and [item 7](#item-7-rollback). No query and no git command changed. Item 4 now also covers connectors with `exactlyOnce=false` and with `enableDbTopicSplit=true`, and item 7 has you work through item 4 before you change the branch. If you hold the tagged copy, read those items here. The last paragraph of item 4 was also updated in `v1.7.0_gg4`, after the gg1 and gg2 notes were corrected to carry the key rule of its step 2.
 
 If you are coming from a release before `v1.7.0_gg2`, work through [`ROLLOUT-v1.7.0_gg2.md`](ROLLOUT-v1.7.0_gg2.md) first, which in turn sends you to [`ROLLOUT-v1.7.0_gg1.md`](ROLLOUT-v1.7.0_gg1.md), and return here afterwards.
 
@@ -260,7 +260,7 @@ ORDER BY `key`;
 
 For a connector with `exactlyOnce=false` that writes such a table, there is no state table to query. Stop its tasks cleanly before you redeploy `v1.7.0_gg2`, so that its offsets are committed and Kafka does not deliver a range again.
 
-[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) and [item 1 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check), to which it points, explain why the state table is shared; that explanation is not repeated here. Their rule for the key with `enableDbTopicSplit=true` is shorter than the one in step 2 above and can miss a key, so follow step 2. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
+[Item 1 of the gg2 note](ROLLOUT-v1.7.0_gg2.md#item-1-in-flight-batches-and-the-deduplication-token) and [item 1 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-1-exactly-once-pre-upgrade-check), to which it points, explain why the state table is shared; that explanation is not repeated here. Since `v1.7.0_gg4` both notes carry the key rule of step 2 above; if you hold an earlier copy of either, follow step 2. Do not empty or edit the state table to get past a non-empty result: other connectors keep their state in it.
 
 ---
 

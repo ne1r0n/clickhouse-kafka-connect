@@ -1,11 +1,13 @@
 package com.clickhouse.kafka.connect.sink.db.mapping;
 
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ELEMENT;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ELEMENT_NAME;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_ENUM_LABEL_RAW;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_NAME_RAW;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.BACKSLASH_N_NESTED_NAMES_RAW;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.NULLABLE_BACKSLASH_N_NAME_RAW;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.REAL_NEWLINE_ELEMENT;
+import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.REAL_NEWLINE_ELEMENT_NAME;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.REAL_NEWLINE_NAME_RAW;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.ROOT_SENTINEL;
 import static com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures.TRAILING_BACKSLASH_NAMES_RAW;
@@ -26,6 +28,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -250,8 +253,8 @@ class DeclaredNullabilityTest {
     void backslashNInsideABacktickNameSurvivesNormaliseAndPairs() throws Exception {
         assertCapturedShapePairs(
                 BACKSLASH_N_NAME_RAW,
-                "Tuple(     `a\\\\\\\\nb` Int32,     d String)",
-                Map.of("c", false, "c." + BACKSLASH_N_ELEMENT, false, "c.d", false),
+                "Tuple(     `a\\\\nb` Int32,     d String)",
+                Map.of("c", false, "c." + BACKSLASH_N_ELEMENT_NAME, false, "c.d", false),
                 row("c." + BACKSLASH_N_ELEMENT, "Int32"),
                 row("c.d", "String"));
     }
@@ -261,8 +264,8 @@ class DeclaredNullabilityTest {
     void realNewlineInsideABacktickNameSurvivesNormaliseAndPairs() throws Exception {
         assertCapturedShapePairs(
                 REAL_NEWLINE_NAME_RAW,
-                "Tuple(     `a\\\\nb` Int32,     d String)",
-                Map.of("c", false, "c." + REAL_NEWLINE_ELEMENT, false, "c.d", false),
+                "Tuple(     `a\nb` Int32,     d String)",
+                Map.of("c", false, "c." + REAL_NEWLINE_ELEMENT_NAME, false, "c.d", false),
                 row("c." + REAL_NEWLINE_ELEMENT, "Int32"),
                 row("c.d", "String"));
     }
@@ -272,7 +275,7 @@ class DeclaredNullabilityTest {
     void backslashNInsideAnEnumLabelIsKeptAndPairs() throws Exception {
         assertCapturedShapePairs(
                 BACKSLASH_N_ENUM_LABEL_RAW,
-                "Tuple(     e Enum8('x\\\\\\\\ny' = 1, 'z' = 2),     d String)",
+                "Tuple(     e Enum8('x\\\\ny' = 1, 'z' = 2),     d String)",
                 Map.of("c", false, "c.e", false, "c.d", false),
                 row("c.e", "Enum8('x\\\\\\\\ny' = 1, 'z' = 2)"),
                 row("c.d", "String"));
@@ -282,14 +285,15 @@ class DeclaredNullabilityTest {
     @DisplayName("COLS-13 (D-10): literal backslash-n names on two nesting levels survive normalise and pair without a fallback WARN")
     void backslashNInNamesOnTwoLevelsSurvivesNormaliseAndPairs() throws Exception {
         String outer = "c.p\\\\nq";
+        String outerName = "c.p\\nq";
         assertCapturedShapePairs(
                 BACKSLASH_N_NESTED_NAMES_RAW,
-                "Tuple(     `p\\\\\\\\nq` Tuple(         `r\\\\\\\\ns` Int32,         t Nullable(String)),     d String)",
+                "Tuple(     `p\\\\nq` Tuple(         `r\\\\ns` Int32,         t Nullable(String)),     d String)",
                 Map.of(
                         "c", false,
-                        outer, false,
-                        outer + ".r\\\\ns", false,
-                        outer + ".t", true,
+                        outerName, false,
+                        outerName + ".r\\ns", false,
+                        outerName + ".t", true,
                         "c.d", false),
                 row(outer, "Tuple(\\n    `r\\\\\\\\ns` Int32,\\n    t Nullable(String))"),
                 row(outer + ".r\\\\ns", "Int32"),
@@ -302,19 +306,19 @@ class DeclaredNullabilityTest {
     void namesEndingInABackslashSurviveNormaliseAndPair() throws Exception {
         assertCapturedShapePairs(
                 TRAILING_BACKSLASH_NAMES_RAW,
-                "Tuple(     `e\\\\\\\\` Int32,     `f\\\\\\\\n` Int32)",
-                Map.of("c", false, "c.e\\\\", false, "c.f\\\\n", false),
+                "Tuple(     `e\\\\` Int32,     `f\\\\n` Int32)",
+                Map.of("c", false, "c.e\\", false, "c.f\\n", false),
                 row("c.e\\\\", "Int32"),
                 row("c.f\\\\n", "Int32"));
     }
 
     @Test
-    @DisplayName("COLS-13 (D-10): the Nullable(Tuple) literal of the live premise has no line break, is returned unchanged and pairs without a fallback WARN")
+    @DisplayName("COLS-13 (D-10): the Nullable(Tuple) literal of the live premise has no line break, loses one escape layer and pairs without a fallback WARN")
     void nullableTupleWithABackslashNNameIsUnchangedAndPairs() throws Exception {
         assertCapturedShapePairs(
                 NULLABLE_BACKSLASH_N_NAME_RAW,
-                NULLABLE_BACKSLASH_N_NAME_RAW,
-                Map.of("c", true, "c." + BACKSLASH_N_ELEMENT, false, "c.d", false),
+                "Nullable(Tuple(`a\\\\nb` Int32, d String))",
+                Map.of("c", true, "c." + BACKSLASH_N_ELEMENT_NAME, false, "c.d", false),
                 row("c." + BACKSLASH_N_ELEMENT, "Nullable(Int32)"),
                 row("c.d", "Nullable(String)"));
     }
@@ -324,11 +328,37 @@ class DeclaredNullabilityTest {
     void normaliseIsTotalAndKeepsNonAsciiNames() {
         assertEquals("", DeclaredNullability.normalise(""));
         String unterminated = "Tuple(`a" + DeclaredNullability.ESCAPED_NEWLINE;
-        assertEquals(unterminated, DeclaredNullability.normalise(unterminated));
+        assertEquals("Tuple(`a\n", DeclaredNullability.normalise(unterminated));
         // U+00E9 (é) is written as a Java escape so the string does not depend on the compiler's source encoding.
         assertEquals(
-                "Tuple(     `\u00e9\\\\\\\\n` Int32)",
+                "Tuple(     `\u00e9\\\\n` Int32)",
                 DeclaredNullability.normalise("Tuple(\\n    `\u00e9\\\\\\\\n` Int32)"));
+    }
+
+    @Test
+    @DisplayName("NAME-01: an escaped backtick inside a quoted name keeps the quote open, so the following line break is still replaced")
+    void escapedBacktickInsideANameKeepsTheQuoteOpen() {
+        // Runtime text: a backtick-quoted name of a, an escaped backtick and a literal backslash-n pair, between two server line breaks.
+        String raw = "Tuple(\\n    `a\\\\`\\\\\\\\nb` Int32,\\n    d String)";
+        assertEquals("Tuple(     `a\\`\\\\nb` Int32,     d String)", DeclaredNullability.normalise(raw));
+    }
+
+    @Test
+    @DisplayName("NAME-01: two backslashes before n outside quotes are not a line break")
+    void twoBackslashesBeforeNOutsideQuotesAreNotALineBreak() {
+        String type = "Tuple(a Int32,\\\\n b String)";
+        assertEquals("Tuple(a Int32,\\n b String)", DeclaredNullability.normalise(type));
+    }
+
+    @Test
+    @DisplayName("NAME-04: an element named with an escaped backtick and a backslash-n pairs without a fallback WARN")
+    void escapedBacktickElementPairsWithoutAFallbackWarning() throws Exception {
+        assertCapturedShapePairs(
+                "Tuple(\\n    `a\\\\`\\\\\\\\nb` Int32,\\n    d String)",
+                "Tuple(     `a\\`\\\\nb` Int32,     d String)",
+                Map.of("c", false, "c.a`\\nb", false, "c.d", false),
+                row("c.a`\\\\nb", "Int32"),
+                row("c.d", "String"));
     }
 
     @ParameterizedTest(name = "COLS-13 (D-10) unchanged: {0} normalises exactly as the plain replace did")
@@ -811,8 +841,8 @@ class DeclaredNullabilityTest {
             assertFalse(DeclaredNullability.apply(column, type, DATABASE, TABLE));
 
             LogCapture.CapturedEvent warning = onlyWarning(log);
-            // the null name is the input under test, so the column slot reads "null"
-            assertWarnNamesColumn(warning.message(), "null");
+            // the null name is the input under test, so the column slot reads the fixed placeholder
+            assertWarnNamesColumn(warning.message(), "<unnamed>");
             assertMismatchWarning(warning, type, log);
         }
         assertEquals(before, flags(column));
@@ -1087,5 +1117,21 @@ class DeclaredNullabilityTest {
         }
         assertEquals(
                 Map.of("c", false, "c.a", false, "c.a[]", true, "c.b", false), nullabilityByPath(column));
+    }
+
+    @ParameterizedTest(name = "DESC-08 elementKey: {0}")
+    @CsvSource(
+            delimiter = '|',
+            value = {
+                "a named element|Tuple(size UInt8, v String)|0|size",
+                "the first unnamed element|Tuple(UInt8, String)|0|1",
+                "the second unnamed element|Tuple(UInt8, String)|1|2",
+                "a backtick-named element|Tuple(`my size` UInt8, v String)|0|my size"
+            })
+    @DisplayName("DESC-08 elementKey: a Tuple element's key is its name, or its one-based position when unnamed")
+    void elementKeyIsTheNameOrTheOneBasedPosition(String label, String type, int index, String expectedKey) {
+        ClickHouseColumn parsed = ClickHouseColumn.of(ROOT, type);
+
+        assertEquals(expectedKey, DeclaredNullability.elementKey(parsed.getNestedColumns().get(index), index), label);
     }
 }

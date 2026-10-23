@@ -28,7 +28,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  * that {@code Processing.doInsert} builds from the {@code QueryIdentifier} text, so the message
  * header is unchanged by WRT-13 and carries no column text. The column, the ClickHouse type and the
  * original exception class are in the stack-trace header, and the record value is in neither. The
- * headers are rendered as Kafka Connect 4.1.1 renders them ({@link InMemoryDLQ#connectHeaders}).
+ * headers are rendered the way Kafka Connect's {@code DeadLetterQueueReporter.populateContextHeaders}
+ * renders them as read in 4.1.1's source (22-RESEARCH F3; {@link InMemoryDLQ#connectHeaders}).
+ * The worker supplies the Connect API at runtime, and this reporter comes from the worker's
+ * connect-runtime (Kafka 3.9 on {@code cp-kafka-connect-base:7.9.7}), not from the connector's
+ * compile-time connect-api; javap of that worker's method shows the same {@code getName}, {@code
+ * getMessage} and {@code printStackTrace} calls (Phase 25 E-12).
  * It runs the real {@code ProxySinkTask}, {@code Processing} and writer code without Docker. The
  * live twin is {@code WriterErrorPathLiveTest}, which shares the assertions below.
  */

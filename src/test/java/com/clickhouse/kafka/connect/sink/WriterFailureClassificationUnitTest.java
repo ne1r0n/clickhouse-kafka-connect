@@ -11,6 +11,7 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.dlq.InMemoryDLQ;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -123,6 +124,16 @@ public class WriterFailureClassificationUnitTest {
                 RetryClass.NON_RETRIABLE, () -> uuidStream(new IOException("stream: Read timed out after 30000 ms"))),
         SOCKET_EXCEPTION(RetryClass.SOCKET, () -> uuidStream(new SocketException("Connection reset"))),
         SOCKET_TIMEOUT(RetryClass.RETRIABLE, () -> uuidStream(new SocketTimeoutException("timed out"))),
+        JACKSON_ALONE(RetryClass.NON_RETRIABLE, () -> uuidStream(new JsonMappingException("scripted jackson failure"))),
+        JACKSON_OVER_SOCKET_TIMEOUT(
+                RetryClass.RETRIABLE,
+                () -> uuidStream(new JsonMappingException(
+                        "scripted jackson failure", new SocketTimeoutException("timed out")))),
+        JACKSON_OVER_TIMEOUT_TEXT(
+                RetryClass.RETRIABLE,
+                () -> uuidStream(new JsonMappingException(
+                        "scripted jackson failure", new IOException("Read timed out after 30000 ms")))),
+        PLAIN_IO_CONTROL(RetryClass.NON_RETRIABLE, () -> uuidStream(new IOException("plain stream failure"))),
         UNKNOWN_HOST(RetryClass.RETRIABLE, () -> uuidStream(new UnknownHostException("clickhouse.invalid"))),
         IO_IN_MAP_VALUE(
                 RetryClass.RETRIABLE,

@@ -1,33 +1,38 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg3-hardening — Record-Data Exposure & Review Debt",
+  "milestone": "v1.7.0_gg4-hardening — Dependency Absorption, Discovery Defects & Review Debt",
   "phases": [
     {
-      "number": "21",
-      "name": "Dependabot Integration & CI Hygiene",
+      "number": "25",
+      "name": "Dependency Absorption & Upstream Mini-Sync",
       "status": "complete"
     },
     {
-      "number": "22",
-      "name": "Writer Record-Data Exposure",
+      "number": "26",
+      "name": "Size-Named Tuple Elements in Discovery",
       "status": "complete"
     },
     {
-      "number": "23",
-      "name": "Declared-Nullability Hardening & Review Closure",
+      "number": "27",
+      "name": "Writer Failure Path & Test Debt",
       "status": "complete"
     },
     {
-      "number": "24",
+      "number": "28",
+      "name": "Raw Identifier Names in Discovery",
+      "status": "complete"
+    },
+    {
+      "number": "29",
       "name": "Release & Publication",
-      "status": "complete"
+      "status": "in_progress"
     }
   ],
   "next": {
-    "command": "/gsd-new-milestone",
-    "label": "Start a new milestone",
-    "reason": "All phases complete — start a new milestone"
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 5 of 5 · 80% · executing"
   },
-  "updated_at": "2026-10-20T19:07:30.290Z"
+  "updated_at": "2026-10-23T20:18:12.137Z"
 }

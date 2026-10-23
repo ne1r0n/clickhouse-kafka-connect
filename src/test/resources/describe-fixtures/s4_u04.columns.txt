@@ -1,0 +1,10 @@
+numColumns=2 hasDefaults=false
+all id INT32
+all c TUPLE
+all c.a ARRAY
+all c.size1 UINT8
+tree id INT32 nullable=false
+tree c TUPLE nullable=false
+tree   c.a ARRAY nullable=false
+tree     [] c.a UINT8 nullable=false
+tree   c.size1 UINT8 nullable=false

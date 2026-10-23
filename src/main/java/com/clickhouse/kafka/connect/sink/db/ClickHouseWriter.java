@@ -25,9 +25,11 @@ import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.Utils;
 import com.clickhouse.kafka.connect.util.WithheldMessageException;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
+import com.fasterxml.jackson.core.JacksonException;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.slf4j.Logger;
@@ -343,7 +345,7 @@ public class ClickHouseWriter implements DBWriter {
                                 // record.getFields() has no Field named colName even though
                                 // record.getJsonMap() has a value for it (e.g. a synthetic
                                 // column not backed by a Field) - objSchema.name() below would
-                                // NPE with no actionable message (WR-03).
+                                // NPE with no actionable message.
                                 validSchema = false;
                                 LOGGER.error(String.format(
                                         "Column [%s] has a value but no matching Kafka Connect field schema", colName));
@@ -566,10 +568,13 @@ public class ClickHouseWriter implements DBWriter {
     private static final String DATETIME_PARSE_FAILURE_LOG_FORMAT = "Error parsing date time string for column '{}' "
             + "(ClickHouse type {}, Kafka type {}): exception {}, value length {}";
     private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
-    // Built from Column metadata and class names only: this text reaches Connect status and DLQ topics, so it carries no value and no value length (D-07, D-08).
+    // Built from Column metadata and class names only: this text reaches Connect status and DLQ
+    // topics, so it carries no value and no value length.
     private static final String WRITE_FAILURE_COLUMN_PREFIX = "Failed to write column `";
     private static final String WRITE_VALUE_CONVERSION_FAILURE_FORMAT = WRITE_FAILURE_COLUMN_PREFIX
             + "%s`: Kafka value of type %s (value class: %s) could not be written as ClickHouse type %s: %s";
+    private static final String WRITE_TYPE_MISMATCH_FAILURE_FORMAT = WRITE_FAILURE_COLUMN_PREFIX
+            + "%s`: cannot convert Kafka value of type %s (value class: %s) to ClickHouse type %s";
     private static final String DATE_CONVERSION_UNSUPPORTED_MESSAGE_FORMAT = "(Potentially) Not implemented conversion from %s to %s for column '%s'";
     private static final String MISSING_NON_NULLABLE_MESSAGE_FORMAT = "column '%s' (%s): no value provided for a non-nullable column without a default; "
             + "add the field, make the column Nullable, or give it a DEFAULT";
@@ -579,7 +584,7 @@ public class ClickHouseWriter implements DBWriter {
     private static final String NESTED_NULL_SLOT_TUPLE_FIELD_FORMAT = "tuple field '%s'";
 
     /**
-     * Builds the {@link DataException} message for a null in a nested non-nullable slot (WRT-08).
+     * Builds the {@link DataException} message for a null in a nested non-nullable slot.
      * Built only from {@code Column} metadata: it reaches logs, Connect status and DLQ headers, so
      * it must never carry a field value, array element or map key.
      */
@@ -609,7 +614,7 @@ public class ClickHouseWriter implements DBWriter {
 
     /**
      * A null in a nested non-nullable ARRAY or MAP slot is written as an empty container whatever
-     * {@code defaultsSupport} says, mirroring upstream #820's top-level rule (D-09).
+     * {@code defaultsSupport} says, mirroring upstream #820's top-level rule.
      */
     private static boolean isNullCoercedToEmpty(Column slot) {
         return slot.getType() == Type.ARRAY || slot.getType() == Type.MAP;
@@ -617,7 +622,7 @@ public class ClickHouseWriter implements DBWriter {
 
     /**
      * Builds the message thrown by {@code doInsertRawBinaryV1}/{@code V2} when {@code
-     * validateDataSchema} reports an invalid schema (TYPE-06). A JSON column is the one case where
+     * validateDataSchema} reports an invalid schema. A JSON column is the one case where
      * that generic failure has an actionable, known cause under RowBinary's default (flag-off)
      * configuration - see the {@code case JSON:} write path's own {@code RuntimeException} in
      * {@link #doWriteColValue}, which this reuses the same escape-hatch wording for - so name it
@@ -633,31 +638,42 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     /**
-     * Decides whether {@link #doWriteColValue}'s generic catch rethrows {@code e} as it is (D-01,
-     * D-03). Three families pass through: any chain holding an {@link IOException}, so retry
-     * classification still sees stream and timeout failures (the Map/Tuple/Array lambdas wrap them
-     * in a RuntimeException); a {@code ConnectException}, which includes this fork's own value-free
-     * {@link DataException}s and an inner column's replacement; and a RuntimeException of exactly
-     * that class, which only the connector's own throw sites produce.
+     * Decides whether {@link #doWriteColValue}'s generic catch rethrows {@code e} as it is. Three
+     * families pass through: a chain holding an {@link IOException} that is not a Jackson exception,
+     * checked link by link, so retry classification still sees stream and timeout failures (the
+     * Map/Tuple/Array lambdas wrap them in a RuntimeException); a {@link ConnectException}, which
+     * includes this fork's own value-free {@link DataException}s and an inner column's replacement;
+     * and a RuntimeException of exactly that class, which only the connector's own throw sites
+     * produce.
+     *
+     * <p>A Jackson exception is itself an IOException and its message can quote record data (a
+     * reference chain names a Map key), so a Jackson link never counts, while a timeout beneath it
+     * still does.
      */
     private static boolean passesThroughUnchanged(Exception e) {
-        if (e instanceof org.apache.kafka.connect.errors.ConnectException || e.getClass() == RuntimeException.class) {
+        if (e instanceof ConnectException || e.getClass() == RuntimeException.class) {
             return true;
         }
         Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Throwable t = e; t != null && seen.add(t); t = t.getCause()) {
-            if (t instanceof IOException) {
+            if (t instanceof IOException && !(t instanceof JacksonException)) {
                 return true;
             }
         }
         return false;
     }
 
+    private static String sourceTypeName(Data value) {
+        return value == null ? "null" : String.valueOf(value.getFieldType());
+    }
+
+    private static String valueClassName(Data value) {
+        return (value == null || value.getObject() == null) ? "null" : value.getObject().getClass().getName();
+    }
+
     private static String buildValueConversionFailureMessage(Column col, Type columnType, Data value, Exception cause) {
-        String sourceType = value == null ? "null" : String.valueOf(value.getFieldType());
-        String valueClass = (value == null || value.getObject() == null) ? "null" : value.getObject().getClass().getName();
-        return String.format(WRITE_VALUE_CONVERSION_FAILURE_FORMAT, col.getName(), sourceType, valueClass, columnType,
-                cause.getClass().getName());
+        return String.format(WRITE_VALUE_CONVERSION_FAILURE_FORMAT, col.getName(), sourceTypeName(value),
+                valueClassName(value), columnType, cause.getClass().getName());
     }
 
     protected void doWriteColValue(Column col, OutputStream stream, Data value, boolean defaultsSupport) throws IOException {
@@ -715,7 +731,7 @@ public class ClickHouseWriter implements DBWriter {
                         // doWriteDates/Decimal's own null handling instead of dereferencing null.
                         // Scoped to Nullable columns: for a non-nullable Map the null is upstream
                         // #820's empty map, whose size byte doWriteCol already wrote, so a second
-                        // marker here would desync the RowBinary stream (WRT-06).
+                        // marker here would desync the RowBinary stream.
                         BinaryStreamUtils.writeNull(stream);
                         break;
                     }
@@ -779,8 +795,8 @@ public class ClickHouseWriter implements DBWriter {
                     break;
                 case TUPLE:
                     if (value.getObject() == null) {
-                        // A slot takes the null marker only when its Column reports it nullable (D-10);
-                        // since COLS-10 that flag follows the declared type, Nullable(Tuple(...)) included.
+                        // A slot takes the null marker only when its Column reports it nullable;
+                        // that flag follows the declared type, Nullable(Tuple(...)) included.
                         if (!col.isNullable()) {
                             throw new DataException(buildNestedNullMessage(col, NESTED_NULL_SLOT_TUPLE));
                         }
@@ -893,11 +909,8 @@ public class ClickHouseWriter implements DBWriter {
             // ClassCastException naming only Java types. Rethrow with the failing column and its types
             // as a non-retryable DataException so the context reaches Connect status / DLQ / JMX metrics
             // instead of only the logs. Record values are never included.
-            String sourceType = value == null ? "null" : String.valueOf(value.getFieldType());
-            String valueClass = (value == null || value.getObject() == null) ? "null" : value.getObject().getClass().getName();
-            String message = String.format(
-                    "Failed to write column `%s`: cannot convert Kafka value of type %s (value class: %s) to ClickHouse type %s",
-                    col.getName(), sourceType, valueClass, columnType);
+            String message = String.format(WRITE_TYPE_MISMATCH_FAILURE_FORMAT, col.getName(), sourceTypeName(value),
+                    valueClassName(value), columnType);
             LOGGER.error(message, e);
             throw new DataException(message, e);
         } catch (Exception e) {
@@ -1592,7 +1605,7 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     protected Map<String, Object> cleanupExtraFields(Map<String, Object> m, Table t) {
-        // The metadata-free predicate goes first so that mode never reads the bypass flag (JSONP-08);
+        // The metadata-free predicate goes first so that mode never reads the bypass flag;
         // a null config still throws here, because the predicate returns false for it.
         if (shouldSkipTableMetadata() || csc.isBypassFieldCleanup()) {
             return m;
@@ -1806,13 +1819,13 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     /**
-     * The one predicate every metadata-free guard site reads (D-05). Keyed on {@code
+     * The one predicate every metadata-free guard site reads. Keyed on {@code
      * csc.isJsonInsertFormatExplicit()} and nothing else - {@code csc.getInsertFormat()} also
      * matches the upstream unset-{@code insertFormat} default-branch typo (falls through to the
      * JSON enum constant), and keying on that would widen the bypass to every default-configured
      * connector in production. Its own null check makes only this predicate safe to call on an
      * unstarted writer; it does not make its callers null-safe, since {@code cleanupExtraFields}
-     * reads the config again after it (JSONP-08).
+     * reads the config again after it.
      */
     private boolean shouldSkipTableMetadata() {
         return csc != null && csc.isJsonInsertFormatExplicit();

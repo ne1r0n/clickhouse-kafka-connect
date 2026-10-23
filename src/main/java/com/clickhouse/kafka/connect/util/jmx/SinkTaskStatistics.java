@@ -162,13 +162,12 @@ public class SinkTaskStatistics implements SinkTaskStatisticsMBean {
 
     /**
      * Byte-for-byte restoration of the pre-merge {@code ProxySinkTask.buildMBeanName} carrier
-     * (D-01/D-06), relocated here now that {@code SinkTaskStatistics} owns MBean naming. Pure
+     * relocated here now that {@code SinkTaskStatistics} owns MBean naming. Pure
      * function - reads no field - so it can be pinned by {@code MBeanNameUnitTest} without
      * constructing an instance. The null-version and colon-sanitization branches are unreachable
      * from production (Version.ARTIFACT_VERSION is a non-null compile-time literal with no colon)
      * but are retained on purpose: buildMBeanName is a general formatter and the sanitization
-     * contract stays pinned regardless of what the build currently feeds it (D-06, RESEARCH
-     * Pitfall 4).
+     * contract stays pinned regardless of what the build currently feeds it.
      */
     public static String buildMBeanName(String connectorName, int taskId, String version) {
         String safeVersion = version != null ? version.replace(':', '_') : "unknown";
@@ -182,7 +181,7 @@ public class SinkTaskStatistics implements SinkTaskStatisticsMBean {
     }
 
     /**
-     * Composed from {@link #getMBeanName()}, not a second format string (D-08) - the two names
+     * Composed from {@link #getMBeanName()}, not a second format string - the two names
      * share a literal prefix and cannot drift in null handling, colon handling or key order.
      */
     public String getTopicMBeanName(String topic) {

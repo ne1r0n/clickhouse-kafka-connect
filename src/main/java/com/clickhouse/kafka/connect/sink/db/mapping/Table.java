@@ -75,7 +75,12 @@ public class Table {
     }
 
     private void registerValidColumn(Column column) {
-        allColumnsMap.put(column.getName(), column);
+        // A structural size<digits> row and a declared Tuple element can share one name; the declared
+        // one is the parent of the element's children whichever row DESCRIBE printed first.
+        allColumnsMap.merge(
+                column.getName(),
+                column,
+                (kept, added) -> kept.isDeclaredElement() && !added.isDeclaredElement() ? kept : added);
         allColumnsList.add(column);
     }
 
@@ -117,7 +122,7 @@ public class Table {
                 return;
             case ARRAY:
                 final String childName = child.getName();
-                if (SIZE_FIELD_MATCHER.test(childName) || childName.endsWith(".null"))
+                if ((SIZE_FIELD_MATCHER.test(childName) && !child.isDeclaredElement()) || childName.endsWith(".null"))
                     return;
 
                 Column parentArrayType = parent.getArrayType();
