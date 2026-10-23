@@ -48,6 +48,11 @@ public class RawIdentifierNameLiveTest extends ClickHouseBase {
     private static final String LINE_BREAK_PATTERN = "\\R";
     private static final String NO_MESSAGE = "none";
     private static final String MISSING_COLUMN_FORMAT = "column '%s'";
+    // The writer withholds the lookup-miss message (it may hold record data), so the pin is on the
+    // column it names and on the exception type of the miss.
+    private static final String ENUM_WRITE_FAILED_COLUMN_TEXT = "Failed to write column `" + RawNameMatrix.ENUM_COLUMN + "`";
+    private static final String ENUM_LOOKUP_MISS_TEXT =
+            "could not be written as ClickHouse type Enum8: java.lang.IllegalArgumentException";
     private static final Map<String, String> ELEMENT_PATH_PREFIXES = Map.of(
             RawNameMatrix.SHAPE_TUPLE, RawNameMatrix.TUPLE_COLUMN + ".",
             RawNameMatrix.SHAPE_ARRAY_TUPLE, RawNameMatrix.ARRAY_COLUMN + ".",
@@ -338,7 +343,13 @@ public class RawIdentifierNameLiveTest extends ClickHouseBase {
                 NullableRoundTrip.createTable(chc, table, RawNameMatrix.enumTableDdl(entry));
                 String legacyKey = RawNameMatrix.legacyLabelKey(RawNameMatrix.label(entry));
 
-                NullableRoundTrip.assertPutFails(props, List.of(enumRecord(table, legacyKey)), chc, table);
+                NullableRoundTrip.assertPutFails(
+                        props,
+                        List.of(enumRecord(table, legacyKey)),
+                        chc,
+                        table,
+                        ENUM_WRITE_FAILED_COLUMN_TEXT,
+                        ENUM_LOOKUP_MISS_TEXT);
             } finally {
                 ClickHouseTestHelpers.dropTable(chc, table);
             }
