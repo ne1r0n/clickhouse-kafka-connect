@@ -77,7 +77,7 @@ PROBE-MBEAN tree=gg4 name=com.clickhouse:type=ClickHouseKafkaConnector,connector
 PROBE-AGENT tree=gg4 agent=clickhouse-kafka-connect/v1.7.0_gg4 clickhouse-java-v2/0.9.6 (Mac OS X; jvm:17.0.9) Apache-HttpClient/5.6.5
 ```
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-03: the shipped archive, tag v1.7.0_gg3 versus the gg4 tip (PUB-11, ROLL-04)
 
@@ -155,7 +155,7 @@ RESULT: PASS
 
 The `VERSION` lines equal the Phase 25 E-22 lines for the third-party half; the guava `33.4.6-jre -> 33.7.2-jre`, httpclient5 `5.6.2 -> 5.6.5`, httpcore5 and httpcore5-h2 `5.4.3 -> 5.4.4`, jackson-core and jackson-databind `2.22.3 -> 2.22.4`, gson `2.13.1 -> 2.14.0`, j2objc `3.0.0 -> 3.1` and error_prone `2.38.0 -> 2.50.0` changes are the ones the note's dependency item may state; lz4-java, slf4j-api, commons-lang3 and the others are unchanged. No `UNALLOWED` and no `STALE-ROW` line.
 
-Matches text: pending (29-04, 29-05)
+Matches text: pending (29-05)
 
 ### E-04: the archive of the rollback tree pre-v1.7.0_gg4 (D-03)
 
@@ -303,7 +303,7 @@ validlist_in_src_main: 0
 - **Production worker (cited, not re-measured here).** `confluentinc/cp-kafka-connect-base:7.9.7` (Confluent Platform 7.9, Apache Kafka 3.9), image digest `sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055`; the three API jars from `/usr/share/java/kafka/` are `connect-api-7.9.7-ccs.jar`, `connect-runtime-7.9.7-ccs.jar`, `kafka-clients-7.9.7-ccs.jar`, byte-identical on the amd64 and arm64 images. [Source: `25-COMMAND-EVIDENCE.md` E-12; the worker line is the user's statement of 2026-10-21, REQUIREMENTS OPS-06]
 - **Oldest verified worker (decision PT-08).** Apache Kafka 3.9, by a static bytecode reference check, not by a run on a live worker: the compiled connector's 176 `org.apache.kafka` references (39 classes, 137 members) are all present in the 7.9.7 jars (`REFERENCE worker classes-missing 0 members-missing 0`), in `connect-api` 4.1.1 and in 4.4.0 (same zeros), and the shipped archive holds 0 `org/apache/kafka/` entries (E-03: `kafka classes in b: 0`). [Source: `25-COMMAND-EVIDENCE.md` E-12, E-13] The check is pinned in the suite by `ConnectApiReferencesUnitTest`, which passed in the testUnit run of E-05 (3 tests, 0 failures). The worker's `SinkTask` still declares `onPartitionsRevoked`; the 4.1.1 and 4.4.0 jars do not, which is why the connector keeps the method without `@Override`. [Source: `25-COMMAND-EVIDENCE.md` E-12]
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-07: advisory identity by source, guava and httpclient5 (D-10)
 
@@ -368,7 +368,7 @@ Net for httpclient5: the identity (`CVE-2026-64607` / `GHSA-hjcp-jmpx-g3qm`, med
 
 **Correction of the first read (recorded, not worded away).** The first OSV version queries of this entry, made at about 2026-10-23T17:31Z while the OSV record of the guava CVE was being re-indexed (its `modified` is `2026-10-23T17:27:08Z`), returned `{}` for httpclient5 `5.6.2` in the name form and in the purl form, which differed from research R2.5 (the id for `5.6.2`, `{}` for `5.6.5`). That first version of this entry said so and drew a wording limit from it. The same queries repeated at 2026-10-23T17:50Z, twice each and in three request forms, return `GHSA-hjcp-jmpx-g3qm` for `5.6.2` and nothing for `5.6.5`, which is the research answer; the guava queries returned `{}` for both versions in every read. The repeated, later reads are the record, and this entry was corrected in a follow-up commit for that reason. The document may say that OSV's version query lists the httpclient5 advisory for `5.6.2` and not for `5.6.5`, labelled by source and read date. The guava record's `modified` timestamp differs from the research capture (the 2026-10-21T09:31:55Z value is now only the `vanir_signatures_modified` field), with no change to the identity or the fixed version.
 
-Matches text: pending (29-04, 29-05)
+Matches text: pending (29-05)
 
 ### E-08: OPS-04, OPS-01 and the OPS-05 first read
 

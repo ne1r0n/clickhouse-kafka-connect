@@ -267,15 +267,18 @@ For a connector with `exactlyOnce=false` that writes such a table, there is no s
 
 ### What changed
 
-This item is written in the next commit of this release.
+The MBean name embeds the release version, and so does the client name that the connector sends on every request. Both now carry `v1.7.0_gg4` where they carried `v1.7.0_gg3`:
+
+- MBean: `com.clickhouse:type=ClickHouseKafkaConnector,connector=<connector-name>,name=SinkTask<id>,version=v1.7.0_gg4`, plus `,topic=<topic>` for per-topic beans. Measured on ClickHouse 26.9.19.9 with client V2, the per-task bean and the per-topic bean of `v1.7.0_gg4` both carried `version=v1.7.0_gg4`, and those of `v1.7.0_gg3` carried `version=v1.7.0_gg3`.
+- Client name: `clickhouse-kafka-connect/v1.7.0_gg4`. The client sends it as the prefix of the HTTP user agent. Measured, the rest of the user agent is the client library token (`clickhouse-java-v2/0.9.6`, the same in both runs), the operating system and Java version of the host, and the HTTP client token, which changed from `Apache-HttpClient/5.6.2` to `Apache-HttpClient/5.6.5` because the bundled httpclient5 changed ([item 6](#item-6-dependencies-build-and-the-connect-worker)). A matcher on the whole user agent therefore changes too, not only one on the client name.
 
 ### Am I affected?
 
-Empty result: see the next commit.
+Search your dashboards, alert rules and JMX exporter rules for matchers that spell out `version=v1.7.0_gg3`, and for filters on the client name `clickhouse-kafka-connect/v1.7.0_gg3` or on a complete user agent that contains `Apache-HttpClient/5.6.2`. **Empty result:** no matcher spells out an old value, and nothing needs to change. The query of [item 7 of the gg1 note](ROLLOUT-v1.7.0_gg1.md#item-7-jmx-mbean-name-and-client-name) lists the client names that your server has seen, and works unchanged. After the upgrade it shows `clickhouse-kafka-connect/v1.7.0_gg4` for the new build. The `jmx-export-connector.yml` in this repository captures the version with the pattern `version=(.*)`, so it keeps working across releases (read from the file).
 
 ### What to do
 
-See the next commit.
+Change matchers that spell out an old value. If you already use the wildcard forms from item 7 of the gg1 note, they keep working across releases and nothing needs to change.
 
 ---
 
@@ -283,15 +286,37 @@ See the next commit.
 
 ### What changed
 
-This item is written in the next commit of this release.
+Dependency updates were merged from Dependabot and from upstream's tail before this release. The statements below are build and archive measurements, or readings of public records with their source and date. No ClickHouse server is involved.
+
+- **The Connect API is compile-only.** The connector is compiled against `connect-api` `4.4.0`. The Confluent archive does not bundle it: measured on the archive built at the tip, it holds no `org/apache/kafka` entry. The Connect worker that runs the connector therefore supplies the Kafka classes, and the worker's version governs at runtime.
+- **The production worker** is `confluentinc/cp-kafka-connect-base:7.9.7`, which is Confluent Platform 7.9 and Apache Kafka 3.9. This is cited: the fork's maintainers state it, and the three API jars of that image (`connect-api`, `connect-runtime` and `kafka-clients`) were read when the dependencies were absorbed.
+- **The oldest worker the connector is verified against is Apache Kafka 3.9, by a static check, not by a run on a live worker.** Every one of the 176 Kafka API references of the compiled connector (39 classes and 137 members) was found in that worker's API jars, and also in `connect-api` `4.1.1` and `4.4.0`. A unit test repeats the check on every build. A worker older than Kafka 3.9 was not checked.
+- **KIP-1161** makes the validation of list-type configurations stricter, and it applies from Kafka 4.2 workers on. It is listed under "Upgrading to 4.2.0" in the Kafka upgrade notes (read from the Apache Kafka repository at tag `4.4.0` on 2026-10-23; the page for 4.4 on the Kafka website returned HTTP 404 that day). The connector declares seven list-type configuration keys and none of them carries a validator (read from connector code, counted by search), so there is nothing in them for that validation to tighten. The 4.4.0 upgrade notes name two items for Kafka Connect, an option for the automatic creation of the internal topics (KIP-1209) and a bootstrap resolve timeout (KIP-909), and both concern the worker. The production worker is Kafka 3.9.
+- **Build tools.** The archive is built with Shadow `9.6.1` and Gradle `9.8.1`. They are build tools and need no action from operators. Measured by a per-entry compare of the archive built at tag `v1.7.0_gg3` with the archive built at the tip, using an allow-list that names every permitted difference, the result is PASS: the archive built at the tip has no nested jar, its manifest differs only in the implementation version, and every other difference is a dependency version change from the table below or one of 21 classes of the connector itself (the classes that this release's code changed or added, and the version class). The archive of the tree that a rollback leaves on the branch does not have that property ([item 7](#item-7-rollback)).
+- **Bundled versions that changed** (from the same compare). Others did not change, among them `lz4-java` `1.12.0`, `slf4j-api` `2.0.7`, `jackson-annotations` `2.22` and `commons-lang3` `3.20.0`:
+
+| Library | `v1.7.0_gg3` | `v1.7.0_gg4` |
+|---|---|---|
+| guava | `33.4.6-jre` | `33.7.2-jre` |
+| httpclient5 | `5.6.2` | `5.6.5` |
+| httpcore5 and httpcore5-h2 | `5.4.3` | `5.4.4` |
+| jackson-core and jackson-databind | `2.22.3` | `2.22.4` |
+| gson | `2.13.1` | `2.14.0` |
+| j2objc-annotations | `3.0.0` | `3.1` |
+| error_prone_annotations | `2.38.0` | `2.50.0` |
+
+**Two advisories, each fact labelled by its source and read on 2026-10-23.** This note states what the sources say and makes no assessment of what either advisory means for your deployment.
+
+- **Guava, `CVE-2026-102554`, also published as `GHSA-xxph-c9ww-hj94`.** NVD (status "Awaiting Analysis", no product configuration listed) describes Guava versions 4.0 through 33.7.1 and a denial of service by `OutOfMemoryError` when instances of `CompactHashMap`, `CompactHashSet` or `MapMakerInternalMap` are deserialized. The OSV record lists the GHSA as an alias and carries a Git range with a fix commit and unresolved ranges ("introduced 4.0, fixed 33.7.2" and "introduced 4.0, last affected 33.7.1") but no Maven range, and its version query for the Maven package `com.google.guava:guava` returns nothing for `33.4.6-jre` and for `33.7.2-jre`. The GHSA is a repository advisory of `google/guava` and is absent from GitHub's global advisory database (its REST endpoint answered 404). The sources disagree about `33.4.6-jre`, which `v1.7.0_gg3` ships: the range in NVD's text includes it, and OSV's version query does not list it. `33.7.2-jre` is what `v1.7.0_gg4` ships.
+- **httpclient5, `CVE-2026-64607`, also published as `GHSA-hjcp-jmpx-g3qm`.** GitHub's global advisory (severity medium, titled "Apache HttpComponents Client: Connection Leak on Content-Encoding Decode Error Leads to Pool Exhaustion DoS") gives the range from `5.0-alpha1` up to but not including `5.6.3`, with `5.6.3` as the first patched version. NVD's text says "from 5.0-alpha1 through 5.6.2". OSV gives the same range, and its version query for the Maven package lists the advisory for `5.6.2` and not for `5.6.5`. `v1.7.0_gg3` ships `5.6.2` and `v1.7.0_gg4` ships `5.6.5`.
 
 ### Am I affected?
 
-Empty result: see the next commit.
+Two checks, neither of which runs anything against ClickHouse. First, ask your deployment which Kafka version your Connect worker runs. A worker older than Kafka 3.9 is outside what was verified, and nothing in this note says whether the connector runs on it. The static check above covered the 3.9 jars, `4.1.1` and `4.4.0`; a worker of another version was not checked. A worker of 4.2 or newer applies the KIP-1161 validation to its own and other plugins' configurations, not to the keys of this connector. Second, if you scan the archive you deploy, compare the report with the two advisories above. **Empty result:** if your scanner reports neither advisory for the bundled `guava` and `httpclient5` of `v1.7.0_gg4`, nothing needs to change. If it reports one, the sources above say what each of them publishes for the versions in the table, and this note does not decide between them.
 
 ### What to do
 
-See the next commit.
+Nothing changes in your build or deployment: deploy the archive as before. A worker older than Kafka 3.9 is outside what was verified. For a scanner report, use the sources and read dates above.
 
 ---
 
