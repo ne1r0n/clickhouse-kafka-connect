@@ -95,8 +95,9 @@ upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start wi
   Shadow 9 turned the earlier build line into a green build of an archive whose inner jar nests the dependency jars. A
   new archive check fails the build on a nested jar, on an `org/apache/kafka` entry or on a missing connector or client
   class, and the CI workflow runs it after the archive task.
-* `connect-api` `4.4.0` is compile-only. A unit test lists every Kafka class and member the compiled connector
-  references and fails when a new reference is not on the reference list.
+* `connect-api` `4.4.0` is compile-only. A unit test fails when the compiled connector references a Kafka class or
+  member that is not on the committed reference list. The list was checked once against the worker jars, and the test
+  reads no worker jar.
 * Upstream's guava override and httpclient5 pin came in with its untagged tail, and nine Dependabot merges (Connect API,
   Gradle wrapper, Shadow, httpclient5, gson, Jackson, slf4j, commons-lang3 and the versions plugin) landed on the
   fork's branch after `v1.7.0_gg3`. The shipped archive differs from the `v1.7.0_gg3` one only in the bundled versions
