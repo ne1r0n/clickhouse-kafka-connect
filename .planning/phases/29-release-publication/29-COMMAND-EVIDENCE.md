@@ -369,3 +369,55 @@ Net for httpclient5: the identity (`CVE-2026-64607` / `GHSA-hjcp-jmpx-g3qm`, med
 **Correction of the first read (recorded, not worded away).** The first OSV version queries of this entry, made at about 2026-10-23T17:31Z while the OSV record of the guava CVE was being re-indexed (its `modified` is `2026-10-23T17:27:08Z`), returned `{}` for httpclient5 `5.6.2` in the name form and in the purl form, which differed from research R2.5 (the id for `5.6.2`, `{}` for `5.6.5`). That first version of this entry said so and drew a wording limit from it. The same queries repeated at 2026-10-23T17:50Z, twice each and in three request forms, return `GHSA-hjcp-jmpx-g3qm` for `5.6.2` and nothing for `5.6.5`, which is the research answer; the guava queries returned `{}` for both versions in every read. The repeated, later reads are the record, and this entry was corrected in a follow-up commit for that reason. The document may say that OSV's version query lists the httpclient5 advisory for `5.6.2` and not for `5.6.5`, labelled by source and read date. The guava record's `modified` timestamp differs from the research capture (the 2026-10-21T09:31:55Z value is now only the `vanir_signatures_modified` field), with no change to the identity or the fixed version.
 
 Matches text: pending (29-04, 29-05)
+
+### E-08: OPS-04, OPS-01 and the OPS-05 first read
+
+Backs: `CHANGELOG.md`, the milestone close record and the 29-07 and 29-08 approval bundles (plan 29-05 and later). First read of the origin freeze, before any document of Phase 29 is written; 29-07 and 29-08 re-read it. Read 2026-10-23, unauthenticated GitHub REST (`ne1r0n/clickhouse-kafka-connect`; 55 of 60 requests were left before these reads) and `git` over the configured `origin`.
+
+```sh
+curl -s https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/labels/dependencies
+curl -s 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/pulls?state=all&per_page=100&sort=created&direction=desc'
+curl -s https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/integrationTests.yaml
+curl -s 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/integrationTests.yaml/runs?event=schedule&per_page=100'
+git fetch --quiet origin --no-tags
+git ls-remote origin refs/heads/custom_build
+git rev-list --left-right --count origin/custom_build...HEAD
+git merge-base --is-ancestor 69cd680bf548bfb0329142752d37f8a6c3190c26 HEAD
+git ls-remote --heads origin ; git ls-remote --tags origin
+```
+
+```text
+HTTP 200  labels/dependencies   name "dependencies", color d40926, description "Dependency updates (Dependabot)"
+HTTP 200  pulls                 15 PRs in total (#1 to #15), every one opened by dependabot[bot]; newest #15 created 2026-10-21T06:29:01Z;
+                                open: #4 (clickHouseDriver-0.10.0) and #10 (com.google.protobuf-protobuf-java-4.36.2); none carries a label
+HTTP 200  workflows/integrationTests.yaml   id 384641581, name "Integration Tests", state "disabled_manually", updated_at 2026-10-16T09:38:23.000Z
+HTTP 200  workflows/integrationTests.yaml/runs?event=schedule   total_count 2: 38881153720 (2026-10-16T09:32:28Z, failure) and 38714528739 (2026-10-15T09:39:18Z, failure); 0 created after 2026-10-16T09:38:23Z
+
+ops04: pending (no PR was opened by dependabot[bot] after the label's creation at 2026-10-21T15:11:05Z; the newest of the 15 PRs, #15, is from 2026-10-21T06:29:01Z, so the next monthly run is the first that can show whether the "labels could not be found" comment is gone)
+ops01: disabled_manually, 0 schedule runs after the disable
+origin_custom_build_tip: 69cd680bf548bfb0329142752d37f8a6c3190c26
+left_count: 0
+
+git rev-list --left-right --count origin/custom_build...HEAD   ->  0	211     (left 0, right 211 at HEAD feb6e8a0)
+git merge-base --is-ancestor 69cd680b HEAD                      ->  PRE is an ancestor of HEAD (exit 0)
+
+git ls-remote --heads origin
+69cd680bf548bfb0329142752d37f8a6c3190c26	refs/heads/custom_build
+ca52b81ad1a188e1e288336a2231d9d3092d45fe	refs/heads/dependabot/gradle/clickHouseDriver-0.10.0
+011bc42bfe8d8230c430ec8001d481885daec5fa	refs/heads/dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2
+bec167d85918e77c11621063000acc6e031ae2fa	refs/heads/main
+
+git ls-remote --tags origin
+6ac2d20cc0c7feacc315b21b322325b4fee25784	refs/tags/pre-v1.6.0-sync
+c61d90ce5dfb32ea5876dffacc8bb54d8846739a	refs/tags/pre-v1.7.0-sync
+be6b8861c25f3d7611194e7150b18362c5c75e32	refs/tags/pre-v1.7.0_gg2
+6473e24f372a8b37dfd8cc8cf3124e6cff52edca	refs/tags/pre-v1.7.0_gg3
+c61d90ce5dfb32ea5876dffacc8bb54d8846739a	refs/tags/v1.6.0_gg1
+f328fd218dce5b9c652f8872042e922f9686b87f	refs/tags/v1.7.0_gg1
+a246ca01b073faae86e2e92bb0288c07dd7eb0d7	refs/tags/v1.7.0_gg2
+3376a18fd057dba329ceae7d8c74d1ba4e3d36f6	refs/tags/v1.7.0_gg3
+```
+
+`custom_build` has not moved since the DEPS-02 merge: no Phase 29 decision under OPS-05 is open. Origin has no `sync/v1.7.0` branch, no `pre-v1.7.0_gg4` tag and no `v1.7.0_gg4` tag. Nothing was pushed, merged, tagged or commented on by this plan; PRs #4 and #10 were only read.
+
+Matches text: pending (29-05)
