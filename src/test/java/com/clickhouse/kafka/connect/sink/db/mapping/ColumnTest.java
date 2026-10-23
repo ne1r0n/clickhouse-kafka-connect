@@ -190,6 +190,21 @@ class ColumnTest {
         assertEquals(java.util.Map.of("a)b", 1, "c,d", 2, "e=f", 3, "g", -4), col.getEnumValues());
     }
 
+    @Test
+    public void enumLabelsHoldingBackspaceFormFeedOrNulAreKeptApartFromTheLetters() {
+        // The type text as the server prints it: the SQL escape pair, itself escaped by the JSON layer.
+        Column col = Column.extractColumn(newDescriptor(
+                "c_enum8", "Enum8('\\\\b' = 1, 'b' = 2, '\\\\f' = 3, 'f' = 4, '\\\\0' = 5, '0' = 6)"));
+        assertEquals(java.util.Map.of("\b", 1, "b", 2, "\f", 3, "f", 4, "\0", 5, "0", 6), col.getEnumValues());
+    }
+
+    @Test
+    public void enumLabelWithAnEscapeTheServerDoesNotWriteIsRefusedNotMisread() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> Column.extractColumn(newDescriptor("c_enum8", "Enum8('\\\\q' = 1)")));
+        assertEquals("Enum type could not be read", e.getMessage());
+    }
+
     private static void assertLookupMissNamesTheColumn(Column col, String columnName, String label) {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> col.convertEnumValues(label));
         assertEquals("Enum label not found for column " + columnName, e.getMessage());

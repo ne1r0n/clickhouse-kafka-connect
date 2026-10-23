@@ -462,8 +462,18 @@ public class Column {
                 return '\t';
             case 'r':
                 return '\r';
-            default:
+            case 'b':
+                return '\b';
+            case 'f':
+                return '\f';
+            case '0':
+                return '\0';
+            case '\\':
+            case '\'':
                 return escaped;
+            default:
+                // An escape the server does not write must not become a silent, possibly colliding key.
+                throw malformedEnumType();
         }
     }
 
