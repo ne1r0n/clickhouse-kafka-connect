@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 27
 current_phase_name: Writer Failure Path & Test Debt
 status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-10-22T21:43:35.495Z"
+stopped_at: Completed 27-02-PLAN.md
+last_updated: "2026-10-23T00:17:03.321Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 27 execution started
-state_head: adb243357b834a1227c8ac00d377db6da470bf8b
+state_head: 9b4632278aa73ff7d9368fd79f6ba2fc77b4c613
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 40
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 27 (Writer Failure Path & Test Debt) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 27 execution started
 
@@ -180,6 +180,7 @@ Progress: [████░░░░░░] 40%
 | Phase 26 P04 | 25 min | 2 tasks | 3 files |
 | Phase 26 P05 | 30 min | 2 tasks | 1 files |
 | Phase 27 P01 | 7 min | 2 tasks | 2 files |
+| Phase 27 P02 | 153 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 26]: 26-05: gate suite run on HotSpot 21 (-PjavaVersion=21) after three deterministic OpenJ9 Mockito GPF crashes on the default Semeru 17 toolchain under host memory pressure; no test or build file changed
 - [Phase 27]: 27-01: fourth WRT-16 shape is a plain IOException (PLAIN_IO_CONTROL); Jackson-over-plain-IOException and IOException-over-Jackson are accepted residuals pinned in 27-02
 - [Phase 27]: 27-01: JsonProcessingException realised as JsonMappingException (protected ctors in jackson-core 2.22.4; project Jackson is 2.22.4)
+- [Phase 27]: 27-02: assertJacksonRouteReached accepts the Jackson class directly or as a WithheldMessageException original class (user sign-off flip-as-shown, E-04)
+- [Phase 27]: 27-02: a Jackson exception sharing its chain with a non-Jackson IOException stays a pinned accepted residual (user-accepted at plan time, probe in E-03)
 
 ### Pending Todos
 
@@ -274,8 +277,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T21:43:35.190Z
-Stopped at: Completed 27-01-PLAN.md
+Last session: 2026-10-23T00:17:03.007Z
+Stopped at: Completed 27-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
