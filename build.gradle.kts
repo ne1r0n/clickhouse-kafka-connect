@@ -305,7 +305,7 @@ jacoco {
 
 // D-13: hand-picked, named include list of the fork-changed classes (COV-02).
 // Exact class names, not bare prefix globs, so neighbours such as
-// TableMappingRefresher, KeyToValue, ExtractTopic, or ClickHouseFieldDescriptor
+// TableMappingRefresher, KeyToValue or ExtractTopic
 // can never be pulled in.
 val forkChangedClasses = listOf(
     "com/clickhouse/kafka/connect/transforms/TableOperationFilter.class",
@@ -337,7 +337,19 @@ val forkChangedClasses = listOf(
     "com/clickhouse/kafka/connect/ClickHouseSinkConnector.class",
     "com/clickhouse/kafka/connect/ClickHouseSinkConnector\$*.class",
     "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils.class",
-    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils\$*.class"
+    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.class",
+    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.class",
+    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape\$*.class",
+    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.class",
+    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter\$*.class",
+    "com/clickhouse/kafka/connect/util/WithheldMessageException.class",
+    "com/clickhouse/kafka/connect/util/WithheldMessageException\$*.class"
 )
 
 tasks.named<JacocoReport>("jacocoTestReport") {

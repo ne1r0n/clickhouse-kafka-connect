@@ -19,7 +19,7 @@ import xml.etree.ElementTree as ET
 TEST_REPORT_PATH = "build/reports/jacoco/test/jacocoTestReport.xml"
 FORK_REPORT_PATH = "build/reports/jacoco/fork/jacocoForkReport.xml"
 
-# The 15 fork-changed base class names from build.gradle.kts's
+# The 21 fork-changed base class names from build.gradle.kts's
 # forkChangedClasses list, in declaration order, with the .class suffix
 # stripped and the inner-class wildcard entries (X$*.class) dropped - those
 # are JaCoCo include globs, not separate classes to tabulate.
@@ -39,6 +39,12 @@ FORK_CLASSES_IN_ORDER = [
     "com/clickhouse/kafka/connect/sink/ClickHouseSinkTask",
     "com/clickhouse/kafka/connect/ClickHouseSinkConnector",
     "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils",
+    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor",
+    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder",
+    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability",
+    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape",
+    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter",
+    "com/clickhouse/kafka/connect/util/WithheldMessageException",
 ]
 
 
