@@ -332,6 +332,21 @@ class DeclaredNullabilityTest {
                 DeclaredNullability.normalise("Tuple(\\n    `\u00e9\\\\\\\\n` Int32)"));
     }
 
+    @Test
+    @DisplayName("NAME-01: an escaped backtick inside a quoted name keeps the quote open, so the following line break is still replaced")
+    void escapedBacktickInsideANameKeepsTheQuoteOpen() {
+        // Runtime text: a backtick-quoted name of a, an escaped backtick and a literal backslash-n pair, between two server line breaks.
+        String raw = "Tuple(\\n    `a\\\\`\\\\\\\\nb` Int32,\\n    d String)";
+        assertEquals("Tuple(     `a\\\\`\\\\\\\\nb` Int32,     d String)", DeclaredNullability.normalise(raw));
+    }
+
+    @Test
+    @DisplayName("NAME-01: two backslashes before n outside quotes are not a line break")
+    void twoBackslashesBeforeNOutsideQuotesAreNotALineBreak() {
+        String type = "Tuple(a Int32,\\\\n b String)";
+        assertEquals(type, DeclaredNullability.normalise(type));
+    }
+
     @ParameterizedTest(name = "COLS-13 (D-10) unchanged: {0} normalises exactly as the plain replace did")
     @ValueSource(strings = {
         "Tuple(\\n    a Int32,\\n    b Nullable(String))",
