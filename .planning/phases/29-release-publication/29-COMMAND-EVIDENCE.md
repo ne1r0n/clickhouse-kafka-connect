@@ -265,3 +265,108 @@ selftest: no failures
 The gate log is that single line; the self-test log has 17 lines (16 `PASS` lines, 0 `FAIL`, then the last line above).
 
 Matches text: n/a (gate check)
+
+### E-06: Kafka 4.4.0 upgrade notes, KIP-1161 and the production worker (D-10, OPS-06)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the dependencies item (Connect API 4.4.0, the production worker, the oldest verified worker, KIP-1161) (plan 29-04). Read 2026-10-23, unauthenticated, downloads saved under `/tmp/gsd29/exec/dl/` and only grepped. Source labels are given with each fact.
+
+```sh
+curl -s -o kafka-upgrade-440.md -w '%{http_code}' https://raw.githubusercontent.com/apache/kafka/4.4.0/docs/getting-started/upgrade.md
+curl -s -o kafka-site-44.html   -w '%{http_code}' https://kafka.apache.org/44/getting-started/upgrade/
+curl -s -o connect-api-metadata.xml -w '%{http_code}' https://repo1.maven.org/maven2/org/apache/kafka/connect-api/maven-metadata.xml
+curl -s -o archive-listing.html -w '%{http_code}' https://archive.apache.org/dist/kafka/4.4.0/
+curl -s -o /dev/null            -w '%{http_code}' https://api.github.com/repos/apache/kafka/git/ref/tags/4.4.0
+grep -n "^## Upgrading to" kafka-upgrade-440.md ; grep -n "KIP-1161\|KIP-1209\|KIP-909" kafka-upgrade-440.md
+python3 -I   # counts over src/main/java: "ConfigDef.Type.LIST" and "ValidList"
+```
+
+```text
+HTTP 200  raw.githubusercontent.com/apache/kafka/4.4.0/docs/getting-started/upgrade.md   (source tree at tag 4.4.0; 67051 bytes)
+HTTP 404  kafka.apache.org/44/getting-started/upgrade/                                   (the website page does not exist yet)
+HTTP 200  repo1.maven.org/maven2/org/apache/kafka/connect-api/maven-metadata.xml         (lists <version>4.4.0</version>; <latest>4.4.0</latest>, <release>4.4.0</release>, lastUpdated 20261020124053)
+HTTP 200  archive.apache.org/dist/kafka/4.4.0/                                           (RELEASE_NOTES.html and .asc dated 2026-10-06 16:20)
+HTTP 200  api.github.com/repos/apache/kafka/git/ref/tags/4.4.0                           (the tag 4.4.0 exists)
+```
+
+Section map of the source file (`grep -n "^## Upgrading to"`): `29: ## Upgrading to 4.4.0`, `64: ## Upgrading to 4.3.2`, `76: ## Upgrading to 4.3.1`, `85: ## Upgrading to 4.3.0`, `114: ## Upgrading to 4.2.1`, `122: ## Upgrading to 4.2.0`.
+
+- **`## Upgrading to 4.4.0` (lines 29-62), Connect-facing lines.** Line 55: Kafka Connect distributed workers now support `internal.topics.automatic.creation.enable` (default `true`; when `false`, Connect fails at startup if its internal topics are missing; new `connect-internal-topics.sh` tool), linked to KIP-1209. Line 59: the `bootstrap.resolve.timeout.ms` bullet (KIP-909) says Connect does not support asynchronous bootstrap resolution yet and forces the value to `0` for every client it creates. Both are worker-side. No line of the section is about `connect-api`, `SinkTask`, `ConfigDef`, transformations or converters. [Source: apache/kafka@4.4.0 `docs/getting-started/upgrade.md:55,59`]
+- **KIP-1161 sits under `## Upgrading to 4.2.0`** (section starts at line 122), not under 4.4.0: lines 168-173 are the bullets. Line 168: "Improvements have been made to the validation rules and default values of LIST-type configurations (KIP-1161)". Then: LIST-type configurations now enforce stricter validation; null values are no longer accepted for most LIST-type configurations (exceptions: configurations whose default is null); most LIST-type configurations no longer accept duplicate entries (duplicates are ignored with a logged warning for backward compatibility); for certain configurations an empty list is no longer allowed. [Source: apache/kafka@4.4.0 `docs/getting-started/upgrade.md:122,168-173`]
+- **The connector's own LIST keys.** Counted with a Python reader over the 71 files of `src/main/java`:
+
+```text
+type_list_keys: 7
+validlist_in_src_main: 0
+```
+
+  The seven `ConfigDef.Type.LIST` declarations are `ClickHouseSinkConfig.java:525,534,682`, `HeaderToValue.java:49,54` and `HeaderToValueConfig.java:23,28`; `ValidList` appears nowhere in `src/main`. [Source: grep of the tree at HEAD `503b70f8`] So the connector's own keys carry no validator that KIP-1161 would tighten; a Kafka 4.2 or newer worker applies the strictness to its own and other plugins' configurations. The production worker is Kafka 3.9 (below).
+- **Production worker (cited, not re-measured here).** `confluentinc/cp-kafka-connect-base:7.9.7` (Confluent Platform 7.9, Apache Kafka 3.9), image digest `sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055`; the three API jars from `/usr/share/java/kafka/` are `connect-api-7.9.7-ccs.jar`, `connect-runtime-7.9.7-ccs.jar`, `kafka-clients-7.9.7-ccs.jar`, byte-identical on the amd64 and arm64 images. [Source: `25-COMMAND-EVIDENCE.md` E-12; the worker line is the user's statement of 2026-10-21, REQUIREMENTS OPS-06]
+- **Oldest verified worker (decision PT-08).** Apache Kafka 3.9, by a static bytecode reference check, not by a run on a live worker: the compiled connector's 176 `org.apache.kafka` references (39 classes, 137 members) are all present in the 7.9.7 jars (`REFERENCE worker classes-missing 0 members-missing 0`), in `connect-api` 4.1.1 and in 4.4.0 (same zeros), and the shipped archive holds 0 `org/apache/kafka/` entries (E-03: `kafka classes in b: 0`). [Source: `25-COMMAND-EVIDENCE.md` E-12, E-13] The check is pinned in the suite by `ConnectApiReferencesUnitTest`, which passed in the testUnit run of E-05 (3 tests, 0 failures). The worker's `SinkTask` still declares `onPartitionsRevoked`; the 4.1.1 and 4.4.0 jars do not, which is why the connector keeps the method without `@Override`. [Source: `25-COMMAND-EVIDENCE.md` E-12]
+
+Matches text: pending (29-04)
+
+### E-07: advisory identity by source, guava and httpclient5 (D-10)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md` (the dependencies item) and the `docs/FORK-DELTA.md` advisory row (plans 29-04 and 29-05). Read 2026-10-23 (the OSV record of the guava CVE shows `modified` `2026-10-23T17:27:08.804507804Z`), unauthenticated, 5 of 60 GitHub REST requests used by this entry (60 available before). Responses saved under `/tmp/gsd29/exec/dl/`. No exposure assessment is made: each fact is the source's own statement.
+
+```sh
+curl -s -H 'Accept: application/json' 'https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-102554'
+curl -s -H 'Accept: application/json' 'https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-64607'
+curl -s https://api.osv.dev/v1/vulns/CVE-2026-102554 ; curl -s https://api.osv.dev/v1/vulns/GHSA-xxph-c9ww-hj94 ; curl -s https://api.osv.dev/v1/vulns/GHSA-hjcp-jmpx-g3qm
+curl -s -X POST https://api.osv.dev/v1/query -d '{"package":{"name":"com.google.guava:guava","ecosystem":"Maven"},"version":"33.4.6-jre"}'   # and 33.7.2-jre
+curl -s -X POST https://api.osv.dev/v1/query -d '{"package":{"name":"org.apache.httpcomponents.client5:httpclient5","ecosystem":"Maven"},"version":"5.6.2"}'   # and 5.6.5
+curl -s https://api.github.com/advisories/GHSA-xxph-c9ww-hj94 ; curl -s https://api.github.com/advisories/GHSA-hjcp-jmpx-g3qm
+curl -s -o /dev/null -w '%{http_code}' https://github.com/google/guava/security/advisories/GHSA-xxph-c9ww-hj94
+```
+
+**Guava: `CVE-2026-102554` = `GHSA-xxph-c9ww-hj94`. gg3 ships guava `33.4.6-jre`, gg4 ships `33.7.2-jre` (E-03 `VERSION` lines).**
+
+```text
+HTTP 200  NVD cves/2.0?cveId=CVE-2026-102554
+          vulnStatus "Awaiting Analysis"; published 2026-10-09T16:17:20.410; lastModified 2026-10-09T18:17:01.380;
+          source cve-coordination@google.com; weaknesses CWE-502 and CWE-770; no CPE configuration;
+          metric cvssMetricV40 (source cve-coordination@google.com) baseScore 8.2 HIGH;
+          description: "... Google Guava versions 4.0 through 33.7.1 allows an attacker to cause a Denial of Service via OutOfMemoryError.
+          When deserializing CompactHashMap, CompactHashSet, or MapMakerInternalMap instances, Guava eagerly allocates an array based on a
+          caller-specified size parameter without throttling ..."
+HTTP 200  OSV  /v1/vulns/CVE-2026-102554
+          id CVE-2026-102554; aliases ["GHSA-xxph-c9ww-hj94"]; published 2026-10-09T15:07:16.130Z; modified 2026-10-23T17:27:08.804507804Z;
+          summary "Denial of Service via Eager Array Allocation During Deserialization in Guava";
+          affected: one GIT range (repo https://github.com/google/guava, introduced 0, fixed b931fe9d6d5cf00bc55714ad3308d086f71850fe), no Maven range;
+          database_specific.unresolved_ranges: "introduced 4.0, fixed 33.7.2" (source AFFECTED_FIELD) and "introduced 4.0, last_affected 33.7.1" (source DESCRIPTION)
+HTTP 404  OSV  /v1/vulns/GHSA-xxph-c9ww-hj94
+          {"code":5,"message":"Vulnerability not found, but the following aliases were: CVE-2026-102554"}
+HTTP 200  OSV  POST /v1/query Maven com.google.guava:guava 33.4.6-jre  ->  {}
+HTTP 200  OSV  POST /v1/query Maven com.google.guava:guava 33.7.2-jre  ->  {}
+HTTP 404  api.github.com/advisories/GHSA-xxph-c9ww-hj94     (GitHub's global advisory database does not hold it)
+HTTP 200  github.com/google/guava/security/advisories/GHSA-xxph-c9ww-hj94    (a repository advisory of google/guava)
+```
+
+Net for guava: the pair and the fixed version `33.7.2` are as in `25-COMMAND-EVIDENCE.md` E-22. The two machine sources disagree about gg3's `33.4.6-jre`: the NVD text range ("4.0 through 33.7.1") includes it, OSV's Maven query returns nothing for it (the OSV record carries a GIT range and unresolved ranges, no Maven range). `33.7.2-jre` is outside the NVD text range and returns nothing at OSV.
+
+**httpclient5: `CVE-2026-64607` = `GHSA-hjcp-jmpx-g3qm`. gg3 ships httpclient5 `5.6.2`, gg4 ships `5.6.5` (E-03).**
+
+```text
+HTTP 200  NVD cves/2.0?cveId=CVE-2026-64607
+          vulnStatus "Modified"; published 2026-07-31T11:17:11.710; lastModified 2026-08-13T17:17:33.733; source security@apache.org;
+          weakness CWE-772; has a CPE configuration; metric cvssMetricV31 baseScore 5.3;
+          description: classic i/o model HttpClient fails to release the connection on an invalid or unsupported Content-Encoding header
+          value; "does not affect HttpClient based on the async i/o model"; "This issue affects Apache HttpComponents Client: from 5.0-alpha1 through 5.6.2."
+HTTP 200  api.github.com/advisories/GHSA-hjcp-jmpx-g3qm
+          cve_id CVE-2026-64607; severity medium; published_at 2026-07-31T12:30:30Z; updated_at 2026-08-13T18:40:19Z; withdrawn_at null;
+          summary "Apache HttpComponents Client: Connection Leak on Content-Encoding Decode Error Leads to Pool Exhaustion DoS";
+          package maven org.apache.httpcomponents.client5:httpclient5; vulnerable_version_range ">= 5.0-alpha1, < 5.6.3"; first_patched_version 5.6.3
+HTTP 200  OSV  /v1/vulns/GHSA-hjcp-jmpx-g3qm
+          aliases ["CVE-2026-64607"]; published 2026-07-31T12:30:30Z; modified 2026-09-10T03:50:12.358752934Z;
+          ECOSYSTEM range introduced 5.0-alpha1, fixed 5.6.3; the explicit versions list ends at 5.6.2 (contains 5.6.2, does not contain 5.6.5)
+HTTP 200  OSV  /v1/vulns/CVE-2026-64607    (aliases ["GHSA-hjcp-jmpx-g3qm"]; modified 2026-10-21T02:58:57.044251076Z; GIT range, fixed 13408e3f33dfc3763c44fe96e0d00fa6f6ecc65d)
+HTTP 200  OSV  POST /v1/query Maven org.apache.httpcomponents.client5:httpclient5 5.6.2  ->  {}
+HTTP 200  OSV  POST /v1/query Maven org.apache.httpcomponents.client5:httpclient5 5.6.5  ->  {}
+HTTP 200  OSV  POST /v1/query purl pkg:maven/org.apache.httpcomponents.client5/httpclient5@5.6.2 and @5.6.5  ->  {} for both ({"vulns":[]})
+```
+
+Net for httpclient5: the identity (`CVE-2026-64607` / `GHSA-hjcp-jmpx-g3qm`, medium, fixed `5.6.3`) is as researched. gg3's `5.6.2` is inside every source's range (NVD text "through 5.6.2", GitHub `< 5.6.3`, OSV range and versions list); gg4's `5.6.5` is above the fixed version `5.6.3`.
+
+**Deviation from research R2.5 (recorded, not worded away).** Research recorded that the OSV Maven query returns `GHSA-hjcp-jmpx-g3qm` for `5.6.2` and `{}` for `5.6.5`. Today the same query (name plus ecosystem, and also the purl form) returns `{}` for `5.6.2` as well, although the OSV record's own versions list contains `5.6.2`. The document therefore must not claim that OSV's version query flags gg3's `5.6.2`; it may say that the OSV record's range and versions list cover `5.6.2` and not `5.6.5`, and that the GitHub and NVD ranges do the same. The guava record's `modified` timestamp also differs from the research capture (the 2026-10-21T09:31:55Z value is now only the `vanir_signatures_modified` field), with no change to the identity or the fixed version. This does not touch any locked decision (D-10 asks only that the identities be re-read).
+
+Matches text: pending (29-04, 29-05)
