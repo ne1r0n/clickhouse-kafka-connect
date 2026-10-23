@@ -20,8 +20,8 @@
 | E-08 | NAME-05 pins red on the pre-fix production, green, commit, gate | pass |
 | E-09 | NAME-06 red run and green | pass |
 | E-10 | NAME-06/07 fix commit, documents, full suite, manual CLIENT_VERSION=V1 run, gate | pass |
-| E-11 | DEBT-17 tracer | pending |
-| E-12 | DEBT-17 commit and generated fork report | pending |
+| E-11 | DEBT-17 tracer | pass |
+| E-12 | DEBT-17 commit and generated fork report | pass |
 | E-13 | Phase gate and the assertion diff check | pending |
 
 ### E-01: Phase base
@@ -591,4 +591,177 @@ wt_anchors: rows 92 bad []
 Deviation (Rule 3, recorded here and in the SUMMARY). The first fix commit (`714e17c0`, suite and V1 run green on its tree) added `import java.util.Map;` to ColumnTest. ColumnTest is one of the 46 files already red under Spotless, and the extra import line moved its numstat line from `5 7` to `6 8`, which the phase's Spotless rule allows only for Column.java and ClickHouseHelperClient.java. The import was replaced by `java.util.Map.of(` in the new row, the commit was amended (not pushed) to `d7361cbb`, and the full suite, the V1 run, the re-render, Spotless and the gate were all re-run on the amended tree; the figures above are those of the second run (the first run's were identical: 1832 tests, 105 tests).
 
 2026-10-23T10:44:00Z
+Verdict: pass
+
+### E-11: DEBT-17 tracer
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ForkCoverageScopeUnitTest' --rerun > /tmp/gsd28/exec/guard-red-28-06.log 2>&1    # unchanged lists
+# edit build.gradle.kts forkChangedClasses (+ comment) and .github/scripts/jacoco_summary.py FORK_CLASSES_IN_ORDER
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*ForkCoverageScopeUnitTest' --rerun > /tmp/gsd28/exec/guard-green-28-06.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*ForkCoverageScopeUnitTest' --rerun > /tmp/gsd28/exec/reports-tracer-28-06.log 2>&1
+python3 .github/scripts/jacoco_summary.py > /tmp/gsd28/exec/summary-tracer-28-06.md
+```
+
+```text
+guard_red (unchanged lists): 3 tests, 1 failed: "DEBT-17: the fork list holds DeclaredNullability, WithheldMessageException and the classes this milestone added" (message: forkChangedClasses in build.gradle.kts lacks: [DeclaredNullability, WithheldMessageException, DescribeTableBuilder, ParentShape, ClickHouseFieldDescriptor, MetadataFreeJsonWriter]); the other two cases green
+guard_green (both lists edited): Tests summary: 3 tests, 3 succeeded, 0 failed, 0 skipped
+fork report: build/reports/jacoco/fork/jacocoForkReport.xml has a class element with a LINE counter for each of the 21 base names (46 class elements in all, inner classes included)
+summary: 21 class rows
+```
+
+List diff (`git diff -U0 -- build.gradle.kts .github/scripts/jacoco_summary.py`):
+
+```diff
+diff --git a/.github/scripts/jacoco_summary.py b/.github/scripts/jacoco_summary.py
+index 4b3207d3..8d4e9709 100644
+--- a/.github/scripts/jacoco_summary.py
++++ b/.github/scripts/jacoco_summary.py
+@@ -22 +22 @@ FORK_REPORT_PATH = "build/reports/jacoco/fork/jacocoForkReport.xml"
+-# The 15 fork-changed base class names from build.gradle.kts's
++# The 21 fork-changed base class names from build.gradle.kts's
+@@ -41,0 +42,6 @@ FORK_CLASSES_IN_ORDER = [
++    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor",
++    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder",
++    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability",
++    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape",
++    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter",
++    "com/clickhouse/kafka/connect/util/WithheldMessageException",
+diff --git a/build.gradle.kts b/build.gradle.kts
+index ad57aa0c..ed0cb32c 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -308 +308 @@ jacoco {
+-// TableMappingRefresher, KeyToValue, ExtractTopic, or ClickHouseFieldDescriptor
++// TableMappingRefresher, KeyToValue or ExtractTopic
+@@ -340 +340,13 @@ val forkChangedClasses = listOf(
+-    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils\$*.class"
++    "com/clickhouse/kafka/connect/util/jmx/MBeanServerUtils\$*.class",
++    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.class",
++    "com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor\$*.class",
++    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder.class",
++    "com/clickhouse/kafka/connect/sink/db/helper/DescribeTableBuilder\$*.class",
++    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class",
++    "com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability\$*.class",
++    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape.class",
++    "com/clickhouse/kafka/connect/sink/db/mapping/ParentShape\$*.class",
++    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter.class",
++    "com/clickhouse/kafka/connect/sink/db/MetadataFreeJsonWriter\$*.class",
++    "com/clickhouse/kafka/connect/util/WithheldMessageException.class",
++    "com/clickhouse/kafka/connect/util/WithheldMessageException\$*.class"
+```
+
+Summary class rows. The coverage figures below are NOT real: the regeneration ran after the filtered
+`test --tests '*ForkCoverageScopeUnitTest'` run, which overwrote `build/jacoco/test.exec` (the file
+shrank from 793880 to 285099 bytes, so the Gradle JaCoCo agent overwrites, it does not append). The
+real figures are the ones of E-12's full suite. The 28-05 execution data was kept as `/tmp/gsd28/exec/test-28-05.exec`.
+
+```text
+| TableOperationFilter | 0.0% | 0.0% |\n| HeadersToValue | 0.0% | 0.0% |\n| HeaderToValue | 0.0% | 0.0% |\n| HeaderToValueConfig | 0.0% | n/a |\n| ConvertToMapOrJson | 0.0% | 0.0% |\n| ClickHouseHelperClient | 0.0% | 0.0% |\n| Column | 0.0% | 0.0% |\n| Type | 0.0% | n/a |\n| Table | 0.0% | 0.0% |\n| ClickHouseWriter | 0.0% | 0.0% |\n| ClickHouseSinkConfig | 0.0% | 0.0% |\n| ProxySinkTask | 0.0% | 0.0% |\n| ClickHouseSinkTask | 0.0% | 0.0% |\n| ClickHouseSinkConnector | 0.0% | 0.0% |\n| MBeanServerUtils | 0.0% | 0.0% |\n| ClickHouseFieldDescriptor | 0.0% | 0.0% |\n| DescribeTableBuilder | 0.0% | 0.0% |\n| DeclaredNullability | 0.0% | 0.0% |\n| ParentShape | 0.0% | 0.0% |\n| MetadataFreeJsonWriter | 0.0% | 0.0% |\n| WithheldMessageException | 0.0% | 0.0% |
+```
+
+Deviation (Rule 3, recorded here and in the SUMMARY). The plan's regeneration command
+`./gradlew jacocoTestReport jacocoForkReport -x test` cannot run: `jacocoTestReport` ended UP-TO-DATE,
+but `jacocoForkReport` failed Gradle 9.8.1's configuration validation (`Property has implicit
+dependency` on the outputs of `compileJava`, `generateProto` and `generateVersionFile`: the task
+reaches them only through `dependsOn(test)`, which `-x test` cuts). Fixing it would mean editing
+`build.gradle.kts` outside the list, which the plan prohibits, so the regeneration instead ran the
+guard class through the `test` task (`test --tests '*ForkCoverageScopeUnitTest' --rerun`, 3 s, BUILD
+SUCCESSFUL), which finalizes both reports. It proves the same thing (the list reaches the report and the
+summary); only the coverage figures differ. The `-x test` failure is a pre-existing property of the
+unchanged `jacocoForkReport` task (its description and dependencies are untouched).
+
+2026-10-23T10:47:10Z
+Verdict: pass
+
+### E-12: DEBT-17 commit, full suite and the generated fork report
+
+Commands as run:
+
+```bash
+git add build.gradle.kts .github/scripts/jacoco_summary.py src/test/java/com/clickhouse/kafka/connect/ci/ForkCoverageScopeUnitTest.java docs/FORK-DELTA.md .planning/scripts/fork-anchors.txt
+git write-tree > /tmp/gsd28/exec/fix-tree-28-06.txt
+rm -rf build/test-results/test
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd28/exec/suite-28-06.log 2>&1     # then cp -R build/test-results/test suite-28-06; cp jacocoForkReport.xml fork-report-28-06.xml
+python3 .github/scripts/jacoco_summary.py > /tmp/gsd28/exec/summary-28-06.md
+git commit            # build(28-06)
+/tmp/gsd28/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd28/exec/spotless-28-06.txt
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd28/exec/gate-28-06.log 2>&1
+```
+
+```text
+commit: 898a20b20b8c09ee86dda2462a85f42846c4ca12  build(28-06): list every fork class in the fork coverage report (DEBT-17)
+files: build.gradle.kts, .github/scripts/jacoco_summary.py, src/test/java/com/clickhouse/kafka/connect/ci/ForkCoverageScopeUnitTest.java, docs/FORK-DELTA.md, .planning/scripts/fork-anchors.txt
+tree_equality: git rev-parse HEAD^{tree} = fix-tree-28-06.txt (4da6bf2f7231028def77541fde2c207f3928ea28), the tree the counted suite ran on
+suite: 1835 tests in 101 XML files, 0 failures, 0 errors, 18 skipped (the 18 named skips), BUILD SUCCESSFUL in 2m 42s
+class_counts: ForkCoverageScopeUnitTest=3 RawIdentifierNameLiveTest=73 RawNameMatrixFixturesUnitTest=50 RawNameMatrixLiveTest=25 NullableTupleMatrixLiveTest=33 DeclaredNullabilityTest=69 ColumnTest=38 TableTest=7
+fork_report: all 21 classes present with a LINE counter in fork-report-28-06.xml
+spotless: base 46 lines, head 46 lines, no new file, no changed line (ForkCoverageScopeUnitTest is Spotless-clean)
+gate: invariants: provenance_paths=3 anchor_commits=129 anchor_rows=94 marker_commits=141 anchor_exempt=0 result=PASS
+wt_anchors: rows 94 bad []
+```
+
+LINE coverage per class from `fork-report-28-06.xml` (full suite on the commit's tree; the Gradle agent
+overwrites `build/jacoco/test.exec`, so the figures are this run's alone):
+
+```text
+TableOperationFilter  LINE 57/62 (91.9%)
+HeadersToValue  LINE 74/78 (94.9%)
+HeaderToValue  LINE 81/86 (94.2%)
+HeaderToValueConfig  LINE 0/8 (0.0%)
+ConvertToMapOrJson  LINE 108/119 (90.8%)
+ClickHouseHelperClient  LINE 278/366 (76.0%)
+Column  LINE 300/340 (88.2%)
+Type  LINE 33/33 (100.0%)
+Table  LINE 87/96 (90.6%)
+ClickHouseWriter  LINE 954/1030 (92.6%)
+ClickHouseSinkConfig  LINE 204/223 (91.5%)
+ProxySinkTask  LINE 60/62 (96.8%)
+ClickHouseSinkTask  LINE 53/64 (82.8%)
+ClickHouseSinkConnector  LINE 0/27 (0.0%)
+MBeanServerUtils  LINE 13/17 (76.5%)
+ClickHouseFieldDescriptor  LINE 22/25 (88.0%)
+DescribeTableBuilder  LINE 118/121 (97.5%)
+DeclaredNullability  LINE 121/135 (89.6%)
+ParentShape  LINE 22/24 (91.7%)
+MetadataFreeJsonWriter  LINE 84/95 (88.4%)
+WithheldMessageException  LINE 19/19 (100.0%)
+```
+
+The summary's class table (`summary-28-06.md`; 21 rows, no Line figure n/a). `HeaderToValueConfig` and
+`ClickHouseSinkConnector` read 0.0% as before this plan (pre-existing, not touched by it):
+
+```text
+| Scope | Instruction | Line | Branch |
+|---|---|---|---|
+| Full suite | 85.8% | 85.5% | 77.1% |
+| Fork-changed classes | 90.0% | 88.8% | 82.6% |
+| Class | Line | Branch |
+|---|---|---|
+| TableOperationFilter | 91.9% | 89.2% |
+| HeadersToValue | 94.9% | 79.4% |
+| HeaderToValue | 94.2% | 85.7% |
+| HeaderToValueConfig | 0.0% | n/a |
+| ConvertToMapOrJson | 90.8% | 92.7% |
+| ClickHouseHelperClient | 76.0% | 72.7% |
+| Column | 88.2% | 76.5% |
+| Type | 100.0% | n/a |
+| Table | 90.6% | 80.0% |
+| ClickHouseWriter | 92.6% | 87.3% |
+| ClickHouseSinkConfig | 91.5% | 73.2% |
+| ProxySinkTask | 96.8% | 87.5% |
+| ClickHouseSinkTask | 82.8% | 73.7% |
+| ClickHouseSinkConnector | 0.0% | 0.0% |
+| MBeanServerUtils | 76.5% | 100.0% |
+| ClickHouseFieldDescriptor | 88.0% | 70.0% |
+| DescribeTableBuilder | 97.5% | 90.4% |
+| DeclaredNullability | 89.6% | 80.0% |
+| ParentShape | 91.7% | 87.5% |
+| MetadataFreeJsonWriter | 88.4% | 82.8% |
+| WithheldMessageException | 100.0% | 100.0% |
+```
+
+2026-10-23T10:54:05Z
 Verdict: pass
