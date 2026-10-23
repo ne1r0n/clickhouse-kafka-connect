@@ -75,7 +75,8 @@ public class WriterValueFreeFailureUnitTest {
     private static final String JSON_AS_STRING_SETTING = "input_format_binary_read_json_as_string=1";
     private static final String UNSUPPORTED_JSON_FIELD_TYPE = "Unsupported field type: INT32 for column type [JSON]";
     private static final String NESTED_NULL_PREFIX = "column 't' (";
-    private static final String NO_ENUM_CONTENT_MESSAGE = "No content in enum";
+    private static final String NO_ENUM_CONTENT_MESSAGE = "No content in enum column c_enum";
+    private static final String ENUM_COLUMN = "c_enum";
     private static final String INT128_COLUMN = "c_int128";
     private static final String TUPLE_COLUMN = "t";
     private static final String TUPLE_FIELD = "a";
@@ -530,6 +531,25 @@ public class WriterValueFreeFailureUnitTest {
         assertEquals(RuntimeException.class, captured.thrown.getClass());
         assertEquals(NO_ENUM_CONTENT_MESSAGE, captured.thrown.getMessage());
         assertNoSentinelAnywhere(captured.thrown, captured, NUMERIC_SENTINEL);
+    }
+
+    @ParameterizedTest(name = "WRT-18 value-free: an unknown {0} label throws a DataException naming the column and IllegalArgumentException, with no label in any text")
+    @ValueSource(strings = {"Enum8", "Enum16"})
+    void unknownEnumLabelIsALookupMissWithoutTheLabel(String typeName) throws Exception {
+        Type type = Type.valueOf(typeName);
+        Column enumColumn = Column.builder()
+                .name(ENUM_COLUMN)
+                .type(type)
+                .enumValues(new HashMap<>(Map.of("a", 1)))
+                .build();
+
+        Captured captured = writeColValue(enumColumn, stringData(NUMERIC_SENTINEL));
+
+        assertValueFreeWriterFailure(
+                captured,
+                NUMERIC_SENTINEL,
+                valueFreeMessage(ENUM_COLUMN, STRING_KAFKA_TYPE, STRING_VALUE_CLASS, type, IllegalArgumentException.class));
+        assertWithheldCauseLine(captured, IllegalArgumentException.class);
     }
 
     private static ClickHouseSinkConfig jsonAsStringConfig() {

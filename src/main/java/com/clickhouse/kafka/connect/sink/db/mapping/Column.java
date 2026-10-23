@@ -40,6 +40,9 @@ public class Column {
 
     private static final int DECIMAL128_MAX_PRECISION = 38;
     private static final Logger LOGGER = LoggerFactory.getLogger(Column.class);
+    // An enum label is record data, so both texts carry the column name only.
+    private static final String ENUM_LABEL_NOT_FOUND_FORMAT = "Enum label not found for column %s";
+    private static final String NO_ENUM_CONTENT_FORMAT = "No content in enum column %s";
 
 
     // Confluent converter union schema markers
@@ -525,10 +528,14 @@ public class Column {
 
     public Integer convertEnumValues(String value) {
         if ( this.enumValues != null ) {
-            return enumValues.get(value);
+            Integer code = enumValues.get(value);
+            if (code == null) {
+                throw new IllegalArgumentException(String.format(ENUM_LABEL_NOT_FOUND_FORMAT, name));
+            }
+            return code;
         }
-        // The label is record data and this exact RuntimeException reaches Connect status unchanged, so the text is fixed (D-14).
-        throw new RuntimeException("No content in enum");
+        // This exact RuntimeException reaches Connect status unchanged, which is why the text carries the column only.
+        throw new RuntimeException(String.format(NO_ENUM_CONTENT_FORMAT, name));
     }
 
     public String toString() {

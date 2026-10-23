@@ -19,6 +19,10 @@
   on this route only a record value whose own getter throws such an error builds that chain, and Connect's value types
   have no such getter.
 
+* An `Enum8` or `Enum16` value whose label is not one of the column's labels now fails with `Failed to write column
+  ...: java.lang.IllegalArgumentException` instead of `java.lang.NullPointerException`. The label stays out of the
+  message. The `No content in enum` text, reachable only from a hand-built column, now names the column.
+
 # 1.7.0_gg3, 2026-10-20
 
 This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg2`. It lists only the fork's own changes

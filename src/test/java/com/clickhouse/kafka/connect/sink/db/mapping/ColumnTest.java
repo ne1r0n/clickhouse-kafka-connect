@@ -12,6 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ColumnTest {
 
+    private static final String ENUM_COLUMN = "c_enum";
+    private static final String UNKNOWN_LABEL = "zzLBLq7Zx41";
+
     @Test
     public void extractNullableColumn() {
         Column col = Column.extractColumn(newDescriptor("Nullable(String)"));
@@ -178,6 +181,43 @@ class ColumnTest {
         assertEquals(2, col.getEnumValues().size());
         assertTrue(col.getEnumValues().containsKey("a, valid"));
         assertTrue(col.getEnumValues().containsKey("b"));
+    }
+
+    private static void assertLookupMissNamesTheColumn(Column col, String columnName, String label) {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> col.convertEnumValues(label));
+        assertEquals("Enum label not found for column " + columnName, e.getMessage());
+        if (label != null) {
+            assertFalse(e.getMessage().contains(label));
+        }
+    }
+
+    @Test
+    public void unknownEnum8LabelIsALookupMissNamingTheColumn() {
+        Column col = Column.extractColumn(newDescriptor("c_enum8", "Enum8('a' = 1, 'b' = 2)"));
+        assertEquals(1, col.convertEnumValues("a"));
+        assertLookupMissNamesTheColumn(col, "c_enum8", UNKNOWN_LABEL);
+    }
+
+    @Test
+    public void unknownEnum16LabelIsALookupMissNamingTheColumn() {
+        Column col = Column.extractColumn(newDescriptor("c_enum16", "Enum16('a' = 1, 'b' = 1000)"));
+        assertEquals(1000, col.convertEnumValues("b"));
+        assertLookupMissNamesTheColumn(col, "c_enum16", UNKNOWN_LABEL);
+    }
+
+    @Test
+    public void nullEnumLabelIsALookupMiss() {
+        Column col = Column.extractColumn(newDescriptor("c_enum8", "Enum8('a' = 1, 'b' = 2)"));
+        assertLookupMissNamesTheColumn(col, "c_enum8", null);
+    }
+
+    @Test
+    public void enumWithoutValuesNamesTheColumn() {
+        Column col = Column.builder().name(ENUM_COLUMN).type(Type.Enum8).build();
+        RuntimeException e = assertThrows(RuntimeException.class, () -> col.convertEnumValues(UNKNOWN_LABEL));
+        assertEquals(RuntimeException.class, e.getClass());
+        assertEquals("No content in enum column " + ENUM_COLUMN, e.getMessage());
+        assertFalse(e.getMessage().contains(UNKNOWN_LABEL));
     }
 
     // --- isUnionSchema detection tests ---
