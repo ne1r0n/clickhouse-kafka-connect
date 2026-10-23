@@ -154,7 +154,7 @@ The 16 findings below come from `25-REVIEW.md`, `26-REVIEW.md`, `27-REVIEW.md` a
 ### Inferred claims of the note
 
 - **Bundled patch bumps change no byte sent to ClickHouse.** The note labels this inferred. Re-open trigger: a live pin of the retry across the dependency change, or an operator report of a changed insert.
-- **The order of the rename for records already in a topic** (let the old release consume what was produced under the earlier names, stop cleanly, switch the producers, upgrade). It is measured per record and inferred for a backlog. Re-open trigger: a live pin with a backlog, or an operator report of a record that kept its earlier names.
+- **The order of the rename for records already in a topic** (pause the producers, let the old release consume what was produced under the earlier names, stop cleanly, switch the producers, upgrade, resume the producers; the rollback runs the same order in reverse, with the producers kept on the new names until the connector has drained and stopped). It is measured per record and inferred for a backlog. Re-open trigger: a live pin with a backlog, or an operator report of a record that kept its earlier names.
 
 ## Open user items after publication
 
