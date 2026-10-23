@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Fork-only (COLS-10): takes the nullability of every Tuple, Tuple element and nested Tuple from the
+ * Fork-only: takes the nullability of every Tuple, Tuple element and nested Tuple from the
  * declared column type instead of from DESCRIBE.
  *
  * <p>Upstream's {@link Column#extractColumn} drops the nullability of a Tuple, and {@code DESCRIBE ...
@@ -218,7 +218,7 @@ public final class DeclaredNullability {
 
     /**
      * The one definition of a Tuple element's key: its declared name, or its one-based position when
-     * it is unnamed. It is shared by {@code collectTuple}, discovery's classifier and Phase 28's
+     * it is unnamed. It is shared by {@code collectTuple}, discovery's classifier and a future
      * raw-name pairing, so all of them agree on which declared element a DESCRIBE sub-column is.
      *
      * @param element the element as parsed from the declared Tuple type

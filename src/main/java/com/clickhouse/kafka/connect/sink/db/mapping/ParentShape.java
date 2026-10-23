@@ -4,8 +4,8 @@ import com.clickhouse.data.ClickHouseColumn;
 import java.util.List;
 
 /**
- * Fork-only (DESC-08): reads the declared type of a DESCRIBE parent row to tell a declared Tuple
- * element from a structural sub-column, backlog 999.4.
+ * Fork-only: reads the declared type of a DESCRIBE parent row to tell a declared Tuple
+ * element from a structural sub-column.
  *
  * <p>ClickHouse prints the offsets of an Array ({@code <parent>.size0}), the length of a String
  * ({@code <parent>.size}) and the like as sub-columns named exactly like a Tuple element called

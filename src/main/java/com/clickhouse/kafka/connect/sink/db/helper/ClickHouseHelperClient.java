@@ -359,7 +359,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
      * A backslash (or run of backslashes) sitting immediately before a quote character - either
      * one already present in the filter, or the end of the filter (which {@link
      * #buildTableFilterClause(String)} always follows with its own closing quote) - is the only
-     * position where a backslash can interact with our quote-doubling below (CR-01).
+     * position where a backslash can interact with our quote-doubling below.
      */
     private static final Pattern BACKSLASH_RUN_BEFORE_QUOTE_OR_END = Pattern.compile("\\\\+(?='|\\z)");
 
@@ -369,7 +369,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
      * #showTables(String)}. Returns the empty string when {@code targetTableFilter} is exactly the
      * empty string (the connector default).
      *
-     * <p>Escaping (CR-01, D-19): every single quote is doubled, ClickHouse's own escape for a
+     * <p>Escaping: every single quote is doubled, ClickHouse's own escape for a
      * literal quote inside a string literal. Backslashes are otherwise passed through unchanged so
      * regex character classes like {@code \d+}/{@code \w+} keep matching exactly as {@code match()}
      * interprets them - EXCEPT that a run of backslashes directly before a quote (either one

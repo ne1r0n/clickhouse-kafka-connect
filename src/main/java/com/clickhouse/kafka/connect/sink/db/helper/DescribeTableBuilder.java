@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Fork-only (DESC-07): builds the {@link Table} of one {@code DESCRIBE TABLE} pass from the raw
+ * Fork-only: builds the {@link Table} of one {@code DESCRIBE TABLE} pass from the raw
  * JSONEachRow lines the server returns, one line per {@link #addRow(String)} call.
  *
  * <p>Both describe paths (client V1 and client V2) feed the same instance type, so the per-row
@@ -47,7 +47,7 @@ public final class DescribeTableBuilder {
     private static final String ABSENT = "-";
 
     /**
-     * What to do with one DESCRIBE row (DESC-08). A sub-column named {@code size}, {@code size0} or
+     * What to do with one DESCRIBE row. A sub-column named {@code size}, {@code size0} or
      * {@code size<digits>} is either a declared Tuple element or a structural row (Array offsets,
      * String length) that ClickHouse names the same way; only the parent's declared type tells them
      * apart.
@@ -184,7 +184,7 @@ public final class DescribeTableBuilder {
     /**
      * Classifies one DESCRIBE row. Pure: it logs nothing and never throws for a name it cannot split.
      *
-     * @param columnsSoFar the Columns kept so far, for the JSON and Dynamic ancestor walk (DESC-05)
+     * @param columnsSoFar the Columns kept so far, for the JSON and Dynamic ancestor walk
      * @param rawTypes the raw DESCRIBE type of every kept row, keyed by name, for a size-named row's parent
      */
     static RowDecision decide(
@@ -299,7 +299,7 @@ public final class DescribeTableBuilder {
 
     /**
      * Builds the {@link Table} for one DESCRIBE pass, then takes the nullability of every root column
-     * that contains a Tuple from its declared type (COLS-10). It runs once per DESCRIBE, before the
+     * that contains a Tuple from its declared type. It runs once per DESCRIBE, before the
      * Table is published and never per record, so a retried batch sees the same Table as the first
      * attempt. The Table itself is upstream-identical.
      *
