@@ -22,11 +22,11 @@ upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start wi
   earlier releases are not repaired.
 * A rollback to `v1.7.0_gg3` with batches in flight needs a clean stop for a table with a `Tuple` element named
   `size`, `size0` or `size` followed by digits, and for a table whose field names changed under the notice above. The
-  upgrade needs a clean stop for every table with such a `Tuple` element, except the six shapes that were measured to
-  fail on `v1.7.0_gg3` and store no row (the checklist lists them), because a shape that was not measured may have
-  stored a shifted row there (inferred), and for the producers' rename. No other change in this release is expected to
-  need one (the dependency bumps are inferred, not measured; see the rollout checklist). The rollout checklist has the
-  query that finds batches in flight and the procedure.
+  upgrade needs a clean stop for every table with such a `Tuple` element, except a table that has exactly one of the six
+  shapes that were measured to fail on `v1.7.0_gg3` and store no row (the checklist lists them), because a shape that
+  was not measured may have stored a shifted row there (inferred), and for the producers' rename. No other change in
+  this release is expected to need one (the dependency bumps are inferred, not measured; see the rollout checklist).
+  The rollout checklist has the query that finds batches in flight and the procedure.
 * Two writer failure texts change. On connectors whose `clickhouseSettings` set
   `input_format_binary_read_json_as_string` to `1` or `true`, the JSON library's own message, which could name a `Map`
   key, no longer reaches the task status, the stack-trace header of the dead letter queue or the `Error inserting

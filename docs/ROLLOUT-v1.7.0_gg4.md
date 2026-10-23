@@ -241,7 +241,7 @@ You are affected if a connector writes a table that a query of [item 1](#item-1-
 
 ### What to do
 
-Before an upgrade, rename the producer fields as [item 1](#item-1-names-and-enum-labels-as-written-in-create-table) says, and for a table of the shifted shape of [item 2](#item-2-tuple-elements-named-size) stop the connector cleanly first.
+Before an upgrade, rename the producer fields as [item 1](#item-1-names-and-enum-labels-as-written-in-create-table) says, and stop the connector cleanly first for every table that the query of [item 2](#item-2-tuple-elements-named-size) lists, except a table that has exactly one of the six shapes that were measured to fail on `v1.7.0_gg3` (listed in item 2).
 
 To confirm that a connector with `exactlyOnce=true` stopped cleanly before an upgrade, run the query of step 2 below while the connector is stopped. The query is release independent: the state records, the key rule and the token are the same code in `v1.7.0_gg3` and `v1.7.0_gg4` (read from connector code). **Empty result:** no range is in flight, so it is safe to start `v1.7.0_gg4`. **Non-empty result:** start the `v1.7.0_gg3` jar again, let the listed ranges reach `AFTER_PROCESSING`, stop it cleanly and run the query again; repeat until it is empty. A task that was killed, or a worker that restarted, leaves its range in `BEFORE_PROCESSING`, which is what the query finds. A connector with `exactlyOnce=false` has no state table. Recognise its clean stop by two facts: its consumer group has no lag on the topics it consumes (lag is counted from the committed offsets), and the connector was paused or deleted through the Connect REST interface, not killed with its worker. That is how Kafka Connect commits offsets, and it is inferred here, to be pinned live.
 
