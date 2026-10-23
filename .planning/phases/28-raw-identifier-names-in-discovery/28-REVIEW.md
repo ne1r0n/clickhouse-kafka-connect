@@ -1,8 +1,8 @@
 ---
 phase: 28-raw-identifier-names-in-discovery
-reviewed: 2026-10-23T12:00:00Z
+reviewed: 2026-10-23T17:00:00Z
 depth: standard
-files_reviewed: 19
+files_reviewed: 21
 files_reviewed_list:
   - src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java
   - src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
@@ -12,6 +12,7 @@ files_reviewed_list:
   - src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/RawIdentifierNameLiveTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java
+  - src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumMockServerTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/helper/RawNameMatrix.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/helper/RawNameMatrixDriftLiveTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/helper/RawNameMatrixFixturesUnitTest.java
@@ -19,150 +20,62 @@ files_reviewed_list:
   - src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/ColumnTest.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java
   - src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java
+  - src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/UnescapeJsonLayerTest.java
   - build.gradle.kts
   - .github/scripts/jacoco_summary.py
   - docs/FORK-DELTA.md
   - CHANGELOG.md
 findings:
   critical: 0
-  warning: 4
-  info: 3
-  total: 7
+  warning: 0
+  info: 5
+  total: 5
 status: issues_found
 ---
 
 # Phase 28: Code Review Report
 
-**Reviewed:** 2026-10-23T12:00:00Z
+**Reviewed:** 2026-10-23T17:00:00Z
 **Depth:** standard
-**Files Reviewed:** 19
+**Files Reviewed:** 21
 **Status:** issues_found
 
 ## Summary
 
-The phase moves discovery to raw `CREATE TABLE` identifiers on both ClickHouse clients: a names-only
-JSON decode in `ClickHouseFieldDescriptor.fromJsonRow`, one UTF-8 raw-line reader for both describe
-paths, a rewritten `DeclaredNullability.normalise`, and an escape-aware enum label scan in
-`Column.extractEnumValues`. I traced the following and found them sound for the characters the phase
-spiked (backslash, backslash-n, line feed, tab, carriage return, slash, double quote, backtick,
-apostrophe, non-ASCII):
+This is an incremental re-review of the review-fix commits since `a9f7087f` (fixes for WR-01 to WR-04 of the
+first report). The four warnings are resolved and I found no new critical or warning issues in the fixes.
 
-- The token-offset slicing in `fromJsonRow` is consistent for both the char-array and the `StringReader`
-  parser variants, and non-string values are consumed whole by `readValueAsTree`, so they cannot
-  desynchronise the loop.
-- `unescapeJsonLayer` and `normalise` consume escape pairs together, so an escaped quote never closes a
-  quote and a trailing backslash or an unterminated quote is copied unchanged. The JSON layer is correctly
-  decoded before the SQL layer is read.
-- No code that builds SQL from a discovered `Column` name was affected by the switch to raw names (INSERT
-  paths use the table-level insert or config-supplied column lists).
-- The 21-entry fork coverage list in `build.gradle.kts` and `jacoco_summary.py` agree, and every entry has
-  a source file and an inner-class glob.
+What I checked on the fixes:
 
-No critical issues. The highest-value findings are all at the edge the phase declares "not measured": the
-SQL escapes that the server writes for NUL, backspace and form feed, which the enum label scan silently
-mis-reads (WR-01); an exception-handling asymmetry that lets the new enum parse failure abort the whole
-table mapping on the default client V1 (WR-02); and test gaps over the new decoders (WR-03, WR-04).
+- **WR-01 (`Column.unescapedLabelChar`).** The new escape set (`n t r b f 0 \\ \'`, anything else refused) matches
+  what the server writes. I measured it rather than relying on reading: `DESCRIBE TABLE` on
+  `clickhouse/clickhouse-server:latest` for an `Enum16` with labels backspace, form feed, NUL, BEL, VT, 0x01,
+  0x7f, a non-ASCII letter, a double quote, an apostrophe and a backslash returns `'\\b'`, `'\\f'`, `'\\0'`,
+  `'\\''` and `'\\\\'` for the five SQL-escaped ones (the JSON layer doubles the backslash), and writes BEL, VT and
+  0x01 as `\u0007`, `\u000B`, `\u0001` (the JSON layer only, decoded by `unescapeJsonLayer`) and 0x7f, `"` and the
+  non-ASCII letter raw. So the throw on an unknown escape cannot fire for any label the server writes, and the
+  collision case (`'\b'` and `'b'`) is now two distinct keys. The new `ColumnTest` pin uses the doubled-backslash
+  text as the server prints it, which is the correct layer.
+- **WR-02 (`describeTableV1`).** Catching `RuntimeException` makes V1 match V2. `extractTablesMapping` already skips a
+  `null` table and `ClickHouseWriter` (line 1266) falls back to the existing mapping, so a skipped table is handled.
+  The new stub test fails without the fix and passes with it.
+- **WR-03 (`UnescapeJsonLayerTest`, malformed-enum cases).** I traced each case through `unescapeJsonLayer` and
+  `extractEnumValues`; every row lands on the branch its comment names. The Java source escapes are safe (a `\\u`
+  is not a Java unicode escape, and the tests run under `file.encoding=windows-1252`, so only ASCII and `\u` escapes
+  appear in source).
+- **WR-04.** The two substrings are the real cause-chain texts, so the pin no longer passes on an unrelated failure.
 
-## Warnings
+The remaining items are the three info items from the first report (still open per the disposition file) and two
+small new test-quality notes.
 
-### WR-01: Enum label scan reads the SQL escapes `\0`, `\b` and `\f` as the letters 0, b and f
+## Resolved
 
-**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java:457-468` (used at line 406)
-**Issue:** `unescapedLabelChar` translates only `n`, `t` and `r`; every other escaped character is returned
-as itself. ClickHouse writes a string literal through `writeAnyEscapedString`, which escapes backspace,
-form feed and NUL as the pairs backslash-b, backslash-f and backslash-0 (this is my reading of the server's
-quoting routine; it is not measured in this repo, and `28-RESEARCH.md` assumption A1 records that NUL,
-backspace and form feed were not measured). For an enum label holding one of those characters the scan
-therefore produces a different label than the DDL declares:
+Fixed in this iteration and re-verified above; carried only so the history stays visible.
 
-- `Enum8('\b' = 1, 'b' = 2)` yields the keys `b` -> 1 then `b` -> 2 in the `HashMap`; the second `put`
-  silently overwrites the first, so the label that was declared as backspace is lost and a record value of
-  `b` maps to whichever entry was inserted last. Reverse the declaration order and `b` silently maps to the
-  wrong code. That is a silent type-mapping error on a connector whose rule is "no data loss is acceptable".
-- With no collision the label is simply unreachable (a lookup miss).
-
-`docs/FORK-DELTA.md` (Known costs item 11) states that for a control character outside the nine spiked, "a
-label is a lookup miss". That is inaccurate for the collision case above, and the claim rests on a
-behaviour nobody measured. The same gap exists for element names in `normalise` (only `\n`, `\t`, `\r` are
-translated), but there the pair is left for `ClickHouseColumn.of`, the element fails to pair, and the
-fallback WARN fires, so that side fails open.
-**Fix:** Translate every escape the server writes, and refuse an escape that is not a known one so a
-mis-read can never become a silent key:
-```java
-private static char unescapedLabelChar(char escaped) {
-    switch (escaped) {
-        case 'n': return '\n';
-        case 't': return '\t';
-        case 'r': return '\r';
-        case 'b': return '\b';
-        case 'f': return '\f';
-        case '0': return '\0';
-        case '\\':
-        case '\'': return escaped;
-        default: throw malformedEnumType(); // unknown escape: map the table as unreadable, not as a wrong key
-    }
-}
-```
-Add a `ColumnTest` case with `Enum8('\\b' = 1, 'b' = 2)` (the type text as the server prints it) asserting both
-keys survive, and add `bs`-style spike entries for backspace, form feed and NUL to `RawNameMatrix` so the
-assumption becomes a measurement. Correct the Known costs wording once measured.
-
-### WR-02: `describeTableV1` lets the new enum parse failure escape and abort the mapping of the whole database
-
-**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java:505`
-**Issue:** `describeTableV2` catches `Exception` and returns `null`, so one undescribable table is skipped.
-`describeTableV1` (the default client, per the CHANGELOG) catches only `ClickHouseException | IOException`.
-This phase adds a new throw site in `Column.extractEnumValues` (`malformedEnumType()`, an
-`IllegalArgumentException`, nine places) that is reached from `DescribeTableBuilder.addRow` inside
-`readDescribeRows`. On V1 it propagates out of `describeTable`, out of `extractTablesMapping`'s per-table
-loop (line ~613) and out of `ClickHouseWriter.updateMapping`, so one table with an enum type the scan
-rejects stops every later table in that database from being described, and on startup it fails
-`ClickHouseWriter.start()`. V2 returns `null` for the same input. The phase's own premise is that both
-clients behave the same on the same lines; this keeps one divergence, and the phase makes it reachable by
-a new exception. The same applies to the pre-existing `NumberFormatException`/`RuntimeException` paths in
-`Column.extractColumn`.
-**Fix:** Make the V1 path total the way V2 is:
-```java
-} catch (ClickHouseException | IOException | RuntimeException e) {
-    LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
-    return null;
-}
-```
-Add a V1 unit or live test with a deliberately unreadable enum type asserting `describeTable` returns `null`
-and a later table is still mapped.
-
-### WR-03: The new JSON-layer decoder's `\uXXXX` path and the malformed-enum branches have no test
-
-**File:** `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java:163-165,174-185`; `src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java:383-447`
-**Issue:** `unescapeJsonLayer` is a hand-written decoder on the type-text path of every Tuple and every enum,
-and the server emits `\u00XX` for control characters below U+0020 other than `\b \f \n \r \t`. No test
-exercises it: the matrix `ctl` entry deliberately uses `_` ("control with no escaped character"), the `na`
-entry is written raw by the server, and a search of `src/test` finds no `\u00` row text fed to `normalise`,
-`fromJsonRow` or `extractColumn`. So `isUnicodeEscape` (uppercase hex, a non-hex digit, fewer than four
-digits at the end of the string, a non-ASCII digit rejected by `MAX_ASCII`) and the copy-unchanged branch
-for an unknown escape are unpinned. Likewise none of the nine `throw malformedEnumType()` sites in
-`extractEnumValues` is asserted by any test (`ColumnTest` only covers the success path and lookup misses),
-yet the message `Enum type could not be read` is a deliberate contract (the label must stay out of it).
-**Fix:** Add Docker-free cases to `DeclaredNullabilityTest` and `ColumnTest`: `unescapeJsonLayer` on `A`,
-`é` and `é` (equal), `\u00zz`, `\u004` (truncated), `\q`, a lone trailing backslash and a surrogate
-pair; and one `assertThrows(IllegalArgumentException.class, ...)` per malformed enum shape (no `(`, missing
-quote, missing `=`, no digits, missing `)`, trailing backslash, an overflowing code) that also asserts the
-message equals `Enum type could not be read`.
-
-### WR-04: `legacyEnumLabelKeyFailsLoudly` passes on any failure, not on the enum lookup miss it names
-
-**File:** `src/test/java/com/clickhouse/kafka/connect/sink/RawIdentifierNameLiveTest.java:341`
-**Issue:** The sibling element test passes a cause substring (`missingColumnText`) so that it cannot pass
-for an unrelated reason, and its Javadoc says exactly that. The enum pin calls
-`NullableRoundTrip.assertPutFails(props, List.of(enumRecord(table, legacyKey)), chc, table)` with no
-substring, so it is green for a connection error, a timeout or a table-creation fault, which is also what a
-flaky Docker run produces. The pin is meant to prove "an enum value in the earlier key form is a lookup
-miss" (CHANGELOG, FORK-DELTA item 11).
-**Fix:** Pass the expected text, which `Column.convertEnumValues` produces:
-```java
-NullableRoundTrip.assertPutFails(
-        props, List.of(enumRecord(table, legacyKey)), chc, table, "Enum label not found for column e");
-```
+- WR-01: Enum label scan reads the SQL escapes `\0`, `\b` and `\f` as the letters 0, b and f (fixed, a8f50d87 and 54447ab4)
+- WR-02: `describeTableV1` lets the new enum parse failure escape and abort the mapping of the whole database (fixed, ae97c496)
+- WR-03: The new JSON-layer decoder's `\uXXXX` path and the malformed-enum branches have no test (fixed, 16950de4)
+- WR-04: `legacyEnumLabelKeyFailsLoudly` passes on any failure, not on the enum lookup miss it names (fixed, 2575092a)
 
 ## Info
 
@@ -197,8 +110,37 @@ fields first, but nothing at runtime reveals a missed rename, and rows already w
 only after applying the old doubling; otherwise promote the CHANGELOG entry to a breaking-change notice
 at the top of the release.
 
+### IN-04: The server's escape set for enum labels is now measurable, but the pin and the wording still say "not measured"
+
+**File:** `docs/FORK-DELTA.md` (Known costs item 11); `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/ColumnTest.java:195-201`
+**Issue:** The fix pins backspace, form feed and NUL only on hand-written type text, and the FORK-DELTA wording
+says the server is "expected to write" those escapes. A one-line `DESCRIBE` against `latest` (see the Summary)
+confirms it, including that other control characters (BEL, VT, 0x01) are written raw and only JSON-escaped as
+`\u00XX`. Nothing in `RawNameMatrix` or its live and drift tests will notice if a later server changes that set,
+and the new fail-closed throw would then turn such a label into an unmapped table instead of a mis-key. The
+same escape set is still translated for element names only for `\n`, `\t`, `\r` in `DeclaredNullability.normalise`
+(a name with a backspace, form feed or NUL falls back with the existing WARN, also unmeasured).
+**Fix:** Add backspace, form feed, NUL and BEL spike entries to `RawNameMatrix` (enum label and Tuple element
+name), run the live matrix once, and then drop the "expected to write" and "not measured" hedges for those
+characters in FORK-DELTA item 11.
+
+### IN-05: `DescribeUnreadableEnumMockServerTest` never closes the helper clients and does not tie the null to the enum
+
+**File:** `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumMockServerTest.java:62-75`
+**Issue:** `client(boolean)` builds a `ClickHouseHelperClient` (which is `AutoCloseable`) per test and neither
+test closes it, against the repository rule to use try-with-resources for `AutoCloseable`. Separately, the
+assertion `assertNull(describeTable(unreadable))` is satisfied by any exception inside the describe, not only the
+enum scan; the stub serving a clean `readable` table afterwards guards against a dead server but not against the
+unreadable table failing for a different reason. `RawIdentifierNameLiveTest.ENUM_LOOKUP_MISS_TEXT` also hard-codes
+`Enum8` in a message prefix, so adding an `Enum16` matrix entry would fail the pin for a reason unrelated to the
+behaviour.
+**Fix:** Create the client in a try-with-resources block inside `assertUnreadableTableIsSkippedAndTheNextOneIsMapped`
+(pass the boolean instead of the client). To bind the null to the enum cause, assert on the logged error (a
+Logback or Log4j test appender capturing `Enum type could not be read`) or call `Column.extractColumn` on the
+stub row in a separate assertion. Build the live pin's type text from `RawNameMatrix` rather than a literal.
+
 ---
 
-_Reviewed: 2026-10-23T12:00:00Z_
+_Reviewed: 2026-10-23T17:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
