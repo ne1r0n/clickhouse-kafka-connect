@@ -1,6 +1,6 @@
 # Rollout checklist: `v1.7.0_gg3` to `v1.7.0_gg4`
 
-**Rename before you upgrade.** This release matches a Kafka record field to a column name, a Tuple element name or an `Enum` label as it is written in `CREATE TABLE`. A producer that names a field in the earlier, escaped form (a doubled backslash, a backslash and a letter for a line feed, a tab or a carriage return, a backslash before a slash) must be renamed to the name written in `CREATE TABLE` before you upgrade. See [item 1](#item-1-names-and-enum-labels-as-written-in-create-table).
+**Rename before you upgrade.** This release matches a Kafka record field to a column name, a Tuple element name or an `Enum` label as it is written in `CREATE TABLE`. A producer that names a field in the earlier, escaped form (a doubled backslash, a backslash and a letter for a line feed, a tab or a carriage return, a backslash before a slash) must be renamed to the name written in `CREATE TABLE` before you upgrade. That is the form on client V2; on client V1, the default, a backslash name and a line-feed name already matched the name as written, and the changes are the tab, carriage return, slash and double quote cases (see the table in item 1). See [item 1](#item-1-names-and-enum-labels-as-written-in-create-table).
 
 If you are coming from a release before `v1.7.0_gg3`, work through [`ROLLOUT-v1.7.0_gg3.md`](ROLLOUT-v1.7.0_gg3.md) first, which in turn sends you to the gg2 and gg1 notes, and return here afterwards.
 

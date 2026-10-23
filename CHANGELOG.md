@@ -11,13 +11,15 @@ upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start wi
 * Rename producer fields before you upgrade. The connector now matches a Kafka record field to a column name, a
   `Tuple` element name or an `Enum` label as it is written in `CREATE TABLE`, on client V1 and on client V2. A field
   that is still named in the earlier, escaped form (a doubled backslash, a backslash and a letter for a line feed, a
-  tab or a carriage return, a backslash before a slash) no longer matches: after the upgrade a root field under the
-  earlier name stores the column's DEFAULT with no error and no log line, and a `Tuple` element under it fails the
-  record. Rename those fields to the names written in `CREATE TABLE`. Pause the producers, let the old release consume
-  everything that was produced under the earlier names, stop it cleanly, switch the producers, then upgrade and resume
-  them. Tables that earlier releases could not map (a double quote in a name on client V2, a tab or a carriage return
-  in a name on client V1) are mapped now, so records for them start to land. Rows stored by earlier releases are not
-  repaired.
+  tab or a carriage return, a backslash before a slash; that is the form on client V2, while on client V1, the
+  default, a backslash name and a line-feed name already matched the name as written and the changes are the tab,
+  carriage return, slash and double quote cases, see the rollout checklist) no longer matches: after the upgrade a
+  root field under the earlier name stores the column's DEFAULT with no error and no log line, and a `Tuple` element
+  under it fails the record. Rename those fields to the names written in `CREATE TABLE`. Pause the producers, let the
+  old release consume everything that was produced under the earlier names, stop it cleanly, switch the producers,
+  then upgrade and resume them. Tables that earlier releases could not map (a double quote in a name on client V2, a
+  tab or a carriage return in a name on client V1) are mapped now, so records for them start to land. Rows stored by
+  earlier releases are not repaired.
 * A rollback to `v1.7.0_gg3` with batches in flight needs a clean stop for a table with a `Tuple` element named
   `size`, `size0` or `size` followed by digits, and for a table whose field names changed under the notice above. The
   upgrade needs a clean stop for every table with such a `Tuple` element, except the six shapes that were measured to
