@@ -421,3 +421,116 @@ a246ca01b073faae86e2e92bb0288c07dd7eb0d7	refs/tags/v1.7.0_gg2
 `custom_build` has not moved since the DEPS-02 merge: no Phase 29 decision under OPS-05 is open. Origin has no `sync/v1.7.0` branch, no `pre-v1.7.0_gg4` tag and no `v1.7.0_gg4` tag. Nothing was pushed, merged, tagged or commented on by this plan; PRs #4 and #10 were only read.
 
 Matches text: pending (29-05)
+
+### E-10: Column trees over the 47 catalog tables, gg3 versus gg4 (999.4)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the 999.4 items (scope: which tables encode differently, the WARN counts, the log-grep proof), written in plan 29-04. Method: the probe method `sizeDescribe` (scratch `/tmp/gsd29/probe/Phase29RolloutProbe.java`, never committed) creates the 47 tables of `DescribeFixtureCatalog` (the list is read from `/tmp/gsd29/probe/catalog.tsv`, produced by `/tmp/gsd29-scripts/catalog-tsv.py` from the tip's catalog class, because the class does not exist at `v1.7.0_gg3`) as `CREATE TABLE p29_desc.<key> (id Int32, <columnsDdl>) ENGINE = MergeTree ORDER BY id` in a fresh database of the run's Testcontainers ClickHouse, describes each through the production `ClickHouseHelperClient.describeTable` (client V2) with `LogCapture` attached to `ClickHouseHelperClient` and `DeclaredNullability`, and prints one `PROBE-COL` line per Column node (path = the node names and types joined by `/` for a Tuple element, `[]` for an Array element, `{}` for a Map value, plus the nullable flag), one `PROBE-WARNS` line per table (counts of WARN events with `have no matching DESCRIBE sub-column` and `Could not read the declared type`) and, on gg3, the first unpaired WARN of `s4_a01`. The same class ran unchanged in a worktree of tag `v1.7.0_gg3` (`/tmp/gsd29/wt-gg3`, `3376a18f`) and in a worktree at the gg4 tip (`/tmp/gsd29/wt-tip`, detached at `46b2cf15`; only `.planning/` differs from the bump commit `547c37a1`, and `src/` is as at `P29_BASE`). Each run had its own container: server `26.9.19.9`, client V2, image `sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b` created 2026-10-14T18:05:21Z (the floating `latest`).
+
+```sh
+python3 -I /tmp/gsd29-scripts/catalog-tsv.py src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java /tmp/gsd29/probe/catalog.tsv
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-gg3/gradlew -p /tmp/gsd29/wt-gg3 --console=plain test --tests '*Phase29RolloutProbe.sizeDescribe' --tests '*Phase29RolloutProbe.sizeInsert' --rerun
+cp /tmp/gsd29/wt-gg3/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/d994-gg3.xml
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain test --tests '*Phase29RolloutProbe.sizeDescribe' --tests '*Phase29RolloutProbe.sizeInsert' --rerun
+cp /tmp/gsd29/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/d994-gg4.xml
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/d994-gg3.xml /tmp/gsd29/exec/d994-gg4.xml
+```
+
+Both runs ended `BUILD SUCCESSFUL` (XML `tests="2" skipped="0" failures="0" errors="0"` each; 179 `PROBE-COL` lines on gg3, one per Column node; the gg4 run has more).
+
+```text
+PROBE-VERSION tree=gg3 version=26.9.19.9
+PROBE-VERSION tree=gg4 version=26.9.19.9
+PROBE-WARNS tree=gg3 table=<each of the 25 differing keys> unpaired=1 unreadable=0
+PROBE-WARNS tree=gg3 table=<each of the other 22 keys, x08 and the over-flag s4_o01 included> unpaired=0 unreadable=0
+PROBE-WARNS tree=gg4 table=<each of the 47 keys> unpaired=0 unreadable=0
+PROBE-UNMAPPED lines: none on either tree (all 47 tables were described to a Table)
+PROBE-WARNLINE tree=gg3 table=s4_a01 text=Declared Tuple element(s) [c.size] of column c of table p29_desc.s4_a01 (declared type Tuple(\\n    size UInt16,\\n    v String)) have no matching DESCRIBE sub-column; applying the declared nullability to the elements that paired
+```
+
+(The probe prints a backslash as two, so the `\\n` in the `PROBE-WARNLINE` is the two characters backslash and `n` that the connector's own log line holds: DESCRIBE returns the declared type with line breaks as the text `\n`, and the WARN carries it unchanged, as the gg3 note says. The log line proper is `Declared Tuple element(s) [c.size] of column c of table p29_desc.s4_a01 (declared type Tuple(\n    size UInt16,\n    v String)) have no matching DESCRIBE sub-column; applying the declared nullability to the elements that paired` with `\n` as backslash and `n`.)
+
+Per-table verdict, from the `PROBE-COL` lines of both XMLs. In every differing table the gg4 tree holds the nodes listed and the gg3 tree holds no node that gg4 lacks (a node that gg3 dropped is a Tuple element named `size`, `size0` or `size<digits>`; its parent keeps the remaining elements):
+
+| Table | Verdict | Nodes only in the gg4 tree |
+|-------|---------|----------------------------|
+| s4_a01 | differing | `c:TUPLE/c.size:UINT16` |
+| s4_a02 | differing | `c:TUPLE/c.size0:UINT8` |
+| s4_a03 | differing | `c:TUPLE/c.size:UINT8` |
+| s4_a04 | differing | `c:ARRAY[]c:TUPLE/c.size:UINT16` |
+| s4_a05 | differing | `c:MAP{}c.values:TUPLE/c.values.size:UINT8` |
+| s4_a06 | differing | `c:TUPLE/c.x:TUPLE/c.x.size:UINT8` |
+| s4_a07 | differing | `c:TUPLE/c.x:ARRAY[]c.x:TUPLE/c.x.size0:UINT8` |
+| s4_a08 | differing | `c:ARRAY[]c:TUPLE/c.size1:UINT16` |
+| s4_a09 | differing | `c:ARRAY[]c:TUPLE/c.size12:UINT8` |
+| s4_a10 | differing | `c:ARRAY[]c:ARRAY[]c:TUPLE/c.size1:UINT8` |
+| s4_a11 | differing | `c:TUPLE/c.x:ARRAY[]c.x:TUPLE/c.x.size1:UINT8` |
+| s4_a12 | differing | `c:ARRAY[]c:TUPLE/c.x:TUPLE/c.x.size1:UINT8` |
+| s4_a13 | differing | `c:ARRAY[]c:TUPLE/c.size1:UINT16` |
+| n01 | differing | `c.size0:UINT8`, `c.size1:UINT8` under `ARRAY[]ARRAY[]TUPLE` |
+| n02 | differing | `c:ARRAY[]c:TUPLE/c.size0:TUPLE` and its child `c.size0.a:UINT8` |
+| n03 | differing | `c.size0:STRING`, `c.size:STRING` under `ARRAY[]TUPLE` |
+| n04 | differing | `c.values.size0:UINT8`, `c.values.size:UINT8` under `ARRAY[]MAP{}TUPLE` |
+| x01 | differing | `c:TUPLE/c.size:TUPLE` and its children `c.size.a:UINT8`, `c.size.b:STRING` |
+| x02 | differing | `c:ARRAY[]c:TUPLE/c.size:TUPLE` and its child `c.size.a:UINT8` |
+| x03 | differing | `size:TUPLE/size.size0:STRING`, `size:TUPLE/size.size:UINT8` |
+| x04 | differing | `c:ARRAY[]c:TUPLE/c.size1:UINT64` |
+| x05 | differing | `c.size0:UINT64`, `c.size1:UINT64` under `ARRAY[]ARRAY[]TUPLE` |
+| x06 | differing | `c:ARRAY[]c:TUPLE/c.size0:UINT8` |
+| x07 | differing | `c:MAP{}c.values:ARRAY[]c.values:TUPLE/c.values.size:UINT8` |
+| r01 | differing | `c:TUPLE/c.size:UINT32` |
+| s4_u01..s4_u19 (19 tables) | identical | none |
+| s4_o01 (the over-flag shape `Array(Map(String, Tuple(size1 UInt8)))`) | identical | none |
+| n05 (`Tuple(keys UInt8, values String)`) | identical | none |
+| x08 (`JSON(a Tuple(size UInt8, v String))`) | identical | none (both trees keep only `id` and `j:JSON`, DESC-05) |
+
+```text
+D994-DIFFERING=n01,n02,n03,n04,r01,s4_a01,s4_a02,s4_a03,s4_a04,s4_a05,s4_a06,s4_a07,s4_a08,s4_a09,s4_a10,s4_a11,s4_a12,s4_a13,x01,x02,x03,x04,x05,x06,x07
+```
+
+Result: the two trees differ for exactly the 25 affected keys (`s4_a01`..`s4_a13`, `n01`..`n04`, `x01`..`x07`, `r01`) and for none of the 19 look-alikes, `s4_o01`, `n05` or `x08`. Warnings: on gg3 every one of the 25 differing tables logged exactly one unpaired-element WARN and no table logged an unreadable-parent WARN (the text does not exist there); on gg4 no table of the 47 logged either WARN, `x08` included (its counts, 0 and 0, are the same on both trees). This is the affected set that research R4 and Phase 26 E-02 give; it was measured here, not copied.
+
+Matches text: pending (29-04)
+
+### E-11: one live insert per shape, gg3 versus gg4 (999.4)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the 999.4 items (what an affected shape did on gg3 and does on gg4; the shifted-row shape), written in plan 29-04. Method (`sizeInsert`, same two runs and the same XMLs as E-10): for each of ten shapes the table is created from its catalog DDL before `task.start()`, a `ClickHouseSinkTask` (V2, `exactlyOnce` unset) puts one record of constants at partition 0, offset 0 (topic = table name), and the row is read back with typed SQL (`toString(c)`; for `r01` the tuple element `size` and `hex` of `v`) and compared inside the probe against the record. Records: `s4_a01` element `size` 7 and `v` `ab`; `s4_a04` one such element in the array; `s4_a08` and `s4_a13` the same with `size1` (in `s4_a13` after `v`); `n03` one element with `size0` `p` and `size` `q`; `x01` `size` a Tuple of `a` 1 and `b` `q`; `r01` `size` 7 and `v` the four bytes `abc`, U+0003, `xyz` (the Phase 26 E-08 record); controls `s4_u01` `size1` 7 and `v` `ab`, `s4_u03` one Map entry with key `k` and that Tuple, `s4_u05` `sizes` 7 and `v` `ab`.
+
+```text
+PROBE-INSERT tree=gg3 table=s4_a01 outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg3 table=s4_a04 outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg3 table=s4_a08 outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg3 table=s4_a13 outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg3 table=n03 outcome=failed code=32 rows=0 match=-
+PROBE-INSERT tree=gg3 table=x01 outcome=failed code=33 rows=0 match=-
+PROBE-INSERT tree=gg3 table=r01 outcome=stored code=- rows=1 match=no
+PROBE-ROW tree=gg3 table=r01 size=1667391751 vhex=78797A
+PROBE-INSERT tree=gg3 table=s4_u01 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=s4_u03 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg3 table=s4_u05 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=s4_a01 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=s4_a04 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=s4_a08 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=s4_a13 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=n03 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=x01 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=r01 outcome=stored code=- rows=1 match=yes
+PROBE-ROW tree=gg4 table=r01 size=7 vhex=6162630378797A
+PROBE-INSERT tree=gg4 table=s4_u01 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=s4_u03 outcome=stored code=- rows=1 match=yes
+PROBE-INSERT tree=gg4 table=s4_u05 outcome=stored code=- rows=1 match=yes
+```
+
+| Table (shape) | gg3 | gg4 |
+|---------------|-----|-----|
+| s4_a01 `Tuple(size UInt16, v String)` | failed, code 33, 0 rows | stored, equals the record |
+| s4_a04 `Array(Tuple(size UInt16, v String))` | failed, code 33, 0 rows | stored, equals the record |
+| s4_a08 `Array(Tuple(size1 UInt16, v String))` | failed, code 33, 0 rows | stored, equals the record |
+| s4_a13 `Array(Tuple(v String, size1 UInt16))` | failed, code 33, 0 rows | stored, equals the record |
+| n03 `Array(Tuple(size0 String, size String))` | failed, code 32, 0 rows | stored, equals the record |
+| x01 `Tuple(size Tuple(a UInt8, b String))` | failed, code 33, 0 rows | stored, equals the record |
+| r01 `Tuple(size UInt32, v String)` | stored one row that differs from the record: `size` 1667391751, `v` hex `78797A` (the three bytes `xyz`) | stored the record: `size` 7, `v` hex `6162630378797A` |
+| s4_u01, s4_u03, s4_u05 (controls) | stored, equal to the record | stored, equal to the record |
+
+Verdicts. gg3 to gg4 is an upgrade for these shapes: the six failing shapes stored nothing on gg3 (so no row of them exists from gg3), and `r01` shows that a shorter write which parses stores a wrong value (gg3 writes only the string, so the server reads the `UInt32` size from the first four bytes it finds: the length byte 7 and `abc`, which is 1667391751 in little-endian order, and then reads `xyz` as `v` from the remaining bytes, the length byte 3 and `xyz`), the one case of this kind that was measured. The controls store identically on both. The server codes are the ones this server printed for these records: 33 for five shapes and 32 for `n03`; they are not the assignment per shape that the gg3 note gives (code 32 for `Tuple(size UInt16, v String)`, `Array(Tuple(size UInt16, v String))` and `Array(Tuple(size1 UInt16, v String))`, code 33 for `Array(Tuple(v String, size1 UInt16))`), so a document that names a code per shape would contradict this measurement; the code is 32 or 33, depending on where the parse runs out of bytes, which depends on the record. Neither measurement shows a different outcome class (a failed insert with 0 rows).
+
+Matches text: pending (29-04)
