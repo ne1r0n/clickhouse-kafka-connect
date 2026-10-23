@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: IN-02
     severity: info
-    disposition: skipped
+    disposition: deferred
     title: "Production dead code kept only for tests"
   - id: IN-06
     severity: info
@@ -65,14 +65,14 @@ findings:
     title: "Byte-for-byte drift tests against a floating `latest` image can turn the whole suite red for reasons unrelated to the connector"
 open: 0
 total: 15
-recorded: 2026-10-22T13:48:28.450Z
+recorded: 2026-10-23T18:45:37.538Z
 ---
 
 # Phase 26: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-02 | info | skipped | 26-REVIEW-FIX.md |
+| IN-02 | info | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: dead code kept for tests and pinned by an anchor row; removal edits src and the anchor) |
 | IN-06 | info | fixed | 26-REVIEW-FIX.md |
 | IN-12 | info | fixed | 26-REVIEW-FIX.md |
 | IN-13 | info | fixed | 26-REVIEW-FIX.md |

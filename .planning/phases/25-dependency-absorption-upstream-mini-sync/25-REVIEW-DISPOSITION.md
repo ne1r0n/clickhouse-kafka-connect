@@ -5,48 +5,48 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "The archive-step guard accepts a `createConfluentArchive` call that does not verify anything"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "`ConnectApiReferencesUnitTest` silently drops inherited-member references it cannot resolve, and resolves them on the test classpath"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "The reference derivation only reads Class/Field/Method constants, so a Kafka type used only in a descriptor, signature or annotation is never checked"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: deferred
     title: "A stale version directory under `build/confluentArchive` turns into an unexplained \"found 2\" failure"
   - id: IN-02
     severity: info
-    disposition: open
+    disposition: deferred
     title: "`ConfluentArchiveCheck` coverage edges"
   - id: IN-03
     severity: info
-    disposition: open
+    disposition: deferred
     title: "Brittle exact-text assertions in the new guards"
   - id: IN-04
     severity: info
-    disposition: open
+    disposition: deferred
     title: "Build and repository hygiene carried by the merges"
-open: 7
+open: 0
 total: 7
-recorded: 2026-10-21T17:40:47.687Z
+recorded: 2026-10-23T18:45:37.538Z
 ---
 
 # Phase 25: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
+| WR-01 | warning | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: the pin guard accepts an archive call that verifies nothing; test edit) |
+| WR-02 | warning | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: the reference test skips unresolved inherited members; test edit) |
+| WR-03 | warning | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: the reference derivation reads Class, Field and Method constants only; test edit) |
+| IN-01 | info | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: a stale version directory gives an unexplained found 2 failure; build edit) |
+| IN-02 | info | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: archive check coverage edges; test edit) |
+| IN-03 | info | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: brittle exact-text assertions; test edit) |
+| IN-04 | info | deferred | 29-MILESTONE-CLOSE-RECORD.md (carried: build hygiene points; the Gradle 7.4.2 half is documented in FORK-DELTA, the rest is build-side) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
