@@ -3,6 +3,8 @@ package com.clickhouse.kafka.connect.sink.db.mapping;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -202,6 +204,25 @@ class ColumnTest {
     public void enumLabelWithAnEscapeTheServerDoesNotWriteIsRefusedNotMisread() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> Column.extractColumn(newDescriptor("c_enum8", "Enum8('\\\\q' = 1)")));
+        assertEquals("Enum type could not be read", e.getMessage());
+    }
+
+    @ParameterizedTest(name = "[{index}] the enum type {0} is refused with a message that holds no label")
+    @ValueSource(strings = {
+        "Enum8", // no list
+        "Enum8(a = 1)", // label without a quote
+        "Enum8('a = 1)", // unterminated label
+        "Enum8('a' 1)", // no separator between label and code
+        "Enum8('a' = )", // no digits
+        "Enum8('a' = -)", // a sign and no digits
+        "Enum8('a' = 1", // no closing parenthesis
+        "Enum8('a' = 1 x)", // junk after the code
+        "Enum8('a\\", // trailing backslash inside a label
+        "Enum8('a' = 99999999999)" // code does not fit an int
+    })
+    public void malformedEnumTypeIsRefusedWithoutTheLabelInTheMessage(String type) {
+        IllegalArgumentException e = assertThrows(
+                IllegalArgumentException.class, () -> Column.extractColumn(newDescriptor("c_enum8", type)));
         assertEquals("Enum type could not be read", e.getMessage());
     }
 
