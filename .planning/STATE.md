@@ -5,11 +5,11 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 29
 current_phase_name: Release & Publication
 status: planning
-stopped_at: Phase 28 complete, ready to plan Phase 29
-last_updated: "2026-10-23T14:00:10.720Z"
+stopped_at: Phase 29 context gathered
+last_updated: "2026-10-23T14:40:31.320Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 28 complete, transitioned to Phase 29
-state_head: 7e63f29965893c1b73e9cfb93f2f0199a29b4ef3
+state_head: 10393ce52dbf5c173a818b8ff3af6d1a48a285c7
 progress:
   total_phases: 5
   completed_phases: 4
@@ -301,9 +301,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T11:57:25.412Z
-Stopped at: Phase 28 complete, ready to plan Phase 29
-Resume file: None
+Last session: 2026-10-23T14:40:30.305Z
+Stopped at: Phase 29 context gathered
+Resume file: .planning/phases/29-release-publication/29-CONTEXT.md
 
 ## Operator Next Steps
 
