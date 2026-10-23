@@ -1,7 +1,7 @@
 ---
 phase: 28-raw-identifier-names-in-discovery
-verified: 2026-10-23T12:20:00Z
-status: human_needed
+verified: 2026-10-23T18:30:00Z
+status: passed
 score: 5/5 must-haves verified
 covered_files:
   - ".github/scripts/jacoco_summary.py"
@@ -26,26 +26,27 @@ covered_files:
   - "src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java"
   - "src/test/java/com/clickhouse/kafka/connect/ci/ForkCoverageScopeUnitTest.java"
   - "src/test/java/com/clickhouse/kafka/connect/sink/RawIdentifierNameLiveTest.java"
-covered_digest: "v3:sha256:4a3e9dad1388ce43d87fc78b1f9fcbdf506c9763ad85a359504d67660a608f5a"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumMockServerTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/ColumnTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java"
+  - "src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/UnescapeJsonLayerTest.java"
+covered_digest: "v3:sha256:4228dc573140eaf0ae52964bca7d97e23df88c1e76f928f199c97c037f20e0da"
 behavior_unverified: 0
 overrides_applied: 0
-human_verification:
-  - test: "Sign off the named exemption list (plan 28-06 human-check). Read 28-COMMAND-EVIDENCE.md E-06 `#### Named exemption list` (X-01..X-12 pins, S-01..S-04 support rows) and its `exemption_signoff:` line, then E-13's `assertion diff check` and `predicate changes to existing assertions` tables."
-    expected: "Every removed src/test line is covered by a list row; each of X-01..X-12 is a change of the expected form under the 2026-10-21 decision (raw identifier canonical, no dual-form alias) with the same strictness; no other existing test member changed; S-01..S-04 change no assertion."
-    why_human: "The plan declares this sign-off as an end-of-phase human item. S-04 (the private constant RESOURCE_PATH_FORMAT) was added to the list at the gate through a relayed user choice, and the summary treats that relay as the sign-off of the 16-row list; a relayed choice is not the plan's own end-of-phase confirmation, so it stays open."
-  - test: "Confirm the two choices the phase made on the user's behalf (plan 28-06 human-check)."
-    expected: "(a) The NAME-07 documents (FORK-DELTA, CHANGELOG, Known costs item 11, ROADMAP 999.5) landed in fix(28-05) rather than fix(28-03). (b) Column's enum-label scan calls the package-private DeclaredNullability.unescapeJsonLayer instead of carrying its own copy (research Open Question 1)."
-    why_human: "Both are design decisions the plan routes to the user; they are not mechanically verifiable."
+re_verification:
+  previous_status: human_needed
+  previous_score: 5/5
+  gaps_closed: []
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 28: Raw Identifier Names in Discovery Verification Report
 
 **Phase Goal:** A column or Tuple element whose name contains a backslash, a literal backslash-n, a line feed, a tab, a carriage return, a slash, a double quote, a backtick or a non-ASCII character is matched under its raw identifier, as written in `CREATE TABLE`. A Kafka record using that name lands, and the typed read-back equals it. Declared nullability still pairs. The doubled form's behaviour is pinned as the rollout note will state it, and there is no dual-form alias. This closes backlog 999.5 and FORK-DELTA Known costs item 11, and the fork coverage report lists every fork class.
-**Verified:** 2026-10-23T12:20:00Z
-**Status:** human_needed
-**Re-verification:** No, initial verification
-
-All code and documentation checks pass. The only open items are the human sign-offs the plan itself declares (exemption list, two design choices). Four advisory code-review warnings are recorded below; none contradicts a must-have.
+**Verified:** 2026-10-23T18:30:00Z
+**Status:** passed
+**Re-verification:** Yes. The earlier report (status `human_needed`, no `gaps:`) is stale: review-fix commits a8f50d87, ae97c496, 16950de4, 2575092a and 54447ab4 changed covered files after it. This run re-read the code at HEAD (393e226f) and re-ran the affected tests. The two human items of the earlier report are signed off in 28-UAT.md (2/2 pass).
 
 ## Goal Achievement
 
@@ -53,11 +54,11 @@ All code and documentation checks pass. The only open items are the human sign-o
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | NAME-01: escaped-quote branch of `normalise` pinned on the current code before any decode change; red under the always-close mutation | VERIFIED | `DeclaredNullabilityTest.escapedBacktickInsideANameKeepsTheQuoteOpen` (line 340) and `twoBackslashesBeforeNOutsideQuotesAreNotALineBreak` (line 348) exist and pass in my run (69 tests, 0 failures). Commit 1f984bef (`test(28-01)`) precedes every src/main change. I traced the old `normalise` (f3b1c487) by hand: with `if (escaped == quote)` the quote closes at the escaped backtick, the `\n` pair at the end is then left unreplaced, so the expectation fails. Red-run output is recorded in E-02; I did not re-execute the mutation (no source edits allowed). |
-| 2 | NAME-02: live name-matrix spike on `latest` records current and decoded forms for root, Tuple, enum label | VERIFIED | E-04 holds a 12-entry table (ctl, bs, bsn, lf, tab, cr, sl, dq, bt, na, ap, btbsn) with columns server JSON text, current V2, current V1, decoded, for root, tuple, array_tuple, nullable_tuple, map_tuple and enum_label. Server 26.9.19.9 on `latest`. `RawNameMatrixLiveTest` (25) and `RawNameMatrixFixturesUnitTest` (50) pass in my run. |
-| 3 | NAME-03/04: names-only decode, V1 raw UTF-8 lines, pairing on raw-name key, COLS-13 twins green, 23-REVIEW IN-01/IN-02 closed | VERIFIED | `ClickHouseFieldDescriptor.fromJsonRow` decodes only the `name` field via `parser.getText()` and slices every other string from the source text, so type text keeps its JSON layer (code read). `ClickHouseHelperClient.readDescribeRows` reads raw lines as UTF-8 for both V1 (`response.getInputStream()`) and V2. `DeclaredNullability.normalise` is rewritten (decode JSON layer via `unescapeJsonLayer`, then quote-aware pass). Decode and pairing key landed together in d589234f. `NullableTupleMatrixLiveTest` 33/33 and `TableTest` (incl. `extractCommentV1`) pass in my run. IN-01: `apply` Javadoc no longer says "all or none". IN-02: null-name check sits above the `try` and logs `<unnamed>`. |
-| 4 | NAME-05/06: raw-name record lands with typed read-back; doubled root stores DEFAULT; doubled element fails loudly; enum labels round-trip under raw form | VERIFIED | `RawIdentifierNameLiveTest`: 73 cases, 0 skipped, 0 failures in my run, covering `rawNamesLandAndReadBackTyped` (reads back and compares), `doubledRootNameStoresTheDefault`, `doubledElementNameFailsLoudly` (with a cause substring, per container shape) and `rawEnumLabelLandsAndReadsBackTyped`. `Column.extractEnumValues` is an escape-aware scan. A manual `CLIENT_VERSION=V1` run (105 tests, 0 failed) is recorded in E-10. |
-| 5 | NAME-07/DEBT-17: FORK-DELTA row, CHANGELOG line, Known costs item 11 retired, 999.5 delivered, in the fix commit; 21-class `jacocoForkReport` edited once with FORK-DELTA row; anchors invariant passes | VERIFIED | fix(28-05) d7361cbb touches `docs/FORK-DELTA.md`, `CHANGELOG.md`, `.planning/ROADMAP.md` (999.5 "Delivered:" line present) and `Column.java`. FORK-DELTA Known costs item 11 reads "Backlog 999.5 is closed." `build.gradle.kts` was edited once in the phase (898a20b2, together with `jacoco_summary.py`, `ForkCoverageScopeUnitTest`, FORK-DELTA and the anchors file). `forkChangedClasses` and `FORK_CLASSES_IN_ORDER` both list 21 classes in the same order; my `test` run regenerated `build/reports/jacoco/fork/jacocoForkReport.xml` with 21 distinct classes including `DeclaredNullability` and `WithheldMessageException`. Every class added to `src/main` since `v1.7.0` (MetadataFreeJsonWriter, DescribeTableBuilder, DeclaredNullability, ParentShape, ConvertToMapOrJson, HeaderToValue, HeaderToValueConfig, HeadersToValue, TableOperationFilter, WithheldMessageException) is in the list. I re-ran `verify-merge-invariants.sh` on HEAD: `anchor_rows=94 ... result=PASS`. |
+| 1 | The escaped-quote branch of `normalise` is pinned on the current code before any decode change; the pin was red under a mutation that always closes the quote (NAME-01) | VERIFIED | `DeclaredNullabilityTest` passes at HEAD (69 tests, 0 failures, my run). The pin commit 1f984bef precedes every `src/main` change of the phase (`git log 1f984bef~1..HEAD -- src/main` lists only d589234f, d7361cbb, a8f50d87 and ae97c496). The red-run output under the mutation is recorded in 28-COMMAND-EVIDENCE.md E-02; I did not re-execute the mutation. |
+| 2 | A live name-matrix spike on `latest` records the current and decoded form of every spiked character for root columns, Tuple elements and enum labels (NAME-02) | VERIFIED | `RawNameMatrixLiveTest` 25/25 and `RawNameMatrixFixturesUnitTest` pass at HEAD against Docker; 24 committed `raw-name-matrix/*.jsonl` fixtures plus `SERVER_VERSION.txt` exist; the spike table is E-04 of the evidence file. |
+| 3 | The decode is names-only and pairing follows it (NAME-03, NAME-04): `fromJsonRow` yields the raw identifier for names and leaves type text as the server's JSON text; V1 reads raw UTF-8 lines; `DeclaredNullability` pairs on the raw-name key with decode and key in the same commit; COLS-13 twins green; 23-REVIEW IN-01 and IN-02 closed | VERIFIED | `ClickHouseFieldDescriptor.fromJsonRow` (code read): only the `name` field goes through `parser.getText()`; every other string is sliced from the source text. `ClickHouseHelperClient.readDescribeRows` reads raw lines as UTF-8 and is shared by `describeTableV1` and `describeTableV2`. `DeclaredNullability.normalise` decodes the JSON layer via `unescapeJsonLayer`, then does a quote-aware pass (n, t, r escapes become characters inside quotes; an escape pair is consumed together so an escaped quote cannot close the quote). Decode and pairing landed together in d589234f. `NullableTupleMatrixLiveTest` 33/33 and `TableTest` 7/7 (including `extractCommentV1`) pass. IN-01: `apply` Javadoc no longer says "all or none". IN-02: the null-name check sits above the `try` and logs `<unnamed>`. |
+| 4 | Every spiked character lands under the raw name with typed read-back equal to the record; the doubled form is pinned (root column ignored and DEFAULT stored, Tuple element fails loudly); enum labels round-trip under the raw form or the remaining behaviour is in FORK-DELTA Known costs (NAME-05, NAME-06) | VERIFIED | `RawIdentifierNameLiveTest` 73/73, 0 skipped, against live ClickHouse at HEAD. Manual `CLIENT_VERSION=V1` run of 105 tests recorded in E-10 (the V1 write path frames are named there; not re-run by me). `Column.extractEnumValues` is an escape-aware scan; after the review fix `unescapedLabelChar` handles n, t, r, b, f, 0, backslash and apostrophe and refuses any other escape with `Enum type could not be read`. FORK-DELTA Known costs item 11 states the remaining unmeasured cases (control characters outside the nine, a `.` in a name). |
+| 5 | FORK-DELTA row, CHANGELOG line, Known costs item 11 retired and 999.5 marked delivered land with the fix; `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class, edited once with its FORK-DELTA row; anchors invariant passes (NAME-07, DEBT-17) | VERIFIED | d7361cbb (fix(28-05)) carries `Column.java`, FORK-DELTA, CHANGELOG and ROADMAP; ROADMAP "Phase 999.5" now has a `**Delivered:**` line (line 537); FORK-DELTA item 11 reads "Backlog 999.5 is closed."; the CHANGELOG 1.7.0_gg4 section names backlog 999.5. DEBT-17 is the single commit 898a20b2 (`build.gradle.kts`, `jacoco_summary.py`, `ForkCoverageScopeUnitTest`, FORK-DELTA, `fork-anchors.txt`). `build.gradle.kts` lines 345-352 and `jacoco_summary.py` lines 44-47 list both classes. My `test` run regenerated `build/reports/jacoco/fork/jacocoForkReport.xml` with 21 distinct classes, including `DeclaredNullability`, `WithheldMessageException`, `DescribeTableBuilder`, `ParentShape`, `MetadataFreeJsonWriter` and all five transform classes; every class added to `src/main` since `v1.7.0` is in that set. `ForkCoverageScopeUnitTest` 3/3 pass. `verify-merge-invariants.sh` on HEAD (pre-v1.7.0-tail, merge 38265d26): `anchor_rows=94 ... anchor_exempt=0 result=PASS`. |
 
 **Score:** 5/5 truths verified (0 present, behavior-unverified)
 
@@ -65,99 +66,72 @@ All code and documentation checks pass. The only open items are the human sign-o
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `ClickHouseFieldDescriptor.java` | names-only decode | VERIFIED | `fromJsonRow` token-offset slicing; used by `DescribeTableBuilder.addRow` via both describe paths |
-| `ClickHouseHelperClient.java` | shared UTF-8 raw-line reader | VERIFIED | `readDescribeRows` called from `describeTableV1` and `describeTableV2` |
-| `DeclaredNullability.java` | rewritten `normalise`, raw-key pairing | VERIFIED | `unescapeJsonLayer` is also used by `Column` |
-| `Column.java` | escape-aware enum scan | VERIFIED | `extractEnumValues`, `malformedEnumType` |
-| `RawIdentifierNameLiveTest.java` | NAME-05/06 live pins | VERIFIED | 73 pass |
-| `ForkCoverageScopeUnitTest.java` | list-equality guard | VERIFIED | 3 pass |
-| `build.gradle.kts`, `jacoco_summary.py` | 21-class list | VERIFIED | equal lists |
-| `docs/FORK-DELTA.md`, `CHANGELOG.md`, `ROADMAP.md` | NAME-07 documents | VERIFIED | see truth 5 |
+| `sink/db/helper/ClickHouseFieldDescriptor.java` | names-only decode in `fromJsonRow` | VERIFIED | substantive, called by `DescribeTableBuilder.addRow` |
+| `sink/db/helper/ClickHouseHelperClient.java` | shared UTF-8 raw-line reader for V1 and V2; V1 skips an unreadable table like V2 | VERIFIED | `readDescribeRows` used by both paths; `describeTableV1` catches `ClickHouseException \| IOException \| RuntimeException` (ae97c496) |
+| `sink/db/mapping/DeclaredNullability.java` | rewritten `normalise`, `unescapeJsonLayer`, `elementKey` | VERIFIED | `elementKey` is used by `collectTuple` and `ParentShape`; pairs on the raw key from `ClickHouseColumn.of` |
+| `sink/db/mapping/Column.java` | escape-aware enum label scan | VERIFIED | `extractEnumValues` reads through `DeclaredNullability.unescapeJsonLayer` |
+| `RawIdentifierNameLiveTest`, `RawNameMatrix*`, `ForkCoverageScopeUnitTest`, `UnescapeJsonLayerTest`, `DescribeUnreadableEnumMockServerTest` | tests | VERIFIED | all present and passing at HEAD |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| `ClickHouseHelperClient.describeTableV1/V2` | `DescribeTableBuilder.addRow` | `readDescribeRows` | WIRED | same reader for both clients |
-| `DescribeTableBuilder` | `ClickHouseFieldDescriptor.fromJsonRow` | per-line parse | WIRED | names decoded once |
-| `Table`/writer | `DeclaredNullability.apply` | root + declared type | WIRED | live twins pass on raw names |
-| `Column.extractEnumValues` | `DeclaredNullability.unescapeJsonLayer` | package-private call | WIRED | one JSON-layer decoder |
-| `build.gradle.kts` list | `jacoco_summary.py` list | `ForkCoverageScopeUnitTest` | WIRED | equality enforced |
+| `ClickHouseHelperClient.describe*` | `DescribeTableBuilder.addRow` | `readDescribeRows` raw lines | WIRED | both V1 and V2 paths call it |
+| `DescribeTableBuilder` | `ClickHouseFieldDescriptor.fromJsonRow` | per row | WIRED | name decoded, type text kept raw |
+| `Column.extractEnumValues` | `DeclaredNullability.unescapeJsonLayer` | same JSON-layer decode | WIRED | package-private call; user-approved choice (UAT item 2b) |
+| `DeclaredNullability.apply` | `normalise` then `ClickHouseColumn.of` then `collectTuple` | element key | WIRED | `elementKey` shared with `ParentShape` |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 |----------|---------------|--------|--------------------|--------|
-| Column names in `Table` mapping | `ClickHouseFieldDescriptor.name` | live `DESCRIBE TABLE` JSONEachRow lines | Yes (live tests insert and read back equal) | FLOWING |
+| Discovered `Column` names | `name` | live `DESCRIBE TABLE` JSONEachRow on ClickHouse `latest` | Yes, `RawIdentifierNameLiveTest` writes records and reads typed values back | FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Phase test classes on ClickHouse `latest` (26.9.19.9), client V2 | `./gradlew test --tests '*DeclaredNullabilityTest' '*ColumnTest' '*ForkCoverageScopeUnitTest' '*RawNameMatrixFixturesUnitTest' '*TableTest' '*DescribeTableBuilderUnitTest' '*RawIdentifierNameLiveTest' '*RawNameMatrixLiveTest' '*NullableTupleMatrixLiveTest'` | 426 tests, 425 succeeded, 0 failed, 1 skipped (BUILD SUCCESSFUL) | PASS |
-| Full-suite regression evidence | recorded in 28-COMMAND-EVIDENCE.md E-12/E-13 (not re-run) | 1835 tests, 0 failures, 0 errors, 18 named skips, 26.9.19.9 | PASS (recorded) |
-| Anchors invariant on HEAD | `verify-merge-invariants.sh 38265d26... HEAD` with the tail env | `anchor_rows=94 result=PASS` | PASS |
+| Phase test set at HEAD | `./gradlew test --tests *RawIdentifierNameLiveTest *RawNameMatrixLiveTest *NullableTupleMatrixLiveTest *DeclaredNullabilityTest *ColumnTest *UnescapeJsonLayerTest *DescribeUnreadableEnumMockServerTest *ForkCoverageScopeUnitTest *TableTest` | 285 tests, 284 succeeded, 0 failed, 1 skipped (the skip is `JsonColumnTest.compareAllConfigurations`, matched by the `*ColumnTest` glob and one of the suite's known skips) | PASS |
+| Per-class XML | RawIdentifierNameLiveTest 73, RawNameMatrixLiveTest 25, NullableTupleMatrixLiveTest 33, DeclaredNullabilityTest 69, ColumnTest 50, UnescapeJsonLayerTest 16, TableTest 7, DescribeUnreadableEnumMockServerTest 2, ForkCoverageScopeUnitTest 3 | all 0 failures, 0 errors, 0 skipped | PASS |
+| Full-suite regression gate (given by the orchestrator, not re-run) | `./gradlew test` on HEAD | 1865 tests, 0 failures, 0 errors, 18 skipped | PASS (reported) |
+| Anchors invariant | `verify-merge-invariants.sh 38265d26 HEAD` with `PRE_TAG=pre-v1.7.0-tail` | `result=PASS` | PASS |
 
 ### Probe Execution
 
-Step 7c: SKIPPED. No `probe-*.sh` is declared by the phase plans.
+Step 7c: SKIPPED. No `scripts/*/tests/probe-*.sh` exists and no plan declares a probe.
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| NAME-01 | 28-01 | escaped-quote pin | SATISFIED | truth 1 |
-| NAME-02 | 28-02 | name-matrix spike | SATISFIED | truth 2 |
-| NAME-03 | 28-03 | raw name in `fromJsonRow`, V1 UTF-8 | SATISFIED | truth 3 |
-| NAME-04 | 28-03 | raw-key pairing, `normalise`, IN-01/02 | SATISFIED | truth 3 |
+| NAME-01 | 28-01 | escaped-quote pin, red under mutation | SATISFIED | truth 1 |
+| NAME-02 | 28-02 | live name-matrix spike | SATISFIED | truth 2 |
+| NAME-03 | 28-03 | `fromJsonRow` raw names, V1 UTF-8 lines, `extractCommentV1` green | SATISFIED | truth 3 |
+| NAME-04 | 28-03 | pairing on raw key, COLS-13 twins, IN-01/IN-02 | SATISFIED | truth 3 |
 | NAME-05 | 28-04 | both-form live pins | SATISFIED | truth 4 |
-| NAME-06 | 28-05 | enum labels | SATISFIED | truth 4 |
-| NAME-07 | 28-05 | FORK-DELTA/CHANGELOG/item 11/999.5 | SATISFIED | truth 5 |
-| DEBT-17 | 28-06 | 21-class fork report | SATISFIED | truth 5 |
+| NAME-06 | 28-05 | enum labels measured and pinned | SATISFIED | truth 4 |
+| NAME-07 | 28-05 | FORK-DELTA, CHANGELOG, item 11, 999.5 in the fix commit | SATISFIED | truth 5 |
+| DEBT-17 | 28-06 | complete fork coverage list, edited once | SATISFIED | truth 5 |
 
-All eight IDs appear in a plan's `requirements:` frontmatter and in its SUMMARY's `requirements-completed`, and all eight are marked Complete in REQUIREMENTS.md. No orphaned Phase 28 requirements.
+All eight requirement IDs appear in the plan frontmatter (28-01 NAME-01, 28-02 NAME-02, 28-03 NAME-03 and NAME-04, 28-04 NAME-05, 28-05 NAME-06 and NAME-07, 28-06 DEBT-17) and are checked `[x]` and "Complete" in REQUIREMENTS.md. No orphaned requirement is mapped to Phase 28.
 
 ### Anti-Patterns Found
 
-TBD/FIXME/XXX scan of the four modified src/main files and the new test files: one match, an upstream marker. No stubs; no hollow data paths.
-
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `Column.java` | 181 | `FIXME: Map keys doesn't support Decimal` | Info | Present unchanged in upstream `v1.7.0` (line 168) and not touched by this phase's diff; not a phase-introduced debt marker |
+| (none) | | No `TBD`, `FIXME`, `XXX`, `TODO`, `HACK` or `PLACEHOLDER` in any line added by the phase to `src`, `build.gradle.kts`, `.github`, `docs` or `CHANGELOG.md` | | |
 
-### Code Review Warnings (advisory, from 28-REVIEW.md, all recorded `open`)
-
-None contradicts a must-have. Each sits outside what the phase claims to have measured.
-
-| ID | Summary | Relation to must-haves |
-|----|---------|------------------------|
-| WR-01 | Enum label scan reads `\0`, `\b`, `\f` as the letters 0, b, f; a `\b`/`b` collision can silently overwrite a label | Outside the nine spiked characters. FORK-DELTA item 11 already says control characters beyond the nine are "not measured", but its wording "a label is a lookup miss" understates the collision case. Worth a user decision. |
-| WR-02 | `describeTableV1` does not catch `RuntimeException`, so a malformed enum type aborts mapping of the whole database on the default client (V2 returns null) | Reachable through the new `malformedEnumType()` throw site. Not claimed by any must-have. |
-| WR-03 | No tests for the `\uXXXX` path of `unescapeJsonLayer` or the malformed-enum throw sites | Coverage gap; the main paths are pinned. |
-| WR-04 | `legacyEnumLabelKeyFailsLoudly` passes on any failure (no cause substring) | Weaker oracle than its sibling; red-first run E-09 still shows it red on the unchanged `Column`. |
-| IN-01..IN-03 | public test-only constant, list guard cannot detect a missing class (`SinkTaskStatistics`), no runtime signal for a missed rename (accepted D-06) | Informational. |
+28-REVIEW.md (re-review after fixes): 0 critical, 0 warning, 5 info. The infos are test-quality notes and do not contradict a must-have. 28-SECURITY.md: 19/19 threats closed.
 
 ### Human Verification Required
 
-#### 1. Exemption list sign-off (plan 28-06 human-check)
-
-**Test:** Read 28-COMMAND-EVIDENCE.md E-06 `#### Named exemption list` (X-01..X-12, S-01..S-04) and its `exemption_signoff:` line, then E-13's two tables.
-**Expected:** Every removed `src/test` line is covered by a row; X-01..X-12 are changes of the expected form under the 2026-10-21 raw-identifier decision with equal strictness; nothing else was loosened.
-**Why human:** The plan declares this end-of-phase confirmation. S-04 was added at the gate through a relayed choice; the 28-06 SUMMARY calls that relay the sign-off of the 16-row list, but a relayed choice does not replace the plan's own human-check. My own check agrees with the evidence: DeclaredNullabilityTest has 58 -> 61 tests and 213 -> 216 assert calls, NullableTupleMatrixLiveTest 8 -> 8 and 30 -> 30, and the assertion diff check reports no unlisted member.
-
-#### 2. Two design choices made for the user
-
-**Test:** Confirm (a) the NAME-07 documents landed in fix(28-05), not fix(28-03); (b) `Column` calls the package-private `DeclaredNullability.unescapeJsonLayer` rather than keeping its own copy.
-**Expected:** Both acceptable.
-**Why human:** Design decisions routed to the user by the plan.
+None open. The two end-of-phase human items (the named exemption list sign-off, and the two choices made on the user's behalf) are recorded in 28-UAT.md as `pass`, 2/2, 0 issues.
 
 ### Gaps Summary
 
-No gaps. The goal is achieved in the code: names are matched under the raw identifier on both clients, the pairing key follows, both name forms are pinned live, documents and the 21-class report landed, and the anchors invariant passes at HEAD. Status is `human_needed` only because plan 28-06 declares end-of-phase human sign-offs that no automated check can discharge. The four review warnings stay open for `/gsd-code-review 28 --fix` or a user decision; WR-01 and WR-02 are the ones most worth deciding before release.
-
-Housekeeping, not a gap: the ROADMAP progress checkbox for Phase 28 (line 100) still reads `[ ]` and should be flipped by the orchestrator on completion.
+No gaps. Residual, documented limits (not gaps): a name or label holding a control character outside the nine spiked characters, and a `.` inside a name, are not measured; FORK-DELTA Known costs item 11 states this, and the rollout note for Phase 29 carries it. The roadmap checkbox for Phase 28 at ROADMAP line 100 is still `[ ]`; ticking it belongs to the orchestrator's phase-complete step.
 
 ---
 
-_Verified: 2026-10-23T12:20:00Z_
+_Verified: 2026-10-23T18:30:00Z_
 _Verifier: Claude (gsd-verifier)_
