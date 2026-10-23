@@ -17,7 +17,7 @@
 | E-05 | NAME-03/04 tracer red then green, and the testUnit red set of the fix | pass |
 | E-06 | NAME-03/04 changed pins red on the unchanged production, coupling proof | pass |
 | E-07 | NAME-03/04 fix commit, full suite, old-name loud failure, re-render, gate | pass |
-| E-08 | NAME-05 pins red on the pre-fix production, green, commit, gate | pending |
+| E-08 | NAME-05 pins red on the pre-fix production, green, commit, gate | pass |
 | E-09 | NAME-06 red run and green | pending |
 | E-10 | NAME-06/07 fix commit, documents, full suite, manual CLIENT_VERSION=V1 run, gate | pending |
 | E-11 | DEBT-17 tracer | pending |
@@ -460,4 +460,47 @@ btbsn	enum_label	"x`\\ny"	"x`\\\\\\\\ny"	"x`\\\\\\\\ny"
 ```
 
 2026-10-23T10:09:02Z
+Verdict: pass
+
+### E-08: NAME-05 pins red on the pre-fix production, green, commit, gate
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawIdentifierNameLiveTest.rawNamesLandAndReadBackTyped' --rerun > /tmp/gsd28/exec/tracer-28-04.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawIdentifierNameLiveTest' --rerun > /tmp/gsd28/exec/green-28-04.log 2>&1   # then cp the XML to green-28-04.xml
+python3 -I /tmp/gsd28/exec/predict-28-04.py /tmp/gsd28/exec/capture-run2 > /tmp/gsd28/exec/predict-28-04.out
+F=$(git log -1 --format=%H --grep='^fix(28-03)'); for p in $(git diff --name-only "$F^" "$F" -- src/main); do git show "${F}^:${p}" > "$p"; done
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawIdentifierNameLiveTest' --rerun > /tmp/gsd28/exec/prefix-red-28-04.log 2>&1   # cp the XML to prefix-red-28-04.xml
+git checkout HEAD -- src/main; git diff --quiet HEAD -- src/main
+git add src/test/java/com/clickhouse/kafka/connect/sink/RawIdentifierNameLiveTest.java; git commit   # test(28-04)
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd28/exec/testunit-28-04.log 2>&1
+/tmp/gsd28/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd28/exec/spotless-28-04.txt
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd28/exec/gate-28-04.log 2>&1
+```
+
+```text
+test_commit: ba55f99b015294c9c600b8d41bcca1e67bdb3356 (only src/test/java/com/clickhouse/kafka/connect/sink/RawIdentifierNameLiveTest.java; no src/main change)
+tracer: 12 tests, 12 succeeded, 0 failed (keys ap bs bsn bt btbsn cr ctl dq lf na sl tab)
+head: 52 tests, 52 succeeded, 0 failed (12 raw, 8 doubled root = bs bsn lf tab cr sl dq btbsn, 32 doubled element)
+prediction (predict-28-04.out):
+  raw_red: ['bs', 'bsn', 'bt', 'btbsn', 'cr', 'dq', 'lf', 'sl', 'tab']
+  root_red: ['bs', 'bsn', 'lf', 'tab', 'cr', 'sl', 'dq', 'btbsn']
+  element_green: []
+measured on the pre-fix production (the three files of fix(28-03) from F^): 52 tests, 3 succeeded, 49 failed
+  raw_red: ['bs', 'bsn', 'bt', 'btbsn', 'cr', 'dq', 'lf', 'sl', 'tab']
+  root_red: ['bs', 'bsn', 'btbsn', 'cr', 'dq', 'lf', 'sl', 'tab']
+  element_green: []   (all 32 element cases red)
+restore: git checkout HEAD -- src/main; git diff --quiet HEAD -- src/main holds
+doubled-element failure on HEAD, one recorded case (key=bs container=tuple): RuntimeException "Number of records: 1", root cause DataException, first line
+  column 't.x\y' (INT32): no value provided for a non-nullable column without a default; add the field, make the column Nullable, or give it a DEFAULT
+  the line names a column path, not a value; the same class and message shape holds for all 32 cases
+testunit: 1232 tests, 1230 succeeded, 0 failed, 2 skipped
+spotless: base 46 lines, head 46 lines, no new file (the new class is not listed), no changed line
+gate: invariants: provenance_paths=3 anchor_commits=122 anchor_rows=90 marker_commits=134 anchor_exempt=0 result=PASS
+```
+
+Deviation (Rule 1, plan prediction error, recorded here and in the SUMMARY). The plan's doubled-element design (one container named in the doubled form, the other three raw, no substring) predicted that the pin is red before the fix except in 6 cases. The first measurement on the pre-fix production (kept as `prefix-red-28-04-design1.xml` and `predict-28-04-design1.out`) showed all 32 element cases GREEN: before the fix the doubled form is the one that matches, so the three raw-named containers of the same record fail the put on their own, and the pin passed for a reason that has nothing to do with the container under test. That is a vacuous pin, which T-28-11 forbids. The pin was strengthened, not loosened: `assertPutFails` now also requires the cause chain to hold `column '<container path>.<raw element name>'` (the writer's report of the missing value for the container under test, in the raw form). With that substring all 32 cases pass on HEAD and all 32 fail on the pre-fix production (the pre-fix failure names another column, or the table is unmapped for dq), so `element_green` is empty; `predict-28-04.py` states the rule. The raw and doubled-root sets equal the plan's prediction unchanged.
+
+2026-10-23T10:21:00Z
 Verdict: pass
