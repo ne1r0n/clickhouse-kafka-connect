@@ -61,7 +61,7 @@
 ### Discovery defect 999.5 (raw identifier as the canonical name form)
 
 - [x] **NAME-01**: The escaped-quote branch of `DeclaredNullability.normalise` is pinned on the current code, seen red under a mutation that always closes the quote (closes 23-REVIEW WR-01), before any decode change.
-- [ ] **NAME-02**: A live name-matrix spike on `latest` records, for root columns, Tuple elements and enum labels, the current and the decoded form of names containing a backslash, a literal backslash-n, LF, tab, CR, slash, double quote, backtick and non-ASCII characters.
+- [x] **NAME-02**: A live name-matrix spike on `latest` records, for root columns, Tuple elements and enum labels, the current and the decoded form of names containing a backslash, a literal backslash-n, LF, tab, CR, slash, double quote, backtick and non-ASCII characters.
 - [ ] **NAME-03**: `ClickHouseFieldDescriptor.fromJsonRow` yields the raw identifier for column and element names (names only; type text is not decoded); the V1 describe path reads raw lines in UTF-8; `TableTest.extractCommentV1` stays green.
 - [ ] **NAME-04**: `DeclaredNullability` pairs on the raw-name key (the element key unescapes SQL identifiers; `normalise` is rewritten for the one-layer-fewer escaping); the COLS-13 live twins in `NullableTupleMatrixLiveTest` stay green; 23-REVIEW IN-01 (Javadoc "all or none") and IN-02 (null-name check inside the `try`) are closed.
 - [ ] **NAME-05**: Live both-form pins: a Kafka record using the raw name lands with typed read-back equal to the record for every spiked character; a record still using the doubled form behaves as the rollout note states (root column ignored and `DEFAULT` stored; Tuple element fails loudly), pinned, not changed.
@@ -146,7 +146,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DESC-09 | Phase 26 | Complete |
 | DESC-10 | Phase 26 | Complete |
 | NAME-01 | Phase 28 | Complete |
-| NAME-02 | Phase 28 | Pending |
+| NAME-02 | Phase 28 | Complete |
 | NAME-03 | Phase 28 | Pending |
 | NAME-04 | Phase 28 | Pending |
 | NAME-05 | Phase 28 | Pending |

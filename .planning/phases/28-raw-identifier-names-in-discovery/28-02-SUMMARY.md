@@ -165,3 +165,7 @@ None - no external service configuration required.
 ---
 *Phase: 28-raw-identifier-names-in-discovery*
 *Completed: 2026-10-23*
+
+## Self-Check: PASSED
+
+Verified: the four new test classes and SERVER_VERSION.txt exist; commits f028c57e, 1a4e2706 and b3726527 are ancestors of HEAD; the Task 1, Task 2 and Task 3 automated verifies printed SPIKE-TRACER-GREEN, SPIKE-COMMITTED, SPIKE-GATED and SPIKE-RECORDED.
