@@ -14,9 +14,9 @@
 | E-02 | NAME-01 pin green on the current code and red under the always-close mutation | pass |
 | E-03 | NAME-02 tracer and capture runs | pass |
 | E-04 | NAME-02 spike record | pass |
-| E-05 | NAME-03/04 tracer red then green, and the testUnit red set of the fix | pending |
-| E-06 | NAME-03/04 changed pins red on the unchanged production, coupling proof | pending |
-| E-07 | NAME-03/04 fix commit, full suite, old-name loud failure, re-render, gate | pending |
+| E-05 | NAME-03/04 tracer red then green, and the testUnit red set of the fix | pass |
+| E-06 | NAME-03/04 changed pins red on the unchanged production, coupling proof | pass |
+| E-07 | NAME-03/04 fix commit, full suite, old-name loud failure, re-render, gate | pass |
 | E-08 | NAME-05 pins red on the pre-fix production, green, commit, gate | pending |
 | E-09 | NAME-06 red run and green | pending |
 | E-10 | NAME-06/07 fix commit, documents, full suite, manual CLIENT_VERSION=V1 run, gate | pending |
@@ -256,4 +256,208 @@ findings:
 - Non-zero WARN counts: names V2 for sl, bt and btbsn (4 each), and names V1 for lf (4). Every other count in the list is 0.
 
 2026-10-23T09:47:28Z
+Verdict: pass
+
+### E-05: NAME-03/04 tracer red then green, and the testUnit red set of the fix
+
+Commands as run:
+
+```bash
+python3 -I /tmp/gsd28/exec/predict-28-03.py /tmp/gsd28/exec/capture-run2 > /tmp/gsd28/exec/predict-28-03.out
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*RawNameMatrixFixturesUnitTest' --rerun > /tmp/gsd28/exec/red-28-03-unit.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawNameMatrixLiveTest' --rerun > /tmp/gsd28/exec/red-28-03-v1.log 2>&1
+# the three src/main edits applied as one change in the working tree
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*RawNameMatrixFixturesUnitTest' --rerun > /tmp/gsd28/exec/green-28-03-unit.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*RawNameMatrixLiveTest' --rerun > /tmp/gsd28/exec/green-28-03-v1.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd28/exec/fixset-28-03.log 2>&1
+git diff -- src/main > /tmp/gsd28/exec/fix-28-03.patch
+```
+
+```text
+predictions (from E-04 cells, rule: a name cell differs from the decoded form, is UNMAPPED/ABSENT/ERROR, or the names WARN count is non-zero):
+  name04_red: ['bs', 'bsn', 'bt', 'btbsn', 'cr', 'dq', 'lf', 'sl', 'tab']
+  v1_red: ['cr', 'dq', 'lf', 'sl', 'tab']
+red on the unchanged production (RawNameMatrixFixturesUnitTest 37 tests: 20 succeeded, 17 failed; RawNameMatrixLiveTest 25 tests: 20 succeeded, 5 failed):
+  NAME-03 fromJsonRow red set: ['bs', 'bsn', 'btbsn', 'cr', 'dq', 'lf', 'sl', 'tab'] (exactly bs, bsn, lf, tab, cr, sl, dq, btbsn)
+  NAME-04 discovery red set:   ['bs', 'bsn', 'bt', 'btbsn', 'cr', 'dq', 'lf', 'sl', 'tab'] (= prediction)
+  NAME-03 client V1 red set:   ['cr', 'dq', 'lf', 'sl', 'tab'] (= prediction)
+  the 13 plan 28-02 cases of each class passed (no NAME-02 case failed)
+first failure line of one case each:
+  NAME-03 ... entry bs: entry bs row {"name":"r\\z",...}: name ==> expected: <r\z>
+  NAME-04 ... entry bs: entry bs step root: one root column carries the raw name ==> expected: <1> but was: <0>
+  NAME-03 client V1 ... entry lf: entry lf step warnings: discovery must not warn ==> expected: <[]> but was: <[Could not take element nullability for column t of table ...
+green on the fix: RawNameMatrixFixturesUnitTest 37 tests, 37 succeeded, 0 failed; RawNameMatrixLiveTest 25 tests, 25 succeeded, 0 failed
+testUnit of the fix on the unedited existing tests: 1230 tests, 1218 succeeded, 10 failed, 2 skipped
+  failing set (exactly the ten DeclaredNullabilityTest cases): COLS-13 (D-10) x6 (backslash-n inside a backtick name, real newline inside a backtick name, backslash-n inside an Enum8 label, backslash-n names on two nesting levels, names ending in a backslash, the Nullable(Tuple) literal of the live premise), COLS-13 (D-10) edges, NAME-01 x2 (escaped backtick keeps the quote open, two backslashes before n outside quotes), COLS-12 (D-07) structure mismatch: a root with a null name
+git diff --stat -- src/main:
+  ClickHouseFieldDescriptor.java | 40 +++++-, ClickHouseHelperClient.java | 43 +++---, DeclaredNullability.java | 153 +++++++++++++++------ (3 files, 173 insertions, 63 deletions)
+RawNameMatrix.java needed no separate fix commit (the discovery assertion held on the first red run)
+```
+
+2026-10-23T09:54:30Z
+Verdict: pass
+
+### E-06: NAME-03/04 changed pins red on the unchanged production, coupling proof
+
+Commands as run:
+
+```bash
+git diff -- src/main | cmp - /tmp/gsd28/exec/fix-28-03.patch            # patch identity before the swap
+git checkout HEAD -- src/main                                          # unchanged production
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*DeclaredNullabilityTest' --tests '*RawNameMatrixFixturesUnitTest' --rerun > /tmp/gsd28/exec/changed-red-unit.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*NullableTupleMatrixLiveTest' --rerun > /tmp/gsd28/exec/changed-red-live.log 2>&1
+git apply /tmp/gsd28/exec/fix-28-03.patch && git diff -- src/main | cmp - /tmp/gsd28/exec/fix-28-03.patch
+# coupling: HEAD's DeclaredNullability with the decode and the V1 reader applied
+git show HEAD:src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java > src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*RawNameMatrixFixturesUnitTest' --rerun > /tmp/gsd28/exec/coupling.log 2>&1
+cp /tmp/gsd28/exec/DeclaredNullability.fixed.java src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java && git diff -- src/main | cmp - /tmp/gsd28/exec/fix-28-03.patch
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd28/exec/testunit-28-03.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*NullableTupleMatrixLiveTest' --tests '*RawNameMatrixLiveTest' --rerun > /tmp/gsd28/exec/live-28-03.log 2>&1
+```
+
+```text
+red on the unchanged production, DeclaredNullabilityTest (69 tests): 11 failed = the ten changed pins X-01..X-10 plus the new NAME-04 case escapedBacktickElementPairsWithoutAFallbackWarning
+red on the unchanged production, NullableTupleMatrixLiveTest (33 tests): 3 failed = the two COLS-13 twins (PLAIN, DEFAULT) and the COLS-13 drift test, each "expected: not <null>"
+control on the unchanged production: NAME-03 a malformed row fails without echoing its comment passed (both decoders keep the row out of the message chain)
+patch identity: git diff -- src/main equals fix-28-03.patch after the apply and after the coupling swap back (cmp silent)
+coupling (decode and V1 reader applied, HEAD's DeclaredNullability), RawNameMatrixFixturesUnitTest 38 tests: 7 failed
+  NAME-04 discovery red set: ['bs', 'bsn', 'bt', 'btbsn', 'cr', 'lf', 'tab'] (contains lf, tab and cr)
+green on the fix: testUnit 1232 tests, 1230 succeeded, 0 failed, 2 skipped; NullableTupleMatrixLiveTest + RawNameMatrixLiveTest 58 tests, 58 succeeded, 0 failed
+```
+
+#### Named exemption list
+
+Red evidence cells hold the testcase name and the first failure line measured on HEAD's production (backticks in the failure line are shown as apostrophes).
+
+| ID | Kind | Commit | File | Member | Red evidence | Change | Strictness |
+|----|------|--------|------|--------|--------------|--------|------------|
+| X-01 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `backslashNInsideABacktickNameSurvivesNormaliseAndPairs` | `COLS-13 (D-10): a literal backslash-n inside a backtick-quoted element name survives normalise and pairs without a fallback WARN`: expected: <Tuple(     'a\\nb' Int32,     d String)> but was: <Tuple(     'a\\\\nb' Int32,     d String)> | expected normalised literal one escape layer fewer; flag key `c.` + `BACKSLASH_N_ELEMENT_NAME` | same `assertCapturedShapePairs` call: exact literal, exact flag map, no WARN |
+| X-02 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `realNewlineInsideABacktickNameSurvivesNormaliseAndPairs` | `COLS-13 (D-10): a real newline inside a backtick-quoted element name survives normalise and pairs without a fallback WARN`: expected: <Tuple(     'a | expected literal holds the line feed; flag key `c.` + `REAL_NEWLINE_ELEMENT_NAME` | same call, same strictness |
+| X-03 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `backslashNInsideAnEnumLabelIsKeptAndPairs` | `COLS-13 (D-10): a literal backslash-n inside an Enum8 label is kept by normalise and the tuple pairs without a fallback WARN`: expected: <Tuple(     e Enum8('x\\ny' = 1, 'z' = 2),     d String)> but was: <Tuple(     e Enum8('x\\\\ny' = 1, 'z' = 2),     d String)> | expected literal one escape layer fewer; keys unchanged | same call, same strictness |
+| X-04 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `backslashNInNamesOnTwoLevelsSurvivesNormaliseAndPairs` | `COLS-13 (D-10): literal backslash-n names on two nesting levels survive normalise and pair without a fallback WARN`: expected: <Tuple(     'p\\nq' Tuple(         'r\\ns' Int32,         t Nullable(String)),     d String)> but was: <Tuple(     'p\\\\nq' Tuple(         'r\\\\ns' Int32,     | expected literal one escape layer fewer; keys under the raw `outerName` | same call, same strictness |
+| X-05 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `namesEndingInABackslashSurviveNormaliseAndPair` | `COLS-13 (D-10): names ending in a backslash and in backslash-n survive normalise and pair without a fallback WARN`: expected: <Tuple(     'e\\' Int32,     'f\\n' Int32)> but was: <Tuple(     'e\\\\' Int32,     'f\\\\n' Int32)> | expected literal one escape layer fewer; keys `c.e` + backslash and `c.f` + backslash + `n` | same call, same strictness |
+| X-06 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `nullableTupleWithABackslashNNameIsUnchangedAndPairs` | `COLS-13 (D-10): the Nullable(Tuple) literal of the live premise has no line break, loses one escape layer and pairs without a fallback WARN`: expected: <Nullable(Tuple('a\\nb' Int32, d String))> but was: <Nullable(Tuple('a\\\\nb' Int32, d String))> | expected literal one escape layer fewer instead of the RAW constant; raw key; display name says it loses one escape layer (method name kept, so the member is changed, not replaced) | same call, same strictness |
+| X-07 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `normaliseIsTotalAndKeepsNonAsciiNames` | `COLS-13 (D-10) edges: an empty type, an unterminated backtick and a non-ASCII letter next to a backslash-n in a name`: expected: <Tuple('a | unterminated row expects the decoded line feed; non-ASCII row one escape layer fewer; empty-type row unchanged | same `assertEquals` rows, exact |
+| X-08 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `escapedBacktickInsideANameKeepsTheQuoteOpen` | `NAME-01: an escaped backtick inside a quoted name keeps the quote open, so the following line break is still replaced`: expected: <Tuple(     'a\'\\nb' Int32,     d String)> but was: <Tuple(     'a\\'\\\\nb' Int32,     d String)> | expected re-derived for the rewritten `normalise` (pinned on the old one by plan 28-01, E-02) | same `assertEquals`, exact |
+| X-09 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `twoBackslashesBeforeNOutsideQuotesAreNotALineBreak` | `NAME-01: two backslashes before n outside quotes are not a line break`: expected: <Tuple(a Int32,\n b String)> but was: <Tuple(a Int32,\\n b String)> | expected one escape layer fewer, input unchanged | same `assertEquals`, exact |
+| X-10 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java` | `rootWithANullNameIsAStructureMismatch` | `COLS-12 (D-07) structure mismatch: a root with a null name`: WR-02 column segment: Could not take element nullability for column null of table db.t from its declared type Tuple(a Int32) (structure mismatch); keeping the nullability | the WARN's column slot reads `<unnamed>` instead of `null` (23-REVIEW IN-02) | same `assertWarnNamesColumn`, exact |
+| X-11 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java` | `backslashNInTupleElementNameRoundTripsWithoutFallback` | `COLS-13 (D-12) live: a backslash-n in a Tuple element name round-trips without a fallback WARN PLAIN`: c.a\nb ==> expected: not <null>; `COLS-13 (D-12) live: a backslash-n in a Tuple element name round-trips without a fallback WARN DEFAULT`: c.a\nb ==> expected: not <null> | element lookup key, cell schema field and Struct put use `BACKSLASH_N_ELEMENT_NAME` | same premise, no-WARN, nullability and typed read-back assertions |
+| X-12 | pin | fix(28-03) | `src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java` | `describeReturnsTheCapturedBackslashNEscapingAndPairs` | `COLS-13 (D-12) live: DESCRIBE returns the captured escaping for every Docker-free backslash-n literal, and quoted names pair without a fallb...`: n.p\nq.t ==> expected: not <null> | nested key `n.p` + backslash + `nq.t` (raw) | same assertions |
+| S-01 | javadoc | test(28-02) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java` | `BACKSLASH_N_ELEMENT` | n/a | Javadoc reworded, value unchanged | not a test |
+| S-02 | javadoc | test(28-02) | `src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java` | `REAL_NEWLINE_ELEMENT` | n/a | Javadoc reworded, value unchanged | not a test |
+| S-03 | refactor | test(28-02) | `src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeFixtureCatalog.java` | `resourceLines` | n/a | the one-argument form delegates to the new two-argument overload; messages unchanged | not a test |
+
+exemption_signoff: X-01..X-12 (pin) and S-01..S-03 (javadoc, refactor) are the complete list; every pin was red on HEAD's production above and is green on the fix; no other existing test member changed; surfaced to the user for the 28-06 end-of-phase human-check, not decided by them (Phase 22 L-47 precedent)
+
+2026-10-23T09:57:17Z
+Verdict: pass
+
+### E-07: NAME-03/04 fix commit, full suite, old-name loud failure, re-render, gate
+
+Commands as run:
+
+```bash
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*NullableTupleMatrixLiveTest' --rerun > /tmp/gsd28/exec/old-name-loud.log 2>&1   # HEAD's version of the class on the fix
+git add <the three src/main files, the four test files, .planning/scripts/fork-anchors.txt>; git write-tree > /tmp/gsd28/exec/fix-tree-28-03.txt
+rm -rf build/test-results/test build/raw-name-matrix
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd28/exec/suite-28-03.log 2>&1
+git commit            # fix(28-03)
+/tmp/gsd28/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd28/exec/spotless-28-03.txt
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd28/exec/gate-28-03.log 2>&1
+```
+
+```text
+fix_commit: d589234f73b369cb844a0e6018f93f85615c5c52
+files: ClickHouseFieldDescriptor.java, ClickHouseHelperClient.java, DeclaredNullability.java (src/main); RawNameMatrixFixturesUnitTest.java, RawNameMatrixLiveTest.java, DeclaredNullabilityTest.java, NullableTupleMatrixLiveTest.java (src/test); .planning/scripts/fork-anchors.txt
+tree_equality: git rev-parse HEAD^{tree} = 4b70fbf1e644dd4cd536362ed695968d0e2a3cb2 = fix-tree-28-03.txt (the tree the suite ran on)
+suite: 1746 tests in 99 XML files, 0 failures, 0 errors, 18 skipped (the 18 named skips), one server version 26.9.19.9, BUILD SUCCESSFUL in 2m 42s
+suite_first_attempt: the first run of this tree ended with 'Gradle Test Executor 161 finished with non-zero exit value 255' (1635 tests run, 0 failed): the known OpenJ9 Mockito GPF, not a test result. The core dump, javacore, Snap and jitdump files it left in the repository root were deleted and the suite was re-run once; the counted run is the second one, on the same unchanged staged tree.
+class_counts: NullableTupleMatrixLiveTest=33 DeclaredNullabilityTest=69 RawNameMatrixFixturesUnitTest=38 RawNameMatrixLiveTest=25 TableTest=7 ColumnTest=37 DescribeTableBuilderUnitTest=121 ClickHouseHelperClientForkUnitTest=51 DescribeFixturesUnitTest=96 DescribeFixtureSnapshotUnitTest=47 SourcePlanningIdGuardUnitTest=18
+old_name_loud_failure: HEAD's NullableTupleMatrixLiveTest on the fix: 33 tests, 3 failed = the two COLS-13 twins (PLAIN, DEFAULT) and the COLS-13 drift test
+  c.a\\nb ==> expected: not <null>   (twins, the old doubled element key)
+  n.p\\nq.t ==> expected: not <null> (drift test, the old doubled nested key)
+spotless: base 46 lines, head 46 lines, no new file, no changed line; ClickHouseHelperClient.java is not among the 46 base files and is not in head, so the allowed measured line did not appear
+gate: invariants: provenance_paths=3 anchor_commits=118 anchor_rows=90 marker_commits=130 anchor_exempt=0 result=PASS
+wt_anchors: rows 90 bad []
+```
+
+Post-fix re-render (72 cells from the full-suite capture `cells-post-28-03`, the JSON-rendered form of each cell): every name cell (60) of V2 and V1 equals the decoded form; for enum_label the V2 form is the legacy label key for every entry except ap, whose V2 and V1 cells are UNMAPPED / ERROR:NumberFormatException as before (the enum-label parser is plan 28-05's).
+
+```text
+entry	shape	decoded	V2	V1
+ctl	root	"r_z"	"r_z"	"r_z"
+ctl	tuple	"x_y"	"x_y"	"x_y"
+ctl	array_tuple	"x_y"	"x_y"	"x_y"
+ctl	nullable_tuple	"x_y"	"x_y"	"x_y"
+ctl	map_tuple	"x_y"	"x_y"	"x_y"
+ctl	enum_label	"x_y"	"x_y"	"x_y"
+bs	root	"r\\z"	"r\\z"	"r\\z"
+bs	tuple	"x\\y"	"x\\y"	"x\\y"
+bs	array_tuple	"x\\y"	"x\\y"	"x\\y"
+bs	nullable_tuple	"x\\y"	"x\\y"	"x\\y"
+bs	map_tuple	"x\\y"	"x\\y"	"x\\y"
+bs	enum_label	"x\\y"	"x\\\\\\\\y"	"x\\\\\\\\y"
+bsn	root	"r\\nz"	"r\\nz"	"r\\nz"
+bsn	tuple	"x\\ny"	"x\\ny"	"x\\ny"
+bsn	array_tuple	"x\\ny"	"x\\ny"	"x\\ny"
+bsn	nullable_tuple	"x\\ny"	"x\\ny"	"x\\ny"
+bsn	map_tuple	"x\\ny"	"x\\ny"	"x\\ny"
+bsn	enum_label	"x\\ny"	"x\\\\\\\\ny"	"x\\\\\\\\ny"
+lf	root	"r\nz"	"r\nz"	"r\nz"
+lf	tuple	"x\ny"	"x\ny"	"x\ny"
+lf	array_tuple	"x\ny"	"x\ny"	"x\ny"
+lf	nullable_tuple	"x\ny"	"x\ny"	"x\ny"
+lf	map_tuple	"x\ny"	"x\ny"	"x\ny"
+lf	enum_label	"x\ny"	"x\\\\ny"	"x\\\\ny"
+tab	root	"r\tz"	"r\tz"	"r\tz"
+tab	tuple	"x\ty"	"x\ty"	"x\ty"
+tab	array_tuple	"x\ty"	"x\ty"	"x\ty"
+tab	nullable_tuple	"x\ty"	"x\ty"	"x\ty"
+tab	map_tuple	"x\ty"	"x\ty"	"x\ty"
+tab	enum_label	"x\ty"	"x\\\\ty"	"x\\\\ty"
+cr	root	"r\rz"	"r\rz"	"r\rz"
+cr	tuple	"x\ry"	"x\ry"	"x\ry"
+cr	array_tuple	"x\ry"	"x\ry"	"x\ry"
+cr	nullable_tuple	"x\ry"	"x\ry"	"x\ry"
+cr	map_tuple	"x\ry"	"x\ry"	"x\ry"
+cr	enum_label	"x\ry"	"x\\\\ry"	"x\\\\ry"
+sl	root	"r/z"	"r/z"	"r/z"
+sl	tuple	"x/y"	"x/y"	"x/y"
+sl	array_tuple	"x/y"	"x/y"	"x/y"
+sl	nullable_tuple	"x/y"	"x/y"	"x/y"
+sl	map_tuple	"x/y"	"x/y"	"x/y"
+sl	enum_label	"x/y"	"x\\/y"	"x\\/y"
+dq	root	"r\"z"	"r\"z"	"r\"z"
+dq	tuple	"x\"y"	"x\"y"	"x\"y"
+dq	array_tuple	"x\"y"	"x\"y"	"x\"y"
+dq	nullable_tuple	"x\"y"	"x\"y"	"x\"y"
+dq	map_tuple	"x\"y"	"x\"y"	"x\"y"
+dq	enum_label	"x\"y"	"x\\\"y"	"x\\\"y"
+bt	root	"r`z"	"r`z"	"r`z"
+bt	tuple	"x`y"	"x`y"	"x`y"
+bt	array_tuple	"x`y"	"x`y"	"x`y"
+bt	nullable_tuple	"x`y"	"x`y"	"x`y"
+bt	map_tuple	"x`y"	"x`y"	"x`y"
+bt	enum_label	"x`y"	"x`y"	"x`y"
+na	root	"r\u00E9\u65E5\u672Cz"	"r\u00E9\u65E5\u672Cz"	"r\u00E9\u65E5\u672Cz"
+na	tuple	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"
+na	array_tuple	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"
+na	nullable_tuple	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"
+na	map_tuple	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"
+na	enum_label	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"	"x\u00E9\u65E5\u672Cy"
+ap	root	"r'z"	"r'z"	"r'z"
+ap	tuple	"x'y"	"x'y"	"x'y"
+ap	array_tuple	"x'y"	"x'y"	"x'y"
+ap	nullable_tuple	"x'y"	"x'y"	"x'y"
+ap	map_tuple	"x'y"	"x'y"	"x'y"
+ap	enum_label	"x'y"	UNMAPPED	ERROR:NumberFormatException
+btbsn	root	"r`\\nz"	"r`\\nz"	"r`\\nz"
+btbsn	tuple	"x`\\ny"	"x`\\ny"	"x`\\ny"
+btbsn	array_tuple	"x`\\ny"	"x`\\ny"	"x`\\ny"
+btbsn	nullable_tuple	"x`\\ny"	"x`\\ny"	"x`\\ny"
+btbsn	map_tuple	"x`\\ny"	"x`\\ny"	"x`\\ny"
+btbsn	enum_label	"x`\\ny"	"x`\\\\\\\\ny"	"x`\\\\\\\\ny"
+```
+
+2026-10-23T10:09:02Z
 Verdict: pass
