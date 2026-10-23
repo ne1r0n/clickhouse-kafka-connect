@@ -1292,3 +1292,80 @@ PROBE-KEEPER case=after-delete-topics keys=orders-v2-0,other-0
 Result. The probe lines equal those of E-25 line for line: the first `DELETE` removed exactly `orders-1` and `db1.orders-2`, the second removed every partition of `orders` and of `db1.orders`, and `orders-v2-0` and `other-0` stayed. The key form without trailing split characters named in the new comment is read from the connector code and is not measured, as the comment says.
 
 Matches text: yes
+
+### E-60: v1.7.0_gg4 suite gate
+
+Backs: nothing in a document; this is the PUB-13 suite gate (the full suite twice on ClickHouse `latest` x client V2, `testUnit` Docker-free, `compileIntegrationTestJava`, the OPS-05 freeze check) on the frozen release tip. Date (UTC) 2026-10-23, 19:22 to 19:29. The tree gated is `153cb7103d0cb48c86db816040690dfc9ee4a073` (HEAD on `sync/v1.7.0` before this entry was committed). Its last non-`.planning` commit is `b3035d25e9f3614080c846d2f907a258ec472a66` (`docs(29-06): IN-09 reflow the CHANGELOG line`, committed 2026-10-23T22:20:41+03:00 = 19:20:41Z), earlier than every suite XML timestamp; the freeze command below proves that only the seven document files differ from `P29_BASE`. The only uncommitted paths are `gradlew.bat` (CRLF working-tree diff, excluded by the plan) and `.planning/milestone.lock` (the GSD session lock); neither is part of the release.
+
+gated_head: 153cb7103d0cb48c86db816040690dfc9ee4a073
+
+Freeze and OPS-05 (verify command 1), run before anything else:
+
+```text
+branch sync/v1.7.0 dirty False scope-ok True ['CHANGELOG.md', 'VERSION', 'docs/FORK-DELTA.md', 'docs/ROLLOUT-v1.7.0_gg1.md', 'docs/ROLLOUT-v1.7.0_gg2.md', 'docs/ROLLOUT-v1.7.0_gg3.md', 'docs/ROLLOUT-v1.7.0_gg4.md'] anchors ['-VERSION\tv1.7.0_gg3\t1\tBLD-07', '+VERSION\tv1.7.0_gg4\t1\tBLD-07'] archive-inputs-unchanged True open0 True threats0 True protected-diff 0 custom_build ['69cd680bf548bfb0329142752d37f8a6c3190c26'] left-right ['0', '270'] pre-is-ancestor True
+FREEZE-OK
+```
+
+Origin's `custom_build` is `69cd680b` (left count 0, right count 270) after `git fetch --quiet origin --no-tags`, and PRE is an ancestor of the tip, so the OPS-05 contingency did not fire and E-63 is not written.
+
+Clean build, version, Docker stopped, `testUnit` (verify command 2):
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean compileJava compileIntegrationTestJava
+grep -q 'ARTIFACT_VERSION = "v1.7.0_gg4"' build/generated/sources/version/java/main/com/clickhouse/kafka/connect/sink/Version.java
+colima stop --profile vz
+/opt/homebrew/opt/docker/bin/docker info        # must fail
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 ./gradlew testUnit --rerun
+colima start --profile vz
+```
+
+```text
+clean compileJava compileIntegrationTestJava: BUILD SUCCESSFUL in 15s   (the log has "> Task :compileIntegrationTestJava")
+ARTIFACT_VERSION = "v1.7.0_gg4"
+docker info with colima vz stopped: "failed to connect to the docker API at unix:///Users/alexandr.chashnikov/.colima/vz/docker.sock; ... connect: no such file or directory"
+testUnit --rerun: BUILD SUCCESSFUL in 12s
+testUnit: 1278 tests, 0 failed, 2 skipped      (E-05 testunit_base: 1278 tests, 0 failed, 2 skipped)
+testUnit class-count digest: 6f209d0b95b008fbf1fa3daeb75fcaee5a4a743b0b355b7affeef25a2557a254   (equal to E-05; 59 XML files)
+live classes that ran: none
+TESTUNIT-DOCKER-STOPPED-GREEN
+```
+
+Two full runs (verify command 3; `gated_head=153cb7103d0cb48c86db816040690dfc9ee4a073` printed first; run 1's XML copied to `/tmp/gsd29/exec/run1-results` before run 2; result directories were deleted before verify command 2):
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 ./gradlew test --rerun    # run 1
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 ./gradlew test --rerun    # run 2
+```
+
+```text
+run 1: BUILD SUCCESSFUL in 2m 40s   (XML timestamps 2026-10-23T19:23:35Z to 19:26:09Z)
+run 1: 1865 tests, 103 xml, 0 failed, 18 skipped   (E-05 suite_base: 1865 tests, 103 xml, 0 failed, 18 skipped)
+run 1: class-count digest 3d849967dc1c29e230820a5c94f2a22626b6f9fe758ad868ca8f30fcce0d980f   (equal to E-05)
+run 1: server version ['26.9.19.9'], ClickHouseTestHelpers Version: lines 6, distinct ['latest']
+run 2: BUILD SUCCESSFUL in 2m 37s   (XML timestamps 2026-10-23T19:26:16Z to 19:28:48Z, later than every run 1 timestamp)
+run 2: 1865 tests, 103 xml, 0 failed, 18 skipped
+run 2: class-count digest 3d849967dc1c29e230820a5c94f2a22626b6f9fe758ad868ca8f30fcce0d980f   (equal to E-05)
+run 2: server version ['26.9.19.9'], ClickHouseTestHelpers Version: lines 6, distinct ['latest']
+SUITE-TWICE-GREEN
+```
+
+The 18 skips of both runs are the 7 named ones (`ClickHouseSinkTaskTest#clientNameTest()`, `ClickHouseSinkTaskWithSchemaTest#schemaWithNestedTupleMapArrayAndVariant()`, `ClickHouseSinkTaskWithSchemaTest#schemaWithTupleOfMapsWithVariantTest()`, `ConvertToMapOrJsonPerformanceTestJson#testDeepNestedStructPerformance()`, `ConvertToMapOrJsonPerformanceTestJson#testWideStructPerformance()`, `InsertFormatPerformanceTest#compareInsertPerformance()`, `JsonColumnTest#compareAllConfigurations()`) plus the 11 bracketed cases of `ClickHouseSinkTaskWithSchemaTest#[n] ...`; no test was skipped, disabled, weakened or re-run to green. The OpenJ9 crash rule did not apply: both runs ended without a test JVM exit.
+
+Server and image (D-08): `SELECT version()` as logged by the suite XML is `26.9.19.9`, the same server as E-05. `docker image inspect clickhouse/clickhouse-server:latest --format '{{.Id}} {{.Created}}'`:
+
+```text
+sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z
+```
+
+The image id and date equal E-05's, so `latest` did not drift between the phase base and the gate.
+
+suite_env: CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 CLICKHOUSE_CLUSTER_NAME=unset
+suite_jvm_clickhouse_version: latest
+
+The prefix above is the one every gate `testUnit` and `test` command used, and it equals E-05's `suite_env:` line (PT-15). `CLIENT_VERSION=V2` has no log line in the test JVM, so its arrival is attributed by the command line, and V2 is also the code default (`extractClientVersion()` returns V2 for anything but `V1`).
+
+integration_test: excluded (PT-16): AGENTS.md lists `./gradlew clean integrationTest` before a PR, and this gate does not run it. The source set has been accepted as compile-only since SYNC-10 (MERGE-CHECKLIST-v1.7.0 Recorded Fact 30); `compileIntegrationTestJava` was green in verify command 2 and `tests.yaml` runs it on every push; the tests need a Confluent Platform stack (`cp-server`, `cp-zookeeper`, `cp-schema-registry`, `cp-kafka-rest`, `cp-enterprise-control-center`) and `ClickHouseCloudTest` and `ExactlyOnceTest` need ClickHouse Cloud or a cluster; `src/integrationTest` is byte-identical to upstream `v1.7.0` at gated_head, so it pins no fork behaviour; its only workflow, the upstream-identical nightly `integrationTests.yaml`, is red by inheritance and disabled since 2026-10-16T09:38:23Z (OPS-01); making it pass is Out of Scope.
+
+Verify command 4 (SUITE-GATE-RECORDED) runs after this entry is committed; its output is in E-61.
+
+Matches text: n/a (gate check)
