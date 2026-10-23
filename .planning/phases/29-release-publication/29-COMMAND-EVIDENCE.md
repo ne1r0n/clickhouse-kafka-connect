@@ -588,3 +588,112 @@ Verdicts, worded from these lines only:
 - **Upgrade (gg3 to gg4), the shape that stored a shifted row.** With the gg3 `r01` row landed under the token, the gg4 retry of the same range is dropped on a table with a deduplication window (outcome `dropped`, one row, `value=landed`): the shifted row stays and the correct row is not stored. On a table without a window the retry is stored as a second row (two rows, `value=both`): the shifted row and the correct one. Whether a window applies is the table's own setting; no window is assumed here.
 
 Matches text: pending (29-04)
+
+### E-13: the size-element suspects query on the catalog and on look-alikes (999.4)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the 999.4 item's "Am I affected?" query and its over-flag sentence, written in plan 29-04. The query is the one of `docs/ROLLOUT-v1.7.0_gg3.md` item 2, copied byte for byte (lines 130-138 of that note, `/tmp/gsd29/probe/sql/size-suspects.sql`; `cmp` against `sed -n 130,138p` of the note printed no difference). One read-only `SELECT` over `system.columns`; `<db>` is its only placeholder:
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '[(,] ?size0? [A-Za-z]')
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''),
+                 'Array\\((?:[^()]|\\((?:[^()]|\\((?:[^()]|\\([^()]*\\))*\\))*\\)|\\()*?[(,] ?size[0-9]+ [A-Za-z]')
+      )
+ORDER BY `table`;
+```
+
+Method (`sizeQuery`, run in the gg4 tip worktree, server `26.9.19.9`, client V2, image as in E-10; XML `/tmp/gsd29/exec/d994-query.xml`, `tests="1" skipped="0" failures="0" errors="0"`): the probe creates the 47 catalog tables in the database `p29_fixture` and the 19 look-alikes `s4_u01`..`s4_u19` plus `n05` in the database `p29_lookalike`, and runs the query with only the trailing `;` removed and `<db>` replaced by `p29_fixture` and `p29_lookalike` respectively. Substitution map: `<db>` = `p29_fixture` for the first result, `p29_lookalike` for the second.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain test --tests '*Phase29RolloutProbe.sizeQuery' --rerun
+cp /tmp/gsd29/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/d994-query.xml
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/d994-query.xml
+```
+
+```text
+PROBE-VERSION tree=gg4 version=26.9.19.9
+PROBE-SIZEQ tree=gg4 db=fixture tables=n01,n02,n03,n04,r01,s4_a01,s4_a02,s4_a03,s4_a04,s4_a05,s4_a06,s4_a07,s4_a08,s4_a09,s4_a10,s4_a11,s4_a12,s4_a13,s4_o01,x01,x02,x03,x04,x05,x06,x07,x08
+PROBE-SIZEQ tree=gg4 db=lookalike tables=
+```
+
+```text
+SIZEQ-OVERFLAG=s4_o01,x08
+```
+
+Result. On the catalog database the query lists 27 tables: the 25 of `D994-DIFFERING` (E-10) and two over-flags, `s4_o01` (`Array(Map(String, Tuple(size1 UInt8)))`, the one the gg3 note names) and `x08` (`JSON(a Tuple(size UInt8, v String))`: the type text holds `(size UInt8`, but a JSON column's typed paths are dropped from the table description by design, so its Column tree is identical on gg3 and gg4 and neither logs the WARN, E-10). It lists none of the 19 `s4_u` look-alikes and nothing for `n05`, and it returns an empty list on the database that holds only `s4_u01`..`s4_u19` and `n05`, which is what the note's "Empty result" sentence needs. The query reads the declared type text only, so a table it lists is a suspect, not a finding: of the 27, 25 differ between the releases and 2 do not.
+
+Matches text: pending (29-04)
+
+### E-14: WARN greps for the size-element fix
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the 999.4 item's log checks (the unpaired-element WARN of a gg3 connector, and the unreadable-parent WARN that only gg4 can write), written in plan 29-04. The two commands in doc form, each with `<connector-log-file>` as its only placeholder:
+
+```sh
+grep -F 'have no matching DESCRIBE sub-column' <connector-log-file>
+```
+
+```sh
+grep -F 'Could not read the declared type' <connector-log-file>
+```
+
+Scratch files (never committed): `/tmp/gsd29/logs/connect.log` holds four lines: an unrelated INFO line, the unpaired-element WARN message captured from the real gg3 run of E-10 (`PROBE-WARNLINE`, the probe's doubled backslash turned back into the single backslash and `n` that the connector's message holds), a line with the text of `DescribeTableBuilder.UNREADABLE_PARENT_WARNING` with each `{}` replaced by a placeholder word (`T`, `col`, `db`, `tbl`, `reason`; this line was built from the source constant, not captured, because E-10 shows that no catalog table logs it), and a second unrelated INFO line. `/tmp/gsd29/logs-empty/connect.log` holds the two unrelated lines only. Both commands were run on each file from `/tmp/gsd29`:
+
+```sh
+grep -F 'have no matching DESCRIBE sub-column' logs/connect.log; echo "exit=$?"
+grep -F 'Could not read the declared type' logs/connect.log; echo "exit=$?"
+grep -F 'have no matching DESCRIBE sub-column' logs-empty/connect.log; echo "exit=$?"
+grep -F 'Could not read the declared type' logs-empty/connect.log; echo "exit=$?"
+```
+
+```text
+Declared Tuple element(s) [c.size] of column c of table p29_desc.s4_a01 (declared type Tuple(\n    size UInt16,\n    v String)) have no matching DESCRIBE sub-column; applying the declared nullability to the elements that paired
+exit=0
+Could not read the declared type T of column col of table db.tbl (reason); its sub-columns named size, size0 or size followed by digits are treated as structural, as earlier releases did
+exit=0
+exit=1
+exit=1
+```
+
+Result. On the file that holds the lines, the first command printed exactly the unpaired-element line and the second exactly the unreadable-parent line (exit 0 each, and neither printed the other's line or an unrelated line); on the file with the unrelated lines only, both printed nothing (exit 1). The unpaired-element line is a real message of the gg3 connector (E-10); on gg4 neither WARN was logged for any of the 47 catalog tables (E-10), so on a gg4 log both commands are expected to print nothing for these shapes. The unreadable-parent line has been shown to match its grep, not to occur in a run.
+
+Matches text: pending (29-04)
+
+### E-15: alert-rule and config greps for the writer-text changes
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the items on the writer failure texts that gg4 no longer produces (ledger rows L-52 and L-54: a Jackson message with `through reference chain` or `No serializer found` on the JSON-as-string route, and `NullPointerException` for an unknown Enum label) and on the connectors that use the JSON-as-string route (written in plan 29-04). The two commands in doc form, each with its directory as the only placeholder:
+
+```sh
+grep -rnF -e 'through reference chain' -e 'No serializer found' -e 'NullPointerException' <alert-rule-directory>
+```
+
+```sh
+grep -rnF 'input_format_binary_read_json_as_string' <connector-config-directory>
+```
+
+Scratch directories (never committed). `/tmp/gsd29/alerts/` holds five rule files: `rule-reference-chain.yml`, `rule-no-serializer.yml` and `rule-npe.yml` (one matcher each for `through reference chain`, `No serializer found` and `NullPointerException`), `rule-unrelated.yml` (a matcher on `Task is being killed`), and `rule-escaped.yml`, whose matcher writes the first text with `\s` for each space (`through\sreference\schain`). `/tmp/gsd29/alerts-empty/` holds `rule-unrelated.yml` only. `/tmp/gsd29/conncfg/` holds `connector-a.properties` (`clickhouseSettings=input_format_binary_read_json_as_string=1`), `connector-b.json` (`"clickhouseSettings": "input_format_binary_read_json_as_string=true"`) and `connector-c.properties` (`clickhouseSettings=async_insert=0`); `/tmp/gsd29/conncfg-empty/` holds `connector-c.properties` only. Run from `/tmp/gsd29`:
+
+```sh
+grep -rnF -e 'through reference chain' -e 'No serializer found' -e 'NullPointerException' alerts; echo "exit=$?"
+grep -rnF -e 'through reference chain' -e 'No serializer found' -e 'NullPointerException' alerts-empty; echo "exit=$?"
+grep -rnF 'input_format_binary_read_json_as_string' conncfg; echo "exit=$?"
+grep -rnF 'input_format_binary_read_json_as_string' conncfg-empty; echo "exit=$?"
+```
+
+```text
+alerts/rule-no-serializer.yml:2:expr: log_line =~ "No serializer found"
+alerts/rule-reference-chain.yml:2:expr: log_line =~ "through reference chain"
+alerts/rule-npe.yml:2:expr: log_line =~ "NullPointerException"
+exit=0
+exit=1
+conncfg/connector-a.properties:3:clickhouseSettings=input_format_binary_read_json_as_string=1
+conncfg/connector-b.json:4:    "clickhouseSettings": "input_format_binary_read_json_as_string=true"
+exit=0
+exit=1
+```
+
+Result. The alert-rule command listed each of the three texts once (one line per rule file, in the order the directory is read), printed nothing for the directory that held only the unrelated rule (exit 1), and did not list `rule-escaped.yml`, whose matcher writes the space as `\s`: the search compares literal text, so a rule that writes a character of these texts with a regular-expression escape is not found and has to be read by hand. The config command listed both files that set the option (the `1` and the `true` form) and not the unrelated configuration, and printed nothing for the directory that held only the unrelated one (exit 1).
+
+Matches text: pending (29-04)
