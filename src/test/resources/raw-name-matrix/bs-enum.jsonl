@@ -1,0 +1,2 @@
+{"name":"id","type":"UInt32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}
+{"name":"e","type":"Enum8('x\\\\y' = 1, 'z' = 2)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0}

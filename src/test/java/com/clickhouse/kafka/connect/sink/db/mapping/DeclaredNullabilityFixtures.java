@@ -76,10 +76,17 @@ public final class DeclaredNullabilityFixtures {
     public static final String TRAILING_BACKSLASH_NAMES_RAW = "Tuple(\\n    `e\\\\\\\\` Int32,\\n    `f\\\\\\\\n` Int32)";
 
     /**
-     * The sub-column suffix of {@link #REAL_NEWLINE_NAME_RAW}'s first element: one backslash and an {@code n}.
-     * Captured live on ClickHouse latest (23-EVIDENCE.md R-02); the D-12 live premise checks it.
+     * The sub-column suffix of {@link #REAL_NEWLINE_NAME_RAW}'s first element as the server's DESCRIBE JSON writes it,
+     * one backslash and an {@code n}: the JSON escaping of {@link #REAL_NEWLINE_ELEMENT_NAME}, used as row text.
+     * Captured live on ClickHouse latest (23-EVIDENCE.md R-02).
      */
     public static final String REAL_NEWLINE_ELEMENT = "a\\nb";
+
+    /**
+     * The first element's name as written in CREATE TABLE (a, a line feed, b): the raw identifier that
+     * {@link #REAL_NEWLINE_ELEMENT} escapes.
+     */
+    public static final String REAL_NEWLINE_ELEMENT_NAME = "a\nb";
 
     /** SQL text of the D-12 live table's column: {@link #BACKSLASH_N_NAME_DDL} wrapped in Nullable (R-02). */
     public static final String NULLABLE_BACKSLASH_N_NAME_DDL = "Nullable(Tuple(`a\\\\nb` Int32, d String))";
@@ -91,11 +98,17 @@ public final class DeclaredNullabilityFixtures {
     public static final String NULLABLE_BACKSLASH_N_NAME_RAW = "Nullable(Tuple(`a\\\\\\\\nb` Int32, d String))";
 
     /**
-     * The sub-column suffix of {@link #BACKSLASH_N_NAME_RAW}'s first element: {@code fromJsonRow}
-     * doubles the server's single backslash, so a Kafka field must use this form too (backlog 999.5).
+     * The sub-column suffix of {@link #BACKSLASH_N_NAME_RAW}'s first element as the server's DESCRIBE JSON writes it,
+     * two backslashes and an {@code n}: the JSON escaping of {@link #BACKSLASH_N_ELEMENT_NAME}, used as row text.
      * Captured live on ClickHouse latest (23-EVIDENCE.md R-02).
      */
     public static final String BACKSLASH_N_ELEMENT = "a\\\\nb";
+
+    /**
+     * The first element's name as written in CREATE TABLE (a, a backslash, n, b): the raw identifier that
+     * {@link #BACKSLASH_N_ELEMENT} escapes.
+     */
+    public static final String BACKSLASH_N_ELEMENT_NAME = "a\\nb";
 
     private DeclaredNullabilityFixtures() {}
 

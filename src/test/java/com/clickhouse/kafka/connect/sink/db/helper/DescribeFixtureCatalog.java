@@ -36,7 +36,7 @@ public final class DescribeFixtureCatalog {
     private static final String DESCRIBE_LINE_FORMAT = "{\"name\":\"%s\",\"type\":\"%s\",\"default_type\":\"\","
             + "\"default_expression\":\"\",\"comment\":\"\",\"codec_expression\":\"\","
             + "\"ttl_expression\":\"\",\"is_subcolumn\":%d}";
-    private static final String RESOURCE_PATH_FORMAT = "/" + RESOURCE_DIRECTORY + "/%s";
+    private static final String RESOURCE_PATH_FORMAT = "/%s/%s";
     private static final String NULL_TABLE_LINE = "table=null";
     private static final String TREE_INDENT = "  ";
     private static final String ARRAY_MARKER = "[] ";
@@ -188,7 +188,12 @@ public final class DescribeFixtureCatalog {
 
     /** The lines of one committed fixture file, read from the classpath as UTF-8. */
     public static List<String> resourceLines(String fileName) {
-        String path = String.format(RESOURCE_PATH_FORMAT, fileName);
+        return resourceLines(RESOURCE_DIRECTORY, fileName);
+    }
+
+    /** The lines of one committed file of a named resource directory, read from the classpath as UTF-8. */
+    public static List<String> resourceLines(String directory, String fileName) {
+        String path = String.format(RESOURCE_PATH_FORMAT, directory, fileName);
         try (InputStream stream = DescribeFixtureCatalog.class.getResourceAsStream(path)) {
             if (stream == null) {
                 throw new IllegalStateException("DESCRIBE fixture resource is absent: " + path);
