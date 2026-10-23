@@ -31,8 +31,16 @@ findings:
     severity: info
     disposition: open
     title: "A record still using the escaped name form is stored with the column DEFAULT and no log line"
+  - id: IN-04
+    severity: info
+    disposition: open
+    title: "The server's escape set for enum labels is now measurable, but the pin and the wording still say \"not measured\""
+  - id: IN-05
+    severity: info
+    disposition: open
+    title: "`DescribeUnreadableEnumMockServerTest` never closes the helper clients and does not tie the null to the enum"
 ---
 
 # Phase 28 review disposition
 
-Code review was advisory and found 0 critical, 4 warnings and 3 info items. `/gsd-code-review 28 --fix` fixed WR-01 to WR-04 (see 28-REVIEW-FIX.md); the three info items stay open. WR-01 rests on the reviewer's reading of ClickHouse string escaping and is not measured in this repo. IN-03 is the accepted D-06 decision, recorded so it is not lost.
+Code review was advisory and found 0 critical, 4 warnings and 3 info items; the re-review after the fixes found no new critical or warning items and added IN-04 and IN-05 (info). `/gsd-code-review 28 --fix` fixed WR-01 to WR-04 (see 28-REVIEW-FIX.md); the five info items stay open. WR-01 rests on the reviewer's reading of ClickHouse string escaping and is not measured in this repo. IN-03 is the accepted D-06 decision, recorded so it is not lost.
