@@ -45,9 +45,11 @@ upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start wi
 
 ## Known Issues
 
-* If the declared type of a column cannot be read, the connector keeps the earlier behaviour for that column: it drops
-  the sub-columns named `size`, `size0` or `size` followed by digits, so a `Tuple` with such an element is still written
-  short. It logs `Could not read the declared type ...` once per column and table description.
+* For each parent (a column or a `Tuple` path) whose declared type cannot be read, or that is absent from the described
+  rows, the connector keeps the earlier behaviour: it drops that parent's sub-columns named `size` or `size0`, so a
+  `Tuple` with such an element is still written short, and keeps its other `size<digits>` sub-columns for the existing
+  `Array` and `Map` rule. It logs `Could not read the declared type ...` once for that parent in each description of
+  the table, and the `have no matching DESCRIBE sub-column` WARN can accompany it.
 * Not measured on a record: a column name, `Tuple` element name or `Enum` label that holds a control character other
   than a line feed, a tab or a carriage return, and a name that holds a `.`. For a backspace, a form feed, a NUL and a
   bell the table description was measured and the table is mapped, but no insert was run.
@@ -62,11 +64,12 @@ upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start wi
 * A `Tuple` element named `size`, `size0` or `size` followed by digits, at any depth of a column's type, is no longer
   dropped when the connector reads the table's columns, so the connector now writes the whole tuple for such a column.
   Earlier releases wrote a shorter one, which the server rejected or, for some values, stored wrong. Rows stored by
-  earlier releases are not repaired. One case keeps the earlier behaviour: if the declared type of the
-  parent cannot be read, a `Tuple` element named `size` or `size0` is still dropped, so that tuple is still written
-  short. The connector logs a `Could not read the declared type ...` WARN per such parent and a `Declared Tuple
-  element(s) ... have no matching DESCRIBE sub-column` WARN naming the dropped elements, and the table is still served.
-  A parent is also unreadable when it is absent from the described rows, not only when its type cannot be parsed.
+  earlier releases are not repaired. One case keeps the earlier behaviour: if the declared type of the parent cannot
+  be read, a `Tuple` element named `size` or `size0` is still dropped, so that tuple is still written short. The
+  connector logs a `Could not read the declared type ...` WARN once per such parent in each description of the table
+  and a `Declared Tuple element(s) ... have no matching DESCRIBE sub-column` WARN naming the dropped elements, and the
+  table is still served. A parent is also unreadable when it is absent from the described rows, not only when its type
+  cannot be parsed.
 
 * On connectors whose `clickhouseSettings` set `input_format_binary_read_json_as_string` to `1` or `true`, a record
   value the JSON serializer cannot write no longer puts a `Map` key from the record into the task status, the DLQ
