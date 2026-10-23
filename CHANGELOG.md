@@ -11,6 +11,14 @@
   element(s) ... have no matching DESCRIBE sub-column` WARN naming the dropped elements, and the table is still served.
   A parent is also unreadable when it is absent from the described rows, not only when its type cannot be parsed.
 
+* On connectors whose `clickhouseSettings` set `input_format_binary_read_json_as_string` to `1` or `true`, a record
+  value the JSON serializer cannot write no longer puts a `Map` key from the record into the task status, the DLQ
+  `exception.stacktrace` header or the `Error inserting records` log. The failure is now reported like other conversion
+  failures, as `Failed to write column ...` naming the serializer's exception class with its message withheld. A failure
+  whose cause chain also holds a stream or timeout error still passes through unchanged, so a timeout is still retried;
+  on this route only a record value whose own getter throws such an error builds that chain, and Connect's value types
+  have no such getter.
+
 # 1.7.0_gg3, 2026-10-20
 
 This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg2`. It lists only the fork's own changes

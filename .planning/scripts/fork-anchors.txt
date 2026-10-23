@@ -97,3 +97,5 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	if (SIZE_F
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	allColumnsMap.merge(	1	DESC-08
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Table.java	allColumnsMap.put(column.getName(), column)	0	DESC-08
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	private boolean declaredElement;	1	DESC-08
+# Phase 27 (v1.7.0_gg4): the Jackson exclusion in passesThroughUnchanged (WRT-17); rows move in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	!(t instanceof JacksonException)	1	WRT-17

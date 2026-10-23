@@ -16,13 +16,17 @@ import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import com.clickhouse.kafka.connect.sink.util.ThrowableTexts;
+import com.clickhouse.kafka.connect.util.DataJson;
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +98,16 @@ public class WriterValueFreeFailureUnitTest {
     private static final String ERROR_LEVEL = "ERROR";
     private static final String TOPIC = "wrt13_topic";
     private static final String QUERY_ID = "wrt13-query";
+    private static final String KEY_SENTINEL = "SENTKEYm3Wp82dQ";
+    private static final String MAP_FIELD = "m";
+    private static final String ORDINARY_KEY = "ordinary";
+    private static final String ARRAY_JSON_COLUMN = "c_arr_json";
+    private static final String JACKSON_SCRIPTED_MESSAGE = "scripted jackson failure";
+    private static final String STRUCT_KAFKA_TYPE = "STRUCT";
+    private static final String STRUCT_VALUE_CLASS = Struct.class.getName();
+    private static final Schema MAP_HOLDER_SCHEMA = SchemaBuilder.struct()
+            .field(MAP_FIELD, SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.STRING_SCHEMA).build())
+            .build();
 
     /** What one call left behind: the thrown exception and the log events written meanwhile. */
     private static final class Captured {
@@ -516,5 +530,124 @@ public class WriterValueFreeFailureUnitTest {
         assertEquals(RuntimeException.class, captured.thrown.getClass());
         assertEquals(NO_ENUM_CONTENT_MESSAGE, captured.thrown.getMessage());
         assertNoSentinelAnywhere(captured.thrown, captured, NUMERIC_SENTINEL);
+    }
+
+    private static ClickHouseSinkConfig jsonAsStringConfig() {
+        Map<String, String> props = minimalProps();
+        props.put(ClickHouseSinkConfig.CLICKHOUSE_SETTINGS, JSON_AS_STRING_SETTING);
+        return new ClickHouseSinkConfig(props);
+    }
+
+    /** A Struct holding a Map with one ordinary entry. Jackson cannot serialize the key added after it. */
+    private static Struct mapHolderWithUnserializableEntry() {
+        Map<String, Object> entries = new HashMap<>();
+        entries.put(ORDINARY_KEY, SENTINEL);
+        Struct holder = new Struct(MAP_HOLDER_SCHEMA).put(MAP_FIELD, entries);
+        // Connect validates a Struct on put, so the failing entry goes in afterwards.
+        entries.put(KEY_SENTINEL, new Object());
+        return holder;
+    }
+
+    private static Captured writeUuidThroughFailingStream(IOException failure) throws Exception {
+        ClickHouseWriter writer = newWriter(config());
+        Column uuid = column(UUID_COLUMN, Type.UUID);
+        return capture(() -> writer.doWriteColValue(
+                uuid, new ScriptedWriteFailureWriter.FailingOutputStream(failure, 0), stringData(VALID_UUID), false));
+    }
+
+    private static void assertWithheldCauseLine(Captured captured, Class<?> exceptionClass) {
+        String printed = ThrowableTexts.printedStackTrace(captured.thrown);
+        assertTrue(printed.contains(String.format(WITHHELD_CAUSE_LINE_FORMAT, exceptionClass.getName())), printed);
+    }
+
+    @Test
+    @DisplayName("WRT-17 value-free: a Jackson failure on the JSON-as-string route throws a DataException naming the column and InvalidDefinitionException, with no Map key in the chain, the rendering or the logs")
+    void jacksonFailureOnJsonAsStringRouteIsValueFree() throws Exception {
+        Data data = new Data(MAP_HOLDER_SCHEMA, mapHolderWithUnserializableEntry());
+        InvalidDefinitionException raw =
+                assertThrows(InvalidDefinitionException.class, () -> DataJson.OBJECT_MAPPER.writeValueAsBytes(data));
+        assertTrue(raw.getMessage().contains(KEY_SENTINEL), "self-check: the Jackson message names the Map key");
+
+        Captured captured = writeColValue(jsonAsStringConfig(), column(JSON_COLUMN, Type.JSON), data);
+
+        assertValueFreeWriterFailure(
+                captured,
+                KEY_SENTINEL,
+                valueFreeMessage(JSON_COLUMN, STRUCT_KAFKA_TYPE, STRUCT_VALUE_CLASS, Type.JSON, InvalidDefinitionException.class));
+        assertNoSentinelAnywhere(captured.thrown, captured, SENTINEL);
+        assertWithheldCauseLine(captured, InvalidDefinitionException.class);
+    }
+
+    @Test
+    @DisplayName("WRT-17 value-free: a Jackson failure in an Array(JSON) element is converted at the element, so no Map key passes through the Array")
+    void jacksonFailureInArrayOfJsonElementIsValueFree() throws Exception {
+        Data element = new Data(MAP_HOLDER_SCHEMA, mapHolderWithUnserializableEntry());
+        InvalidDefinitionException raw =
+                assertThrows(InvalidDefinitionException.class, () -> DataJson.OBJECT_MAPPER.writeValueAsBytes(element));
+        assertTrue(raw.getMessage().contains(KEY_SENTINEL), "self-check: the Jackson message names the Map key");
+        Column arrayOfJson = Column.builder()
+                .name(ARRAY_JSON_COLUMN)
+                .type(Type.ARRAY)
+                .arrayType(column(ARRAY_JSON_COLUMN, Type.JSON))
+                .build();
+        Data data = new Data(
+                SchemaBuilder.array(MAP_HOLDER_SCHEMA).build(), List.of(mapHolderWithUnserializableEntry()));
+
+        Captured captured = writeColValue(jsonAsStringConfig(), arrayOfJson, data);
+
+        assertValueFreeWriterFailure(
+                captured,
+                KEY_SENTINEL,
+                valueFreeMessage(
+                        ARRAY_JSON_COLUMN, STRUCT_KAFKA_TYPE, STRUCT_VALUE_CLASS, Type.JSON, InvalidDefinitionException.class));
+        assertNoSentinelAnywhere(captured.thrown, captured, SENTINEL);
+        assertWithheldCauseLine(captured, InvalidDefinitionException.class);
+    }
+
+    @Test
+    @DisplayName("WRT-17 value-free: a Jackson exception alone from the stream becomes a DataException with its message withheld")
+    void jacksonExceptionAloneFromTheStreamIsValueFree() throws Exception {
+        IOException failure = new JsonMappingException(JACKSON_SCRIPTED_MESSAGE + " " + SENTINEL);
+        assertTrue(failure.getMessage().contains(SENTINEL), "self-check: the Jackson message embeds the value");
+
+        Captured captured = writeUuidThroughFailingStream(failure);
+
+        assertValueFreeWriterFailure(
+                captured,
+                SENTINEL,
+                valueFreeMessage(UUID_COLUMN, STRING_KAFKA_TYPE, STRING_VALUE_CLASS, Type.UUID, JsonMappingException.class));
+        assertWithheldCauseLine(captured, JsonMappingException.class);
+    }
+
+    @Test
+    @DisplayName("WRT-17 pass-through: a Jackson exception over a SocketTimeoutException is rethrown as the same instance")
+    void jacksonOverSocketTimeoutPassesThrough() throws Exception {
+        IOException failure = new JsonMappingException(JACKSON_SCRIPTED_MESSAGE, new SocketTimeoutException("timed out"));
+
+        Captured captured = writeUuidThroughFailingStream(failure);
+
+        assertSame(failure, captured.thrown);
+    }
+
+    @Test
+    @DisplayName("WRT-17 accepted residual: a Jackson exception over a plain IOException is rethrown as the same instance")
+    void jacksonOverPlainIoExceptionPassesThroughAsAcceptedResidual() throws Exception {
+        // A non-Jackson IOException anywhere in the chain still counts. On the JSON-as-string route this
+        // chain comes only from a record value whose own getter throws it.
+        IOException failure = new JsonMappingException(JACKSON_SCRIPTED_MESSAGE, new IOException("stream closed by test"));
+
+        Captured captured = writeUuidThroughFailingStream(failure);
+
+        assertSame(failure, captured.thrown);
+    }
+
+    @Test
+    @DisplayName("WRT-17 accepted residual: a plain IOException over a Jackson exception is rethrown as the same instance")
+    void plainIoExceptionOverJacksonPassesThroughAsAcceptedResidual() throws Exception {
+        IOException failure = new IOException("stream closed by test", new JsonMappingException(JACKSON_SCRIPTED_MESSAGE));
+
+        Captured captured = writeUuidThroughFailingStream(failure);
+
+        assertSame(failure, captured.thrown);
     }
 }

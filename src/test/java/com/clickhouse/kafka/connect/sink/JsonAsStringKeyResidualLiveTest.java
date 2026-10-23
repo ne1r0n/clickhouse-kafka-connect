@@ -14,6 +14,7 @@ import com.clickhouse.kafka.connect.sink.dlq.InMemoryDLQ;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import com.clickhouse.kafka.connect.sink.util.ThrowableTexts;
+import com.clickhouse.kafka.connect.util.WithheldMessageException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,27 +32,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Live pin of the Jackson reference-chain residual on the opt-in JSON-as-string route (D-03, D-14).
- * With {@code input_format_binary_read_json_as_string=1} the writer serializes a Struct with
- * Jackson, and a value Jackson cannot serialize makes it add {@code (through reference chain: ...)}
- * to its message. That text reaches the writer's IOException pass-through unchanged, and a {@code
- * Map} key is the only record text it can carry for a value Connect itself can produce. The test
- * drives {@code ClickHouseSinkTask.put} against the real writer and records which of the
- * destinations an operator reads gets the key and which gets nothing: the task status cause chain,
- * the DLQ headers, the {@code Error inserting records} throwable and the {@code Error writing value
- * of} line.
+ * Live pin of a Jackson failure on the opt-in JSON-as-string route. With {@code
+ * input_format_binary_read_json_as_string=1} the writer serializes a Struct with Jackson, and a
+ * value Jackson cannot serialize makes it add {@code (through reference chain: ...)} to its
+ * message, which can name a {@code Map} key. The writer withholds that message like any other
+ * conversion failure, so the key must reach none of the destinations an operator reads: the task
+ * status cause chain, the DLQ headers, the {@code Error inserting records} throwable and the {@code
+ * Error writing value of} line. The test drives {@code ClickHouseSinkTask.put} against the real
+ * writer.
  *
  * <p>The matrix holds Connect-typed values only. The failure trigger is a content-free {@code
  * java.lang.Object} put into the Map after both {@code Struct.put} calls, because Connect validates
  * a Struct on {@code put}. A bean whose own exception text carries data is not a Connect value type
- * and is out of scope (D-14).
+ * and is out of scope.
  *
  * <p>Every case that claims the Jackson route was reached asserts the Jackson exception class in
- * the cause chain, so a green result cannot come from a failure that never reached Jackson. The
- * control without the setting asserts the opposite route: schema validation refuses the JSON column
- * first, so the {@code Writing JSON in binary is not supported yet} exception inside the writer's
- * JSON branch is not what put() surfaces (measured), and the asserted text is the validation
- * message.
+ * the cause chain, directly or as the original class of a withheld copy, so a green result cannot
+ * come from a failure that never reached Jackson. The control without the setting asserts the
+ * opposite route: schema validation refuses the JSON column first, so the {@code Writing JSON in
+ * binary is not supported yet} exception inside the writer's JSON branch is not what put()
+ * surfaces (measured), and the asserted text is the validation message.
  */
 public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
 
@@ -81,6 +81,7 @@ public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
     private static final String WRITE_VALUE_FAILURE_PREFIX = "Error writing value of";
     private static final String ERROR_LEVEL = "ERROR";
     private static final String JACKSON_FAILURE_CLASS = "com.fasterxml.jackson.databind.exc.InvalidDefinitionException";
+    private static final String JACKSON_WITHHELD_LINE = JACKSON_FAILURE_CLASS + " (message withheld: may contain record data)";
     private static final String UNSUPPORTED_JSON_TEXT = "has unsupported type [JSON] for RowBinary serialization";
     private static final String SERVER_VERSION_LOG_FORMAT = "{} server version={}";
 
@@ -185,12 +186,17 @@ public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
     }
 
     private static void assertJacksonRouteReached(Throwable thrown) {
+        List<Throwable> chain = ThrowableTexts.causeChain(thrown);
         assertTrue(
-                ThrowableTexts.causeChain(thrown).stream()
-                        .anyMatch(t -> JACKSON_FAILURE_CLASS.equals(t.getClass().getName())),
+                chain.stream()
+                        .anyMatch(t -> JACKSON_FAILURE_CLASS.equals(t.getClass().getName())
+                                || t instanceof WithheldMessageException w
+                                        && JACKSON_FAILURE_CLASS.equals(w.getOriginalClassName())),
                 "the Jackson route was not reached; the cause chain is: "
-                        + ThrowableTexts.causeChain(thrown).stream()
-                                .map(t -> t.getClass().getName())
+                        + chain.stream()
+                                .map(t -> t instanceof WithheldMessageException w
+                                        ? t.getClass().getName() + " (original " + w.getOriginalClassName() + ")"
+                                        : t.getClass().getName())
                                 .toList());
     }
 
@@ -198,12 +204,6 @@ public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
         for (String sentinel : sentinels) {
             assertFalse(text.contains(sentinel), destination + " carries " + sentinel + ":\n" + text);
         }
-    }
-
-    /** The key may appear and no other record text may. */
-    private static void assertOnlyTheKeyAppears(String destination, String text) {
-        assertTrue(text.contains(KEY_SENTINEL), destination + " does not carry the Map key:\n" + text);
-        assertNoneOf(destination, text, VALUE_SENTINELS);
     }
 
     private static List<LogCapture.CapturedEvent> insertErrors(LogCapture log) {
@@ -227,8 +227,8 @@ public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
     }
 
     @Test
-    @DisplayName("D-03: errors.tolerance=none names only the Map key, in the task status chain and the Error inserting records throwable")
-    void mapKeyReachesTaskStatusAndInsertErrorUnderToleranceNone(TestInfo testInfo) throws Exception {
+    @DisplayName("errors.tolerance=none keeps the Map key out of the task status chain and the Error inserting records throwable")
+    void mapKeyStaysOutOfTaskStatusAndInsertErrorUnderToleranceNone(TestInfo testInfo) throws Exception {
         try (LogCapture log = LogCapture.attach(ClickHouseWriter.class)) {
             Throwable thrown =
                     putBatch(testInfo, true, false, null, JsonAsStringKeyResidualLiveTest::mapBatch);
@@ -236,24 +236,26 @@ public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
             assertNotNull(thrown, "put must fail when errors.tolerance=none");
             assertJacksonRouteReached(thrown);
             // Connect's task status prints the trace of the whole chain, so rendering the exception
-            // put() throws is the faithful approximation (22-RESEARCH Pitfall 8).
-            assertOnlyTheKeyAppears("task status", ThrowableTexts.printedStackTrace(thrown));
+            // put() throws is the faithful approximation.
+            String rendering = ThrowableTexts.printedStackTrace(thrown);
+            assertNoneOf("task status", rendering, ALL_SENTINELS);
+            assertTrue(rendering.contains(JACKSON_WITHHELD_LINE), "task status lacks the withheld Jackson line:\n" + rendering);
 
             List<LogCapture.CapturedEvent> insertErrors = insertErrors(log);
             assertFalse(insertErrors.isEmpty(), "no '" + INSERT_FAILURE_MESSAGE + "' ERROR event with a throwable");
             insertErrors.forEach(e ->
-                    assertOnlyTheKeyAppears(INSERT_FAILURE_MESSAGE + " throwable", String.join("\n", e.throwableTexts())));
+                    assertNoneOf(INSERT_FAILURE_MESSAGE + " throwable", String.join("\n", e.throwableTexts()), ALL_SENTINELS));
 
             List<LogCapture.CapturedEvent> writeLines = writeValueFailureLines(log);
             assertFalse(writeLines.isEmpty(), "no '" + WRITE_VALUE_FAILURE_PREFIX + "' ERROR line");
             writeLines.forEach(e -> assertNoneOf(WRITE_VALUE_FAILURE_PREFIX + " line", e.message(), ALL_SENTINELS));
-            log.allTexts().forEach(text -> assertNoneOf("a log text", text, VALUE_SENTINELS));
+            log.allTexts().forEach(text -> assertNoneOf("a log text", text, ALL_SENTINELS));
         }
     }
 
     @Test
-    @DisplayName("D-03: errors.tolerance=all keeps the Map key out of the DLQ message header and puts it only in the stack-trace header")
-    void mapKeyReachesOnlyTheDlqStackTraceHeaderUnderToleranceAll(TestInfo testInfo) throws Exception {
+    @DisplayName("errors.tolerance=all keeps the Map key out of both DLQ exception headers")
+    void mapKeyStaysOutOfBothDlqHeadersUnderToleranceAll(TestInfo testInfo) throws Exception {
         InMemoryDLQ dlq = new InMemoryDLQ();
 
         Throwable thrown = putBatch(testInfo, true, true, dlq, JsonAsStringKeyResidualLiveTest::mapBatch);
@@ -268,12 +270,15 @@ public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
                             && headers.exceptionMessage().matches(ValueFreeDlqHeadersUnitTest.QUERY_ID_MESSAGE),
                     "the message header must be Processing's QueryIdentifier text: " + headers.exceptionMessage());
             assertNoneOf("the message header", headers.exceptionMessage(), ALL_SENTINELS);
-            assertOnlyTheKeyAppears("the stack-trace header", headers.exceptionStacktrace());
+            assertNoneOf("the stack-trace header", headers.exceptionStacktrace(), ALL_SENTINELS);
+            assertTrue(
+                    headers.exceptionStacktrace().contains(JACKSON_WITHHELD_LINE),
+                    "the stack-trace header lacks the withheld Jackson line:\n" + headers.exceptionStacktrace());
         }
     }
 
     @Test
-    @DisplayName("D-03: a List element that Jackson cannot serialize is named by its index, so no record text reaches any destination")
+    @DisplayName("a List element that Jackson cannot serialize is named by its index, so no record text reaches any destination")
     void listElementFailureCarriesNoRecordTextUnderToleranceNone(TestInfo testInfo) throws Exception {
         try (LogCapture log = LogCapture.attach(ClickHouseWriter.class)) {
             Throwable thrown =
@@ -288,7 +293,7 @@ public class JsonAsStringKeyResidualLiveTest extends ClickHouseBase {
     }
 
     @Test
-    @DisplayName("D-03: without the setting the write fails before Jackson with the unsupported-type text and no record text")
+    @DisplayName("without the setting the write fails before Jackson with the unsupported-type text and no record text")
     void settingAbsentFailsBeforeJacksonWithNoRecordText(TestInfo testInfo) throws Exception {
         try (LogCapture log = LogCapture.attach(ClickHouseWriter.class)) {
             Throwable thrown =

@@ -25,9 +25,11 @@ import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.Utils;
 import com.clickhouse.kafka.connect.util.WithheldMessageException;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
+import com.fasterxml.jackson.core.JacksonException;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.slf4j.Logger;
@@ -633,20 +635,25 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     /**
-     * Decides whether {@link #doWriteColValue}'s generic catch rethrows {@code e} as it is (D-01,
-     * D-03). Three families pass through: any chain holding an {@link IOException}, so retry
-     * classification still sees stream and timeout failures (the Map/Tuple/Array lambdas wrap them
-     * in a RuntimeException); a {@code ConnectException}, which includes this fork's own value-free
-     * {@link DataException}s and an inner column's replacement; and a RuntimeException of exactly
-     * that class, which only the connector's own throw sites produce.
+     * Decides whether {@link #doWriteColValue}'s generic catch rethrows {@code e} as it is. Three
+     * families pass through: a chain holding an {@link IOException} that is not a Jackson exception,
+     * checked link by link, so retry classification still sees stream and timeout failures (the
+     * Map/Tuple/Array lambdas wrap them in a RuntimeException); a {@link ConnectException}, which
+     * includes this fork's own value-free {@link DataException}s and an inner column's replacement;
+     * and a RuntimeException of exactly that class, which only the connector's own throw sites
+     * produce.
+     *
+     * <p>A Jackson exception is itself an IOException and its message can quote record data (a
+     * reference chain names a Map key), so a Jackson link never counts, while a timeout beneath it
+     * still does.
      */
     private static boolean passesThroughUnchanged(Exception e) {
-        if (e instanceof org.apache.kafka.connect.errors.ConnectException || e.getClass() == RuntimeException.class) {
+        if (e instanceof ConnectException || e.getClass() == RuntimeException.class) {
             return true;
         }
         Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Throwable t = e; t != null && seen.add(t); t = t.getCause()) {
-            if (t instanceof IOException) {
+            if (t instanceof IOException && !(t instanceof JacksonException)) {
                 return true;
             }
         }
