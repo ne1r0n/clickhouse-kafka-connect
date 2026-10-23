@@ -23,6 +23,17 @@
   ...: java.lang.IllegalArgumentException` instead of `java.lang.NullPointerException`. The label stays out of the
   message. The `No content in enum` text, reachable only from a hand-built column, now names the column.
 
+* A column or `Tuple` element whose name contains a backslash, a slash, a line feed, a tab, a carriage return or a
+  double quote is now matched under its name as written in `CREATE TABLE`, on both clients, and an `Enum8` or `Enum16`
+  label holding such a character (or an apostrophe) is matched under its own text. Earlier releases on client V2 matched
+  only an escaped form of such a name, stored the column's DEFAULT for a root field that used the real name, failed the
+  record for a `Tuple` element, and left a table unmapped for a double quote in a name or an apostrophe label followed
+  by another label. Earlier releases on client V1, the default, left a table with a tab or a carriage return in a name
+  unmapped, read a slash or a double quote in a name as a replacement character so no field matched it, and logged a
+  fallback WARN for a line feed. A record that still uses the escaped form now gets the DEFAULT at the root and fails
+  for a `Tuple` element, so rename such fields before upgrading (backlog 999.5). Rows stored by earlier releases are not
+  repaired.
+
 # 1.7.0_gg3, 2026-10-20
 
 This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg2`. It lists only the fork's own changes

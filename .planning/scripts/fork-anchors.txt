@@ -102,7 +102,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	NO_ENUM_C
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	ENUM_LABEL_NOT_FOUND_FORMAT	2	WRT-18
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	return enumValues.get(value);	0	WRT-18
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	WRITE_TYPE_MISMATCH_FAILURE_FORMAT	2	WRT-19
-# Phase 28 (v1.7.0_gg4): the names-only decode in fromJsonRow and the shared UTF-8 describe reader (NAME-03); the rewritten normalise, its JSON-layer helper and the null-name placeholder (NAME-04); rows move in the commit that changes the code.
+# Phase 28 (v1.7.0_gg4): the names-only decode in fromJsonRow and the shared UTF-8 describe reader (NAME-03); the rewritten normalise, its JSON-layer helper and the null-name placeholder (NAME-04); the escape-aware enum-label scan in Column (NAME-06); rows move in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java	json.replace(	0	NAME-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java	currentTokenLocation()	1	NAME-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	readDescribeRows(	3	NAME-03
@@ -110,3 +110,5 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	(run / 2) % 2 == 0	0	NAME-04
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	unescapeJsonLayer(	2	NAME-04
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java	UNNAMED_COLUMN	2	NAME-04
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	Utils.splitIgnoringQuotes(	0	NAME-06
+src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	DeclaredNullability.unescapeJsonLayer(	1	NAME-06

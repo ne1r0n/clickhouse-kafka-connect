@@ -534,6 +534,7 @@ The four code phases split along the production files that change: the build and
 **Scheduled:** 2026-10-21 into milestone `v1.7.0_gg4-hardening` as Phase 28 (NAME-01..NAME-07). The canonical form was decided by the user on 2026-10-21: the raw identifier as written in `CREATE TABLE`, with no dual-form alias, and operators rename. The escaped-quote `normalise` pin (NAME-01) lands on the current code first. NAME-07 marks this entry delivered in the same commit as the fix.
 **Requirements:** mapped under Phase 28
 **Plans:** planned under Phase 28
+**Delivered:** Phase 28 (NAME-01..NAME-07) on sync/v1.7.0, to ship in v1.7.0_gg4: names and Enum labels are matched under the raw identifier as written in CREATE TABLE on both clients; a record using the earlier escaped form stores the DEFAULT at the root and fails for a Tuple element; rows stored by earlier releases are not repaired
 
 ## Progress
 

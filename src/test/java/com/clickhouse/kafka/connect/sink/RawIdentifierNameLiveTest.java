@@ -54,6 +54,14 @@ public class RawIdentifierNameLiveTest extends ClickHouseBase {
             RawNameMatrix.SHAPE_NULLABLE_TUPLE, RawNameMatrix.NULLABLE_COLUMN + ".",
             RawNameMatrix.SHAPE_MAP_TUPLE, RawNameMatrix.MAP_COLUMN + ".values.");
 
+    private static final String ENUM_TABLE_PREFIX = "rin_enum_";
+    private static final String ENUM_CODE_ALIAS = "code_v";
+    private static final String ENUM_MATCH_ALIAS = "match_v";
+    private static final String ENUM_CODE_EXPRESSION = "CAST(" + RawNameMatrix.ENUM_COLUMN + ", 'Int8')";
+    private static final String ENUM_MATCH_FORMAT = RawNameMatrix.ENUM_COLUMN + " = %s";
+    private static final int ENUM_ROW_ID = 1;
+    private static final String ENUM_FIRST_CODE = "1";
+
     private static final int RAW_ROW_ID = 1;
     private static final int DOUBLED_ROOT_ROW_ID = 2;
     private static final int DOUBLED_ELEMENT_ROW_ID = 3;
@@ -174,6 +182,17 @@ public class RawIdentifierNameLiveTest extends ClickHouseBase {
                         "{'" + MAP_KEY + "':(" + MAP_NUMBER + ",'" + MAP_TEXT + "')}"));
     }
 
+    private static SinkRecord enumRecord(String topic, String label) {
+        Schema schema = SchemaBuilder.struct()
+                .field(RawNameMatrix.ID_COLUMN, Schema.INT32_SCHEMA)
+                .field(RawNameMatrix.ENUM_COLUMN, Schema.STRING_SCHEMA)
+                .build();
+        Struct value = new Struct(schema)
+                .put(RawNameMatrix.ID_COLUMN, ENUM_ROW_ID)
+                .put(RawNameMatrix.ENUM_COLUMN, label);
+        return new SinkRecord(topic, 0, null, null, schema, value, ENUM_ROW_ID);
+    }
+
     // ---- method sources ----
 
     static Stream<Entry> allEntries() {
@@ -188,6 +207,13 @@ public class RawIdentifierNameLiveTest extends ClickHouseBase {
     static Stream<Arguments> doubledElementCases() {
         return doubledEntries()
                 .flatMap(entry -> TUPLE_CONTAINERS.stream().map(container -> Arguments.of(entry, container)));
+    }
+
+    /** The entries whose pre-fix label key differs from the raw label; ctl, bt and na have no such key. */
+    static Stream<Entry> legacyLabelEntries() {
+        return RawNameMatrix.ENTRIES.stream()
+                .filter(entry -> !RawNameMatrix.legacyLabelKey(RawNameMatrix.label(entry))
+                        .equals(RawNameMatrix.label(entry)));
     }
 
     private static String doubledRoot(Entry entry) {
@@ -270,6 +296,49 @@ public class RawIdentifierNameLiveTest extends ClickHouseBase {
                         failure.getClass().getSimpleName(),
                         rootCause(failure).getClass().getSimpleName(),
                         RawNameMatrix.render(firstLine(rootCause(failure).getMessage()))));
+            } finally {
+                ClickHouseTestHelpers.dropTable(chc, table);
+            }
+        }
+    }
+
+    @ParameterizedTest(
+            name = "NAME-06 raw form: an Enum8 value using the raw label lands and reads back typed for entry {0}")
+    @MethodSource("allEntries")
+    void rawEnumLabelLandsAndReadsBackTyped(Entry entry, TestInfo testInfo) throws Exception {
+        Map<String, String> props = getBaseProps();
+        props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
+        String table = createTopicName(ENUM_TABLE_PREFIX + entry.key());
+        try (ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props)) {
+            try {
+                NullableRoundTrip.createTable(chc, table, RawNameMatrix.enumTableDdl(entry));
+                NullableRoundTrip.putAndStop(props, List.of(enumRecord(table, RawNameMatrix.label(entry))));
+
+                NullableRoundTrip.selectAndAssert(chc, table, ENUM_ROW_ID, List.of(
+                        new Cell(ENUM_CODE_ALIAS, ENUM_CODE_EXPRESSION, ENUM_FIRST_CODE),
+                        new Cell(
+                                ENUM_MATCH_ALIAS,
+                                String.format(ENUM_MATCH_FORMAT, RawNameMatrix.quotedSql(RawNameMatrix.label(entry))),
+                                ENUM_FIRST_CODE)));
+            } finally {
+                ClickHouseTestHelpers.dropTable(chc, table);
+            }
+        }
+    }
+
+    @ParameterizedTest(
+            name = "NAME-06 legacy form: an Enum8 value using the pre-fix label key fails loudly for entry {0}")
+    @MethodSource("legacyLabelEntries")
+    void legacyEnumLabelKeyFailsLoudly(Entry entry, TestInfo testInfo) throws Exception {
+        Map<String, String> props = getBaseProps();
+        props.put(CONNECTOR_NAME_PROP, uniqueConnectorName(testInfo));
+        String table = createTopicName(ENUM_TABLE_PREFIX + "legacy_" + entry.key());
+        try (ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props)) {
+            try {
+                NullableRoundTrip.createTable(chc, table, RawNameMatrix.enumTableDdl(entry));
+                String legacyKey = RawNameMatrix.legacyLabelKey(RawNameMatrix.label(entry));
+
+                NullableRoundTrip.assertPutFails(props, List.of(enumRecord(table, legacyKey)), chc, table);
             } finally {
                 ClickHouseTestHelpers.dropTable(chc, table);
             }

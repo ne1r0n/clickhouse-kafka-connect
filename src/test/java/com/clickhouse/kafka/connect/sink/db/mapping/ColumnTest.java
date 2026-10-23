@@ -183,6 +183,13 @@ class ColumnTest {
         assertTrue(col.getEnumValues().containsKey("b"));
     }
 
+    @Test
+    public void enumLabelsHoldingAParenthesisACommaOrAnEqualsSignAreRead() {
+        Column col = Column.extractColumn(
+                newDescriptor("c_enum8", "Enum8('a)b' = 1, 'c,d' = 2, 'e=f' = 3, 'g' = -4)"));
+        assertEquals(java.util.Map.of("a)b", 1, "c,d", 2, "e=f", 3, "g", -4), col.getEnumValues());
+    }
+
     private static void assertLookupMissNamesTheColumn(Column col, String columnName, String label) {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> col.convertEnumValues(label));
         assertEquals("Enum label not found for column " + columnName, e.getMessage());

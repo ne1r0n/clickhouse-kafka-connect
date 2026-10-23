@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.data.ClickHouseColumn;
 import com.clickhouse.kafka.connect.sink.db.helper.RawNameMatrix.Entry;
+import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.util.LogCapture;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -148,6 +150,22 @@ class RawNameMatrixFixturesUnitTest {
                 RawNameMatrix.elementName(entry),
                 DeclaredNullability.elementKey(declared.getNestedColumns().get(0), 0),
                 "entry " + entry.key() + ": the declared element key is the raw element name");
+    }
+
+    @ParameterizedTest(name = "NAME-06: the enum keys are the raw labels for entry {0}")
+    @MethodSource("entries")
+    void enumKeysAreTheRawLabels(Entry entry) throws IOException {
+        String line = committed(entry.key() + RawNameMatrix.ENUM_SUFFIX).stream()
+                .filter(row -> RawNameMatrix.ENUM_COLUMN.equals(RawNameMatrix.decodedField(row, FIELD_NAME)))
+                .findFirst()
+                .orElseThrow();
+
+        Column column = Column.extractColumn(ClickHouseFieldDescriptor.fromJsonRow(line));
+
+        assertEquals(
+                Map.of(RawNameMatrix.label(entry), 1, RawNameMatrix.OTHER_LABEL, 2),
+                column.getEnumValues(),
+                "entry " + entry.key() + ": the enum keys are the labels as written in CREATE TABLE");
     }
 
     @Test
