@@ -1464,3 +1464,129 @@ X0=ef19fbc8f3c1ddee16c84180b84fa47b2ddce12c
 Run: id 40017036598, https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40017036598, workflow .github/workflows/tests.yaml, event push, head_branch sync/v1.7.0, run_started_at 2026-10-23T20:09:34Z, updated_at 2026-10-23T20:16:02Z (about 6.5 minutes), conclusion success; exactly one tests.yaml run on X0, none cancelled. One job "ClickHouse latest Client version V2 tests", success, runner "GitHub Actions 1000000313", labels ["ubuntu-24.04"]. Origin heads after the push: custom_build 69cd680b (unchanged), main bec167d8 (unchanged), sync/v1.7.0 at X0, two dependabot heads (unchanged). Tags unchanged.
 
 Matches text: n/a (gate check)
+
+### E-70: publication dry run (PUB-13)
+
+Backs: nothing in a document; this is the tracer of plan 29-08 (PUB-13, OPS-05, D-08): the publication path end to end without a push, so that the user decides on a measured, rehearsed merge. Date (UTC) 2026-10-23, 20:18 to 20:21. Nothing was pushed, tagged or deleted on origin; the dry-run merge D was never pushed.
+
+**Ground truth** (2026-10-23T20:18:53Z), after `git fetch --quiet origin --no-tags`:
+
+```text
+git ls-remote --heads origin custom_build  ->  69cd680bf548bfb0329142752d37f8a6c3190c26  refs/heads/custom_build   (PRE; OPS-05 holds, E-73 not written)
+X  = git rev-parse sync/v1.7.0             ->  98b2d47e9bec236df49b58b4dc6836326a97b9dd
+X0 = ef19fbc8f3c1ddee16c84180b84fa47b2ddce12c (the X0= line of E-62), an ancestor of X
+git diff --name-only X0 X                  ->  .planning/REQUIREMENTS.md, .planning/ROADMAP.md, .planning/STATE.md,
+                                               .planning/phases/29-release-publication/29-07-SUMMARY.md,
+                                               .planning/phases/29-release-publication/29-COMMAND-EVIDENCE.md,
+                                               .planning/state.json                      (planning-only)
+git rev-parse 'pre-v1.7.0_gg4^{commit}'    ->  69cd680bf548bfb0329142752d37f8a6c3190c26
+local custom_build                         ->  6a2a87a5db350809fbb0ebba8a6cb9861b22bcfd (an ancestor of PRE, so it fast-forwards)
+git log --oneline 69cd680b..sync/v1.7.0    ->  275 commits (X0 was 272 ahead in the bundle; the 29-07 close-out added 3 planning commits)
+git diff --shortstat 69cd680b X -- . ':!.planning'  ->  180 files changed, 7813 insertions(+), 513 deletions(-)   (equal to bundle item 1)
+actions/runs?head_sha=X0                   ->  one run: id 40017036598, .github/workflows/tests.yaml, event push, head_branch sync/v1.7.0,
+                                               status completed, conclusion success, 2026-10-23T20:09:34Z to 20:16:02Z
+/rate_limit core                           ->  remaining 46 of 60
+```
+
+Server and image at this gate (D-08), 2026-10-23T20:19:03Z, `docker run --rm --entrypoint clickhouse-local clickhouse/clickhouse-server:latest --query "SELECT version()"` (colima profile `vz`, Docker 29.8.2):
+
+```text
+26.9.19.9
+sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b 2026-10-14T18:05:21.432177888Z
+```
+
+The version and the image id and date equal E-05 and E-60, so `latest` has not drifted since the phase base. The CHANGELOG heading date `2026-10-23` equals today (UTC); a merge after 2026-10-23T23:59:59Z would make it wrong.
+
+**The merge message** (`/tmp/gsd29/merge-msg.txt`, written before the dry run, readable without `.planning/`):
+
+```text
+Merge sync/v1.7.0: release v1.7.0_gg4
+
+VERSION v1.7.0_gg4. Read docs/ROLLOUT-v1.7.0_gg4.md, the operator note,
+before upgrading a connector from v1.7.0_gg3. First of all, rename
+producer fields: the connector now matches a record field to a column,
+Tuple element or Enum label as it is written in CREATE TABLE, so a field
+still named in the earlier escaped form stops matching after the upgrade.
+The note gives the pause, drain and switch order. CHANGELOG.md carries
+the 1.7.0_gg4 section and docs/FORK-DELTA.md is refreshed for this
+release. The gg1, gg2 and gg3 notes are corrected (the
+enableDbTopicSplit key rule, and the in-flight query scope for
+connectors with more than two topics).
+
+Shipped changes:
+- Tuple elements named size, size0 or size followed by digits are kept
+  at table discovery, so the whole tuple is written.
+- Column, Tuple element and Enum label names are matched as written in
+  CREATE TABLE, on client V1 and V2; tables that were unmapped before
+  (a double quote or tab in a name) are mapped now.
+- On the JSON-as-string route a Map key no longer reaches the task
+  status, the DLQ stack-trace header or the "Error inserting records"
+  log lines.
+- An unknown Enum8 or Enum16 label fails as IllegalArgumentException
+  instead of NullPointerException.
+- The JMX MBean version= segment and the client name carry v1.7.0_gg4.
+- Nine absorbed Dependabot updates: Connect API 4.4.0 (compile-only, a
+  test pins the Kafka references), Gradle wrapper 9.8.1, Shadow 9.6.1
+  (the archive task is repaired and a new archive check runs in CI),
+  httpclient5, gson, Jackson, slf4j, commons-lang3 and the versions
+  plugin.
+- Upstream's untagged tail a6f1df83 with guava 33.7.2-jre and
+  httpclient5 5.6.5.
+- Test, CI and documentation additions listed in the CHANGELOG.
+
+This merge also publishes the .planning/ history since 69cd680b.
+
+Rollback: restore tag pre-v1.7.0_gg4 with git read-tree -u --reset plus
+a commit, as item 7 of the rollout note describes, and redeploy the
+archive built at tag v1.7.0_gg3, never one built from the rolled-back
+tip (its inner jar nests 25 dependency jars).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+**The dry-run merge** (2026-10-23T20:19:18Z), in a detached throwaway worktree:
+
+```sh
+git worktree add --detach /tmp/gsd29/pubdry 69cd680bf548bfb0329142752d37f8a6c3190c26
+git -C /tmp/gsd29/pubdry -c user.name=demo -c user.email=demo@example.invalid merge --no-ff -F /tmp/gsd29/merge-msg.txt 98b2d47e9bec236df49b58b4dc6836326a97b9dd
+```
+
+```text
+D = 1d3e32b50a71944a479758db6b5e786e251c2d73   subject: Merge sync/v1.7.0: release v1.7.0_gg4
+parents: 69cd680bf548bfb0329142752d37f8a6c3190c26 98b2d47e9bec236df49b58b4dc6836326a97b9dd
+tree(D) = tree(X) = 2039e710435f575c673d855e95943a2852146f52
+```
+
+Checks on D (verify command 2, run before the worktree was removed):
+
+```text
+files 8 bad []
+ok-line True missing []
+D=1d3e32b50a71944a479758db6b5e786e251c2d73 X=98b2d47e9bec236df49b58b4dc6836326a97b9dd
+PUBLISH-DRY-RUN-OK
+```
+
+It asserted: D has exactly two parents; D^1 is 69cd680b and D^2 is X; `git diff --quiet D X` holds; `.planning/.gsd-ws-arg` is not in D's tree; none of the 8 operator documents (`docs/*.md`, `CHANGELOG.md`, `README.md`) tells anyone to TRUNCATE; the rollback script ran on D and its log has the `ok`, doc-gone, revert-restores, item-7 heading and gg1-rule lines. The rollback log (`/tmp/gsd29/exec/rollback-on-D.log`):
+
+```text
+target=1d3e32b50a71944a479758db6b5e786e251c2d73 stale-start=69cd680b
+dirty: status --porcelain lines=2
+fetch --tags exit=0
+local tag kept after fetch: 69cd680b
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=1
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-7 headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+gg1 corrected rule after rollback: absent
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+**Finding for plan 29-08 Task 3 (a defect in the plan's own checks, not in the tree).** `git status --porcelain` in the dry-run worktree, right after the merge, prints ` M gradlew.bat`, as in E-30: the committed blob has CRLF line endings and `.gitattributes` has `*.bat text eol=crlf` (`git ls-files --eol gradlew.bat` prints `i/crlf w/crlf attr/text eol=crlf` in the main tree and in the worktree). `/tmp/gsd29/cb` will list the same line. Task 3 step 2 ("`git status --porcelain` is empty") and the `Z=$(git -C /tmp/gsd29/cb status --porcelain); test -z "$Z"` clause of verify command 1 therefore fail on a tree that is clean in every other respect. The right expectation is "no line other than ` M gradlew.bat`"; the file is not part of any commit and must not be staged or committed.
+
+**Cleanup:** `git worktree remove --force /tmp/gsd29/pubdry && git worktree prune`; `git worktree list` shows the main tree and the two kept probe worktrees `wt-gg3` and `wt-tip` only; no `rb-demo` directory and no `gg4-rollback-demo-*` branch remain; `docker ps -a` lists no container of this run. `/tmp/gsd29/rollback-demo.sh` existed from plan 29-04 and was not re-created. X changes with this entry's commit (X0..X stays planning-only), so the real merge takes the then-current `sync/v1.7.0` tip, not 98b2d47e; its tree differs from D's by `.planning/` files only.
+
+Matches text: n/a (gate check)
