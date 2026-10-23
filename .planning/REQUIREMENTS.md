@@ -65,8 +65,8 @@
 - [x] **NAME-03**: `ClickHouseFieldDescriptor.fromJsonRow` yields the raw identifier for column and element names (names only; type text is not decoded); the V1 describe path reads raw lines in UTF-8; `TableTest.extractCommentV1` stays green.
 - [x] **NAME-04**: `DeclaredNullability` pairs on the raw-name key (the element key unescapes SQL identifiers; `normalise` is rewritten for the one-layer-fewer escaping); the COLS-13 live twins in `NullableTupleMatrixLiveTest` stay green; 23-REVIEW IN-01 (Javadoc "all or none") and IN-02 (null-name check inside the `try`) are closed.
 - [x] **NAME-05**: Live both-form pins: a Kafka record using the raw name lands with typed read-back equal to the record for every spiked character; a record still using the doubled form behaves as the rollout note states (root column ignored and `DEFAULT` stored; Tuple element fails loudly), pinned, not changed.
-- [ ] **NAME-06**: Enum labels containing an escaped character are measured; they either round-trip under the raw form with a live pin, or the remaining behaviour is stated in FORK-DELTA Known costs and the rollout note.
-- [ ] **NAME-07**: FORK-DELTA row, CHANGELOG line, Known costs item 11 retired, and ROADMAP backlog 999.5 marked delivered in the same commit as the fix.
+- [x] **NAME-06**: Enum labels containing an escaped character are measured; they either round-trip under the raw form with a live pin, or the remaining behaviour is stated in FORK-DELTA Known costs and the rollout note.
+- [x] **NAME-07**: FORK-DELTA row, CHANGELOG line, Known costs item 11 retired, and ROADMAP backlog 999.5 marked delivered in the same commit as the fix.
 
 ### Writer failure path and enum advisories
 
@@ -150,8 +150,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAME-03 | Phase 28 | Complete |
 | NAME-04 | Phase 28 | Complete |
 | NAME-05 | Phase 28 | Complete |
-| NAME-06 | Phase 28 | Pending |
-| NAME-07 | Phase 28 | Pending |
+| NAME-06 | Phase 28 | Complete |
+| NAME-07 | Phase 28 | Complete |
 | WRT-16 | Phase 27 | Complete |
 | WRT-17 | Phase 27 | Complete |
 | WRT-18 | Phase 27 | Complete |

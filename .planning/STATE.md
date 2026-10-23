@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 28
 current_phase_name: Raw Identifier Names in Discovery
 status: executing
-stopped_at: Completed 28-04-PLAN.md
-last_updated: "2026-10-23T10:21:51.247Z"
+stopped_at: Completed 28-05-PLAN.md
+last_updated: "2026-10-23T10:44:28.721Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 28 execution started
-state_head: 95e9a27b893e19d9ddaafad5742d19f43082920c
+state_head: 2988d39d71c964b9e0f4eb1cfb5f8e81b1be2582
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 28 (Raw Identifier Names in Discovery) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 28 execution started
 
@@ -189,6 +189,7 @@ Progress: [██████░░░░] 60%
 | Phase 28 P02 | 10 min | 3 tasks | 32 files |
 | Phase 28 P03 | 21 min | 3 tasks | 10 files |
 | Phase 28 P04 | 12min | 2 tasks | 3 files |
+| Phase 28 P05 | 25min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -249,6 +250,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 28]: 28-03: fromJsonRow decodes only the name (streaming parse, other strings sliced as the server's literal JSON text, bound via treeToValue); both describe clients share one UTF-8 raw-line reader
 - [Phase 28]: 28-03: DeclaredNullability.normalise rewritten around package-private unescapeJsonLayer so plan 28-05's enum-label parser reuses the same JSON-layer decoder; decode and pairing key land in one commit
 - [Phase 28]: 28-04: the doubled-element pin names the container's raw column path in the writer's DataException; without it the pin passes vacuously on the pre-fix production
+- [Phase 28]: 28-05: Column.extractEnumValues is an escape-aware scan over the JSON-decoded type text; enum labels are keyed under their raw text and a value in the earlier V2 key form fails as the lookup miss
+- [Phase 28]: 28-05: the clean stop in both directions (stop cleanly, rename the fields, start the other version) is labelled reasoned from the BEFORE/AFTER state machine, not measured
 
 ### Pending Todos
 
@@ -294,8 +297,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T10:21:50.722Z
-Stopped at: Completed 28-04-PLAN.md
+Last session: 2026-10-23T10:44:28.209Z
+Stopped at: Completed 28-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
