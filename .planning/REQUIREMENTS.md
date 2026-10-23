@@ -86,7 +86,7 @@
 ### Operator items
 
 - [x] **OPS-04**: The user creates the `dependencies` label; the milestone records the creation, and the first Dependabot PR opened after it (if any within the milestone) arrives without the "labels could not be found" comment, otherwise the check is recorded as pending the next monthly run.
-- [ ] **OPS-05**: No merge lands on `origin/custom_build` between the DEPS-02 merge and the publication merge; the release gate re-fetches and verifies that the origin tip equals the merge base, or re-absorbs with a fresh exemption set before gating.
+- [x] **OPS-05**: No merge lands on `origin/custom_build` between the DEPS-02 merge and the publication merge; the release gate re-fetches and verifies that the origin tip equals the merge base, or re-absorbs with a fresh exemption set before gating.
 - [x] **OPS-06**: Production runs `confluentinc/cp-kafka-connect-base:7.9.7` (Confluent Platform 7.9, Apache Kafka 3.9; stated by the user 2026-10-21). The rollout note names that worker, states the oldest worker the connector is verified against, and says that the KIP-1161 LIST-config strictness applies only from Kafka 4.2 workers.
 
 ### Release and publication
@@ -162,7 +162,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEBT-16 | Phase 27 | Complete |
 | DEBT-17 | Phase 28 | Complete |
 | OPS-04 | Phase 25 | Complete |
-| OPS-05 | Phase 29 | Pending |
+| OPS-05 | Phase 29 | Complete |
 | OPS-06 | Phase 29 | Complete |
 | PUB-11 | Phase 29 | Complete |
 | ROLL-04 | Phase 29 | Complete |

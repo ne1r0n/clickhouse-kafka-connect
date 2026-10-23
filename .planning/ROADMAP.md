@@ -412,7 +412,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - the tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` reach `origin` only after that run;
      - the scratch branch is deleted from `origin`.
 
-**Plans**: 6/8 plans executed
+**Plans**: 7/8 plans executed
 
 Plans:
 **Wave 1**
@@ -434,7 +434,7 @@ Plans:
 - [x] 29-06-PLAN.md — PUB-12: orchestrator-run review rounds (fresh gsd-code-reviewer, at most 3), dispositions, documents frozen
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 29-07-PLAN.md — PUB-13, OPS-05: frozen-tree suite gate (two --rerun runs), publication checks, push approval, scratch push and its one green run
+- [x] 29-07-PLAN.md — PUB-13, OPS-05: frozen-tree suite gate (two --rerun runs), publication checks, push approval, scratch push and its one green run
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 29-08-PLAN.md — PUB-13, OPS-05: publication dry run, publish approval, --no-ff merge, one green run, both tags by name, scratch branch deleted
@@ -571,7 +571,7 @@ The four code phases split along the production files that change: the build and
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-23 |
 | 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 6/6 | Complete    | 2026-10-23 |
-| 29. Release & Publication | v1.7.0_gg4-hardening | 6/8 | In Progress | - |
+| 29. Release & Publication | v1.7.0_gg4-hardening | 7/8 | In Progress | - |
 
 ---
 *Roadmap reorganized at the `v1.7.0_gg3-hardening` close: 2026-10-21. Roadmap for milestone `v1.7.0_gg4-hardening` created: 2026-10-21.*
