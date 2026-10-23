@@ -502,7 +502,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
             DescribeTableBuilder builder = new DescribeTableBuilder(database, tableName);
             return readDescribeRows(builder, response.getInputStream());
-        } catch (ClickHouseException | IOException e) {
+        } catch (ClickHouseException | IOException | RuntimeException e) {
             LOGGER.error(String.format("Exception when running describeTable %s", describeQuery), e);
             return null;
         }
