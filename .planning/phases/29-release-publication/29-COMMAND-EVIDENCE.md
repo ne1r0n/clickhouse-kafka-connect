@@ -243,3 +243,25 @@ The class-count digest is the SHA-256 of the sorted lines `<xml file name> <test
 Totals agree with `28-VERIFICATION` (1865 tests in the full suite); the E-13 totals of Phase 28 (1835) predate the 28 review-fix tests and are not used (PT-14).
 
 Matches text: n/a (gate check)
+
+### E-09: cumulative anchors gate on the bump commit (D-01, PT-01)
+
+Backs: nothing in a document; this is the D-01 gate check on the bump commit. The 29-07 task runs the same two commands again on the frozen release tip. It sits right after E-05 in time (entries are found by heading, never by position).
+
+Both commands ran in the default environment (`PRE_TAG=pre-v1.7.0-sync`, `UPSTREAM_REF=refs/tags/v1.7.0`, the v1.7.0 conflicted-paths file; no variable was set, checked with `env | grep`), started together in the background after E-05 was committed, with nothing committed until both had ended. HEAD at the start: `503b70f8290c7c5fa0eb3fc2fd7b16c6be2cff9b` (the E-05 commit; only `.planning/` differs from the bump commit `112fbdb5`). Started 2026-10-23T17:33:24Z, both ended by 2026-10-23T17:48:47Z (about 15 min 23 s). Neither script, `fork-anchor-exemptions.txt` nor `fork-anchors.txt` (beyond the bump row) was edited.
+
+```sh
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD > /tmp/gsd29/exec/gate-29-01.log 2>&1       # exit 0
+bash .planning/scripts/verify-merge-invariants-selftest.sh > /tmp/gsd29/exec/selftest-29-01.log 2>&1        # exit 0
+tail -n 1 /tmp/gsd29/exec/gate-29-01.log
+tail -n 1 /tmp/gsd29/exec/selftest-29-01.log
+```
+
+```text
+invariants: provenance_paths=21 anchor_commits=766 anchor_rows=94 marker_commits=825 anchor_exempt=19 result=PASS
+selftest: no failures
+```
+
+The gate log is that single line; the self-test log has 17 lines (16 `PASS` lines, 0 `FAIL`, then the last line above).
+
+Matches text: n/a (gate check)
