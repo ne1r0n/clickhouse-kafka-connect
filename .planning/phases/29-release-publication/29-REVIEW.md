@@ -18,10 +18,10 @@ files_reviewed_list:
 findings:
   critical: 1
   warning: 10
-  info: 6
-  total: 17
+  info: 8
+  total: 19
 status: issues_found
-rounds: 2
+rounds: 3
 ---
 
 # Phase 29: Code Review Report
@@ -173,6 +173,37 @@ round: 2 findings: 4
 (c) The CREATE TABLE-name rename notice is present and correct: holds. The banner, the first Important Changes bullet and item 1 name the forms, state the client V2 scope with the client V1 changes (tab, carriage return, slash, double quote; V1 is the default in `ClickHouseSinkConfig`), the silent DEFAULT and the pause, drain, stop, switch, upgrade, resume order; WR-10 is the one gap (a producer that cannot be paused, in the rollback direction).
 (d) exactlyOnce=false connectors are handled correctly and no false "safe" remains: holds. Item 4 says no state table exists for them, gives a labelled-inferred recognition of a clean stop (no lag plus a pause or delete through the REST interface) in the upgrade and the rollback direction, and the gg1 note's query result is now scoped to the listed topics. WR-09 is a contradiction about which tables need the clean stop, not a false "safe" for a connector type.
 (e) The static checks and greps the note quotes are accurate: holds. No `sql` or `sh` block changed except the gg1 `DELETE` comment, which is backed by E-50; the new upgrade-direction check reuses the query of step 2, and its claim that the state records, the key rule and the token are the same code in gg3 and gg4 is confirmed by an empty `git diff pre-v1.7.0_gg4 HEAD` over `sink/processing`, `sink/state`, `QueryIdentifier` and `sink/data`; the two WARN greps are unchanged and the residual grep text matches `UNREADABLE_PARENT_WARNING` (IN-05 is about its wording only).
+
+
+## Round 3
+
+Scope: `git diff 65de7b1e02f0fc566982454b6cf25ea205c9482b HEAD` (four fix commits e420d5fc, 00fa73f2, 15ce9220, dc281a54) over `docs/ROLLOUT-v1.7.0_gg4.md`, the `1.7.0_gg4` section of `CHANGELOG.md` and `29-MILESTONE-CLOSE-RECORD.md`. Each fix was read against `DescribeTableBuilder` (`decide`, `undecidable`, `structural`, `warnUnreadableParent`, `UNREADABLE_PARENT_WARNING`), the Item 2 measurement text (E-11 shapes: six failed, one stored shifted) and the other places that state the same rule (note lines 112, 234, 235, 246, 250 and item 7, CHANGELOG, FORK-DELTA, close record).
+
+Verdicts on the four round 2 findings. WR-09 fixed and correct: note line 246 now reads "stop the connector cleanly first for every table that the query of item 2 lists, except a table that has exactly one of the six shapes that were measured to fail on `v1.7.0_gg3` (listed in item 2)"; it agrees with the bullet at line 234 ("a table of exactly one of those shapes"), the CHANGELOG exception, and the close record line 159. The six shapes are listed in the "What an insert does" bullet of item 2, so the back-reference resolves. FORK-DELTA states no clean-stop rule, so there is nothing to disagree with. WR-10 fixed and correct in substance: line 250 now states the window for a producer that cannot be paused, with the label "inferred, to be pinned live", and the CHANGELOG carries the rollback order with a pointer to item 4; item 7 step 1 and step 3 already point at that order, and the close record carries the window "in both directions". IN-05 fixed and correct: the added sentence ("the connector drops only `size` and `size0` of that parent") matches `decide`, where an unreadable or absent parent gives `undecidable(bare)` = `SKIP_UNDECIDABLE` for `size`/`size0` and `KEEP_UNDECIDABLE` for `size<digits>`, and it is labelled "read from connector code". IN-06 fixed and correct: "the same order with the versions swapped" is the sequence of the note (pause, drain, stop, check, switch back, redeploy, resume).
+
+Rollback order re-walked with the changed text: the producers are paused on the new names, gg4 drains, stops, the check runs, only then do the producers go back and gg3 start. For a producer that can be paused no step lets either release read a record under the wrong rule. For one that cannot, the note now says so for both directions. No new error against code or evidence was found in the four commits; the two items below are wording and cross-document completeness.
+
+### IN-07: The new unpausable-producer sentence in the rollback paragraph says "after you saw no lag" and repeats the sentence that follows it
+
+**File:** `docs/ROLLOUT-v1.7.0_gg4.md:250`
+**Issue:** The added sentence says a record the producer writes under the names of this release "after you saw no lag is read by `v1.7.0_gg3` under its own rule". A record written after the lag was observed but before the connector stopped is still consumed by `v1.7.0_gg4`, under the right rule; the window that reaches `v1.7.0_gg3` opens when the connector stops, not when the lag was seen (the sentence in item 1 step 2 for the upgrade direction has the same shape). The statement is conservative, so no operator step is wrong. The paragraph also now says the same thing twice: this sentence, and the later "A record that was produced under the names of this release and is still in a topic when `v1.7.0_gg3` starts is read by `v1.7.0_gg3` under its own rule in the same way (inferred, to be pinned live)". An operator reading line 250 meets the same window described in two places with two different starting points.
+**Fix:** Say "a record it writes under the names of this release after the connector has stopped is read by `v1.7.0_gg3` under its own rule", and fold the later "A record that was produced ... in the same way" sentence into it, keeping one "inferred, to be pinned live" label.
+
+### IN-08: The CHANGELOG rollback sentence leaves out the in-flight check, the resume, and the window for a producer that cannot be paused
+
+**File:** `CHANGELOG.md:20-23` (against `docs/ROLLOUT-v1.7.0_gg4.md:112` and `:250`)
+**Issue:** The added CHANGELOG text reads "A rollback runs the same order with the versions swapped: pause the producers, keep them on the new names until the connector has consumed what they produced and stopped, then switch them back and redeploy `v1.7.0_gg3`". The note's order has two more elements that the CHANGELOG does not: the check for a range in flight between "stopped" and "switch back" (a non-empty result restarts `v1.7.0_gg4`, not `v1.7.0_gg3`), and the resume of the producers after the connector has started. Neither the upgrade order nor the rollback order in the CHANGELOG carries the caveat that a producer which cannot be paused leaves a window, although the note and the close record state it for both directions. The CHANGELOG points to item 4 for the details, so this is an omission that a reader of the CHANGELOG alone could act on (switch back right after the stop, skipping the check).
+**Fix:** After "redeploy `v1.7.0_gg3`" add "and resume them, after the in-flight check of the rollout checklist, item 4, is empty; a producer that cannot be paused leaves a window in both directions (see the checklist)".
+
+round: 3 findings: 2
+
+## Mandated confirmations (PUB-12)
+
+(a) No TRUNCATE advice that would wipe other connectors' state remains: holds. The four fix commits add no `TRUNCATE`, `DROP`, `ALTER` or `DELETE`; they touch prose only, and item 4 still ends "Do not empty or edit the state table to get past a non-empty result".
+(b) Rollback uses tag `pre-v1.7.0_gg4` and the nested-jar archive hazard is stated correctly: holds. Item 7 is unchanged by the fixes (`git read-tree -u --reset pre-v1.7.0_gg4`, 25 nested jars, never deploy an archive built from the rolled-back tip); steps 1 and 3 agree with the item 4 order and with the new sentence on the unpausable producer.
+(c) The CREATE TABLE-name rename notice is present and correct: holds. The banner, item 1 and the first Important Changes bullet are unchanged except for the added rollback sentence, which agrees with the note's order (IN-08 is about its completeness only).
+(d) exactlyOnce=false connectors are handled correctly and no false "safe" remains: holds. Line 246 now names the clean stop for every table the item 2 query lists, for either `exactlyOnce` setting, and line 248 still gives the labelled-inferred recognition of a clean stop for `exactlyOnce=false`; no sentence added by the fixes calls any connector type safe.
+(e) The static checks and greps the note quotes are accurate: holds. No `sql` or `sh` block changed. The residual WARN text still equals `UNREADABLE_PARENT_WARNING`, and the sentence added under it ("drops only `size` and `size0` of that parent") is confirmed by `DescribeTableBuilder.decide` (`SKIP_UNDECIDABLE` for the bare names, `KEEP_UNDECIDABLE` for `size<digits>`).
 
 ---
 
