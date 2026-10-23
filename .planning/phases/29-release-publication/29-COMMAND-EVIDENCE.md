@@ -827,3 +827,119 @@ Verdicts, worded from these lines only:
 - Both directions: a name that does not match is not an error for a root column. With a window the token drops the batch before the default matters; without one the default is stored.
 
 Matches text: pending (29-04)
+
+### E-22: the escaped-name queries, gg3 unchanged and the companion (999.5, PT-04)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the raw-identifier item's "Am I affected?" (which tables the rename precondition concerns), written in plan 29-05. Two read-only `SELECT`s over `system.columns`, `<db>` is the only placeholder of each. The first is the query of `docs/ROLLOUT-v1.7.0_gg3.md` item 3 (the second `sql` block, lines 203-214 of that note), copied byte for byte into `/tmp/gsd29/probe/sql/escaped-names.sql` (`cmp` against `sed -n 203,214p` of the note printed no difference). The second, the companion, lists a column whose name holds a carriage return or a double quote, or whose declared type text (single-quoted strings blanked first, the gg3 idiom) has a backtick-quoted name that holds a carriage-return escape or a double quote:
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        position(name, '\\') > 0
+        OR position(name, '\n') > 0
+        OR position(name, '/') > 0
+        OR position(name, '\t') > 0
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*\\\\[^`]*`')
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*/[^`]*`')
+      )
+ORDER BY `table`;
+```
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND (
+        position(name, '\r') > 0
+        OR position(name, '"') > 0
+        OR match(replaceRegexpAll(type, '\'(?:[^\'\\\\]|\\\\.)*\'', ''''''), '`[^`]*(\\\\r|")[^`]*`')
+      )
+ORDER BY `table`;
+```
+
+Method (`nameQueries`, run in the gg4 worktree, server `26.9.19.9`, client V2, image as in E-20; XML `/tmp/gsd29/exec/n5-query.xml`, `tests="2" skipped="0" failures="0" errors="0"` together with `controlChars`): the probe creates the 36 `n5_` tables of E-20 and the six look-alikes in the database `p29_n5q` (the fixture database). The look-alike database `p29_n5l` holds the `ctl` and `na` tables (root, tuple, enum), the `bt` root and enum tables, the `ap` root table and the six look-alikes. The `bt` and `ap` Tuple tables stay in the fixture database only, because the server writes a backtick inside a quoted element name with a backslash escape, so the gg3 query may list them. The six look-alikes: `la_dot` (a root column named `a.b`), `la_comment` (`s String COMMENT` holding a backslash), `la_default` (`s String DEFAULT 'x/y'`), `la_tz` (`t DateTime64(3, 'Europe/Berlin')`), `la_enum` (`e Enum8('x_y' = 1)`) and `la_plain` (plain names, a Tuple with `c` and `d`). Each query ran with only `<db>` replaced and its trailing `;` removed. Substitution map: `<db>` = `p29_n5q` for the `db=fixture` results, `p29_n5l` for the `db=lookalike` results.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain test --tests '*Phase29RolloutProbe.nameQueries' --tests '*Phase29RolloutProbe.controlChars' --rerun
+cp /tmp/gsd29/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/n5-query.xml
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/n5-query.xml
+```
+
+```text
+PROBE-NAMEQ tree=gg4 query=gg3 db=fixture tables=n5_bs_root,n5_bs_tuple,n5_bsn_root,n5_bsn_tuple,n5_bt_tuple,n5_btbsn_root,n5_btbsn_tuple,n5_cr_tuple,n5_lf_root,n5_lf_tuple,n5_sl_root,n5_sl_tuple,n5_tab_root,n5_tab_tuple
+PROBE-NAMEQ tree=gg4 query=gg3 db=lookalike tables=
+PROBE-NAMEQ tree=gg4 query=companion db=fixture tables=n5_cr_root,n5_cr_tuple,n5_dq_root,n5_dq_tuple
+PROBE-NAMEQ tree=gg4 query=companion db=lookalike tables=
+```
+
+```text
+NAMEQ-OVERFLAG=n5_bt_tuple
+```
+
+Result. The gg3 query lists 14 fixture tables: 13 of the 16 differing tables of `D995-DIFFERING` (E-20), and the over-flag `n5_bt_tuple` (a Tuple element name holding a backtick; the table is not different between the releases). It does not list the root carriage-return table `n5_cr_root` and the two double-quote tables `n5_dq_root` and `n5_dq_tuple`. The companion lists `n5_cr_root`, `n5_cr_tuple`, `n5_dq_root` and `n5_dq_tuple`: the three tables the gg3 query misses, plus `n5_cr_tuple`, which both queries list. The union of the two lists is the 16 differing tables and `n5_bt_tuple`. Both queries return nothing on the look-alike database. `n5_ap_tuple` (an apostrophe in an element name) is listed by neither query, and `n5_bt_tuple` is the only over-flag of either. The queries read the declared type text, so a table they list is a suspect, not a finding: of the 17 tables in the union, 16 differ between the releases and one does not.
+
+Matches text: pending (29-04)
+
+### E-23: the enum-label query (PT-05)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the raw-identifier item's label paragraph, written in plans 29-04 and 29-05. There was no label query before this plan. The query lists a column whose type holds `Enum8(` or `Enum16(` and contains a single-quoted string with a backslash, a double quote or a slash (the characters the server leaves unchanged or escapes in a label, E-20); `extractAll` returns the text between the quotes of each single-quoted string. It was written and run once, and no refinement was needed. Same fixture and look-alike databases and substitution map as E-22:
+
+```sql
+SELECT `table`, name AS `column`, type
+FROM system.columns
+WHERE database = '<db>'
+  AND match(type, 'Enum(8|16)\\(')
+  AND arrayExists(label -> match(label, '[\\\\"/]'), extractAll(type, '\'((?:[^\'\\\\]|\\\\.)*)\''))
+ORDER BY `table`;
+```
+
+```text
+PROBE-NAMEQ tree=gg4 query=label db=fixture tables=n5_ap_enum,n5_bs_enum,n5_bsn_enum,n5_btbsn_enum,n5_cr_enum,n5_dq_enum,n5_lf_enum,n5_sl_enum,n5_tab_enum
+PROBE-NAMEQ tree=gg4 query=label db=lookalike tables=
+```
+
+```text
+LABELQ-OVERFLAG=
+```
+
+Result. On the fixture database the query lists exactly the nine enum tables of `LABEL-DIFFERING` (E-20): `n5_ap_enum`, `n5_bs_enum`, `n5_bsn_enum`, `n5_btbsn_enum`, `n5_cr_enum`, `n5_dq_enum`, `n5_lf_enum`, `n5_sl_enum` and `n5_tab_enum`. It lists none of the `ctl`, `bt` and `na` enum tables, which have no second form, and no look-alike (`la_enum`, `la_tz`, whose time zone holds a slash outside an Enum, and the rest); it returns nothing on the look-alike database. There are no over-flags (the line above is empty on purpose). The query reads the declared type text only, so it is a suspect list: it was run against `Enum8` tables only, not against an `Enum16`, a `Nullable(Enum8(...))` or an enum nested in a Tuple.
+
+Matches text: pending (29-04)
+
+### E-24: control characters in labels and element names (28-REVIEW IN-04 server half, PT-07)
+
+Backs: `docs/FORK-DELTA.md` Known costs item 11 (what the server writes, written in plan 29-05) and the raw-identifier item's "not measured" sentence. Method (`controlChars`, gg4 worktree, same run as E-22): for each of four control characters, a table `n5ctl_label_<c> (id Int32, e Enum8('a<c>b' = 1, 'z' = 2))` and a table `n5ctl_el_<c> (id Int32, t Tuple(`a<c>b` Int32))`, created with the SQL escapes `\b` (`bsp`, backspace), `\f` (`ff`, form feed), `\0` (`nul`) and `\x07` (`bel`); the probe reads `system.columns.type`, the rows of `DESCRIBE TABLE ... FORMAT JSONEachRow` with `describe_include_subcolumns = 1` that belong to the column (the text as received, a raw control character shown as `<U+XXXX>`), and whether the production `describeTable` (client V2) maps the table. This differs from the plan text in one point: there is one label table per character instead of one table with four labels, so that a creation failure of one character cannot hide the others. No `CREATE` failed (A8 did not occur; the server accepted a NUL in a label and in an element name).
+
+The eight `PROBE-CTL` lines as printed:
+
+```text
+PROBE-CTL tree=gg4 kind=label char=bsp created=yes type=Enum8('a\bb' = 1, 'z' = 2) describe={"name":"e","type":"Enum8('a\\bb' = 1, 'z' = 2)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} mapped=yes
+PROBE-CTL tree=gg4 kind=label char=ff created=yes type=Enum8('a\fb' = 1, 'z' = 2) describe={"name":"e","type":"Enum8('a\\fb' = 1, 'z' = 2)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} mapped=yes
+PROBE-CTL tree=gg4 kind=label char=nul created=yes type=Enum8('a\0b' = 1, 'z' = 2) describe={"name":"e","type":"Enum8('a\\0b' = 1, 'z' = 2)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} mapped=yes
+PROBE-CTL tree=gg4 kind=label char=bel created=yes type=Enum8('a<U+0007>b' = 1, 'z' = 2) describe={"name":"e","type":"Enum8('a\u0007b' = 1, 'z' = 2)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} mapped=yes
+PROBE-CTL tree=gg4 kind=element char=bsp created=yes type=Tuple(`a\bb` Int32) describe={"name":"t","type":"Tuple(\n    `a\\bb` Int32)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} || {"name":"t.a\bb","type":"Int32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1} mapped=yes
+PROBE-CTL tree=gg4 kind=element char=ff created=yes type=Tuple(`a\fb` Int32) describe={"name":"t","type":"Tuple(\n    `a\\fb` Int32)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} || {"name":"t.a\fb","type":"Int32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1} mapped=yes
+PROBE-CTL tree=gg4 kind=element char=nul created=yes type=Tuple(`a\0b` Int32) describe={"name":"t","type":"Tuple(\n    `a\\0b` Int32)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} || {"name":"t.a\u0000b","type":"Int32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1} mapped=yes
+PROBE-CTL tree=gg4 kind=element char=bel created=yes type=Tuple(`a<U+0007>b` Int32) describe={"name":"t","type":"Tuple(\n    `a\u0007b` Int32)","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":0} || {"name":"t.a\u0007b","type":"Int32","default_type":"","default_expression":"","comment":"","codec_expression":"","ttl_expression":"","is_subcolumn":1} mapped=yes
+```
+
+Escape forms read off those lines (server `26.9.19.9`):
+
+| kind | char | created | `system.columns.type` | mapped |
+|------|------|---------|-----------------------|--------|
+| label | bsp | yes | `Enum8('a\bb' = 1, 'z' = 2)` | yes |
+| label | ff | yes | `Enum8('a\fb' = 1, 'z' = 2)` | yes |
+| label | nul | yes | `Enum8('a\0b' = 1, 'z' = 2)` | yes |
+| label | bel | yes | `Enum8('a<U+0007>b' = 1, 'z' = 2)` | yes |
+| element | bsp | yes | `Tuple(`a\bb` Int32)` | yes |
+| element | ff | yes | `Tuple(`a\fb` Int32)` | yes |
+| element | nul | yes | `Tuple(`a\0b` Int32)` | yes |
+| element | bel | yes | `Tuple(`a<U+0007>b` Int32)` | yes |
+
+- **Backspace, form feed, NUL.** `system.columns.type` writes them as backslash escapes (`\b`, `\f`, `\0`) in the label and in the element name. In the DESCRIBE JSON the label's type string carries the same text with the backslash JSON-escaped (`\\b`, `\\f`, `\\0`), the parent Tuple's type string likewise, and the sub-column row's `name` is `t.a` followed by the JSON escape of the character itself (`\b`, `\f`, `\u0000`), which a JSON reader turns into the raw character.
+- **BEL.** `system.columns.type` holds the raw character U+0007 (shown as `<U+0007>`), and the DESCRIBE JSON writes it as `\u0007` in the label's type string, in the parent Tuple's type string and in the sub-column name.
+- **Mapping.** `describeTable` maps all eight tables. The enum keys it builds are the raw labels `a`, the character, `b` (`PROBE-ENUMKEYS`: `a\u0008b`, `a\u000Cb`, `a\u0000b`, `a\u0007b` in the probe's escaped print form) and the Tuple element names are `t.a`, the raw character, `b` (`PROBE-COL`). No insert was run: whether a record written under these names lands is not measured here, and the test-side pin for these four characters is still the one carried in FORK-DELTA Known costs item 11.
+
+Matches text: pending (29-05)
