@@ -534,3 +534,57 @@ PROBE-INSERT tree=gg4 table=s4_u05 outcome=stored code=- rows=1 match=yes
 Verdicts. gg3 to gg4 is an upgrade for these shapes: the six failing shapes stored nothing on gg3 (so no row of them exists from gg3), and `r01` shows that a shorter write which parses stores a wrong value (gg3 writes only the string, so the server reads the `UInt32` size from the first four bytes it finds: the length byte 7 and `abc`, which is 1667391751 in little-endian order, and then reads `xyz` as `v` from the remaining bytes, the length byte 3 and `xyz`), the one case of this kind that was measured. The controls store identically on both. The server codes are the ones this server printed for these records: 33 for five shapes and 32 for `n03`; they are not the assignment per shape that the gg3 note gives (code 32 for `Tuple(size UInt16, v String)`, `Array(Tuple(size UInt16, v String))` and `Array(Tuple(size1 UInt16, v String))`, code 33 for `Array(Tuple(v String, size1 UInt16))`), so a document that names a code per shape would contradict this measurement; the code is 32 or 33, depending on where the parse runs out of bytes, which depends on the record. Neither measurement shows a different outcome class (a failed insert with 0 rows).
 
 Matches text: pending (29-04)
+
+### E-12: in-flight retries across the release change, both directions (999.4, D-04)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the in-flight item and the rollback item for the size-named element fix (PT-10 (a) and (b)), written in plan 29-04. The connector sends `insert_deduplication_token = '<topic>-<partition>-<min>-<max>'` (`QueryIdentifier.getDeduplicationToken`), also with `exactlyOnce=false`; the topic is the table name, so offset range 0-0 on partition 0 gives `<table>-0-0-0`. A row "landed by SQL" is an `INSERT ... SETTINGS insert_deduplication_token = '<table>-0-0-0' VALUES (...)` that the probe runs before the sink task puts the record (the Phase 24 E-12 method); the connector of the other release did not write that row in this measurement, and one server cannot be shared between the two trees' runs. Server `26.9.19.9`, client V2, `errors.tolerance` at its default (`none`), so a failed put throws; the DLQ route was not run. Image as in E-10.
+
+Rollback direction (`sizeRetryRollback`, run in the `v1.7.0_gg3` worktree only). Two tables, each `(id Int32, c <type>) ENGINE = MergeTree ORDER BY id SETTINGS non_replicated_deduplication_window = 100`: `rb_a01` with `c Tuple(size UInt16, v String)` (the affected shape) and `rb_u01` with `c Tuple(size1 UInt8, v String)` (the look-alike). The row the gg4 connector stores for the record (id 1, element 7, `v` `ab`) is landed by SQL:
+
+```sql
+INSERT INTO `rb_a01` (id, c) SETTINGS insert_deduplication_token = 'rb_a01-0-0-0' VALUES (1, (7, 'ab'))
+INSERT INTO `rb_u01` (id, c) SETTINGS insert_deduplication_token = 'rb_u01-0-0-0' VALUES (1, (7, 'ab'))
+```
+
+Then a gg3 `ClickHouseSinkTask` puts that record at partition 0, offset 0.
+
+Upgrade direction (`sizeRetryUpgrade`, run in the gg4 tip worktree only). Two tables `(id Int32, c Tuple(size UInt32, v String)) ENGINE = MergeTree ORDER BY id`: `up_r01_w` with `SETTINGS non_replicated_deduplication_window = 100` and `up_r01_nw` without. The row gg3 stored for `r01` (E-11: `size=1667391751 vhex=78797A`, read from `/tmp/gsd29/probe/r01-gg3-row.txt`) is landed by SQL:
+
+```sql
+INSERT INTO `up_r01_w` (id, c) SETTINGS insert_deduplication_token = 'up_r01_w-0-0-0' VALUES (1, (1667391751, unhex('78797A')))
+INSERT INTO `up_r01_nw` (id, c) SETTINGS insert_deduplication_token = 'up_r01_nw-0-0-0' VALUES (1, (1667391751, unhex('78797A')))
+```
+
+Then a gg4 sink task puts the `r01` record of E-11 (`size` 7, `v` = `abc`, U+0003, `xyz`) at partition 0, offset 0.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-gg3/gradlew -p /tmp/gsd29/wt-gg3 --console=plain test --tests '*Phase29RolloutProbe.sizeRetryRollback' --rerun
+cp /tmp/gsd29/wt-gg3/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/d994-retry-gg3.xml
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain test --tests '*Phase29RolloutProbe.sizeRetryUpgrade' --rerun
+cp /tmp/gsd29/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/d994-retry-gg4.xml
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/d994-retry-gg3.xml /tmp/gsd29/exec/d994-retry-gg4.xml
+```
+
+```text
+PROBE-VERSION tree=gg3 version=26.9.19.9
+PROBE-LANDED tree=gg3 table=rb_a01 token=rb_a01-0-0-0 rows=1
+PROBE-FAILCLASS tree=gg3 table=rb_a01 class=ServerException
+PROBE-RETRY tree=gg3 table=rb_a01 landed=gg4-row window=yes outcome=failed code=33 rows=1 value=landed
+PROBE-LANDED tree=gg3 table=rb_u01 token=rb_u01-0-0-0 rows=1
+PROBE-RETRY tree=gg3 table=rb_u01 landed=gg4-row window=yes outcome=dropped code=- rows=1 value=landed
+PROBE-VERSION tree=gg4 version=26.9.19.9
+PROBE-LANDED tree=gg4 table=up_r01_w token=up_r01_w-0-0-0 rows=1
+PROBE-RETRY tree=gg4 table=up_r01_w landed=gg3-row window=yes outcome=dropped code=- rows=1 value=landed
+PROBE-LANDED tree=gg4 table=up_r01_nw token=up_r01_nw-0-0-0 rows=1
+PROBE-RETRY tree=gg4 table=up_r01_nw landed=gg3-row window=no outcome=stored code=- rows=2 value=both
+```
+
+(Both XMLs: `tests="1" skipped="0" failures="0" errors="0"`.) `value=landed` means the table holds only the row landed by SQL; `value=both` means that row and the row of the record.
+
+Verdicts, worded from these lines only:
+
+- **Rollback (gg4 to gg3).** For the affected shape the gg3 retry of a range whose full row had already landed fails with server code 33 (`ServerException`, the same parse failure as an insert of E-11) and leaves exactly the one landed row: the server rejects the shorter bytes before the token decides anything, so the put throws although the row is in the table. For the look-alike `Tuple(size1 UInt8, v String)` the gg3 bytes are identical to gg4's (E-11), and the retry is dropped by its token with one row left. This confirms research R4's mechanism (a parse failure, not a deduplication miss); the code on this record is 33 (E-11 shows 32 or 33 depending on the shape and record).
+- **Upgrade (gg3 to gg4), failing shapes.** The shapes that failed on gg3 stored nothing (E-11, rows 0), so there is no earlier row for a gg4 retry to meet; it stores the row once.
+- **Upgrade (gg3 to gg4), the shape that stored a shifted row.** With the gg3 `r01` row landed under the token, the gg4 retry of the same range is dropped on a table with a deduplication window (outcome `dropped`, one row, `value=landed`): the shifted row stays and the correct row is not stored. On a table without a window the retry is stored as a second row (two rows, `value=both`): the shifted row and the correct one. Whether a window applies is the table's own setting; no window is assumed here.
+
+Matches text: pending (29-04)
