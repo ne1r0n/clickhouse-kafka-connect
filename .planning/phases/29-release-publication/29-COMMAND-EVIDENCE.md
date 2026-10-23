@@ -420,7 +420,7 @@ a246ca01b073faae86e2e92bb0288c07dd7eb0d7	refs/tags/v1.7.0_gg2
 
 `custom_build` has not moved since the DEPS-02 merge: no Phase 29 decision under OPS-05 is open. Origin has no `sync/v1.7.0` branch, no `pre-v1.7.0_gg4` tag and no `v1.7.0_gg4` tag. Nothing was pushed, merged, tagged or commented on by this plan; PRs #4 and #10 were only read.
 
-Matches text: pending (29-05)
+Matches text: yes (the close record states the same label, PR and freeze facts; ops04 stays open by nature and is re-read in 29-07)
 
 ### E-10: Column trees over the 47 catalog tables, gg3 versus gg4 (999.4)
 
