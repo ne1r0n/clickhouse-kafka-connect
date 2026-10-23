@@ -29,7 +29,8 @@ upgrading from `v1.7.0_gg3`. If you are coming from an earlier release, start wi
   records` log lines. An unknown `Enum8` or `Enum16` label now fails as `java.lang.IllegalArgumentException` where it
   was `java.lang.NullPointerException`. An alert that matches `through reference chain`, `No serializer found` or
   `NullPointerException` for these failures stops matching; `Failed to write column ` keeps matching.
-* The bundled dependencies moved: guava `33.7.2-jre` (was `33.4.6-jre`), httpclient5 `5.6.5` (was `5.6.2`), httpcore5
+* The bundled dependencies moved: guava `33.7.2-jre` (was `33.4.6-jre`) with its own dependencies `j2objc-annotations`
+  `3.1`, `error_prone_annotations` `2.50.0` and `jspecify` `1.0.1`, httpclient5 `5.6.5` (was `5.6.2`), httpcore5
   `5.4.4`, Jackson `2.22.4` and gson `2.14.0`. The connector is compiled against `connect-api` `4.4.0`, which the
   archive does not bundle, so the Connect worker's version governs at runtime. The oldest worker the connector is
   verified against is Apache Kafka 3.9, as shipped in `confluentinc/cp-kafka-connect-base:7.9.7`, by a static check of
