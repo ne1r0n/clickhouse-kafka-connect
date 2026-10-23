@@ -697,3 +697,133 @@ exit=1
 Result. The alert-rule command listed each of the three texts once (one line per rule file, in the order the directory is read), printed nothing for the directory that held only the unrelated rule (exit 1), and did not list `rule-escaped.yml`, whose matcher writes the space as `\s`: the search compares literal text, so a rule that writes a character of these texts with a regular-expression escape is not found and has to be read by hand. The config command listed both files that set the option (the `1` and the `true` form) and not the unrelated configuration, and printed nothing for the directory that held only the unrelated one (exit 1).
 
 Matches text: pending (29-04)
+
+### E-20: names and enum labels, gg3 versus gg4 (999.5)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the raw-identifier item (which tables and enum labels change, the rename precondition, the scope of the detection queries), written in plans 29-04 and 29-05. Method: the probe methods `nameDescribe` and `labelPut` (scratch `/tmp/gsd29/probe/Phase29RolloutProbe.java`, never committed) create, for each of the twelve name entries of `RawNameMatrix` (`ctl`, `bs`, `bsn`, `lf`, `tab`, `cr`, `sl`, `dq`, `bt`, `na`, `ap`, `btbsn`, character sequence `<c>`), a root table `n5_<e>_root (id Int32, <r<c>z> String DEFAULT 'DEFAULTED')`, an element table `n5_<e>_tuple (id Int32, t Tuple(<x<c>y> Int32, d String))` and an enum table `n5_<e>_enum (id Int32, e Enum8('<x<c>y>' = 1, 'z' = 2))`, all `ENGINE = MergeTree ORDER BY id` (36 tables, names backtick-quoted and labels single-quoted with ClickHouse SQL escaping by the probe's own helper, the helper has the same rules as `RawNameMatrix.sqlQuoted` in `RawNameMatrix.java`: a backslash and the quote character get a backslash in front, line feed, tab and carriage return are written `\n`, `\t` and `\r`). `nameDescribe` describes each through the production `ClickHouseHelperClient.describeTable` (client V2) in a fresh database and prints one `PROBE-COL` line per Column node, or `PROBE-UNMAPPED`; `labelPut` starts a V2 `ClickHouseSinkTask`, puts one record whose `e` is the raw label `x<c>y` (partition 0, offset 0) and reads back `CAST(e, 'Int8')`. The same class ran unchanged in the `v1.7.0_gg3` worktree (`/tmp/gsd29/wt-gg3`, `3376a18f`) and in the gg4 worktree (`/tmp/gsd29/wt-tip`, detached at `46b2cf15`; `git diff --stat 46b2cf15 HEAD` outside `.planning` is empty, so its `src/` is the tree of the current HEAD). Each run had its own container: server `26.9.19.9`, client V2, image `sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b` created 2026-10-14T18:05:21Z (the floating `latest`, as in E-10).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-tip/gradlew -p /tmp/gsd29/wt-tip --console=plain test --tests '*Phase29RolloutProbe.nameDescribe' --tests '*Phase29RolloutProbe.labelPut' --tests '*Phase29RolloutProbe.nameRetryUpgrade' --rerun
+cp /tmp/gsd29/wt-tip/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/n5-gg4.xml
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd29/wt-gg3/gradlew -p /tmp/gsd29/wt-gg3 --console=plain test --tests '*Phase29RolloutProbe.nameDescribe' --tests '*Phase29RolloutProbe.labelPut' --tests '*Phase29RolloutProbe.nameRetryRollback' --rerun
+cp /tmp/gsd29/wt-gg3/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.Phase29RolloutProbe.xml /tmp/gsd29/exec/n5-gg3.xml
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/n5-gg3.xml /tmp/gsd29/exec/n5-gg4.xml
+```
+
+Both runs ended `BUILD SUCCESSFUL` (XML `tests="3" skipped="0" failures="0" errors="0"` each; 182 `PROBE-COL` lines over both trees). Names below are in the escaped print form of the probe: a backslash is printed doubled and a line feed, tab and carriage return as `\n`, `\t`, `\r`, the same convention as the handoff table of `28-BEHAVIOUR-LEDGER.md` (so `r\\z` is the name `r`, two backslashes, `z`, and `r\z` the name `r`, one backslash, `z`). The names are the column name of the root table and the Tuple element name (without the `t.` prefix) of the element table.
+
+| table | gg3 name | gg4 name | tree |
+|-------|----------|----------|------|
+| `n5_ctl_root` | `r_z` | `r_z` | same |
+| `n5_ctl_tuple` | `t.x_y` | `t.x_y` | same |
+| `n5_bs_root` | `r\\\\z` | `r\\z` | differs |
+| `n5_bs_tuple` | `t.x\\\\y` | `t.x\\y` | differs |
+| `n5_bsn_root` | `r\\\\nz` | `r\\nz` | differs |
+| `n5_bsn_tuple` | `t.x\\\\ny` | `t.x\\ny` | differs |
+| `n5_lf_root` | `r\\nz` | `r\nz` | differs |
+| `n5_lf_tuple` | `t.x\\ny` | `t.x\ny` | differs |
+| `n5_tab_root` | `r\\tz` | `r\tz` | differs |
+| `n5_tab_tuple` | `t.x\\ty` | `t.x\ty` | differs |
+| `n5_cr_root` | `r\\rz` | `r\rz` | differs |
+| `n5_cr_tuple` | `t.x\\ry` | `t.x\ry` | differs |
+| `n5_sl_root` | `r\\/z` | `r/z` | differs |
+| `n5_sl_tuple` | `t.x\\/y` | `t.x/y` | differs |
+| `n5_dq_root` | UNMAPPED | `r"z` | differs |
+| `n5_dq_tuple` | UNMAPPED | `t.x"y` | differs |
+| `n5_bt_root` | `r`z` | `r`z` | same |
+| `n5_bt_tuple` | `t.x`y` | `t.x`y` | same |
+| `n5_na_root` | `r\u00E9\u65E5\u672Cz` | `r\u00E9\u65E5\u672Cz` | same |
+| `n5_na_tuple` | `t.x\u00E9\u65E5\u672Cy` | `t.x\u00E9\u65E5\u672Cy` | same |
+| `n5_ap_root` | `r'z` | `r'z` | same |
+| `n5_ap_tuple` | `t.x'y` | `t.x'y` | same |
+| `n5_btbsn_root` | `r`\\\\nz` | `r`\\nz` | differs |
+| `n5_btbsn_tuple` | `t.x`\\\\ny` | `t.x`\\ny` | differs |
+
+The root and element tables of `ctl`, `bt`, `na` and `ap` have the same names on both trees; the 16 tables of `bs`, `bsn`, `lf`, `tab`, `cr`, `sl`, `dq` and `btbsn` differ. The two `dq` tables are not mapped at all on gg3 (`PROBE-UNMAPPED`), which counts as different; on gg4 they are mapped and carry the raw double quote. The remaining 20 tables (the enum tables and the four unchanged entries) show no difference in their column names; the enum labels are in the next table.
+
+Enum labels (`labelPut` and the enum keys that `describeTable` builds; the key is the first label of the table, `z` is the second):
+
+| entry | character | gg3 label key | gg4 label key | gg3 raw-label put | gg4 raw-label put | outcome |
+|-------|-----------|---------------|---------------|-------------------|-------------------|---------|
+| `ctl` | underscore (control) | `x_y` | `x_y` | stored (stored 1) | stored (stored 1) | same |
+| `bs` | backslash | `x\\\\\\\\y` | `x\\y` | failed (stored -) | stored (stored 1) | differs |
+| `bsn` | backslash, `n` | `x\\\\\\\\ny` | `x\\ny` | failed (stored -) | stored (stored 1) | differs |
+| `lf` | line feed | `x\\\\ny` | `x\ny` | failed (stored -) | stored (stored 1) | differs |
+| `tab` | tab | `x\\\\ty` | `x\ty` | failed (stored -) | stored (stored 1) | differs |
+| `cr` | carriage return | `x\\\\ry` | `x\ry` | failed (stored -) | stored (stored 1) | differs |
+| `sl` | slash | `x\\/y` | `x/y` | failed (stored -) | stored (stored 1) | differs |
+| `dq` | double quote | UNMAPPED | `x"y` | failed (stored -) | stored (stored 1) | differs |
+| `bt` | backtick | `x`y` | `x`y` | stored (stored 1) | stored (stored 1) | same |
+| `na` | U+00E9 U+65E5 U+672C | `x\u00E9\u65E5\u672Cy` | `x\u00E9\u65E5\u672Cy` | stored (stored 1) | stored (stored 1) | same |
+| `ap` | apostrophe | UNMAPPED | `x'y` | failed (stored -) | stored (stored 1) | differs |
+| `btbsn` | backtick, backslash, `n` | `x`\\\\\\\\ny` | `x`\\ny` | failed (stored -) | stored (stored 1) | differs |
+
+A put whose outcome is `failed` on gg3 stored 0 rows. For `bs`, `bsn`, `lf`, `tab`, `cr`, `sl` and `btbsn` the put failed with `WithheldMessageException` (`(message withheld: may contain record data)`, the Phase 27 lookup-miss form). For `dq` and `ap` the table is not mapped on gg3 and the put failed with `RuntimeException` `Connection to ClickHouse is not active.`; this text names a connection, not the label, so an operator who reads it should look for an unmapped table. On gg4 all twelve raw labels stored code 1.
+
+D995-DIFFERING=n5_bs_root,n5_bs_tuple,n5_bsn_root,n5_bsn_tuple,n5_btbsn_root,n5_btbsn_tuple,n5_cr_root,n5_cr_tuple,n5_dq_root,n5_dq_tuple,n5_lf_root,n5_lf_tuple,n5_sl_root,n5_sl_tuple,n5_tab_root,n5_tab_tuple
+LABEL-DIFFERING=ap,bs,bsn,btbsn,cr,dq,lf,sl,tab
+
+Matches text: pending (29-04)
+
+### E-21: in-flight retries across the release change for the backslash entry (999.5, D-04)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, the in-flight item for raw identifier names (PT-10 (c)), written in plan 29-04. Measured for the `bs` entry (one backslash) on client V2 only; the other eleven entries and client V1 were not run. The connector sends `insert_deduplication_token = '<topic>-<partition>-<min>-<max>'` (E-12), so a record at partition 0, offset 0 for the table `<table>` carries the token `<table>-0-0-0`. A row "landed by SQL" is an `INSERT ... SETTINGS insert_deduplication_token = '<table>-0-0-0' VALUES (...)` that the probe runs before the sink task puts the record; the connector of the other release did not write that row, and one server cannot be shared between the two trees' runs. Server `26.9.19.9`, client V2, `errors.tolerance` at its default (`none`), so a failed put throws; the DLQ route was not run. Image as in E-20.
+
+Tables (`nameRetryUpgrade` in the gg4 worktree, `nameRetryRollback` in the `v1.7.0_gg3` worktree; the same Gradle runs as E-20). The tables are created with the probe's `shapeDdl` (the root and tuple shapes of E-20 for the `bs` entry; the statement text, as sent, escapes the backslash of the name with a second one):
+
+```sql
+CREATE TABLE up_bs_root_w (id Int32, `r\\z` String DEFAULT 'DEFAULTED') ENGINE = MergeTree ORDER BY id SETTINGS non_replicated_deduplication_window = 100
+CREATE TABLE up_bs_tuple_w (id Int32, t Tuple(`x\\y` Int32, d String)) ENGINE = MergeTree ORDER BY id SETTINGS non_replicated_deduplication_window = 100
+```
+
+The server reads `\\` in a quoted identifier as one backslash, so the root column is named `r`, backslash, `z`. `_w` tables carry `SETTINGS non_replicated_deduplication_window = 100`, `_nw` tables have no window. The record is `id` 1 and, for a root table, the field named as below with the value `V1`; for an element table, `t` with the element named as below, value 7, and `d` `d`.
+
+- Upgrade (gg3 to gg4): the field name is the old V2 form, the doubled form (E-20, the gg3 column): root `r\\z`, element `x\\y` (two backslashes each). `up_bs_root_w` and `up_bs_tuple_w` first receive the row the old release stored, by SQL (`(1, 'V1')` and `(1, (7, 'd'))`); `up_bs_root_nw` receives nothing.
+- Rollback (gg4 to gg3): the field name is the raw form, root `r\z`, element `x\y` (one backslash each). `rb_bs_root_w` and `rb_bs_tuple_w` first receive the row the new release stores, by SQL (the same values); `rb_bs_root_nw` receives nothing.
+
+```sh
+python3 -I /tmp/gsd29-scripts/xml-probe-lines.py /tmp/gsd29/exec/n5-gg4.xml /tmp/gsd29/exec/n5-gg3.xml
+```
+
+(The commands that produced the two XML files are those of E-20.) Field names and failure texts are printed in the probe's escaped form, a backslash doubled, so `r\\z` in a `PROBE-RETRYFIELD` line is the one-backslash name and `r\\\\z` the two-backslash name.
+
+```text
+PROBE-VERSION tree=gg4 version=26.9.19.9
+PROBE-LANDED tree=gg4 table=up_bs_root_w token=up_bs_root_w-0-0-0 rows=1
+PROBE-RETRYFIELD tree=gg4 table=up_bs_root_w field=r\\\\z
+PROBE-RETRYROW tree=gg4 table=up_bs_root_w row=V1
+PROBE-RETRY tree=gg4 table=up_bs_root_w landed=gg3-row window=yes outcome=dropped code=- rows=1 value=landed
+PROBE-LANDED tree=gg4 table=up_bs_tuple_w token=up_bs_tuple_w-0-0-0 rows=1
+PROBE-RETRYFIELD tree=gg4 table=up_bs_tuple_w field=x\\\\y
+PROBE-FAILCLASS tree=gg4 table=up_bs_tuple_w class=DataException
+PROBE-FAILMSG tree=gg4 table=up_bs_tuple_w message=column 't.x\\y' (INT32): no value provided for a non-nullable column without a default; add the field, make the column Nullable, or give it a DEFAULT
+PROBE-RETRYROW tree=gg4 table=up_bs_tuple_w row=(7,'d')
+PROBE-RETRY tree=gg4 table=up_bs_tuple_w landed=gg3-row window=yes outcome=failed code=- rows=1 value=landed
+PROBE-RETRYFIELD tree=gg4 table=up_bs_root_nw field=r\\\\z
+PROBE-RETRYROW tree=gg4 table=up_bs_root_nw row=DEFAULTED
+PROBE-RETRY tree=gg4 table=up_bs_root_nw landed=none window=no outcome=stored code=- rows=1 value=default
+PROBE-VERSION tree=gg3 version=26.9.19.9
+PROBE-LANDED tree=gg3 table=rb_bs_root_w token=rb_bs_root_w-0-0-0 rows=1
+PROBE-RETRYFIELD tree=gg3 table=rb_bs_root_w field=r\\z
+PROBE-RETRYROW tree=gg3 table=rb_bs_root_w row=V1
+PROBE-RETRY tree=gg3 table=rb_bs_root_w landed=gg4-row window=yes outcome=dropped code=- rows=1 value=landed
+PROBE-LANDED tree=gg3 table=rb_bs_tuple_w token=rb_bs_tuple_w-0-0-0 rows=1
+PROBE-RETRYFIELD tree=gg3 table=rb_bs_tuple_w field=x\\y
+PROBE-FAILCLASS tree=gg3 table=rb_bs_tuple_w class=DataException
+PROBE-FAILMSG tree=gg3 table=rb_bs_tuple_w message=column 't.x\\\\y' (INT32): no value provided for a non-nullable column without a default; add the field, make the column Nullable, or give it a DEFAULT
+PROBE-RETRYROW tree=gg3 table=rb_bs_tuple_w row=(7,'d')
+PROBE-RETRY tree=gg3 table=rb_bs_tuple_w landed=gg4-row window=yes outcome=failed code=- rows=1 value=landed
+PROBE-RETRYFIELD tree=gg3 table=rb_bs_root_nw field=r\\z
+PROBE-RETRYROW tree=gg3 table=rb_bs_root_nw row=DEFAULTED
+PROBE-RETRY tree=gg3 table=rb_bs_root_nw landed=none window=no outcome=stored code=- rows=1 value=default
+```
+
+`value=landed` means the table holds only the row landed by SQL; `value=default` that the stored row holds the root column's `DEFAULT`.
+
+Verdicts, worded from these lines only:
+
+- **Upgrade (gg3 to gg4), a batch retried under the old name form.** Root field, table with a window and the old release's row landed: the retry is dropped by the token, one row remains, and it is the landed one (`outcome=dropped`, `value=landed`). Element field, same setup: the put fails with `DataException` (`column 't.x\\y' (INT32): no value provided for a non-nullable column without a default; ...`), and the landed row remains (`outcome=failed`, `rows=1`). Root field, table without a window and nothing landed: the retry stores one row that holds `DEFAULTED` (`outcome=stored`, `value=default`).
+- **Rollback (gg4 to gg3), a batch retried under the raw name form.** The same three outcomes in the same order: dropped with the landed row kept, failed with `DataException` on the element (`column 't.x\\\\y'` in the escaped print form) with the landed row kept, and one `DEFAULTED` row on the table without a window.
+- Both directions: a name that does not match is not an error for a root column. With a window the token drops the batch before the default matters; without one the default is stored.
+
+Matches text: pending (29-04)
