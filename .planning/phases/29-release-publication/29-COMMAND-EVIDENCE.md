@@ -212,7 +212,7 @@ pre-release.yaml: 28:      - name: Setup and execute Gradle 'createConfluentArch
 
 So, on the rolled-back tree, a build is green and the archive is wrong: `release.yaml` and `pre-release.yaml` would both build it, and `tests.yaml` would not notice. The only sound artifact step on rollback is to redeploy the archive built at tag `v1.7.0_gg3` (D-03); an archive built from the rolled-back branch tip must not be deployed.
 
-Matches text: pending (29-04, 29-05)
+Matches text: pending (29-05)
 
 ### E-05: phase base on the bump commit (PT-14)
 
@@ -763,7 +763,7 @@ A put whose outcome is `failed` on gg3 stored 0 rows. For `bs`, `bsn`, `lf`, `ta
 D995-DIFFERING=n5_bs_root,n5_bs_tuple,n5_bsn_root,n5_bsn_tuple,n5_btbsn_root,n5_btbsn_tuple,n5_cr_root,n5_cr_tuple,n5_dq_root,n5_dq_tuple,n5_lf_root,n5_lf_tuple,n5_sl_root,n5_sl_tuple,n5_tab_root,n5_tab_tuple
 LABEL-DIFFERING=ap,bs,bsn,btbsn,cr,dq,lf,sl,tab
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-21: in-flight retries across the release change for the backslash entry (999.5, D-04)
 
@@ -880,7 +880,7 @@ NAMEQ-OVERFLAG=n5_bt_tuple
 
 Result. The gg3 query lists 14 fixture tables: 13 of the 16 differing tables of `D995-DIFFERING` (E-20), and the over-flag `n5_bt_tuple` (a Tuple element name holding a backtick; the table is not different between the releases). It does not list the root carriage-return table `n5_cr_root` and the two double-quote tables `n5_dq_root` and `n5_dq_tuple`. The companion lists `n5_cr_root`, `n5_cr_tuple`, `n5_dq_root` and `n5_dq_tuple`: the three tables the gg3 query misses, plus `n5_cr_tuple`, which both queries list. The union of the two lists is the 16 differing tables and `n5_bt_tuple`. Both queries return nothing on the look-alike database. `n5_ap_tuple` (an apostrophe in an element name) is listed by neither query, and `n5_bt_tuple` is the only over-flag of either. The queries read the declared type text, so a table they list is a suspect, not a finding: of the 17 tables in the union, 16 differ between the releases and one does not.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-23: the enum-label query (PT-05)
 
@@ -906,7 +906,7 @@ LABELQ-OVERFLAG=
 
 Result. On the fixture database the query lists exactly the nine enum tables of `LABEL-DIFFERING` (E-20): `n5_ap_enum`, `n5_bs_enum`, `n5_bsn_enum`, `n5_btbsn_enum`, `n5_cr_enum`, `n5_dq_enum`, `n5_lf_enum`, `n5_sl_enum` and `n5_tab_enum`. It lists none of the `ctl`, `bt` and `na` enum tables, which have no second form, and no look-alike (`la_enum`, `la_tz`, whose time zone holds a slash outside an Enum, and the rest); it returns nothing on the look-alike database. There are no over-flags (the line above is empty on purpose). The query reads the declared type text only, so it is a suspect list: it was run against `Enum8` tables only, not against an `Enum16`, a `Nullable(Enum8(...))` or an enum nested in a Tuple.
 
-Matches text: pending (29-04)
+Matches text: yes
 
 ### E-24: control characters in labels and element names (28-REVIEW IN-04 server half, PT-07)
 
@@ -1004,3 +1004,66 @@ PROBE-KEEPER case=after-delete-topics keys=orders-v2-0,other-0
 Result. The query returns exactly the two in-flight keys of the two listed topic forms, `db1.orders-2` and `orders-1`. It does not return `orders-0` (already `AFTER_PROCESSING`), `orders-v2-0` (a topic that merely shares the prefix `orders`) or `other-0`, and it returns nothing once both ranges are `AFTER_PROCESSING`. Both `DELETE` examples succeeded on the KeeperMap table (`outcome=ok`; the lightweight `DELETE` is supported on this engine on this server). The first removed exactly `orders-1` and `db1.orders-2` and left `orders-0`, `orders-v2-0` and `other-0`. The second, run with the prefixed topic added as its comment says, removed every partition of `orders` and of `db1.orders` and left `orders-v2-0` and `other-0`. The state table is the one the connector's own `KeeperStateProvider` creates (`ENGINE = KeeperMap('/kafka-connect') PRIMARY KEY key`). The notes may therefore call the query and both examples run on a scratch state table, and must keep the key form as read from code.
 
 Matches text: pending (29-04)
+
+### E-30: item 7 rollback on a dry-run merge of the tip (D-03)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg4.md`, item 7 (the rollback): `git fetch --tags origin`, `git checkout custom_build`, `git merge --ff-only origin/custom_build`, `git status --porcelain`, `git read-tree -u --reset pre-v1.7.0_gg4`, `git commit -m "Roll back v1.7.0_gg4"`, `git diff --quiet HEAD pre-v1.7.0_gg4 && echo ok`, `git revert <rollback-commit>` and `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg4.md` (written in plan 29-04). Date (UTC) 2026-10-23. Server version: not involved (git only).
+
+Tag `pre-v1.7.0_gg4` is a local lightweight tag on `69cd680bf548bfb0329142752d37f8a6c3190c26` (`origin/custom_build`, the pre-merge tip; `git cat-file -t` prints `commit`). Its `tests.yaml` has the trigger `branches: ['**']` (a branch-push trigger only), and `git ls-remote --tags origin` does not list the tag (the grep count is 0). X is the tip that contains the finished frame, item 1 and item 7 of the note: `X = 48bf42d6946ac4a608384d51d7ec5af5a7676b04` (the note was committed first as `fae7e42a`; X is the follow-up commit that added the `gradlew.bat` exception to step 2.1 after the first run of this script showed it, so the script ran twice and the record is of the second run). Throwaway merge: `git worktree add --detach /tmp/gsd29/dry 69cd680bf548bfb0329142752d37f8a6c3190c26`, then in it `git -c user.name=demo -c user.email=demo@example.invalid merge --no-ff --no-edit X`, giving the merge commit `D = 74cc816d469e121905dddff8765c7dbb430802f2`. D has two parents, `D^1` is `69cd680b`, `D^2` is X, and `git diff --quiet D X` holds (no non-merge difference), which printed `MERGE-DRY-RUN-OK`. D was never pushed. Plans 29-07 and 29-08 re-run the script on the publication tip and on the real merge commit, which have a different tip from X (items 2 to 6 of the note are written after X). The dry-run worktree was removed and pruned afterwards.
+
+The script lives outside the repository (`/tmp/gsd29/rollback-demo.sh <repo> <target-tip> <worktree-path>`), adapted from the Phase 24 script (`24-COMMAND-EVIDENCE.md` E-22). A throwaway branch that starts at `pre-v1.7.0_gg4` stands in for a stale local `custom_build`, so `git checkout custom_build` is the one command not run verbatim (a linked worktree cannot check out `custom_build` itself); the fast-forward target D stands in for `origin/custom_build`. The `-c user.name/user.email` options only give the throwaway commits an identity. Deviation from a published tag: `git fetch --tags origin` ran while the tag existed only locally, and it kept the local tag (the script prints it after the fetch). Changes against the Phase 24 script: the tag and the document path are the gg4 ones, the heading count is printed as `item-7 headings: <n>`, and one added line reports whether the corrected key rule of the gg1 note (`divides into exactly two parts`) is present in the rolled-back tree.
+
+```sh
+#!/bin/bash
+# usage: rollback-demo.sh <repo> <target-tip> <worktree-path>
+# Runs item 7 as written, on a throwaway branch standing in for a stale local custom_build
+# (starts at pre-v1.7.0_gg4, then fast-forwards to <target-tip>, the stand-in for origin/custom_build).
+set -u
+REPO=$1; TARGET=$2; WT=$3; BR=gg4-rollback-demo-$$
+ID=(-c user.name=demo -c user.email=demo@example.invalid)
+git -C "$REPO" worktree add --quiet -b "$BR" "$WT" 'pre-v1.7.0_gg4^{commit}'
+g() { git -C "$WT" "$@"; }
+TGT=$(git -C "$REPO" rev-parse "$TARGET")
+echo "target=$TGT stale-start=$(g rev-parse --short HEAD)"
+echo "x" >> "$WT/README.md"; echo "dirty: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"; g checkout -q -- README.md
+g fetch -q --tags origin && echo "fetch --tags exit=0"
+echo "local tag kept after fetch: $(g rev-parse --short 'pre-v1.7.0_gg4^{commit}')"
+g merge -q --ff-only "$TARGET" && echo "merge --ff-only exit=0, HEAD==target: $([ "$(g rev-parse HEAD)" = "$TGT" ] && echo yes)"
+echo "clean: status --porcelain lines=$(g status --porcelain | wc -l | tr -d ' ')"
+g read-tree -u --reset pre-v1.7.0_gg4 && g "${ID[@]}" commit -q -m "Roll back v1.7.0_gg4" && echo "read-tree + commit exit=0"
+RB=$(g rev-parse HEAD); echo "rollback-commit parent==target: $([ "$(g rev-parse HEAD^)" = "$TGT" ] && echo yes)"
+g diff --quiet HEAD pre-v1.7.0_gg4 && echo ok
+[ -z "$(g status --porcelain)" ] && echo "worktree clean after commit"
+g ls-files --error-unmatch docs/ROLLOUT-v1.7.0_gg4.md >/dev/null 2>&1 || echo "rollout doc gone from branch"
+g show "$RB^:docs/ROLLOUT-v1.7.0_gg4.md" | grep -c '^## Item 7: Rollback' | sed 's/^/git show <rollback-commit>^:docs\/ROLLOUT... item-7 headings: /'
+g show HEAD:.github/workflows/tests.yaml | grep -qF "branches: ['**']" && echo "rolled-back tests.yaml keeps branches: ['**']"
+g show HEAD:docs/ROLLOUT-v1.7.0_gg1.md | grep -qF 'divides into exactly two parts' && echo "gg1 corrected rule after rollback: present" || echo "gg1 corrected rule after rollback: absent"
+g "${ID[@]}" revert --no-edit "$RB" >/dev/null && g diff --quiet HEAD "$TARGET" && echo "after git revert <rollback-commit>: tree(HEAD)==tree(target)"
+git -C "$REPO" worktree remove --force "$WT" && git -C "$REPO" worktree prune && git -C "$REPO" branch -q -D "$BR"
+```
+
+```text
+X=48bf42d6946ac4a608384d51d7ec5af5a7676b04
+D=74cc816d469e121905dddff8765c7dbb430802f2
+MERGE-DRY-RUN-OK
+target=74cc816d469e121905dddff8765c7dbb430802f2 stale-start=69cd680b
+dirty: status --porcelain lines=2
+fetch --tags exit=0
+local tag kept after fetch: 69cd680b
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=1
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+rollout doc gone from branch
+git show <rollback-commit>^:docs/ROLLOUT... item-7 headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+gg1 corrected rule after rollback: absent
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+Two lines differ from the Phase 24 run, and both come from the same file. `dirty: ... lines=2` and `clean: ... lines=1` are one line more than in Phase 24, and the line `worktree clean after commit` is not printed. A fresh worktree of `69cd680b`, and the fast-forwarded one, list ` M gradlew.bat` in `git status --porcelain` before any edit (checked separately in a scratch worktree of the tag): `.gitattributes` has `*.bat text eol=crlf`, and the `gradlew.bat` blob committed by the Gradle wrapper bump has CRLF line endings (`git ls-files --eol` prints `i/crlf w/crlf attr/text eol=crlf`; the blob at tag `v1.7.0_gg3` has none). The note's step 2.1 therefore names that one line as expected. The rollback itself is not affected: `read-tree` and the commit succeed, `git diff --quiet HEAD pre-v1.7.0_gg4` holds and the revert restores the tree of D.
+
+Afterwards `git worktree list` shows the main working tree and the two kept probe worktrees `wt-gg3` and `wt-tip` only (no `dry` and no `rb-demo` entry), no `gg4-rollback-demo-*` branch is left, and `git ls-remote --tags origin` lists no `pre-v1.7.0_gg4`.
+
+Matches text: yes
