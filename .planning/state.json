@@ -26,13 +26,13 @@
     {
       "number": "29",
       "name": "Release & Publication",
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
   "next": {
     "command": "/gsd-progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 5 of 5 · 75% · executing"
+    "reason": "Phase 5 of 5 · 80% · executing"
   },
-  "updated_at": "2026-10-23T17:23:19.717Z"
+  "updated_at": "2026-10-23T18:03:20.584Z"
 }

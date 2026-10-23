@@ -5,17 +5,17 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 29
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 29-01-PLAN.md
-last_updated: "2026-10-23T17:52:49.275Z"
+stopped_at: Completed 29-02-PLAN.md
+last_updated: "2026-10-23T18:03:30.467Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 29 execution started
-state_head: 6518de52d6f7c07b5ed753443c5390f10ff4cec1
+state_head: 469016f102f6dd060378cdfd4bcc1bb9ca397e49
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 32
-  completed_plans: 25
-  percent: 78
+  completed_plans: 26
+  percent: 80
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 29 (Release & Publication) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 29 execution started
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -193,6 +193,7 @@ Progress: [████████░░] 78%
 | Phase 28 P05 | 25min | 3 tasks | 10 files |
 | Phase 28 P06 | 71 min | 3 tasks | 8 files |
 | Phase 29 P01 | 27 min | 4 tasks | 4 files |
+| Phase 29 P02 | 10 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 28]: Tracer report regeneration runs through test --tests (not -x test): jacocoForkReport fails Gradle 9.8.1 validation without dependsOn(test)
 - [Phase 29]: Archive identity gg3 vs gg4 is pinned by a Phase 29 allow-list with 21 exact com/clickhouse rows (PT-13); the compare script and the Phase 25 list stay unedited
 - [Phase 29]: The rollback target 69cd680b builds a green archive with 25 nested jars (PRE-NESTED-JARS=25); the gg4 note must say to redeploy the archive built at v1.7.0_gg3 and never build one from the rolled-back tip (PT-03)
+- [Phase 29]: Rollout note states the suspects-query over-flags as s4_o01 and x08 (a JSON column with a typed size-named Tuple path), measured on the 47-table catalog
+- [Phase 29]: Rollout note says an affected shape fails on gg3 with server code 32 or 33, never a per-shape code: this server printed 33 for five shapes and 32 for n03
 
 ### Pending Todos
 
@@ -304,8 +307,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T17:52:48.453Z
-Stopped at: Completed 29-01-PLAN.md
+Last session: 2026-10-23T18:03:29.597Z
+Stopped at: Completed 29-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
