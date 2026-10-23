@@ -279,7 +279,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare `NullPointerException`.
      A diff check shows that no existing assertion was deleted or weakened, and the anchors invariant passes at every commit.
 
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 **Wave 1**
@@ -289,7 +289,7 @@ Plans:
 - [x] 27-02-PLAN.md — WRT-17: red-first Docker-free and live pins, user checkpoint on the helper widening, per-link JacksonException exclusion with the flip, D-11 scrub, FORK-DELTA, CHANGELOG and anchor in one fix commit
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 27-03-PLAN.md — WRT-18: lookup miss in Column.convertEnumValues (IllegalArgumentException naming the column) and the column-named no-content text, red first, one fix commit
+- [x] 27-03-PLAN.md — WRT-18: lookup miss in Column.convertEnumValues (IllegalArgumentException naming the column) and the column-named no-content text, red first, one fix commit
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 27-04-PLAN.md — WRT-19: exact ClassCastException pin, metadata helpers on the shared prefix, comment-only planning-ID scrub of src/main, standing guard seen red
@@ -524,7 +524,7 @@ The four code phases split along the production files that change: the build and
 |-------|-----------|----------------|--------|-----------|
 | 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 8/8 | Complete    | 2026-10-21 |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
-| 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 2/5 | In Progress | - |
+| 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 3/5 | In Progress | - |
 | 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 | 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 
