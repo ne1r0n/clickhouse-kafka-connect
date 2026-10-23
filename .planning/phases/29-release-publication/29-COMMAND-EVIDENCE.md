@@ -1447,3 +1447,20 @@ SPOTLESS-BASELINE-EQUAL-ON-X
 Both numstat files have 47 lines and are byte-equal (`cmp -s`), so the tip's `spotlessApply` rewrite equals the 47-file rewrite already present at `P29_BASE`; Phase 29 added none. This is the baseline-equal form of the AGENTS.md pre-PR spotless obligation, not a clean `spotlessCheck`.
 
 Matches text: n/a (gate check)
+
+### E-62: rehearsal push and run
+
+User's answer, given directly to the orchestrator in the session: "push" (after the rehearsal bundle of plan 29-07 Task 3 was presented). Re-checks on X0 before the push: FREEZE-OK, OPS-01-04-OK, PUSH-READY, MERGE-DRY-RUN-OK, ROLLBACK-ON-TIP-OK; origin custom_build 69cd680bf548bfb0329142752d37f8a6c3190c26; snapshots saved to /tmp/gsd29/exec/origin-{tags,heads}-before-rehearsal.txt.
+
+```sh
+git push origin refs/heads/sync/v1.7.0:refs/heads/sync/v1.7.0
+curl -s 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/runs?head_sha=ef19fbc8f3c1ddee16c84180b84fa47b2ddce12c'
+curl -s https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/runs/40017036598
+curl -s https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/runs/40017036598/jobs
+```
+
+X0=ef19fbc8f3c1ddee16c84180b84fa47b2ddce12c
+
+Run: id 40017036598, https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40017036598, workflow .github/workflows/tests.yaml, event push, head_branch sync/v1.7.0, run_started_at 2026-10-23T20:09:34Z, updated_at 2026-10-23T20:16:02Z (about 6.5 minutes), conclusion success; exactly one tests.yaml run on X0, none cancelled. One job "ClickHouse latest Client version V2 tests", success, runner "GitHub Actions 1000000313", labels ["ubuntu-24.04"]. Origin heads after the push: custom_build 69cd680b (unchanged), main bec167d8 (unchanged), sync/v1.7.0 at X0, two dependabot heads (unchanged). Tags unchanged.
+
+Matches text: n/a (gate check)
