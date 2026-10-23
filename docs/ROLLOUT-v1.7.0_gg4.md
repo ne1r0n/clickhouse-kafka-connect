@@ -137,6 +137,8 @@ The residual WARN reads:
 Could not read the declared type <type> of column <column> of table <db>.<table> (<reason>); its sub-columns named size, size0 or size followed by digits are treated as structural, as earlier releases did
 ```
 
+The text names all three forms; the connector drops only `size` and `size0` of that parent, as the bullet above says (read from connector code).
+
 No fixture table logged this line, so the text is shown to match its search below and has not been seen in a run.
 
 ### Am I affected?
