@@ -1,7 +1,7 @@
 ---
 phase: 29-release-publication
 verified: 2026-10-24T00:00:00Z
-status: human_needed
+status: passed
 score: 3/4 roadmap success criteria verified (SC3 literal wording not met; one recorded, user-authorised deviation awaits acceptance)
 covered_files:
   - ".planning/phases/29-release-publication/29-01-PLAN.md"

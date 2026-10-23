@@ -1,5 +1,52 @@
 # Milestones
 
+## v1.7.0_gg4-hardening Dependency Absorption, Discovery Defects & Review Debt (Shipped: 2026-10-23)
+
+**Phases completed:** 5 phases (25–29), 32 plans, 81 tasks
+
+**Delivered:** The fork absorbed nine Dependabot merges and upstream's untagged tail on top of `v1.7.0`, and the shipped Confluent archive was repaired and then guarded: under Shadow 9 it had nested 25 jars into an unusable archive while the build stayed green. Two discovery defects that `v1.7.0_gg3` disclosed are fixed. A Tuple element named `size`, `size0` or `size<digits>` is no longer dropped (backlog 999.4), and column, element and Enum-label names are matched under the raw identifier written in `CREATE TABLE` on both clients (backlog 999.5). The writer failure path no longer leaks a Jackson-chain Map key, an unknown Enum label fails with a column-named message instead of a `NullPointerException`, and the carried 21–24 review debt is cleared. It shipped as `v1.7.0_gg4` with a reviewed rollout note.
+
+**Stats:**
+
+- **Git range:** `73cb565d` (milestone start, 2026-10-21) → `2325b3ef` (Phase 29 UAT), 298 commits (266 first-parent) on `sync/v1.7.0`.
+- **Timeline:** 2026-10-21 → 2026-10-24 (3 days). Published 2026-10-23, closed 2026-10-24.
+- **Files changed:** 320 in total (+38,756 / −674), mostly `.planning/`. Of those, 174 are in `src/`, the build, `gradle/` and `.github/` (+7,270 / −483). `src/main` changed in 12 files (+792 / −256), including the upstream tail taken in Phase 25. The new classes are `DescribeTableBuilder` and `ParentShape`.
+- **Codebase:** 11,059 LOC of main Java and 38,839 LOC of test Java.
+- **Fork delta over upstream** (`docs/FORK-DELTA.md` raw numbers), wider scope then `src/main`:
+  - files: 130 → 277 and 33 → 37;
+  - insertions: 22,783 → 29,679 and 2,245 → 2,877;
+  - deletions: 534 → 643 and 145 → 241.
+- **Suite:** `testUnit` runs 1,278 tests with Docker stopped (2 skipped). Two full runs on ClickHouse `latest` (26.9.19.9) × client V2 ran 1,865 tests each, with 0 failures and 18 named skips.
+- **Requirements:** 36/36 complete (the audit text says 37; `REQUIREMENTS.md` and its traceability table hold 36 IDs). The milestone audit is `tech_debt` with no gaps: phases 5/5, integration 5/5, flows 5/5.
+- **Published:** `v1.7.0_gg4` is the `--no-ff` merge `21c51598` (parents `69cd680b` and `3d847009`) on `custom_build`. Its tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` (rollback → `69cd680b`) are on `origin`. The merge has one green `tests.yaml` run, [`40017036598`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40017036598).
+
+**Closeout type:** `override_closeout`
+
+**Known verification overrides:** 0 newly acknowledged, 0 carried forward from a prior close. The open-artifact audit was clear. There are two overrides, both accepted by the user:
+
+- At close, `init.manager` read Phases 25–28 as `phase_complete: false, verification: stale`. Each `VERIFICATION.md` has `status: passed`. For Phases 25, 27 and 28 the covered-file digests drifted because later work edited covered files: `docs/FORK-DELTA.md`, `CHANGELOG.md` and `.planning/scripts/fork-anchors.txt`, plus `build.gradle.kts` (Phase 28's coverage list) and `Column.java` and its tests (Phase 28's Enum-label keys) for Phases 25 and 27. That is sequential drift, not a failed check. For Phase 26 no covered file was edited after its verification date, so its stale reading is unexplained.
+- Phase 27 success criterion 2 was narrowed by the user's decision (`overrides_applied: 1` in `27-VERIFICATION.md`).
+
+**Known gaps:** none against requirements. The follow-ups below are carried into `PROJECT.md` → Requirements → Active. The 16 unfixed review findings (25-REVIEW WR-01..WR-03 and IN-01..IN-04, plus the 26–28 findings) each have a reason, an owner and a re-open trigger in `29-MILESTONE-CLOSE-RECORD.md`.
+
+- **PUB-12 / SC3:** the Phase 29 review ran 4 rounds (the roadmap allowed at most 3) and round 4 found IN-09, so there was no clean round. The user authorised round 4 and accepted the deviation in `29-UAT.md`. The IN-09 fix (CHANGELOG wording only) was never re-reviewed.
+- **Archive compare:** `confluent-archive-allowlist-29.txt` has no CI consumer. The entry-by-entry archive compare against gg3 is a manual release-time step; CI runs only the `verifyConfluentArchive` finalizer.
+- **Test gap:** no single test drives a size-named Tuple element whose name also contains an escape character.
+- **`FORK-DELTA.md:224`** still reads, as history, that gg3 shipped items 10 and 11 as open. Line 226 states they are closed.
+- **Branch state:** `sync/v1.7.0` is 6 docs and test commits ahead of `custom_build`. The tag `v1.7.0_gg4` points at the `custom_build` merge `21c51598`.
+- **Not assessed:** Nyquist validation is disabled in config, and the `connect-api` 4.4.0 / Shadow 9 CHANGELOG body was not spot-checked.
+
+**Key accomplishments:**
+
+1. Nine Dependabot merges and upstream's untagged tail `a6f1df83` were absorbed through two mechanical merges (M1 `50f56289`, M2 `38265d26`). The unedited anchors gate passes, and the pin guard now uses a one-pass Kotlin scanner (DEBT-13).
+2. The Confluent archive is repaired under Shadow 9 (it nested 25 jars). It is now finalized by `verifyConfluentArchive`, and 176 Kafka references are proven present in the production worker's `connect-api` and `kafka-clients` 7.9.7 jars.
+3. Discovery keeps a declared Tuple element named `size`, `size0` or `size<digits>` through one fork-owned `DescribeTableBuilder`. The fix changes the Column tree of exactly 25 of 47 catalog tables, and a 46-case live round-trip fails on exactly those shapes on the pre-fix tree.
+4. Column, element and Enum-label names are matched under the raw `CREATE TABLE` identifier on both clients. This changes 16 of 24 name tables and 9 of 12 Enum entries, and a doubled-form Tuple element now fails the put loudly.
+5. A Jackson failure on the JSON-as-string route no longer names a Map key, an unknown Enum label throws a value-free `IllegalArgumentException` naming the column, and the writer's failure texts are built from one prefix constant.
+6. `v1.7.0_gg4` is published with `docs/ROLLOUT-v1.7.0_gg4.md`, where every command equals an evidence block and the rollback is proven by script, one green CI run on the published SHA, and an origin-freeze check.
+
+---
+
 ## v1.7.0_gg3-hardening Record-Data Exposure & Review Debt (Shipped: 2026-10-20)
 
 **Phases completed:** 4 phases (21–24), 23 plans, 60 tasks, plus quick task `261020-vcr`
