@@ -13,7 +13,7 @@
 | E-01 | Phase base | pass |
 | E-02 | NAME-01 pin green on the current code and red under the always-close mutation | pass |
 | E-03 | NAME-02 tracer and capture runs | pass |
-| E-04 | NAME-02 spike record | pending |
+| E-04 | NAME-02 spike record | pass |
 | E-05 | NAME-03/04 tracer red then green, and the testUnit red set of the fix | pending |
 | E-06 | NAME-03/04 changed pins red on the unchanged production, coupling proof | pending |
 | E-07 | NAME-03/04 fix commit, full suite, old-name loud failure, re-render, gate | pending |
@@ -135,4 +135,125 @@ src_main: git diff --quiet HEAD -- src/main exit 0
 Notes: no DDL was rejected by the server for any of the twelve entries and every server premise (P1 to P3) held for all of them. The cells files are not committed.
 
 2026-10-23T09:46:07Z
+Verdict: pass
+
+### E-04: NAME-02 spike record
+
+Commands as run:
+
+```bash
+python3 -I /tmp/gsd28/exec/spike_checks.py /tmp/gsd28/exec/capture-run2 /tmp/gsd28/exec/spike-table.md
+git show f028c57e:src/test/resources/raw-name-matrix/btbsn-names.jsonl   # WR-01 literal
+```
+
+```text
+server: ClickHouse server version: 26.9.19.9 (requested tag: latest, image: clickhouse/clickhouse-server:latest) image_id: sha256:bdb5c911a23d92fd364e246ab20b5a0a485f00112f3663fa626b083fb46c146b
+cells_taken_on: capture run 2 (/tmp/gsd28/exec/capture-run2), the working tree that commit f028c57e then committed; the cells files are not committed and run 1 produced byte-identical cells
+spike_checks: c1=pass c2=pass c3=pass c4=pass
+```
+
+Legend. server JSON text: the server's own text between the quotes of the `name` field (the `type` field for enum_label), non-ASCII shown as a lowercase \uXXXX escape. current V2 and current V1: the form that the production describeTable of that client yields, as a JSON string (so a backslash is written doubled and a line feed as backslash-n), or UNMAPPED (describeTable returned null) or ERROR:class (it threw). decoded: the raw identifier after a JSON decode of the server row (for enum_label the first label after the SQL unescape). V1 and V2 clients were each built explicitly. Checks: c1 every name cell's V2 form is the server's JSON escaping of the decoded name, dq is UNMAPPED; c2 every enum cell's V2 key is the JSON escaping of the label's SQL text, dq and ap are UNMAPPED; c3 no cell lacks its server row; c4 every cell has a V1 form.
+
+| entry | character | shape | server JSON text | current V2 | current V1 | decoded |
+|---|---|---|---|---|---|---|
+| ctl | underscore (control) | root | r_z | "r_z" | "r_z" | "r_z" |
+| ctl | underscore (control) | tuple | t.x_y | "x_y" | "x_y" | "x_y" |
+| ctl | underscore (control) | array_tuple | a.x_y | "x_y" | "x_y" | "x_y" |
+| ctl | underscore (control) | nullable_tuple | n.x_y | "x_y" | "x_y" | "x_y" |
+| ctl | underscore (control) | map_tuple | m.values.x_y | "x_y" | "x_y" | "x_y" |
+| ctl | underscore (control) | enum_label | Enum8('x_y' = 1, 'z' = 2) | "x_y" | "x_y" | "x_y" |
+| bs | backslash | root | r\\z | "r\\\\z" | "r\\z" | "r\\z" |
+| bs | backslash | tuple | t.x\\y | "x\\\\y" | "x\\y" | "x\\y" |
+| bs | backslash | array_tuple | a.x\\y | "x\\\\y" | "x\\y" | "x\\y" |
+| bs | backslash | nullable_tuple | n.x\\y | "x\\\\y" | "x\\y" | "x\\y" |
+| bs | backslash | map_tuple | m.values.x\\y | "x\\\\y" | "x\\y" | "x\\y" |
+| bs | backslash | enum_label | Enum8('x\\\\y' = 1, 'z' = 2) | "x\\\\\\\\y" | "x\\\\y" | "x\\y" |
+| bsn | backslash followed by n | root | r\\nz | "r\\\\nz" | "r\\nz" | "r\\nz" |
+| bsn | backslash followed by n | tuple | t.x\\ny | "x\\\\ny" | "x\\ny" | "x\\ny" |
+| bsn | backslash followed by n | array_tuple | a.x\\ny | "x\\\\ny" | "x\\ny" | "x\\ny" |
+| bsn | backslash followed by n | nullable_tuple | n.x\\ny | "x\\\\ny" | "x\\ny" | "x\\ny" |
+| bsn | backslash followed by n | map_tuple | m.values.x\\ny | "x\\\\ny" | "x\\ny" | "x\\ny" |
+| bsn | backslash followed by n | enum_label | Enum8('x\\\\ny' = 1, 'z' = 2) | "x\\\\\\\\ny" | "x\\\\ny" | "x\\ny" |
+| lf | line feed | root | r\nz | "r\\nz" | "r\nz" | "r\nz" |
+| lf | line feed | tuple | t.x\ny | "x\\ny" | "x\ny" | "x\ny" |
+| lf | line feed | array_tuple | a.x\ny | "x\\ny" | "x\ny" | "x\ny" |
+| lf | line feed | nullable_tuple | n.x\ny | "x\\ny" | "x\ny" | "x\ny" |
+| lf | line feed | map_tuple | m.values.x\ny | "x\\ny" | "x\ny" | "x\ny" |
+| lf | line feed | enum_label | Enum8('x\\ny' = 1, 'z' = 2) | "x\\\\ny" | "x\\ny" | "x\ny" |
+| tab | tab | root | r\tz | "r\\tz" | UNMAPPED | "r\tz" |
+| tab | tab | tuple | t.x\ty | "x\\ty" | UNMAPPED | "x\ty" |
+| tab | tab | array_tuple | a.x\ty | "x\\ty" | UNMAPPED | "x\ty" |
+| tab | tab | nullable_tuple | n.x\ty | "x\\ty" | UNMAPPED | "x\ty" |
+| tab | tab | map_tuple | m.values.x\ty | "x\\ty" | UNMAPPED | "x\ty" |
+| tab | tab | enum_label | Enum8('x\\ty' = 1, 'z' = 2) | "x\\\\ty" | "x\\ty" | "x\ty" |
+| cr | carriage return | root | r\rz | "r\\rz" | UNMAPPED | "r\rz" |
+| cr | carriage return | tuple | t.x\ry | "x\\ry" | UNMAPPED | "x\ry" |
+| cr | carriage return | array_tuple | a.x\ry | "x\\ry" | UNMAPPED | "x\ry" |
+| cr | carriage return | nullable_tuple | n.x\ry | "x\\ry" | UNMAPPED | "x\ry" |
+| cr | carriage return | map_tuple | m.values.x\ry | "x\\ry" | UNMAPPED | "x\ry" |
+| cr | carriage return | enum_label | Enum8('x\\ry' = 1, 'z' = 2) | "x\\\\ry" | "x\\ry" | "x\ry" |
+| sl | slash | root | r\/z | "r\\/z" | "r\uFFFDz" | "r/z" |
+| sl | slash | tuple | t.x\/y | "x\\/y" | "x\uFFFDy" | "x/y" |
+| sl | slash | array_tuple | a.x\/y | "x\\/y" | "x\uFFFDy" | "x/y" |
+| sl | slash | nullable_tuple | n.x\/y | "x\\/y" | "x\uFFFDy" | "x/y" |
+| sl | slash | map_tuple | m.values.x\/y | "x\\/y" | "x\uFFFDy" | "x/y" |
+| sl | slash | enum_label | Enum8('x\/y' = 1, 'z' = 2) | "x\\/y" | "x\uFFFDy" | "x/y" |
+| dq | double quote | root | r\"z | UNMAPPED | "r\uFFFDz" | "r\"z" |
+| dq | double quote | tuple | t.x\"y | UNMAPPED | "x\uFFFDy" | "x\"y" |
+| dq | double quote | array_tuple | a.x\"y | UNMAPPED | "x\uFFFDy" | "x\"y" |
+| dq | double quote | nullable_tuple | n.x\"y | UNMAPPED | "x\uFFFDy" | "x\"y" |
+| dq | double quote | map_tuple | m.values.x\"y | UNMAPPED | "x\uFFFDy" | "x\"y" |
+| dq | double quote | enum_label | Enum8('x\"y' = 1, 'z' = 2) | UNMAPPED | "x\uFFFDy" | "x\"y" |
+| bt | backtick | root | r`z | "r`z" | "r`z" | "r`z" |
+| bt | backtick | tuple | t.x`y | "x`y" | "x`y" | "x`y" |
+| bt | backtick | array_tuple | a.x`y | "x`y" | "x`y" | "x`y" |
+| bt | backtick | nullable_tuple | n.x`y | "x`y" | "x`y" | "x`y" |
+| bt | backtick | map_tuple | m.values.x`y | "x`y" | "x`y" | "x`y" |
+| bt | backtick | enum_label | Enum8('x`y' = 1, 'z' = 2) | "x`y" | "x`y" | "x`y" |
+| na | non-ASCII (U+00E9 U+65E5 U+672C) | root | r\u00e9\u65e5\u672cz | "r\u00E9\u65E5\u672Cz" | "r\u00E9\u65E5\u672Cz" | "r\u00E9\u65E5\u672Cz" |
+| na | non-ASCII (U+00E9 U+65E5 U+672C) | tuple | t.x\u00e9\u65e5\u672cy | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" |
+| na | non-ASCII (U+00E9 U+65E5 U+672C) | array_tuple | a.x\u00e9\u65e5\u672cy | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" |
+| na | non-ASCII (U+00E9 U+65E5 U+672C) | nullable_tuple | n.x\u00e9\u65e5\u672cy | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" |
+| na | non-ASCII (U+00E9 U+65E5 U+672C) | map_tuple | m.values.x\u00e9\u65e5\u672cy | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" |
+| na | non-ASCII (U+00E9 U+65E5 U+672C) | enum_label | Enum8('x\u00e9\u65e5\u672cy' = 1, 'z' = 2) | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" | "x\u00E9\u65E5\u672Cy" |
+| ap | apostrophe | root | r'z | "r'z" | "r'z" | "r'z" |
+| ap | apostrophe | tuple | t.x'y | "x'y" | "x'y" | "x'y" |
+| ap | apostrophe | array_tuple | a.x'y | "x'y" | "x'y" | "x'y" |
+| ap | apostrophe | nullable_tuple | n.x'y | "x'y" | "x'y" | "x'y" |
+| ap | apostrophe | map_tuple | m.values.x'y | "x'y" | "x'y" | "x'y" |
+| ap | apostrophe | enum_label | Enum8('x\\'y' = 1, 'z' = 2) | UNMAPPED | ERROR:NumberFormatException | "x'y" |
+| btbsn | backtick, backslash, n (WR-01) | root | r`\\nz | "r`\\\\nz" | "r`\\nz" | "r`\\nz" |
+| btbsn | backtick, backslash, n (WR-01) | tuple | t.x`\\ny | "x`\\\\ny" | "x`\\ny" | "x`\\ny" |
+| btbsn | backtick, backslash, n (WR-01) | array_tuple | a.x`\\ny | "x`\\\\ny" | "x`\\ny" | "x`\\ny" |
+| btbsn | backtick, backslash, n (WR-01) | nullable_tuple | n.x`\\ny | "x`\\\\ny" | "x`\\ny" | "x`\\ny" |
+| btbsn | backtick, backslash, n (WR-01) | map_tuple | m.values.x`\\ny | "x`\\\\ny" | "x`\\ny" | "x`\\ny" |
+| btbsn | backtick, backslash, n (WR-01) | enum_label | Enum8('x`\\\\ny' = 1, 'z' = 2) | "x`\\\\\\\\ny" | "x`\\\\ny" | "x`\\ny" |
+
+WARN counts (WARN events on the ClickHouseHelperClient and DeclaredNullability loggers during one describeTable):
+
+- warns ctl: names V2=0 V1=0, enum V2=0 V1=0
+- warns bs: names V2=0 V1=0, enum V2=0 V1=0
+- warns bsn: names V2=0 V1=0, enum V2=0 V1=0
+- warns lf: names V2=0 V1=4, enum V2=0 V1=0
+- warns tab: names V2=0 V1=0, enum V2=0 V1=0
+- warns cr: names V2=0 V1=0, enum V2=0 V1=0
+- warns sl: names V2=4 V1=0, enum V2=0 V1=0
+- warns dq: names V2=0 V1=0, enum V2=0 V1=0
+- warns bt: names V2=4 V1=0, enum V2=0 V1=0
+- warns na: names V2=0 V1=0, enum V2=0 V1=0
+- warns ap: names V2=0 V1=0, enum V2=0 V1=0
+- warns btbsn: names V2=4 V1=0, enum V2=0 V1=0
+
+wr01_server_literal: Tuple(\n    `x\\`\\\\ny` Int32,\n    d String)
+wr01_matches_pin: yes
+
+The first line is the JSON inner text of the `type` of the `t` row of btbsn-names.jsonl as the file holds it (a backslash-n pair is the server's line break). The second line is yes because the NAME-01 pin's input (23-REVIEW line 49, as DeclaredNullabilityTest uses it), with a replaced by x and b by y inside the quoted name, equals that text character for character (compared by script on the runtime text).
+
+findings:
+- V2 and V1 both give the decoded name in all five name shapes for ctl, bt, na and ap. For bs, bsn and btbsn V2 is the doubled form (bs: two backslashes where the decoded name has one) and V1 equals the decoded name. For lf, tab and cr V2 is backslash plus n, t or r (two characters), while V1 is the decoded name for lf and UNMAPPED for tab and cr. For sl V2 keeps a backslash before the slash and V1 has U+FFFD in place of the slash. For dq V2 is UNMAPPED and V1 has U+FFFD in place of the double quote.
+- Enum labels (enum_label): V2 keys carry two escape layers (bs: four backslashes, decoded: one), V1 keys carry one layer fewer (bs: two) for bs, bsn, btbsn, lf, tab and cr; ctl, bt and na give the same key on both. sl enum is the key with a backslash before the slash on V2 and has U+FFFD on V1. dq enum is UNMAPPED on V2 and has U+FFFD on V1. ap enum is UNMAPPED on V2 and ERROR:NumberFormatException on V1.
+- Unmapped tables today: V2: the dq names table, the dq enum table and the ap enum table. V1: the tab and cr names tables (all five name shapes); no V1 table is UNMAPPED apart from those, and V1 throws NumberFormatException for the ap enum table instead of returning null.
+- Non-zero WARN counts: names V2 for sl, bt and btbsn (4 each), and names V1 for lf (4). Every other count in the list is 0.
+
+2026-10-23T09:47:28Z
 Verdict: pass
