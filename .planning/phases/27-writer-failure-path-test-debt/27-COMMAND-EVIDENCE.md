@@ -20,9 +20,9 @@
 | E-08 | WRT-19 exact ClassCastException pin and refactor | pass |
 | E-09 | WRT-19 guard red on the unscrubbed tree and scrub commits | pass |
 | E-10 | WRT-19 guard commit and mutation proof | pass |
-| E-11 | DEBT-16 FixedString mismatch red proof and counter removal | pending |
-| E-12 | DEBT-16 premise-loop mutation proof | pending |
-| E-13 | Phase gate and assertion diff check | pending |
+| E-11 | DEBT-16 FixedString mismatch red proof and counter removal | pass |
+| E-12 | DEBT-16 premise-loop mutation proof | pass |
+| E-13 | Phase gate and assertion diff check | pass |
 
 ### E-01: Phase base
 
@@ -371,4 +371,139 @@ src_main_since_phase_base: git log b8f67b3b..HEAD -- src/main lists fix(27-02), 
 Deviation, Spotless expectation: same as E-05 and E-07. The plan expects `9<TAB>12` for ClickHouseWriter.java; the measured `10<TAB>11` comes from plan 27-02's used imports, and this plan adds no import. Every other line equals the base.
 
 2026-10-23T00:42:40Z
+Verdict: pass
+
+### E-11: DEBT-16 FixedString mismatch red proof and counter removal
+
+Commands as run:
+
+```bash
+# FSS = env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*ClickHouseSinkTaskWithSchemaTest.schemaWithFixedStringMismatchTest' --rerun
+# 1. old form, DDL "FixedString(" + fss + ")" (put succeeds): FSS -> fss-old-mut.xml; git checkout -- <file>
+# 2. new form written (assertThrows, finally { chst.stop(); }, import after assertNotNull)
+# 3. new form with the same widening: FSS -> fss-new-mut.xml; restore from the saved copy; new form unmutated: FSS -> fss-green.xml
+# 4./5. CountingHelperClient counter, Javadoc and FORK-DELTA row 82 updated
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd27/exec/testunit-27-05-t1.log 2>&1
+grep -rn useClientV2Calls src
+```
+
+```text
+fss_old_mut: Tests summary: 1 tests, 1 succeeded (the old catch-only form passes although put did not throw)
+fss_new_mut: Tests summary: 1 tests, 0 succeeded, 1 failed
+  -> org.opentest4j.AssertionFailedError: Expected java.lang.RuntimeException to be thrown, but nothing was thrown.
+fss_green: Tests summary: 1 tests, 1 succeeded, 0 failed (new form, unmutated, latest x V2)
+mutation_committed: none (git checkout -- and a restore from the saved copy; git diff showed only the step 2 changes)
+useClientV2Calls: grep -rn useClientV2Calls src finds nothing (baseline 4 lines, all in CountingHelperClient.java)
+fork_delta_row_82: now reads "answers `isUseClientV2` with its constructor flag and counts `pinReplica` and `unpinReplica`"
+testunit: Tests summary: 1191 tests, 1189 succeeded, 0 failed, 2 skipped
+commit: 71b5d10250b6770b9554afbd8800bb5e72864635  test(27-05): fail schemaWithFixedStringMismatchTest when put does not throw and drop the unused CountingHelperClient counter (DEBT-16, 22-REVIEW IN-04, IN-05)
+```
+
+Note: the Javadoc of CountingHelperClient was re-wrapped to the 100-column Google Java Style width after the clause change, so it differs from the previous text by wrapping only; no other line of the class changed except the removed counter field, increment and getter.
+
+2026-10-23T00:56:18Z
+Verdict: pass
+
+### E-12: DEBT-16 premise-loop mutation proof
+
+Commands as run (NTM = `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*NullableTupleMatrixLiveTest.backslashNInTupleElementNameRoundTripsWithoutFallback' --tests '*NullableTupleMatrixLiveTest.describeReturnsTheCapturedBackslashNEscapingAndPairs' --rerun`, class XML copied after each run):
+
+```bash
+# MUT-A old: premise row looked up under CELL_COLUMN + "_x"        -> mut-a-old.xml, git checkout --
+# MUT-B old: Column lookups with "_x" appended (cell, nested)       -> mut-b-old.xml, git checkout --
+# fix applied; MUT-A new                                            -> mut-a-new.xml, restore from saved copy
+# MUT-B new: cell lookup and nestedKey with "_x" appended           -> mut-b-new.xml, restore from saved copy
+# unmutated                                                         -> ntm-green.xml, then the whole class
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*NullableTupleMatrixLiveTest' --rerun
+grep -cF '_x' src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java   # 0
+```
+
+| Run | Two Twin rows (PLAIN, DEFAULT) | describe test |
+|-----|--------------------------------|---------------|
+| MUT-A, old code | pass, pass (vacuous) | pass |
+| MUT-A, new code | fail, fail: `premise (IN-03 re-open trigger): the server's escapin...` (message carries `DESCRIBE returned no row named`) | pass (not affected) |
+| MUT-B, old code | NullPointerException, NullPointerException | NullPointerException |
+| MUT-B, new code | AssertionFailedError `c ==> expected: not <null>`, same | AssertionFailedError `n.p\\nq.t_x ==> expected: not <null>` |
+| unmutated, 3 cases | pass, pass | pass |
+| unmutated, whole class | 33 tests, 33 succeeded, 0 failed, 0 skipped | |
+
+```text
+mutation_committed: none (grep -cF _x on the file is 0)
+commit: 05ab0e3ef8d61bdfc256eadc44081bd5dc586d4c  test(27-05): make the NullableTupleMatrixLiveTest premises fail with a message (DEBT-16, 23-REVIEW IN-03)
+commit_files: src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java only
+```
+
+2026-10-23T00:56:18Z
+Verdict: pass
+
+### E-13: Phase gate and the assertion diff check
+
+Commands as run (HEAD = `05ab0e3ef8d61bdfc256eadc44081bd5dc586d4c`, the last code commit; no commit between the self-test start and the tail gate):
+
+```bash
+.planning/scripts/verify-merge-invariants-selftest.sh > /tmp/gsd27/exec/selftest.log 2>&1; echo $? > /tmp/gsd27/exec/selftest.rc   # background
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd27/exec/testunit-gate.log 2>&1
+date -u > /tmp/gsd27/exec/suite-gate-start.txt; rm -rf build/test-results/test
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd27/exec/suite-gate.log 2>&1; cp -R build/test-results/test /tmp/gsd27/exec/suite-gate
+/tmp/gsd27/exec/spotless-numstat.sh "$PWD" HEAD > /tmp/gsd27/exec/spotless-gate.txt
+git ls-remote origin refs/heads/custom_build; git ls-remote --heads origin sync/v1.7.0
+git diff -U0 b8f67b3b0c81e19ed782932774e908423533629a HEAD -- src/test > /tmp/gsd27/exec/diff-src-test.txt
+PRE_TAG=pre-v1.7.0-tail UPSTREAM_REF=a6f1df839c079180bc7c343b5823f205e204dafc CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail.txt .planning/scripts/verify-merge-invariants.sh 38265d26ce00e078b9e8c7d1198ade333a34f3ac HEAD > /tmp/gsd27/exec/gate-27-05.log 2>&1
+git diff --quiet baseline-v1.7.0_gg4 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh
+```
+
+```text
+testunit: Tests summary: 1191 tests, 1189 succeeded, 0 failed, 2 skipped
+suite: 1680 tests, 0 failures, 0 errors, 18 skipped, 97 XML files, start 2026-10-23T00:52:12Z, no stale XML, BUILD SUCCESSFUL in 2m 38s, default OpenJ9 JVM (no crash, no -PjavaVersion=21 needed), one server version 26.9.19.9, client V2
+suite_skips: the 18 as a set: 11 ClickHouseSinkTaskWithSchemaTest bracketed cases + clientNameTest, schemaWithNestedTupleMapArrayAndVariant, schemaWithTupleOfMapsWithVariantTest, testDeepNestedStructPerformance, testWideStructPerformance, compareInsertPerformance, compareAllConfigurations
+class_counts: WriterFailureClassificationUnitTest=216 WriterValueFreeFailureUnitTest=29 JsonAsStringKeyResidualLiveTest=4 NullableTupleMatrixLiveTest=33 ColumnTest=37 ClickHouseWriterColumnContextTest=9 SourcePlanningIdGuardUnitTest=18 TestsWorkflowPinGuardUnitTest=39
+spotless: 46 lines, equal to spotless-base.txt except ClickHouseWriter.java at 10<TAB>11 (base 9<TAB>10) and ClickHouseSinkTaskWithSchemaTest.java at 28<TAB>29 (base 27<TAB>28)
+gate: invariants: provenance_paths=3 anchor_commits=96 anchor_rows=83 marker_commits=108 anchor_exempt=0 result=PASS
+selftest: exit 0, 16 PASS lines, 0 FAIL lines, last line 'selftest: no failures'
+scripts: git diff --quiet baseline-v1.7.0_gg4 HEAD -- both gate scripts exits 0
+freeze: origin custom_build = 69cd680bf548bfb0329142752d37f8a6c3190c26 (equals origin_custom_build_tip in E-01); git ls-remote --heads origin sync/v1.7.0 prints nothing
+```
+
+Deviation, Spotless expectation: the plan expects ClickHouseWriter.java at 9<TAB>12 and ClickHouseSinkTaskWithSchemaTest.java at 27<TAB>29. Both figures reproduce only when the import this phase adds is unused, because Spotless then deletes it (0 additions, 1 or 2 deletions). Here both imports are used, so Spotless keeps them and moves the import block as one hunk. ClickHouseWriter.java reads 10<TAB>11 from plan 27-02's used imports (E-05, E-07, E-10). ClickHouseSinkTaskWithSchemaTest.java reads 28<TAB>29: re-measured on the HEAD archive, the added `assertThrows` import sits in the static-import block that Spotless moves to the top of the file, one more line in that hunk than with the base. The 46 pre-existing violations are the same set, no other file moved, and no file this phase added or changed appears with a new violation. The expectation was not forced to match.
+
+assertion diff check (`git diff -U0 b8f67b3b0c81e19ed782932774e908423533629a HEAD -- src/test`; files with removed lines, then the added-only files):
+
+| File | Removed lines | @Test/@ParameterizedTest PB -> HEAD | assert calls PB -> HEAD | Justification |
+|------|---------------|-------------------------------------|-------------------------|---------------|
+| JsonAsStringKeyResidualLiveTest.java | 36 | 4 -> 4 | 32 -> 31 | The sanctioned flip, D-03, and the planning-ID scrub, D-11. The user's answer is in E-04 (`option: flip-as-shown`), the red run in E-03 `live_red` and `predicate_red`. The one fewer assert call is the removed `assertOnlyTheKeyAppears` helper (its key-present check); the four tests, the route-reached check and the no-row-landed check stay |
+| WriterValueFreeFailureUnitTest.java | 1 | 17 -> 24 | 76 -> 96 | Exactly the old `NO_ENUM_CONTENT_MESSAGE` line, D-07, red in E-06 |
+| ClickHouseSinkTaskWithSchemaTest.java | 3 | 80 -> 80 | 301 -> 302 | The FixedString `try { chst.put(sr); } catch (RuntimeException e) {` lines and the trailing `chst.stop();` replaced by assertThrows and a finally, D-13, red in E-11. The two FixedString assertions are re-added verbatim |
+| CountingHelperClient.java | 14 | 0 -> 0 | 0 -> 0 | D-12: the counter field, increment and getter, and the re-wrapped Javadoc; it held no assertion and no test referenced the counter |
+| NullableTupleMatrixLiveTest.java | 6 | 8 -> 8 | 26 -> 30 | D-13: the premise loop and the three lookups replaced by checked variables, red in E-12 |
+
+Added-only files (no removed line): SourcePlanningIdGuardUnitTest.java (0 -> 3 tests), WriterFailureClassificationUnitTest.java (+11), ClickHouseWriterColumnContextTest.java (8 -> 9 tests), ColumnTest.java (33 -> 37 tests).
+
+predicate changes to existing assertions (read from `/tmp/gsd27/exec/diff-src-test.txt` hunk by hunk):
+
+| File and member | Old predicate | New predicate | Direction | Justification and evidence |
+|-----------------|---------------|---------------|-----------|----------------------------|
+| (a) JsonAsStringKeyResidualLiveTest.assertJacksonRouteReached | some cause-chain node's runtime class equals JACKSON_FAILURE_CLASS | that, or a node that is a WithheldMessageException whose getOriginalClassName() equals JACKSON_FAILURE_CLASS | wider | research F-1 (after WRT-17 the Jackson class survives only as a withheld copy's original class); the class identity is still required. Sign-off: the user's answer in E-04, `option: flip-as-shown` (`signs_off: assertJacksonRouteReached predicate widening`). Seen red: E-03 `predicate_red` (original predicate, 3 route tests failed with 'the Jackson route was not reached'); the widened predicate matched directly on the unchanged writer (E-03 `live_red`) |
+| (b) JsonAsStringKeyResidualLiveTest, the two key tests (and their log and throwable checks) | the Map key present in the task status and the Error inserting records throwable (tolerance none), and only in the stack-trace header (tolerance all); log texts checked against VALUE_SENTINELS | the key absent from all three, plus the withheld Jackson line present; log texts and the insert throwable checked against ALL_SENTINELS | flipped (stricter for the log and throwable checks) | D-03 (red E-03 `live_red`, answer E-04) |
+| (c) WriterValueFreeFailureUnitTest.NO_ENUM_CONTENT_MESSAGE | `No content in enum` | `No content in enum column c_enum` | stricter | D-07 (red E-06) |
+| (d) ClickHouseSinkTaskWithSchemaTest.schemaWithFixedStringMismatchTest | a catch-only check that passed when nothing was thrown | assertThrows, then the same two assertions | stricter | D-13 (red E-11) |
+| (e) NullableTupleMatrixLiveTest premise loop and three lookups | a vacuous loop and bare lookups | assertNotNull with a message, same expected values | stricter | D-13 (E-12) |
+
+no other predicate changed
+
+git log --format=%s b8f67b3b0c81e19ed782932774e908423533629a..HEAD -- . ':(exclude).planning':
+
+```text
+test(27-05): make the NullableTupleMatrixLiveTest premises fail with a message (DEBT-16, 23-REVIEW IN-03)
+test(27-05): fail schemaWithFixedStringMismatchTest when put does not throw and drop the unused CountingHelperClient counter (DEBT-16, 22-REVIEW IN-04, IN-05)
+test(27-04): guard src/main against planning identifiers (WRT-19, D-14)
+chore(27-04): drop planning identifiers from the remaining src/main comments (WRT-19, 22-REVIEW IN-05)
+chore(27-04): drop planning identifiers from the writer-path comments (WRT-19, 22-REVIEW IN-05)
+refactor(27-04): derive write-failure metadata once and build the ClassCastException text from the shared prefix (WRT-19, 22-REVIEW IN-03)
+test(27-04): pin the exact ClassCastException failure text (WRT-19, D-09)
+fix(27-03): report an unknown Enum label as a lookup miss naming the column (WRT-18, 22-REVIEW IN-01, IN-02)
+fix(27-02): exclude Jackson exceptions from the IOException pass-through and flip the JSON-as-string key pin (WRT-17, 22-REVIEW WR-01)
+test(27-01): pin the retry classification of Jackson failures on the unchanged writer (WRT-16)
+```
+
+2026-10-23T01:09:24Z
 Verdict: pass
