@@ -342,7 +342,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - backlog 999.5, marked delivered.
      `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class Phases 25–28 added. The list is edited once, its FORK-DELTA row is in the same commit, and the generated fork report shows those classes. The anchors invariant passes at every commit.
 
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 Plans:
 **Wave 1**
@@ -355,7 +355,7 @@ Plans:
 - [x] 28-03-PLAN.md — NAME-03 + NAME-04 in one fix commit: names-only decode in fromJsonRow, shared UTF-8 reader for V1 and V2, normalise rewritten, IN-01/IN-02; red-first matrix rows and changed pins, coupling proof, COLS-13 twins on the raw name; the named exemption list of changed pins (X-01..X-12, S-01..S-03) with its sign-off in E-06
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 28-04-PLAN.md — NAME-05: RawIdentifierNameLiveTest, raw form lands with typed read-back, doubled root stores DEFAULT, doubled element fails loudly in every Tuple shape; red on the pre-fix production
+- [x] 28-04-PLAN.md — NAME-05: RawIdentifierNameLiveTest, raw form lands with typed read-back, doubled root stores DEFAULT, doubled element fails loudly in every Tuple shape; red on the pre-fix production
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 28-05-PLAN.md — NAME-06 + NAME-07: escape-aware enum-label scan in Column, raw and legacy label pins red first; FORK-DELTA, CHANGELOG, Known costs item 11 and backlog 999.5 in the fix commit; manual CLIENT_VERSION=V1 run; Phase 29 handoff record
@@ -544,7 +544,7 @@ The four code phases split along the production files that change: the build and
 | 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 8/8 | Complete    | 2026-10-21 |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-23 |
-| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 3/6 | In Progress | - |
+| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 4/6 | In Progress | - |
 | 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 
 ---

@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 28
 current_phase_name: Raw Identifier Names in Discovery
 status: executing
-stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-10-23T10:10:18.852Z"
+stopped_at: Completed 28-04-PLAN.md
+last_updated: "2026-10-23T10:21:51.247Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 28 execution started
-state_head: 7cef1e606076213b459957243340255bf0206159
+state_head: 95e9a27b893e19d9ddaafad5742d19f43082920c
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 ## Current Position
 
 Phase: 28 (Raw Identifier Names in Discovery) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-10-23 — Phase 28 execution started
 
@@ -188,6 +188,7 @@ Progress: [██████░░░░] 60%
 | Phase 28 P01 | 11 min | 2 tasks | 2 files |
 | Phase 28 P02 | 10 min | 3 tasks | 32 files |
 | Phase 28 P03 | 21 min | 3 tasks | 10 files |
+| Phase 28 P04 | 12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -247,6 +248,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 28]: 28-02: V2 and V1 current forms are read from the production describeTable of explicitly built clients; the live suite asserts only before/after-stable server premises, byte equality is the describe-drift test
 - [Phase 28]: 28-03: fromJsonRow decodes only the name (streaming parse, other strings sliced as the server's literal JSON text, bound via treeToValue); both describe clients share one UTF-8 raw-line reader
 - [Phase 28]: 28-03: DeclaredNullability.normalise rewritten around package-private unescapeJsonLayer so plan 28-05's enum-label parser reuses the same JSON-layer decoder; decode and pairing key land in one commit
+- [Phase 28]: 28-04: the doubled-element pin names the container's raw column path in the writer's DataException; without it the pin passes vacuously on the pre-fix production
 
 ### Pending Todos
 
@@ -292,8 +294,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T10:10:18.344Z
-Stopped at: Completed 28-03-PLAN.md
+Last session: 2026-10-23T10:21:50.722Z
+Stopped at: Completed 28-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
