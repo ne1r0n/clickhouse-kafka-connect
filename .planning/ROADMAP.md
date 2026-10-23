@@ -412,11 +412,11 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - the tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` reach `origin` only after that run;
      - the scratch branch is deleted from `origin`.
 
-**Plans**: 8 plans
+**Plans**: 1/8 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 29-01-PLAN.md — PUB-11, OPS-05, OPS-06, ROLL-04: tracer VERSION bump with its anchor row; archive compare under a new allow-list and the rollback-tree hazard; phase base (latest x V2) and cumulative anchors gate; D-10, OPS-06 and OPS-01/04/05 re-reads
+- [x] 29-01-PLAN.md — PUB-11, OPS-05, OPS-06, ROLL-04: tracer VERSION bump with its anchor row; archive compare under a new allow-list and the rollback-tree hazard; phase base (latest x V2) and cumulative anchors gate; D-10, OPS-06 and OPS-01/04/05 re-reads
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 29-02-PLAN.md — ROLL-04: 999.4 measured on both trees (Column-tree diff, inserts, in-flight retries per direction, suspects query, WARN/alert/config greps)
@@ -571,7 +571,7 @@ The four code phases split along the production files that change: the build and
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-23 |
 | 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 6/6 | Complete    | 2026-10-23 |
-| 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
+| 29. Release & Publication | v1.7.0_gg4-hardening | 1/8 | In Progress | - |
 
 ---
 *Roadmap reorganized at the `v1.7.0_gg3-hardening` close: 2026-10-21. Roadmap for milestone `v1.7.0_gg4-hardening` created: 2026-10-21.*

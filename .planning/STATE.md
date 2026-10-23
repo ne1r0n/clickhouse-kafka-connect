@@ -5,17 +5,17 @@ milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 29
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Phase 29 context gathered
-last_updated: "2026-10-23T17:23:19.698Z"
+stopped_at: Completed 29-01-PLAN.md
+last_updated: "2026-10-23T17:52:49.275Z"
 last_activity: 2026-10-23
-last_activity_desc: Phase 28 complete, transitioned to Phase 29
-state_head: c1dc6e5983fe93745526cecd89d3b7e7cff63c7d
+last_activity_desc: Phase 29 execution started
+state_head: 6518de52d6f7c07b5ed753443c5390f10ff4cec1
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 32
-  completed_plans: 24
-  percent: 75
+  completed_plans: 25
+  percent: 78
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 28 — Raw Identifier Names in Discovery
+**Current focus:** Phase 29 — Release & Publication
 
 ## Current Position
 
-Phase: 29 (Release & Publication) — READY TO EXECUTE
-Plan: Not started
+Phase: 29 (Release & Publication) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-10-23 — Phase 28 complete, transitioned to Phase 29
+Last activity: 2026-10-23 — Phase 29 execution started
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -192,6 +192,7 @@ Progress: [████████░░] 75%
 | Phase 28 P04 | 12min | 2 tasks | 3 files |
 | Phase 28 P05 | 25min | 3 tasks | 10 files |
 | Phase 28 P06 | 71 min | 3 tasks | 8 files |
+| Phase 29 P01 | 27 min | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -256,6 +257,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 28]: 28-05: the clean stop in both directions (stop cleanly, rename the fields, start the other version) is labelled reasoned from the BEFORE/AFTER state machine, not measured
 - [Phase 28]: S-04 added to E-06's exemption list at the 28-06 gate (RESOURCE_PATH_FORMAT, refactor, test(28-02)); the user chose option 1, a 16-row list, and that choice is its sign-off
 - [Phase 28]: Tracer report regeneration runs through test --tests (not -x test): jacocoForkReport fails Gradle 9.8.1 validation without dependsOn(test)
+- [Phase 29]: Archive identity gg3 vs gg4 is pinned by a Phase 29 allow-list with 21 exact com/clickhouse rows (PT-13); the compare script and the Phase 25 list stay unedited
+- [Phase 29]: The rollback target 69cd680b builds a green archive with 25 nested jars (PRE-NESTED-JARS=25); the gg4 note must say to redeploy the archive built at v1.7.0_gg3 and never build one from the rolled-back tip (PT-03)
 
 ### Pending Todos
 
@@ -301,9 +304,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T14:40:30.305Z
-Stopped at: Phase 29 context gathered
-Resume file: .planning/phases/29-release-publication/29-CONTEXT.md
+Last session: 2026-10-23T17:52:48.453Z
+Stopped at: Completed 29-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
