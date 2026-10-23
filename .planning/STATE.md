@@ -6,10 +6,10 @@ current_phase: 28
 current_phase_name: Raw Identifier Names in Discovery
 status: executing
 stopped_at: Phase 28 context gathered
-last_updated: "2026-10-23T09:19:52.757Z"
+last_updated: "2026-10-23T09:26:00.613Z"
 last_activity: 2026-10-23
-last_activity_desc: Phase 27 complete, transitioned to Phase 28
-state_head: 51c0049946c38819ee0b188a5210278f4a8bec46
+last_activity_desc: Phase 28 execution started
+state_head: 1403eddb9ee5a03e077bef422a5eb54d05025d20
 progress:
   total_phases: 5
   completed_phases: 3
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 27 — Writer Failure Path & Test Debt
+**Current focus:** Phase 28 — Raw Identifier Names in Discovery
 
 ## Current Position
 
-Phase: 28 (Raw Identifier Names in Discovery) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-23 — Phase 27 complete, transitioned to Phase 28
+Phase: 28 (Raw Identifier Names in Discovery) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 28
+Last activity: 2026-10-23 — Phase 28 execution started
 
 Progress: [██████░░░░] 60%
 
