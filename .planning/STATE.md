@@ -4,17 +4,17 @@ milestone: v1.7.0_gg4-hardening
 milestone_name: Dependency Absorption, Discovery Defects & Review Debt
 current_phase: 28
 current_phase_name: Raw Identifier Names in Discovery
-status: executing
-stopped_at: Completed 28-05-PLAN.md
-last_updated: "2026-10-23T10:44:28.721Z"
+status: verifying
+stopped_at: Completed 28-06-PLAN.md
+last_updated: "2026-10-23T11:57:25.938Z"
 last_activity: 2026-10-23
 last_activity_desc: Phase 28 execution started
-state_head: 2988d39d71c964b9e0f4eb1cfb5f8e81b1be2582
+state_head: 9aec0c6d00254ed512ffb3755d84c6e9d80fd36e
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
   percent: 60
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-22 after Phase 26)
 
 Phase: 28 (Raw Identifier Names in Discovery) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-23 — Phase 28 execution started
 
 Progress: [██████░░░░] 60%
@@ -190,6 +190,7 @@ Progress: [██████░░░░] 60%
 | Phase 28 P03 | 21 min | 3 tasks | 10 files |
 | Phase 28 P04 | 12min | 2 tasks | 3 files |
 | Phase 28 P05 | 25min | 3 tasks | 10 files |
+| Phase 28 P06 | 71 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 28]: 28-04: the doubled-element pin names the container's raw column path in the writer's DataException; without it the pin passes vacuously on the pre-fix production
 - [Phase 28]: 28-05: Column.extractEnumValues is an escape-aware scan over the JSON-decoded type text; enum labels are keyed under their raw text and a value in the earlier V2 key form fails as the lookup miss
 - [Phase 28]: 28-05: the clean stop in both directions (stop cleanly, rename the fields, start the other version) is labelled reasoned from the BEFORE/AFTER state machine, not measured
+- [Phase 28]: S-04 added to E-06's exemption list at the 28-06 gate (RESOURCE_PATH_FORMAT, refactor, test(28-02)); the user chose option 1, a 16-row list, and that choice is its sign-off
+- [Phase 28]: Tracer report regeneration runs through test --tests (not -x test): jacocoForkReport fails Gradle 9.8.1 validation without dependsOn(test)
 
 ### Pending Todos
 
@@ -297,8 +300,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T10:44:28.209Z
-Stopped at: Completed 28-05-PLAN.md
+Last session: 2026-10-23T11:57:25.412Z
+Stopped at: Completed 28-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -81,7 +81,7 @@
 - [x] **DEBT-14**: The pin guard's `runs-on` rule ignores a trailing comment (21-REVIEW WR-01), the fork-count rules reject commented-out or guarded text (WR-03), the `dependabot.yml` reader tolerates valid YAML layouts (IN-01), and the fixture list is derived from the production constant (IN-02); each change is seen red on a fixture.
 - [x] **DEBT-15**: The `slf4j-reload4j` literal in `build.gradle.kts` moves into the version catalog with its anchor row moved (21-REVIEW IN-04).
 - [x] **DEBT-16**: `schemaWithFixedStringMismatchTest` fails when `put` does not throw (22-REVIEW IN-04); `CountingHelperClient.useClientV2Calls` is asserted or removed (IN-05, test half); `NullableTupleMatrixLiveTest`'s premise loops fail with a message instead of passing vacuously or throwing a bare NPE (23-REVIEW IN-03); no existing assertion is deleted or weakened.
-- [ ] **DEBT-17**: `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class this milestone adds, edited once in the last code phase, with the FORK-DELTA row in the same commit.
+- [x] **DEBT-17**: `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class this milestone adds, edited once in the last code phase, with the FORK-DELTA row in the same commit.
 
 ### Operator items
 
@@ -160,7 +160,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEBT-14 | Phase 25 | Complete |
 | DEBT-15 | Phase 25 | Complete |
 | DEBT-16 | Phase 27 | Complete |
-| DEBT-17 | Phase 28 | Pending |
+| DEBT-17 | Phase 28 | Complete |
 | OPS-04 | Phase 25 | Complete |
 | OPS-05 | Phase 29 | Pending |
 | OPS-06 | Phase 29 | Pending |

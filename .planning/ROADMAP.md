@@ -342,7 +342,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - backlog 999.5, marked delivered.
      `jacocoForkReport` lists `DeclaredNullability`, `WithheldMessageException` and every fork class Phases 25–28 added. The list is edited once, its FORK-DELTA row is in the same commit, and the generated fork report shows those classes. The anchors invariant passes at every commit.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -361,7 +361,7 @@ Plans:
 - [x] 28-05-PLAN.md — NAME-06 + NAME-07: escape-aware enum-label scan in Column, raw and legacy label pins red first; FORK-DELTA, CHANGELOG, Known costs item 11 and backlog 999.5 in the fix commit; manual CLIENT_VERSION=V1 run; Phase 29 handoff record
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 28-06-PLAN.md — DEBT-17: 21-class jacocoForkReport and jacoco_summary.py edited once with ForkCoverageScopeUnitTest and the FORK-DELTA row; phase gate and the assertion diff check against 28-03's named exemption list
+- [x] 28-06-PLAN.md — DEBT-17: 21-class jacocoForkReport and jacoco_summary.py edited once with ForkCoverageScopeUnitTest and the FORK-DELTA row; phase gate and the assertion diff check against 28-03's named exemption list
 
 **Research flag**: The live name-matrix spike (NAME-02) precedes the plans for the decode and the `normalise` rewrite, because the coupling to pairing and to enum labels is inferred, not measured. The canonical form is decided: on 2026-10-21 the user chose the raw identifier, with no dual-form alias, and operators rename. NAME-06's outcome, fix or document, follows the measurement. If a fix would reach beyond `Column`'s enum-label parsing, it stops for a user decision.
 
@@ -545,7 +545,7 @@ The four code phases split along the production files that change: the build and
 | 25. Dependency Absorption & Upstream Mini-Sync | v1.7.0_gg4-hardening | 8/8 | Complete    | 2026-10-21 |
 | 26. Size-Named Tuple Elements in Discovery | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-22 |
 | 27. Writer Failure Path & Test Debt | v1.7.0_gg4-hardening | 5/5 | Complete    | 2026-10-23 |
-| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 5/6 | In Progress | - |
+| 28. Raw Identifier Names in Discovery | v1.7.0_gg4-hardening | 6/6 | In Progress | - |
 | 29. Release & Publication | v1.7.0_gg4-hardening | 0/TBD | Not started | - |
 
 ---
