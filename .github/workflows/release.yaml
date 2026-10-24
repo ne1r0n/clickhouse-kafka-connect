@@ -1,57 +1,183 @@
+# FORK MODIFICATION: rewritten for the fork's release path. Every action is pinned to a full commit SHA
+# with a version comment (WorkflowActionPinGuardUnitTest fails testUnit on anything else), and the
+# archive is built with the project wrapper's Gradle through setup-gradle, so the verifyConfluentArchive
+# finalizer runs. The GitHub CLI creates the release and its tag at publish time; no step tags or pushes
+# from the runner. A real publish runs only from custom_build, after a successful tests.yaml run on the
+# SHA and only when the tag is absent. Every other dispatch, including any from another branch, is a dry
+# run: a throwaway draft release is created, checked and deleted, and nothing is created for VERSION.
 name: Release
+run-name: Release ${{ github.ref_name }} (${{ (inputs.dry_run || github.ref != 'refs/heads/custom_build') && 'dry run' || 'publish' }})
 
 on:
   workflow_dispatch:
-  
+    inputs:
+      dry_run:
+        description: 'Build the archive and attach it to a throwaway draft that is checked and deleted. No release and no tag for VERSION. Any branch other than custom_build is always a dry run.'
+        type: boolean
+        default: false
+
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
 
 jobs:
   build_release:
     name: build_release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      DRY_TAG: dry-run-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Set env
-        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
-      - name: Test
-        run: |
-          echo $RELEASE_VERSION
-          echo ${{ env.RELEASE_VERSION }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           java-version: '17'
-          distribution: 'adopt'
-          architecture: x64
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+          distribution: 'temurin'
 
-      - name: Execute 'createConfluentArchive' task
-        run: ./gradlew createConfluentArchive
-      - name: release
-        uses: actions/create-release@v1
-        id: create_release
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          draft: false
-          prerelease: false
-          release_name: ${{ env.RELEASE_VERSION }}
-          tag_name: ${{ env.RELEASE_VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: upload release artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/confluent/clickhouse-kafka-connect-${{ env.RELEASE_VERSION }}.zip
-          asset_name: clickhouse-kafka-connect-${{ env.RELEASE_VERSION }}.zip
-          asset_content_type: application/zip
-      - name: Tag latest commit as release
+          cache-disabled: true
+
+      - name: Read version
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git tag ${{ env.RELEASE_VERSION }}
-          git push origin ${{ env.RELEASE_VERSION }}
+          version="$(tr -d '[:space:]' < VERSION)"
+          if ! printf '%s' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(_gg[0-9]+)?$'; then
+            echo "::error title=VERSION::VERSION does not look like vX.Y.Z or vX.Y.Z_ggN"
+            exit 1
+          fi
+          echo "RELEASE_VERSION=${version}" >> "$GITHUB_ENV"
+          echo "ARCHIVE=build/confluent/clickhouse-kafka-connect-${version}.zip" >> "$GITHUB_ENV"
+
+      - name: Build and verify Confluent archive
+        run: |
+          version_output="$(./gradlew --version --console=plain)"
+          gradle_version="$(printf '%s\n' "$version_output" | sed -n 's/^Gradle //p' | head -n 1)"
+          ./gradlew createConfluentArchive --console=plain | tee "$RUNNER_TEMP/archive-build.log"
+          if ! grep -Fxq '> Task :verifyConfluentArchive' "$RUNNER_TEMP/archive-build.log"; then
+            echo "::error title=Archive check::the build log has no verifyConfluentArchive task line"
+            exit 1
+          fi
+          echo "::notice title=Wrapper Gradle::Gradle ${gradle_version} from the wrapper ran createConfluentArchive and verifyConfluentArchive"
+
+      - name: Check archive
+        run: |
+          test -s "$ARCHIVE"
+          message="$(basename "$ARCHIVE") $(stat -c %s "$ARCHIVE") bytes sha256=$(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
+          echo "### Archive" >> "$GITHUB_STEP_SUMMARY"
+          echo "$message" >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Archive::${message}"
+
+      - name: Check tests.yaml is green on this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH: ${{ !inputs.dry_run && github.ref == 'refs/heads/custom_build' }}
+        run: |
+          count="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/tests.yaml/runs?head_sha=${GITHUB_SHA}&status=success&per_page=1" --jq '.total_count')" || count=error
+          message="successful tests.yaml runs on ${GITHUB_SHA}: ${count}"
+          if [ "$count" != error ] && [ "$count" -ge 1 ]; then
+            echo "::notice title=tests.yaml on this SHA::${message}"
+          elif [ "$PUBLISH" = true ]; then
+            echo "::error title=tests.yaml on this SHA::${message}; refusing to create tag ${RELEASE_VERSION}"
+            exit 1
+          else
+            echo "::warning title=tests.yaml on this SHA::${message} (advisory on a dry run)"
+          fi
+
+      - name: Check the release tag is absent
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH: ${{ !inputs.dry_run && github.ref == 'refs/heads/custom_build' }}
+        run: |
+          found="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/${RELEASE_VERSION}" --jq ".[].ref | select(. == \"refs/tags/${RELEASE_VERSION}\")")" || found=error
+          if [ -z "$found" ]; then
+            echo "::notice title=Release tag::tag ${RELEASE_VERSION} is absent"
+          elif [ "$PUBLISH" = true ]; then
+            echo "::error title=Release tag::tag ${RELEASE_VERSION} already exists or could not be read (${found}); refusing to publish"
+            exit 1
+          else
+            echo "::warning title=Release tag::tag ${RELEASE_VERSION} already exists or could not be read (${found}) (advisory on a dry run)"
+          fi
+
+      - name: Publish release
+        if: ${{ !inputs.dry_run && github.ref == 'refs/heads/custom_build' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$RELEASE_VERSION" "$ARCHIVE" --target "$GITHUB_SHA" --title "$RELEASE_VERSION" --notes ""
+
+      - name: Create draft release (dry run)
+        if: ${{ inputs.dry_run || github.ref != 'refs/heads/custom_build' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$DRY_TAG" "$ARCHIVE" --draft --target "$GITHUB_SHA" --title "Dry run ${DRY_TAG} of ${RELEASE_VERSION}" --notes ""
+
+      - name: Check the draft holds the archive (dry run)
+        if: ${{ inputs.dry_run || github.ref != 'refs/heads/custom_build' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$DRY_TAG" --json isDraft,isPrerelease,targetCommitish,assets > "$RUNNER_TEMP/draft.json"
+          archive_name="$(basename "$ARCHIVE")"
+          archive_size="$(stat -c %s "$ARCHIVE")"
+          expected="true false ${GITHUB_SHA} 1 ${archive_name} ${archive_size}"
+          actual="$(jq -r '[.isDraft, .isPrerelease, .targetCommitish, (.assets | length), (.assets[0].name // ""), (.assets[0].size // 0)] | join(" ")' "$RUNNER_TEMP/draft.json")"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error title=Draft asset attached::expected '${expected}', got '${actual}'"
+            exit 1
+          fi
+          echo "::notice title=Draft asset attached::${DRY_TAG} holds ${archive_name} (${archive_size} bytes), draft=true, prerelease=false, target=${GITHUB_SHA}"
+
+      - name: Check no tag exists for the draft (dry run)
+        if: ${{ inputs.dry_run || github.ref != 'refs/heads/custom_build' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/${DRY_TAG}" --jq ".[].ref | select(. == \"refs/tags/${DRY_TAG}\")")"
+          if [ -n "$ref" ]; then
+            echo "::error title=No tag for the draft::the draft created ${ref}"
+            exit 1
+          fi
+          echo "::notice title=No tag for the draft::refs/tags/${DRY_TAG} does not exist while the draft is open"
+
+      - name: Delete draft release (dry run)
+        if: ${{ always() && (inputs.dry_run || github.ref != 'refs/heads/custom_build') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          removed=""
+          if gh release view "$DRY_TAG" > /dev/null 2>&1; then
+            gh release delete "$DRY_TAG" --yes
+          fi
+          ids="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq ".[] | select(.tag_name == \"${DRY_TAG}\") | .id")"
+          for id in $ids; do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${id}"
+            removed="${removed} release-id-${id}"
+          done
+          tag_ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/${DRY_TAG}" --jq ".[].ref | select(. == \"refs/tags/${DRY_TAG}\")")"
+          if [ -n "$tag_ref" ]; then
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${DRY_TAG}"
+            removed="${removed} ${tag_ref}"
+          fi
+          if [ -n "$removed" ]; then
+            echo "::error title=Dry run cleaned up::removed what the dry run left:${removed}"
+            exit 1
+          fi
+          echo "::notice title=Dry run cleaned up::no draft and no tag ${DRY_TAG} remain"
