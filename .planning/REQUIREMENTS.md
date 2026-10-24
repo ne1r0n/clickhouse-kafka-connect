@@ -9,7 +9,7 @@
 ### Release workflows
 
 - [ ] **REL-01**: `pre-release.yaml` builds with the project Gradle wrapper (via setup-gradle), with no pinned Gradle 7.4.2 (DEPS-F4)
-- [ ] **REL-02**: `release.yaml`, `pre-release.yaml` and `increment-version.yml` pin every action by full SHA with a version comment
+- [x] **REL-02**: `release.yaml`, `pre-release.yaml` and `increment-version.yml` pin every action by full SHA with a version comment
 - [ ] **REL-03**: `gradle-build-action` is replaced by `setup-gradle` in release and pre-release
 - [ ] **REL-04**: `create-release` / `upload-release-asset` are replaced by `gh release create` with the Confluent archive attached
 - [ ] **REL-05**: A dry run proves the release and pre-release paths build and attach the archive without publishing
@@ -48,7 +48,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | REL-01 | Phase 30 | Pending |
-| REL-02 | Phase 30 | Pending |
+| REL-02 | Phase 30 | Complete |
 | REL-03 | Phase 30 | Pending |
 | REL-04 | Phase 30 | Pending |
 | REL-05 | Phase 30 | Pending |
