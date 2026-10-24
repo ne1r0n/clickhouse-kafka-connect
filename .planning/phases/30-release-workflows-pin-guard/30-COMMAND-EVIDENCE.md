@@ -191,3 +191,35 @@ git diff --quiet (three scripts/files since P30_BASE): exit 0
 ```
 
 Matches text: n/a (gate check)
+
+### E-06: semver.inc on a vX.Y.Z_ggN VERSION (D-08)
+
+Backs: REL-02. Measured, not read from the grammar. `semver@7.8.5` was installed into the new empty directory `/tmp/gsd30/semver` with `--no-save --ignore-scripts`; `npm view semver@7.8.5 version scripts.postinstall deprecated` printed only `7.8.5` (no postinstall script, not deprecated). Every `node` run started from the repository root with `NODE_PATH=/tmp/gsd30/semver/node_modules`, never with the download directory as the working directory. The full transcript is `/tmp/gsd30/exec/semver-d08.txt` (scratch, not committed).
+
+```sh
+npm view semver@7.8.5 version scripts.postinstall deprecated
+npm install --prefix /tmp/gsd30/semver --no-save --ignore-scripts --no-audit --no-fund semver@7.8.5
+node --version
+NODE_PATH=/tmp/gsd30/semver/node_modules node -p "require('semver').inc('v1.7.0_gg4', 'patch')"
+NODE_PATH=/tmp/gsd30/semver/node_modules node -p "require('semver').inc('v1.7.0_gg4', 'minor')"
+NODE_PATH=/tmp/gsd30/semver/node_modules node -p "require('semver').inc('v1.7.0_gg4', 'major')"
+NODE_PATH=/tmp/gsd30/semver/node_modules node -p "require('semver').valid('v1.7.0_gg4')"
+NODE_PATH=/tmp/gsd30/semver/node_modules node -p "require('semver/package.json').version"
+NODE_PATH=/tmp/gsd30/semver/node_modules node -e '<verify command 1, one line>' "$(tr -d '[:space:]' < VERSION)"
+```
+
+```text
+7.8.5
+added 1 package in 183ms
+v24.14.1
+null
+null
+null
+null
+7.8.5
+semver-d08 v1.7.0_gg4 [null,null,null,null,"7.8.5"]      (exit 0)
+```
+
+`semver.inc('v1.7.0_gg4', ...)` returns `null` for `patch`, `minor` and `major`, and `semver.valid` returns `null`, for the research one-liner and for the `VERSION` file's own value, on Node `v24.14.1` with semver `7.8.5`. In `increment-version.yml` the `Increment version` step therefore sets `NEW_VERSION` to the string `null` (`node -p` prints `null`), writes `vnull` to `VERSION`, and `Commit and push` opens a pull request named `update-version-null` for it. The defect is recorded, not fixed (D-08).
+
+Matches text: yes
