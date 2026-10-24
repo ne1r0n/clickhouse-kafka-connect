@@ -223,3 +223,44 @@ semver-d08 v1.7.0_gg4 [null,null,null,null,"7.8.5"]      (exit 0)
 `semver.inc('v1.7.0_gg4', ...)` returns `null` for `patch`, `minor` and `major`, and `semver.valid` returns `null`, for the research one-liner and for the `VERSION` file's own value, on Node `v24.14.1` with semver `7.8.5`. In `increment-version.yml` the `Increment version` step therefore sets `NEW_VERSION` to the string `null` (`node -p` prints `null`), writes `vnull` to `VERSION`, and `Commit and push` opens a pull request named `update-version-null` for it. The defect is recorded, not fixed (D-08).
 
 Matches text: yes
+
+### E-07: FORK-DELTA corrections after the green commit (UD-5, D-10)
+
+Backs: REL-02, REL-04. Both statements of `docs/FORK-DELTA.md` that commit `496de32a` made false, before and after. Commits: `082c127b` (paragraph, with E-06) and the commit that holds this entry (the Dependabot row).
+
+#### Workflow paragraph (`### Build, dependencies and CI`, the paragraph after the table)
+
+Before (verbatim):
+
+```text
+`release.yaml`, `pre-release.yaml`, `increment-version.yml`, `integrationTests.yaml` and the composite action `.github/actions/use-clickhouse-java` are intentionally left exactly as upstream ships them; upgrading and pinning them is a Future Requirement in `.planning/REQUIREMENTS.md` (DEPS-F4). `pre-release.yaml` still builds with `gradle-version: '7.4.2'`, which cannot configure a build that needs Shadow 9 and Spotless 8; that was read from the workflow and the build requirements and not run.
+```
+
+After: the paragraph that starts `` `integrationTests.yaml` and the composite action `.github/actions/use-clickhouse-java` are intentionally left exactly as upstream ships them. `` It says the guard reads every workflow except `integrationTests.yaml` and fails on `./` and `docker://` `uses:` lines; that the three files are fork-modified (SHA pins checked by `WorkflowActionPinGuardUnitTest`, the wrapper through `gradle/actions/setup-gradle` so `verifyConfluentArchive` runs, the GitHub CLI release with the archive attached, `--prerelease` only in `pre-release.yaml`); the publish conditions (dispatched from `custom_build`, a successful `tests.yaml` run on the SHA, tag absent); the dry run (throwaway `dry-run-<run id>-<attempt>` draft, no-tag check, delete); and the `vnull` defect with `30-COMMAND-EVIDENCE.md` E-06. The full text is in `docs/FORK-DELTA.md`.
+
+#### Dependabot row (`| Dependabot also updates the github-actions ecosystem ...`)
+
+| Cell | Before | After |
+|------|--------|-------|
+| Behaviour | `... with `exclude-paths` leaving out the four upstream workflows` | `... with `exclude-paths` leaving out only upstream's byte-identical `integrationTests.yaml`, so the pins of `tests.yaml`, `release.yaml`, `pre-release.yaml`, `increment-version.yml` and any later fork workflow stay current` |
+| Why upstream does not provide it | `... so a bump PR that still appears for an upstream workflow is closed, not merged.` | `... so a bump PR that still appears for `integrationTests.yaml` is closed, not merged. The three release-path workflows left the list when they were pinned (Phase 30, D-10), and `WorkflowActionPinGuardUnitTest` fails when the list holds anything else.` |
+| Pinned by | `CI-15; `TestsWorkflowPinGuardUnitTest`` | `CI-15, REL-02; `TestsWorkflowPinGuardUnitTest`, `WorkflowActionPinGuardUnitTest`` |
+
+Nothing else in the row or the file changed apart from the paragraph above.
+
+#### Cross-check of the claims against the tree
+
+```text
+rows 1 missing [] tree {'exclude': True, 'composite': True, 'create': True, 'prerelease': True, 'node': True, 'stale-row': True}      (exit 0)
+```
+
+`exclude`: `.github/dependabot.yml` lists exactly `.github/workflows/integrationTests.yaml` under `exclude-paths`. `composite`: no workflow file names `use-clickhouse-java`. `create`: `release.yaml` and `pre-release.yaml` each hold two `gh release create` lines. `prerelease`: `--prerelease` is in `pre-release.yaml` only. `node`: `increment-version.yml` holds `node-version: '24'` and `semver@7.8.5`. `stale-row`: the text `leaving out the four upstream workflows` is gone.
+
+#### Carried to Phase 32 (CIG-02)
+
+These two clauses of the same row were already stale before this phase. They are not edited here (UD-5: Phase 32 makes the single FORK-DELTA refresh); the row's other statements are true now.
+
+1. The parenthesis `Dependabot reads its configuration from the default branch (`main` here)`. Stale because the default branch of `origin` is `custom_build` (`git ls-remote --symref origin HEAD` prints `ref: refs/heads/custom_build	HEAD`; the plan records it as the default since 2026-10-14). The `test-head.yaml` row above it makes the same default-branch claim (`which on this fork is `main``) and is outside this plan's one-row scope; Phase 32 should check it together with this clause.
+2. The clause `so the entry is inert until the user changes both; that is a manual check listed for the next release`. Stale because Dependabot is active on the fork: `git log origin/custom_build --author=dependabot` shows Dependabot commits on 2026-10-20 and 2026-10-21 (`83de3b78` gson 2.14.0, `de27d2e9` jackson 2.22.4, `2555fd2b` slf4j-simple 2.0.20), and the Dependabot merges already counted in this file's `v1.7.0_gg4` paragraph.
+
+Matches text: yes
