@@ -264,3 +264,129 @@ These two clauses of the same row were already stale before this phase. They are
 2. The clause `so the entry is inert until the user changes both; that is a manual check listed for the next release`. Stale because Dependabot is active on the fork: `git log origin/custom_build --author=dependabot` shows Dependabot commits on 2026-10-20 and 2026-10-21 (`83de3b78` gson 2.14.0, `de27d2e9` jackson 2.22.4, `2555fd2b` slf4j-simple 2.0.20), and the Dependabot merges already counted in this file's `v1.7.0_gg4` paragraph.
 
 Matches text: yes
+
+### E-08: dry-run readiness, the REST reader and the before-snapshots (REL-05)
+
+Backs: REL-05 (gate check for the push that Task 2 asks the user about). Read-only network access only (`git fetch`, `git ls-remote`, unauthenticated `api.github.com`). Nothing was pushed, dispatched or run through `gh`.
+
+```sh
+curl -sS https://api.github.com/rate_limit
+git fetch --quiet origin --no-tags
+git ls-remote --heads origin custom_build
+git ls-remote --heads origin sync/v1.7.0
+git rev-parse --abbrev-ref HEAD
+git config --get push.followTags; git config --get remote.origin.push; git config --get remote.origin.mirror
+git ls-files .planning/.gsd-ws-arg
+git diff --quiet v1.7.0_gg4 HEAD -- src/main
+git diff --name-only v1.7.0_gg4 HEAD | grep -v '^\.planning/'
+git diff --name-only v1.7.0_gg4 HEAD | grep -c '^\.planning/'
+git diff v1.7.0_gg4 HEAD | grep -Ec 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|gh[ousr]_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+git ls-remote origin | grep -F "$(git rev-parse HEAD)"
+git log --oneline v1.7.0_gg4..HEAD -- . ':(exclude).planning'
+git diff --shortstat v1.7.0_gg4 HEAD
+```
+
+```text
+rate limit before: limit 60, remaining 60
+custom_build on origin: 21c51598b06b6f5af58430765d57b1e5f6747c5a  (unchanged since planning)
+sync/v1.7.0 on origin: (empty)
+current branch: sync/v1.7.0
+push.followTags, remote.origin.push, remote.origin.mirror: (all unset, no output)
+.planning/.gsd-ws-arg tracked: (empty; the file does not exist)
+src/main differs from v1.7.0_gg4: no (exit 0)
+paths outside .planning/ that differ from v1.7.0_gg4:
+  .github/dependabot.yml
+  .github/workflows/increment-version.yml
+  .github/workflows/pre-release.yaml
+  .github/workflows/release.yaml
+  docs/FORK-DELTA.md
+  src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java
+  src/test/java/com/clickhouse/kafka/connect/ci/WorkflowActionPinGuardUnitTest.java
+.planning/ files that differ from v1.7.0_gg4: 144
+secret-scan hits (GitHub token, AWS access key, private-key block): 0
+HEAD held by an origin ref: no (grep exit 1)
+non-.planning commits since v1.7.0_gg4:
+  2f66977a docs(30-02): FORK-DELTA's Dependabot row covers every fork workflow (D-10)
+  082c127b docs(30-02): record the vnull defect and the fork-modified release workflows in FORK-DELTA (REL-02, D-08)
+  496de32a ci(30-01): pin the release-path workflows, build with the wrapper, publish with gh release create, and guard every fork workflow (CIG-01, REL-01..REL-05)
+total commits v1.7.0_gg4..HEAD (before the E-08 commit): 23
+shortstat: 151 files changed, 4361 insertions(+), 739 deletions(-)
+```
+
+#### REST tracer on an existing run (tests.yaml run 40022281005 on custom_build 21c51598)
+
+Bodies saved to `/tmp/gsd30/exec/dry/tracer-runs.json`, `tracer-jobs.json` (`/actions/runs/40022281005/jobs`) and `tracer-ann.json` (`/check-runs/120649561100/annotations?per_page=100`).
+
+```text
+runs for head_sha 21c51598: [(40022281005, .github/workflows/tests.yaml, success)]
+job 120649561100 step "Report test fork count": success
+annotation: notice | Test fork count | runner nproc=4, Gradle maxParallelForks=2 (read from the test task in build.gradle.kts)
+```
+
+The runs, jobs and annotations endpoints therefore return what Task 3 needs on T: a step conclusion, and annotations selected by title.
+
+#### Before-snapshots (origin, saved before any push)
+
+`/tmp/gsd30/exec/dry/origin-tags-before.txt`:
+
+```text
+6ac2d20cc0c7feacc315b21b322325b4fee25784	refs/tags/pre-v1.6.0-sync
+c61d90ce5dfb32ea5876dffacc8bb54d8846739a	refs/tags/pre-v1.7.0-sync
+be6b8861c25f3d7611194e7150b18362c5c75e32	refs/tags/pre-v1.7.0_gg2
+6473e24f372a8b37dfd8cc8cf3124e6cff52edca	refs/tags/pre-v1.7.0_gg3
+69cd680bf548bfb0329142752d37f8a6c3190c26	refs/tags/pre-v1.7.0_gg4
+c61d90ce5dfb32ea5876dffacc8bb54d8846739a	refs/tags/v1.6.0_gg1
+f328fd218dce5b9c652f8872042e922f9686b87f	refs/tags/v1.7.0_gg1
+a246ca01b073faae86e2e92bb0288c07dd7eb0d7	refs/tags/v1.7.0_gg2
+3376a18fd057dba329ceae7d8c74d1ba4e3d36f6	refs/tags/v1.7.0_gg3
+21c51598b06b6f5af58430765d57b1e5f6747c5a	refs/tags/v1.7.0_gg4
+```
+
+`/tmp/gsd30/exec/dry/origin-heads-before.txt`:
+
+```text
+21c51598b06b6f5af58430765d57b1e5f6747c5a	refs/heads/custom_build
+ca52b81ad1a188e1e288336a2231d9d3092d45fe	refs/heads/dependabot/gradle/clickHouseDriver-0.10.0
+011bc42bfe8d8230c430ec8001d481885daec5fa	refs/heads/dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2
+bec167d85918e77c11621063000acc6e031ae2fa	refs/heads/main
+```
+
+`/tmp/gsd30/exec/dry/releases-before.json` (`/releases?per_page=100`): `[]` (a JSON array, no published release).
+
+Deviation from the plan text: the plan's planning-time note says "11 tags including v1.7.0_gg4"; origin lists 10 tags today. Task 3 compares the after-state with this snapshot, not with the planning-time count, and no check depends on the number 11. It is raised in the checkpoint so the user can say whether a tag was removed on purpose. The heads are as planned (`custom_build` and `main`, plus two `dependabot/*` branches that the Task 3 comparison ignores).
+
+Rate limit after the reads: 56 of 60 remaining.
+
+#### Operator bundle for Task 2
+
+Push command (exactly this, no other flag and no tag):
+
+```sh
+git push origin refs/heads/sync/v1.7.0:refs/heads/sync/v1.7.0
+```
+
+Delete command (only after both dispatch runs are green):
+
+```sh
+git push origin --delete refs/heads/sync/v1.7.0
+```
+
+Dispatch rule: `Use workflow from` is `sync/v1.7.0`, never `custom_build`. The run names must read `Pre-release sync/v1.7.0 (dry run)` and `Release sync/v1.7.0 (dry run)` (`run-name` of `.github/workflows/release.yaml` line 9).
+
+Expected annotations of each `build_release` job (Task 3 checks them from the REST API; `VERSION` at T is `v1.7.0_gg4`, the wrapper's Gradle is `9.8.1`):
+
+| Title | Level | Message |
+|-------|-------|---------|
+| Wrapper Gradle | notice | `Gradle 9.8.1 from the wrapper ran createConfluentArchive and verifyConfluentArchive` |
+| Archive | notice | `clickhouse-kafka-connect-v1.7.0_gg4.zip <n> bytes sha256=<64 hex>` |
+| tests.yaml on this SHA | notice | `successful tests.yaml runs on <T>: <n>` with n at least 1 |
+| Release tag | warning | `tag v1.7.0_gg4 already exists ...` (advisory on a dry run, because the tag exists on origin) |
+| Draft asset attached | notice | `dry-run-<id>-<attempt> holds clickhouse-kafka-connect-v1.7.0_gg4.zip (<n> bytes), draft=true, prerelease=true` for pre-release (`false` for release), `target=<T>` |
+| No tag for the draft | notice | `refs/tags/dry-run-<id>-<attempt> does not exist while the draft is open` |
+| Dry run cleaned up | notice | `no draft and no tag dry-run-<id>-<attempt> remain` |
+
+`Publish release` is skipped, and no annotation has level failure.
+
+T is the commit that holds this entry; its SHA is in `/tmp/gsd30/exec/dry/pushed-sha.txt` and in the Task 2 checkpoint.
+
+Matches text: n/a (gate check)
