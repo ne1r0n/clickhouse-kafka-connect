@@ -83,3 +83,38 @@ D-10 test message:
 The red state is exactly the prediction of the plan: the real-file pin test fails with the 12 predicted lines (the three release-path workflows; `tests.yaml` passes), and the Dependabot test fails because `exclude-paths` still lists three fork-owned workflows. Every fixture test passed, so the rule itself is sound before it is applied to the real files. `TestsWorkflowPinGuardUnitTest` stays 39/0/0/0 after the visibility edit.
 
 Matches text: n/a (gate check)
+
+### E-03: the rewritten release-path workflows before the green commit
+
+Backs: REL-01, REL-02, REL-03, REL-04, REL-05. The three workflows are rewritten and uncommitted; `tests.yaml`, `integrationTests.yaml` and `.github/actions/` are untouched. Dependabot is not edited yet, so the D-10 test must still be the only red one.
+
+```sh
+ruby -ryaml -e '... YAML.load_file(f) must be a Hash ...' .github/workflows/release.yaml .github/workflows/pre-release.yaml .github/workflows/increment-version.yml
+# plan verify command: 13 step names in order, publish/dry/cleanup if: expressions, permissions, defaults, pins, create lines, expression allow-list, increment-version shape
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*WorkflowActionPinGuardUnitTest' --rerun
+git diff --stat -- .github/workflows
+# local check of the build step's two facts, on the unchanged project:
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew clean createConfluentArchive --console=plain
+```
+
+```text
+yaml-ok 3
+shape-problems 0 []
+WORKFLOW-SHAPE-OK
+
+guard run: exit 1, Tests summary: 21 tests, 20 succeeded, 1 failed, 0 skipped
+failing test (only): dependabot.yml excludes only the upstream-identical integrationTests.yaml, so Dependabot keeps every guarded workflow current (D-10)
+
+ .github/workflows/increment-version.yml |  31 +++--
+ .github/workflows/pre-release.yaml      | 202 +++++++++++++++++++++++++------
+ .github/workflows/release.yaml          | 206 +++++++++++++++++++++++++-------
+ 3 files changed, 352 insertions(+), 87 deletions(-)
+
+wrapper Gradle version printed by `./gradlew --version`: 9.8.1
+createConfluentArchive: exit 0, the plain-console log holds the exact line (grep -Fxn): 625:> Task :verifyConfluentArchive
+archive: build/confluent/clickhouse-kafka-connect-v1.7.0_gg4.zip
+```
+
+The CIG-01 pin test and all 20 other guard tests pass on the rewritten files; the 12 lines that failed in E-02 are gone. The local run confirms the two facts the build step relies on (the exact finalizer line under `--console=plain`, and the archive name `clickhouse-kafka-connect-<VERSION>.zip`). Whether `gh release view` finds a draft by tag, and whether the matching-refs endpoint returns an empty array for no match, are runner facts that the operator dry run of plan 30-03 measures.
+
+Matches text: n/a (gate check)
