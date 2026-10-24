@@ -22,7 +22,7 @@
 
 ### Guard and release
 
-- [ ] **CIG-01**: A check fails when a fork-owned workflow uses an unpinned action
+- [x] **CIG-01**: A check fails when a fork-owned workflow uses an unpinned action
 - [ ] **CIG-02**: FORK-DELTA, CHANGELOG, `VERSION=v1.7.0_gg5` and a short rollout note are updated
 - [ ] **CIG-03**: CI is green on the published SHA
 
@@ -55,7 +55,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NIT-01 | Phase 31 | Pending |
 | NIT-02 | Phase 31 | Pending |
 | NIT-03 | Phase 31 | Pending |
-| CIG-01 | Phase 30 | Pending |
+| CIG-01 | Phase 30 | Complete |
 | CIG-02 | Phase 32 | Pending |
 | CIG-03 | Phase 32 | Pending |
 

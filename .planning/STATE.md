@@ -4,17 +4,17 @@ milestone: v1.7.0_gg5-ci
 milestone_name: CI & Release Workflow Modernization
 current_phase: 30
 current_phase_name: Release Workflows & Pin Guard
-status: planning
-stopped_at: Phase 30 context gathered
-last_updated: "2026-10-24T12:21:36.434Z"
+status: executing
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-10-24T14:17:53.701Z"
 last_activity: 2026-10-24
-last_activity_desc: Roadmap created for v1.7.0_gg5-ci (Phases 30-32, 11/11 requirements mapped)
-state_head: 69717a9abffc70e362b4bc64bd6e06766dac03c5
+last_activity_desc: Phase 30 execution started
+state_head: d3cdaf149426b0f29f02d5380246b11b5a219382
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg5-ci)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 30 — Release Workflows & Pin Guard (a guard against unpinned actions first, then SHA-pin `release.yaml`, `pre-release.yaml` and `increment-version.yml`, build with the Gradle wrapper through `setup-gradle`, publish with `gh release create`, and prove both release paths with a dry run)
+**Current focus:** Phase 30 — Release Workflows & Pin Guard
 
 ## Current Position
 
-Phase: 30 of 32 (Release Workflows & Pin Guard) — not started (ready to plan)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-24 — Roadmap created for v1.7.0_gg5-ci (Phases 30-32, 11/11 requirements mapped)
+Phase: 30 (Release Workflows & Pin Guard) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-10-24 — Phase 30 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -198,6 +198,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 29 P03 | 11min | 3 tasks | 4 files |
 | Phase 29 P04 | 10min | 3 tasks | 2 files |
 | Phase 29 P05 | 8 min | 3 tasks | 9 files |
+| Phase 30 P01 | 45 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -234,6 +235,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - Archive identity against the previous release is pinned by a per-release allow-list (`confluent-archive-allowlist-29.txt`). The compare is a manual release-time step.
 
 **`v1.7.0_gg5-ci` roadmap (2026-10-24):** three phases under `coarse` granularity. The guard against unpinned actions (CIG-01) and the release dry run (REL-05) sit in Phase 30, because the release phase cannot edit a `.github/` file. The nightly and the byte guard for upstream's `integrationTests.yaml` sit in Phase 31. FORK-DELTA, CHANGELOG, `VERSION` and the rollout note are written once, in Phase 32.
+- [Phase 30]: Dry run uses a throwaway tag dry-run-<run_id>-<run_attempt> with a plain gh release delete --yes; no tag-cleanup flag, the real VERSION tag is never touched (UD-1)
+- [Phase 30]: Pin guard fails closed on local ./ and docker:// uses values; Dependabot exclude-paths lists only integrationTests.yaml (D-10)
 
 ### Pending Todos
 
@@ -282,9 +285,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-24T12:21:36.416Z
-Stopped at: Phase 30 context gathered
-Resume file: .planning/phases/30-release-workflows-pin-guard/30-CONTEXT.md
+Last session: 2026-10-24T14:17:49.006Z
+Stopped at: Completed 30-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

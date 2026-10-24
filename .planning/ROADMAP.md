@@ -132,7 +132,17 @@ Phase artifacts: `milestones/v1.7.0_gg4-hardening-phases/` · Research: `milesto
   3. *[Docker-free]* No workflow uses `actions/create-release` or `actions/upload-release-asset`. Both release workflows create the release with `gh release create` and attach `build/confluent/clickhouse-kafka-connect-<VERSION>.zip`. `pre-release.yaml` marks the release a prerelease, and `release.yaml` does not (REL-04).
   4. *[CI, operator]* The user dispatches `pre-release.yaml` and `release.yaml` in dry-run mode on the pushed scratch branch. Each run is green: it builds the archive with the wrapper's Gradle, passes `verifyConfluentArchive`, and exercises the attach step on the archive it built without publishing. Afterwards origin has no new published release and no new tag, read from the REST API and `git ls-remote --tags` before and after the runs (REL-05).
 
-**Plans**: TBD
+**Plans**: 1/3 plans executed
+
+Plans:
+**Wave 1**
+- [x] 30-01-PLAN.md — Wave 1: the CIG-01 guard seen red on the unchanged files, then the three workflows pinned (setup-gradle, `gh release create`, `dry_run`), the Dependabot and `UPSTREAM_WORKFLOWS` edit and 29 anchor rows in one green commit; cumulative anchors gate
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 30-02-PLAN.md — Wave 2: the D-08 `vnull` defect measured and recorded; FORK-DELTA's workflow paragraph and Dependabot row corrected
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 30-03-PLAN.md — Wave 3 (operator): readiness and before-snapshots, one blocking-human decision to push `sync/v1.7.0`, the user's two dry-run dispatches, REST proof of no release and no tag
 
 **Research flag**: Settle these before planning:
 - **The dry-run mechanism.** Either a dispatch input that stops before the publish step, or `gh release create --draft` with the asset, deleted after the run. A draft release should create no tag until it is published; confirm that before relying on it.
@@ -306,7 +316,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 0/TBD | Not started | - |
+| 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 1/3 | In Progress | - |
 | 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 0/TBD | Not started | - |
 | 32. Release & Publication | v1.7.0_gg5-ci | 0/TBD | Not started | - |
 
