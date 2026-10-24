@@ -8,6 +8,7 @@
 - ✅ **v1.7.0_gg2-hardening Follow-up Hardening & CI Hygiene** — Phases 16-20 (shipped 2026-10-14)
 - ✅ **v1.7.0_gg3-hardening Record-Data Exposure & Review Debt** — Phases 21-24 (shipped 2026-10-20)
 - ✅ **v1.7.0_gg4-hardening Dependency Absorption, Discovery Defects & Review Debt** — Phases 25-29 (shipped 2026-10-23)
+- 🚧 **v1.7.0_gg5-ci CI & Release Workflow Modernization** — Phases 30-32 (in progress)
 
 ## Phases
 
@@ -104,6 +105,149 @@ Phase artifacts: `milestones/v1.7.0_gg4-hardening-phases/` · Research: `milesto
 
 </details>
 
+### 🚧 v1.7.0_gg5-ci CI & Release Workflow Modernization (In Progress)
+
+**Milestone Goal:** Bring the fork's workflows current and get a trustworthy integration-test signal, without touching connector code or ClickHouse client `0.10.0`. The release-path workflows build with the project's Gradle wrapper and run only SHA-pinned actions, a dry run proves them, and a fork-owned nightly runs `integrationTest` on ClickHouse `latest` × client V2 in local Docker while upstream's `integrationTests.yaml` stays byte-identical and disabled. Publish `v1.7.0_gg5` with CI green on the published SHA.
+
+**Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker stopped. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
+
+- [ ] **Phase 30: Release Workflows & Pin Guard** - A guard fails on any unpinned action in a fork-owned workflow. `release.yaml`, `pre-release.yaml` and `increment-version.yml` pass it, both release paths build with the Gradle wrapper through `setup-gradle` and publish with `gh release create`, and a dry run proves both without creating a release or a tag
+- [ ] **Phase 31: Fork-Owned Nightly Integration Tests** - A measured local `integrationTest` run comes first. A new SHA-pinned nightly then runs `integrationTest` on `latest` × V2 in the runner's Docker with no cloud job, and its first manual run is green or every failure is named in a skip list. Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard
+- [ ] **Phase 32: Release & Publication** - `v1.7.0_gg5` is published with FORK-DELTA, CHANGELOG, `VERSION` and a short reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tags
+
+## Phase Details
+
+### Phase 30: Release Workflows & Pin Guard
+
+**Goal**: The fork's three release-path workflows run current, SHA-pinned actions only. `pre-release.yaml` and `release.yaml` build the Confluent archive with the project's own Gradle wrapper through `setup-gradle`, so the `verifyConfluentArchive` finalizer runs on the release path too, and both create the GitHub release with `gh release create`, attaching that archive. A dry run proves both release paths build and attach the archive without creating a release or a tag. A Docker-free guard fails whenever a fork-owned workflow uses an unpinned action, so the Phase 31 nightly is written under it. No connector code changes.
+
+**Depends on**: Nothing in this milestone. Phase 29 shipped `v1.7.0_gg4` (`21c51598`). `release.yaml`, `pre-release.yaml` and `increment-version.yml` are byte-identical to upstream at both `v1.7.0` and `a6f1df83` (measured 2026-10-24). `pre-release.yaml` still runs `gradle/gradle-build-action@v2` with `gradle-version: '7.4.2'` (DEPS-F4). `release.yaml` already uses `gradle/actions/setup-gradle@v6`, by tag. Both release files use `actions/create-release@v1` and `actions/upload-release-asset@v1`, and all three use `@v3`-era actions.
+
+**Requirements**: CIG-01, REL-01, REL-02, REL-03, REL-04, REL-05
+
+**Success Criteria** (what must be TRUE):
+
+  1. *[Docker-free]* A guard test reads every file under `.github/workflows/` except the upstream-identical `integrationTests.yaml`. It fails, naming the file and the line, on any `uses:` that is not a full 40-hex commit SHA with a version comment: a tag, a branch, a short SHA, or a missing comment. It discovers the workflow files from the directory, so a new workflow is covered without editing the guard. Each unpinned form was seen red on a fixture, and the guard was seen red on the unchanged release workflows before they were pinned (CIG-01).
+  2. *[Docker-free]* `release.yaml`, `pre-release.yaml` and `increment-version.yml` pin every action by full SHA with a `# vX.Y.Z` comment, and they pass the guard (REL-02). Neither release workflow contains `gradle-build-action`, a `gradle-version:` input or `7.4.2`. Both set up Gradle with `gradle/actions/setup-gradle` and build with `./gradlew createConfluentArchive` (REL-01, REL-03).
+  3. *[Docker-free]* No workflow uses `actions/create-release` or `actions/upload-release-asset`. Both release workflows create the release with `gh release create` and attach `build/confluent/clickhouse-kafka-connect-<VERSION>.zip`. `pre-release.yaml` marks the release a prerelease, and `release.yaml` does not (REL-04).
+  4. *[CI, operator]* The user dispatches `pre-release.yaml` and `release.yaml` in dry-run mode on the pushed scratch branch. Each run is green: it builds the archive with the wrapper's Gradle, passes `verifyConfluentArchive`, and exercises the attach step on the archive it built without publishing. Afterwards origin has no new published release and no new tag, read from the REST API and `git ls-remote --tags` before and after the runs (REL-05).
+
+**Plans**: TBD
+
+**Research flag**: Settle these before planning:
+- **The dry-run mechanism.** Either a dispatch input that stops before the publish step, or `gh release create --draft` with the asset, deleted after the run. A draft release should create no tag until it is published; confirm that before relying on it.
+- **Dispatch on a scratch branch.** Both release files already exist on `custom_build` with `workflow_dispatch`, so they can be dispatched on the scratch branch, and the run uses that branch's file. Confirm that the dispatch reads a new input from the selected branch's file, not from the default branch's.
+- **Action versions.** Reuse `tests.yaml`'s pins for checkout (v7.0.1), setup-java (v6.0.1, with `temurin` in place of the deprecated `adopt`) and setup-gradle (v6.4.0, by its peeled commit). Pick a current `setup-node` major and a supported Node version: the file asks for Node 16.
+- **Who creates the tag.** `release.yaml`'s last step tags `VERSION` and pushes the tag itself, and `gh release create` also creates the tag when it is absent. Decide which one creates it, under the standing rule that tags reach origin only after the published SHA's own CI run is green. Decide `permissions:` and `persist-credentials` for each job to match.
+
+**Note**:
+- Before the first workflow edit, re-read `git ls-remote origin custom_build`. If a Dependabot merge has landed there, absorb it first with a DEPS-01-shaped merge.
+- Order: the guard first, seen red, then the pins and the `setup-gradle` and `gh release` changes. The guard goes green in the same commit as the pins.
+- Dispatch is an operator action. There is no local `gh` and no token (D-11), so the user starts each run from GitHub's `Run workflow` control and reports the result directly. A relayed answer is not accepted.
+- Pushing the scratch branch publishes the local `.planning` tail one way, so it needs the user's direct approval (Phase 17 D-11 precedent). Push it at a SHA that no other pushed branch holds. The push also runs `tests.yaml` once.
+- `dependabot.yml`'s `exclude-paths` lists all four upstream workflows, and `TestsWorkflowPinGuardUnitTest` pins that list through `UPSTREAM_WORKFLOWS`. Once the three release-path files are pinned, their pins go stale unless Dependabot covers them. The fix is to drop them from the list and keep `integrationTests.yaml`. That changes an existing pinned assertion, so it needs the user's sign-off.
+- `increment-version.yml` runs `semver.inc` on `VERSION`. By semver's grammar, a `vX.Y.Z_ggN` value is not a version, so the step would write `vnull`. This was read from the grammar, not run. REL-02 only pins the file; decide at discuss time whether to record the defect or fix it.
+- Both release files are named `Release`, so their runs look the same in the Actions list.
+- Any new anchor row for a workflow edit (for example `gradle-version` with count 0 in `pre-release.yaml`) lands in the same commit as the edit.
+- `.github/actions/use-clickhouse-java` is an upstream composite action that no fork workflow calls. It is not a workflow, so CIG-01 does not cover it. Record whether the guard reads it.
+
+Phase gate: cache-busted `testUnit`, the anchors invariant, and an empty `src/main` diff.
+
+### Phase 31: Fork-Owned Nightly Integration Tests
+
+**Goal**: The fork has a nightly integration-test signal it can trust. A fork-owned workflow runs the `integrationTest` task on ClickHouse `latest` × client V2 in the runner's own Docker, with no cloud job and no cloud secrets. Its first manual run is green, or every failing test is named in a skip list with its cause. Upstream's `integrationTests.yaml` stays byte-identical to upstream and disabled, and a guard pins its bytes. No connector code changes.
+
+**Depends on**: Phase 30 (the CIG-01 guard, which the new workflow must pass unchanged, and the action pins it reuses)
+
+**Requirements**: NIT-01, NIT-02, NIT-03
+
+**Success Criteria** (what must be TRUE):
+
+  1. *[live, record]* Before the workflow is written, `integrationTest` has been run locally on `latest` × V2 with Docker (colima, profile `vz`). The record states `SELECT version()` and lists every test class that ran or skipped. It gives each failure a cause: environment, test harness, cloud-only, or connector defect. It also says why upstream's standalone `latest` × V2 job fails (run 38881153720).
+  2. *[Docker-free]* The new workflow runs `integrationTest` with ClickHouse `latest` and client V2 on `ubuntu-24.04`. It has a timeout, a top-level `permissions: contents: read`, `persist-credentials: false`, and it uploads the test reports on failure. It passes the CIG-01 guard with no guard edit. No step references a cloud secret or variable, and no job targets ClickHouse Cloud. Its triggers are `workflow_dispatch` and a schedule that cannot fire before the NIT-03 run is recorded (NIT-01).
+  3. *[Docker-free, CI]* A Docker-free guard fails when `integrationTests.yaml` differs by a single byte from upstream's copy, which is identical at `v1.7.0` and `a6f1df83`, and it was seen red on a one-byte edit. The Actions API reports that workflow as disabled, with no scheduled run since 2026-10-16 (NIT-02).
+  4. *[CI, operator]* A manual dispatch of the nightly finishes green, or every failing test is listed by name in a skip list with its cause from criterion 1. The list names tests, not patterns, and it deletes or weakens no existing test. The schedule starts only after that run is recorded, and no scheduled run precedes it (NIT-03).
+
+**Plans**: TBD
+
+**Research flag**: Settle these before planning:
+- **Dispatching a new workflow.** GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. The new file reaches `custom_build` only at publication. Confirm that behaviour first, then settle how the NIT-03 dispatch runs before any schedule can fire. The candidates are a scheduled job gated on a repository variable that the user sets after the dispatch, or an early CI-only `--no-ff` publication of the workflow (the Phase 16 precedent). Phase 32 edits no `.github/` file, so anything that turns the schedule on after Phase 32 must be an operator setting, not a file edit. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
+- **What `integrationTest` needs on a runner.** List the images it pulls (Confluent platform, ClickHouse), whether it needs the built connector archive, and its run time against `tests.yaml`'s 45-minute budget. Upstream's standalone job filters to `ClickHouseSinkConnectorIntegrationTest`, and it runs `ExactlyOnceTest` only in the cloud and cluster jobs. Decide whether the nightly runs the whole task or upstream's standalone filter, and record why.
+- **Where the skip list lives.** Either the workflow's Gradle test filters or a fork-owned exclude in the build. Also decide how each entry is named and given its reason.
+
+**Note**:
+- Measurement precedes the workflow (criterion 1). A failure whose fix needs a `src/main` change stops for a user decision, because the milestone excludes connector source changes. A test-harness fix under `src/integrationTest` or `src/testFixtures` is allowed with its reason recorded. An existing assertion is never weakened.
+- `ClickHouseCloudTest` skips itself without cloud properties. The record confirms it skips rather than fails.
+- The nightly reuses Phase 30's action pins. It is not in `dependabot.yml`'s `exclude-paths`, so Dependabot keeps its pins current.
+- `custom_build` is the default branch, so once the nightly is merged there its schedule is live unless something gates it. The gate chosen in research must already hold at the Phase 32 merge.
+- The user dispatches the run from GitHub's `Run workflow` control and reports the result directly.
+
+Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest` × V2, the anchors invariant, and an empty `src/main` diff.
+
+### Phase 32: Release & Publication
+
+**Goal**: `v1.7.0_gg5` is published on `custom_build`. Operators get a short, independently reviewed rollout note that says what changed in the workflows and that no connector code changed. FORK-DELTA records the newly fork-owned workflows and the nightly. The suite is green twice on `latest` × V2, and the published SHA has exactly one green `tests.yaml` run before the tags are pushed.
+
+**Depends on**: Phases 30 and 31 (it documents and publishes their outcome)
+
+**Requirements**: CIG-02, CIG-03
+
+**Success Criteria** (what must be TRUE):
+
+  1. *[Docker-free]* After `clean`, `VERSION` reads `v1.7.0_gg5` and the generated version agrees. The `VERSION` anchor row changes in the same commit. `CHANGELOG.md` has a complete `1.7.0_gg5` section. `docs/FORK-DELTA.md` no longer says the release workflows are left as upstream ships them (DEPS-F4). It has rows for the pinned release-path workflows and `gh release`, the nightly, the CIG-01 and NIT-02 guards, and any `dependabot.yml` change, and its raw numbers are refreshed once (CIG-02).
+  2. *[record]* `docs/ROLLOUT-v1.7.0_gg5.md` is short. Each claim in it is measured, and it states:
+     - that `git diff v1.7.0_gg4 -- src/main` is empty;
+     - that the release archive is built by the wrapper's Gradle and verified on the release path;
+     - that the MBean `version=` segment and the client name read `v1.7.0_gg5`;
+     - how the nightly is turned on and off;
+     - the rollback.
+     Before the publication gate, an orchestrator-spawned, fresh-context `gsd-code-reviewer` reviewed the note with `CHANGELOG.md` and `docs/FORK-DELTA.md`. Rounds repeated until one found nothing, at most three, and every finding's disposition is recorded (CIG-02).
+  3. *[live, CI]* On the release tip, two full `--rerun` suite runs are green on `latest` × V2 with the same 18 named skips. `testUnit` is green with Docker stopped, and the anchors gate passes. A re-fetch shows `origin/custom_build` unchanged, or any change there was absorbed before gating. After the user's own direct approval:
+     - `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip;
+     - the published SHA has exactly one `tests.yaml` run, and it is green;
+     - the tags `v1.7.0_gg5` and `pre-v1.7.0_gg5` reach origin only after that run;
+     - the scratch branch is deleted from origin (CIG-03).
+  4. *[CI]* After publication, the Actions API still reports `integrationTests.yaml` as disabled, and the nightly is in the state Phase 31 recorded. No workflow run created a release or a tag that the plan did not intend.
+
+**Plans**: TBD
+
+**Research flag**: Standard; this phase follows Phase 29. Decide at plan time where the `v1.7.0_gg5` tag and any GitHub release come from: the hand-pushed tags of the Phase 29 recipe, or a real `release.yaml` dispatch after the green run. The requirements ask only for the Phase 30 dry run.
+
+**Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (the Phase 29 D-05 standing rule). A workflow defect found here goes back to Phase 30 or 31 as a fix, or is deferred with a reason, an owner and a re-open trigger in the milestone close record. It follows the Phase 29 recipe (rehearse, measure, approve, publish):
+1. Push the scratch branch once, at a SHA no other pushed branch holds, and wait for green.
+2. Merge with `--no-ff` from a throwaway worktree, so the merged tree equals the rehearsed tip.
+3. Push `custom_build` only, and wait for its single run.
+4. Push the tags by name, only after that run is green.
+5. Delete the scratch branch.
+
+The approval gates run orchestrator-inline, because executors refuse relayed approvals and `custom_build` is GSD's protected base branch. Record `SELECT version()` at each gate.
+
+## Structure Notes
+
+**Why three phases under `coarse` granularity.** The 11 requirements fall into three delivery boundaries: the release-path workflows (30), the nightly (31) and publication (32). The release must come last, which is a hard constraint. Phases 30 and 31 share the pin guard, but they are proven differently. Phase 30 is proven by a dispatch dry run. Phase 31 is proven by a measured integration run with failure classification, and that measurement may surface test-harness work. One gate for both would hold the release-path files hostage to the nightly. Neither can fold into Phase 32, because the release phase edits no `.github/` file.
+
+**Placement choices worth recording:**
+
+- **CIG-01 is Phase 30's first plan, not release hygiene.** The guard is seen red on the unpinned release files before they are pinned, and the nightly is then written under it.
+- **REL-05 sits in Phase 30, not Phase 32.** Fixing a dry-run defect needs a `.github/` edit, which the release phase cannot make.
+- **NIT-02's byte guard sits in Phase 31, with the nightly that replaces upstream's job.** The disabled state is re-read in Phase 32.
+- **NIT-03 sits in Phase 31,** but GitHub may not dispatch the new file before it is on `custom_build`. The Phase 31 research settles this, and the user decides whether NIT-03 moves.
+- **CIG-02 is entirely in Phase 32.** FORK-DELTA, CHANGELOG, `VERSION` and the note are written once, on the final tree. Anchor rows for the workflow edits still land with the edits in Phases 30 and 31.
+
+**Execution model.** Phases run sequentially on one working tree. No phase touches `src/main`.
+
+**Files shared across phases:**
+
+| File | Phases | Rule |
+|------|--------|------|
+| `TestsWorkflowPinGuardUnitTest` or a new guard class | 30 (CIG-01, any `UPSTREAM_WORKFLOWS` change), 31 (NIT-02 byte guard) | Each new rule is seen red first; an existing assertion changes only with the user's sign-off |
+| `.github/dependabot.yml` | 30 only, if the user signs off | — |
+| `release.yaml`, `pre-release.yaml`, `increment-version.yml` | 30 only | — |
+| The new nightly workflow | 31 only | — |
+| `integrationTests.yaml` | none | Byte-identical to upstream throughout |
+| `.planning/scripts/fork-anchors.txt` | 30 and 31 (workflow anchors), 32 (`VERSION` row) | Anchor rows change in the same commit as the code |
+| `docs/FORK-DELTA.md`, `CHANGELOG.md`, `VERSION`, `docs/ROLLOUT-v1.7.0_gg5.md` | 32 only | FORK-DELTA raw numbers are refreshed once |
+
 ## Sync Mechanics (applies to every upstream sync)
 
 - **Scratch branch, not `custom_build`.** All merge and hardening work happens on a scratch branch, with the pre-sync tip tagged `pre-vX.Y.Z-sync`. `custom_build` is published and protected. It moves forward only by a non-force `--no-ff` merge after human approval, which keeps `git revert -m 1` viable.
@@ -156,5 +300,15 @@ Phase artifacts: `milestones/v1.7.0_gg4-hardening-phases/` · Research: `milesto
 **Plans:** planned under Phase 28
 **Delivered:** Phase 28 (NAME-01..NAME-07) on sync/v1.7.0, shipped in v1.7.0_gg4 on 2026-10-23: names and Enum labels are matched under the raw identifier as written in CREATE TABLE on both clients; a record using the earlier escaped form stores the DEFAULT at the root and fails for a Tuple element; rows stored by earlier releases are not repaired
 
+## Progress
+
+**Execution Order:** 30 → 31 → 32, sequential on one working tree.
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 0/TBD | Not started | - |
+| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 0/TBD | Not started | - |
+| 32. Release & Publication | v1.7.0_gg5-ci | 0/TBD | Not started | - |
+
 ---
-*Roadmap reorganized at the `v1.7.0_gg4-hardening` close: 2026-10-24. Next milestone: not yet defined (`/gsd-new-milestone`).*
+*Roadmap reorganized at the `v1.7.0_gg4-hardening` close: 2026-10-24. Roadmap for milestone `v1.7.0_gg5-ci` created: 2026-10-24.*

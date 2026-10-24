@@ -43,8 +43,29 @@
 
 ## Traceability
 
+Which phases cover which requirements. Updated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| REL-01 | Phase 30 | Pending |
+| REL-02 | Phase 30 | Pending |
+| REL-03 | Phase 30 | Pending |
+| REL-04 | Phase 30 | Pending |
+| REL-05 | Phase 30 | Pending |
+| NIT-01 | Phase 31 | Pending |
+| NIT-02 | Phase 31 | Pending |
+| NIT-03 | Phase 31 | Pending |
+| CIG-01 | Phase 30 | Pending |
+| CIG-02 | Phase 32 | Pending |
+| CIG-03 | Phase 32 | Pending |
+
+**Coverage:**
+- v1 requirements: 11 total
+- Mapped to phases: 11 (Phase 30: 6, Phase 31: 3, Phase 32: 2)
+- Unmapped: 0 ✓
+
+NIT-03 is mapped to Phase 31. It may have to move to Phase 32 if GitHub cannot dispatch the new nightly before it is on `custom_build`; Phase 31 research settles this and the user decides (see ROADMAP.md, Phase 31 research flag).
 
 ---
 *Requirements defined: 2026-10-24*
+*Last updated: 2026-10-24 after roadmap creation (Phases 30-32, 11/11 mapped)*

@@ -3,10 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg5-ci
 milestone_name: CI & Release Workflow Modernization
 status: planning
-last_updated: "2026-10-24T10:54:04.939Z"
+current_phase: "30"
+current_phase_name: "Release Workflows & Pin Guard"
+last_updated: "2026-10-24T11:15:00.000Z"
 last_activity: 2026-10-24
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +19,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-24 after the v1.7.0_gg4-hardening milestone)
+See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg5-ci)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Planning the next milestone (`/gsd-new-milestone`)
+**Current focus:** Phase 30 — Release Workflows & Pin Guard (a guard against unpinned actions first, then SHA-pin `release.yaml`, `pre-release.yaml` and `increment-version.yml`, build with the Gradle wrapper through `setup-gradle`, publish with `gh release create`, and prove both release paths with a dry run)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-24 — Milestone v1.7.0_gg5-ci started
+Phase: 30 of 32 (Release Workflows & Pin Guard) — not started (ready to plan)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-24 — Roadmap created for v1.7.0_gg5-ci (Phases 30-32, 11/11 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -226,6 +230,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - The Confluent archive rules live once in `ConfluentArchiveCheck`, run by the `verifyConfluentArchive` finalizer and in CI before the tests. `connect-api` 4.4.0 is compile-time only; the worker supplies the API at runtime.
 - Archive identity against the previous release is pinned by a per-release allow-list (`confluent-archive-allowlist-29.txt`). The compare is a manual release-time step.
 
+**`v1.7.0_gg5-ci` roadmap (2026-10-24):** three phases under `coarse` granularity. The guard against unpinned actions (CIG-01) and the release dry run (REL-05) sit in Phase 30, because the release phase cannot edit a `.github/` file. The nightly and the byte guard for upstream's `integrationTests.yaml` sit in Phase 31. FORK-DELTA, CHANGELOG, `VERSION` and the rollout note are written once, in Phase 32.
+
 ### Pending Todos
 
 None.
@@ -247,6 +253,8 @@ None.
 - [Phase 26]: 26-REVIEW has 2 open info items after the `--fix` pass (commits `a58c66da..0a1c79f8`: 9 fixed, IN-02 and IN-06 skipped by decision) and the 2026-10-22 re-review (`4271be66`): IN-12 `DescribeTableBuilder.columnsByName` stays last-wins, reachable only by a declared JSON or Dynamic element named `size<digits>` at Array depth 2 or more, not reproduced; IN-13 the fork-owned `allColumnsMap.merge` in upstream `Table.registerValidColumn` has no `fork-anchors.txt` row, so an upstream sync could revert it unnoticed by the merge gate. Ledger `26-REVIEW-DISPOSITION.md`; `26-SECURITY.md` is `threats_open: 0`; `26-VERIFICATION.md` regenerated 2026-10-22 (passed, 5/5) after the fixes; `26-UAT.md` complete (24 passed, 0 issues).
 - [Env]: the full suite crashed the OpenJ9 (Semeru 17) test JVM five times on 2026-10-21/22 at the known `Mockito.spy` frame, with host swap at about 97%; `-PjavaVersion=21` (HotSpot) passes, and a plain re-run passed once swap pressure eased. Expect the crash whenever the host is swapping; it is not a test failure.
 - [Release] 2026-10-23: `VERSION` reads `v1.7.0_gg4` and the CHANGELOG has its `1.7.0_gg4` section; both are published at `21c51598`.
+- [Roadmap] 2026-10-24: GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. Phase 30's dry runs can use the existing `release.yaml` and `pre-release.yaml` on the scratch branch, but the new Phase 31 nightly reaches `custom_build` only at publication. Phase 31 research confirms the behaviour and settles how the NIT-03 dispatch runs before any schedule can fire. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
+- [Roadmap] 2026-10-24: `TestsWorkflowPinGuardUnitTest` pins `dependabot.yml`'s `exclude-paths` list of the four upstream workflows (`UPSTREAM_WORKFLOWS`). Letting Dependabot keep the three newly pinned release-path files current changes that assertion, which needs the user's sign-off (Phase 30).
 
 ### Quick Tasks Completed
 
@@ -271,10 +279,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-23T18:47:03.290Z
-Stopped at: Milestone v1.7.0_gg4-hardening completed and archived
+Last session: 2026-10-24
+Stopped at: Roadmap created for milestone `v1.7.0_gg5-ci` (Phases 30-32, 11/11 requirements mapped); Phase 30 ready to plan
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Discuss and plan Phase 30 with /gsd-discuss-phase 30, then /gsd-plan-phase 30
+- Phase 30's dry runs need you to approve one push of the scratch branch and to dispatch `pre-release.yaml` and `release.yaml` from GitHub's `Run workflow` control
