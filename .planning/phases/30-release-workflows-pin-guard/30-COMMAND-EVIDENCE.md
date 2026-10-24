@@ -118,3 +118,76 @@ archive: build/confluent/clickhouse-kafka-connect-v1.7.0_gg4.zip
 The CIG-01 pin test and all 20 other guard tests pass on the rewritten files; the 12 lines that failed in E-02 are gone. The local run confirms the two facts the build step relies on (the exact finalizer line under `--console=plain`, and the archive name `clickhouse-kafka-connect-<VERSION>.zip`). Whether `gh release view` finds a draft by tag, and whether the matching-refs endpoint returns an empty array for no match, are runner facts that the operator dry run of plan 30-03 measures.
 
 Matches text: n/a (gate check)
+
+### E-04: the green commit
+
+Backs: CIG-01, REL-01, REL-02, REL-03, REL-04, REL-05, D-10. One `ci(30-01)` commit holds the guard, both `TestsWorkflowPinGuardUnitTest` edits, the three workflows, `dependabot.yml` and the 29 anchor rows. The body of the commit names the D-10 reason (the three files are fork-owned and pinned now, so their pins would go stale without Dependabot; only upstream-identical `integrationTests.yaml` stays excluded; the user signed off this change of a pinned assertion) and every replaced fixture.
+
+```sh
+git show --stat --format='%H %s' 496de32a
+# mirror: for every row of fork-anchors.txt, grep -cF of the pattern in the named file equals the row's count
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun
+git worktree add --detach /tmp/gsd30/wt-fmt 496de32a   # copy of nothing: the commit itself
+( cd /tmp/gsd30/wt-fmt && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q spotlessApply )
+cmp <the two Java files, worktree vs main tree>
+git worktree remove --force /tmp/gsd30/wt-fmt
+git diff --quiet v1.7.0_gg4 HEAD -- src/main; echo $?
+```
+
+```text
+496de32aa7a7847b56937646716fb600914ade54 ci(30-01): pin the release-path workflows, build with the wrapper, publish with gh release create, and guard every fork workflow (CIG-01, REL-01..REL-05)
+ .github/dependabot.yml                             |   9 +-
+ .github/workflows/increment-version.yml            |  31 ++-
+ .github/workflows/pre-release.yaml                 | 202 ++++++++++++---
+ .github/workflows/release.yaml                     | 206 +++++++++++++++++++++++++-------
+ .planning/scripts/fork-anchors.txt                 |  30 +++
+ .../connect/ci/TestsWorkflowPinGuardUnitTest.java  |  48 ++--
+ .../connect/ci/WorkflowActionPinGuardUnitTest.java | 273 +++++++++++++++++++++
+ 7 files changed, 684 insertions(+), 115 deletions(-)
+
+rows=123 bad=0
+ANCHORS-MIRROR-OK
+
+Test result: SUCCESS
+Tests summary: 1299 tests, 1297 succeeded, 0 failed, 2 skipped      (the 2 skips are in other classes)
+WorkflowActionPinGuardUnitTest:   tests=21 failures=0 errors=0 skipped=0
+TestsWorkflowPinGuardUnitTest:    tests=39 failures=0 errors=0 skipped=0
+
+spotlessApply in a worktree at 496de32a: exit 0, both Java files byte-identical to the main tree (SPOTLESS-IDENTICAL)
+git diff --quiet v1.7.0_gg4 HEAD -- src/main: exit 0
+```
+
+Deviation from the plan's verify command 3: its `GREEN-COMMIT-OK` check rejects any `subList(` in `TestsWorkflowPinGuardUnitTest.java`, but four unrelated `subList(` calls predate this phase (three inside the Kotlin-script and YAML helpers at lines 191, 358 and 380, and `FIVE_PINNED.subList(0, 4)` at line 820, a different fixture). The check was written to find the replaced `UPSTREAM.subList(0, 3)` fixture; the equivalent check on exactly that text, on `UPSTREAM.get(1)`, `UPSTREAM.get(2)`, `UPSTREAM.get(3)` and on "four upstream workflows" finds 0 matches, and the misspelt-path fixture `integrationTest.yaml` is present. The same command's clean-tree clause also saw `.planning/ROADMAP.md` and `.planning/STATE.md` modified; those were dirty before the plan started (the orchestrator's planning-session edits), not produced by this plan. The method set is unchanged (41 methods before and after, none lost).
+
+#### Fixture replacements (D-10)
+
+| Test method | Old fixture | New fixture | Rule branch exercised | Verdict before and after |
+|-------------|-------------|-------------|-----------------------|--------------------------|
+| `dependabotExcludeRuleRejectsMissingOrStalePaths` | `dependabot(List.of(), UPSTREAM.subList(0, 3))` (three of the four upstream paths) | `dependabot(List.of(), List.of(WORKFLOWS_DIR + "increment-version.yml", WORKFLOWS_DIR + "pre-release.yaml", WORKFLOWS_DIR + "release.yaml"))` (the three guarded workflows without `integrationTests.yaml`) | a required upstream path is missing from `exclude-paths` | rejected before, rejected after |
+| `dependabotExcludeRuleRejectsMissingOrStalePaths` | four-element list `UPSTREAM.get(0)`, `integrationTest.yaml` (misspelt), `UPSTREAM.get(2)`, `UPSTREAM.get(3)` | `List.of(".github/workflows/integrationTest.yaml")` | a misspelt path leaves the required path missing | rejected before, rejected after |
+| `dependabotRulesAcceptValidYamlSpellings` | `reversed` = `UPSTREAM.get(3), get(2), get(1), get(0)` | `List.of(WORKFLOWS_DIR + "tests.yaml", UPSTREAM.get(0))` (required path second) | the rule does not depend on list order | accepted before, accepted after |
+| `EXISTING_WORKFLOWS` (fixture world) | upstream four plus `tests.yaml` | `UPSTREAM` plus `increment-version.yml`, `pre-release.yaml`, `release.yaml`, `tests.yaml` | the "lists only existing files" branch sees the same directory as the real tree | unchanged verdicts |
+| `dependabotExcludesTheUpstreamWorkflowsAndOnlyExistingFiles` (display name) | "excludes the four upstream workflows ..." | "excludes upstream's integrationTests.yaml ... (17-REVIEW WR-01, D-10)" | text only | passes before (on the old file) and after |
+| `dependabotExcludeRuleAcceptsUpstreamWorkflows` (display name) | "accepts the four existing upstream workflows" | "accepts the upstream-identical integrationTests.yaml (17-REVIEW WR-01, D-10)" | text only | accepted before, accepted after |
+
+`upstreamFixtureIsTheProductionConstant` (the `assertSame` test) is unchanged: `assertSame` is an identity check, so it does not depend on the list's size (PT-03).
+
+Matches text: n/a (gate check)
+
+### E-05: the cumulative anchors gate and its self-test
+
+Backs: the phase gate for the anchors invariant. Gated HEAD: `496de32aa7a7847b56937646716fb600914ade54` (recorded as the gate started). Neither script nor `fork-anchor-exemptions.txt` is edited.
+
+```sh
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD
+bash .planning/scripts/verify-merge-invariants-selftest.sh
+git diff --quiet d6a574d09437f813c5967a118e81f2a07fb237f2 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh .planning/scripts/fork-anchor-exemptions.txt
+```
+
+```text
+invariants: provenance_paths=21 anchor_commits=849 anchor_rows=123 marker_commits=908 anchor_exempt=19 result=PASS      (exit 0)
+selftest: no failures      (exit 0; last case PASS ST9-exact-row)
+git diff --quiet (three scripts/files since P30_BASE): exit 0
+```
+
+Matches text: n/a (gate check)
