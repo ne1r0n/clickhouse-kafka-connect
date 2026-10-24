@@ -18,6 +18,18 @@ The sixth milestone (`v1.7.0_gg4-hardening`) absorbed nine Dependabot merges and
 
 Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
+## Current Milestone: v1.7.0_gg5-ci CI & Release Workflow Modernization
+
+**Goal:** Bring the fork's workflows current and get a trustworthy integration-test signal, without touching connector code or ClickHouse client `0.10.0`.
+
+**Target features:**
+- `pre-release.yaml`: replace the pinned Gradle `7.4.2` (DEPS-F4) with the project wrapper / `setup-gradle`
+- `release.yaml`, `pre-release.yaml`, `increment-version.yml`: SHA-pin every action (checkout, setup-java, setup-node, setup-gradle); replace deprecated `gradle-build-action` and archived `create-release` / `upload-release-asset` with `gh release`
+- Nightly: leave upstream `integrationTests.yaml` byte-identical and disabled; add a fork-owned nightly running `integrationTest` on ClickHouse `latest` × client V2 in local Docker, with no cloud job
+- Verify with a dry run of the release path and green CI on the published SHA
+
+**Out of scope:** ClickHouse client `0.10.0`, connector source changes, editing upstream `integrationTests.yaml`.
+
 ## Current State
 
 **Shipped:** `v1.7.0_gg4-hardening` (published 2026-10-23, closed 2026-10-24). It covered 5 phases (25–29), 32 plans, 81 tasks and 36/36 requirements. The milestone audit is `tech_debt` with no gaps: phases 5/5, integration 5/5, flows 5/5. It closed as an `override_closeout`: `init.manager` read Phases 25–28 as stale (later phases edited covered files) and Phase 27 success criterion 2 was narrowed by the user.
@@ -873,4 +885,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after the v1.7.0_gg4-hardening milestone*
+*Last updated: 2026-10-24 after starting milestone v1.7.0_gg5-ci*

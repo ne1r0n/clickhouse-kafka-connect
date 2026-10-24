@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg4-hardening
-milestone_name: Dependency Absorption, Discovery Defects & Review Debt
-status: Awaiting next milestone
-stopped_at: Phase 29 complete — all phases complete
-last_updated: "2026-10-23T22:34:38.961Z"
+milestone: v1.7.0_gg5-ci
+milestone_name: CI & Release Workflow Modernization
+status: planning
+last_updated: "2026-10-24T10:54:04.939Z"
 last_activity: 2026-10-24
-last_activity_desc: Milestone v1.7.0_gg4-hardening completed and archived
-state_head: 2325b3efa16032ebc39a7be1baad6c73017470d1
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 32
-  completed_plans: 32
-  percent: 100
-current_phase: 29
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-24 after the v1.7.0_gg4-hardening mil
 
 ## Current Position
 
-Phase: Milestone v1.7.0_gg4-hardening complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-24 — Milestone v1.7.0_gg4-hardening completed and archived
+Status: Defining requirements
+Last activity: 2026-10-24 — Milestone v1.7.0_gg5-ci started
 
 ## Performance Metrics
 
@@ -221,6 +217,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 
 - Writer failure text stays value-free. In `doWriteColValue`, an `IOException` chain, a `ConnectException` and an exact `RuntimeException` pass through unchanged. Everything else becomes a metadata-only `DataException` with a `WithheldMessageException` cause, and the 184-case `WriterFailureClassificationUnitTest` pins the classification. A new writer message must not embed a record value.
 - Operator documents get an independent `gsd-code-reviewer` pass, spawned by the orchestrator, before any publication gate. Review rounds on fixes continue until a round finds nothing. An executor's inline review does not count as independent (Phase 24, quick 261020-vcr).
+
 **`v1.7.0_gg4-hardening` (closed 2026-10-24):** its roadmap decisions are archived in `milestones/v1.7.0_gg4-hardening-ROADMAP.md` (Milestone Summary), and its per-phase decision log is archived with the phase artifacts in `milestones/v1.7.0_gg4-hardening-phases/`. Standing rules that outlive it:
 
 - A release phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file. Review findings it cannot fix are deferred with a reason, an owner and a re-open trigger in a milestone close record (Phase 29, D-05).
