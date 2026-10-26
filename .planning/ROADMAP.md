@@ -112,8 +112,8 @@ Phase artifacts: `milestones/v1.7.0_gg4-hardening-phases/` · Research: `milesto
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker stopped. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
 - [x] **Phase 30: Release Workflows & Pin Guard** - A guard fails on any unpinned action in a fork-owned workflow. `release.yaml`, `pre-release.yaml` and `increment-version.yml` pass it, both release paths build with the Gradle wrapper through `setup-gradle` and publish with `gh release create`, and a dry run proves both without creating a release or a tag (completed 2026-10-26)
-- [ ] **Phase 31: Fork-Owned Nightly Integration Tests** - A measured local `integrationTest` run comes first. A new SHA-pinned nightly then runs `integrationTest` on `latest` × V2 in the runner's Docker with no cloud job, and its first manual run is green or every failure is named in a skip list. Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard
-- [ ] **Phase 32: Release & Publication** - `v1.7.0_gg5` is published with FORK-DELTA, CHANGELOG, `VERSION` and a short reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tags
+- [ ] **Phase 31: Fork-Owned Nightly Integration Tests** - A measured local `integrationTest` run comes first. A new SHA-pinned nightly then runs `integrationTest` on `latest` × V2 in the runner's Docker with no cloud job, and its first manual run follows publication in Phase 32 (NIT-03). Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard
+- [ ] **Phase 32: Release & Publication** - `v1.7.0_gg5` is published with FORK-DELTA, CHANGELOG, `VERSION` and a short reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tags, then the nightly's first manual run (NIT-03)
 
 ## Phase Details
 
@@ -165,18 +165,18 @@ Phase gate: cache-busted `testUnit`, the anchors invariant, and an empty `src/ma
 
 ### Phase 31: Fork-Owned Nightly Integration Tests
 
-**Goal**: The fork has a nightly integration-test signal it can trust. A fork-owned workflow runs the `integrationTest` task on ClickHouse `latest` × client V2 in the runner's own Docker, with no cloud job and no cloud secrets. Its first manual run is green, or every failing test is named in a skip list with its cause. Upstream's `integrationTests.yaml` stays byte-identical to upstream and disabled, and a guard pins its bytes. No connector code changes.
+**Goal**: The fork has a nightly integration-test signal it can trust. A fork-owned workflow runs the `integrationTest` task on ClickHouse `latest` × client V2 in the runner's own Docker, with no cloud job and no cloud secrets. Its first manual run happens after publication, in Phase 32 (NIT-03, moved by D-02). Upstream's `integrationTests.yaml` stays byte-identical to upstream and disabled, and a guard pins its bytes. No connector code changes.
 
 **Depends on**: Phase 30 (the CIG-01 guard, which the new workflow must pass unchanged, and the action pins it reuses)
 
-**Requirements**: NIT-01, NIT-02, NIT-03
+**Requirements**: NIT-01, NIT-02
 
 **Success Criteria** (what must be TRUE):
 
   1. *[live, record]* Before the workflow is written, `integrationTest` has been run locally on `latest` × V2 with Docker (colima, profile `vz`). The record states `SELECT version()` and lists every test class that ran or skipped. It gives each failure a cause: environment, test harness, cloud-only, or connector defect. It also says why upstream's standalone `latest` × V2 job fails (run 38881153720).
   2. *[Docker-free]* The new workflow runs `integrationTest` with ClickHouse `latest` and client V2 on `ubuntu-24.04`. It has a timeout, a top-level `permissions: contents: read`, `persist-credentials: false`, and it uploads the test reports on failure. It passes the CIG-01 guard with no guard edit. No step references a cloud secret or variable, and no job targets ClickHouse Cloud. Its triggers are `workflow_dispatch` and a schedule that cannot fire before the NIT-03 run is recorded (NIT-01).
   3. *[Docker-free, CI]* A Docker-free guard fails when `integrationTests.yaml` differs by a single byte from upstream's copy, which is identical at `v1.7.0` and `a6f1df83`, and it was seen red on a one-byte edit. The Actions API reports that workflow as disabled, with no scheduled run since 2026-10-16 (NIT-02).
-  4. *[CI, operator]* A manual dispatch of the nightly finishes green, or every failing test is listed by name in a skip list with its cause from criterion 1. The list names tests, not patterns, and it deletes or weakens no existing test. The schedule starts only after that run is recorded, and no scheduled run precedes it (NIT-03).
+  4. *[record]* The schedule is gated by the repository variable `NIGHTLY_ENABLED`, which stays unset, so no scheduled run executes a job before the dispatch run. The dispatch run itself moved to Phase 32 with NIT-03 on 2026-10-26 (D-02), because GitHub dispatches a workflow only from the default branch. Every failure of the measured run is named in the skip list with its cause, or the run was green.
 
 **Plans**: 5/6 plans executed (31-01 tasks 1-3 done, E-06 disposition `fix-harness`; gap plan 31-06 fixes the harness and re-measures before 31-02)
 
@@ -209,7 +209,7 @@ Plans:
 - `ClickHouseCloudTest` skips itself without cloud properties. The record confirms it skips rather than fails.
 - The nightly reuses Phase 30's action pins. It is not in `dependabot.yml`'s `exclude-paths`, so Dependabot keeps its pins current.
 - `custom_build` is the default branch, so once the nightly is merged there its schedule is live unless something gates it. The gate chosen in research must already hold at the Phase 32 merge.
-- The user dispatches the run from GitHub's `Run workflow` control and reports the result directly.
+- The dispatch run is an operator action in Phase 32 (NIT-03): the user starts it from GitHub's `Run workflow` control and reports the result directly.
 
 Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest` × V2, the anchors invariant, and an empty `src/main` diff.
 
@@ -219,7 +219,7 @@ Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest`
 
 **Depends on**: Phases 30 and 31 (it documents and publishes their outcome)
 
-**Requirements**: CIG-02, CIG-03
+**Requirements**: CIG-02, CIG-03, NIT-03
 
 **Success Criteria** (what must be TRUE):
 
@@ -237,6 +237,7 @@ Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest`
      - the tags `v1.7.0_gg5` and `pre-v1.7.0_gg5` reach origin only after that run;
      - the scratch branch is deleted from origin (CIG-03).
   4. *[CI]* After publication, the Actions API still reports `integrationTests.yaml` as disabled, and the nightly is in the state Phase 31 recorded. No workflow run created a release or a tag that the plan did not intend.
+  5. *[CI, operator]* After the `--no-ff` merge to `custom_build`, the user dispatches the nightly from GitHub's `Run workflow` control and reports the result directly. The run finishes green, or every failing test is listed by name in the skip list with its cause from Phase 31's measurement; the list names tests, not patterns, and deletes or weakens no existing test. `NIGHTLY_ENABLED` is set only after that run is recorded, and no scheduled run with a conclusion other than `skipped` precedes it. A fix the run needs is a Phase 31 gap, because this phase edits no build, `gradle/` or `.github/` file (NIT-03).
 
 **Plans**: TBD
 
@@ -260,7 +261,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 - **CIG-01 is Phase 30's first plan, not release hygiene.** The guard is seen red on the unpinned release files before they are pinned, and the nightly is then written under it.
 - **REL-05 sits in Phase 30, not Phase 32.** Fixing a dry-run defect needs a `.github/` edit, which the release phase cannot make.
 - **NIT-02's byte guard sits in Phase 31, with the nightly that replaces upstream's job.** The disabled state is re-read in Phase 32.
-- **NIT-03 sits in Phase 31,** but GitHub may not dispatch the new file before it is on `custom_build`. The Phase 31 research settles this, and the user decides whether NIT-03 moves.
+- **NIT-03 moved to Phase 32 on 2026-10-26 (D-02).** GitHub dispatches a workflow only from the default branch, and the nightly reaches `custom_build` only at publication. Phase 31 delivered everything before the dispatch: the measurement, the gated workflow, the guards and any skip list.
 - **CIG-02 is entirely in Phase 32.** FORK-DELTA, CHANGELOG, `VERSION` and the note are written once, on the final tree. Anchor rows for the workflow edits still land with the edits in Phases 30 and 31.
 
 **Execution model.** Phases run sequentially on one working tree. No phase touches `src/main`.

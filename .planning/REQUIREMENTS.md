@@ -54,18 +54,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-05 | Phase 30 | Complete |
 | NIT-01 | Phase 31 | Pending |
 | NIT-02 | Phase 31 | Pending |
-| NIT-03 | Phase 31 | Pending |
+| NIT-03 | Phase 32 | Pending |
 | CIG-01 | Phase 30 | Complete |
 | CIG-02 | Phase 32 | Pending |
 | CIG-03 | Phase 32 | Pending |
 
 **Coverage:**
 - v1 requirements: 11 total
-- Mapped to phases: 11 (Phase 30: 6, Phase 31: 3, Phase 32: 2)
+- Mapped to phases: 11 (Phase 30: 6, Phase 31: 2, Phase 32: 3)
 - Unmapped: 0 ✓
 
-NIT-03 is mapped to Phase 31. It may have to move to Phase 32 if GitHub cannot dispatch the new nightly before it is on `custom_build`; Phase 31 research settles this and the user decides (see ROADMAP.md, Phase 31 research flag).
+NIT-03 moved to Phase 32 on 2026-10-26 by the user's decision (D-02, Phase 31 E-16): GitHub runs workflow_dispatch only for a workflow file on the default branch, so the nightly's first manual run can happen only after Phase 32 publishes it. Phase 31 delivered the measurement, the workflow with its schedule gate, the guards and any skip list.
 
 ---
 *Requirements defined: 2026-10-24*
-*Last updated: 2026-10-24 after roadmap creation (Phases 30-32, 11/11 mapped)*
+*Last updated: 2026-10-26 after moving NIT-03 to Phase 32 (D-02)*

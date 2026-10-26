@@ -904,4 +904,12 @@ Open question 4: the five anchor rows landed here (plan 31-04); the FORK-DELTA p
 
 Research open question 1: the Phase 32 criterion says "no scheduled run with a conclusion other than `skipped` precedes it". After the merge the cron still ticks while `NIGHTLY_ENABLED` is unset, and GitHub likely lists those ticks as skipped runs (research A1; not measurable before the merge, because the workflow has no run yet).
 
-Matches text: pending (31-05)
+Matches text: yes
+
+### E-16: the user's NIT-03 decision (D-02)
+
+user_answer_received_by: orchestrator (direct)
+user_answer: move
+nit03-decision: move
+open questions 1, 2 and 4: default
+decision date (UTC): 2026-10-26
