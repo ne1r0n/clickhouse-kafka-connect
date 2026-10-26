@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.images.builder.dockerfile.statement.RawStatement;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.pollinterval.FixedPollInterval;
 import org.testcontainers.utility.DockerImageName;
@@ -52,6 +54,13 @@ public class ConfluentPlatform {
             "cnfldemos/cp-server-connect-datagen:" + DATAGEN_VERSION
     );
 
+    private static final DockerImageName CP_SERVER_CONNECT = DockerImageName.parse(
+            "confluentinc/cp-server-connect:" + CONFLUENT_VERSION
+    );
+
+    private static final String DATAGEN_PLUGIN_DIR = "/usr/share/confluent-hub-components/confluentinc-kafka-connect-datagen";
+    private static final String DATAGEN_STAGE = "datagen";
+
     private static final DockerImageName CP_CONTROL_CENTER = DockerImageName.parse(
             "confluentinc/cp-enterprise-control-center:" + CONFLUENT_VERSION
     );
@@ -88,6 +97,19 @@ public class ConfluentPlatform {
     GenericContainer<?> cp_control_center;
     GenericContainer<?> cp_ksqldb_server;
     GenericContainer<?> rest_proxy;
+
+    // The fork's connector and its SMTs are Java 17 bytecode (class file 61), while the datagen image's own
+    // Connect worker runs Java 11 (class file 55) and cannot load them. So the worker is Confluent's Java 17
+    // Connect image at CONFLUENT_VERSION, and only the datagen plugin directory is taken from the datagen image.
+    private static ImageFromDockerfile connectWorkerImage() {
+        return new ImageFromDockerfile()
+                .withDockerfileFromBuilder(builder -> builder
+                        // a raw statement because from() rejects the "AS <stage>" suffix as an image name
+                        .withStatement(new RawStatement("FROM", CP_DATA_GEN.asCanonicalNameString() + " AS " + DATAGEN_STAGE))
+                        .from(CP_SERVER_CONNECT.asCanonicalNameString())
+                        .withStatement(new RawStatement("COPY",
+                                "--from=" + DATAGEN_STAGE + " " + DATAGEN_PLUGIN_DIR + " " + DATAGEN_PLUGIN_DIR)));
+    }
 
     public ConfluentPlatform(Network network, List<String> connectorPathList) {
         zookeeper = new GenericContainer<>(ZOOKEEPER_IMAGE)
@@ -130,7 +152,7 @@ public class ConfluentPlatform {
                 .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "broker:29092")
                 .withEnv("SCHEMA_REGISTRY_LISTENERS", "http://0.0.0.0:8081");
 
-        cp_data_gen = new GenericContainer<>(CP_DATA_GEN)
+        cp_data_gen = new GenericContainer<>(connectWorkerImage())
                 .withNetwork(network)
                 .withNetworkAliases("connect")
                 .withExposedPorts(8083)

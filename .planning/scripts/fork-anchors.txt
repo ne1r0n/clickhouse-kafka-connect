@@ -144,3 +144,7 @@ build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.cla
 .github/workflows/pre-release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	5	REL-05
 .github/workflows/increment-version.yml	node-version: '24'	1	REL-02
 .github/workflows/increment-version.yml	npm install fs	0	REL-02
+# Phase 31 (v1.7.0_gg5-ci): the integration harness's Connect worker runs on Java 17 (plan 31-06, E-06 fix-harness).
+src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	confluentinc/cp-server-connect:	1	NIT-01
+src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	new ImageFromDockerfile(	1	NIT-01
+src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	new GenericContainer<>(CP_DATA_GEN)	0	NIT-01
