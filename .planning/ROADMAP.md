@@ -178,23 +178,26 @@ Phase gate: cache-busted `testUnit`, the anchors invariant, and an empty `src/ma
   3. *[Docker-free, CI]* A Docker-free guard fails when `integrationTests.yaml` differs by a single byte from upstream's copy, which is identical at `v1.7.0` and `a6f1df83`, and it was seen red on a one-byte edit. The Actions API reports that workflow as disabled, with no scheduled run since 2026-10-16 (NIT-02).
   4. *[CI, operator]* A manual dispatch of the nightly finishes green, or every failing test is listed by name in a skip list with its cause from criterion 1. The list names tests, not patterns, and it deletes or weakens no existing test. The schedule starts only after that run is recorded, and no scheduled run precedes it (NIT-03).
 
-**Plans**: 0/5 plans complete (31-01 tasks 1-2 done, halted at the Task 3 blocking-human decision)
+**Plans**: 0/6 plans complete (31-01 tasks 1-3 done, E-06 disposition `fix-harness`; gap plan 31-06 fixes the harness and re-measures before 31-02)
 
 Plans:
 **Wave 1**
-- [ ] 31-01-PLAN.md — Wave 1 (tasks 1-2 done, Task 3 decision pending): tracer slice (latest pulled, `SELECT version()`, the cloud class skips), the cold local `integrationTest` run on `latest` × V2 and the criterion-1 record with the derived timeouts, then one blocking-human disposition of every failure (D-04, D-05, D-06, D-09)
+- [ ] 31-01-PLAN.md — Wave 1 (tasks 1-3 done, E-06: `fix-harness`): tracer slice (latest pulled, `SELECT version()`, the cloud class skips), the cold local `integrationTest` run on `latest` × V2 and the criterion-1 record with the derived timeouts, then one blocking-human disposition of every failure (D-04, D-05, D-06, D-09)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 31-02-PLAN.md — Wave 2: the name-only skip list in the build from the user's disposition, its Docker-free guard and the green live re-run on `latest` × V2; or "not needed" recorded (D-07, D-08)
+- [ ] 31-06-PLAN.md — Wave 2 (gap closure): the harness's Connect worker on Java 17 (Confluent's CP 7.9.6 Connect image plus the pinned datagen plugin), proven broker-free and by one connector test, the whole `integrationTest` re-measured on `latest` × V2, then the user's disposition E-06b (D-05, D-06, D-08, D-09)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 31-03-PLAN.md — Wave 3: the NIT-02 byte guard seen red on a one-byte edit of `integrationTests.yaml`, and its disabled state read from the Actions API
+- [ ] 31-02-PLAN.md — Wave 3: the name-only skip list in the build from the user's disposition, its Docker-free guard and the green live re-run on `latest` × V2; or "not needed" recorded (D-07, D-08)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 31-04-PLAN.md — Wave 4: the gated, SHA-pinned nightly with its failed-test summary, a 58-case Docker-free shape guard, the script's tests and five anchor rows (NIT-01, D-01, D-05, D-10)
+- [ ] 31-03-PLAN.md — Wave 4: the NIT-02 byte guard seen red on a one-byte edit of `integrationTests.yaml`, and its disabled state read from the Actions API
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 31-05-PLAN.md — Wave 5: the phase gate on the final tree and both workflows' GitHub state, then the user's NIT-03 decision applied to ROADMAP and REQUIREMENTS (D-02)
+- [ ] 31-04-PLAN.md — Wave 5: the gated, SHA-pinned nightly with its failed-test summary, a 58-case Docker-free shape guard, the script's tests and five anchor rows (NIT-01, D-01, D-05, D-10)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 31-05-PLAN.md — Wave 6: the phase gate on the final tree and both workflows' GitHub state, then the user's NIT-03 decision applied to ROADMAP and REQUIREMENTS (D-02)
 
 **Research flag**: Settle these before planning:
 - **Dispatching a new workflow.** GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. The new file reaches `custom_build` only at publication. Confirm that behaviour first, then settle how the NIT-03 dispatch runs before any schedule can fire. The candidates are a scheduled job gated on a repository variable that the user sets after the dispatch, or an early CI-only `--no-ff` publication of the workflow (the Phase 16 precedent). Phase 32 edits no `.github/` file, so anything that turns the schedule on after Phase 32 must be an operator setting, not a file edit. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
