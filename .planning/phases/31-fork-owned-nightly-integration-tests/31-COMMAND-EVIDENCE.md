@@ -663,3 +663,45 @@ anchors mirror after the five rows: rows=131 bad=0
 The five rows pin, for `.github/workflows/nightly-integration-tests.yaml`: the D-01 expression (count 1), `./gradlew integrationTest` (1), `persist-credentials: false` (1), `secrets.` (0) and `--tests` (0). No comment in the workflow repeats an anchored literal; the header describes them by concept. The workflow was committed with its guard, the script and the rows in one green commit. `WorkflowActionPinGuardUnitTest`, `.github/dependabot.yml` and the other workflows were not edited. The capacity step reads `free -m`, `df -h /` and `docker version --format` of the server and tolerates a failing probe (`|| echo unavailable`) so that a probe failure cannot stop the run before the tests.
 
 Matches text: n/a (gate check)
+
+### E-13: the nightly guard rules and their 44 rejected fixtures (NIT-01)
+
+Backs: plan 31-04 Task 2; ROADMAP criterion 2 (a Docker-free guard keeps the nightly's gate, triggers, timeouts, Gradle step, cloud-free references and always-run reporting from regressing).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*NightlyWorkflowGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' --tests '*WorkflowActionPinGuardUnitTest' --rerun
+python3 -I /tmp/gsd31-scripts/guard-31-04.py     # the plan's XML count check, run from a scratch file
+git diff HEAD~1 HEAD -- src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java
+# real-file mutation: five edits of the committed workflow (python3 -I scratch script), testUnit on the nightly guard, then git checkout -- <file>
+```
+
+```text
+exit status 0; Tests summary: 118 tests, 118 succeeded, 0 failed, 0 skipped
+per class XML (tests/failures/errors/skipped): NightlyWorkflowGuardUnitTest 58/0/0/0, TestsWorkflowPinGuardUnitTest 39/0/0/0, WorkflowActionPinGuardUnitTest 21/0/0/0
+nightly guard: 8 real-file tests + 6 accept fixtures + 44 reject fixtures = 58
+rejects per rule: gate 7, trigger 10, timeout 6, Gradle step 9, cloud reference 5, always-run step 7; accepts 6
+
+reject fixtures, as named in the XML (each is one edit of the valid nightly; every one passed, i.e. its rule returned a problem):
+gate (D-01):
+  a job without the gate | the gate inside an expression block | and instead of or | a negated variable check | a second job | the gate on a step only | two gate lines
+trigger (NIT-01, D-01):
+  a push trigger | a pull_request trigger | a pull_request_target trigger | a workflow_run trigger | a repository_dispatch trigger | a workflow_call trigger | a flow list of triggers | a dispatch input | no schedule | no workflow_dispatch
+timeout (D-05):
+  no job timeout | no Gradle-step timeout | a step timeout equal to the job's | a step timeout above the job's | a timeout that is not a number | a job timeout above 360
+Gradle step (D-04, NIT-01):
+  no ClickHouse version | the cloud ClickHouse version | no client version | another client version | a test filter | a ClickHouse system property | a cluster name | error tolerance on the Gradle step | a condition on the Gradle step
+cloud reference (NIT-01):
+  a secret in the step env | another variable in a step condition | an expression block in a run line | a cloud host property | a job name mentioning ClickHouse Cloud
+always-run step (D-10):
+  a summary step without always() | a results upload without always() | a report upload without always() | an upload only on failure | the wrong results path | the wrong report path | a summary of another directory
+
+two-word diff of TestsWorkflowPinGuardUnitTest.java (git diff HEAD~1 HEAD, commit feb97802): 1 file changed, 2 insertions(+), 2 deletions(-)
+-    private static final Pattern CONTINUE_ON_ERROR =
++    static final Pattern CONTINUE_ON_ERROR =
+-    private static final Pattern TRAILING_COMMENT = Pattern.compile("\\s#.*$");
++    static final Pattern TRAILING_COMMENT = Pattern.compile("\\s#.*$");
+
+real-file mutation (the committed workflow edited five ways in the working tree: a push trigger added, the job timeout removed, CLIENT_VERSION V1, the job name ending in ClickHouse Cloud, the summary step pointed at build/test-results/test): the nightly guard ran 29 cases, 13 succeeded, 16 failed, exit status 1; the six real-file tests R3 to R8 (summary step, trigger, timeout, Gradle step, cloud reference and always-run) failed while R1 and R2 stayed green (those two rules were not touched). The rule fixtures derive from the real file, so with some anchors gone five of the six reject sources (gate, timeout, Gradle step, cloud reference, always-run) also failed at initialisation, as did the accept fixtures of the rules whose lines changed, which is the loud direction. `git checkout -- .github/workflows/nightly-integration-tests.yaml` restored it: git hash-object 0e0bcd6849450ee06f8f5ec6190dbcba17148685 equals HEAD's blob, and git status of the file was empty. The 118-case run above came after the restore.
+```
+
+Matches text: n/a (gate check)
