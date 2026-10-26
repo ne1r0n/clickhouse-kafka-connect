@@ -5,16 +5,16 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 31
 current_phase_name: Fork-Owned Nightly Integration Tests
 status: executing
-stopped_at: "Completed tasks 1-2 of 31-01-PLAN.md; Task 3 checkpoint:decision (blocking-human) pending the user"
-last_updated: "2026-10-26T15:12:31.227Z"
+stopped_at: Completed 31-02-PLAN.md
+last_updated: "2026-10-26T17:21:31.430Z"
 last_activity: 2026-10-26
-last_activity_desc: Phase 31 execution started
-state_head: c7965a7d08d9377bf5e0a0b3463f392d3e516574
+last_activity_desc: Phase 31 execution resumed (wave continue)
+state_head: dce2e2c825f9cbcfff79054c4ef4c7a32eeeb0b8
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 9
-  completed_plans: 4
+  completed_plans: 6
   percent: 33
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 31 (Fork-Owned Nightly Integration Tests) — EXECUTING
-Plan: 2 of 6
-Status: Executing Phase 31
-Last activity: 2026-10-26 — Phase 31 execution started
+Plan: 3 of 6
+Status: Ready to execute
+Last activity: 2026-10-26 — Phase 31 execution resumed (wave continue)
 
 Progress: [███░░░░░░░] 33%
 
@@ -202,6 +202,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 30 P01 | 45 min | 3 tasks | 8 files |
 | Phase 30 P02 | 2 min | 2 tasks | 2 files |
 | Phase 31 P01 | 26 min | 2 tasks | 1 files |
+| Phase 31 P02 | 6 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -241,6 +242,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 30]: Dry run uses a throwaway tag dry-run-<run_id>-<run_attempt> with a plain gh release delete --yes; no tag-cleanup flag, the real VERSION tag is never touched (UD-1)
 - [Phase 30]: Pin guard fails closed on local ./ and docker:// uses values; Dependabot exclude-paths lists only integrationTests.yaml (D-10)
 - [Phase 30]: 30-02: the increment-version.yml vnull defect (semver.inc returns null for vX.Y.Z_ggN, measured E-06) stays unfixed and is recorded in FORK-DELTA; the stale default-branch and inert clauses of the Dependabot row are carried to Phase 32 (CIG-02)
+- [Phase 31]: 31-02: no integration-test skip list is built; E-06b (accept) holds skip-entries: 0, so E-07 records the D-07 not-needed branch and the phase-gate run is 31-06's E-18
 
 ### Pending Todos
 
@@ -291,9 +293,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T12:01:12.836Z
-Stopped at: Completed tasks 1-2 of 31-01-PLAN.md; Task 3 checkpoint:decision (blocking-human) pending the user
-Resume file: .planning/phases/31-fork-owned-nightly-integration-tests/31-01-SUMMARY.md
+Last session: 2026-10-26T17:21:31.402Z
+Stopped at: Completed 31-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
