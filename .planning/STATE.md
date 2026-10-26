@@ -5,16 +5,16 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 32
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 32-02-PLAN.md
-last_updated: "2026-10-26T21:19:41.985Z"
+stopped_at: Completed 32-03-PLAN.md
+last_updated: "2026-10-26T21:29:57.980Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 32 execution started
-state_head: c05455635405331b2a4b2deb6140a5586d3ef04a
+state_head: bc4c85a326a2a679ca952fdfea025f46e1b2c4f4
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 11
+  completed_plans: 12
   percent: 67
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 32 (Release & Publication) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 32 execution started
 
@@ -208,6 +208,7 @@ Progress: [███████░░░] 67%
 | Phase 31 P04 | 7 min | 3 tasks | 7 files |
 | Phase 32 P01 | 20 min | 3 tasks | 5 files |
 | Phase 32 P02 | 8 min | 3 tasks | 2 files |
+| Phase 32 P03 | 9 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -254,6 +255,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 31]: 31-04: nightly guard fixtures are edits of the real workflow's non-comment lines with the timeouts pinned at 80/70; failed-test annotation names are cut at 300 characters, the step summary keeps full names — The guard cannot drift from the file it protects; one escaped, capped annotation line cannot inject a workflow command (D-10, Pitfall 11)
 - [Phase 32]: Archive allow-list for gg5 holds four exact-path rows (Version, ClickHouseHelperClient, SinkTaskStatistics, MANIFEST.MF) because javac inlines Version.ARTIFACT_VERSION; totals only-a 0 only-b 0 changed 4 (32-AMENDMENT-01)
 - [Phase 32]: gg5 rollout note: four-row archive wording (32-AMENDMENT-01); nightly off-switch stated as delete or false only; skipped-job claim backed by GitHub docs quote in E-10
+- [Phase 32]: Four-row archive wording (32-AMENDMENT-01) used in CHANGELOG, FORK-DELTA and E-20: the gg5 archive differs from gg4 only in the release identity (Version constant, the two classes that inline it, manifest Implementation-Version)
+- [Phase 32]: The nightly is described as running the whole integrationTest task when dispatched or scheduled; its green run is stated as local (E-18) because no GitHub run exists before plan 32-07
 
 ### Pending Todos
 
@@ -305,8 +308,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T21:19:41.841Z
-Stopped at: Completed 32-02-PLAN.md
+Last session: 2026-10-26T21:29:57.833Z
+Stopped at: Completed 32-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

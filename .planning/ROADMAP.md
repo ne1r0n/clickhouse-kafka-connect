@@ -239,7 +239,7 @@ Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest`
   4. *[CI]* After publication, the Actions API still reports `integrationTests.yaml` as disabled, and the nightly is in the state Phase 31 recorded. No workflow run created a release or a tag that the plan did not intend.
   5. *[CI, operator]* After the `--no-ff` merge to `custom_build`, the user dispatches the nightly from GitHub's `Run workflow` control and reports the result directly. The run finishes green, or every failing test is listed by name in the skip list with its cause from Phase 31's measurement; the list names tests, not patterns, and deletes or weakens no existing test. `NIGHTLY_ENABLED` is set only after that run is recorded, and no scheduled run with a conclusion other than `skipped` precedes it. A fix the run needs is a Phase 31 gap, because this phase edits no build, `gradle/` or `.github/` file (NIT-03).
 
-**Plans**: 2/7 plans executed
+**Plans**: 3/7 plans executed
 
 Plans:
 **Wave 1**
@@ -249,7 +249,7 @@ Plans:
 - [x] 32-02-PLAN.md — Wave 2: the one-page `docs/ROLLOUT-v1.7.0_gg5.md`, five measured claims, the rollback rehearsed on a dry-run merge with the local tag `pre-v1.7.0_gg5` (CIG-02, D-02, D-03, D-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 32-03-PLAN.md — Wave 3: the `1.7.0_gg5` CHANGELOG section and FORK-DELTA's CI workflows group, harness row and raw numbers refreshed once (CIG-02, D-05, D-06)
+- [x] 32-03-PLAN.md — Wave 3: the `1.7.0_gg5` CHANGELOG section and FORK-DELTA's CI workflows group, harness row and raw numbers refreshed once (CIG-02, D-05, D-06)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 32-04-PLAN.md — Wave 4 (orchestrator inline): fresh-context `gsd-code-reviewer` rounds on the note, CHANGELOG and FORK-DELTA, at most three, every finding dispositioned, documents frozen (CIG-02, D-04)
@@ -360,7 +360,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 |-------|-----------|----------------|--------|-----------|
 | 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 3/3 | Complete    | 2026-10-26 |
 | 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 6/6 | Complete    | 2026-10-26 |
-| 32. Release & Publication | v1.7.0_gg5-ci | 2/7 | In Progress | - |
+| 32. Release & Publication | v1.7.0_gg5-ci | 3/7 | In Progress | - |
 
 ---
 *Roadmap reorganized at the `v1.7.0_gg4-hardening` close: 2026-10-24. Roadmap for milestone `v1.7.0_gg5-ci` created: 2026-10-24.*
