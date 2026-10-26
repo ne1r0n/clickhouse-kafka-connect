@@ -577,3 +577,50 @@ fixture: the byte rule rejects an empty file (NIT-02)
 The one-byte edit kept the length at 4812 (an in-place byte change), so the message differs from the expected values in the hash only; the length-changing edits are covered by the appended-byte, removed-newline, CRLF and empty fixtures. The edit lived only in the working tree between run 1 and the restore; the guard commit is `3d0e3d6f8ce6802288c71efcbcf199650061d9f3` and touches only the guard class. The runs used the default Gradle JVM (Homebrew JDK 21 daemon, no `JAVA_HOME`): `testUnit` is Docker-free and its test JVM started normally, so the E-02 `JAVA_HOME` override was not needed.
 
 Matches text: n/a (gate check)
+
+### E-11: integrationTests.yaml disabled on GitHub with no run after 2026-10-16, and the suite gates (NIT-02)
+
+Backs: plan 31-03 Task 2; ROADMAP criterion 3 (the Actions API reports the workflow disabled with no run since 2026-10-16). Phase 32 repeats these reads for its criterion 4.
+
+```sh
+curl -sS https://api.github.com/rate_limit
+curl -sS https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/integrationTests.yaml
+curl -sS 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/integrationTests.yaml/runs?per_page=100'
+curl -sS 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/integrationTests.yaml/runs?created=%3E2026-10-16T10%3A00%3A00Z&per_page=100'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun
+git worktree add --detach /tmp/gsd31/wt-fmt HEAD   # then, inside it: ./gradlew -q spotlessApply; cmp the guard with the main tree's; git worktree remove --force
+git diff --quiet v1.7.0_gg4 HEAD -- src/main; echo $?
+```
+
+```text
+rate limit before the reads (unauthenticated, core): limit 60, remaining 60; after the three reads: remaining 57
+bodies saved under /tmp/gsd31/exec/api/: rate_limit.json, workflow.json, runs.json, runs-after.json
+
+workflow.json:
+  id          384641581
+  path        .github/workflows/integrationTests.yaml
+  state       disabled_manually
+  updated_at  2026-10-16T09:38:23.000Z
+
+runs.json: total_count 2, workflow_runs length 2
+  id 38881153720  event schedule  created_at 2026-10-16T09:32:28Z  conclusion failure
+  id 38714528739  event schedule  created_at 2026-10-15T09:39:18Z  conclusion failure
+
+runs-after.json (created > 2026-10-16T10:00:00Z): total_count 0, workflow_runs []
+
+full testUnit (testunit-31-03.log): exit status 0
+Test result: SUCCESS
+Tests summary: 1308 tests, 1306 succeeded, 0 failed, 2 skipped
+byte guard XML (TEST-...UpstreamIntegrationWorkflowBytesGuardUnitTest.xml): tests=9 failures=0 errors=0 skipped=0
+no core.*, javacore.*, Snap.* or jitdump.* file; no OpenJ9 crash (default Gradle JVM, no JAVA_HOME)
+
+Spotless: spotlessApply in a detached worktree at HEAD (fmt-31-03.log) exit status 0; cmp of the worktree's guard class with the main tree's: identical (cmp exit 0).
+spotlessApply rewrote 48 other tracked files in that worktree (the inherited violations; gradlew.bat included, because the worktree has its own checkout of it); none is the guard class and none is changed in the main tree.
+
+git diff --quiet v1.7.0_gg4 HEAD -- src/main: exit status 0
+git hash-object .github/workflows/integrationTests.yaml: 3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+```
+
+The disabled state and the absence of a run after the cut-off are read from GitHub, not from the repository: the byte guard (E-10) pins the file's content offline, and this entry is the online half of NIT-02. 31-05 and Phase 32 re-read it.
+
+Matches text: n/a (gate check)
