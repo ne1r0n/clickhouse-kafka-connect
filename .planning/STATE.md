@@ -5,11 +5,11 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 32
 current_phase_name: Release & Publication
 status: planning
-stopped_at: Phase 31 complete, ready to plan Phase 32
-last_updated: "2026-10-26T19:25:30.020Z"
+stopped_at: Phase 32 context gathered
+last_updated: "2026-10-26T19:57:08.235Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 31 complete, transitioned to Phase 32
-state_head: d4a3f09fd8e95d2bdcb2e0568ff9b832ebb3e6aa
+state_head: 060d6b900ecc91e375e674d2dcd530d840d76d29
 progress:
   total_phases: 3
   completed_phases: 2
@@ -301,9 +301,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T17:35:57.198Z
-Stopped at: Phase 31 complete, ready to plan Phase 32
-Resume file: None
+Last session: 2026-10-26T19:57:08.089Z
+Stopped at: Phase 32 context gathered
+Resume file: .planning/phases/32-release-publication/32-CONTEXT.md
 
 ## Operator Next Steps
 
