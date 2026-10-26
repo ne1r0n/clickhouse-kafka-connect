@@ -5,17 +5,17 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 32
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 32-01-PLAN.md
-last_updated: "2026-10-26T21:11:26.332Z"
+stopped_at: Completed 32-02-PLAN.md
+last_updated: "2026-10-26T21:19:41.985Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 32 execution started
-state_head: 3691678b8d7e1cd74e4187305e92b1ec1d2c793d
+state_head: c05455635405331b2a4b2deb6140a5586d3ef04a
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 10
-  percent: 63
+  completed_plans: 11
+  percent: 67
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 32 (Release & Publication) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 32 execution started
 
-Progress: [██████░░░░] 63%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -207,6 +207,7 @@ Progress: [██████░░░░] 63%
 | Phase 31 P03 | 3min | 2 tasks | 2 files |
 | Phase 31 P04 | 7 min | 3 tasks | 7 files |
 | Phase 32 P01 | 20 min | 3 tasks | 5 files |
+| Phase 32 P02 | 8 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 31]: 31-04: nightly timeouts are step 75 / job 85 minutes from E-18 (unamended by E-06b); the job is gated on workflow_dispatch or vars.NIGHTLY_ENABLED == 'true' — Whole-task measured wall 36 min x 2 rounded up; a manual dispatch always starts and a scheduled run starts only after the operator sets the variable (D-01, D-05)
 - [Phase 31]: 31-04: nightly guard fixtures are edits of the real workflow's non-comment lines with the timeouts pinned at 80/70; failed-test annotation names are cut at 300 characters, the step summary keeps full names — The guard cannot drift from the file it protects; one escaped, capped annotation line cannot inject a workflow command (D-10, Pitfall 11)
 - [Phase 32]: Archive allow-list for gg5 holds four exact-path rows (Version, ClickHouseHelperClient, SinkTaskStatistics, MANIFEST.MF) because javac inlines Version.ARTIFACT_VERSION; totals only-a 0 only-b 0 changed 4 (32-AMENDMENT-01)
+- [Phase 32]: gg5 rollout note: four-row archive wording (32-AMENDMENT-01); nightly off-switch stated as delete or false only; skipped-job claim backed by GitHub docs quote in E-10
 
 ### Pending Todos
 
@@ -303,8 +305,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T21:11:26.194Z
-Stopped at: Completed 32-01-PLAN.md
+Last session: 2026-10-26T21:19:41.841Z
+Stopped at: Completed 32-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
