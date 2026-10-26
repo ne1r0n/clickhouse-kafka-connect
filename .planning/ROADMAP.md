@@ -239,7 +239,7 @@ Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest`
   4. *[CI]* After publication, the Actions API still reports `integrationTests.yaml` as disabled, and the nightly is in the state Phase 31 recorded. No workflow run created a release or a tag that the plan did not intend.
   5. *[CI, operator]* After the `--no-ff` merge to `custom_build`, the user dispatches the nightly from GitHub's `Run workflow` control and reports the result directly. The run finishes green, or every failing test is listed by name in the skip list with its cause from Phase 31's measurement; the list names tests, not patterns, and deletes or weakens no existing test. `NIGHTLY_ENABLED` is set only after that run is recorded, and no scheduled run with a conclusion other than `skipped` precedes it. A fix the run needs is a Phase 31 gap, because this phase edits no build, `gradle/` or `.github/` file (NIT-03).
 
-**Plans**: 4/7 plans executed
+**Plans**: 5/7 plans executed
 
 Plans:
 **Wave 1**
@@ -255,7 +255,7 @@ Plans:
 - [x] 32-04-PLAN.md — Wave 4 (orchestrator inline): fresh-context `gsd-code-reviewer` rounds on the note, CHANGELOG and FORK-DELTA, at most three, every finding dispositioned, documents frozen (CIG-02, D-04)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 32-05-PLAN.md — Wave 5 (orchestrator inline): the gate on the release tip: freeze and re-fetch, Docker-stopped `testUnit`, two `--rerun` suite runs on `latest` x V2, the anchors gate, push readiness, `SELECT version()` (CIG-03, D-07)
+- [x] 32-05-PLAN.md — Wave 5 (orchestrator inline): the gate on the release tip: freeze and re-fetch, Docker-stopped `testUnit`, two `--rerun` suite runs on `latest` x V2, the anchors gate, push readiness, `SELECT version()` (CIG-03, D-07)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 32-06-PLAN.md — Wave 6 (orchestrator inline): publication dry run, one direct approval, then scratch push and its green run, `--no-ff` merge, `custom_build` push and its green run, tags by name, scratch deletion (CIG-03, D-01, D-02, D-07)
@@ -360,7 +360,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 |-------|-----------|----------------|--------|-----------|
 | 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 3/3 | Complete    | 2026-10-26 |
 | 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 6/6 | Complete    | 2026-10-26 |
-| 32. Release & Publication | v1.7.0_gg5-ci | 4/7 | In Progress | - |
+| 32. Release & Publication | v1.7.0_gg5-ci | 5/7 | In Progress | - |
 
 ---
 *Roadmap reorganized at the `v1.7.0_gg4-hardening` close: 2026-10-24. Roadmap for milestone `v1.7.0_gg5-ci` created: 2026-10-24.*
