@@ -860,7 +860,9 @@ integrationTests_schedule_runs_after_marker: 0
 nightly_workflow: active
 nightly_runs_before_dispatch: 0 (no run of any event yet; the first scheduled tick is at 03:17 UTC and is gated by NIGHTLY_ENABLED)
 releases: 0
-release_runs_after_publication: 0 (release.yaml has 1 run and pre-release.yaml has 1, the two Phase 30 dry runs, both created before published_at)
+release_runs_after_publication: 0
 tags_unchanged_since_E-73: yes
+
+release.yaml has 1 run and pre-release.yaml has 1, the two Phase 30 dry runs, both created before published_at.
 
 Matches text: n/a (gate check)
