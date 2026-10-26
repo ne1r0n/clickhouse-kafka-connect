@@ -356,3 +356,19 @@ open_prs: #4 dependabot/gradle/clickHouseDriver-0.10.0, #10 dependabot/gradle/co
 nightly_toggle_grep: 16:    - cron: '17 3 * * *' / 17:  workflow_dispatch: / 25:    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'
 
 Matches text: pending (32-02, 32-03)
+
+### E-10: claims 1 and 4 of the gg5 note re-run on the tip (D-03)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg5.md` section 1 (`src/main` is empty against `v1.7.0_gg4`) and section 4 (how the nightly is turned on and off), written in plan 32-02. Measured on the tip `b7592d1d72546c29bee09e0ecca1ff0eb8734075` (HEAD at the start of plan 32-02), before the tag `v1.7.0_gg5` exists, so the note's command is shown with `HEAD` for `v1.7.0_gg5`.
+
+```sh
+git diff --quiet v1.7.0_gg4 HEAD -- src/main; echo $?
+git diff --stat v1.7.0_gg4 HEAD -- src/main
+```
+
+```text
+0
+(no stat output: src/main is byte-identical)
+```
+
+Matches text: yes
