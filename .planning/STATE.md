@@ -5,11 +5,11 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 31
 current_phase_name: Fork-Owned Nightly Integration Tests
 status: planning
-stopped_at: Phase 30 complete, ready to plan Phase 31
-last_updated: "2026-10-26T09:55:51.634Z"
+stopped_at: Phase 31 context gathered
+last_updated: "2026-10-26T10:41:11.130Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 30 complete, transitioned to Phase 31
-state_head: 45273839bc10968b1ae224dcfd41d2f707d1ee81
+state_head: ea26df5eee33e27b428ab3ff69b3f4924ca76b9e
 progress:
   total_phases: 3
   completed_phases: 1
@@ -289,9 +289,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-24T14:20:30.160Z
-Stopped at: Phase 30 complete, ready to plan Phase 31
-Resume file: None
+Last session: 2026-10-26T10:41:11.098Z
+Stopped at: Phase 31 context gathered
+Resume file: .planning/phases/31-fork-owned-nightly-integration-tests/31-CONTEXT.md
 
 ## Operator Next Steps
 
