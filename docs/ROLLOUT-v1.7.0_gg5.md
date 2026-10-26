@@ -94,7 +94,7 @@ What to do: nothing for the connector; enable the schedule only when you want th
 
 Nothing in the data format changes, so a rollback is a code and workflow rollback. Tag `pre-v1.7.0_gg5` names commit `21c51598`, the published tip of `custom_build` before this release, which is also tag `v1.7.0_gg4`. The tag is published together with this release.
 
-1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing, with one expected exception: a fresh checkout lists ` M gradlew.bat` without any change of yours, because the committed `gradlew.bat` has Windows line endings and `.gitattributes` asks git to normalise `*.bat` files. Commit whatever else it lists, set it aside with `git stash -u`, or work in a fresh clone: the next command discards uncommitted changes to tracked files without asking.
+1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing, with one expected exception: a fresh checkout lists ` M gradlew.bat` without any change of yours, because the committed `gradlew.bat` has Windows line endings and `.gitattributes` asks git to normalise `*.bat` files. Commit whatever else it lists, set it aside with `git stash -u`, or work in a fresh clone: the next command discards uncommitted and staged changes to tracked files without asking, and it overwrites untracked files at paths that the tag contains.
 2. Restore the tree of the tag in one commit. This commit is `<rollback-commit>`:
 
 ```sh
