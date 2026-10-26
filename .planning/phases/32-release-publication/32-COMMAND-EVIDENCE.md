@@ -548,3 +548,80 @@ grep -rho 'Assumptions.assumeTrue' src/test/java | wc -l
 The after-gg5 rows are the first two lines (wider scope 287 / 31774 / 731, `src/main` 37 / 2877 / 241); the `src/main` row equals the after-gg4 row because `src/main` did not change. The planning-time values were 287 / 31774 / 731 and 37 / 2877 / 241 and agree. The per-directory lines sum to the third line (6 + 5 + 1 = 12 files, 616 + 1486 + 23 = 2125 insertions, 92 + 25 + 1 = 118 deletions). The skip recount gives 7 `@Disabled` sites and 1 `Assumptions.assumeTrue` site, so `The current suite skips 18 tests.` stays (7 methods plus the 11 parameterized cases behind the one assumption).
 
 Matches text: yes
+
+### E-30: the gg5 rollback re-rehearsed after review round 1 changed steps 1, 3 and 4 (WR-04, IN-02, IN-05)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg5.md` section 5 after the round 1 fixes: step 1 again warns that the reset overwrites untracked files at paths the tag contains (IN-02), step 3 names the kept archive or the build at tag `v1.7.0_gg4` (WR-04), and a new step 4 pushes `custom_build` (IN-05). The rehearsal is verify command 1 of plan 32-02 Task 3, run verbatim on the committed tip `2cf2b569c272995182b0dcc336ab0a06f2f68f4a` (a dry-run `--no-ff` merge of the tip onto `21c51598` in the throwaway worktree `/tmp/gsd32/dry`, then `/tmp/gsd32/rollback-demo.sh`, both worktrees removed afterwards). Nothing was pushed; step 4 (a push) and step 3 (a build at the tag) are not executed by the script, step 3's build is the clean build of E-31 on the tag's successor tree and E-03 on the tag itself.
+
+```sh
+bash <the verify command 1 of 32-02 Task 3, verbatim>
+```
+
+```text
+ok-line True missing []
+D=5997e2bc62caac7d8eb0f83b51064d0760fcb3bd H=2cf2b569c272995182b0dcc336ab0a06f2f68f4a
+ROLLBACK-REHEARSED-OK
+target=5997e2bc62caac7d8eb0f83b51064d0760fcb3bd stale-start=21c51598
+dirty: status --porcelain lines=2
+fetch --tags exit=0
+local tag kept after fetch: 21c51598
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=1
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+rollout doc gone from branch
+rollback headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+nightly workflow after rollback: absent
+VERSION after rollback: v1.7.0_gg4
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+Matches text: yes
+
+### E-31: section 2's build command as the note now shows it (WR-03)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg5.md` section 2. The note now shows the `grep` that produced the excerpt instead of a bare build command. Re-run on the committed tip `2cf2b569`; `--console=plain` is the flag E-03 used and the `grep` is the one of E-03's `build-tip.log` extraction in extended-regular-expression form.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME ./gradlew --console=plain clean createConfluentArchive | grep -E '^> Task :verifyConfluentArchive|^verifyConfluentArchive:|^BUILD'
+```
+
+```text
+> Task :verifyConfluentArchive
+verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class
+BUILD SUCCESSFUL in 10s
+```
+
+The first two lines equal the note's; the build time differs from E-03's `8s` (this run `10s`), which is why the note says the build time varies. The note keeps E-03's `8s` line as the measured excerpt.
+
+Matches text: yes
+
+### E-32: dates and counts that round 1 corrected in FORK-DELTA (WR-01, WR-02, IN-03, IN-04)
+
+Backs: `docs/FORK-DELTA.md` (Dependabot row, raw-numbers paragraph, skip inventory) after the round 1 fixes, and the corrected source row of E-21.
+
+```sh
+git show v1.7.0_gg4:.github/dependabot.yml | grep -n -A5 exclude-paths
+git log -1 --format='%h %ad %s' --date=short 496de32a
+git log -1 --format='%h %ad' --date=short v1.7.0_gg4
+git merge-base --is-ancestor 496de32a v1.7.0_gg4; echo $?
+git diff --quiet 39465506 HEAD -- src build.gradle.kts gradle .github; echo $?
+```
+
+```text
+20:    exclude-paths:
+21-      - ".github/workflows/increment-version.yml"
+22-      - ".github/workflows/integrationTests.yaml"
+23-      - ".github/workflows/pre-release.yaml"
+24-      - ".github/workflows/release.yaml"
+496de32a 2026-10-24 ci(30-01): pin the release-path workflows, build with the wrapper, publish with gh release create, and guard every fork workflow (CIG-01, REL-01..REL-05)
+21c51598 2026-10-23
+1
+0
+```
+
+Reading: the `v1.7.0_gg4` tag lists four `exclude-paths` entries, and the reduction to `integrationTests.yaml` is in `496de32a`, which is not an ancestor of the tag and is dated after it, so it is a gg5 change (WR-01). The open pull requests of E-05 (`#4`, `#10`) are both `dependabot/gradle/...` branches, so only the `gradle` ecosystem is shown to run and the `github-actions` entry is untested in a run (WR-02). No file in the scopes of the raw numbers changed between `39465506`, where the gg5 figures were measured (E-22), and the tip, so "at the commit before the one that carries this document; no file in the measured scopes changed in between" holds (IN-03). The skip counts come from `31-COMMAND-EVIDENCE.md` E-18: the console summary `55 tests, 54 succeeded, 0 failed, 1 skipped` counts only `ClickHouseCloudTest`, and the XML lists `ExactlyOnceTest` with 8 skipped and `ClickHouseCloudTest` with 1, 9 in all (IN-04). The scheduled-run condition is `vars.NIGHTLY_ENABLED == 'true'` (E-10).
+
+Matches text: yes
