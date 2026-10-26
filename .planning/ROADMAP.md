@@ -178,11 +178,11 @@ Phase gate: cache-busted `testUnit`, the anchors invariant, and an empty `src/ma
   3. *[Docker-free, CI]* A Docker-free guard fails when `integrationTests.yaml` differs by a single byte from upstream's copy, which is identical at `v1.7.0` and `a6f1df83`, and it was seen red on a one-byte edit. The Actions API reports that workflow as disabled, with no scheduled run since 2026-10-16 (NIT-02).
   4. *[CI, operator]* A manual dispatch of the nightly finishes green, or every failing test is listed by name in a skip list with its cause from criterion 1. The list names tests, not patterns, and it deletes or weakens no existing test. The schedule starts only after that run is recorded, and no scheduled run precedes it (NIT-03).
 
-**Plans**: 5 plans
+**Plans**: 0/5 plans complete (31-01 tasks 1-2 done, halted at the Task 3 blocking-human decision)
 
 Plans:
 **Wave 1**
-- [ ] 31-01-PLAN.md — Wave 1: tracer slice (latest pulled, `SELECT version()`, the cloud class skips), the cold local `integrationTest` run on `latest` × V2 and the criterion-1 record with the derived timeouts, then one blocking-human disposition of every failure (D-04, D-05, D-06, D-09)
+- [ ] 31-01-PLAN.md — Wave 1 (tasks 1-2 done, Task 3 decision pending): tracer slice (latest pulled, `SELECT version()`, the cloud class skips), the cold local `integrationTest` run on `latest` × V2 and the criterion-1 record with the derived timeouts, then one blocking-human disposition of every failure (D-04, D-05, D-06, D-09)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 31-02-PLAN.md — Wave 2: the name-only skip list in the build from the user's disposition, its Docker-free guard and the green live re-run on `latest` × V2; or "not needed" recorded (D-07, D-08)
@@ -333,7 +333,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 3/3 | Complete    | 2026-10-26 |
-| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 0/TBD | Not started | - |
+| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 0/5 | In Progress | - |
 | 32. Release & Publication | v1.7.0_gg5-ci | 0/TBD | Not started | - |
 
 ---

@@ -5,16 +5,16 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 31
 current_phase_name: Fork-Owned Nightly Integration Tests
 status: executing
-stopped_at: Phase 31 context gathered
-last_updated: "2026-10-26T11:34:24.304Z"
+stopped_at: "Completed tasks 1-2 of 31-01-PLAN.md; Task 3 checkpoint:decision (blocking-human) pending the user"
+last_updated: "2026-10-26T12:01:47.826Z"
 last_activity: 2026-10-26
-last_activity_desc: Phase 30 complete, transitioned to Phase 31
-state_head: e3ab7a8c7e32948f51ef067ced6ccce2f5af7d8b
+last_activity_desc: Phase 31 execution started
+state_head: 8caf99c2db76f9b31b2c100812f0ab7e569f9535
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 8
-  completed_plans: 3
+  completed_plans: 4
   percent: 33
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg5-ci)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 30 — Release Workflows & Pin Guard
+**Current focus:** Phase 31 — Fork-Owned Nightly Integration Tests
 
 ## Current Position
 
-Phase: 31 (Fork-Owned Nightly Integration Tests) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-26 — Phase 30 complete, transitioned to Phase 31
+Phase: 31 (Fork-Owned Nightly Integration Tests) — EXECUTING
+Plan: 1 of 5 (31-01 halted at its Task 3 blocking-human decision; 31-02 to 31-05 wait for E-06)
+Status: Waiting for the user's decision
+Last activity: 2026-10-26 — Phase 31 execution started
 
 Progress: [███░░░░░░░] 33%
 
@@ -201,6 +201,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 29 P05 | 8 min | 3 tasks | 9 files |
 | Phase 30 P01 | 45 min | 3 tasks | 8 files |
 | Phase 30 P02 | 2 min | 2 tasks | 2 files |
+| Phase 31 P01 | 26 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -249,7 +250,7 @@ None.
 
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
 - [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
-- [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation none` immediately before each dispatch.
+- [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation ` immediately before each dispatch.
 - [Publish] 2026-10-20: `v1.7.0_gg3` is on `origin/custom_build` at `3376a18f`, published by Phase 24's `--no-ff` merge of `sync/v1.7.0` (X = `8b1c318d`, rehearsed at X0 = `3ab55e1d`) onto `6473e24f`, with `tests.yaml` run 39472696952 green. Tags `v1.7.0_gg3` (`3376a18f`) and `pre-v1.7.0_gg3` (`6473e24f`) are on origin, and the scratch branch `sync/v1.7.0` was deleted from origin. The Dependabot freeze is over. Later `.planning/` commits on local `sync/v1.7.0` are a local tail and are not pushed.
 - [Publish] 2026-10-20: the corrected rollout note is on `origin/custom_build` at `6a2a87a5`, a `--no-ff` merge of `sync/v1.7.0` (S = `a403cc1d`) onto `3376a18f`, made after the user's direct `publish`, with `tests.yaml` run 39496482074 green (quick 261020-vcr). It fixes the 14 findings of 24-REVIEW rounds 3 to 5 in `docs/ROLLOUT-v1.7.0_gg3.md`, `CHANGELOG.md` and `docs/FORK-DELTA.md`. Tags `v1.7.0_gg3` (`3376a18f`) and `pre-v1.7.0_gg3` (`6473e24f`) did not move, and no tag was pushed.
 - [Publish] 2026-10-23: `v1.7.0_gg4` is on `origin/custom_build` at `21c51598`, published by Phase 29's `--no-ff` merge of `sync/v1.7.0` (X = `3d847009`, rehearsed at X0 = `ef19fbc8`) onto `69cd680b`, made after the user's direct `publish`, with `tests.yaml` run 40022281005 green (X0's rehearsal run: 40017036598). Tags `v1.7.0_gg4` (`21c51598`) and `pre-v1.7.0_gg4` (`69cd680b`) are on origin; `sync/v1.7.0` was deleted from origin. The Dependabot freeze is over; later `.planning` commits stay a local tail on `sync/v1.7.0`, unpushed.
@@ -265,6 +266,7 @@ None.
 - [Roadmap] 2026-10-24: GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. Phase 30's dry runs can use the existing `release.yaml` and `pre-release.yaml` on the scratch branch, but the new Phase 31 nightly reaches `custom_build` only at publication. Phase 31 research confirms the behaviour and settles how the NIT-03 dispatch runs before any schedule can fire. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
 - [Roadmap] 2026-10-24: `TestsWorkflowPinGuardUnitTest` pins `dependabot.yml`'s `exclude-paths` list of the four upstream workflows (`UPSTREAM_WORKFLOWS`). Letting Dependabot keep the three newly pinned release-path files current changes that assertion, which needs the user's sign-off (Phase 30).
 - [CI] 2026-10-26: Phase 30 dry runs: sync/v1.7.0 was pushed at b847fbdb (tests.yaml run 40103794037 green); pre-release.yaml run 40296330498 and release.yaml run 40296481765 finished green as dry runs (draft attached, checked and deleted, Publish release skipped); origin's tags and published releases are unchanged and sync/v1.7.0 was deleted from origin. Later .planning commits are a local tail, unpushed.
+- Phase 31-01: all 54 connector integration tests fail (Java 17 connector jar vs Java 11 Connect worker in cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0); Task 3 blocking-human decision (E-06) pending before 31-02
 
 ### Quick Tasks Completed
 
@@ -289,9 +291,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T10:41:11.098Z
-Stopped at: Phase 31 context gathered
-Resume file: .planning/phases/31-fork-owned-nightly-integration-tests/31-CONTEXT.md
+Last session: 2026-10-26T12:01:12.836Z
+Stopped at: Completed tasks 1-2 of 31-01-PLAN.md; Task 3 checkpoint:decision (blocking-human) pending the user
+Resume file: .planning/phases/31-fork-owned-nightly-integration-tests/31-01-SUMMARY.md
 
 ## Operator Next Steps
 
