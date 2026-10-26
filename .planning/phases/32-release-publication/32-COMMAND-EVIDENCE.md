@@ -450,3 +450,44 @@ Reading: the merge has the two expected parents and the tip's tree, as the real 
 Verdicts changed in this plan: E-02 from `pending (32-02)` to `yes`; E-03, E-04 and E-05 from `pending (32-02, 32-03)` to `pending (32-03)`. Statement left out because it was not measured: how GitHub compares a value of `NIGHTLY_ENABLED` other than `true` (case, type).
 
 Matches text: yes
+
+### E-21: FORK-DELTA CI workflows group audit (D-06)
+
+Backs: `docs/FORK-DELTA.md`, the `### CI workflows` group, the harness row, the skip-inventory and syncer paragraphs (plan 32-03 Task 2). The audit is the task's verify command, run on the committed tip after the edit; it checks the headings against `P32_BASE`, the workflows, scripts and guards named in the group, the Pinned-by cells against the IDs `CI-05`, `REL-01` to `REL-05`, `NIT-01`, `NIT-02` and `CIG-01`, every backs-ID of a `.github/` row of `.planning/scripts/fork-anchors.txt`, the absence of the old DEPS-F4 opening, of the `pinned only` wording and of a clause calling `main` the default branch, and that every full path the group and the harness row name resolves in git (the deleted `test-head.yaml` excepted).
+
+```sh
+python3 -I <the Task 2 verify program> && echo FORK-DELTA-CI-GROUP-OK
+git ls-files --error-unmatch -- <each named path>
+```
+
+```text
+h2-same True h3 True ci-missing [] id-gaps [] anchor-ids-uncovered [] node24 True stale [] toc True harness-row 1 skip-inventory True syncer True paths 12 dead-paths []
+FORK-DELTA-CI-GROUP-OK
+```
+
+The 12 named paths: `.github/dependabot.yml`, `.github/scripts/failed_tests_summary.py`, `.github/workflows/increment-version.yml`, `.github/workflows/integrationTests.yaml`, `.github/workflows/nightly-integration-tests.yaml`, `.github/workflows/pre-release.yaml`, `.github/workflows/release.yaml`, `.github/workflows/test-head.yaml` (deleted, the only path not tracked), `.github/workflows/tests.yaml`, `ConfluentPlatform.java` under `src/integrationTest`, and `WorkflowActionPinGuardUnitTest.java` and `UpstreamIntegrationWorkflowBytesGuardUnitTest.java` under `src/test/java/com/clickhouse/kafka/connect/ci/`.
+
+The source each new or changed statement was read from:
+
+| Row or paragraph | Statement | Read from |
+|---|---|---|
+| `release.yaml` and `pre-release.yaml` | every action pinned by SHA with a version comment; `gradle/actions/setup-gradle`; `./gradlew createConfluentArchive` and the check for the `verifyConfluentArchive` task line; `gh release create` with the archive; `--prerelease` in `pre-release.yaml` only; publish only from `custom_build` with a green `tests.yaml` run and an absent tag; other dispatches are dry runs on a throwaway draft that is checked and deleted | the two files themselves; their diff shows only the header, the `name` and `run-name`, and the prerelease flag and its draft expectation |
+| same | both dry runs ended green | `30-COMMAND-EVIDENCE.md` E-09 and this phase's E-04 |
+| same | upstream pinned by tag, built the pre-release archive with Gradle 7.4.2, used the archived release actions, had no archive check | the 0-count anchor rows for `actions/create-release`, `actions/upload-release-asset`, `7.4.2` and `gradle-build-action` in `.planning/scripts/fork-anchors.txt`, and the file headers |
+| `increment-version.yml` | pinned by SHA, Node 24 instead of Node 16, `semver@7.8.5` with `--no-save --ignore-scripts` instead of two plain installs, a 10-minute timeout, scopes on the job, `GH_TOKEN` on the push step only | the file, and `30-REVIEW.md` IN-01 |
+| same | `semver.inc` returns `null` for a `vX.Y.Z_ggN` value, so a dispatch writes `vnull`; not fixed, `VERSION` bumped by hand | `30-COMMAND-EVIDENCE.md` E-06 and the file header |
+| `nightly-integration-tests.yaml` and `failed_tests_summary.py` | `./gradlew integrationTest` without `--tests`, `CLICKHOUSE_VERSION: latest`, `CLIENT_VERSION: V2`, `ubuntu-24.04`, `permissions: contents: read`, `persist-credentials: false`, a 75-minute step in an 85-minute job, the job condition, `if: always()` on the summary step and both uploads | the workflow file |
+| same | no cloud job and no secret; timeouts from the measured local run; the summary renders JUnit XML into the step summary and one annotation; logs unreadable without admin rights | the workflow header, the script docstring, `31-COMMAND-EVIDENCE.md` E-18 (29.5 minutes) |
+| same | upstream's cloud job needs repository secrets the fork does not hold | `.github/workflows/integrationTests.yaml` lines 10 to 37 (`secrets.CLICKHOUSE_PASSWORD`, `CLICKHOUSE_VERSION: cloud`) |
+| pin guard | reads every workflow file except `integrationTests.yaml`; fails on an unpinned action and on `./` or `docker://` `uses:`; pins the Dependabot `exclude-paths`; the composite action is not read | the class comment of `WorkflowActionPinGuardUnitTest` and the earlier Dependabot row, which says the test fails when the `exclude-paths` list holds anything else |
+| byte guard | raw-byte comparison, SHA-256 and length, with the copy at `v1.7.0` and `a6f1df83`; red on a one-byte edit, green after restore; workflow disabled, no scheduled run after 2026-10-16 | the class (`sha256Hex`, `EXPECTED_LENGTH`), `31-COMMAND-EVIDENCE.md` E-10, this phase's E-05 |
+| Dependabot (moved) | default branch `custom_build`; version updates on; list holds only `integrationTests.yaml` since `v1.7.0_gg4` | this phase's E-05 (`default_branch`, open pull requests) and `git diff v1.7.0_gg4 HEAD -- .github/dependabot.yml` |
+| `test-head.yaml` (moved) | `custom_build` is the default branch since 2026-10-14 and the file is deleted there | this phase's E-05, `30-COMMAND-EVIDENCE.md` E-07 carry 1, `STATE.md` |
+| Test harness row | `confluentinc/cp-server-connect:7.9.6` built with `ImageFromDockerfile`, datagen plugin directory taken from `cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0`; Java 11 worker (class files up to 55) versus the Java 17 jar (class file 61) | `ConfluentPlatform.java` lines 34 to 62 and 101 to 103, `31-COMMAND-EVIDENCE.md` E-17, E-18 |
+| same | 54 tests failed on that one cause; 55 tests, 54 passed, 1 skipped with the Java 17 worker | `31-COMMAND-EVIDENCE.md` E-18 |
+| Named skip inventory | the nightly runs the whole task; `ExactlyOnceTest` and `ClickHouseCloudTest` abort through assumptions | the workflow, `31-COMMAND-EVIDENCE.md` E-18 (test-class table), the `Assumptions` lines in both classes |
+| For the next syncer | rollback tag on `21c51598`; no `src/main` change; the archive differs only in the release identity (four exact paths, per `32-AMENDMENT-01.md`); the allow-list `confluent-archive-allowlist-32.txt` | this phase's E-03, E-05, E-10 |
+
+Left out for lack of a source: why the nightly's timeouts are exactly 75 and 85 minutes beyond the workflow header's statement that they come from Phase 31's measured run; any statement about an observed scheduled nightly run (none exists yet).
+
+Matches text: yes
