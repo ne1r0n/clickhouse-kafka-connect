@@ -5,16 +5,16 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 31
 current_phase_name: Fork-Owned Nightly Integration Tests
 status: executing
-stopped_at: Completed 31-02-PLAN.md
-last_updated: "2026-10-26T17:21:31.430Z"
+stopped_at: Completed 31-03-PLAN.md
+last_updated: "2026-10-26T17:26:01.766Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 31 execution resumed (wave continue)
-state_head: dce2e2c825f9cbcfff79054c4ef4c7a32eeeb0b8
+state_head: a312deab52ba3ab1eecc36b8f542ae60b3ad91bc
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 33
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 31 (Fork-Owned Nightly Integration Tests) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 31 execution resumed (wave continue)
 
@@ -203,6 +203,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 30 P02 | 2 min | 2 tasks | 2 files |
 | Phase 31 P01 | 26 min | 2 tasks | 1 files |
 | Phase 31 P02 | 6 min | 3 tasks | 1 files |
+| Phase 31 P03 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -243,6 +244,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 30]: Pin guard fails closed on local ./ and docker:// uses values; Dependabot exclude-paths lists only integrationTests.yaml (D-10)
 - [Phase 30]: 30-02: the increment-version.yml vnull defect (semver.inc returns null for vX.Y.Z_ggN, measured E-06) stays unfixed and is recorded in FORK-DELTA; the stale default-branch and inert clauses of the Dependabot row are carried to Phase 32 (CIG-02)
 - [Phase 31]: 31-02: no integration-test skip list is built; E-06b (accept) holds skip-entries: 0, so E-07 records the D-07 not-needed branch and the phase-gate run is 31-06's E-18
+- [Phase 31]: 31-03: upstream integrationTests.yaml pinned by SHA-256 07dff3d0...5109 and length 4812 (blob 3e9b9be0) in a Docker-free testUnit guard, seen red on a one-byte edit — Upstream's file must neither drift nor be re-armed; the failure message carries the sync update procedure
+- [Phase 31]: 31-03: Actions API reports workflow 384641581 disabled_manually, 2 runs, none after 2026-10-16T10:00:00Z (E-11) — Online half of NIT-02; 31-05 and Phase 32 re-read the three URLs
 
 ### Pending Todos
 
@@ -293,8 +296,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T17:21:31.402Z
-Stopped at: Completed 31-02-PLAN.md
+Last session: 2026-10-26T17:25:57.181Z
+Stopped at: Completed 31-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
