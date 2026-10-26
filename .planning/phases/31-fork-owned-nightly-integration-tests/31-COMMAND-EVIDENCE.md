@@ -754,3 +754,154 @@ git diff --stat e3ab7a8c HEAD -- .github/dependabot.yml .github/workflows: one f
 ```
 
 Matches text: n/a (gate check)
+
+### E-15: the Phase 31 gate, both workflows on GitHub, and the proposed NIT-03 move (D-02)
+
+Backs: the ROADMAP Phase 31 phase gate (cache-busted `testUnit`, the anchors invariant, an empty `src/main` diff, one local `integrationTest` run on `latest` x V2); criterion 3 (the Actions API still reports `integrationTests.yaml` disabled); D-01, D-02, D-03 (the nightly is not on `custom_build`, so it has no run, scheduled or dispatched).
+
+```sh
+git rev-parse HEAD                                                                 # the gated HEAD
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD                    # background
+bash .planning/scripts/verify-merge-invariants-selftest.sh                         # background, after the gate
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun
+git diff --quiet v1.7.0_gg4 HEAD -- src/main; echo $?
+git hash-object .github/workflows/integrationTests.yaml
+# anchors mirror: grep -cF -e <pattern> <path> against every row of .planning/scripts/fork-anchors.txt
+git diff --quiet c4b409db87d36d7599e472d38f3a4bc5a118c646 HEAD -- src/main src/integrationTest src/testFixtures build.gradle.kts settings.gradle.kts gradle; echo $?
+curl -sS https://api.github.com/rate_limit
+curl -sS https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/integrationTests.yaml
+curl -sS 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/integrationTests.yaml/runs?created=%3E2026-10-16T10%3A00%3A00Z&per_page=100'
+curl -s -o /dev/null -w '%{http_code}' 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/contents/.github/workflows/nightly-integration-tests.yaml?ref=custom_build'
+curl -s -o /dev/null -w '%{http_code}' https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/nightly-integration-tests.yaml
+git ls-remote origin custom_build
+```
+
+#### Phase gate
+
+```text
+gated HEAD: f0f213bf5a11dcc43195e3993dda8bd896d185eb (branch sync/v1.7.0; nothing was committed between the start of the gate and its end)
+gate start (UTC) 2026-10-26T17:36:45Z; selftest end 2026-10-26T18:11:25Z
+
+cache-busted testUnit (testunit-31-05.log, started at the same time as the gate): exit status 0
+Test result: SUCCESS
+Tests summary: 1374 tests, 1372 succeeded, 0 failed, 2 skipped
+ci guards, XML tests/failures/errors/skipped:
+  NightlyWorkflowGuardUnitTest                   58/0/0/0
+  FailedTestsSummaryScriptUnitTest                8/0/0/0
+  WorkflowActionPinGuardUnitTest                 21/0/0/0
+  TestsWorkflowPinGuardUnitTest                  39/0/0/0
+  UpstreamIntegrationWorkflowBytesGuardUnitTest   9/0/0/0
+no gradle/integration-test-skip-list.tsv (no skip list, E-07), so there is no IntegrationSkipListGuardUnitTest
+no core.*, javacore.*, Snap.* or jitdump.* file; no OpenJ9 crash (default Gradle JVM, no JAVA_HOME)
+
+anchors mirror: rows=131 bad=0 (126 after plan 31-06, plan 31-02 added none, plan 31-04 added five)
+
+cumulative gate, last line (gate-31.log, exit status 0):
+invariants: provenance_paths=21 anchor_commits=893 anchor_rows=131 marker_commits=952 anchor_exempt=19 result=PASS
+
+self-test, last line (selftest-31.log, exit status 0, 16 PASS lines):
+selftest: no failures
+
+git diff --quiet v1.7.0_gg4 HEAD -- src/main: exit status 0
+git hash-object .github/workflows/integrationTests.yaml: 3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+gate scripts and the exemptions file: unchanged since the planning base e3ab7a8c (git diff --quiet exit 0)
+
+The phase gate's live run is the green re-measurement of plan 31-06, E-18 (55 tests, 54 succeeded, 0 failed, 1 skipped; 63 testcases in the XML; ClickHouse latest 26.10.3.7; client V2; BUILD SUCCESSFUL in 29m 26s). E-03 was red (54 failed on the Java 11 worker) and plan 31-02 built no list, so there is no E-09:
+gate-run: E-18 c4b409db87d36d7599e472d38f3a4bc5a118c646
+tree check: git diff --quiet c4b409db87d36d7599e472d38f3a4bc5a118c646 HEAD -- src/main src/integrationTest src/testFixtures build.gradle.kts settings.gradle.kts gradle: exit status 0 (the commit is an ancestor of HEAD; the harness commit 781fd526 is inside it)
+```
+
+#### Workflows on GitHub
+
+```text
+rate limit (unauthenticated, core): limit 60, remaining 56 before the reads, 52 after; bodies under /tmp/gsd31/exec/api31/
+
+integrationTests.yaml (workflow.json):
+  id          384641581
+  path        .github/workflows/integrationTests.yaml
+  state       disabled_manually
+  updated_at  2026-10-16T09:38:23.000Z
+runs created after 2026-10-16T10:00:00Z (runs-after.json): total_count 0
+
+nightly-integration-tests.yaml:
+  contents API on ref custom_build (nightly-contents.code): 404
+  Actions workflow API (nightly-workflow.code): 404
+  -> the nightly is not on the default branch, so GitHub has no workflow, no scheduled run and no dispatchable file for it
+
+git ls-remote origin custom_build (origin-custom_build.txt): 21c51598b06b6f5af58430765d57b1e5f6747c5a refs/heads/custom_build
+  = tag v1.7.0_gg4 = the planning-time value; no Dependabot merge landed on origin, so Phase 32 has nothing to absorb first from this read
+```
+
+NIT-02 is intact: the workflow is still `disabled_manually` and has had no run since the cut-off. NIT-01's schedule cannot have fired: the file does not exist on origin.
+
+#### Carried to Phase 32
+
+CI-only risks for the first dispatch (E-05's checklist, with the status after E-17 and E-18):
+
+- [ ] Disk: about 13.8 GB of image layers (E-18: ten images, 13.83 GB, with `cp-server-connect:7.9.6` added) on a 14 GB runner SSD. This is the largest CI risk. Diagnosed by the capacity probe step (`df -h /`) and the Docker server line in the step summary.
+- [ ] Memory: ten containers peaked at 5.1 GiB here plus the test JVM; the runner has 16 GB. Diagnosed by the capacity probe (`free -m`) and the uploaded XML.
+- [ ] x86 against arm64: the images are multi-arch (the worker base `confluentinc/cp-server-connect:7.9.6` lists amd64 and arm64, E-17), but nothing was run on x86. Diagnosed by the failed-test summary and the uploaded XML.
+- [ ] Anonymous Docker Hub pull limits on shared runner addresses (eleven pulls per run now). Diagnosed by the Gradle step log in the uploaded report and a pull error in the XML.
+- [ ] `latest` drift: a new ClickHouse build between the measurement and the dispatch (E-18 used digest `739e099a...`, 26.10.3.7). Diagnosed by the digest in the capacity step and the server version in the XML output.
+- [ ] Step timeout: step 75 and job 85 minutes (E-18, E-06b) against a green local wall of 29.5 minutes warm; a slow cold runner may still approach it. Diagnosed by a cancelled Gradle step with the `always()` upload steps still present.
+- [x] The Java 11 worker of E-05 is resolved by E-17 and E-18 (Java 17.0.18 worker, 54 of 54 connector tests green locally). Not a CI risk any more; carried only as a FORK-DELTA row (E-06b: the harness's Java 17 Connect worker in `ConfluentPlatform.java`, harness commit 781fd52683d6adb7f49468ed6eb88374053a9c1c, CIG-02).
+
+Ordering question (research open question 2): the dispatch can follow only the `--no-ff` merge, because GitHub dispatches a workflow only from the default branch. Whether Phase 32 dispatches before or after pushing the tags is left to Phase 32's planning unless the user states it at the 31-05 checkpoint. A red dispatch would need a skip list, a build change or a `.github/` change, which Phase 32 may not make (the Phase 29 D-05 standing rule), so it returns to Phase 31 as a gap and gives the release tip a new SHA to re-gate.
+
+Open question 4: the five anchor rows landed here (plan 31-04); the FORK-DELTA prose for the nightly and the two guards (CIG-01, NIT-02) is written once, in Phase 32 (CIG-02). This is the default.
+
+#### Proposed NIT-03 move (D-02)
+
+`{date}` stands for the decision's UTC date. Each edit is one scoped `Edit`; nothing else in either file changes. The Phase 30 section, the Phase 31 Plans list, and the text from `## Sync Mechanics` to `## Progress` stay byte-identical to the planning base `e3ab7a8c7e32948f51ef067ced6ccce2f5af7d8b`.
+
+**REQUIREMENTS.md** (four edits):
+
+1. Traceability row.
+   - Current: `| NIT-03 | Phase 31 | Pending |`
+   - Replacement: `| NIT-03 | Phase 32 | Pending |`
+2. Coverage line.
+   - Current: `- Mapped to phases: 11 (Phase 30: 6, Phase 31: 3, Phase 32: 2)`
+   - Replacement: `- Mapped to phases: 11 (Phase 30: 6, Phase 31: 2, Phase 32: 3)`
+3. The note paragraph.
+   - Current: `NIT-03 is mapped to Phase 31. It may have to move to Phase 32 if GitHub cannot dispatch the new nightly before it is on `custom_build`; Phase 31 research settles this and the user decides (see ROADMAP.md, Phase 31 research flag).`
+   - Replacement: `NIT-03 moved to Phase 32 on {date} by the user's decision (D-02, Phase 31 E-16): GitHub runs workflow_dispatch only for a workflow file on the default branch, so the nightly's first manual run can happen only after Phase 32 publishes it. Phase 31 delivered the measurement, the workflow with its schedule gate, the guards and any skip list.`
+4. The closing line.
+   - Current: `*Last updated: 2026-10-24 after roadmap creation (Phases 30-32, 11/11 mapped)*`
+   - Replacement: `*Last updated: {date} after moving NIT-03 to Phase 32 (D-02)*`
+
+**ROADMAP.md** (nine edits):
+
+1. Phase 31 milestone bullet (`- [ ] **Phase 31: ...`).
+   - Current text: `and its first manual run is green or every failure is named in a skip list`
+   - Replacement: `and its first manual run follows publication in Phase 32 (NIT-03)`
+2. Phase 32 milestone bullet (`- [ ] **Phase 32: ...`), which ends `...and one green CI run on the published SHA before the tags`.
+   - Addition before its end: `, then the nightly's first manual run (NIT-03)`
+3. Phase 31 Goal.
+   - Current text: `Its first manual run is green, or every failing test is named in a skip list with its cause.`
+   - Replacement: `Its first manual run happens after publication, in Phase 32 (NIT-03, moved by D-02).`
+4. Phase 31 requirements.
+   - Current: `**Requirements**: NIT-01, NIT-02, NIT-03`
+   - Replacement: `**Requirements**: NIT-01, NIT-02`
+5. Phase 31 success criterion 4.
+   - Current: `  4. *[CI, operator]* A manual dispatch of the nightly finishes green, or every failing test is listed by name in a skip list with its cause from criterion 1. The list names tests, not patterns, and it deletes or weakens no existing test. The schedule starts only after that run is recorded, and no scheduled run precedes it (NIT-03).`
+   - Replacement: `  4. *[record]* The schedule is gated by the repository variable `NIGHTLY_ENABLED`, which stays unset, so no scheduled run executes a job before the dispatch run. The dispatch run itself moved to Phase 32 with NIT-03 on {date} (D-02), because GitHub dispatches a workflow only from the default branch. Every failure of the measured run is named in the skip list with its cause, or the run was green.`
+6. Phase 31 Note bullet.
+   - Current: `- The user dispatches the run from GitHub's `Run workflow` control and reports the result directly.`
+   - Replacement: `- The dispatch run is an operator action in Phase 32 (NIT-03): the user starts it from GitHub's `Run workflow` control and reports the result directly.`
+7. Phase 32 requirements.
+   - Current: `**Requirements**: CIG-02, CIG-03`
+   - Replacement: `**Requirements**: CIG-02, CIG-03, NIT-03`
+8. Phase 32 gains a criterion 5, after criterion 4 (which ends `...that the plan did not intend.`).
+   - Added: `  5. *[CI, operator]* After the `--no-ff` merge to `custom_build`, the user dispatches the nightly from GitHub's `Run workflow` control and reports the result directly. The run finishes green, or every failing test is listed by name in the skip list with its cause from Phase 31's measurement; the list names tests, not patterns, and deletes or weakens no existing test. `NIGHTLY_ENABLED` is set only after that run is recorded, and no scheduled run with a conclusion other than `skipped` precedes it. A fix the run needs is a Phase 31 gap, because this phase edits no build, `gradle/` or `.github/` file (NIT-03).`
+9. The Structure Notes bullet.
+   - Current: `- **NIT-03 sits in Phase 31,** but GitHub may not dispatch the new file before it is on `custom_build`. The Phase 31 research settles this, and the user decides whether NIT-03 moves.`
+   - Replacement: `- **NIT-03 moved to Phase 32 on {date} (D-02).** GitHub dispatches a workflow only from the default branch, and the nightly reaches `custom_build` only at publication. Phase 31 delivered everything before the dispatch: the measurement, the gated workflow, the guards and any skip list.`
+
+(Plan 31-05 calls these "the eight ROADMAP edits" in Task 3's acceptance criterion, but its list holds nine items; this record lists all nine and Task 3 applies each as its own scoped `Edit`. Nothing in the list was dropped or added.)
+
+**STATE.md** (one line appended to `### Blockers/Concerns`, on move):
+`- [Roadmap] {date}: NIT-03 moved to Phase 32 by the user's decision (D-02, 31-COMMAND-EVIDENCE.md E-16). Phase 31 delivered the measurement, the gated nightly, the NIT-02 byte guard and any skip list. The nightly reaches custom_build only with Phase 32's publication, and NIGHTLY_ENABLED stays unset until the dispatch run is recorded.`
+
+Research open question 1: the Phase 32 criterion says "no scheduled run with a conclusion other than `skipped` precedes it". After the merge the cron still ticks while `NIGHTLY_ENABLED` is unset, and GitHub likely lists those ticks as skipped runs (research A1; not measurable before the merge, because the workflow has no run yet).
+
+Matches text: pending (31-05)
