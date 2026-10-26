@@ -625,3 +625,35 @@ git diff --quiet 39465506 HEAD -- src build.gradle.kts gradle .github; echo $?
 Reading: the `v1.7.0_gg4` tag lists four `exclude-paths` entries, and the reduction to `integrationTests.yaml` is in `496de32a`, which is not an ancestor of the tag and is dated after it, so it is a gg5 change (WR-01). The open pull requests of E-05 (`#4`, `#10`) are both `dependabot/gradle/...` branches, so only the `gradle` ecosystem is shown to run and the `github-actions` entry is untested in a run (WR-02). No file in the scopes of the raw numbers changed between `39465506`, where the gg5 figures were measured (E-22), and the tip, so "at the commit before the one that carries this document; no file in the measured scopes changed in between" holds (IN-03). The skip counts come from `31-COMMAND-EVIDENCE.md` E-18: the console summary `55 tests, 54 succeeded, 0 failed, 1 skipped` counts only `ClickHouseCloudTest`, and the XML lists `ExactlyOnceTest` with 8 skipped and `ClickHouseCloudTest` with 1, 9 in all (IN-04). The scheduled-run condition is `vars.NIGHTLY_ENABLED == 'true'` (E-10).
 
 Matches text: yes
+
+### E-33: the gg5 rollback re-rehearsed after review round 2 changed steps 1, 2 and 4 (WR-05)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg5.md` section 5 after the WR-05 fix: step 2 starts with `git switch -c rollback-v1.7.0_gg5` so `<rollback-commit>` is made on a new branch and the local `custom_build` stays as published, step 4 publishes by `git push origin HEAD:custom_build` or by a pull request merged with a merge commit, and step 1 now says the `git read-tree` of step 2 is the command that discards changes. The rehearsal is verify command 1 of plan 32-02 Task 3, run verbatim on the committed tip `bda77446917ab9d5de64f5855d8fbca4baea3872` (a dry-run `--no-ff` merge of the tip onto `21c51598` in the throwaway worktree `/tmp/gsd32/dry`, then `/tmp/gsd32/rollback-demo.sh`, both worktrees removed afterwards). The script now runs the step 2 commands as written, including `git switch -c rollback-v1.7.0_gg5` (it refuses to start if that branch name exists and deletes it at the end), on the branch that stands in for a fast-forwarded `custom_build`; the `switch -c` line shows that command works there and leaves the stand-in at the published tip. Nothing was pushed. Steps 3 (a build at tag `v1.7.0_gg4`) and 4 (a push or a pull request) are not exercised by the script; step 3's build is the clean build of E-31 on the tag's successor tree and E-03 on the tag itself.
+
+```sh
+bash <the verify command 1 of 32-02 Task 3, verbatim>
+```
+
+```text
+ok-line True missing []
+D=bb76bc42d0a0b4fd572972af7414e5cd2c2cb8cb H=bda77446917ab9d5de64f5855d8fbca4baea3872
+ROLLBACK-REHEARSED-OK
+target=bb76bc42d0a0b4fd572972af7414e5cd2c2cb8cb stale-start=21c51598
+dirty: status --porcelain lines=2
+fetch --tags exit=0
+local tag kept after fetch: 21c51598
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=1
+switch -c exit=0, branch=rollback-v1.7.0_gg5, custom_build stand-in still at target: yes
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+rollout doc gone from branch
+rollback headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+nightly workflow after rollback: absent
+VERSION after rollback: v1.7.0_gg4
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+Matches text: yes
