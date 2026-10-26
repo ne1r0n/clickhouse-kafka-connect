@@ -5,16 +5,16 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 31
 current_phase_name: Fork-Owned Nightly Integration Tests
 status: executing
-stopped_at: Completed 31-03-PLAN.md
-last_updated: "2026-10-26T17:26:01.766Z"
+stopped_at: Completed 31-04-PLAN.md
+last_updated: "2026-10-26T17:35:57.273Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 31 execution resumed (wave continue)
-state_head: a312deab52ba3ab1eecc36b8f542ae60b3ad91bc
+state_head: 636006ddaac3ab957534ceab7ae31f104a1d5362
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 33
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 31 (Fork-Owned Nightly Integration Tests) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-10-26 — Phase 31 execution resumed (wave continue)
 
@@ -204,6 +204,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 31 P01 | 26 min | 2 tasks | 1 files |
 | Phase 31 P02 | 6 min | 3 tasks | 1 files |
 | Phase 31 P03 | 3min | 2 tasks | 2 files |
+| Phase 31 P04 | 7 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 31]: 31-02: no integration-test skip list is built; E-06b (accept) holds skip-entries: 0, so E-07 records the D-07 not-needed branch and the phase-gate run is 31-06's E-18
 - [Phase 31]: 31-03: upstream integrationTests.yaml pinned by SHA-256 07dff3d0...5109 and length 4812 (blob 3e9b9be0) in a Docker-free testUnit guard, seen red on a one-byte edit — Upstream's file must neither drift nor be re-armed; the failure message carries the sync update procedure
 - [Phase 31]: 31-03: Actions API reports workflow 384641581 disabled_manually, 2 runs, none after 2026-10-16T10:00:00Z (E-11) — Online half of NIT-02; 31-05 and Phase 32 re-read the three URLs
+- [Phase 31]: 31-04: nightly timeouts are step 75 / job 85 minutes from E-18 (unamended by E-06b); the job is gated on workflow_dispatch or vars.NIGHTLY_ENABLED == 'true' — Whole-task measured wall 36 min x 2 rounded up; a manual dispatch always starts and a scheduled run starts only after the operator sets the variable (D-01, D-05)
+- [Phase 31]: 31-04: nightly guard fixtures are edits of the real workflow's non-comment lines with the timeouts pinned at 80/70; failed-test annotation names are cut at 300 characters, the step summary keeps full names — The guard cannot drift from the file it protects; one escaped, capped annotation line cannot inject a workflow command (D-10, Pitfall 11)
 
 ### Pending Todos
 
@@ -296,8 +299,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T17:25:57.181Z
-Stopped at: Completed 31-03-PLAN.md
+Last session: 2026-10-26T17:35:57.198Z
+Stopped at: Completed 31-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
