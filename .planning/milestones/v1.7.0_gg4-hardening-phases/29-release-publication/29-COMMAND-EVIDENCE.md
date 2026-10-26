@@ -1590,3 +1590,31 @@ after git revert <rollback-commit>: tree(HEAD)==tree(target)
 **Cleanup:** `git worktree remove --force /tmp/gsd29/pubdry && git worktree prune`; `git worktree list` shows the main tree and the two kept probe worktrees `wt-gg3` and `wt-tip` only; no `rb-demo` directory and no `gg4-rollback-demo-*` branch remain; `docker ps -a` lists no container of this run. `/tmp/gsd29/rollback-demo.sh` existed from plan 29-04 and was not re-created. X changes with this entry's commit (X0..X stays planning-only), so the real merge takes the then-current `sync/v1.7.0` tip, not 98b2d47e; its tree differs from D's by `.planning/` files only.
 
 Matches text: n/a (gate check)
+
+### E-71: release merge, checks on M, push and CI
+
+User's answer, given directly to the orchestrator in the session: "publish". Ground truth before anything was pushed (2026-10-23): origin `custom_build` = 69cd680bf548bfb0329142752d37f8a6c3190c26; PUBLISH-PRECONDITIONS-OK; 43 API requests left; X0 run 40017036598 the only green run. Tag/head snapshots in /tmp/gsd29/exec/origin-{tags,heads}-before-release.txt.
+
+```sh
+git worktree add /tmp/gsd29/cb custom_build
+git -C /tmp/gsd29/cb merge --ff-only 69cd680bf548bfb0329142752d37f8a6c3190c26
+git -C /tmp/gsd29/cb merge --no-ff -F /tmp/gsd29/merge-msg.txt 3d84700929f298493e9aeb3ca1dc210608594b42
+git -C /tmp/gsd29/cb push origin refs/heads/custom_build:refs/heads/custom_build
+```
+
+M = 21c51598b06b6f5af58430765d57b1e5f6747c5a, parents 69cd680bf548bfb0329142752d37f8a6c3190c26 and 3d84700929f298493e9aeb3ca1dc210608594b42, tree equal to X's. MERGE-CHECKS-ON-M-OK printed (shape, no TRUNCATE in 8 operator documents, rollback on M, log /tmp/gsd29/exec/rollback-on-M.log). Deviation: the worktree check "git status --porcelain is empty" cannot hold because of the known CRLF line ` M gradlew.bat` (E-30, E-70); the check was run with that one line excluded. Push at 2026-10-23T20:50:14Z (`69cd680b..21c51598`, no force). CI: run 40022281005, tests.yaml, push on custom_build, started 2026-10-23T20:50:16Z, finished 20:56:40Z, success; a late re-check about 2 minutes later still showed exactly one run, success, and origin custom_build = M.
+
+Matches text: n/a (gate check)
+
+### E-72: tags, scratch-branch deletion and final refs
+
+```sh
+git tag v1.7.0_gg4 21c51598b06b6f5af58430765d57b1e5f6747c5a
+git push origin refs/tags/v1.7.0_gg4:refs/tags/v1.7.0_gg4
+git push origin refs/tags/pre-v1.7.0_gg4:refs/tags/pre-v1.7.0_gg4
+git push origin --delete refs/heads/sync/v1.7.0
+```
+
+Tags pushed 2026-10-23T20:59:44Z, after M's green run and the re-check. About 75 seconds later M still had one tests.yaml run and 69cd680b's count equalled runs-pre-before.txt (1): tags started no run. Scratch branch deleted afterwards. PUBLISHED-AND-TAGGED-OK: tags added exactly `v1.7.0_gg4` (21c51598) and `pre-v1.7.0_gg4` (69cd680b), none removed; non-Dependabot heads exactly `custom_build` (21c51598) and `main` (bec167d8, unchanged); Dependabot heads unchanged. The merge worktree was removed; the main tree stays on local `sync/v1.7.0`. `release.yaml` and `pre-release.yaml` were not dispatched.
+
+Matches text: n/a (gate check)

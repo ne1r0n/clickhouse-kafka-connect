@@ -1,38 +1,28 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg4-hardening — Dependency Absorption, Discovery Defects & Review Debt",
+  "milestone": "v1.7.0_gg5-ci — CI & Release Workflow Modernization",
   "phases": [
     {
-      "number": "25",
-      "name": "Dependency Absorption & Upstream Mini-Sync",
+      "number": "30",
+      "name": "Release Workflows & Pin Guard",
       "status": "complete"
     },
     {
-      "number": "26",
-      "name": "Size-Named Tuple Elements in Discovery",
+      "number": "31",
+      "name": "Fork-Owned Nightly Integration Tests",
       "status": "complete"
     },
     {
-      "number": "27",
-      "name": "Writer Failure Path & Test Debt",
-      "status": "complete"
-    },
-    {
-      "number": "28",
-      "name": "Raw Identifier Names in Discovery",
-      "status": "complete"
-    },
-    {
-      "number": "29",
+      "number": "32",
       "name": "Release & Publication",
-      "status": "in_progress"
+      "status": "pending"
     }
   ],
   "next": {
     "command": "/gsd-progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 5 of 5 · 80% · executing"
+    "reason": "Phase 3 of 3 · 56% · executing"
   },
-  "updated_at": "2026-10-23T20:18:12.137Z"
+  "updated_at": "2026-10-26T20:52:12.964Z"
 }

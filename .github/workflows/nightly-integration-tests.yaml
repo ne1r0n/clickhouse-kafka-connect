@@ -1,0 +1,79 @@
+# FORK: the fork-owned nightly. It replaces upstream's integration workflow, which stays
+# byte-identical to upstream and disabled. It runs the whole integrationTest task on ClickHouse
+# latest with client V2, in the runner's own Docker. There is no ClickHouse Cloud job and no
+# repository secret. A manual run always starts; a scheduled run starts only after the operator
+# sets the repository variable named in the job condition to true (D-01). The timeouts come from
+# the measured local run of Phase 31. The failed-test summary and both uploads run always, because
+# job logs are not readable without repository admin rights (D-10). Every action is pinned to a
+# full commit SHA (CIG-01) and the token is read-only.
+name: Nightly Integration Tests (ClickHouse latest, client V2)
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-integration-tests
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    name: Integration tests, ClickHouse latest, client V2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Report runner capacity
+        run: |
+          memory="$(free -m | awk '/^Mem:/ {print "total=" $2 "MB available=" $7 "MB"}')"
+          disk="$(df -h / | awk 'NR==2 {print "size=" $2 " free=" $4}')"
+          docker_server="$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo unavailable)"
+          msg="runner nproc=$(nproc), memory ${memory}, disk / ${disk}, docker server ${docker_server}"
+          echo "$msg"
+          echo "### Runner capacity" >> "$GITHUB_STEP_SUMMARY"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Runner capacity::${msg}"
+
+      - name: Run integration tests
+        timeout-minutes: 75
+        env:
+          CLICKHOUSE_VERSION: latest
+          CLIENT_VERSION: V2
+        run: ./gradlew integrationTest
+
+      - name: Summarise failed tests
+        if: always()
+        run: python3 -I .github/scripts/failed_tests_summary.py build/test-results/integrationTest
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: integration-test-results
+          path: build/test-results/integrationTest/
+          retention-days: 14
+
+      - name: Upload integration test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: integration-test-reports
+          path: build/reports/tests/integrationTest/
+          retention-days: 14

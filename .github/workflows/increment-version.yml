@@ -1,3 +1,8 @@
+# FORK MODIFICATION: hardening only, the behavior is upstream's. Every action is pinned to a full commit
+# SHA with a version comment, Node is the current LTS (24), semver is installed at an exact version
+# without install scripts, and the token scopes are granted on the job instead of the workflow.
+# Known and left unfixed: semver.inc returns null for a version such as v1.7.0_gg4, so a dispatch would
+# write the text vnull into VERSION. The fork bumps VERSION by hand.
 name: Increment Version
 
 on:
@@ -13,19 +18,20 @@ on:
           - major
 
 permissions:
-  contents: write
-  pull-requests: write
-
-env:
-    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
+          # checkout keeps its default persisted credentials: "Commit and push" pushes a branch
           fetch-depth: 0 # this is required to see all branches
     - name: Configure Git
       run: |
@@ -33,13 +39,12 @@ jobs:
         git config --global user.name "GitHub Action"
         git config --global --add --bool push.autoSetupRemote true
     - name: Setup Node.js environment
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
-        node-version: '16'
+        node-version: '24'
+        package-manager-cache: false
     - name: Install dependencies
-      run: |
-        npm install semver
-        npm install fs
+      run: npm install --no-save --ignore-scripts semver@7.8.5
     - name: Increment version
       run: |
         echo "Incrementing version..."
@@ -49,6 +54,8 @@ jobs:
         echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
         echo "New version is $NEW_VERSION"
     - name: Commit and push
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git checkout -b update-version-${{ env.NEW_VERSION }}
         git add VERSION

@@ -37,11 +37,11 @@ import org.junit.jupiter.api.function.Executable;
  */
 class TestsWorkflowPinGuardUnitTest {
     private static final Path WORKFLOW = Path.of(".github", "workflows", "tests.yaml");
-    private static final Path DEPENDABOT = Path.of(".github", "dependabot.yml");
+    static final Path DEPENDABOT = Path.of(".github", "dependabot.yml");
     private static final Path BUILD_SCRIPT = Path.of("build.gradle.kts");
 
-    private static final Pattern USES_LINE = Pattern.compile("^\\s*(?:-\\s+)?uses:\\s.*$");
-    private static final Pattern PINNED_USES =
+    static final Pattern USES_LINE = Pattern.compile("^\\s*(?:-\\s+)?uses:\\s.*$");
+    static final Pattern PINNED_USES =
             Pattern.compile(
                     "^\\s*(?:-\\s+)?uses:\\s+[\\w.-]+/[\\w./-]+@[0-9a-f]{40}\\s+#\\s+v\\d+\\.\\d+\\.\\d+\\s*$");
     // YAML needs whitespace before '#', so "ubuntu-24.04#x" keeps its tail and stays a wrong runner.
@@ -60,10 +60,10 @@ class TestsWorkflowPinGuardUnitTest {
             Pattern.compile("^tasks\\.register<JavaExec>\\(\"verifyConfluentArchive\"\\)\\s*\\{\\s*$");
     private static final Pattern REGISTER_CREATE_ARCHIVE =
             Pattern.compile("^tasks\\.register<Zip>\\(\"createConfluentArchive\"\\)\\s*\\{\\s*$");
-    private static final Pattern CONTINUE_ON_ERROR =
+    static final Pattern CONTINUE_ON_ERROR =
             Pattern.compile("^\\s*continue-on-error:\\s*+(?!false\\b).*$");
     // YAML and shell both need whitespace before '#', so "ubuntu-24.04#x" keeps its tail.
-    private static final Pattern TRAILING_COMMENT = Pattern.compile("\\s#.*$");
+    static final Pattern TRAILING_COMMENT = Pattern.compile("\\s#.*$");
     private static final Pattern FORKS_PROVIDER_DECLARATION = Pattern.compile("^\\s*val\\s+(\\w+)\\s*=.*$");
     private static final Pattern EXCLUDE_ITEM =
             Pattern.compile("^\\s*-\\s*[\"']?([^\"'#]+?)[\"']?\\s*(?:#.*)?$");
@@ -78,13 +78,9 @@ class TestsWorkflowPinGuardUnitTest {
     private static final Pattern GITHUB_ACTIONS_ENTRY = ecosystemEntry("github-actions");
     private static final Pattern GRADLE_ENTRY_PATTERN = ecosystemEntry("gradle");
     private static final String EXCLUDE_PATHS_KEY = "exclude-paths:";
-    private static final String WORKFLOWS_DIR = ".github/workflows/";
+    static final String WORKFLOWS_DIR = ".github/workflows/";
     private static final List<String> UPSTREAM_WORKFLOWS =
-            List.of(
-                    WORKFLOWS_DIR + "increment-version.yml",
-                    WORKFLOWS_DIR + "integrationTests.yaml",
-                    WORKFLOWS_DIR + "pre-release.yaml",
-                    WORKFLOWS_DIR + "release.yaml");
+            List.of(WORKFLOWS_DIR + "integrationTests.yaml");
     private static final String FORK_STEP_NAME = "Report test fork count";
     private static final String FORK_TASK = "reportTestForks";
     private static final String ARCHIVE_STEP = "Build and verify Confluent archive";
@@ -108,7 +104,7 @@ class TestsWorkflowPinGuardUnitTest {
         return entry.matcher(line).matches();
     }
 
-    private static List<String> nonCommentLines(Path file) throws IOException {
+    static List<String> nonCommentLines(Path file) throws IOException {
         return Files.readAllLines(file, StandardCharsets.UTF_8).stream()
                 .filter(line -> !line.stripLeading().startsWith("#"))
                 .collect(Collectors.toList());
@@ -628,7 +624,7 @@ class TestsWorkflowPinGuardUnitTest {
         return rejects(text.replace("\n", " / "), forkTaskProblem(ktsCode(text)));
     }
 
-    private static final String SHA = "3d3c42e5aac5ba805825da76410c181273ba90b1";
+    static final String SHA = "3d3c42e5aac5ba805825da76410c181273ba90b1";
 
     private static String pinnedUses(String action, String version) {
         return "      - uses: " + action + "@" + SHA + " # " + version;
@@ -696,7 +692,13 @@ class TestsWorkflowPinGuardUnitTest {
 
     private static final List<String> UPSTREAM = UPSTREAM_WORKFLOWS;
     private static final Set<String> EXISTING_WORKFLOWS =
-            Set.copyOf(plus(UPSTREAM, ".github/workflows/tests.yaml"));
+            Set.copyOf(
+                    plus(
+                            UPSTREAM,
+                            WORKFLOWS_DIR + "increment-version.yml",
+                            WORKFLOWS_DIR + "pre-release.yaml",
+                            WORKFLOWS_DIR + "release.yaml",
+                            WORKFLOWS_DIR + "tests.yaml"));
 
     private static void appendExcludes(List<String> lines, List<String> paths) {
         if (paths.isEmpty()) {
@@ -787,8 +789,8 @@ class TestsWorkflowPinGuardUnitTest {
 
     @Test
     @DisplayName(
-            "dependabot.yml excludes the four upstream workflows from github-actions updates and lists"
-                    + " only existing workflow files (17-REVIEW WR-01)")
+            "dependabot.yml excludes upstream's integrationTests.yaml from github-actions updates and"
+                    + " lists only existing workflow files (17-REVIEW WR-01, D-10)")
     void dependabotExcludesTheUpstreamWorkflowsAndOnlyExistingFiles() throws IOException {
         assertNoProblem(
                 dependabotExcludeProblem(
@@ -1044,8 +1046,8 @@ class TestsWorkflowPinGuardUnitTest {
 
     @Test
     @DisplayName(
-            "fixture: exclude-paths rule accepts the four existing upstream workflows (17-REVIEW"
-                    + " WR-01)")
+            "fixture: exclude-paths rule accepts the upstream-identical integrationTests.yaml"
+                    + " (17-REVIEW WR-01, D-10)")
     void dependabotExcludeRuleAcceptsUpstreamWorkflows() {
         assertAll(
                 accepts(
@@ -1059,16 +1061,17 @@ class TestsWorkflowPinGuardUnitTest {
     void dependabotExcludeRuleRejectsMissingOrStalePaths() {
         Function<List<String>, Optional<String>> rule = TestsWorkflowPinGuardUnitTest::excludeProblem;
         assertAll(
-                rejects(rule, dependabot(List.of(), UPSTREAM.subList(0, 3))),
                 rejects(
                         rule,
                         dependabot(
                                 List.of(),
                                 List.of(
-                                        UPSTREAM.get(0),
-                                        ".github/workflows/integrationTest.yaml",
-                                        UPSTREAM.get(2),
-                                        UPSTREAM.get(3)))),
+                                        WORKFLOWS_DIR + "increment-version.yml",
+                                        WORKFLOWS_DIR + "pre-release.yaml",
+                                        WORKFLOWS_DIR + "release.yaml"))),
+                rejects(
+                        rule,
+                        dependabot(List.of(), List.of(".github/workflows/integrationTest.yaml"))),
                 rejects(
                         rule,
                         dependabot(
@@ -1352,8 +1355,7 @@ class TestsWorkflowPinGuardUnitTest {
         List<String> gradleSingle = withEntry(base, GRADLE_ENTRY, "  - package-ecosystem: 'gradle'");
         List<String> atKeyIndent = actionsEntryWithItems(4, 4, UPSTREAM);
         List<String> reversed =
-                actionsEntryWithItems(
-                        4, 6, List.of(UPSTREAM.get(3), UPSTREAM.get(2), UPSTREAM.get(1), UPSTREAM.get(0)));
+                actionsEntryWithItems(4, 6, List.of(WORKFLOWS_DIR + "tests.yaml", UPSTREAM.get(0)));
         assertAll(
                 accepts(ecosystem, single),
                 accepts(exclude, single),

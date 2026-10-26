@@ -38,7 +38,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg4	1	BLD-07
+VERSION	v1.7.0_gg5	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
 gradle/libs.versions.toml	slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }	1	BLD-08
 build.gradle.kts	implementation(libs.slf4j.reload4j)	1	BLD-08
@@ -114,3 +114,43 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	Utils.spl
 src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/Column.java	DeclaredNullability.unescapeJsonLayer(	1	NAME-06
 build.gradle.kts	"com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class",	1	DEBT-17
 build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.class",	1	DEBT-17
+# Phase 30 (v1.7.0_gg5-ci): release-path workflow rows; a 0 count pins that the upstream text stays gone, and the two expression rows pin the publish gate and its dry-run complement.
+.github/workflows/release.yaml	actions/create-release	0	REL-04
+.github/workflows/release.yaml	actions/upload-release-asset	0	REL-04
+.github/workflows/release.yaml	gh release create	2	REL-04
+.github/workflows/release.yaml	--draft	1	REL-05
+.github/workflows/release.yaml	--prerelease	0	REL-04
+.github/workflows/release.yaml	--cleanup-tag	0	REL-05
+.github/workflows/release.yaml	git push	0	REL-04
+.github/workflows/release.yaml	gradle-build-action	0	REL-03
+.github/workflows/release.yaml	gradle-version	0	REL-03
+.github/workflows/release.yaml	7.4.2	0	REL-03
+.github/workflows/release.yaml	gradle/actions/setup-gradle@	1	REL-03
+.github/workflows/release.yaml	./gradlew createConfluentArchive	1	REL-03
+.github/workflows/release.yaml	!inputs.dry_run && github.ref == 'refs/heads/custom_build'	3	REL-05
+.github/workflows/release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	5	REL-05
+.github/workflows/pre-release.yaml	actions/create-release	0	REL-04
+.github/workflows/pre-release.yaml	actions/upload-release-asset	0	REL-04
+.github/workflows/pre-release.yaml	gh release create	2	REL-04
+.github/workflows/pre-release.yaml	--draft	1	REL-05
+.github/workflows/pre-release.yaml	--prerelease	2	REL-04
+.github/workflows/pre-release.yaml	--cleanup-tag	0	REL-05
+.github/workflows/pre-release.yaml	gradle-build-action	0	REL-03
+.github/workflows/pre-release.yaml	gradle-version	0	REL-01
+.github/workflows/pre-release.yaml	7.4.2	0	REL-01
+.github/workflows/pre-release.yaml	gradle/actions/setup-gradle@	1	REL-03
+.github/workflows/pre-release.yaml	./gradlew createConfluentArchive	1	REL-01
+.github/workflows/pre-release.yaml	!inputs.dry_run && github.ref == 'refs/heads/custom_build'	3	REL-05
+.github/workflows/pre-release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	5	REL-05
+.github/workflows/increment-version.yml	node-version: '24'	1	REL-02
+.github/workflows/increment-version.yml	npm install fs	0	REL-02
+# Phase 31 (v1.7.0_gg5-ci): the integration harness's Connect worker runs on Java 17 (plan 31-06, E-06 fix-harness).
+src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	confluentinc/cp-server-connect:	1	NIT-01
+src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	new ImageFromDockerfile(	1	NIT-01
+src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	new GenericContainer<>(CP_DATA_GEN)	0	NIT-01
+# Phase 31 (v1.7.0_gg5-ci): fork-owned nightly rows; the first row pins the D-01 gate, and the two 0 rows pin that no secret and no test filter enter the file.
+.github/workflows/nightly-integration-tests.yaml	github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'	1	NIT-01
+.github/workflows/nightly-integration-tests.yaml	./gradlew integrationTest	1	NIT-01
+.github/workflows/nightly-integration-tests.yaml	persist-credentials: false	1	NIT-01
+.github/workflows/nightly-integration-tests.yaml	secrets.	0	NIT-01
+.github/workflows/nightly-integration-tests.yaml	--tests	0	NIT-01

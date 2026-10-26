@@ -290,6 +290,61 @@
 
 ---
 
+## Milestone: v1.7.0_gg4-hardening — Dependency Absorption, Discovery Defects & Review Debt
+
+**Shipped:** 2026-10-23 (closed 2026-10-24)
+**Phases:** 5 | **Plans:** 32 | **Tasks:** 81 | **Commits:** 298 (266 first-parent) | **Timeline:** 3 days (2026-10-21 → 2026-10-24)
+
+### What Was Built
+
+- **Dependency absorption came first.** Nine Dependabot merges (M1 `50f56289`) and upstream's untagged tail (M2 `38265d26`) were taken as two mechanical merges behind the unedited anchors gate. Exemption rows were generated from the gate's own output, and the pin guard's reader was fixed before the first authored build edit.
+- **The Confluent archive was repaired and guarded.** Shadow 9 produced a green build with 25 nested jars. `verifyConfluentArchive` now fails the build on that shape, and 176 Kafka references were proven present in the production worker's jars, so `connect-api` 4.4.0 is compile-time only.
+- **Backlog 999.4 is closed.** A declared Tuple element named `size`, `size0` or `size<digits>` is kept. A committed DESCRIBE spike (47 fixtures) and the measured affected set (25 tables) came before any `src/main` change, and the V1/V2 describe loop became one `DescribeTableBuilder`.
+- **Backlog 999.5 is closed.** Names and Enum labels are matched under the raw `CREATE TABLE` identifier on both clients, after a twelve-character live spike and pins that landed before the decode change.
+- **The writer failure path and the carried test debt are cleared.** A Jackson failure no longer names a Map key, an unknown Enum label names the column, and the coverage list holds all 21 fork classes.
+- **`v1.7.0_gg4` was published (`21c51598`)** with a rollout note whose commands each equal an evidence block, and the suite ran 1,865 tests twice on `latest`.
+
+### What Worked
+
+- **Spike, then pin, then fix.** Phases 26 and 28 each measured the server's real rows and committed them as fixtures before touching `src/main`, so the behaviour change was a measured set (25 of 47 tables, 16 of 24 name tables) rather than an argument.
+- **Behaviour-preserving extraction was proven, not asserted.** The `DescribeTableBuilder` extraction matched all 47 pre-extraction snapshots on its first run.
+- **Release-phase scope held.** Phase 29 edited no code; 16 review findings were deferred with a reason, an owner and a trigger instead of being fixed under release pressure.
+- **Measuring the previous release found a real hazard.** The rollback tree builds a green archive with 25 nested jars, and the note says to redeploy the gg3 archive instead.
+
+### What Was Inefficient
+
+- **The review budget was overrun.** The roadmap allowed three review rounds on the rollout note; it took four, and round four found IN-09. The deviation needed the user's acceptance at UAT, and the IN-09 fix was never re-reviewed.
+- **Verification staleness again.** Phases 25–28 read stale at close, so the close was an override. Phase 26's staleness has no explained cause: no covered file was edited after its verification date.
+- **Host memory pressure crashed the OpenJ9 test JVM** five times on 2026-10-21/22 at the known `Mockito.spy` frame. The Phase 26 gate ran on HotSpot 21 (`-PjavaVersion=21`) as a result.
+- **The audit's requirement count was off by one** (37 stated, 36 in `REQUIREMENTS.md` and its traceability table).
+
+### Patterns Established
+
+- **A fork-owned builder takes raw server lines, and the raw `CREATE TABLE` identifier is the canonical key** for names and Enum labels.
+- **A size-named Tuple row is kept only when its parsed parent declares the key;** an unreadable parent fails closed to the old behaviour plus one metadata-only WARN.
+- **A release phase makes no code edit.** Findings it cannot fix go into a milestone close record that `/gsd-complete-milestone` reads.
+- **Archive identity against the previous release is pinned by a per-release allow-list,** compared manually at release time.
+
+### Key Lessons
+
+1. **A green build is not a usable artifact.** Shadow 9 passed the build with an unusable archive. Add a check on the shipped artifact itself, not only on the build.
+2. **Budget review rounds from the roadmap, and record the overrun as it happens.** A fourth round needed an after-the-fact acceptance.
+3. **Count requirements from the traceability table, not from prose.** The audit text said 37 and the table holds 36.
+4. **Check why a verification reads stale before calling it drift.** For Phase 26 the usual explanation (later edits to covered files) does not hold, and the cause is still unknown.
+
+### Quality Observations
+
+- **Code review** ran on all five phases. The 16 findings left unfixed are carried in `29-MILESTONE-CLOSE-RECORD.md` with owners and re-open triggers.
+- **Security audits:** `29-SECURITY.md` records the Phase 29 verification.
+- **The final suite** ran 1,865 tests twice with 0 failures and 18 named skips on `latest` 26.9.19.9 × V2. `testUnit` ran 1,278 tests with Docker stopped. CI was green on `21c51598` (40017036598).
+- **`src/main` changed in 12 files (+792/−256),** including upstream's tail. The new classes are `DescribeTableBuilder` and `ParentShape`.
+
+### Cost Observations
+
+- Model mix and session counts were not recorded for this milestone.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -301,6 +356,7 @@
 | v1.7.0_gg1-sync | 4 | 25 | Second sync, 4 days against 20, because the recipe was reused with a parameterised invariant script. Hardening went on top of the merged tree. Behaviour ledger, twin-table parity tests and seen-red mutation checks; one commit per dependency bump. |
 | v1.7.0_gg2-hardening | 5 | 29 | First milestone without a sync. Docs-only early publication with release docs reviewed before the gate, a spike-first go/no-go that could not hold the release, operator claims pinned by live tests, and the first close with a passed milestone audit. |
 | v1.7.0_gg3-hardening | 4 | 23 | Second milestone without a sync. The classification pin landed before the fix, the gg2/gg3 encoding diff was measured before the rollout note, and the Dependabot merge went first with a pinned gate exemption. A post-publication docs fix ran independent review rounds until one came back clean. |
+| v1.7.0_gg4-hardening | 5 | 32 | Third milestone without a full sync (a tagless mini-sync only). Spike-then-pin-then-fix for both discovery defects, a build-failing check on the shipped archive, and a release phase that edits no code and carries unfixed findings in a close record. |
 
 ### Cumulative Quality
 
@@ -311,10 +367,11 @@
 | v1.7.0_gg1-sync | 663 → 830 | 0 | R-01 data loss, Debezium Timestamp, nested-null desync, #820 shadowing, DESCRIBE depth, Int256, 3 config/metadata | 11 (all 17 carried closed) |
 | v1.7.0_gg2-hardening | 830 → 988 | 1 (CR-01, fixed) | 999.1 Nullable Enum/Tuple mis-storage, empty-CDC rows on 3 routes, message-less NPE, nameless missing-value error, raw DateTime in logs | 10 (all 11 carried closed) |
 | v1.7.0_gg3-hardening | 988 → 1281 | 0 | 999.3 record values in writer errors, `DeclaredNullability` null/escape/unpaired cases, pin-guard false failures, four operator-doc rollback hazards (step order, `exactlyOnce=false`, 3+ topics, `enableDbTopicSplit` keys) | 11 (all 10 carried closed) |
+| v1.7.0_gg4-hardening | 1281 → 1865 | 0 | 999.4 size-named Tuple element dropped at discovery, 999.5 doubled backslash in names and Enum labels, Jackson Map key in the JSON-as-string failure text, Enum-label NPE, Shadow 9 nested-jar archive | 16 unfixed review findings carried (all gg3 carried items closed) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. **Verification goes stale in sequential phases.** All five milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. That held even when the milestone audit passed. Re-verify at close, or plan for the override.
+1. **Verification goes stale in sequential phases.** All six milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. That held even when the milestone audit passed. Re-verify at close, or plan for the override.
 2. **Blocking-human checkpoints on irreversible or production-affecting calls pay off.** They fired at least twice in every milestone and were right each time. Examples: R-01 pinned rather than fixed, KEEP over DROP, and every one-way publication.
 3. **Check the environment and the gate before trusting a result.** In v1.2.9_gg4-tests a red baseline turned out to be an environment artifact (`TESTCONTAINERS_HOST_OVERRIDE`). In v1.6.0_gg1-sync a green run turned out to be against the wrong server (`CLICKHOUSE_VERSION_DEFAULT`).
 4. **Reuse compounds.** Each milestone's tools made the next one cheaper: the suite (v1.2.9) gated the first sync, and the first sync's invariant script and checklist made the second take 4 days. Keep those tools current at every close.

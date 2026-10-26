@@ -2,7 +2,7 @@
 
 ## What This Is
 
-The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg3`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
+The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg4`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
 
 The second milestone (`v1.6.0_gg1-sync`) cashed that in: 581 commits of upstream (`v1.2.9` → `v1.6.0`) merged into `custom_build` with the suite as the acceptance gate, every fork feature either re-applied onto upstream's rewritten code or consciously retired in favour of upstream, and the result published as `v1.6.0_gg1`. What the fork still patches, and what it gave up, is recorded in `docs/FORK-DELTA.md`.
 
@@ -12,11 +12,44 @@ The fourth milestone (`v1.7.0_gg2-hardening`) closed the eleven follow-ups `v1.7
 
 The fifth milestone (`v1.7.0_gg3-hardening`) closed the last known record-data exposure: a writer value-conversion failure now names the column, both types and the exception class without carrying the record value (backlog 999.3), and retry classification is pinned unchanged. It also hardened `DeclaredNullability` (null-safe, quote-aware, a WARN for an unpaired element), cleared every 17-REVIEW and 19-REVIEW advisory, absorbed the Dependabot bumps and moved the writer tests off Mockito inline mocking. The result is published as `v1.7.0_gg3` (merge `3376a18f`, 2026-10-20), with its operator note in `docs/ROLLOUT-v1.7.0_gg3.md`. Three more review rounds corrected the note after publication, and it was republished as `6a2a87a5` the same day.
 
+The sixth milestone (`v1.7.0_gg4-hardening`) absorbed nine Dependabot merges and upstream's untagged tail, repaired and guarded the Confluent archive under Shadow 9 (it had nested 25 jars into an unusable archive behind a green build), and fixed the two discovery defects `v1.7.0_gg3` disclosed. A Tuple element named `size`, `size0` or `size<digits>` is no longer dropped, and column, element and Enum-label names are matched under the raw identifier written in `CREATE TABLE` on both clients. The writer failure path no longer names a Map key, an unknown Enum label fails with a column-named message, and the carried 21–24 review debt is cleared. It shipped as `v1.7.0_gg4`.
+
 ## Core Value
 
 Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
+## Current Milestone: v1.7.0_gg5-ci CI & Release Workflow Modernization
+
+**Goal:** Bring the fork's workflows current and get a trustworthy integration-test signal, without touching connector code or ClickHouse client `0.10.0`.
+
+**Target features:**
+- `pre-release.yaml`: replace the pinned Gradle `7.4.2` (DEPS-F4) with the project wrapper / `setup-gradle`
+- `release.yaml`, `pre-release.yaml`, `increment-version.yml`: SHA-pin every action (checkout, setup-java, setup-node, setup-gradle); replace deprecated `gradle-build-action` and archived `create-release` / `upload-release-asset` with `gh release`
+- Nightly: leave upstream `integrationTests.yaml` byte-identical and disabled; add a fork-owned nightly running `integrationTest` on ClickHouse `latest` × client V2 in local Docker, with no cloud job
+- Verify with a dry run of the release path and green CI on the published SHA
+
+**Out of scope:** ClickHouse client `0.10.0`, connector source changes, editing upstream `integrationTests.yaml`.
+
 ## Current State
+
+**Shipped:** `v1.7.0_gg4-hardening` (published 2026-10-23, closed 2026-10-24). It covered 5 phases (25–29), 32 plans, 81 tasks and 36/36 requirements. The milestone audit is `tech_debt` with no gaps: phases 5/5, integration 5/5, flows 5/5. It closed as an `override_closeout`: `init.manager` read Phases 25–28 as stale (later phases edited covered files) and Phase 27 success criterion 2 was narrowed by the user.
+
+`v1.7.0_gg4` is on `origin/custom_build` as the `--no-ff` merge `21c51598` (parents `69cd680b` and `3d847009`), tagged `v1.7.0_gg4`. The rollback tag `pre-v1.7.0_gg4` points at `69cd680b`, and the merge has one green `tests.yaml` run, 40017036598. `sync/v1.7.0` is 6 docs and test commits ahead of `custom_build`.
+
+The suite runs 1,865 tests on ClickHouse `latest` (26.9.19.9) × client V2 and passed twice, with 0 failures and 18 named skips. `testUnit` runs 1,278 tests with Docker stopped. Client `0.9.6` is unchanged. Connect API is `4.4.0` at compile time only: the production worker supplies it at runtime (176 references proven present in the worker's 7.9.7 jars). Shadow is 9.6.1, and the `createConfluentArchive` task is finalized by `verifyConfluentArchive`.
+
+Code: `src/main` is 11,059 LOC and the tests are 38,839 LOC. Since the milestone start `src/main` changed in 12 files (+792/−256), including upstream's tail. The new classes are `DescribeTableBuilder` and `ParentShape`. The fork delta against upstream grew from 130 to 277 files at the wide scope and from 33 to 37 in `src/main`, mostly tests.
+
+**Behaviour changes operators will see** (each in `docs/ROLLOUT-v1.7.0_gg4.md`):
+- A Tuple element named `size`, `size0` or `size<digits>` is kept at discovery, so inserts into the 25 affected catalog shapes land instead of failing with code 32 or 33 (or storing a shifted row).
+- Column, element and Enum-label names are matched under the raw `CREATE TABLE` identifier. A record that used the old doubled backslash form no longer matches, and a doubled-form Tuple element fails the put loudly.
+- A Jackson failure on the JSON-as-string route no longer names a Map key. An unknown or null Enum label fails with a value-free message naming the column.
+- The MBean `version=` segment and the client name read `v1.7.0_gg4`. The rollback tree lists `gradlew.bat` as modified on a fresh checkout.
+
+**Knowingly open in the published `v1.7.0_gg4`:** the 16 unfixed review findings in `29-MILESTONE-CLOSE-RECORD.md`, the PUB-12 review-round deviation, and the manual archive compare. See the milestone-close note under Requirements → Active.
+
+<details>
+<summary>Previous state — <code>v1.7.0_gg3-hardening</code> (shipped 2026-10-20)</summary>
 
 **Shipped:** `v1.7.0_gg3-hardening` (published 2026-10-20, closed 2026-10-21). It covered 4 phases (21–24), 23 plans, 60 tasks and 20/20 requirements, plus quick task `261020-vcr`. The milestone audit first came back `tech_debt`: seven review findings on the published rollout note were untriaged. It passed on re-audit after the quick task fixed them, with requirements 20/20, phases 4/4, integration 12/12 and flows 5/5. It closed as an override closeout, because all four phase verification reports read as stale: later phases and the quick task edited files those reports covered (`docs/FORK-DELTA.md`, `.planning/scripts/fork-anchors.txt` and the release documents). Each report passed when it was run, and every UAT passed (7/7).
 
@@ -37,6 +70,8 @@ Code: `src/main` is 10,523 LOC and the tests are 38,242 LOC (`src/test`, `src/te
 - **Backlog 999.5:** `fromJsonRow` doubles escaped name characters.
 
 Both are in FORK-DELTA Known costs items 10 and 11 and in the rollout note.
+
+</details>
 
 <details>
 <summary>Previous state — <code>v1.7.0_gg2-hardening</code> (shipped 2026-10-14)</summary>
@@ -125,7 +160,19 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
-## Current Milestone: v1.7.0_gg4-hardening Dependency Absorption, Discovery Defects & Review Debt
+## Next Milestone Goals
+
+Not defined yet: `/gsd-new-milestone` starts with questioning. Candidates:
+
+- **The next upstream sync,** once upstream tags past `v1.7.0`.
+- **The carried review advisories** in `milestones/v1.7.0_gg4-hardening-phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md`: 25-REVIEW WR-01..WR-03 and IN-01..IN-04 (pin guard, `ConfluentArchiveCheck`, `ConnectApiReferencesUnitTest`) and the 26–28 findings. Each has an owner and a re-open trigger.
+- **A CI consumer for the archive compare.** `confluent-archive-allowlist-29.txt` is used only by a manual release-time step today.
+- **A test for a size-named Tuple element whose name also holds an escape character.**
+- **Still Future Requirements:** ClickHouse client `0.10.0` (PR #4), Gradle `7.4.2` in `pre-release.yaml` (DEPS-F4), and the upstream workflows still on `@v3`-era actions.
+
+<details>
+<summary>Milestone scope as planned — <code>v1.7.0_gg4-hardening</code> Dependency Absorption, Discovery Defects &amp; Review Debt (shipped 2026-10-23)</summary>
+
 
 **Goal:** Absorb the Dependabot majors and minors now on `origin/custom_build` plus upstream's untagged dependency tail, fix the two known discovery defects (backlogs 999.4 and 999.5), clear every review advisory carried from `v1.7.0_gg3-hardening`, and publish `v1.7.0_gg4` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
@@ -150,6 +197,8 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 - ClickHouse client `0.10.0`: PR #4 is left open, unmerged and not ignored, and the client stays `0.9.6` (the user's call, 2026-10-21).
 - A tagged upstream sync: there is no tag past `v1.7.0`.
 - New connector features, and running the upgrade on production connectors.
+
+</details>
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg3-hardening</code> Record-Data Exposure & Review Debt (shipped 2026-10-20)</summary>
@@ -444,8 +493,18 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ `VERSION` is `v1.7.0_gg3`, committed with its anchor row, and the MBean `version=` segment and client name read it on a live task. `CHANGELOG.md` has a plain-language `1.7.0_gg3` section, and `docs/FORK-DELTA.md` has a row for every Phase 21–23 patch (no uncovered IDs) plus Known costs 6, 10 and 11 — Phase 24 (PUB-09)
 - ✓ The frozen tree is green twice on `latest` 26.9.19.9 × V2, the second run with `--rerun`: 0 failures, 0 errors, 18 named skips. `testUnit` is green with Docker stopped, and the anchors invariant passes — Phase 24 (SUITE-06)
 - ✓ `v1.7.0_gg3` is published. `origin/custom_build` = `3376a18f`, a non-force `--no-ff` merge of `sync/v1.7.0` (X = `8b1c318d`, rehearsed at X0 = `3ab55e1d`) onto `6473e24f`, made after the user's own direct `push` and `publish` answers (confirmed at 24-UAT test 2). The SHA's one `tests.yaml` run, 39472696952, is green. `pre-v1.7.0_gg3` (`6473e24f`) went out first, and `v1.7.0_gg3` only after the run was green — Phase 24 (PUB-10)
-- ✓ Backlog 999.4 is fixed on the working branch (unpublished until `v1.7.0_gg4`): a declared Tuple element named `size`, `size0` or `size<digits>` is kept at both discovery drop sites (`DescribeTableBuilder.decide`, `Table.updateParent`) while every structural DESCRIBE row is still dropped; the V1 and V2 DESCRIBE loops share one `DescribeTableBuilder`; 47 committed DESCRIBE fixtures plus a live drift premise pin the server's rows; the live round-trip of 46 shapes is green with zero WARN on `latest` x V2 and fails exactly the 25 measured keys on the pre-fix tree; FORK-DELTA Known costs item 10 is retired — Phase 26 (DESC-06..DESC-10)
+- ✓ Backlog 999.4 is fixed on the working branch (published in `v1.7.0_gg4`): a declared Tuple element named `size`, `size0` or `size<digits>` is kept at both discovery drop sites (`DescribeTableBuilder.decide`, `Table.updateParent`) while every structural DESCRIBE row is still dropped; the V1 and V2 DESCRIBE loops share one `DescribeTableBuilder`; 47 committed DESCRIBE fixtures plus a live drift premise pin the server's rows; the live round-trip of 46 shapes is green with zero WARN on `latest` x V2 and fails exactly the 25 measured keys on the pre-fix tree; FORK-DELTA Known costs item 10 is retired — Phase 26 (DESC-06..DESC-10)
 - ✓ 23-REVIEW WR-02 is closed: `discoverAsDescribeTableV2` is deleted and the 999.4 pin drives the production `DescribeTableBuilder` with raw JSON lines — Phase 26 (DESC-07)
+- ✓ The pin guard reads `build.gradle.kts` with a one-pass scanner, and the guard's other robustness items are fixed (DEBT-13, DEBT-14) — Phase 25
+- ✓ Nine Dependabot merges and upstream's untagged tail are absorbed through two merges behind the unedited anchors gate; `kafka = "4.4.0"` is compile-time only and proven against the production worker's jars (DEPS-02, DEPS-03, SYNC-11, SYNC-12) — Phase 25
+- ✓ The Confluent archive is repaired under Shadow 9 and finalized by `verifyConfluentArchive`, which fails the build on a nested jar or a bundled Kafka API class; CI builds the archive before the tests (BLD-15, BLD-16, CI-20) — Phase 25
+- ✓ `slf4j-reload4j` lives in the catalog with its anchor, guava and httpclient5 are recorded with advisories, and the `dependencies` label exists (DEBT-15, OPS-04) — Phase 25
+- ✓ A Jackson failure on the JSON-as-string route is withheld link by link, while a timeout beneath it stays retriable (WRT-17) — Phase 27
+- ✓ An unknown or null Enum label throws a value-free `IllegalArgumentException` naming the column, and the write-failure texts are built from one prefix constant (WRT-18, WRT-19) — Phase 27
+- ✓ The Phase 22–24 test debt is cleared: `schemaWithFixedStringMismatchTest` fails when `put` does not throw, the dead counter is gone, and the `NullableTupleMatrixLiveTest` premises fail with a message (DEBT-16) — Phase 27
+- ✓ Backlog 999.5 is fixed: column, element and Enum-label names are matched under the raw `CREATE TABLE` identifier on both clients, with `normalise` rewritten and the `normalise` pins landed first (NAME-01..NAME-07) — Phase 28
+- ✓ `jacocoForkReport` lists all 21 fork classes, and a Docker-free guard keeps its two copies equal (DEBT-17) — Phase 28
+- ✓ `v1.7.0_gg4` is published: `custom_build` = `21c51598`, tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` on `origin`, one green CI run, and `docs/ROLLOUT-v1.7.0_gg4.md` reviewed (four rounds; the fourth was user-authorised) — Phase 29
 
 ### Active
 
@@ -458,6 +517,8 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 **v1.7.0_gg2-hardening:** all 26 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg2-hardening-REQUIREMENTS.md`). All 11 follow-ups carried in are closed. Backlog 999.3 and the milestone-close follow-ups below are open.
 
 **v1.7.0_gg3-hardening:** all 20 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg3-hardening-REQUIREMENTS.md`). All ten follow-ups carried in are closed. The open items below emerged during this milestone.
+
+**v1.7.0_gg4-hardening:** all 36 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg4-hardening-REQUIREMENTS.md`). The ten follow-ups carried in are closed except the review advisories listed in the close note below.
 
 **Publication & client follow-ups (emerged in Phase 11, not yet scheduled):**
 
@@ -550,14 +611,14 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 **Phase 22 follow-ups (emerged 2026-10-19/20, at Phase 22 review and UAT; findings in `22-REVIEW.md`; since Phase 24 each is `deferred` in `22-REVIEW-DISPOSITION.md` (`open: 0`), carried with reason, owner and trigger in `24-MILESTONE-CLOSE-RECORD.md`):**
 
-- [ ] 22-REVIEW WR-01, accepted as a residual at 22-UAT test 3: the IOException pass-through (D-01) also passes Jackson's `JsonMappingException`, whose "through reference chain" text can name a Map key, on the opt-in `binaryFormatWrtiteJsonAsString` route. Disclosed in FORK-DELTA item 6. Fix if wanted: exclude `JsonProcessingException` from the pass-through and add a sentinel-map-key test
-- [ ] 22-REVIEW IN-01..IN-05 (Info): an unknown Enum label is reported as `NullPointerException`; the fixed `No content in enum` text drops the column name; the metadata derivation is duplicated between the `ClassCastException` branch and the new helper; `schemaWithFixedStringMismatchTest` passes vacuously if `put` does not throw; a dead counter and planning-ID noise in tests
+- ~~22-REVIEW WR-01, accepted as a residual at 22-UAT test 3: the IOException pass-through (D-01) also passes Jackson's `JsonMappingException`, whose "through reference chain" text can name a Map key, on the opt-in `binaryFormatWrtiteJsonAsString` route. Disclosed in FORK-DELTA item 6. Fix if wanted: exclude `JsonProcessingException` from the pass-through and add a sentinel-map-key test~~ **Closed in Phase 27 (WRT-17)**
+- ~~22-REVIEW IN-01..IN-05 (Info): an unknown Enum label is reported as `NullPointerException`; the fixed `No content in enum` text drops the column name; the metadata derivation is duplicated between the `ClassCastException` branch and the new helper; `schemaWithFixedStringMismatchTest` passes vacuously if `put` does not throw; a dead counter and planning-ID noise in tests~~ **Closed in Phase 27 (WRT-18, WRT-19, DEBT-16)**
 
 **Phase 23 follow-ups (emerged 2026-10-20, at Phase 23 discussion, research and review; findings in `23-REVIEW.md`; since Phase 24 each review finding is `deferred` in `23-REVIEW-DISPOSITION.md` (`open: 0`) and carried in `24-MILESTONE-CLOSE-RECORD.md`, except IN-04, fulfilled):**
 
-- [ ] Backlog 999.5: `ClickHouseFieldDescriptor.fromJsonRow` doubles every backslash in a column or element name, so a Kafka field must use the doubled form to match. Pre-existing; needs a decision on the intended name form and a rollout note (D-20)
-- [ ] 23-REVIEW WR-01: no test pins the `normalise` branch where an even backslash run before a backtick or single quote keeps the quote open; a mutation that always closes the quote passes the suite. The verifier checked the branch by hand and production is correct — a test gap, not a defect
-- [ ] 23-REVIEW IN-01..IN-03 (Info): the `apply` Javadoc still says "all or none"; the null-name early return sits inside the `try` and logs `null` in the column slot; the new live tests can pass vacuously or NPE on a missing DESCRIBE row
+- ~~Backlog 999.5: `ClickHouseFieldDescriptor.fromJsonRow` doubles every backslash in a column or element name, so a Kafka field must use the doubled form to match. Pre-existing; needs a decision on the intended name form and a rollout note (D-20)~~ **Closed in Phase 28 (NAME-01..NAME-07)**
+- ~~23-REVIEW WR-01: no test pins the `normalise` branch where an even backslash run before a backtick or single quote keeps the quote open; a mutation that always closes the quote passes the suite. The verifier checked the branch by hand and production is correct — a test gap, not a defect~~ **Closed in Phase 28 (NAME-01)**
+- ~~23-REVIEW IN-01..IN-03 (Info): the `apply` Javadoc still says "all or none"; the null-name early return sits inside the `try` and logs `null` in the column slot; the new live tests can pass vacuously or NPE on a missing DESCRIBE row~~ **Closed in Phases 27 and 28 (NAME-04, DEBT-16)**
 - ~~23-REVIEW IN-04 (Info): the unpaired-element WARN does not say inserts will fail with `CANNOT_READ_ALL_DATA`~~ **Fulfilled in Phase 24 (`9d4cb9b2`)**: rollout item 2 says what the WARN marks, that it repeats at every DESCRIBE, and what to do. The WARN text is unchanged
 
 **Phase 24 follow-ups (emerged 2026-10-20, at the Phase 24 pre-gate review and 24-UAT):**
@@ -567,11 +628,11 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
   - ~~WR-05: item 4 excludes `exactlyOnce=false` connectors from the rollback hazard, but E-12 measured that hazard on `exactlyOnce=false`.~~
   - ~~WR-06: item 7 commits the branch rollback, which removes the note, before the in-flight check that item 4 says to run first.~~
 - ~~24-REVIEW round 3, the rest: WR-04 ("every insert fails" is stated for all `size` shapes, but 4 of 13 were inserted, and the same text allows a shorter row to parse); WR-07 (the state-table query has two topic slots, so a connector with three or more topics can read a false "safe", and the query names no database); IN-04 (the known-limitation sentence leaves out the line break); IN-05 (the CHANGELOG says "the ClickHouse client" for `ClickHouseHelperClient`)~~ **Closed by quick 261020-vcr**
-- [ ] Carried in `24-MILESTONE-CLOSE-RECORD.md`: `jacocoForkReport` omits `DeclaredNullability` and `WithheldMessageException`, so the coverage report understates fork coverage; 24-REVIEW IN-03, planning identifiers in `JsonAsStringKeyResidualLiveTest`'s Javadoc and display names
+- ~~Carried in `24-MILESTONE-CLOSE-RECORD.md`: `jacocoForkReport` omits `DeclaredNullability` and `WithheldMessageException`, so the coverage report understates fork coverage; 24-REVIEW IN-03, planning identifiers in `JsonAsStringKeyResidualLiveTest`'s Javadoc and display names~~ **Closed in Phases 27 and 28 (WRT-19, DEBT-17)**
 
 **Quick 261020-vcr follow-ups (emerged 2026-10-20, at review rounds 4–6):**
 
-- [ ] `docs/ROLLOUT-v1.7.0_gg1.md` and `ROLLOUT-v1.7.0_gg2.md` are protected and already published. Both keep a shorter `enableDbTopicSplit=true` key rule ("list `'<db><dbTopicSplitChar><topic>'` instead of `'<topic>'`") and a state-table query with two slots, and both can miss a key: per `RecordConvertor.convert`, a topic that the split character divides into exactly two parts is keyed under its own name. The gg3 note tells the reader to follow its own item 4 step 2. Correct the older notes only if an operator still uses them
+- ~~`docs/ROLLOUT-v1.7.0_gg1.md` and `ROLLOUT-v1.7.0_gg2.md` are protected and already published. Both keep a shorter `enableDbTopicSplit=true` key rule ("list `'<db><dbTopicSplitChar><topic>'` instead of `'<topic>'`") and a state-table query with two slots, and both can miss a key: per `RecordConvertor.convert`, a topic that the split character divides into exactly two parts is keyed under its own name. The gg3 note tells the reader to follow its own item 4 step 2. Correct the older notes only if an operator still uses them~~ **Closed in Phase 29: the gg1 and gg2 notes now carry the key rule**
 
 **Milestone-start items (emerged 2026-10-20/21, at `v1.7.0_gg4-hardening` start):**
 
@@ -597,6 +658,16 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - the older notes' key rule.
 
 None is an unmet requirement. 999.4 is the one item that can fail inserts for an affected table, and possibly store a wrong value. It is pre-existing, named by a WARN, and disclosed; Phase 26 fixed it on the working branch, and the fix ships with `v1.7.0_gg4`.
+
+**Milestone-close note (v1.7.0_gg4-hardening):** backlogs 999.4 and 999.5, the Jackson Map-key residual, the Enum-label NPE, the `jacocoForkReport` gap and the older notes' key rule are closed. These items are open, each with an owner and a re-open trigger in `milestones/v1.7.0_gg4-hardening-phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md`:
+- [ ] The 16 unfixed review findings from 25-REVIEW (WR-01..WR-03, IN-01..IN-04) and 26–28-REVIEW. Phase 29 was a release phase and edited no `src/`, test or build file to close them.
+- [ ] PUB-12 / SC3: the Phase 29 review ran four rounds (the roadmap allowed at most three) and round four found IN-09. The user authorised round four and accepted the deviation at 29-UAT. The IN-09 fix (CHANGELOG wording only) was never re-reviewed.
+- [ ] `confluent-archive-allowlist-29.txt` has no CI consumer. The entry-by-entry archive compare against gg3 is a manual release-time step; CI runs only `verifyConfluentArchive`.
+- [ ] No single test drives a size-named Tuple element whose name also contains an escape character.
+- [ ] `docs/FORK-DELTA.md:224` still reads, as history, that gg3 shipped items 10 and 11 as open. Line 226 states they are closed.
+
+None is an unmet requirement and none loses data. The two discovery defects that could fail inserts or store a shifted row are fixed and shipped.
+
 
 ### Out of Scope
 
@@ -641,8 +712,8 @@ None is an unmet requirement. 999.4 is the one item that can fail inserts for an
 
 ## Context
 
-- **Repository:** fork `git@github.com:ne1r0n/clickhouse-kafka-connect.git` (`origin`), branch `custom_build` at `6a2a87a5` (the `v1.7.0_gg3` merge `3376a18f` plus the corrected-note merge) = upstream `v1.7.0` + the fork delta in `docs/FORK-DELTA.md`. Since 2026-10-14 `custom_build` is the GitHub default branch. `upstream` remote → `ClickHouse/clickhouse-kafka-connect`. Tags on `origin`: `v1.7.0_gg3`, `v1.7.0_gg2`, `v1.7.0_gg1` and `v1.6.0_gg1` (published); `pre-v1.7.0_gg3`, `pre-v1.7.0_gg2`, `pre-v1.7.0-sync` and `pre-v1.6.0-sync` (rollback). The corrected-note merge publishes the planning history through `a403cc1d`. Later bookkeeping, including the `v1.7.0_gg3-hardening` close, lives on local `sync/v1.7.0`. Milestone tags (`v1.7.0_gg1-sync` etc.) are local-only. `custom_build` is protected; the scratch branch was deleted from `origin` once CI went green. Codebase map in `.planning/codebase/` predates the merge (mapped at `22f055c`) and is stale for `ClickHouseWriter`, `ClickHouseHelperClient` and the build.
-- **Stack:** Java 17 toolchain, Gradle 9.6.1 with upstream's version catalog (`gradle/libs.versions.toml`) and `testFixtures`, Kafka Connect API 4.1.1 (fork-pinned), ClickHouse Java client 0.9.6 (fork-pinned; V1 and V2 paths), Jackson + Gson, Lombok. Tests: JUnit Jupiter 5.14.4, Mockito, Hamcrest, Testcontainers 2.0.5 (ClickHouse, Kafka, Toxiproxy). Shared test helpers (`ClickHouseTestHelpers`, `SchemaTestData`, `SchemalessTestData`) live in `src/testFixtures`.
+- **Repository:** fork `git@github.com:ne1r0n/clickhouse-kafka-connect.git` (`origin`), branch `custom_build` at `21c51598` (the `v1.7.0_gg4` merge) = upstream `v1.7.0` + the fork delta in `docs/FORK-DELTA.md`. Since 2026-10-14 `custom_build` is the GitHub default branch. `upstream` remote → `ClickHouse/clickhouse-kafka-connect`. Tags on `origin`: `v1.7.0_gg3`, `v1.7.0_gg2`, `v1.7.0_gg1` and `v1.6.0_gg1` (published); `pre-v1.7.0_gg3`, `pre-v1.7.0_gg2`, `pre-v1.7.0-sync` and `pre-v1.6.0-sync` (rollback). The corrected-note merge publishes the planning history through `a403cc1d`. Later bookkeeping, including the `v1.7.0_gg3-hardening` close, lives on local `sync/v1.7.0`. Milestone tags (`v1.7.0_gg1-sync` etc.) are local-only. `custom_build` is protected; the scratch branch was deleted from `origin` once CI went green. Codebase map in `.planning/codebase/` predates the merge (mapped at `22f055c`) and is stale for `ClickHouseWriter`, `ClickHouseHelperClient` and the build.
+- **Stack:** Java 17 toolchain, Gradle 9.6.1 with upstream's version catalog (`gradle/libs.versions.toml`) and `testFixtures`, Kafka Connect API 4.4.0 (fork-pinned, compile-time only), ClickHouse Java client 0.9.6 (fork-pinned; V1 and V2 paths), Jackson + Gson, Lombok. Tests: JUnit Jupiter 5.14.4, Mockito, Hamcrest, Testcontainers 2.0.5 (ClickHouse, Kafka, Toxiproxy). Shared test helpers (`ClickHouseTestHelpers`, `SchemaTestData`, `SchemalessTestData`) live in `src/testFixtures`.
 - **Test layout:**
   - `src/test/java` — unit tests plus ClickHouse-backed tests extending `ClickHouseBase` (starts a Testcontainers ClickHouse per class); run by `./gradlew test`.
   - `src/test/java/transforms/` — SMT tests (outside the `com.clickhouse...` package).
@@ -650,7 +721,7 @@ None is an unmet requirement. 999.4 is the one item that can fail inserts for an
   - ClickHouse image chosen by `CLICKHOUSE_VERSION` env (default `latest` since Phase 1, was `25.3`, `ClickHouseTestHelpers`); client by `CLIENT_VERSION` env (default V2). **The default silently reverted to `25.8.18.1` in the v1.6.0 merge and stayed wrong from Phase 6 to Phase 10** — Phases 8 and 9 therefore closed green against a server this milestone does not claim to test. Restored and pinned Docker-free by `ClickHouseVersionDefaultUnitTest` (Phase 10; MERGE-CHECKLIST Recorded Fact 15). Tests run with `file.encoding=windows-1252` — deliberately, so non-ASCII handling is exercised rather than masked by a UTF-8 default.
   - `ClickHouseBase` gives one shared container per test JVM fork, a fresh empty database per test class, an inherited `@Tag("clickhouse")`, an `@AfterEach` MBean leak sweep, and opt-in `uniqueConnectorName(TestInfo)`. New sink-task tests must create their tables before `start()` — `ClickHouseWriter.start()` fails against an empty database.
   - `./gradlew testUnit` runs everything not tagged `clickhouse`, needs no Docker, and is deliberately not part of `check`.
-  - JaCoCo is report-only on `test`: `jacocoTestReport` plus `jacocoForkReport` over 15 explicitly listed fork-changed classes. No coverage threshold can fail the build.
+  - JaCoCo is report-only on `test`: `jacocoTestReport` plus `jacocoForkReport` over 21 explicitly listed fork-changed classes. No coverage threshold can fail the build.
   - Version gating helper exists: `src/test/java/.../extension/FromVersionConditionExtension.java`.
 - **Fork test inventory (2026-09-15):**
 
@@ -677,7 +748,8 @@ None is an unmet requirement. 999.4 is the one item that can fail inserts for an
 - **CI after v1.7.0_gg2-hardening:** `tests.yaml` runs on `ubuntu-24.04` with all four actions pinned to commit SHAs (Node 24 majors), plus `permissions: contents: read` and `persist-credentials: false`. The fork-count notice reads Gradle's `reportTestForks` (`nproc=4, Gradle maxParallelForks=2`). `TestsWorkflowPinGuardUnitTest` pins all of it Docker-free. `test-head.yaml` is deleted. Dependabot has `gradle` and grouped monthly `github-actions` entries, and version updates are enabled. With `custom_build` the default branch, upstream's nightly `integrationTests.yaml` now fires on schedule and is red by inheritance (Active follow-up). Last verified run: `38587062864` on `a246ca01`, 408 s, the only run on that SHA.
 - **Research:** each milestone's research is archived with it: `milestones/v1.2.9_gg4-tests-research/` (per-feature test inventories, 10 pitfalls), `milestones/v1.6.0_gg1-sync-research/` (merge strategy, conflict map, upgrade pitfalls) `milestones/v1.7.0_gg1-sync-research/` (v1.7.0 collision map, compression and lz4 advisories, R-01 routing) and `milestones/v1.7.0_gg2-hardening-research/` (follow-up hardening and CI hygiene). No milestone-level research was run for `v1.7.0_gg3-hardening`; each phase's research is in its archived phase directory.
 - **CI after v1.7.0_gg3-hardening:** same shape. The pin guard also pins the fork-count step's `reportTestForks` call and Dependabot's `exclude-paths`. Last verified run: `39496482074` on `6a2a87a5`, the only run on that SHA. The nightly `integrationTests.yaml` has been disabled in settings since 2026-10-16.
-- **Open follow-ups:** the open items under Requirements → Active (see Next Milestone Goals). The published `v1.7.0_gg3` has two known defects, backlog 999.4 and 999.5 (FORK-DELTA Known costs 10 and 11). No record-data exposure is known beyond the measured, opt-in Jackson Map-key residual.
+- **CI after v1.7.0_gg4-hardening:** same shape, plus the archive step: CI builds `createConfluentArchive` (finalized by `verifyConfluentArchive`) before the tests, and the pin guard keeps the step and the task from being dropped. Last verified run: `40017036598` on `21c51598`.
+- **Open follow-ups:** the open items under Requirements → Active (see Next Milestone Goals). The published `v1.7.0_gg4` has no known wrong-value or record-data defect; the open items are review advisories and the manual archive compare (FORK-DELTA Known costs).
 
 ## Constraints
 
@@ -813,4 +885,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-22 after Phase 26*
+*Last updated: 2026-10-24 after starting milestone v1.7.0_gg5-ci*
