@@ -4,7 +4,7 @@
 
 If you are coming from a release before `v1.7.0_gg4`, work through [`ROLLOUT-v1.7.0_gg4.md`](ROLLOUT-v1.7.0_gg4.md) first and return here afterwards. The fork's own changes are listed in [`../CHANGELOG.md`](../CHANGELOG.md), and [`FORK-DELTA.md`](FORK-DELTA.md) lists everything the fork patches on top of upstream.
 
-This note names no host, connector, cluster or production system. Every environment-specific value is an angle-bracket stand-in, such as `<connector-name>` or `<rollback-commit>`; replace each one with your own value. Each claim below names how it was checked; where the output is an excerpt or comes from a test probe, the text says so.
+This note names no host, connector, cluster or production system. Every environment-specific value is an angle-bracket stand-in, such as `<connector-name>` or `<rollback-commit>`; replace each one with your own value. Where a claim rests on a command or a test, the text names it and says whether the output is an excerpt or comes from a test probe; the lists of what changes and what a rollback brings back come from the diff between the two tags.
 
 ## 1. No connector code changed
 
