@@ -524,3 +524,56 @@ Consequences, per the D-07 branch rule ("if any skip list is needed"):
 - Probe A3 (an include filter naming a method that `excludeTest` removes) is not exercised: there is no excluded method to probe.
 
 Matches text: n/a (gate check)
+
+### E-10: the byte guard red on a one-byte edit of the real file and green after the restore (NIT-02)
+
+Backs: plan 31-03 Task 1; ROADMAP criterion 3 (a Docker-free guard fails on a single-byte difference from upstream's copy).
+
+```sh
+F=.github/workflows/integrationTests.yaml
+git rev-parse HEAD:$F; git rev-parse v1.7.0:$F; git rev-parse a6f1df83:$F; git rev-parse refs/remotes/upstream/main:$F
+git hash-object $F; shasum -a 256 $F; wc -c < $F
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*UpstreamIntegrationWorkflowBytesGuardUnitTest' --rerun   # unchanged file
+python3 -I (first byte n -> N, in place)                                                                                                   # name: -> Name:
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*UpstreamIntegrationWorkflowBytesGuardUnitTest' --rerun   # red
+git checkout -- $F; git hash-object $F
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*UpstreamIntegrationWorkflowBytesGuardUnitTest' --rerun   # green
+```
+
+```text
+git blob of .github/workflows/integrationTests.yaml:
+HEAD                    3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+v1.7.0                  3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+a6f1df83                3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+refs/remotes/upstream/main  3e9b9be050fa05805227b2eee0d1fe8c72df56c0 (ref exists)
+working file: git hash-object 3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+              sha256 07dff3d0973ae821a259544632d161a270126ff8054b45adbf64849edd2d5109
+              wc -c  4812 (ASCII, LF, no CR, ends with a newline, first line "name: Integration Tests")
+
+run 0, unchanged file, before the commit (bytes-pre.log):
+exit status 0; Tests summary: 9 tests, 9 succeeded, 0 failed, 0 skipped
+
+run 1, first byte changed (name: -> Name:; hash-object a96fb8e5716481cf571d31fd5b880aca5878e944; bytes-red.log, bytes-red.rc, bytes-red.xml):
+exit status 1; XML tests=9 failures=1 errors=0 skipped=0; Tests summary: 9 tests, 8 succeeded, 1 failed, 0 skipped
+failing test: integrationTests.yaml is byte-identical to upstream at v1.7.0 and a6f1df83 (NIT-02)
+message: integrationTests.yaml must stay byte-identical to upstream: expected 4812 bytes / 07dff3d0973ae821a259544632d161a270126ff8054b45adbf64849edd2d5109, found 4812 bytes / 346e55ca9b8292571d673357d1358c3eb69a30c744e008e1092dcda169709e4c; if an upstream sync changed this file on purpose, confirm the new bytes equal the upstream tag's copy (git rev-parse TAG:.github/workflows/integrationTests.yaml, with the synced upstream tag for TAG) and replace EXPECTED_SHA256 and EXPECTED_LENGTH in the same commit
+
+restore: git checkout -- .github/workflows/integrationTests.yaml
+git hash-object after the restore: 3e9b9be050fa05805227b2eee0d1fe8c72df56c0; git status --porcelain of the file: empty
+
+run 2, restored file (bytes-green.log, bytes-green.rc, bytes-green.xml):
+exit status 0; XML tests=9 failures=0 errors=0 skipped=0; Tests summary: 9 tests, 9 succeeded, 0 failed, 0 skipped
+
+the seven fixtures, each rejected by the byte rule (all passed in run 2):
+fixture: the byte rule rejects the first byte flipped (NIT-02)
+fixture: the byte rule rejects a middle byte flipped (NIT-02)
+fixture: the byte rule rejects the last byte flipped (NIT-02)
+fixture: the byte rule rejects one byte appended (NIT-02)
+fixture: the byte rule rejects the final newline removed (NIT-02)
+fixture: the byte rule rejects LF line endings replaced by CRLF (NIT-02)
+fixture: the byte rule rejects an empty file (NIT-02)
+```
+
+The one-byte edit kept the length at 4812 (an in-place byte change), so the message differs from the expected values in the hash only; the length-changing edits are covered by the appended-byte, removed-newline, CRLF and empty fixtures. The edit lived only in the working tree between run 1 and the restore; the guard commit is `3d0e3d6f8ce6802288c71efcbcf199650061d9f3` and touches only the guard class. The runs used the default Gradle JVM (Homebrew JDK 21 daemon, no `JAVA_HOME`): `testUnit` is Docker-free and its test JVM started normally, so the E-02 `JAVA_HOME` override was not needed.
+
+Matches text: n/a (gate check)
