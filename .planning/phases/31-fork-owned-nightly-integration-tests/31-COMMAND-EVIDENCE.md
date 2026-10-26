@@ -294,3 +294,21 @@ The ten images with tag, image id, repo digest and architecture are in E-04. Onl
 run-commit: 07fc1f31aa4373a89fd690515d88524f88c05358
 
 Matches text: n/a (gate check)
+
+### E-06: the user's disposition of the measurement (D-07, D-08, D-09)
+
+Backs: plan 31-01 Task 3 (blocking-human decision); read by plan 31-02's tracer.
+
+user_answer_received_by: orchestrator (direct)
+
+user_answer: fix-harness (Recommended)
+
+disposition: fix-harness
+
+```text
+skip-entries: pending
+```
+
+No later plan of this phase starts until a gap plan (`/gsd-plan-phase 31 --gaps`) has re-measured and recorded `### E-06b` with a numeric `skip-entries:` line. The proposed timeouts (step 30, job 40) and the upstream-red explanation were not amended; the E-05 `nightly-timeouts:` line stands pending the re-measurement.
+
+Matches text: n/a (gate check)
