@@ -148,3 +148,9 @@ build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.cla
 src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	confluentinc/cp-server-connect:	1	NIT-01
 src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	new ImageFromDockerfile(	1	NIT-01
 src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	new GenericContainer<>(CP_DATA_GEN)	0	NIT-01
+# Phase 31 (v1.7.0_gg5-ci): fork-owned nightly rows; the first row pins the D-01 gate, and the two 0 rows pin that no secret and no test filter enter the file.
+.github/workflows/nightly-integration-tests.yaml	github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'	1	NIT-01
+.github/workflows/nightly-integration-tests.yaml	./gradlew integrationTest	1	NIT-01
+.github/workflows/nightly-integration-tests.yaml	persist-credentials: false	1	NIT-01
+.github/workflows/nightly-integration-tests.yaml	secrets.	0	NIT-01
+.github/workflows/nightly-integration-tests.yaml	--tests	0	NIT-01
