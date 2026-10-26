@@ -108,6 +108,7 @@ ok
 ```
 
 3. Redeploy the `v1.7.0_gg4` archive. If you kept the one you deployed before, use it. Otherwise check out tag `v1.7.0_gg4` in a clean worktree and run `./gradlew createConfluentArchive`; no release asset exists for any tag, so the archive is always your own build. It passes the archive check of section 2 and differs from the `v1.7.0_gg5` archive only in the release identity.
+4. Push `custom_build` (a normal push, or the pull request your branch rules require) so that GitHub stops running the nightly. Until the rollback commit is on `origin/custom_build`, GitHub keeps running the `v1.7.0_gg5` workflows there, the scheduled nightly included.
 
 Rehearsed on a dry-run merge of the release tip onto `21c51598`: after the rollback commit the branch has `VERSION` `v1.7.0_gg4` and no nightly workflow file, and `git revert <rollback-commit>` restores the tree you rolled back from. To go forward again, revert the rollback commit; the rollback removes this document from the branch, so read it with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg5.md`.
 
