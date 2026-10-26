@@ -697,3 +697,28 @@ integration_test: not re-run at this gate (PT-07): D-07 locks the gate; Phase 31
 `CLIENT_VERSION=V2` has no log line in the test JVM; it is attributed by the command line, and V2 is also the code default. `SELECT version()` was run with `clickhouse-local` from the same `latest` image the suite used.
 
 Matches text: n/a (gate check)
+
+### E-61: anchors gate, GitHub state and push readiness (D-07)
+
+Run on the tree E-60 gated (every change since `gated_head` is under `.planning/`), after the gate and the self-test had ended.
+
+```text
+invariants: provenance_paths=21 anchor_commits=944 anchor_rows=131 marker_commits=1003 anchor_exempt=19 result=PASS
+PASS ST9-exact-row
+selftest: no failures
+```
+
+spotless: not run (PT-13): Phase 32 changed no .java or .kts file
+
+GitHub reads (unauthenticated REST, before any push):
+
+```text
+integrationTests.yaml state: disabled_manually; schedule runs listed: 2, created after 2026-10-16T09:38:23Z: 0
+nightly-integration-tests.yaml on custom_build: HTTP 404
+published releases: 0
+core rate limit remaining: 54
+```
+
+PUSH-READY: X=f5edf94b7b3ddfc0686b71d0d0daba527aed22bf rate=54. Origin's custom_build is 21c51598 and `HEAD..origin/custom_build` is exactly that commit; origin holds no sync/v1.7.0 and no ref at X; no tag or other ref is configured to be pushed; no secret pattern in any file changed since 21c51598. Nothing was pushed and no workflow was dispatched.
+
+Matches text: n/a (gate check)
