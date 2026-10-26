@@ -16,6 +16,28 @@ before upgrading from `v1.7.0_gg4`. If you are coming from an earlier release, s
 * The shipped archive differs from the `1.7.0_gg4` one only in the release identity: the `Version` constant, the two
   classes that inline it and the manifest `Implementation-Version`. The compare checked it entry by entry.
 
+## Known Issues
+
+* `increment-version.yml` cannot bump a `vX.Y.Z_ggN` version: `semver.inc` returns `null` for it, so a dispatch writes
+  `vnull` to `VERSION` and opens a pull request for it. `VERSION` is bumped by hand.
+
+## Build and CI
+
+* `release.yaml` and `pre-release.yaml` pin every action by commit SHA and build the archive with the project's Gradle
+  wrapper through `setup-gradle`, so the archive check runs on the release path. They create the release with
+  `gh release create` and attach the archive. A real publish runs only from `custom_build` after a green `tests.yaml`
+  run on the commit, and any other dispatch is a dry run on a throwaway draft that is deleted.
+* `increment-version.yml` is pinned and runs on Node 24.
+* The new `nightly-integration-tests.yaml` runs the whole `integrationTest` task on ClickHouse `latest` with client V2
+  in the runner's Docker, with no cloud job and no secret. A manual run always starts, and the schedule starts only
+  while the repository variable `NIGHTLY_ENABLED` is `true`. Failed tests are summarised and the reports are uploaded.
+* `WorkflowActionPinGuardUnitTest` fails when a fork-owned workflow uses an action that is not pinned to a commit SHA.
+* `UpstreamIntegrationWorkflowBytesGuardUnitTest` fails when upstream's `integrationTests.yaml`, which stays disabled,
+  changes by a byte, and `NightlyWorkflowGuardUnitTest` pins the nightly's shape.
+* The integration-test harness runs its Connect worker on Java 17, because the Java 11 worker of the earlier datagen
+  image could not load the connector jar.
+* `dependabot.yml` now excludes only `integrationTests.yaml`, so Dependabot keeps the release-path pins current.
+
 # 1.7.0_gg4, 2026-10-23
 
 This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg3`, plus upstream's untagged tail

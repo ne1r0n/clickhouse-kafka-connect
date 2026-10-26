@@ -189,7 +189,7 @@ diff Version.a.txt Version.b.txt; diff ClickHouseHelperClient.a.txt ClickHouseHe
 
 In prose: archive A is also the rollback target's archive. Tag `v1.7.0_gg4` and `pre-v1.7.0_gg5` name `PRE` (`21c51598`; see E-05), A was built from that tag with `clean createConfluentArchive` and its `verifyConfluentArchive` finalizer ended green (7801 inner entries, no nested jar, no Kafka API class), so the gg4 warning against building from the rolled-back tip does not carry forward (PT-10). The archive Phase 30's dry runs built on CI (`5a8522a8...638c`, 12453663 bytes, see E-04) is a different build of the gg4 tree from a different machine and is not compared byte for byte with A (12453558 bytes); the claim rests on the entry-by-entry compare above, not on whole-zip equality.
 
-Matches text: pending (32-03)
+Matches text: yes
 
 ### E-04: the release path since the Phase 30 dry runs (D-01, D-03 claim 2)
 
@@ -232,7 +232,7 @@ Other annotations of both runs: `Archive` (`clickhouse-kafka-connect-v1.7.0_gg4.
 
 `VERSION` is the only release-path input that changed since the dry runs. `git diff --name-only $D HEAD` over `src/main`, `build.gradle.kts`, `settings.gradle.kts`, `gradle`, `gradlew`, `ConfluentArchiveCheck.java`, `config` and both release workflows is empty, and each workflow holds one `./gradlew createConfluentArchive` line. Nothing was dispatched and nothing was pushed.
 
-Matches text: pending (32-03)
+Matches text: yes
 
 ### E-05: origin, the merge shape, src/main, the integration gate run and GitHub's state (D-02, D-08)
 
@@ -355,7 +355,7 @@ releases: 0
 open_prs: #4 dependabot/gradle/clickHouseDriver-0.10.0, #10 dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2
 nightly_toggle_grep: 16:    - cron: '17 3 * * *' / 17:  workflow_dispatch: / 25:    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'
 
-Matches text: pending (32-03)
+Matches text: yes
 
 ### E-10: claims 1 and 4 of the gg5 note re-run on the tip (D-03)
 
@@ -489,5 +489,62 @@ The source each new or changed statement was read from:
 | For the next syncer | rollback tag on `21c51598`; no `src/main` change; the archive differs only in the release identity (four exact paths, per `32-AMENDMENT-01.md`); the allow-list `confluent-archive-allowlist-32.txt` | this phase's E-03, E-05, E-10 |
 
 Left out for lack of a source: why the nightly's timeouts are exactly 75 and 85 minutes beyond the workflow header's statement that they come from Phase 31's measured run; any statement about an observed scheduled nightly run (none exists yet).
+
+Matches text: yes
+
+### E-20: the 1.7.0_gg5 CHANGELOG section (D-05)
+
+Backs: `CHANGELOG.md`, the `# 1.7.0_gg5, 2026-10-26` section (plan 32-03 Tasks 1 and 3). The audit is Task 3's first verify command on the committed tip: the heading is dated, everything from the gg4 heading down is byte-identical to `P32_BASE`, the sections are Important Changes, Known Issues and Build and CI in that order, the first Important Changes bullet says no connector code changed with `src/main` and `1.7.0_gg4`, Build and CI names every workflow, guard class, `NIGHTLY_ENABLED`, `dependabot.yml` and the Java 17 harness, Known Issues names the `vnull` defect, the section carries no requirement or planning ID and no line over 120 characters. The archive statement of the third Important Changes bullet uses the four-row wording of `32-AMENDMENT-01.md` (E-03: the `Version` constant, the two classes that inline it and the manifest `Implementation-Version`).
+
+```sh
+python3 -I <the Task 3 verify program, CHANGELOG half> && echo CHANGELOG-GG5-OK
+head -1 CHANGELOG.md
+awk 'NR==1,/^# 1.7.0_gg4/' CHANGELOG.md | wc -l
+```
+
+```text
+heading True tail True sections ['Important Changes', 'Known Issues', 'Build and CI'] lead True bc-missing [] known-issue True planning-ids [] bc-bullets 7 long []
+CHANGELOG-GG5-OK
+# 1.7.0_gg5, 2026-10-26
+41
+```
+
+The section is 40 lines, from its heading through the blank line before the `# 1.7.0_gg4, 2026-10-23` heading (the `wc -l` figure 41 includes that heading). Build and CI has 7 bullets. Facts and their sources: the identity bullet from E-02, the archive bullet from E-03, the workflow bullets from the workflow files and E-21, the Java 17 harness bullet from E-21, the `dependabot.yml` bullet from `git diff v1.7.0_gg4 HEAD -- .github/dependabot.yml` (the entries for `increment-version.yml`, `pre-release.yaml` and `release.yaml` left `exclude-paths`), the `vnull` bullet from `30-COMMAND-EVIDENCE.md` E-06.
+
+changelog_date: 2026-10-26
+
+Matches text: yes
+
+### E-22: raw numbers and the skip recount on the final tree (D-06)
+
+Backs: `docs/FORK-DELTA.md`, the `## The raw numbers` section (the two after-gg5 rows, the two gg5 commands, the endpoint and measurement sentences, the gg4-to-gg5 growth paragraph) and the `## Named skip inventory` recount (plan 32-03 Task 3). Measured at the commit that precedes the commit carrying these documents (`39465506`, the Task 2 commit); no file under `src`, the build files, `gradle` or `.github` changes in plan 32-03, so the figures hold at the commit that carries them. `v1.7.0_gg5` does not exist as a tag yet; plan 32-06 re-runs the two gg5 commands on it.
+
+```sh
+git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 HEAD -- src/main
+git diff --shortstat v1.7.0_gg4 HEAD -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0_gg4 HEAD -- .github
+git diff --shortstat v1.7.0_gg4 HEAD -- src/test
+git diff --shortstat v1.7.0_gg4 HEAD -- src/integrationTest
+git diff --shortstat v1.7.0_gg4 HEAD -- src/main
+git diff --shortstat v1.7.0_gg4 HEAD -- build.gradle.kts gradle
+grep -rho '@Disabled' src/test/java | wc -l
+grep -rho 'Assumptions.assumeTrue' src/test/java | wc -l
+```
+
+```text
+ 287 files changed, 31774 insertions(+), 731 deletions(-)
+ 37 files changed, 2877 insertions(+), 241 deletions(-)
+ 12 files changed, 2125 insertions(+), 118 deletions(-)
+ 6 files changed, 616 insertions(+), 92 deletions(-)
+ 5 files changed, 1486 insertions(+), 25 deletions(-)
+ 1 file changed, 23 insertions(+), 1 deletion(-)
+(no output: src/main is byte-identical to v1.7.0_gg4)
+(no output: build.gradle.kts and gradle are unchanged since v1.7.0_gg4)
+       7
+       1
+```
+
+The after-gg5 rows are the first two lines (wider scope 287 / 31774 / 731, `src/main` 37 / 2877 / 241); the `src/main` row equals the after-gg4 row because `src/main` did not change. The planning-time values were 287 / 31774 / 731 and 37 / 2877 / 241 and agree. The per-directory lines sum to the third line (6 + 5 + 1 = 12 files, 616 + 1486 + 23 = 2125 insertions, 92 + 25 + 1 = 118 deletions). The skip recount gives 7 `@Disabled` sites and 1 `Assumptions.assumeTrue` site, so `The current suite skips 18 tests.` stays (7 methods plus the 11 parameterized cases behind the one assumption).
 
 Matches text: yes
