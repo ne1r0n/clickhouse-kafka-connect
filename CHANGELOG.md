@@ -1,3 +1,21 @@
+# 1.7.0_gg5, 2026-10-26
+
+This is the fork release built on the same upstream base, `1.7.0` plus upstream's untagged tail `a6f1df83`, as
+`1.7.0_gg4`. It lists only the fork's own changes since `v1.7.0_gg4`. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for
+everything the fork patches on top of upstream, and read [docs/ROLLOUT-v1.7.0_gg5.md](docs/ROLLOUT-v1.7.0_gg5.md)
+before upgrading from `v1.7.0_gg4`. If you are coming from an earlier release, start with the `1.7.0_gg4` checklist.
+
+## Important Changes
+
+* No connector code changes: `src/main` is identical to `1.7.0_gg4`, so the deployed connector behaves as
+  `1.7.0_gg4`. This release changes the release workflows, adds a nightly integration-test workflow and CI checks, and
+  changes the release identity.
+* The JMX MBean `version=` segment and the client name sent on every request now read `version=v1.7.0_gg5` and
+  `clickhouse-kafka-connect/v1.7.0_gg5`. Update dashboard, alert and exporter matchers that spell out the `v1.7.0_gg4`
+  value; wildcard matchers keep working.
+* The shipped archive differs from the `1.7.0_gg4` one only in the release identity: the `Version` constant, the two
+  classes that inline it and the manifest `Implementation-Version`. The compare checked it entry by entry.
+
 # 1.7.0_gg4, 2026-10-23
 
 This is the fork release built on the same upstream base, `1.7.0`, as `1.7.0_gg3`, plus upstream's untagged tail
