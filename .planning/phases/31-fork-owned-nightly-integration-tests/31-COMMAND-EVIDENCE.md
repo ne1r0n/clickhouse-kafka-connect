@@ -393,3 +393,93 @@ Spotless (PT-19), spotlessApply in a throwaway worktree at the plan base c7965a7
 harness-commit: 781fd52683d6adb7f49468ed6eb88374053a9c1c
 
 Matches text: n/a (gate check)
+
+### E-18: the integrationTest re-measurement on latest x V2 with the Java 17 worker (criterion 1, D-04, D-05, D-06, D-08)
+
+Backs: criterion 1, D-04, D-05, D-06, D-08. Sources: E-17, the XML and console log of the run, the capture loop (`docker stats` and `docker ps` every 60 s, worker log and status every 15 s).
+
+#### Run
+
+```sh
+rm -rf build/test-results/integrationTest build/reports/tests/integrationTest
+git rev-parse HEAD
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE JAVA_HOME=$HOME/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home ./gradlew --console=plain integrationTest
+```
+
+```text
+run commit: c4b409db87d36d7599e472d38f3a4bc5a118c646 (contains the harness commit 781fd526; src, build.gradle.kts, settings.gradle.kts and gradle are unchanged since it)
+start (UTC): 2026-10-26T15:40:47Z   end (UTC): 2026-10-26T16:10:15Z   T = 1768 s (29.5 min)
+Gradle: BUILD SUCCESSFUL in 29m 26s; exit status 0
+Test result: SUCCESS
+Tests summary: 55 tests, 54 succeeded, 0 failed, 1 skipped
+```
+
+The whole task ran with no test filter, no `-D` ClickHouse property and no cluster-name variable. No hang, no OpenJ9 or JVM crash (HotSpot Temurin 17.0.9 through `JAVA_HOME`, E-02); no `core.*` file. The Docker images of the run were already local (E-03, E-17), so only the worker image build and container starts were paid at run time.
+
+#### Server
+
+server-version: 26.10.3.7
+
+Image `clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce`, pulled just before the run ("Image is up to date"): the same digest as E-01 and E-17, so no `latest` drift between 31-01 and this run. `SELECT version()` was run with `clickhouse local` from that image. Unlike E-05, the server was reached by passing tests: 54 connector tests inserted into it and read back.
+
+#### Test classes
+
+| Class | Status | tests | failures | errors | skipped | time (s) |
+|-------|--------|-------|----------|--------|---------|----------|
+| ClickHouseSinkConnectorIntegrationTest | ran | 54 | 0 | 0 | 0 | 1759.792 |
+| ExactlyOnceTest | skipped | 8 | 0 | 0 | 8 | 0.022 |
+| ClickHouseCloudTest | skipped | 1 | 0 | 0 | 1 | 0.024 |
+
+`ClickHouseSinkConnectorIntegrationTest` is 25 `avroSchemaTest` plus 22 `protoSchemaTest` invocations plus 7 `stockGen*` methods, all passed. `ClickHouseCloudTest` and `ExactlyOnceTest` abort in `@BeforeAll` through assumptions (no cloud properties, no cluster) and are reported as skipped in the XML, not failed; the console summary counts only `ClickHouseCloudTest` (55 = 54 + 1) while the XML lists all 63 testcases (D-04, as measured in E-02 and E-03).
+
+#### Failures and proposed causes
+
+skip-candidates: 0
+
+No testcase failed or errored.
+
+#### Timeout (D-05)
+
+T = 1768 s (`runh.end` minus `runh.start`). From the XML of `ClickHouseSinkConnectorIntegrationTest`: suite time 1759.792 s, sum of its testcase times 1665.1 s, so U = 94.7 s of class setup (image build of the worker, container starts, ClickHouse and Toxiproxy start). E-03's fully cold class setup was 458 s, so P = max(0, 458 - 94.7) = 363.3 s. W = ceil((1768 + 363.3) / 60) = 36 min. S = ((2 x 36 + 4) div 5) x 5 = 75, J = S + 10 = 85. The slowest testcases are the two interrupt tests (`stockGenMultiTaskInterruptTest` 211.1 s, `stockGenSingleTaskInterruptTest` 160.2 s); every other testcase is under 40 s.
+
+nightly-timeouts: step=75 job=85 (cold-equivalent wall 36 min x 2, rounded up to a multiple of 5; job = step + 10)
+
+CI references (research V8, V9): about 20 minutes for a healthy standalone `latest` x V2 job on a hosted runner, 30 to 52 minutes for red runs, 29.6 minutes for the fork's own red run 38881153720. This local green run took 29.5 minutes warm on 8 CPUs, so a cold hosted runner with 4 vCPU and ten image pulls can be expected to take longer than 20 minutes. The line above supersedes E-05's `step=30 job=40` because plan 31-04 reads the last such line; the user may amend it at Task 3 (the derivation is PT-02 applied to a cold-equivalent wall, so it is conservative: it prices in a cold pull of about 6 minutes of setup that this run did not pay).
+
+#### Images (D-06)
+
+Tag, image id (equal to the repo digest in this containerd image store), repo digest, architecture, created, after the run:
+
+```text
+confluentinc/cp-zookeeper:7.9.6                  sha256:d3294ad2b353ac5a155ad9abe37884f75c482f387af553679210303b7118a0d3  arm64  2026-03-16
+confluentinc/cp-server:7.9.6                     sha256:7021128926d83f34edb8be6196f202bf512e5c1ab998b8fbb163a53122ecebae  arm64  2026-03-16
+confluentinc/cp-schema-registry:7.9.6            sha256:1efa1ed67e6937e4c82ae34d761eee7354e6b79df5d459ff387735af0a2849d1  arm64  2026-03-16
+confluentinc/cp-enterprise-control-center:7.9.6  sha256:024e3b9ed086ce445d32ced8c062983b364d133d59a7685d5182850ca9098a46  arm64  2026-03-16
+confluentinc/cp-ksqldb-server:7.9.6              sha256:8d9573347642c9405b7c10566e29bd83e0b866f13029b343bc59337903f9f14d  arm64  2026-03-16
+confluentinc/cp-kafka-rest:7.9.6                 sha256:b1dbbf701f7a60c3597cc0419f99faf6a8c5239cd541ab593ec00be553117ae0  arm64  2026-03-16
+confluentinc/cp-server-connect:7.9.6             sha256:b0a23182108658bbe097d05b416f4c591574abcec1b5d4409b6852c09d5949ce  arm64  2026-03-16   (new: the worker base, E-17)
+cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0  sha256:0ed7bc9785bcd81595460e1908795e2e0772582a4f79359ad5daaab1001012d3  arm64  2024-03-05   (now the datagen plugin source only)
+clickhouse/clickhouse-server:latest              sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce  arm64  2026-10-26   (floats)
+ghcr.io/shopify/toxiproxy:2.7.0                  sha256:fc2d40f4904c9ab66ba7c49dca969b8116a71d441973d6f124a72d5c172d3b75  arm64  2023-10-25
+testcontainers/ryuk:0.14.0                       sha256:7c1a8a9a47c780ed0f983770a662f80deb115d95cce3e2daa3d12115b8cd28f0  arm64  2025-09-26
+generated worker image: localhost/testcontainers/ua9mfoswj5c4b4dt:latest (built by Testcontainers from the two Confluent images; removed when the test JVM exited, so its id cannot be read afterwards; it adds the 9 MB datagen plugin directory on top of cp-server-connect)
+```
+
+Only `clickhouse/clickhouse-server:latest` floats; its digest equals E-01's, so no drift occurred between the measurements. Drift is accepted (D-06); this run pins nothing.
+
+#### What the fix changes for upstream's red
+
+With a Java 17 worker, no failure remains, so nothing shows a cause behind the class-file level. In particular the API-level part of research hypothesis 2 (the fork compiles against `connect-api` 4.4.0 while the worker runs `connect-api-7.9.6-ce.jar`) produced no failure in this run: all 54 connector tests, including the Avro, Protobuf and interrupt tests, passed, and the captured worker log tail holds no `NoSuchMethodError`, `AbstractMethodError` or `UnsupportedClassVersionError` (the captured file is the last 15-second snapshot of a `json-file` container log: 534111 lines, starting at 16:08:12, so the earlier part of the run is not in it; the passing tests are the evidence for the rest). The tail does hold 47 `ERROR` lines: datagen source tasks ending with "Stopping connector: generated the configured 100 number of messages" (the connector's normal end after its iterations) and `RetriableException from SinkTask` / "Error inserting records" from the interrupt tests, which cut the ClickHouse proxy on purpose and passed. E-05's verdict for run 38881153720 stands: its symptom (all connector-dependent tests failing at `ConfluentPlatform.java:360`) is explained by the Java 11 worker, and is gone locally once the worker is Java 17. That does not prove the CI run goes green; the CI-only risks of E-05 and below remain untested.
+
+#### Differences from the runner and CI risks
+
+E-05's "Differences from the runner" and "CI-only risks for the first dispatch" lists apply unchanged, except that the last item of the risks list (the Java 11 worker) is resolved by E-17. What changed:
+
+- One image build per run of the class: Testcontainers builds the worker image at `@BeforeAll` from `cp-server-connect:7.9.6` and the datagen image (class setup U = 94.7 s with every image local, including this build).
+- One more image pull on a cold runner: `confluentinc/cp-server-connect:7.9.6` (2.71 GB uncompressed), while `cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0` (2.04 GB) is still pulled as the plugin source. Image sizes as reported by Docker for the ten images: zookeeper 0.53 GB, cp-server 1.86, schema-registry 2.04, control-center 1.09, ksqldb 1.40, kafka-rest 1.86, cp-server-connect 2.71, datagen 2.04, clickhouse 0.28, toxiproxy 0.01; sum 13.83 GB (E-04 measured about 11.5 GB of growth for the nine images before this change). Against the runner's 14 GB SSD this is the largest CI risk of the change: the capacity probe of plan 31-04 and the failed-test summary diagnose it in the first dispatch. `docker system df` of the run (all images already local) read Images 28.22 GB before and 28.24 GB after, Containers 8 to 9 (not left by the run: the other containers belong to an unrelated local Superset stack), Local Volumes 47 in both.
+- Memory: peak concurrent memory of the run's containers 5121 MiB with 10 containers (the largest single container 1876 MiB), against 16 GB on the runner; the unrelated local containers are excluded.
+- Wall time: 29.5 minutes for a green run against E-03's 13.4 minutes for a run that failed fast.
+
+run-commit: c4b409db87d36d7599e472d38f3a4bc5a118c646
+
+Matches text: n/a (gate check)
