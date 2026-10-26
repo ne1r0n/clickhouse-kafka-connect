@@ -94,10 +94,11 @@ What to do: nothing for the connector; enable the schedule only when you want th
 
 Nothing in the data format changes, so a rollback is a code and workflow rollback. Tag `pre-v1.7.0_gg5` names commit `21c51598`, the published tip of `custom_build` before this release, which is also tag `v1.7.0_gg4`. The tag is published together with this release.
 
-1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing, with one expected exception: a fresh checkout lists ` M gradlew.bat` without any change of yours, because the committed `gradlew.bat` has Windows line endings and `.gitattributes` asks git to normalise `*.bat` files. Commit whatever else it lists, set it aside with `git stash -u`, or work in a fresh clone: the next command discards uncommitted and staged changes to tracked files without asking, and it overwrites untracked files at paths that the tag contains.
-2. Restore the tree of the tag in one commit. This commit is `<rollback-commit>`:
+1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing, with one expected exception: a fresh checkout lists ` M gradlew.bat` without any change of yours, because the committed `gradlew.bat` has Windows line endings and `.gitattributes` asks git to normalise `*.bat` files. Commit whatever else it lists, set it aside with `git stash -u`, or work in a fresh clone: the `git read-tree` of step 2 discards uncommitted and staged changes to tracked files without asking, and it overwrites untracked files at paths that the tag contains.
+2. Restore the tree of the tag in one commit on a new branch, so that your local `custom_build` stays as published. This commit is `<rollback-commit>`:
 
 ```sh
+git switch -c rollback-v1.7.0_gg5
 git read-tree -u --reset pre-v1.7.0_gg5
 git commit -m "Roll back v1.7.0_gg5"
 git diff --quiet HEAD pre-v1.7.0_gg5 && echo ok
@@ -108,7 +109,7 @@ ok
 ```
 
 3. Redeploy the `v1.7.0_gg4` archive. If you kept the one you deployed before, use it. Otherwise check out tag `v1.7.0_gg4` in a clean worktree and run `./gradlew createConfluentArchive`; no release asset exists for any tag, so the archive is always your own build. It passes the archive check of section 2 and differs from the `v1.7.0_gg5` archive only in the release identity.
-4. Push `custom_build` (a normal push, or the pull request your branch rules require) so that GitHub stops running the nightly. Until the rollback commit is on `origin/custom_build`, GitHub keeps running the `v1.7.0_gg5` workflows there, the scheduled nightly included.
+4. Publish the rollback commit. Where `custom_build` accepts pushes, run `git push origin HEAD:custom_build`. Where it requires a pull request, run `git push origin rollback-v1.7.0_gg5`, open the pull request into `custom_build` and merge it with a merge commit, so the rollback commit keeps its SHA for the forward path below. Until the rollback commit is on `origin/custom_build`, GitHub keeps running the `v1.7.0_gg5` workflows there, the scheduled nightly included.
 
 Rehearsed on a dry-run merge of the release tip onto `21c51598`: after the rollback commit the branch has `VERSION` `v1.7.0_gg4` and no nightly workflow file, and `git revert <rollback-commit>` restores the tree you rolled back from. To go forward again, revert the rollback commit; the rollback removes this document from the branch, so read it with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg5.md`.
 
