@@ -503,3 +503,24 @@ carried-to-phase-32: FORK-DELTA row for the harness's Java 17 Connect worker in 
 The E-18 `nightly-timeouts: step=75 job=85` line stands unamended.
 
 Matches text: n/a (gate check)
+
+### E-07: no skip list is needed (D-07)
+
+Backs: plan 31-02 Task 1 (the D-07 branch rule), Tasks 2 and 3 (skipped).
+
+The authoritative disposition is the last evidence entry whose heading starts `### E-06` and that holds a numeric `skip-entries:` line. That is `### E-06b: the user's disposition of the re-measurement (D-05, D-08, D-09)` (`user_answer: accept (Recommended)`, `user_answer_received_by: orchestrator (direct)`). The earlier `### E-06` entry holds `skip-entries: pending`, which is not numeric, so it was superseded by E-06b. E-06b holds:
+
+```text
+skip-entries: 0
+```
+
+The E-18 re-measurement behind it is green: 55 tests, 54 succeeded, 0 failed, 1 skipped, on `latest` x V2 with the Java 17 Connect worker (`skip-candidates: 0`). No failure remains, so there is nothing to classify.
+
+Consequences, per the D-07 branch rule ("if any skip list is needed"):
+
+- No file outside this evidence changes in plan 31-02: `gradle/integration-test-skip-list.tsv` is not created, `build.gradle.kts` gets no reader, `.planning/scripts/fork-anchors.txt` gets no row (anchors mirror: rows=126 bad=0, saved to `/tmp/gsd31/exec/anchors-before-31-02.txt`), `.planning/REQUIREMENTS.md` gets no Future Requirements bullet, and `src/main` is identical to `v1.7.0_gg4`.
+- Task 2 (the Docker-free guard `IntegrationSkipListGuardUnitTest`) is skipped: there is no list or reader to guard. The Task 2 verify prints `SKIP-GUARD-NOT-NEEDED`.
+- Task 3 (the phase-gate live run with the list) is skipped: the phase-gate `integrationTest` run is 31-06's green re-measurement, E-18 (gate commit `c4b409db87d36d7599e472d38f3a4bc5a118c646`, `server-version: 26.10.3.7`, same image digest as E-01). The 31-01 run in E-03 was red, so E-18 is the green one. No E-08 or E-09 is written.
+- Probe A3 (an include filter naming a method that `excludeTest` removes) is not exercised: there is no excluded method to probe.
+
+Matches text: n/a (gate check)
