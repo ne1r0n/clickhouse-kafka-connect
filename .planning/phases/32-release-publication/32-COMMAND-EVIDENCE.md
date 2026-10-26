@@ -657,3 +657,43 @@ after git revert <rollback-commit>: tree(HEAD)==tree(target)
 ```
 
 Matches text: yes
+
+### E-60: v1.7.0_gg5 suite gate (D-07)
+
+Run by the orchestrator on the frozen tip of `sync/v1.7.0`, after FREEZE-OK (origin `custom_build` still `21c51598`, `HEAD..origin/custom_build` exactly that commit, the merge of the two has the tip's tree).
+
+Commands as run (each carries the pinned environment where it is a test run):
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean compileJava compileIntegrationTestJava
+colima stop --profile vz        # docker info then fails
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 ./gradlew testUnit --rerun
+colima start --profile vz
+env -u TESTCONTAINERS_HOST_OVERRIDE -u CLICKHOUSE_CLUSTER_NAME CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 ./gradlew test --rerun   # run 1, then run 2
+```
+
+Results:
+
+```text
+clean/compile: generated ARTIFACT_VERSION = "v1.7.0_gg5"; :compileIntegrationTestJava ran
+testUnit with Docker stopped: 1374 tests, 0 failed, 2 skipped, BUILD SUCCESSFUL in 20s, no live class ran
+ci guards: NightlyWorkflowGuardUnitTest 58, FailedTestsSummaryScriptUnitTest 8, WorkflowActionPinGuardUnitTest 21, TestsWorkflowPinGuardUnitTest 39, UpstreamIntegrationWorkflowBytesGuardUnitTest 9 (0 failures, errors, skips)
+run 1: 1961 tests, 107 xml, 0 failed, 18 skipped, BUILD SUCCESSFUL in 2m 39s, per-class digest f78712e46566
+run 2: 1961 tests, 107 xml, 0 failed, 18 skipped, BUILD SUCCESSFUL in 2m 39s, per-class digest f78712e46566 (equal to run 1)
+skips: the 18 named skips (7 named tests plus the 11 ClickHouseSinkTaskWithSchemaTest parameterised ones), compared by name
+server: one version per run, 26.10.3.7; every ClickHouseTestHelpers Version: line reads latest
+```
+
+gated_head: a92c0b7480d397c0f0bb966939f21118c1708217
+suite_env: CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 CLICKHOUSE_CLUSTER_NAME=unset
+suite_jvm_clickhouse_version: latest
+select_version: 26.10.3.7
+image: sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce 2026-10-26T00:06:54Z
+testunit_totals: 1374 tests, 0 failed, 2 skipped
+suite_run_1: 1961 tests, 107 xml, 0 failed, 18 skipped
+suite_run_2: 1961 tests, 107 xml, 0 failed, 18 skipped
+integration_test: not re-run at this gate (PT-07): D-07 locks the gate; Phase 31's E-18 run at c4b409db was green on latest x V2 and the integrationTest inputs are unchanged since; compileIntegrationTestJava ran green above and in tests.yaml on every push; the nightly's first manual run (NIT-03, plan 32-07) runs the whole task on CI.
+
+`CLIENT_VERSION=V2` has no log line in the test JVM; it is attributed by the command line, and V2 is also the code default. `SELECT version()` was run with `clickhouse-local` from the same `latest` image the suite used.
+
+Matches text: n/a (gate check)
