@@ -60,10 +60,10 @@ class TestsWorkflowPinGuardUnitTest {
             Pattern.compile("^tasks\\.register<JavaExec>\\(\"verifyConfluentArchive\"\\)\\s*\\{\\s*$");
     private static final Pattern REGISTER_CREATE_ARCHIVE =
             Pattern.compile("^tasks\\.register<Zip>\\(\"createConfluentArchive\"\\)\\s*\\{\\s*$");
-    private static final Pattern CONTINUE_ON_ERROR =
+    static final Pattern CONTINUE_ON_ERROR =
             Pattern.compile("^\\s*continue-on-error:\\s*+(?!false\\b).*$");
     // YAML and shell both need whitespace before '#', so "ubuntu-24.04#x" keeps its tail.
-    private static final Pattern TRAILING_COMMENT = Pattern.compile("\\s#.*$");
+    static final Pattern TRAILING_COMMENT = Pattern.compile("\\s#.*$");
     private static final Pattern FORKS_PROVIDER_DECLARATION = Pattern.compile("^\\s*val\\s+(\\w+)\\s*=.*$");
     private static final Pattern EXCLUDE_ITEM =
             Pattern.compile("^\\s*-\\s*[\"']?([^\"'#]+?)[\"']?\\s*(?:#.*)?$");
