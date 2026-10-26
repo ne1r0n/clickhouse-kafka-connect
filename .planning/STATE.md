@@ -6,14 +6,14 @@ current_phase: 31
 current_phase_name: Fork-Owned Nightly Integration Tests
 status: executing
 stopped_at: "Completed tasks 1-2 of 31-01-PLAN.md; Task 3 checkpoint:decision (blocking-human) pending the user"
-last_updated: "2026-10-26T12:01:47.826Z"
+last_updated: "2026-10-26T15:12:31.227Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 31 execution started
-state_head: 8caf99c2db76f9b31b2c100812f0ab7e569f9535
+state_head: c7965a7d08d9377bf5e0a0b3463f392d3e516574
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 8
+  total_plans: 9
   completed_plans: 4
   percent: 33
 ---
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 31 (Fork-Owned Nightly Integration Tests) — EXECUTING
-Plan: 1 of 5 (31-01 halted at its Task 3 blocking-human decision; 31-02 to 31-05 wait for E-06)
-Status: Waiting for the user's decision
+Plan: 2 of 6
+Status: Executing Phase 31
 Last activity: 2026-10-26 — Phase 31 execution started
 
 Progress: [███░░░░░░░] 33%
