@@ -233,3 +233,126 @@ Other annotations of both runs: `Archive` (`clickhouse-kafka-connect-v1.7.0_gg4.
 `VERSION` is the only release-path input that changed since the dry runs. `git diff --name-only $D HEAD` over `src/main`, `build.gradle.kts`, `settings.gradle.kts`, `gradle`, `gradlew`, `ConfluentArchiveCheck.java`, `config` and both release workflows is empty, and each workflow holds one `./gradlew createConfluentArchive` line. Nothing was dispatched and nothing was pushed.
 
 Matches text: pending (32-02, 32-03)
+
+### E-05: origin, the merge shape, src/main, the integration gate run and GitHub's state (D-02, D-08)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg5.md` (the rollback target, the merge shape, claim 1 `src/main`, the integration gate) written in plan 32-02, and the CHANGELOG and FORK-DELTA lines on the same facts and on the workflows, Dependabot and the nightly (32-03). Measured at commit `a3b7c236` (the tip after E-03 and E-04), 2026-10-26 about 21:09 UTC. `sync/v1.7.0` continues from `GG4X` (`3d847009`), not from `PRE`, so `git rev-list --left-right --count origin/custom_build...HEAD` shows 1 on the left and the merge check uses the merge shape, never ancestry of `PRE` (PT-02). The GitHub bodies are unauthenticated REST reads (rate limit 60, 54 remaining after the six reads) saved under `/tmp/gsd32/exec/api/` and parsed from there as the expected types.
+
+```sh
+PRE=21c51598b06b6f5af58430765d57b1e5f6747c5a
+git fetch --quiet origin --no-tags
+git ls-remote --heads origin
+git ls-remote --tags origin
+git rev-list HEAD..origin/custom_build
+git rev-parse $PRE^2
+git diff --quiet $PRE 3d84700929f298493e9aeb3ca1dc210608594b42; echo $?
+git merge-base --is-ancestor 3d84700929f298493e9aeb3ca1dc210608594b42 HEAD; echo $?
+git merge-tree --write-tree $PRE HEAD
+git rev-parse 'HEAD^{tree}'
+git rev-parse 'v1.7.0_gg4^{commit}'
+git rev-list --left-right --count origin/custom_build...HEAD
+```
+
+```text
+21c51598b06b6f5af58430765d57b1e5f6747c5a	refs/heads/custom_build
+ca52b81ad1a188e1e288336a2231d9d3092d45fe	refs/heads/dependabot/gradle/clickHouseDriver-0.10.0
+011bc42bfe8d8230c430ec8001d481885daec5fa	refs/heads/dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2
+bec167d85918e77c11621063000acc6e031ae2fa	refs/heads/main
+6ac2d20cc0c7feacc315b21b322325b4fee25784	refs/tags/pre-v1.6.0-sync
+c61d90ce5dfb32ea5876dffacc8bb54d8846739a	refs/tags/pre-v1.7.0-sync
+be6b8861c25f3d7611194e7150b18362c5c75e32	refs/tags/pre-v1.7.0_gg2
+6473e24f372a8b37dfd8cc8cf3124e6cff52edca	refs/tags/pre-v1.7.0_gg3
+69cd680bf548bfb0329142752d37f8a6c3190c26	refs/tags/pre-v1.7.0_gg4
+c61d90ce5dfb32ea5876dffacc8bb54d8846739a	refs/tags/v1.6.0_gg1
+f328fd218dce5b9c652f8872042e922f9686b87f	refs/tags/v1.7.0_gg1
+a246ca01b073faae86e2e92bb0288c07dd7eb0d7	refs/tags/v1.7.0_gg2
+3376a18fd057dba329ceae7d8c74d1ba4e3d36f6	refs/tags/v1.7.0_gg3
+21c51598b06b6f5af58430765d57b1e5f6747c5a	refs/tags/v1.7.0_gg4
+21c51598b06b6f5af58430765d57b1e5f6747c5a
+3d84700929f298493e9aeb3ca1dc210608594b42
+0
+0
+bf54369d9109b953a135fcf2a1eed0c58d5cb10d
+bf54369d9109b953a135fcf2a1eed0c58d5cb10d
+21c51598b06b6f5af58430765d57b1e5f6747c5a
+1	75
+```
+
+Reading: `custom_build` on origin is `PRE`; `HEAD..origin/custom_build` is exactly `PRE`; `PRE^2` is `GG4X` and an ancestor of HEAD; `PRE` and `GG4X` have equal trees (exit 0); the merge of `PRE` and HEAD produces HEAD's tree (`bf54369d` at `a3b7c236`), so the release merge is clean and publishes the tip's tree. Tag `v1.7.0_gg4` names `PRE`. Neither `v1.7.0_gg5` nor `pre-v1.7.0_gg5` exists on origin yet.
+
+`src/main` against `v1.7.0_gg4`, what gg5 changes outside `.planning`, and the integration gate inputs against the commit of Phase 31's green run (E-18 there):
+
+```sh
+git diff --quiet v1.7.0_gg4 HEAD -- src/main; echo $?
+git diff --stat v1.7.0_gg4 HEAD -- src/main
+git diff --name-only v1.7.0_gg4 HEAD -- . ':(exclude).planning'
+git diff --quiet c4b409db87d36d7599e472d38f3a4bc5a118c646 HEAD -- src/main src/integrationTest src/testFixtures build.gradle.kts settings.gradle.kts gradle; echo $?
+sed -n '414p;421p' .planning/phases/31-fork-owned-nightly-integration-tests/31-COMMAND-EVIDENCE.md
+```
+
+```text
+0
+(no stat output: src/main is byte-identical)
+.github/dependabot.yml
+.github/scripts/failed_tests_summary.py
+.github/workflows/increment-version.yml
+.github/workflows/nightly-integration-tests.yaml
+.github/workflows/pre-release.yaml
+.github/workflows/release.yaml
+VERSION
+docs/FORK-DELTA.md
+src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+src/test/java/com/clickhouse/kafka/connect/ci/FailedTestsSummaryScriptUnitTest.java
+src/test/java/com/clickhouse/kafka/connect/ci/NightlyWorkflowGuardUnitTest.java
+src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java
+src/test/java/com/clickhouse/kafka/connect/ci/UpstreamIntegrationWorkflowBytesGuardUnitTest.java
+src/test/java/com/clickhouse/kafka/connect/ci/WorkflowActionPinGuardUnitTest.java
+0
+Tests summary: 55 tests, 54 succeeded, 0 failed, 1 skipped
+server-version: 26.10.3.7
+```
+
+The run those two lines come from is Phase 31's E-18: commit `c4b409db87d36d7599e472d38f3a4bc5a118c646`, `integrationTest` on `latest` x V2 with the Java 17 worker, `BUILD SUCCESSFUL in 29m 26s`, image `sha256:739e099abd11...b1ce` (the image of E-02). The `integrationTest` inputs (`src/main`, `src/integrationTest`, `src/testFixtures`, `build.gradle.kts`, `settings.gradle.kts`, `gradle`) are unchanged since that commit (exit 0 above). The 14 paths outside `.planning` are the whole gg5 change set against `v1.7.0_gg4`; `src/main` is not among them. `src/integrationTest` appears in the first list only through `ConfluentPlatform.java`, which is Phase 31's harness change that sits before `c4b409db` (so it is inside the green run, not after it).
+
+GitHub's state:
+
+```sh
+R=https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect
+curl -s $R                                                                              > repo.json
+curl -s $R/actions/workflows/integrationTests.yaml                                      > integration-workflow.json
+curl -s "$R/actions/workflows/integrationTests.yaml/runs?event=schedule&per_page=100"   > integration-schedule-runs.json
+curl -s "$R/releases?per_page=100"                                                      > releases.json
+curl -s "$R/pulls?state=open&per_page=100"                                              > pulls.json
+curl -s -o /dev/null -w '%{http_code}' "$R/contents/.github/workflows/nightly-integration-tests.yaml?ref=custom_build" > nightly-contents.code
+grep -nE "cron:|workflow_dispatch:|NIGHTLY_ENABLED" .github/workflows/nightly-integration-tests.yaml
+grep -n NIGHTLY_ENABLED .planning/scripts/fork-anchors.txt
+```
+
+```text
+repo.json: default_branch is custom_build (fork: true, private: false)
+integrationTests.yaml: state disabled_manually, path .github/workflows/integrationTests.yaml
+schedule runs of integrationTests.yaml: total_count 2, created 2026-10-16T09:32:28Z and 2026-10-15T09:39:18Z (none after 2026-10-16T09:38:23Z)
+releases.json: empty array (0 published)
+open pulls: #10 dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2 -> custom_build; #4 dependabot/gradle/clickHouseDriver-0.10.0 -> custom_build
+nightly-integration-tests.yaml on custom_build: HTTP 404
+16:    - cron: '17 3 * * *'
+17:  workflow_dispatch:
+25:    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'
+.github/workflows/nightly-integration-tests.yaml	github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'	1	NIT-01
+```
+
+So the nightly is absent from `custom_build` until the release merge brings it (it answers 404), it runs on a manual dispatch regardless of the variable and on its schedule only when the repository variable `NIGHTLY_ENABLED` equals `true`; upstream's `integrationTests.yaml` is disabled by hand and has not run on a schedule since 2026-10-16.
+
+origin_custom_build: 21c51598b06b6f5af58430765d57b1e5f6747c5a
+left_commits: 21c51598b06b6f5af58430765d57b1e5f6747c5a
+merge_tree_equals_tip: yes
+src_main_vs_gg4: 0
+gate31_inputs_unchanged: yes
+default_branch: custom_build
+integrationTests_state: disabled_manually
+nightly_on_custom_build: 404
+releases: 0
+open_prs: #4 dependabot/gradle/clickHouseDriver-0.10.0, #10 dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2
+nightly_toggle_grep: 16:    - cron: '17 3 * * *' / 17:  workflow_dispatch: / 25:    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'
+
+Matches text: pending (32-02, 32-03)
