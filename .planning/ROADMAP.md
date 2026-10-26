@@ -178,7 +178,7 @@ Phase gate: cache-busted `testUnit`, the anchors invariant, and an empty `src/ma
   3. *[Docker-free, CI]* A Docker-free guard fails when `integrationTests.yaml` differs by a single byte from upstream's copy, which is identical at `v1.7.0` and `a6f1df83`, and it was seen red on a one-byte edit. The Actions API reports that workflow as disabled, with no scheduled run since 2026-10-16 (NIT-02).
   4. *[record]* The schedule is gated by the repository variable `NIGHTLY_ENABLED`, which stays unset, so no scheduled run executes a job before the dispatch run. The dispatch run itself moved to Phase 32 with NIT-03 on 2026-10-26 (D-02), because GitHub dispatches a workflow only from the default branch. Every failure of the measured run is named in the skip list with its cause, or the run was green.
 
-**Plans**: 5/6 plans executed (31-01 tasks 1-3 done, E-06 disposition `fix-harness`; gap plan 31-06 fixes the harness and re-measures before 31-02)
+**Plans**: 6/6 plans executed (31-01 tasks 1-3 done, E-06 disposition `fix-harness`; gap plan 31-06 fixes the harness and re-measures before 31-02)
 
 Plans:
 **Wave 1**
@@ -197,7 +197,7 @@ Plans:
 - [x] 31-04-PLAN.md — Wave 5: the gated, SHA-pinned nightly with its failed-test summary, a 58-case Docker-free shape guard, the script's tests and five anchor rows (NIT-01, D-01, D-05, D-10)
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 31-05-PLAN.md — Wave 6: the phase gate on the final tree and both workflows' GitHub state, then the user's NIT-03 decision applied to ROADMAP and REQUIREMENTS (D-02)
+- [x] 31-05-PLAN.md — Wave 6: the phase gate on the final tree and both workflows' GitHub state, then the user's NIT-03 decision applied to ROADMAP and REQUIREMENTS (D-02)
 
 **Research flag**: Settle these before planning:
 - **Dispatching a new workflow.** GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. The new file reaches `custom_build` only at publication. Confirm that behaviour first, then settle how the NIT-03 dispatch runs before any schedule can fire. The candidates are a scheduled job gated on a repository variable that the user sets after the dispatch, or an early CI-only `--no-ff` publication of the workflow (the Phase 16 precedent). Phase 32 edits no `.github/` file, so anything that turns the schedule on after Phase 32 must be an operator setting, not a file edit. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
@@ -337,7 +337,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 3/3 | Complete    | 2026-10-26 |
-| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 5/6 | In Progress | - |
+| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 6/6 | In Progress | - |
 | 32. Release & Publication | v1.7.0_gg5-ci | 0/TBD | Not started | - |
 
 ---
