@@ -5,17 +5,17 @@ milestone_name: CI & Release Workflow Modernization
 current_phase: 32
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Phase 32 context gathered
-last_updated: "2026-10-26T20:52:12.945Z"
+stopped_at: Completed 32-01-PLAN.md
+last_updated: "2026-10-26T21:11:26.332Z"
 last_activity: 2026-10-26
-last_activity_desc: Phase 31 complete, transitioned to Phase 32
-state_head: 8dcbbfc1ced091b49abc6d444b562d591ffc28f2
+last_activity_desc: Phase 32 execution started
+state_head: 3691678b8d7e1cd74e4187305e92b1ec1d2c793d
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 16
-  completed_plans: 9
-  percent: 56
+  completed_plans: 10
+  percent: 63
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg5-ci)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 31 — Fork-Owned Nightly Integration Tests
+**Current focus:** Phase 32 — Release & Publication
 
 ## Current Position
 
-Phase: 32 (Release & Publication) — READY TO EXECUTE
-Plan: Not started
+Phase: 32 (Release & Publication) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-10-26 — Phase 31 complete, transitioned to Phase 32
+Last activity: 2026-10-26 — Phase 32 execution started
 
-Progress: [██████░░░░] 56%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
@@ -206,6 +206,7 @@ Progress: [██████░░░░] 56%
 | Phase 31 P02 | 6 min | 3 tasks | 1 files |
 | Phase 31 P03 | 3min | 2 tasks | 2 files |
 | Phase 31 P04 | 7 min | 3 tasks | 7 files |
+| Phase 32 P01 | 20 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -250,6 +251,7 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 31]: 31-03: Actions API reports workflow 384641581 disabled_manually, 2 runs, none after 2026-10-16T10:00:00Z (E-11) — Online half of NIT-02; 31-05 and Phase 32 re-read the three URLs
 - [Phase 31]: 31-04: nightly timeouts are step 75 / job 85 minutes from E-18 (unamended by E-06b); the job is gated on workflow_dispatch or vars.NIGHTLY_ENABLED == 'true' — Whole-task measured wall 36 min x 2 rounded up; a manual dispatch always starts and a scheduled run starts only after the operator sets the variable (D-01, D-05)
 - [Phase 31]: 31-04: nightly guard fixtures are edits of the real workflow's non-comment lines with the timeouts pinned at 80/70; failed-test annotation names are cut at 300 characters, the step summary keeps full names — The guard cannot drift from the file it protects; one escaped, capped annotation line cannot inject a workflow command (D-10, Pitfall 11)
+- [Phase 32]: Archive allow-list for gg5 holds four exact-path rows (Version, ClickHouseHelperClient, SinkTaskStatistics, MANIFEST.MF) because javac inlines Version.ARTIFACT_VERSION; totals only-a 0 only-b 0 changed 4 (32-AMENDMENT-01)
 
 ### Pending Todos
 
@@ -301,9 +303,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T19:57:08.089Z
-Stopped at: Phase 32 context gathered
-Resume file: .planning/phases/32-release-publication/32-CONTEXT.md
+Last session: 2026-10-26T21:11:26.194Z
+Stopped at: Completed 32-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
