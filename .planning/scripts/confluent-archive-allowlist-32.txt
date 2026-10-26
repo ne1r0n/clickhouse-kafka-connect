@@ -1,0 +1,11 @@
+# Allow-list for compare-confluent-archives.py (CIG-02, PT-05, 32-AMENDMENT-01), plan 32-01.
+# Archive A is v1.7.0_gg4 rebuilt from the tag v1.7.0_gg4; archive B is the archive built at the v1.7.0_gg5 tip.
+# Format: glob<TAB>reason. A star matches across slashes (fnmatch). Paths of the outer zip carry the prefix "outer/".
+# Every row must match at least one difference (an unused row fails as STALE-ROW), and no row is a catch-all.
+# src/main and every build input are unchanged since v1.7.0_gg4, so only the release identity may differ.
+# The release identity is the compile-time constant Version.ARTIFACT_VERSION: javac inlines it into the two classes
+# below (javap -c -p -constants shows only the v1.7.0_gg4 -> v1.7.0_gg5 string differing), so each is an exact path.
+com/clickhouse/kafka/connect/sink/Version.class	inlined compile-time constant Version.ARTIFACT_VERSION v1.7.0_gg4 -> v1.7.0_gg5 (generated class)
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class	inlined compile-time constant Version.ARTIFACT_VERSION v1.7.0_gg4 -> v1.7.0_gg5 (CONNECT_CLIENT_NAME)
+com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class	inlined compile-time constant Version.ARTIFACT_VERSION v1.7.0_gg4 -> v1.7.0_gg5 (MBean version segment)
+META-INF/MANIFEST.MF	inlined compile-time constant Version.ARTIFACT_VERSION v1.7.0_gg4 -> v1.7.0_gg5 (Implementation-Version)
