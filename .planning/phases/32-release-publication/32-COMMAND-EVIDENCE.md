@@ -799,3 +799,54 @@ image: sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce 2
 changelog_date_vs_today: equal (2026-10-26 vs 2026-10-26)
 
 Matches text: n/a (gate check)
+
+### E-71: approval, scratch push and X0's run (D-07)
+
+user_answer_received_by: orchestrator (direct)
+user_answer: publish
+(The answer to the orchestrator's AskUserQuestion "Publish v1.7.0_gg5 to origin?", option "publish", after the approval bundle of E-70 and /tmp/gsd32/exec/approval-bundle.md.)
+
+Re-check immediately before the push: PUBLISH-PRECONDITIONS-OK and PUSH-READY (X=41e7d5465e8353abb43a5f56dcf9f697c96b537a, rate=60).
+
+```sh
+git push origin refs/heads/sync/v1.7.0:refs/heads/sync/v1.7.0    # 2026-10-26T22:40:11Z
+```
+
+X0=41e7d5465e8353abb43a5f56dcf9f697c96b537a
+tests.yaml run 40414210750 (event push, branch sync/v1.7.0): https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40414210750, run_started_at 2026-10-26T22:40:16Z, updated_at 2026-10-26T22:45:44Z, conclusion success, job "ClickHouse latest Client version V2 tests" on runner label ubuntu-24.04. It was the only tests.yaml run for X0; SCRATCH-RUN-GREEN printed.
+
+Matches text: n/a (gate check)
+
+### E-72: release merge, checks on M, push and CI (D-07)
+
+M=3a3a15a9ae064ffe09c696b8bb87bce23419d463
+merge_date_utc: 2026-10-26
+published_at: 2026-10-26T22:56:26Z
+
+```sh
+git worktree add /tmp/gsd32/cb custom_build
+git -C /tmp/gsd32/cb merge --ff-only 21c51598b06b6f5af58430765d57b1e5f6747c5a    # already up to date
+git -C /tmp/gsd32/cb merge --no-ff -F /tmp/gsd32/merge-msg.txt 41e7d5465e8353abb43a5f56dcf9f697c96b537a
+git -C /tmp/gsd32/cb push origin refs/heads/custom_build:refs/heads/custom_build   # 21c51598..3a3a15a9, no force
+```
+
+The UTC date at the merge equalled the CHANGELOG heading date (2026-10-26). M has parents 21c51598 and X0 and the tree of X0; MERGE-CHECKS-ON-M-OK printed before the push, with the rollback script on M printing ok and its five lines (rollout doc gone, one rollback heading, nightly absent, VERSION v1.7.0_gg4, revert restores the tree). select_version: 26.10.3.7 and image sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce 2026-10-26T00:06:54Z (E-60 and E-70, same `latest` image).
+
+M's CI: tests.yaml run 40416215635 (event push, branch custom_build): https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40416215635, run_started_at 2026-10-26T22:56:30Z, updated_at 2026-10-26T23:02:21Z, conclusion success, one job on ubuntu-24.04. Late re-check at 23:04:18Z, 117 seconds after the run completed (the plan asks for at least 120 s; the tags were pushed at 23:04:2xZ and a further check ran at 23:05:39Z, 198 s after completion): still exactly one tests.yaml run for M, none cancelled; no release.yaml or pre-release.yaml run exists on M. Two Dependabot dynamic runs also registered under M's SHA (path dynamic/dependabot/dependabot-updates, both success); they are not tests.yaml runs.
+
+Matches text: n/a (gate check)
+
+### E-73: tags, scratch-branch deletion and final refs (D-01, D-02)
+
+```sh
+git tag v1.7.0_gg5 3a3a15a9ae064ffe09c696b8bb87bce23419d463                                                        # lightweight
+git push origin refs/tags/v1.7.0_gg5:refs/tags/v1.7.0_gg5                    # 23:04:2xZ
+git push origin refs/tags/pre-v1.7.0_gg5:refs/tags/pre-v1.7.0_gg5            # 23:04:2xZ
+git push origin --delete refs/heads/sync/v1.7.0                              # after the 23:05:39Z check
+```
+
+After the tags: M still has exactly one tests.yaml run (success) and X0 still has one (success); a tag push started no run. Tags before and after (`git ls-remote --tags origin`): the only additions are `21c51598b06b6f5af58430765d57b1e5f6747c5a refs/tags/pre-v1.7.0_gg5` and `3a3a15a9ae064ffe09c696b8bb87bce23419d463 refs/tags/v1.7.0_gg5`. Heads: custom_build moved 21c51598 to M, `main` is unchanged (bec167d8), sync/v1.7.0 is deleted. Dependabot heads changed meanwhile and are not part of the release: new branches dependabot/github_actions/github-actions-4430c5f07e, dependabot/gradle/at.yawk.lz4-lz4-java-1.12.1, dependabot/gradle/clickHouseDriver-0.11.0 (replacing -0.10.0), dependabot/gradle/com.squareup.okhttp3-okhttp-5.5.1 and dependabot/gradle/gradle-wrapper-9.8.2. The github-actions branch is the first one for that ecosystem: Dependabot read the new dependabot.yml from the default branch after the merge. No release is published and none was created.
+
+`git diff --quiet v1.7.0_gg4 v1.7.0_gg5 -- src/main` exits 0. Raw numbers on the tag: `git diff --shortstat v1.7.0 v1.7.0_gg5 -- src build.gradle.kts gradle .github` 287 files, 31774 insertions, 731 deletions; `-- src/main` 37 files, 2877 insertions, 241 deletions, as FORK-DELTA's after-gg5 rows say. The /tmp/gsd32/cb worktree was removed and pruned; the main tree is on sync/v1.7.0.
+
+Matches text: n/a (gate check)
