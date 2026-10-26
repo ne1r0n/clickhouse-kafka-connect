@@ -371,4 +371,18 @@ git diff --stat v1.7.0_gg4 HEAD -- src/main
 (no stat output: src/main is byte-identical)
 ```
 
+Claim 4, the workflow's cron, dispatch and job-condition lines on the tip:
+
+```sh
+grep -nE "cron:|workflow_dispatch:|NIGHTLY_ENABLED" .github/workflows/nightly-integration-tests.yaml
+```
+
+```text
+16:    - cron: '17 3 * * *'
+17:  workflow_dispatch:
+25:    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'
+```
+
+The three lines equal E-05's `nightly_toggle_grep`. The note's sentence that a scheduled run whose job condition is false "shows its job as skipped" rests on GitHub's documentation, read on 2026-10-26 from the source of the page "Using conditions to control job execution" (`https://raw.githubusercontent.com/github/docs/main/content/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions.md`, HTTP 200): "It will only run if the repository is named `octo-repo-prod` and is within the `octo-org` organization. Otherwise, the job will be marked as _skipped_." The note states only the value `true` for turning the schedule on and `false` or deletion for turning it off; it makes no statement about the comparison of other values (case or type), which was not measured. The nightly is not yet on `custom_build` (E-05: HTTP 404), so no scheduled run could be observed.
+
 Matches text: yes
