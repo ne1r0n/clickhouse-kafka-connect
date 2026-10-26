@@ -312,3 +312,84 @@ skip-entries: pending
 No later plan of this phase starts until a gap plan (`/gsd-plan-phase 31 --gaps`) has re-measured and recorded `### E-06b` with a numeric `skip-entries:` line. The proposed timeouts (step 30, job 40) and the upstream-red explanation were not amended; the E-05 `nightly-timeouts:` line stands pending the re-measurement.
 
 Matches text: n/a (gate check)
+
+### E-17: worker candidates, the broker-free plugin probe and the harness tracer (D-06, D-09)
+
+Backs: D-09 (the harness fix and its reason), D-06 (images), criterion 1 (a harness that can load the fork's connector).
+
+```sh
+docker pull confluentinc/cp-server-connect:7.9.6
+docker image inspect --format '{{index .RepoTags 0}} {{.Id}} {{index .RepoDigests 0}} {{.Architecture}} {{.Created}}' confluentinc/cp-server-connect:7.9.6
+docker run --rm --entrypoint bash <worker image> -c 'java -version 2>&1; ls /usr/share/java/kafka/ | grep -E "^(connect-api|connect-runtime|kafka-clients)-"'   # both workers
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE JAVA_HOME=$HOME/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home ./gradlew --console=plain prepareConfluentArchive
+docker run --rm -v <archive dir>:/usr/share/confluent-hub-components/clickhouse-kafka-connect:ro --entrypoint connect-plugin-path <worker image> list --plugin-location /usr/share/confluent-hub-components/clickhouse-kafka-connect   # both workers
+docker run --rm --entrypoint bash cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0 -c 'ls -d /usr/share/confluent-hub-components/confluentinc-kafka-connect-datagen; ls /usr/share/confluent-hub-components/confluentinc-kafka-connect-datagen/lib | grep "^kafka-connect-datagen-"'
+docker history --no-trunc --format '{{.CreatedBy}}' cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0 | head -3
+curl -s 'https://hub.docker.com/v2/repositories/cnfldemos/cp-server-connect-datagen/tags?page_size=100'   # read-only, unauthenticated
+curl -s 'https://hub.docker.com/v2/repositories/confluentinc/cp-server-connect/tags/7.9.6'
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE JAVA_HOME=$HOME/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home ./gradlew --console=plain compileIntegrationTestJava
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE JAVA_HOME=$HOME/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home ./gradlew --console=plain integrationTest --tests '*ClickHouseSinkConnectorIntegrationTest.stockGenSingleTaskTest'
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD
+```
+
+```text
+Candidate workers (the connector under test is build/confluentArchive/clickhouse-kafka-connect-v1.7.0_gg4, class file 61):
+
+| image | JVM | Kafka jars | architectures (Docker Hub) | plugins loadable of total | UnsupportedClassVersionError | verdict |
+|-------|-----|------------|----------------------------|---------------------------|------------------------------|---------|
+| cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0 (current worker) | OpenJDK Zulu 11.0.21 | connect-api, connect-runtime, kafka-clients 7.6.0-ce | amd64, arm64 | 0 of 8 | 8 | cannot load the fork |
+| confluentinc/cp-server-connect:7.9.6 | OpenJDK Temurin 17.0.18 | connect-api, connect-runtime, kafka-clients 7.9.6-ce | amd64, arm64 | 8 of 8 | 0 | loads the fork and its seven SMTs |
+| cnfldemos/cp-server-connect-datagen:0.6.7-8.0.0 (option B) | not run | not run | amd64 only | not run | not run | rejected |
+
+confluentinc/cp-server-connect:7.9.6 image: sha256:b0a23182108658bbe097d05b416f4c591574abcec1b5d4409b6852c09d5949ce, repo digest identical, arm64, created 2026-03-16T08:40:31Z.
+Loadable in the 7.9.6 image: ClickHouseSinkConnector (v1.7.0_gg4), HeaderToValue, HeadersToValue, ConvertToMapOrJson, TableOperationFilter, KeyToValue, ExtractTopic$Key, ExtractTopic$Value.
+Old worker error (first line, per plugin): java.lang.UnsupportedClassVersionError: com/clickhouse/kafka/connect/ClickHouseSinkConnector has been compiled by a more recent version of the Java Runtime (class file version 61.0), this version of the Java Runtime only recognizes class file versions up to 55
+
+Datagen plugin source (cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0):
+  plugin directory: /usr/share/confluent-hub-components/confluentinc-kafka-connect-datagen
+  jar in lib/: kafka-connect-datagen-0.6.4.jar
+  history line 1: RUN |1 KAFKA_CONNECT_DATAGEN_VERSION=0.6.4 /bin/sh -c confluent-hub install --no-prompt confluentinc/kafka-connect-datagen:$KAFKA_CONNECT_DATAGEN_VERSION # buildkit
+  (the datagen image is the Confluent server Connect image plus a confluent-hub install of the datagen plugin)
+
+Decision rule (PT-14), four results:
+  (i)   confluentinc/cp-server-connect:7.9.6 runs Java 17.0.18 (>= 17): holds
+  (ii)  Docker Hub lists amd64 and arm64 for confluentinc/cp-server-connect:7.9.6: holds
+  (iii) connect-plugin-path: Loadable plugins 8, no UnsupportedClassVersionError: holds
+  (iv)  datagen plugin directory and kafka-connect-datagen-0.6.4.jar present in the pinned datagen image: holds
+  -> option A is taken.
+
+Rejected options (Docker Hub, read-only, 2026-10-26):
+  B  cnfldemos/cp-server-connect-datagen:0.6.7-8.0.0   "amd64" only; the colima VM of criterion 1 is aarch64, so it cannot run natively there; it also moves the worker to CP 8.0
+  C  confluent-hub install at test time: a Confluent Hub download on every run, a network source D-06 does not list
+  Tags of the datagen repository (newest first, with architectures): 0.6.7-8.0.0 amd64; 0.6.4-7.6.0 amd64,arm64; 0.6.2-7.5.0 amd64,arm64; 0.6.0-7.3.0 amd64,arm64; 0.6.0-7.2.1 amd64,arm64; older tags amd64 only. There is no datagen tag for CP 7.7 to 7.9.
+  confluentinc/cp-server-connect:7.9.6 amd64,arm64
+
+The edit (src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java): CONFLUENT_VERSION, DATAGEN_VERSION and CP_DATA_GEN keep their values; new CP_SERVER_CONNECT, DATAGEN_PLUGIN_DIR, DATAGEN_STAGE and connectWorkerImage(); the container field cp_data_gen is built from connectWorkerImage() instead of from CP_DATA_GEN. Removed lines: exactly one, `cp_data_gen = new GenericContainer<>(CP_DATA_GEN)`. The CLASSPATH env line was not changed (the new worker started without it being a cause of failure).
+Image-build form that built: the primary form (a raw `FROM <datagen image> AS datagen` statement, `from(<Connect image>)`, and a raw `COPY --from=datagen <plugin dir> <plugin dir>` statement); the fallback form was not needed.
+
+compileIntegrationTestJava: BUILD SUCCESSFUL, no warning line naming ConfluentPlatform.java.
+
+Slice (two runs; the first passed but its capture loop recorded no worker log):
+  Deviation (Rule 3, scratch tooling, no repository change): the plan's capture filter `docker ps --filter publish=8083` matches the HOST port, not the container port (measured with a throwaway container: `-p 18083:8083` matched publish=18083 only), so attempt 1 captured no worker log. capture-h.sh now selects the container whose published-ports column holds `->8083/tcp`, and takes the worker log and status every 15 s instead of 60 s. Attempt 1: exit 0, 1 test, 1 succeeded (kept in scratch, attempt1/).
+  attempt 2 (the record): exit status 0, BUILD SUCCESSFUL in 1m 50s
+  Test result: SUCCESS
+  Tests summary: 1 tests, 1 succeeded, 0 failed, 0 skipped
+  testcase stockGenSingleTaskTest() classname com.clickhouse.kafka.connect.sink.ClickHouseSinkConnectorIntegrationTest time 33.929 s, no failure, error or skipped element; suite time 105.707 s
+  Worker (generated image localhost/testcontainers/wfvazv8tld1wrb8g:latest, removed when the test JVM exited): log 27598 lines, UnsupportedClassVersionError count 0
+  Worker /connectors?expand=status: {"ClickHouseSinkConnector": connector RUNNING, task 0 RUNNING, type sink}
+  "POST /connectors" 201 twice (the datagen source and the ClickHouse sink); no 500
+  Datagen source tasks end with ConnectException "Stopping connector: generated the configured 100 number of messages", which is the datagen connector's normal end after its configured iterations.
+
+ClickHouse used: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce, the same digest as E-01 (no latest drift). SELECT version(): 26.10.3.7
+
+anchors mirror: rows=126 bad=0 confluent-platform-rows=3 (saved count before the edit 123, plus 3)
+cumulative gate, last line: invariants: provenance_paths=21 anchor_commits=872 anchor_rows=126 marker_commits=931 anchor_exempt=19 result=PASS
+
+Spotless (PT-19), spotlessApply in a throwaway worktree at the plan base c7965a7d08d9377bf5e0a0b3463f392d3e516574 and at the harness commit:
+  changed files at the base 48, at the harness commit 47. The only difference is gradlew.bat, a line-ending rewrite that the Gradle run itself makes in a fresh checkout (the main tree has carried the same uncommitted gradlew.bat change since 31-01) and which has nothing to do with Java formatting; without it both sets hold 47 identical files. ConfluentPlatform.java is in both sets (it already violated the format before this plan: wildcard imports and others), and its formatted import set grows by exactly import org.testcontainers.images.builder.ImageFromDockerfile; and import org.testcontainers.images.builder.dockerfile.statement.RawStatement; with no import lost.
+  Deviation (Rule 3, check mechanics): the plan's check compares the two file lists with gradlew.bat included and so reads 48 against 47; the comparison was recomputed from the same two lists with gradlew.bat excluded. No repository change.
+```
+
+harness-commit: 781fd52683d6adb7f49468ed6eb88374053a9c1c
+
+Matches text: n/a (gate check)
