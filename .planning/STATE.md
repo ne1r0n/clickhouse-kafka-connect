@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg5-ci
 milestone_name: CI & Release Workflow Modernization
-current_phase: 31
-current_phase_name: Fork-Owned Nightly Integration Tests
-status: executing
-stopped_at: Completed 31-04-PLAN.md
-last_updated: "2026-10-26T19:09:51.366Z"
+current_phase: 32
+current_phase_name: Release & Publication
+status: planning
+stopped_at: Phase 31 complete, ready to plan Phase 32
+last_updated: "2026-10-26T19:25:30.020Z"
 last_activity: 2026-10-26
-last_activity_desc: Phase 31 execution resumed (wave continue)
-state_head: 991e44f0e6c5d3185d2f6e13f9a3097875bdf3a8
+last_activity_desc: Phase 31 complete, transitioned to Phase 32
+state_head: d4a3f09fd8e95d2bdcb2e0568ff9b832ebb3e6aa
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
   completed_plans: 9
-  percent: 33
+  percent: 67
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg
 
 ## Current Position
 
-Phase: 31 (Fork-Owned Nightly Integration Tests) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-10-26 — Phase 31 execution resumed (wave continue)
+Phase: 32 — Release & Publication
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-26 — Phase 31 complete, transitioned to Phase 32
 
-Progress: [███░░░░░░░] 33%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [███░░░░░░░] 33%
 | 28 | 6 | - | - |
 | 29 | 8 | - | - |
 | 30 | 3 | - | - |
+| 31 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -301,7 +302,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-26T17:35:57.198Z
-Stopped at: Completed 31-04-PLAN.md
+Stopped at: Phase 31 complete, ready to plan Phase 32
 Resume file: None
 
 ## Operator Next Steps

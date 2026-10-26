@@ -112,7 +112,7 @@ Phase artifacts: `milestones/v1.7.0_gg4-hardening-phases/` · Research: `milesto
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker stopped. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
 - [x] **Phase 30: Release Workflows & Pin Guard** - A guard fails on any unpinned action in a fork-owned workflow. `release.yaml`, `pre-release.yaml` and `increment-version.yml` pass it, both release paths build with the Gradle wrapper through `setup-gradle` and publish with `gh release create`, and a dry run proves both without creating a release or a tag (completed 2026-10-26)
-- [ ] **Phase 31: Fork-Owned Nightly Integration Tests** - A measured local `integrationTest` run comes first. A new SHA-pinned nightly then runs `integrationTest` on `latest` × V2 in the runner's Docker with no cloud job, and its first manual run follows publication in Phase 32 (NIT-03). Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard
+- [x] **Phase 31: Fork-Owned Nightly Integration Tests** - A measured local `integrationTest` run comes first. A new SHA-pinned nightly then runs `integrationTest` on `latest` × V2 in the runner's Docker with no cloud job, and its first manual run follows publication in Phase 32 (NIT-03). Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard (completed 2026-10-26)
 - [ ] **Phase 32: Release & Publication** - `v1.7.0_gg5` is published with FORK-DELTA, CHANGELOG, `VERSION` and a short reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tags, then the nightly's first manual run (NIT-03)
 
 ## Phase Details
@@ -178,7 +178,7 @@ Phase gate: cache-busted `testUnit`, the anchors invariant, and an empty `src/ma
   3. *[Docker-free, CI]* A Docker-free guard fails when `integrationTests.yaml` differs by a single byte from upstream's copy, which is identical at `v1.7.0` and `a6f1df83`, and it was seen red on a one-byte edit. The Actions API reports that workflow as disabled, with no scheduled run since 2026-10-16 (NIT-02).
   4. *[record]* The schedule is gated by the repository variable `NIGHTLY_ENABLED`, which stays unset, so no scheduled run executes a job before the dispatch run. The dispatch run itself moved to Phase 32 with NIT-03 on 2026-10-26 (D-02), because GitHub dispatches a workflow only from the default branch. Every failure of the measured run is named in the skip list with its cause, or the run was green.
 
-**Plans**: 6/6 plans executed (31-01 tasks 1-3 done, E-06 disposition `fix-harness`; gap plan 31-06 fixes the harness and re-measures before 31-02)
+**Plans**: 6/6 plans complete (31-01 tasks 1-3 done, E-06 disposition `fix-harness`; gap plan 31-06 fixes the harness and re-measures before 31-02)
 
 Plans:
 **Wave 1**
@@ -337,7 +337,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 3/3 | Complete    | 2026-10-26 |
-| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 6/6 | In Progress | - |
+| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 6/6 | Complete    | 2026-10-26 |
 | 32. Release & Publication | v1.7.0_gg5-ci | 0/TBD | Not started | - |
 
 ---

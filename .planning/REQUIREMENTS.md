@@ -16,8 +16,8 @@
 
 ### Nightly
 
-- [ ] **NIT-01**: A new fork-owned nightly workflow runs `integrationTest` on ClickHouse `latest` × client V2 in local Docker, with no cloud job, and is SHA-pinned
-- [ ] **NIT-02**: Upstream `integrationTests.yaml` stays byte-identical and disabled, and a guard check pins that
+- [x] **NIT-01**: A new fork-owned nightly workflow runs `integrationTest` on ClickHouse `latest` × client V2 in local Docker, with no cloud job, and is SHA-pinned
+- [x] **NIT-02**: Upstream `integrationTests.yaml` stays byte-identical and disabled, and a guard check pins that
 - [ ] **NIT-03**: The nightly passes, or each failure is classified in a named skip list, on a manual dispatch before the schedule is enabled
 
 ### Guard and release
@@ -52,8 +52,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-03 | Phase 30 | Complete |
 | REL-04 | Phase 30 | Complete |
 | REL-05 | Phase 30 | Complete |
-| NIT-01 | Phase 31 | Pending |
-| NIT-02 | Phase 31 | Pending |
+| NIT-01 | Phase 31 | Complete |
+| NIT-02 | Phase 31 | Complete |
 | NIT-03 | Phase 32 | Pending |
 | CIG-01 | Phase 30 | Complete |
 | CIG-02 | Phase 32 | Pending |
