@@ -705,3 +705,52 @@ real-file mutation (the committed workflow edited five ways in the working tree:
 ```
 
 Matches text: n/a (gate check)
+
+### E-14: the failed-test summary script on fixture reports and the suite gates (D-10)
+
+Backs: plan 31-04 Task 3; ROADMAP criterion 2 (failed test names reach the step summary and one safe annotation, because job logs are not readable without admin rights).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*FailedTestsSummaryScriptUnitTest' --rerun
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun
+git worktree add --detach /tmp/gsd31/wt-fmt HEAD   # then, inside it: ./gradlew -q spotlessApply; cmp the three Java files with the main tree's; git worktree remove --force
+git diff --quiet v1.7.0_gg4 HEAD -- src/main; echo $?
+# script mutation: ANNOTATION_CAP raised to 100000 and the LF escape removed, testUnit on the script test, then git checkout -- <script>
+```
+
+```text
+FailedTestsSummaryScriptUnitTest: exit status 0; XML tests=8 failures=0 errors=0 skipped=0 (python3 3.14.8, run as python3 -I from the repository root)
+the 8 cases:
+  a failure and an error across two report files are listed by class#method in the summary and in one error annotation (D-10)
+  a run without failures writes a notice and 'No failed tests.', also without GITHUB_STEP_SUMMARY (D-10)
+  a missing results directory exits 0 with a warning annotation and a summary line (D-10)
+  a malformed report file is named in a warning and the other files are still read (D-10)
+  percent, CR, LF, pipe and backtick in a test name are escaped for the annotation and the Markdown table (D-10)
+  more failing names than the cap keep the annotation to one capped line, and the summary lists every name (D-10)
+  no argument exits 2 with a usage line on stderr
+  skipped tests are counted, never listed as failed (D-04)
+script fix: none. All 8 cases passed against the script as committed in the first commit of this plan.
+
+script mutation (ANNOTATION_CAP = 100000, and .replace("\n", "%0A") removed from escape_command): exit status 1, Tests summary: 8 tests, 6 succeeded, 2 failed, 0 skipped; the two failures are the escaping case and the cap case (Pitfall 11). git checkout -- .github/scripts/failed_tests_summary.py restored it: git hash-object c1624052c82ba7ebb57f44d60694b80f3e52e626 equals HEAD's blob, mode 755, git status of the file empty.
+
+full testUnit (testunit-31-04.log, after the restore): exit status 0
+Test result: SUCCESS
+Tests summary: 1374 tests, 1372 succeeded, 0 failed, 2 skipped
+(1308 tests at the end of plan 31-03, plus 58 nightly guard cases and 8 script cases)
+no core.*, javacore.*, Snap.* or jitdump.* file; no OpenJ9 crash (default Gradle JVM, no JAVA_HOME)
+
+per class XML (tests/failures/errors/skipped):
+  NightlyWorkflowGuardUnitTest 58/0/0/0
+  FailedTestsSummaryScriptUnitTest 8/0/0/0
+  WorkflowActionPinGuardUnitTest 21/0/0/0
+  TestsWorkflowPinGuardUnitTest 39/0/0/0
+  UpstreamIntegrationWorkflowBytesGuardUnitTest 9/0/0/0
+
+Spotless: spotlessApply in a detached worktree at HEAD (fmt-31-04.log) exit status 0; cmp of the worktree's NightlyWorkflowGuardUnitTest.java, FailedTestsSummaryScriptUnitTest.java and TestsWorkflowPinGuardUnitTest.java with the main tree's: identical (cmp exit 0 for each). spotlessApply rewrote 48 other tracked files in that worktree (the inherited violations, gradlew.bat included); none is under src/test/java/.../ci and none is changed in the main tree. The worktree was removed.
+
+git diff --quiet v1.7.0_gg4 HEAD -- src/main: exit status 0
+git hash-object .github/workflows/integrationTests.yaml: 3e9b9be050fa05805227b2eee0d1fe8c72df56c0 (unchanged, equals E-10)
+git diff --stat e3ab7a8c HEAD -- .github/dependabot.yml .github/workflows: one file changed, nightly-integration-tests.yaml, 79 insertions (no other workflow, no dependabot.yml edit)
+```
+
+Matches text: n/a (gate check)
