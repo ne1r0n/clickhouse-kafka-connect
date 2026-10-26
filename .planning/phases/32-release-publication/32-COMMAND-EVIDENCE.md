@@ -84,7 +84,7 @@ sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce 2026-10-
 
 The image id and creation date are the floating `latest` pin of this evidence (D-07): `sha256:739e099abd11...b1ce`, created 2026-10-26T00:06:54Z, `SELECT version()` = `26.10.3.7`. A red result later on unchanged code means checking this date first.
 
-Matches text: pending (32-02)
+Matches text: yes
 
 ### E-03: the shipped archive, tag v1.7.0_gg4 versus the gg5 tip (D-03 claims 1 and 2, PT-05, PT-10)
 
@@ -189,7 +189,7 @@ diff Version.a.txt Version.b.txt; diff ClickHouseHelperClient.a.txt ClickHouseHe
 
 In prose: archive A is also the rollback target's archive. Tag `v1.7.0_gg4` and `pre-v1.7.0_gg5` name `PRE` (`21c51598`; see E-05), A was built from that tag with `clean createConfluentArchive` and its `verifyConfluentArchive` finalizer ended green (7801 inner entries, no nested jar, no Kafka API class), so the gg4 warning against building from the rolled-back tip does not carry forward (PT-10). The archive Phase 30's dry runs built on CI (`5a8522a8...638c`, 12453663 bytes, see E-04) is a different build of the gg4 tree from a different machine and is not compared byte for byte with A (12453558 bytes); the claim rests on the entry-by-entry compare above, not on whole-zip equality.
 
-Matches text: pending (32-02, 32-03)
+Matches text: pending (32-03)
 
 ### E-04: the release path since the Phase 30 dry runs (D-01, D-03 claim 2)
 
@@ -232,7 +232,7 @@ Other annotations of both runs: `Archive` (`clickhouse-kafka-connect-v1.7.0_gg4.
 
 `VERSION` is the only release-path input that changed since the dry runs. `git diff --name-only $D HEAD` over `src/main`, `build.gradle.kts`, `settings.gradle.kts`, `gradle`, `gradlew`, `ConfluentArchiveCheck.java`, `config` and both release workflows is empty, and each workflow holds one `./gradlew createConfluentArchive` line. Nothing was dispatched and nothing was pushed.
 
-Matches text: pending (32-02, 32-03)
+Matches text: pending (32-03)
 
 ### E-05: origin, the merge shape, src/main, the integration gate run and GitHub's state (D-02, D-08)
 
@@ -355,7 +355,7 @@ releases: 0
 open_prs: #4 dependabot/gradle/clickHouseDriver-0.10.0, #10 dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2
 nightly_toggle_grep: 16:    - cron: '17 3 * * *' / 17:  workflow_dispatch: / 25:    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_ENABLED == 'true'
 
-Matches text: pending (32-02, 32-03)
+Matches text: pending (32-03)
 
 ### E-10: claims 1 and 4 of the gg5 note re-run on the tip (D-03)
 
@@ -384,5 +384,69 @@ grep -nE "cron:|workflow_dispatch:|NIGHTLY_ENABLED" .github/workflows/nightly-in
 ```
 
 The three lines equal E-05's `nightly_toggle_grep`. The note's sentence that a scheduled run whose job condition is false "shows its job as skipped" rests on GitHub's documentation, read on 2026-10-26 from the source of the page "Using conditions to control job execution" (`https://raw.githubusercontent.com/github/docs/main/content/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions.md`, HTTP 200): "It will only run if the repository is named `octo-repo-prod` and is within the `octo-org` organization. Otherwise, the job will be marked as _skipped_." The note states only the value `true` for turning the schedule on and `false` or deletion for turning it off; it makes no statement about the comparison of other values (case or type), which was not measured. The nightly is not yet on `custom_build` (E-05: HTTP 404), so no scheduled run could be observed.
+
+Matches text: yes
+
+### E-11: the gg5 rollback rehearsed on a dry-run merge (D-02, D-03 claim 5)
+
+Backs: `docs/ROLLOUT-v1.7.0_gg5.md` section 5 (and the rollback statements of sections 1 to 4 that it points at), written in plan 32-02. The tag, the script, the dry-run merge and the log below are the rehearsal of the note's commands as written; plan 32-06 repeats it on the real merge. Nothing was pushed: the tag is local only.
+
+The tag (D-02), lightweight, on the published tip of `custom_build` before this release (which is also tag `v1.7.0_gg4`):
+
+```sh
+git tag pre-v1.7.0_gg5 21c51598b06b6f5af58430765d57b1e5f6747c5a
+git cat-file -t pre-v1.7.0_gg5
+git rev-parse 'pre-v1.7.0_gg5^{commit}'
+git ls-remote --tags origin pre-v1.7.0_gg5
+```
+
+```text
+commit
+21c51598b06b6f5af58430765d57b1e5f6747c5a
+(no output: origin lists no pre-v1.7.0_gg5)
+```
+
+The script `/tmp/gsd32/rollback-demo.sh <repo> <target-tip> <worktree-path>` (scratch, outside the repository) is `/tmp/gsd29/rollback-demo.sh` with these changes and no other: every `pre-v1.7.0_gg4` became `pre-v1.7.0_gg5`; the throwaway branch prefix `gg4-rollback-demo-` became `gg5-rollback-demo-`; the commit message became `Roll back v1.7.0_gg5`; the document path became `docs/ROLLOUT-v1.7.0_gg5.md`; the `Item 7: Rollback` heading count became a count of lines matching `^## 5\. Rollback`, printed as `rollback headings: <n>`; the gg1-rule line was replaced by `nightly workflow after rollback: present|absent` (whether `.github/workflows/nightly-integration-tests.yaml` is tracked at the rollback commit) and `VERSION after rollback: <VERSION at the rollback commit>`. The fetch, the local-tag line, the ff-only merge, the `ok` line, the doc-gone line, the `tests.yaml` trigger line and the revert line are unchanged.
+
+The dry-run merge `D` of the committed note tip `H` onto `PRE` (`21c51598`), made in a detached worktree `/tmp/gsd32/dry`, then the script run on `D` (its own worktree `/tmp/gsd32/rb-demo`); both worktrees were removed afterwards:
+
+```sh
+H=$(git rev-parse HEAD)    # b265ed2824dff9f38eda91936efd36ad91ed82fa, the commit that adds section 5
+git worktree add --quiet --detach /tmp/gsd32/dry 21c51598b06b6f5af58430765d57b1e5f6747c5a
+git -C /tmp/gsd32/dry -c user.name=demo -c user.email=demo@example.invalid merge --quiet --no-ff --no-edit "$H"
+D=$(git -C /tmp/gsd32/dry rev-parse HEAD)
+git rev-parse "$D^1" "$D^2" "$D^{tree}" "$H^{tree}"
+git diff --quiet "$D" "$H"; echo $?
+bash /tmp/gsd32/rollback-demo.sh "$PWD" "$D" /tmp/gsd32/rb-demo
+git worktree remove --force /tmp/gsd32/dry && git worktree prune
+```
+
+```text
+D  = f42be9d9a548315a96372d78fbe8c2e981d65c0d
+D^1 = 21c51598b06b6f5af58430765d57b1e5f6747c5a
+D^2 = b265ed2824dff9f38eda91936efd36ad91ed82fa
+tree(D) = dcf1ed16920a5cf9103415fc94533259e3c38177
+tree(H) = dcf1ed16920a5cf9103415fc94533259e3c38177
+0
+target=f42be9d9a548315a96372d78fbe8c2e981d65c0d stale-start=21c51598
+dirty: status --porcelain lines=2
+fetch --tags exit=0
+local tag kept after fetch: 21c51598
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=1
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+rollout doc gone from branch
+rollback headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+nightly workflow after rollback: absent
+VERSION after rollback: v1.7.0_gg4
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+Reading: the merge has the two expected parents and the tip's tree, as the real merge will (E-05, PT-02). The `dirty` line counts two entries (the script's own README edit and the CRLF ` M gradlew.bat` entry), and the `clean` line counts one: the expected ` M gradlew.bat` entry that the note names, which persists after the rollback commit, so the script prints no `worktree clean after commit` line (the gg4 note describes the same). The note's three steps ran as written: the fetch of tags, the ff-only merge onto `D`, `git read-tree -u --reset pre-v1.7.0_gg5` plus the commit, and `ok`; the rolled-back branch has no nightly workflow file and `VERSION` `v1.7.0_gg4`; `git revert` of the rollback commit restores the tree it came from; the note is readable at `<rollback-commit>^` and has one `## 5. Rollback` heading. No instruction in the note empties a table.
+
+Verdicts changed in this plan: E-02 from `pending (32-02)` to `yes`; E-03, E-04 and E-05 from `pending (32-02, 32-03)` to `pending (32-03)`. Statement left out because it was not measured: how GitHub compares a value of `NIGHTLY_ENABLED` other than `true` (case, type).
 
 Matches text: yes
