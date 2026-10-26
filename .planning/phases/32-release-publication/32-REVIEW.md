@@ -1,6 +1,6 @@
 ---
 phase: 32-release-publication
-reviewed: 2026-10-26T12:00:00Z
+reviewed: 2026-10-26T18:00:00Z
 depth: standard
 diff_base: 8dcbbfc1ced091b49abc6d444b562d591ffc28f2
 files_reviewed: 3
@@ -10,11 +10,11 @@ files_reviewed_list:
   - docs/FORK-DELTA.md
 findings:
   critical: 0
-  warning: 4
-  info: 6
-  total: 10
+  warning: 5
+  info: 8
+  total: 13
 status: issues_found
-rounds: 1
+rounds: 2
 ---
 
 # Phase 32: Code Review Report
@@ -102,6 +102,43 @@ round: 1 findings: 10
 - FORK-DELTA's `DEPS-F4` paragraph replaced, its rows and the raw numbers: PARTIAL. The old "left exactly as upstream ships them" paragraph with the `DEPS-F4` claim is gone; `DEPS-F4` now appears only in the release row as upstream's reason; `main` is no longer called the default branch (the `test-head.yaml` and Dependabot rows name `custom_build`); the Contents anchors match the new headings. The raw numbers are exact: the two after-gg5 rows (287/31774/731 and 37/2877/241), the two gg5 commands and the growth paragraph (277 to 287, 29679 to 31774, 643 to 731; 6/616/92, 5/1486/25, 1/23/1) re-run to the same values (wording only, IN-03). The rows are not clean: the Dependabot row has WR-01 and WR-02.
 - The empty `src/main` diff stated consistently in all three documents: PASS. The note (section 1, with the command and exit 0), the CHANGELOG first Important Changes bullet ("`src/main` is identical to `1.7.0_gg4`") and the FORK-DELTA syncer paragraph ("`git diff v1.7.0_gg4 -- src/main` is empty") agree with each other and with the live `git diff --quiet v1.7.0_gg4 HEAD -- src/main` (exit 0); the identity `v1.7.0_gg5`, the rollback target `21c51598` and the change set (workflows, nightly, guards, harness, `dependabot.yml`, `VERSION`, documents) agree across the three.
 - The note free of review text: PASS. `docs/ROLLOUT-v1.7.0_gg5.md` contains no reviewer finding, round or disposition text (D-04); the only planning-style content is operator instructions.
+
+## Round 2
+
+Scope: the fix commits `d5b2d0b3` to `cde8fd7a`, `b23f4247`, `c4efe113`, `2cf2b569` and the evidence commit `99a5087d` (`git diff 57232664 HEAD -- docs CHANGELOG.md`: 5 changed lines in `CHANGELOG.md`, 8 in `docs/FORK-DELTA.md`, 26 in `docs/ROLLOUT-v1.7.0_gg5.md`). I re-read each hunk against the files and against `32-COMMAND-EVIDENCE.md` E-02, E-30, E-31, E-32 and `31-COMMAND-EVIDENCE.md` E-18, and re-ran `git diff --quiet v1.7.0_gg4 HEAD -- src/main` (exit 0), `git diff --quiet 39465506 HEAD -- src build.gradle.kts gradle .github` (exit 0), `git show v1.7.0_gg4:build.gradle.kts` (holds `verifyConfluentArchive`), the CHANGELOG line-length and removed-line checks (the new section has no line over 120 characters, no removed line against `8dcbbfc1`, no planning ID) and a search for `shipped` in the note, the new CHANGELOG section and the gg5 FORK-DELTA paragraph (none left). Round 1 fixes WR-01, WR-02, WR-04, IN-01, IN-02, IN-03 and IN-04 are correct and introduced no new number or cross-document disagreement: the Dependabot row now agrees with `git show v1.7.0_gg4:.github/dependabot.yml` (four entries) and with `496de32a` (2026-10-24, not an ancestor of the tag); the skip counts agree with `31-COMMAND-EVIDENCE.md` E-18 (55 = 54 + 1 in the console, 63 testcases and 9 skipped in the XML); the section 3 MBean and user-agent lines equal the E-02 `PROBE-` lines of the gg5 run, and the "(Mac OS X; jvm:17.0.9)" caveat is true. IN-06 was rejected by the orchestrator and I do not re-raise it. The rollback is now four steps and E-30 rehearses steps 1 and 2 verbatim (its text says so); steps 3 and 4 are not exercised, and the findings below are about step 4 and about two leftovers of the WR-03 fix.
+
+### WR-05: Rollback step 4 does not work when the branch rules require a pull request, because steps 1 and 2 commit on `custom_build` itself
+
+**File:** `docs/ROLLOUT-v1.7.0_gg5.md:97-98, 111`
+**Issue:** Step 1 checks out `custom_build` and step 2 makes `<rollback-commit>` on it. Step 4 then says "a normal push, or the pull request your branch rules require". A pull request cannot have `custom_build` as both head and base, and a direct push of that commit is exactly what branch rules that require pull requests refuse (the planning documents of this phase call `custom_build` a protected base branch, and the release itself is a merge). An operator in that situation has a local `custom_build` that is ahead of `origin/custom_build`, no branch to open the pull request from, and no instruction for the next minute of the incident. E-30 states that step 4 is not executed by the rehearsal, so nothing shows the step works. The forward path also depends on the SHA of `<rollback-commit>`, which a squash or rebase merge of such a pull request changes; the note does not say which merge kind keeps it.
+**Fix:** In step 2 start with `git switch -c rollback-v1.7.0_gg5` (the commands that follow are unchanged), and make step 4: "Publish the rollback commit. Where `custom_build` accepts pushes, run `git push origin HEAD:custom_build`. Where it requires a pull request, run `git push origin rollback-v1.7.0_gg5`, open the pull request into `custom_build` and merge it with a merge commit, so the rollback commit keeps its SHA for the forward path below. Until the rollback commit is on `origin/custom_build`, GitHub keeps running the `v1.7.0_gg5` workflows there, the scheduled nightly included."
+
+### IN-07: The CHANGELOG still says "wildcard matchers keep working", the claim the note retracted in the WR-03 fix
+
+**File:** `CHANGELOG.md:15`
+**Issue:** The WR-03 fix replaced "wildcard forms keep working" in the note (section 3, "What to do") by "matchers that do not spell out the version are unaffected", because no wildcard matcher was run against either release (E-02 lists MBean names and a user agent, nothing that matches them). The CHANGELOG bullet in the same release section keeps the unmeasured wording, so the two documents say different things about the same operator action, and only one of them is limited to what was observed.
+**Fix:** Say the same in both: "Update dashboard, alert and exporter matchers that spell out the `v1.7.0_gg4` value; matchers that do not spell out the version are unaffected."
+
+### IN-08: The reworded opening promise "Each claim below names how it was checked" is still broader than the text
+
+**File:** `docs/ROLLOUT-v1.7.0_gg5.md:7`, `:21` (the list of what the release changes), `:95` and `:115-121` (section 5)
+**Issue:** After the WR-03 fix sections 2 and 3 do name their method and mark the excerpt and the probe. The sentence at line 7 still covers every claim, and several name no method: the list "What the release does change" in section 1, "Nothing in the data format changes" and the "Rolling back brings back" list in section 5. They are true as far as the diff shows (`git diff v1.7.0_gg4 v1.7.0_gg5 --stat` lists exactly those areas), but the note says it names how each was checked. This is the same kind of promise that WR-03 removed, one level smaller.
+**Fix:** "Where a claim rests on a command or a test, the text names it and says whether the output is an excerpt or comes from a test probe; the lists of what changes and what a rollback brings back come from the diff between the two tags."
+
+round: 2 findings: 3
+
+## Mandated confirmations (CIG-02)
+
+- Commands, numbers and run ids against the evidence: PASS. The round 2 hunks add no new number except the fixed ones, and each equals its evidence: the build excerpt (`7801 inner entries`, `BUILD SUCCESSFUL in 8s` from E-03, with the `grep` and `--console=plain` of E-31, which read `10s` and the note says the time varies), the MBean and user-agent lines (E-02 `PROBE-` lines of the gg5 run, `26.10.3.7`, `clickhouse-java-v2/0.9.6`), the four `exclude-paths` entries of `v1.7.0_gg4` and `496de32a` of 2026-10-24 (E-32, re-run), the skip counts 55/54/1 and 9 in the XML (`31-COMMAND-EVIDENCE.md` E-18), the Dependabot pull requests `#4` and `#10` (E-05) and the unchanged `pre-v1.7.0_gg5` commit `21c51598`.
+- Overclaims: PASS WITH FINDINGS. "Shipped" is gone from the three documents' gg5 text (IN-01 fixed in all three places), "the entry is live" is replaced by what E-05 shows (WR-02 fixed; "no `github-actions` pull request has been observed" rests on the open-pull-request list of E-05 and is worded as an observation, which holds), and "since `v1.7.0_gg4`" is corrected (WR-01 fixed). What remains is smaller: the opening sentence of the note (IN-08) and the unmeasured "wildcard matchers keep working" in the CHANGELOG (IN-07).
+- Rollback steps and the `pre-v1.7.0_gg5` target: PASS on the target, FAIL on completeness of step 4 (WR-05). Tag `pre-v1.7.0_gg5` names `21c51598`, equal to `v1.7.0_gg4`; the `gradlew.bat` exception, the ff-only start, `git read-tree -u --reset pre-v1.7.0_gg5`, the empty `git diff --quiet` and the forward path match E-30 as rehearsed on `2cf2b569` (steps 1 and 2 only, as E-30 says). Step 1 again warns about untracked files (IN-02 fixed), step 3 now says how to get the `v1.7.0_gg4` archive and the tag does build with `verifyConfluentArchive` (WR-04 fixed), and step 4 names the push (IN-05 fixed) but not what to do when `custom_build` takes no direct push.
+- Nightly on/off text against `NIGHTLY_ENABLED`: PASS. Note section 4, the CHANGELOG bullet and the FORK-DELTA row agree with `.github/workflows/nightly-integration-tests.yaml:25`: a manual dispatch always runs, the schedule (03:17 UTC) runs only while `NIGHTLY_ENABLED` is `true`; the skip-inventory sentence now says "scheduled while `NIGHTLY_ENABLED` is `true`" (IN-04 fixed).
+- No promise of a GitHub release: PASS. The note still says "No GitHub release is published for `v1.7.0_gg5`: the release is its two tags" and step 3 says "no release asset exists for any tag"; the new sentences promise no release or asset, and the archive is described as built from the tag.
+- No host or secret: PASS. The round 2 hunks add only angle-bracket stand-ins, a test-machine OS and JVM string marked as the test machine's, and no host, credential, connector or cluster name.
+- Released CHANGELOG sections untouched and no planning IDs: PASS. `git diff 8dcbbfc1 HEAD -- CHANGELOG.md` has no removed line; the round 2 change is inside the `1.7.0_gg5` section only, whose longest line is within 120 characters and which holds no requirement, decision, evidence or phase ID.
+- FORK-DELTA's `DEPS-F4` paragraph replaced, its rows and the raw numbers: PASS. The `DEPS-F4` paragraph stays replaced (the term appears only as upstream's reason in the release row), `main` is still not called the default branch, and the Dependabot row now dates the `exclude-paths` reduction to `v1.7.0_gg5`. The raw numbers are unchanged by the fixes and still equal E-22: `git diff --quiet 39465506 HEAD -- src build.gradle.kts gradle .github` exits 0, so "no file in the measured scopes changed in between" holds (IN-03 fixed).
+- The empty `src/main` diff stated consistently in all three documents: PASS. The note (section 1, command and exit 0), the CHANGELOG first Important Changes bullet and the FORK-DELTA syncer paragraph (`git diff v1.7.0_gg4 -- src/main` is empty) agree, and the live `git diff --quiet v1.7.0_gg4 HEAD -- src/main` exits 0; the archive sentence is now identical in meaning in all three (built from the tag, entry by entry, only the release identity).
+- The note free of review text: PASS. The note holds operator instructions only; the new sentences describe the probe, the excerpt and the rollback, and name no finding, round or disposition.
 
 ---
 
