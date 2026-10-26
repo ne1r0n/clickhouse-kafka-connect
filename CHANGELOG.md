@@ -11,8 +11,8 @@ before upgrading from `v1.7.0_gg4`. If you are coming from an earlier release, s
   `1.7.0_gg4`. This release changes the release workflows, adds a nightly integration-test workflow and CI checks, and
   changes the release identity.
 * The JMX MBean `version=` segment and the client name sent on every request now read `version=v1.7.0_gg5` and
-  `clickhouse-kafka-connect/v1.7.0_gg5`. Update dashboard, alert and exporter matchers that spell out the `v1.7.0_gg4`
-  value; wildcard matchers keep working.
+  `clickhouse-kafka-connect/v1.7.0_gg5`. Update dashboard, alert and exporter matchers that spell out the
+  `v1.7.0_gg4` value; matchers that do not spell out the version are unaffected.
 * The archive built from tag `v1.7.0_gg5` differs from the one built from tag `v1.7.0_gg4`, entry by entry, only in
   the release identity: the `Version` constant, the two classes that inline it and the manifest
   `Implementation-Version`.
