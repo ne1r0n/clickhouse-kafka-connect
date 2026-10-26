@@ -263,6 +263,7 @@ None.
 - [Release] 2026-10-23: `VERSION` reads `v1.7.0_gg4` and the CHANGELOG has its `1.7.0_gg4` section; both are published at `21c51598`.
 - [Roadmap] 2026-10-24: GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. Phase 30's dry runs can use the existing `release.yaml` and `pre-release.yaml` on the scratch branch, but the new Phase 31 nightly reaches `custom_build` only at publication. Phase 31 research confirms the behaviour and settles how the NIT-03 dispatch runs before any schedule can fire. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
 - [Roadmap] 2026-10-24: `TestsWorkflowPinGuardUnitTest` pins `dependabot.yml`'s `exclude-paths` list of the four upstream workflows (`UPSTREAM_WORKFLOWS`). Letting Dependabot keep the three newly pinned release-path files current changes that assertion, which needs the user's sign-off (Phase 30).
+- [CI] 2026-10-26: Phase 30 dry runs: sync/v1.7.0 was pushed at b847fbdb (tests.yaml run 40103794037 green); pre-release.yaml run 40296330498 and release.yaml run 40296481765 finished green as dry runs (draft attached, checked and deleted, Publish release skipped); origin's tags and published releases are unchanged and sync/v1.7.0 was deleted from origin. Later .planning commits are a local tail, unpushed.
 
 ### Quick Tasks Completed
 

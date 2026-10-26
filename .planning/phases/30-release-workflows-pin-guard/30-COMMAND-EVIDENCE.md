@@ -390,3 +390,43 @@ Expected annotations of each `build_release` job (Task 3 checks them from the RE
 T is the commit that holds this entry; its SHA is in `/tmp/gsd30/exec/dry/pushed-sha.txt` and in the Task 2 checkpoint.
 
 Matches text: n/a (gate check)
+
+### E-09: both dry runs, read from the REST API, and origin before and after (REL-05)
+
+Backs: REL-05, REL-01, REL-03, REL-04 (criterion 4). T = `b847fbdbf54a42a94738bb7d1fb0c6668a58d5c2`, VERSION `v1.7.0_gg4`, wrapper Gradle 9.8.1.
+
+user_report_received_by: orchestrator (direct)
+
+user_report:
+- option chosen: `push` (user's answer: "push")
+- after the push and the tests.yaml read: "check", then "tell me step by step what should i do"
+- dispatch report: "оба отработали в dry run, вкладка релизы пустая"
+- deletion: "delete"
+
+```sh
+git push origin refs/heads/sync/v1.7.0:refs/heads/sync/v1.7.0     # orchestrator, on the user's direct "push"
+git push origin --delete refs/heads/sync/v1.7.0                    # orchestrator, 2026-10-26T09:49:34Z..09:49:36Z, on the user's direct "delete"
+```
+
+| Path | Run id | Event | Branch | Display title | Conclusion |
+|------|--------|-------|--------|---------------|------------|
+| .github/workflows/tests.yaml | 40103794037 | push | sync/v1.7.0 | docs(30-03): record the dry-run readiness... | success |
+| .github/workflows/pre-release.yaml | 40296330498 | workflow_dispatch | sync/v1.7.0 | Pre-release sync/v1.7.0 (dry run) | success |
+| .github/workflows/release.yaml | 40296481765 | workflow_dispatch | sync/v1.7.0 | Release sync/v1.7.0 (dry run) | success |
+
+Each `build_release` job: all named steps success, `Publish release` skipped. Annotations per job (identical except the prerelease flag):
+- notice `Wrapper Gradle`: Gradle 9.8.1 from the wrapper ran createConfluentArchive and verifyConfluentArchive
+- notice `Archive`: clickhouse-kafka-connect-v1.7.0_gg4.zip 12453663 bytes sha256=5a8522a8167f3c039c6033b70ed13967643cf61001765efe8a39f2d8d7a5638c
+- notice `tests.yaml on this SHA`: successful tests.yaml runs on T: 1
+- warning `Release tag`: tag v1.7.0_gg4 already exists (advisory on a dry run)
+- notice `Draft asset attached`: dry-run-<run>-1 holds the zip, draft=true, prerelease=true (pre-release) / false (release), target=T
+- notice `No tag for the draft`: refs/tags/dry-run-<run>-1 does not exist while the draft is open
+- notice `Dry run cleaned up`: no draft and no tag remain
+- no annotation at level failure (other warnings: ClickHouse client deprecation)
+
+Origin comparison: tags 10 before and 10 after (identical, no dry-run tag); published releases 0 before and after; heads equal the before-snapshot (custom_build `21c51598`, main, two dependabot branches) with `sync/v1.7.0` deleted. The user also reported the Releases tab empty (drafts are invisible to the unauthenticated API).
+
+Verifier output: `dry-run-problems 0 []` / `DRY-RUNS-PROVEN-OK`. Matches text: n/a (gate check)
+
+Research assumptions settled: A1 (a draft creates no tag): yes, `No tag for the draft` notice on both runs. A2 (endpoint forms): the matching-refs and release reads worked as written. A4 (`gh` finds a tagless draft): yes, the draft check step passed without the REST fallback acting. A5 (non-interactive create): yes, `Create draft release (dry run)` succeeded. A6 (job permissions): sufficient, create, check and delete all succeeded.
+Open: origin lists 10 tags where the plan expected 11 (unanswered); the Tooling blocker's "gh not installed" line is left unchanged pending the user.
