@@ -239,7 +239,29 @@ Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest`
   4. *[CI]* After publication, the Actions API still reports `integrationTests.yaml` as disabled, and the nightly is in the state Phase 31 recorded. No workflow run created a release or a tag that the plan did not intend.
   5. *[CI, operator]* After the `--no-ff` merge to `custom_build`, the user dispatches the nightly from GitHub's `Run workflow` control and reports the result directly. The run finishes green, or every failing test is listed by name in the skip list with its cause from Phase 31's measurement; the list names tests, not patterns, and deletes or weakens no existing test. `NIGHTLY_ENABLED` is set only after that run is recorded, and no scheduled run with a conclusion other than `skipped` precedes it. A fix the run needs is a Phase 31 gap, because this phase edits no build, `gradle/` or `.github/` file (NIT-03).
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+**Wave 1**
+- [ ] 32-01-PLAN.md — Wave 1: tracer `VERSION` bump with its anchor row and the live MBean and client-name probe gg4 versus gg5; the archive compare under a new Phase 32 allow-list and the release path since Phase 30's dry runs; origin, the merge shape and GitHub's state measured (CIG-02, D-01, D-02, D-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 32-02-PLAN.md — Wave 2: the one-page `docs/ROLLOUT-v1.7.0_gg5.md`, five measured claims, the rollback rehearsed on a dry-run merge with the local tag `pre-v1.7.0_gg5` (CIG-02, D-02, D-03, D-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 32-03-PLAN.md — Wave 3: the `1.7.0_gg5` CHANGELOG section and FORK-DELTA's CI workflows group, harness row and raw numbers refreshed once (CIG-02, D-05, D-06)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 32-04-PLAN.md — Wave 4 (orchestrator inline): fresh-context `gsd-code-reviewer` rounds on the note, CHANGELOG and FORK-DELTA, at most three, every finding dispositioned, documents frozen (CIG-02, D-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 32-05-PLAN.md — Wave 5 (orchestrator inline): the gate on the release tip: freeze and re-fetch, Docker-stopped `testUnit`, two `--rerun` suite runs on `latest` x V2, the anchors gate, push readiness, `SELECT version()` (CIG-03, D-07)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 32-06-PLAN.md — Wave 6 (orchestrator inline): publication dry run, one direct approval, then scratch push and its green run, `--no-ff` merge, `custom_build` push and its green run, tags by name, scratch deletion (CIG-03, D-01, D-02, D-07)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 32-07-PLAN.md — Wave 7 (orchestrator inline): GitHub's state after publication, the user's first manual nightly dispatch recorded, then `NIGHTLY_ENABLED` handed to the operator on green or the D-08 route on red (NIT-03, CIG-03, D-08)
 
 **Research flag**: Standard; this phase follows Phase 29. Decide at plan time where the `v1.7.0_gg5` tag and any GitHub release come from: the hand-pushed tags of the Phase 29 recipe, or a real `release.yaml` dispatch after the green run. The requirements ask only for the Phase 30 dry run.
 
