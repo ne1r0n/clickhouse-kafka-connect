@@ -18,7 +18,7 @@ git diff --quiet v1.7.0_gg4 v1.7.0_gg5 -- src/main; echo $?
 0
 ```
 
-Measured on the release tip before the tag existed, with `HEAD` for `v1.7.0_gg5`. The shipped archive differs from the `v1.7.0_gg4` archive only in the release identity: the version constant, the two classes that inline it and the manifest `Implementation-Version`. What the release does change: the release workflows, the nightly and its summary script, the CI guard tests, the integration-test harness, `dependabot.yml`, `VERSION` and the documents.
+Measured on the release tip before the tag existed, with `HEAD` for `v1.7.0_gg5`. The archive built from tag `v1.7.0_gg5` differs from the one built from tag `v1.7.0_gg4`, entry by entry, only in the release identity: the version constant, the two classes that inline it and the manifest `Implementation-Version`. What the release does change: the release workflows, the nightly and its summary script, the CI guard tests, the integration-test harness, `dependabot.yml`, `VERSION` and the documents.
 
 What to do: deploy the archive as before. Nothing in the connector's configuration changes.
 
