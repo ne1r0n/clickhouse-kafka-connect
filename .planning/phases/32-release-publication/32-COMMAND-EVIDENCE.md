@@ -722,3 +722,80 @@ core rate limit remaining: 54
 PUSH-READY: X=f5edf94b7b3ddfc0686b71d0d0daba527aed22bf rate=54. Origin's custom_build is 21c51598 and `HEAD..origin/custom_build` is exactly that commit; origin holds no sync/v1.7.0 and no ref at X; no tag or other ref is configured to be pushed; no secret pattern in any file changed since 21c51598. Nothing was pushed and no workflow was dispatched.
 
 Matches text: n/a (gate check)
+
+### E-70: publication dry run (CIG-03, D-07)
+
+Ground truth, before the dry run (nothing pushed):
+
+```text
+origin custom_build: 21c51598b06b6f5af58430765d57b1e5f6747c5a
+git rev-list HEAD..origin/custom_build: 21c51598b06b6f5af58430765d57b1e5f6747c5a
+git merge-tree --write-tree 21c51598 HEAD == HEAD^{tree}: 26ffa193dff692ca3e78d649a95048ad2a729e7f
+pre-v1.7.0_gg5: local lightweight tag (commit) on 21c51598; origin lists neither v1.7.0_gg5 nor pre-v1.7.0_gg5
+local custom_build: 21c51598
+H (tip merged in the dry run): 765b9c3a21aaecb837e58b9bc0d5c696a2015d54
+```
+
+Merge message (`/tmp/gsd32/merge-msg.txt`) verbatim:
+
+```text
+Merge sync/v1.7.0: release v1.7.0_gg5
+
+VERSION v1.7.0_gg5. No connector code changes: src/main is identical to
+v1.7.0_gg4. Read docs/ROLLOUT-v1.7.0_gg5.md, the operator note, before
+upgrading a connector from v1.7.0_gg4. CHANGELOG.md carries the 1.7.0_gg5
+section and docs/FORK-DELTA.md is refreshed with a CI workflows group.
+
+Shipped changes:
+- release.yaml and pre-release.yaml are pinned, build the archive with
+  the Gradle wrapper through setup-gradle and release with
+  gh release create behind the dry-run gate. No GitHub release is
+  published for v1.7.0_gg5.
+- increment-version.yml is pinned on Node 24; its vnull defect on
+  vX.Y.Z_ggN versions is a known issue.
+- A fork-owned nightly integration-test workflow: a manual run always
+  runs, the schedule only runs while NIGHTLY_ENABLED is true, and it is
+  unset at publication.
+- A pin guard, an upstream byte guard and a nightly guard run in the
+  unit tests.
+- The integration-test harness uses a Java 17 Connect worker.
+- dependabot.yml excludes only integrationTests.yaml.
+- The JMX MBean version= segment and the client name carry v1.7.0_gg5.
+
+This merge also publishes the .planning/ history since 21c51598.
+
+Rollback: restore tag pre-v1.7.0_gg5 with git read-tree -u --reset plus
+a commit, as section 5 of the rollout note describes, and redeploy the
+archive built at tag v1.7.0_gg4.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+Dry run: `git worktree add --detach /tmp/gsd32/pubdry 21c51598`, then `git merge --no-ff -F /tmp/gsd32/merge-msg.txt H` with a throwaway identity gave D = f505565733fa1ab294b246e1cad03cdba9d9e982, parents 21c51598 and H, tree 26ffa193 (equal to H's), subject `Merge sync/v1.7.0: release v1.7.0_gg5`, no `.planning/.gsd-ws-arg`, no operator document that tells anyone to empty a table (9 documents checked). The rollback script on D (`/tmp/gsd32/exec/rollback-on-D.log`):
+
+```text
+target=f505565733fa1ab294b246e1cad03cdba9d9e982 stale-start=21c51598
+dirty: status --porcelain lines=2
+fetch --tags exit=0
+local tag kept after fetch: 21c51598
+merge --ff-only exit=0, HEAD==target: yes
+clean: status --porcelain lines=1
+switch -c exit=0, branch=rollback-v1.7.0_gg5, custom_build stand-in still at target: yes
+read-tree + commit exit=0
+rollback-commit parent==target: yes
+ok
+rollout doc gone from branch
+rollback headings: 1
+rolled-back tests.yaml keeps branches: ['**']
+nightly workflow after rollback: absent
+VERSION after rollback: v1.7.0_gg4
+after git revert <rollback-commit>: tree(HEAD)==tree(target)
+```
+
+The worktree was removed and pruned; D is never pushed.
+
+select_version: 26.10.3.7
+image: sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce 2026-10-26T00:06:54Z
+changelog_date_vs_today: equal (2026-10-26 vs 2026-10-26)
+
+Matches text: n/a (gate check)
