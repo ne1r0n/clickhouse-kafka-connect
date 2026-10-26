@@ -483,3 +483,23 @@ E-05's "Differences from the runner" and "CI-only risks for the first dispatch" 
 run-commit: c4b409db87d36d7599e472d38f3a4bc5a118c646
 
 Matches text: n/a (gate check)
+
+### E-06b: the user's disposition of the re-measurement (D-05, D-08, D-09)
+
+Backs: plan 31-06 Task 3 (blocking-human decision); read by plan 31-02's tracer.
+
+user_answer_received_by: orchestrator (direct)
+
+user_answer: accept (Recommended)
+
+disposition: accept
+
+```text
+skip-entries: 0
+```
+
+carried-to-phase-32: FORK-DELTA row for the harness's Java 17 Connect worker in ConfluentPlatform.java (harness commit 781fd52683d6adb7f49468ed6eb88374053a9c1c) (CIG-02)
+
+The E-18 `nightly-timeouts: step=75 job=85` line stands unamended.
+
+Matches text: n/a (gate check)

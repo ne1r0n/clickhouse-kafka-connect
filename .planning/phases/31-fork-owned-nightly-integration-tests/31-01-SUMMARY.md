@@ -53,7 +53,7 @@ coverage:
 
 duration: 26min
 completed: 2026-10-26
-status: halted
+status: complete
 plan_head_before: 41d965e2d6d04cd5fa335291b999fe6721fc53d3
 plan_head_after: 943b10728a46b29d28db32c42cad14117e8760f7
 commits: 2
@@ -65,7 +65,7 @@ commits: 2
 
 ## Status
 
-`halted` at the designed stop: Tasks 1 and 2 are done and committed; Task 3 (`checkpoint:decision`, `gate="blocking-human"`) waits for the user's own answer. Plans 31-02 to 31-05 must not start until E-06 is recorded.
+`complete` (was `halted` at the designed stop until the user answered Task 3 with `fix-harness`, recorded as E-06; gap plan 31-06 re-measures into E-06b): Tasks 1 and 2 are done and committed; Task 3 (`checkpoint:decision`, `gate="blocking-human"`) waits for the user's own answer. Plans 31-02 to 31-05 must not start until E-06 is recorded.
 
 ## Performance
 
