@@ -624,3 +624,42 @@ git hash-object .github/workflows/integrationTests.yaml: 3e9b9be050fa05805227b2e
 The disabled state and the absence of a run after the cut-off are read from GitHub, not from the repository: the byte guard (E-10) pins the file's content offline, and this entry is the online half of NIT-02. 31-05 and Phase 32 re-read it.
 
 Matches text: n/a (gate check)
+
+### E-12: the nightly red on the missing file, then written and green, the script smoke and the anchors (NIT-01, D-01, D-05, D-10)
+
+Backs: plan 31-04 Task 1; ROADMAP criterion 2 (the nightly passes the CIG-01 guard with no guard edit; ubuntu-24.04, a timeout, read-only permissions, no persisted credentials, reports uploaded on failure, no cloud secret, variable or job, triggers dispatch plus a gated schedule).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*NightlyWorkflowGuardUnitTest' --rerun   # red: the workflow does not exist yet
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --tests '*NightlyWorkflowGuardUnitTest' --tests '*WorkflowActionPinGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' --rerun   # green
+ruby -ryaml -e 'd = YAML.load_file(ARGV[0]); raise "not a mapping" unless d.is_a?(Hash); puts "yaml-ok"' .github/workflows/nightly-integration-tests.yaml
+python3 -I /tmp/gsd31-scripts/shape-31-04.py <evidence file>   # the plan's shape check, run from a scratch file
+python3 -I /tmp/gsd31-scripts/smoke-31-04.py                   # the plan's script smoke, run from a scratch file
+# anchors mirror: grep -cF -e <pattern> <path> against every row of .planning/scripts/fork-anchors.txt
+```
+
+```text
+red run (nightly-red.log, nightly-red.rc, nightly-red.xml): exit status 1
+Tests summary: 3 tests, 0 succeeded, 3 failed, 0 skipped
+XML tests=3 failures=3 errors=0 skipped=0
+failure message of each: "The nightly workflow does not exist: .github/workflows/nightly-integration-tests.yaml"
+failing tests:
+  the nightly workflow exists and passes the shared tests.yaml rules: ubuntu-24.04 runner, read-only token, checkout without persisted credentials, ./gradlew integrationTest in command position (NIT-01)
+  the nightly job is gated: a manual dispatch always runs and the schedule runs only when NIGHTLY_ENABLED is 'true' (D-01)
+  the failed-test summary step runs the stdlib script on the integrationTest results, and the script exists (D-10)
+
+green run after the workflow and the script were written (nightly-green.log): exit status 0
+Tests summary: 63 tests, 63 succeeded, 0 failed, 0 skipped
+per class XML: NightlyWorkflowGuardUnitTest 3/0/0/0, WorkflowActionPinGuardUnitTest 21/0/0/0, TestsWorkflowPinGuardUnitTest 39/0/0/0 (tests/failures/errors/skipped)
+
+timeouts read from the last "nightly-timeouts: step=" line of this file (E-18): step 75, job 85; E-06b: "The E-18 nightly-timeouts line stands unamended"
+YAML parse: yaml-ok (top-level keys name, permissions, on (parsed as boolean true by YAML 1.1, as for every workflow), concurrency, jobs)
+shape check: "timeouts 75 85 missing [] upload-pins 2 forbidden []" then NIGHTLY-SHAPE-OK
+script smoke (one passing and one failing testcase in a fixture report, GITHUB_STEP_SUMMARY set): rc 0, annotations ['::error title=Integration tests failed::1 failed: com.example.SmokeTest#fails()']; the summary file held the heading, "tests=2 failures=1 errors=0 skipped=0" and the table row "| com.example.SmokeTest#fails() | failure | expected 1 but was 2 |"; SUMMARY-SMOKE-OK; the script is executable
+anchors mirror before the edit: rows=126 bad=0 (saved to /tmp/gsd31/exec/anchors-before-31-04.txt; 123 at planning time, +3 from plan 31-06, plan 31-02 added none)
+anchors mirror after the five rows: rows=131 bad=0
+```
+
+The five rows pin, for `.github/workflows/nightly-integration-tests.yaml`: the D-01 expression (count 1), `./gradlew integrationTest` (1), `persist-credentials: false` (1), `secrets.` (0) and `--tests` (0). No comment in the workflow repeats an anchored literal; the header describes them by concept. The workflow was committed with its guard, the script and the rows in one green commit. `WorkflowActionPinGuardUnitTest`, `.github/dependabot.yml` and the other workflows were not edited. The capacity step reads `free -m`, `df -h /` and `docker version --format` of the server and tolerates a failing probe (`|| echo unavailable`) so that a probe failure cannot stop the run before the tests.
+
+Matches text: n/a (gate check)
