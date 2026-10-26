@@ -850,3 +850,17 @@ After the tags: M still has exactly one tests.yaml run (success) and X0 still ha
 `git diff --quiet v1.7.0_gg4 v1.7.0_gg5 -- src/main` exits 0. Raw numbers on the tag: `git diff --shortstat v1.7.0 v1.7.0_gg5 -- src build.gradle.kts gradle .github` 287 files, 31774 insertions, 731 deletions; `-- src/main` 37 files, 2877 insertions, 241 deletions, as FORK-DELTA's after-gg5 rows say. The /tmp/gsd32/cb worktree was removed and pruned; the main tree is on sync/v1.7.0.
 
 Matches text: n/a (gate check)
+
+### E-80: GitHub after publication (CIG-03, D-01, criterion 4)
+
+Read unauthenticated from `https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/`: `actions/workflows/integrationTests.yaml`, `actions/workflows/integrationTests.yaml/runs?event=schedule`, `actions/workflows/nightly-integration-tests.yaml` (HTTP 200), `actions/workflows/nightly-integration-tests.yaml/runs`, `contents/.github/workflows/nightly-integration-tests.yaml?ref=custom_build` (HTTP 200), `releases`, `actions/workflows/release.yaml/runs`, `actions/workflows/pre-release.yaml/runs`, and `git ls-remote --tags origin`. The bodies are under `/tmp/gsd32/exec/api/` (`*-80.json`); 32 requests remained.
+
+integrationTests_state: disabled_manually
+integrationTests_schedule_runs_after_marker: 0
+nightly_workflow: active
+nightly_runs_before_dispatch: 0 (no run of any event yet; the first scheduled tick is at 03:17 UTC and is gated by NIGHTLY_ENABLED)
+releases: 0
+release_runs_after_publication: 0 (release.yaml has 1 run and pre-release.yaml has 1, the two Phase 30 dry runs, both created before published_at)
+tags_unchanged_since_E-73: yes
+
+Matches text: n/a (gate check)
