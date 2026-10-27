@@ -866,3 +866,25 @@ tags_unchanged_since_E-73: yes
 release.yaml has 1 run and pre-release.yaml has 1, the two Phase 30 dry runs, both created before published_at.
 
 Matches text: n/a (gate check)
+
+### E-81: the nightly's first manual run (NIT-03)
+
+user_report_received_by: orchestrator (direct)
+User's report, verbatim: the answer "dispatched" to the orchestrator's AskUserQuestion about dispatching the nightly; later, after the orchestrator reported that the workflow listing showed no run, the answer "Run exists".
+
+The first workflow-scoped listing (`actions/workflows/nightly-integration-tests.yaml/runs`) returned no run for about 25 minutes after the report, although the run existed; the repository-wide listing (`actions/runs?event=workflow_dispatch`) showed it. The run was read from the REST API (unauthenticated), saved under `/tmp/gsd32/exec/api/` as `nightly-dispatch-run.json`, `nightly-dispatch-jobs.json`, `nightly-dispatch-annotations.json` and `nightly-runs-81.json`.
+
+Run: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40474535605, event workflow_dispatch, branch custom_build, actor ne1r0n, created 2026-10-27T08:35:10Z, updated 2026-10-27T09:08:27Z (about 33 minutes), conclusion success. The job "Integration tests, ClickHouse latest, client V2" ran on ubuntu-24.04: Report runner capacity, Run integration tests, Summarise failed tests and both uploads all succeeded. Annotations: `tests=63 failures=0 errors=0 skipped=9`; runner capacity `nproc=4, memory total=15989MB available=14671MB, disk / size=145G free=87G, docker server 28.0.4`; ten deprecation warnings (ClickHouseProxyType and ClickHouseClientOption). Artifacts: integration-test-reports (106447 bytes) and integration-test-results (23578 bytes).
+
+Scheduled runs: one, run 40477788530 (event schedule, created 2026-10-27T09:02:27Z, after the dispatch run was created, so none before it): run-level conclusion skipped, its one job skipped (started and completed 09:08:27 to 09:08:28, 0 steps). It registered under the nightly's concurrency group, which the dispatch run held until 09:08:27.
+
+Unrequested release run, recorded for D-01: `release.yaml` run 40474419526 ("Release custom_build (publish)", event workflow_dispatch, branch custom_build, head 3a3a15a9, actor ne1r0n) was started at 2026-10-27T08:34:11Z, one minute before the nightly dispatch, and ended `cancelled` at 08:35:49Z, during its "Build and verify Confluent archive" step (job build_release; earlier steps succeeded). The orchestrator did not start it and was not told about it. After it: `releases` lists 0 releases, origin's tags equal E-73's after-snapshot (cmp), and custom_build is still 3a3a15a9. The publish steps never ran, so nothing was released.
+
+dispatch_run_id: 40474535605
+dispatch_head_sha: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+dispatch_head_is_M: yes
+dispatch_conclusion: success
+schedule_runs_before_dispatch: 0 all-skipped: yes
+nit03: green
+
+Matches text: n/a (gate check)
