@@ -888,3 +888,13 @@ schedule_runs_before_dispatch: 0 all-skipped: yes
 nit03: green
 
 Matches text: n/a (gate check)
+
+### E-82: NIGHTLY_ENABLED after the first green run (PT-12)
+
+user_answer_received_by: orchestrator (direct)
+user_answer: Set it now (to the orchestrator's question whether NIGHTLY_ENABLED is set, asked after E-81 was committed)
+nightly_enabled: set-by-operator 2026-10-27T09:15:07Z
+
+No agent changed the variable; the unauthenticated API cannot read repository variables, so the setting is the operator's report, not an observed value. The same turn, asked about the cancelled release.yaml run 40474419526 of E-81, the user answered "Mis-click, I cancelled": an accidental dispatch of the wrong workflow, cancelled by the user; it created no release and no tag.
+
+Matches text: n/a (gate check)
