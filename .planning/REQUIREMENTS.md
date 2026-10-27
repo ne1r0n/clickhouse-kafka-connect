@@ -18,13 +18,13 @@
 
 - [x] **NIT-01**: A new fork-owned nightly workflow runs `integrationTest` on ClickHouse `latest` × client V2 in local Docker, with no cloud job, and is SHA-pinned
 - [x] **NIT-02**: Upstream `integrationTests.yaml` stays byte-identical and disabled, and a guard check pins that
-- [ ] **NIT-03**: The nightly passes, or each failure is classified in a named skip list, on a manual dispatch before the schedule is enabled
+- [x] **NIT-03**: The nightly passes, or each failure is classified in a named skip list, on a manual dispatch before the schedule is enabled
 
 ### Guard and release
 
 - [x] **CIG-01**: A check fails when a fork-owned workflow uses an unpinned action
-- [ ] **CIG-02**: FORK-DELTA, CHANGELOG, `VERSION=v1.7.0_gg5` and a short rollout note are updated
-- [ ] **CIG-03**: CI is green on the published SHA
+- [x] **CIG-02**: FORK-DELTA, CHANGELOG, `VERSION=v1.7.0_gg5` and a short rollout note are updated
+- [x] **CIG-03**: CI is green on the published SHA
 
 ## Future Requirements
 
@@ -54,10 +54,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-05 | Phase 30 | Complete |
 | NIT-01 | Phase 31 | Complete |
 | NIT-02 | Phase 31 | Complete |
-| NIT-03 | Phase 32 | Pending |
+| NIT-03 | Phase 32 | Complete |
 | CIG-01 | Phase 30 | Complete |
-| CIG-02 | Phase 32 | Pending |
-| CIG-03 | Phase 32 | Pending |
+| CIG-02 | Phase 32 | Complete |
+| CIG-03 | Phase 32 | Complete |
 
 **Coverage:**
 - v1 requirements: 11 total

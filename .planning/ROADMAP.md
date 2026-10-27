@@ -113,7 +113,7 @@ Phase artifacts: `milestones/v1.7.0_gg4-hardening-phases/` · Research: `milesto
 
 - [x] **Phase 30: Release Workflows & Pin Guard** - A guard fails on any unpinned action in a fork-owned workflow. `release.yaml`, `pre-release.yaml` and `increment-version.yml` pass it, both release paths build with the Gradle wrapper through `setup-gradle` and publish with `gh release create`, and a dry run proves both without creating a release or a tag (completed 2026-10-26)
 - [x] **Phase 31: Fork-Owned Nightly Integration Tests** - A measured local `integrationTest` run comes first. A new SHA-pinned nightly then runs `integrationTest` on `latest` × V2 in the runner's Docker with no cloud job, and its first manual run follows publication in Phase 32 (NIT-03). Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard (completed 2026-10-26)
-- [ ] **Phase 32: Release & Publication** - `v1.7.0_gg5` is published with FORK-DELTA, CHANGELOG, `VERSION` and a short reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tags, then the nightly's first manual run (NIT-03)
+- [x] **Phase 32: Release & Publication** - `v1.7.0_gg5` is published with FORK-DELTA, CHANGELOG, `VERSION` and a short reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tags, then the nightly's first manual run (NIT-03) (completed 2026-10-27)
 
 ## Phase Details
 
@@ -239,7 +239,7 @@ Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest`
   4. *[CI]* After publication, the Actions API still reports `integrationTests.yaml` as disabled, and the nightly is in the state Phase 31 recorded. No workflow run created a release or a tag that the plan did not intend.
   5. *[CI, operator]* After the `--no-ff` merge to `custom_build`, the user dispatches the nightly from GitHub's `Run workflow` control and reports the result directly. The run finishes green, or every failing test is listed by name in the skip list with its cause from Phase 31's measurement; the list names tests, not patterns, and deletes or weakens no existing test. `NIGHTLY_ENABLED` is set only after that run is recorded, and no scheduled run with a conclusion other than `skipped` precedes it. A fix the run needs is a Phase 31 gap, because this phase edits no build, `gradle/` or `.github/` file (NIT-03).
 
-**Plans**: 7/7 plans executed
+**Plans**: 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -360,7 +360,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 |-------|-----------|----------------|--------|-----------|
 | 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 3/3 | Complete    | 2026-10-26 |
 | 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 6/6 | Complete    | 2026-10-26 |
-| 32. Release & Publication | v1.7.0_gg5-ci | 7/7 | In Progress | - |
+| 32. Release & Publication | v1.7.0_gg5-ci | 7/7 | Complete    | 2026-10-27 |
 
 ---
 *Roadmap reorganized at the `v1.7.0_gg4-hardening` close: 2026-10-24. Roadmap for milestone `v1.7.0_gg5-ci` created: 2026-10-24.*
