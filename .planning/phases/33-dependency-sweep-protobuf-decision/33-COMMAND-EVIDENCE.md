@@ -15,8 +15,8 @@
 | E-02 | SWP-01 | 33-01 | pass |
 | E-03 | SWP-01, SWP-04 | 33-01 | pass |
 | E-04 | SWP-01 | 33-01 | pass |
-| E-05 | SWP-01 | 33-01 | pending (plan 33-01) |
-| E-06 | SWP-04 | 33-01 | pending (plan 33-01) |
+| E-05 | SWP-01 | 33-01 | pass |
+| E-06 | SWP-04 | 33-01 | pass |
 | E-07 | SWP-02 | 33-02 | pending (plan 33-02) |
 | E-08 | SWP-02 | 33-02 | pending (plan 33-02) |
 | E-09 | SWP-02 | 33-02 | pending (plan 33-02) |
@@ -184,5 +184,65 @@ archive_pom_version: 1.12.1
 The archive holds exactly one `lib/*-confluent.jar`, and its `META-INF/maven/at.yawk.lz4/lz4-java/pom.properties` reads `groupId=at.yawk.lz4`, `artifactId=lz4-java`, `version=1.12.1`. `verifyConfluentArchive` ran as the `createConfluentArchive` finalizer and passed.
 
 Timestamp (UTC): 2026-10-28T18:45:11Z
+
+Verdict: pass
+
+### E-05: Full suite on the lz4 tip (latest x V2), Lz4RoundTripLiveTest and the anchors mirror
+
+Backs: SWP-01, ROADMAP Phase 33 criterion 2 (the full suite on latest x V2 is green with the 18 named skips after the lz4-java bump).
+
+```sh
+git rev-parse HEAD
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd33/exec/suite-lz4.log 2>&1
+python3 -I /tmp/gsd33/exec/tally.py
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+# Lz4RoundTripLiveTest XML root: build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.db.helper.Lz4RoundTripLiveTest.xml
+/bin/bash /tmp/gsd33/exec/anchors.sh
+```
+
+```text
+gated_head: eca4aed33aa7aafffc490b6c6ea6b66f0d73fc33
+suite_exit: 0
+suite_tests: 1961
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_duration: BUILD SUCCESSFUL in 2m 44s
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e02: yes
+lz4roundtrip_xml: tests=2 failures=0 errors=0 skipped=0
+anchors_mirror: rows=131 bad=0
+jvm_crash: none
+```
+
+The gated head is the evidence commit on top of the PR #19 merge `6bf1c43b`, which is its first parent. The totals equal the baseline in E-02 (1961 tests, 18 skipped) on the same image digest, so the bump changed no test outcome. The run was concurrent with the E-06 gate, which reads only git trees.
+
+Timestamp (UTC): 2026-10-28T18:46:31Z to 2026-10-28T18:49:15Z
+
+Verdict: pass
+
+### E-06: Merge-invariant gate after the lz4 merge (range now holds 21c51598 and 3a3a15a9)
+
+Backs: SWP-04, ROADMAP Phase 33 phase gate (the cumulative merge-invariant gate passes on the range the first merge widened).
+
+```sh
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD > /tmp/gsd33/exec/gate-33-01.log 2>&1
+```
+
+```text
+gate_head: eca4aed33aa7aafffc490b6c6ea6b66f0d73fc33
+gate_start_utc: 2026-10-28T18:46:27Z
+gate_end_utc: 2026-10-28T19:06:29Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=981 anchor_rows=131 marker_commits=1040 anchor_exempt=19 result=PASS
+invariants_exit: 0
+violation_lines: 0
+```
+
+The gate walks every commit in `pre-v1.7.0-sync..HEAD`, which now includes the two release merges and the Dependabot head, and each is checked against its own copy of `fork-anchors.txt`.
+
+Timestamp (UTC): 2026-10-28T19:06:29Z
 
 Verdict: pass
