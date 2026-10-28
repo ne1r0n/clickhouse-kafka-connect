@@ -17,8 +17,8 @@
 | E-04 | SWP-01 | 33-01 | pass |
 | E-05 | SWP-01 | 33-01 | pass |
 | E-06 | SWP-04 | 33-01 | pass |
-| E-07 | SWP-02 | 33-02 | pending (plan 33-02) |
-| E-08 | SWP-02 | 33-02 | pending (plan 33-02) |
+| E-07 | SWP-02 | 33-02 | pass |
+| E-08 | SWP-02 | 33-02 | pass |
 | E-09 | SWP-02 | 33-02 | pending (plan 33-02) |
 | E-10 | SWP-02 | 33-02 | pending (plan 33-02) |
 | E-11 | SWP-01, SWP-02 | 33-02 | pending (plan 33-02) |
@@ -244,5 +244,113 @@ violation_lines: 0
 The gate walks every commit in `pre-v1.7.0-sync..HEAD`, which now includes the two release merges and the Dependabot head, and each is checked against its own copy of `fork-anchors.txt`.
 
 Timestamp (UTC): 2026-10-28T19:06:29Z
+
+Verdict: pass
+
+### E-07: PR #18 fetched by ref, merged as its own commit and gated (okhttp 5.5.1)
+
+Backs: SWP-02, ROADMAP Phase 33 criterion 3 (okhttp 5.5.1 in its own commit, with its own gate).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git fetch origin refs/pull/18/head
+git rev-parse FETCH_HEAD
+git log -1 --format=%an cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+git rev-list --parents -n 1 cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+git diff --name-only cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd^ cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+git diff -U0 cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd^ cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+git merge-tree --write-tree --name-only HEAD cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+git merge --no-ff -F /tmp/gsd33/exec/msg-18.txt cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+git rev-parse HEAD HEAD^1 HEAD^2
+git diff --name-only HEAD^1 HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileIntegrationTestJava > /tmp/gsd33/exec/compile-it-18.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --dependency com.squareup.okhttp3:okhttp --configuration integrationTestCompileClasspath
+/bin/bash /tmp/gsd33/exec/anchors.sh
+```
+
+```text
+pr18_head: cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+pr18_head_research: cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+rebased_since_research: no
+pr18_author: dependabot[bot]
+pr18_parent: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+pr18_files: gradle/libs.versions.toml
+pr18_change: okhttp 5.5.0 -> 5.5.1
+origin_reread_before_merge: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+merge_tree: clean
+merge_commit: e075b2ccec663a6089cddd59bbc2c37a4208e4e3
+merge_second_parent: cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd
+first_parent_diff_files: gradle/libs.versions.toml
+compile_integration_test_exit: 0
+dependencyinsight_integrationtestcompileclasspath: com.squareup.okhttp3:okhttp:5.5.1
+anchors_mirror: rows=131 bad=0
+```
+
+The diff of the head is the one `okhttp = "5.5.0"` to `okhttp = "5.5.1"` version line (line 19); the `okhttp = { module = ... }` library row is unchanged. The merge-tree dry run printed a single tree-OID line (`f765dda9833fe7b879c49dc78d44faadd8338dc7`). The head has exactly one parent, the origin tip.
+
+Timestamp (UTC): 2026-10-28T19:08:50Z (head fetched; merge, compile and insight within the following 30 seconds)
+
+Verdict: pass
+
+### E-08: PR #20 fetched by ref, merged as its own commit and gated (Gradle wrapper 9.8.2, gradlew.bat CRLF intact)
+
+Backs: SWP-02, ROADMAP Phase 33 criterion 3 (the Gradle wrapper bump changes only the properties file, `gradlew.bat` keeps CRLF, and the release-path archive task runs on 9.8.2).
+
+```sh
+git ls-files --eol gradlew.bat
+file gradlew.bat
+git ls-remote origin refs/heads/custom_build
+git fetch origin refs/pull/20/head
+git rev-parse FETCH_HEAD
+git log -1 --format=%an 8786723bca5a0a2d0a014d15c15981386da8345d
+git rev-list --parents -n 1 8786723bca5a0a2d0a014d15c15981386da8345d
+git diff --name-only 8786723bca5a0a2d0a014d15c15981386da8345d^ 8786723bca5a0a2d0a014d15c15981386da8345d
+git diff -U0 8786723bca5a0a2d0a014d15c15981386da8345d^ 8786723bca5a0a2d0a014d15c15981386da8345d
+git merge-tree --write-tree --name-only HEAD 8786723bca5a0a2d0a014d15c15981386da8345d
+git merge --no-ff -F /tmp/gsd33/exec/msg-20.txt 8786723bca5a0a2d0a014d15c15981386da8345d
+git rev-parse HEAD HEAD^1 HEAD^2
+git diff --name-only HEAD^1 HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain --version > /tmp/gsd33/exec/gradle-version-20.log 2>&1
+curl -sS --fail -L -o /tmp/gsd33/exec/gradle-9.8.2-bin.zip https://services.gradle.org/distributions/gradle-9.8.2-bin.zip
+shasum -a 256 /tmp/gsd33/exec/gradle-9.8.2-bin.zip
+curl -sS --fail -L https://services.gradle.org/distributions/gradle-9.8.2-bin.zip.sha256
+rm -f /tmp/gsd33/exec/gradle-9.8.2-bin.zip
+git ls-files --eol gradlew.bat
+file gradlew.bat
+git status --porcelain -- gradlew gradlew.bat gradle/wrapper
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive > /tmp/gsd33/exec/archive-20.log 2>&1
+/bin/bash /tmp/gsd33/exec/anchors.sh
+```
+
+```text
+gradlew_bat_eol_before: i/lf w/crlf attr/text eol=crlf gradlew.bat
+gradlew_bat_file_before: gradlew.bat: DOS batch file text, ASCII text, with CRLF line terminators
+pr20_head: 8786723bca5a0a2d0a014d15c15981386da8345d
+pr20_head_research: 8786723bca5a0a2d0a014d15c15981386da8345d
+rebased_since_research: no
+pr20_author: dependabot[bot]
+pr20_parent: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+pr20_files: gradle/wrapper/gradle-wrapper.properties
+pr20_change: gradle-9.8.1-bin.zip -> gradle-9.8.2-bin.zip
+origin_reread_before_merge: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+merge_tree: clean
+merge_commit: e4f49dca67bb6d04641eedbb6daf2690a996852c
+merge_second_parent: 8786723bca5a0a2d0a014d15c15981386da8345d
+first_parent_diff_files: gradle/wrapper/gradle-wrapper.properties
+gradle_version_after: 9.8.2
+gradle_dist_sha256: 21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607
+gradle_dist_sha256_published: 21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607
+gradle_dist_sha256_match: yes
+gradlew_bat_eol_after: i/lf w/crlf attr/text eol=crlf gradlew.bat
+gradlew_bat_file_after: gradlew.bat: DOS batch file text, ASCII text, with CRLF line terminators
+wrapper_files_status: clean
+archive_exit: 0
+verify_archive_line: verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class
+anchors_mirror: rows=131 bad=0
+```
+
+The head changes only the `distributionUrl` line (line 3). The merge-tree dry run printed a single tree-OID line (`d5ae47c785d34a023424ce5bd253448bd81c8413`). The first `./gradlew --version` after the merge downloaded the 9.8.2 distribution; `createConfluentArchive` ran on it and finished `BUILD SUCCESSFUL in 30s`. The scratch zip was deleted by name after the checksum comparison; the `wrapper` task was not run.
+
+Timestamp (UTC): 2026-10-28T19:09:19Z to 2026-10-28T19:16:14Z
 
 Verdict: pass
