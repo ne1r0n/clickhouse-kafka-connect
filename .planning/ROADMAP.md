@@ -196,7 +196,17 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2 with `SELECT
      - A `DataException` is never reclassified as retriable.
   4. *[Docker-free, live]* `fork-anchors.txt` has new rows for the `ProxySinkTask` statistics and `connectorName` plumbing (ORCH-02) and for the `DEFAULT_RETRIABLE_ERROR_CODES` lookup. The anchors gate passes on the phase tip (TAL-05). Two full `--rerun` suite runs on that tip are green on `latest` × V2 with the 18 named skips. That tip is the baseline for Phases 35–37.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 34-01-PLAN.md — Wave 1: upstream and origin re-read, the conflict set re-measured and a baseline suite on the untouched tip, then the tracer: the `pre-v1.7.0-tail-2` tag, one mechanical merge M3 (STOP on a release tag past v1.7.0), the conflicted-paths record and `MERGE-CHECKLIST-v1.7.0-tail-2.md` in the next commit, the unedited tail gate passing; the post-merge break inventory (TAL-01, TAL-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 34-02-PLAN.md — Wave 2: separate repair commits: `ProxySinkTask` with the `connectorName` constructor and the `DBWriter` seam on one four-argument core plus 8 anchor rows, the stale `handleException` caller on the five-argument form plus the `DEFAULT_RETRIABLE_ERROR_CODES` rows, all four compile tasks, the BLD-16 re-bless from the worker jars; the `ProxySinkTaskConstructorUnitTest` pins with a mutation run (TAL-02, TAL-03, TAL-05)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 34-03-PLAN.md — Wave 3: the `AdditionalRetriableErrorCodesPinUnitTest` pins (parse matrix on both paths, 15-code literal, unset-key sweep, DataException) with a mutation run, the Phase 36/38 handoff record, and the phase gate: origin and upstream re-read, cache-busted `testUnit`, two `--rerun` full suites with the 18 named skips, anchors mirror, tail and cumulative gates (TAL-04, TAL-05, TAL-01)
 
 **Research flag**: Standard. The fork has a rehearsed recipe: the gg1, gg4 and earlier tail merges, the gate script and the checklist. The conflict set was measured with `git merge-tree` against both `sync/v1.7.0` and `origin/custom_build`. If `upstream/main` has moved past `9bed6f79`, re-measure the conflict set before planning. If upstream has tagged a release past `v1.7.0`, stop, because that makes this a tagged sync (FUT-01) and the user decides the scope.
 
