@@ -126,7 +126,7 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
 
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker stopped. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
-- [ ] **Phase 33: Dependency Sweep & Protobuf Decision** - A rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads on the scratch branch, one commit and one gate each. PR #10 (protobuf-java 4.x) is declined with a Dependabot `ignore` and a FORK-DELTA record
+- [x] **Phase 33: Dependency Sweep & Protobuf Decision** - A rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads on the scratch branch, one commit and one gate each. PR #10 (protobuf-java 4.x) is declined with a Dependabot `ignore` and a FORK-DELTA record (completed 2026-10-28)
 - [ ] **Phase 34: Upstream Tail Merge** - Upstream's untagged tail is merged as one mechanical commit while the client is still 0.9.6. `ProxySinkTask` keeps both constructors without an ambiguous `null`, every `handleException` caller uses the 5-argument form, and `additionalRetriableErrorCodes` is pinned with a no-op default
 - [ ] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free, live and on the reporter's stand, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump
 - [ ] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6
@@ -154,7 +154,7 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
      Any anchor row that a bump moves changes in the same commit, and the full suite is green on the sweep tip.
   4. *[Docker-free, record]* PR #10 is not merged. `dependabot.yml` ignores protobuf-java major versions 4 and above, in the `gradle` block only, and the pin guard still passes. `docs/FORK-DELTA.md` records the decision with its measured cause and its re-open trigger. The cause is that `ProtobufIngestTest` fails with `VerifyError` against the Confluent 7.9.1 test stack (PR #10 run 39501799049). The trigger is FUT-03, a move to a Confluent 8.x test stack. PR #10 is either closed by the user, confirmed in their own words, or recorded as closing once the `ignore` reaches `custom_build` at publication (SWP-03).
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -470,7 +470,7 @@ The order is the user's (2026-10-28). Phases 33 and 34 could share a phase under
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 3/3 | In Progress | - |
+| 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-28 |
 | 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 35. Buffered Offset Commit Under Topic-Renaming SMTs | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
