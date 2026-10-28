@@ -24,7 +24,7 @@
 | E-11 | SWP-01, SWP-02 | 33-02 | pass |
 | E-12 | SWP-03 | 33-03 | pass |
 | E-13 | SWP-03 | 33-03 | pass |
-| E-14 | SWP-01, SWP-02, SWP-03, SWP-04 | 33-03 | pending (plan 33-03) |
+| E-14 | SWP-01, SWP-02, SWP-03, SWP-04 | 33-03 | pass |
 
 ### E-01: Phase start, origin re-read, open Dependabot PRs, rollback tag and environment
 
@@ -579,5 +579,70 @@ swp03_wording_note: ROADMAP criterion 4 governs (PR #10 recorded as closing at p
 The log was read to key lines only and not pasted. `archive_listing_entries` is the file count on the last line of `unzip -l` (7801), equal to the 7801 inner entries `verifyConfluentArchive` reports; the listing was captured to a file first and counted, with `unzip` exiting 0, so a failed `unzip` cannot read as 0. `createConfluentArchive` reused its up-to-date outputs from the PR #20 run (inputs unchanged since), and `verifyConfluentArchive` ran as its finalizer. No pull request was touched: PR #10 is read only, nothing was closed, labelled or commented, and no `@dependabot` command was posted.
 
 Timestamp (UTC): 2026-10-28T19:26:03Z to 2026-10-28T19:27:24Z (FORK-DELTA commit)
+
+Verdict: pass
+
+### E-14: Phase 33 gate
+
+Backs: SWP-04, SWP-01, SWP-02, SWP-03, ROADMAP Phase 33 criteria 1 to 4 and the phase gate (origin untouched, merge order, cache-busted testUnit, full suite on latest x V2, anchors mirror, cumulative invariant gate and its self-test, empty src/main diff).
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin
+git ls-remote --exit-code --tags origin pre-v1.7.0_gg6
+git ls-remote --exit-code --heads origin sync/v1.7.0
+curl -sS --fail "https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/pulls?state=open&per_page=100"
+curl -sS --fail https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/pulls/10
+git rev-list --first-parent --merges --reverse pre-v1.7.0_gg6..HEAD
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 HEAD > /tmp/gsd33/exec/gate-33-03.log 2>&1   # background
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd33/exec/testunit-33-03.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd33/exec/suite-gate.log 2>&1
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+/bin/bash /tmp/gsd33/exec/anchors.sh
+git diff --quiet pre-v1.7.0_gg6 HEAD -- src/main
+bash .planning/scripts/verify-merge-invariants-selftest.sh > /tmp/gsd33/exec/selftest-33-03.log 2>&1
+```
+
+```text
+gated_head: c9443756eb85e601552cb8241f0e7b52ed6209da
+origin_custom_build_at_gate: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+origin_unchanged: yes
+origin_heads_non_dependabot_at_gate: custom_build 3a3a15a9ae064ffe09c696b8bb87bce23419d463; main bec167d85918e77c11621063000acc6e031ae2fa
+origin_heads_unchanged: yes
+pre_tag_on_origin: absent
+sync_branch_on_origin: absent
+open_prs_at_gate: #20 8786723bca5a0a2d0a014d15c15981386da8345d; #19 2a8060389924edcabcac26c3c22e397f7939c098; #18 cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd; #17 6a53525b738d90ee4c98a3761ebebe11421cf1f0; #16 cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f; #10 011bc42bfe8d8230c430ec8001d481885daec5fa
+pr10_state_at_gate: open
+pr10_merged_at_at_gate: null
+merges_in_order: #19 6bf1c43be60835b1dcc051b046e9727d5da97fb4 -> 2a8060389924edcabcac26c3c22e397f7939c098; #18 e075b2ccec663a6089cddd59bbc2c37a4208e4e3 -> cb898dc2a9f52ace13c8f9ff8602a37fcc4fb6cd; #20 e4f49dca67bb6d04641eedbb6daf2690a996852c -> 8786723bca5a0a2d0a014d15c15981386da8345d; #16 79f56a5ec6f3cedad4d9ada4c5860344c262d285 -> cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+merges_match: yes
+testunit_exit: 0
+testunit_xml: tests=1385 failures=0 errors=0 skipped=2 (64 XML roots under build/test-results/testUnit)
+testunit_guard_xml: DependabotProtobufIgnoreGuardUnitTest 11/0/0/0 (tests/failures/errors/skipped)
+suite_exit: 0
+suite_tests: 1972
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_duration: BUILD SUCCESSFUL in 2m 43s
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e10: yes
+jvm_crash: none
+anchors_mirror: rows=131 bad=0
+src_main_diff_vs_pre_tag: 0
+invariants_line: invariants: provenance_paths=21 anchor_commits=998 anchor_rows=131 marker_commits=1057 anchor_exempt=19 result=PASS
+invariants_exit: 0
+selftest_line: selftest: no failures
+selftest_exit: 0
+```
+
+The four sweep bumps, one merge commit each from its PR head, are lz4-java 1.12.1 (#19), okhttp 5.5.1 (#18), Gradle wrapper 9.8.2 (#20) and setup-java v6.1.0 (#16). The protobuf decision keeps protobuf-java and `protoc` on 3.x by exact-name semver-major ignores in the `gradle` Dependabot entry, pinned by `DependabotProtobufIgnoreGuardUnitTest`, with the measured `VerifyError` cause and the FUT-03 trigger in FORK-DELTA. PR #10 is unmerged and open on GitHub, recorded as closing once the ignore reaches `custom_build` at publication. Nothing was pushed: origin's `custom_build` and `main` are where E-01 read them, and neither the tag nor the scratch branch exists on origin. The suite total is 1972, which is E-10's 1961 plus the 11 guard tests, on the same image digest with the same 18 skips. `.planning/config.json` and `.planning/state.json` were dirty throughout and are not part of any commit.
+
+Timestamp (UTC): 2026-10-28T19:28:02Z to 2026-10-28T20:12:16Z
 
 Verdict: pass
