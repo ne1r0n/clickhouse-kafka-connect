@@ -17,8 +17,8 @@
 | E-03 | TAL-01 | 34-01 | pass |
 | E-04 | TAL-03 | 34-01 | pass |
 | E-05 | TAL-02, TAL-05 | 34-02 | pass |
-| E-06 | TAL-03, TAL-05 | 34-02 | pending (plan 34-02) |
-| E-07 | TAL-03 | 34-02 | pending (plan 34-02) |
+| E-06 | TAL-03, TAL-05 | 34-02 | pass |
+| E-07 | TAL-03 | 34-02 | pass |
 | E-08 | TAL-02 | 34-02 | pending (plan 34-02) |
 | E-09 | TAL-04 | 34-03 | pending (plan 34-03) |
 | E-10 | TAL-01, TAL-04, TAL-05 | 34-03 | pending (plan 34-03) |
@@ -260,5 +260,95 @@ tail_gate_exit: 0
 The seam errors from E-04 (three in `AdditionalRetriableErrorCodesTest`) are gone; the two remaining errors are the stale four-argument `handleException` call on line 32 of `UtilsNullMessageClassificationUnitTest.java`. The tail gate log holds no VIOLATION line. The start time below is approximate (reconstructed from log file times; the clock was not captured at the first edit).
 
 Timestamp (UTC): 2026-10-28T21:21:40Z to 2026-10-28T21:22:48Z
+
+Verdict: pass
+
+### E-06: The stale handleException caller on the five-argument form, the Utils anchor rows and the four compile tasks
+
+Backs: TAL-03, TAL-05, ROADMAP Phase 34 criteria 2 and 4 (every fork caller of Utils.handleException uses the five-argument form; compileJava, compileTestJava, compileTestFixturesJava and compileIntegrationTestJava pass; the DEFAULT_RETRIABLE_ERROR_CODES lookup and the signature are anchored).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava compileTestJava compileTestFixturesJava compileIntegrationTestJava > /tmp/gsd34/exec/compile-gates-06.log 2>&1
+grep -rn 'handleException(' src
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git worktree add --detach /tmp/gsd34/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd34/fmt --console=plain spotlessApply > /tmp/gsd34/exec/fmt-2.log 2>&1
+cmp /tmp/gsd34/fmt/src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsNullMessageClassificationUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsNullMessageClassificationUnitTest.java
+git worktree remove --force /tmp/gsd34/fmt
+git add src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsNullMessageClassificationUnitTest.java .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd34/exec/msg-t2.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 4c9b3ed8dad6efb56220c8673448238ce4ce0da5 > /tmp/gsd34/exec/tail-gate-06.log 2>&1
+```
+
+```text
+compile_gates_exit: 0
+handle_exception_callers: ChunkFlusher.java x1; ProxySinkTask.java x1; UtilsNullMessageClassificationUnitTest.java x1; UtilsTest.java x12
+anchors_mirror: rows=141 bad=0
+new_anchor_rows: 2
+spotless_worktree_cmp: identical
+handle_exception_commit: 4c9b3ed8dad6efb56220c8673448238ce4ce0da5
+handle_exception_commit_files: .planning/scripts/fork-anchors.txt; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsNullMessageClassificationUnitTest.java
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=8 anchor_rows=141 marker_commits=15 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+The only edit is the one stale call in `UtilsNullMessageClassificationUnitTest.java` (an empty `Set.of()` constant as the fourth argument, never null) plus its `java.util.Set` import. `handle_exception_callers` counts every `handleException(` token outside the declaration, as in E-04. No fork file calls a `CreateTableStatement` constructor, so there is no fork edit for that refactor. The start time below is approximate (reconstructed from the compile gate's wall clock; the clock was not captured at the first edit).
+
+Timestamp (UTC): 2026-10-28T21:47:30Z to 2026-10-28T21:48:53Z
+
+Verdict: pass
+
+### E-07: BLD-16 red before the re-bless, worker jars from the local image, the re-bless and testUnit green
+
+Backs: TAL-03, ROADMAP Phase 34 criterion 2 (the BLD-16 Kafka API list is re-blessed from the production worker's own jars after the tail added a ConfigException(String, Object, String) reference).
+
+```sh
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd34/exec/testunit-red-07.log 2>&1
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py failed build/test-results/testUnit --expect 'ConnectApiReferencesUnitTest#BLD-16: every org.apache.kafka class and member the compiled connector references is in the blessed worker-API list'
+docker image inspect --format '{{.Id}}' confluentinc/cp-kafka-connect-base:7.9.7
+docker create confluentinc/cp-kafka-connect-base:7.9.7
+docker cp <container>:/usr/share/java/kafka/connect-api-7.9.7-ccs.jar /tmp/gsd34/img/
+docker cp <container>:/usr/share/java/kafka/kafka-clients-7.9.7-ccs.jar /tmp/gsd34/img/
+docker rm <container>
+shasum -a 256 /tmp/gsd34/img/*.jar
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava
+python3 -I .planning/scripts/connect-api-refs.py --classes build/classes/java/main --compile-classpath <4.4.0 connect-api>:<4.4.0 kafka-clients> --reference worker=/tmp/gsd34/img/connect-api-7.9.7-ccs.jar:/tmp/gsd34/img/kafka-clients-7.9.7-ccs.jar --reference 4.1.1=<4.1.1 connect-api>:<4.1.1 kafka-clients> --reference 4.4.0=<4.4.0 connect-api>:<4.4.0 kafka-clients> --image-note "image: confluentinc/cp-kafka-connect-base@sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055 (tag 7.9.7; linux/amd64 and linux/arm64 jars byte-identical; Temurin 17.0.19)" --write src/test/resources/connect-api-references.txt > /tmp/gsd34/exec/rebless-07.log 2>&1
+git diff -U0 -- src/test/resources/connect-api-references.txt
+git add src/test/resources/connect-api-references.txt
+git commit -F /tmp/gsd34/exec/msg-t2b.txt
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd34/exec/testunit-green-07.log 2>&1
+```
+
+```text
+testunit_red_exit: 1
+testunit_red_failed: ConnectApiReferencesUnitTest#BLD-16: every org.apache.kafka class and member the compiled connector references is in the blessed worker-API list
+red_prediction_met: yes
+worker_image_id: sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055
+worker_connect_api_sha256: b57546e9160d5435238fded6f38756d621fac62bd9f64737c3f68e094ae01de4
+worker_kafka_clients_sha256: 28423086fbbf8f91b2f1d335eeeca6675916e24adf2f813b3f9c47f87b49f962
+worker_jar_hashes_match_header: yes
+reference_jar_hashes_match_header: yes
+rebless_exit: 0
+rebless_summary: REFERENCE worker classes-missing 0 members-missing 0; REFERENCE 4.1.1 classes-missing 0 members-missing 0; REFERENCE 4.4.0 classes-missing 0 members-missing 0
+rebless_diff: one removed and one added date line (2026-10-21T16:23:41Z to 2026-10-28T21:50:10Z) and one added M line for org/apache/kafka/common/config/ConfigException.<init>:(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/String;)V
+rebless_image_line_unchanged: yes
+rebless_commit: 8bd35e59f9f21f160e42d1346e2288ecfbed822c
+testunit_green_exit: 0
+testunit_tests: 1418
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+tail_tests_added: 31
+tail_tests_added_matches_rehearsal: no
+testunit_total_matches_rehearsal_total: yes
+```
+
+The red run failed exactly one testcase, the BLD-16 reference check, and its message named exactly one unlisted entry: the `ConfigException(String, Object, String)` constructor. The plan's `--expect` string uses the Java method name (`everyReferencedKafkaClassAndMemberIsInTheBlessedList`), but the helper reads the JUnit XML testcase name, which is the `@DisplayName` text, so the method-name form printed FAIL (unexpected: the display name; missing: the method name). With the display name as the expected testcase name the helper prints `OK failed: 1 failing testcases, 1 expected`; the two names are the same single test (the XML holds that DisplayName under the test class, whose method is `everyReferencedKafkaClassAndMemberIsInTheBlessedList`). `red_prediction_met: yes` rests on that equivalence, not on the literal command in the plan.
+
+`tail_tests_added: 31` is 1418 minus E-01's baseline of 1387. The rehearsal's delta of 33 was measured against its own baseline of 1385; the rehearsal's absolute testUnit total was 1418, and this tree's total is exactly 1418 over 66 XML files, so the tail's test content equals the rehearsal's. `tail_tests_added_matches_rehearsal: no` records the arithmetic delta honestly; the two-test baseline difference (1385 in the research, 1387 measured in E-01 on an unchanged `src`) is not explained here. The worker jars were copied from the already-local image (no pull) into `/tmp/gsd34/img/` and treated as data.
+
+Timestamp (UTC): 2026-10-28T21:48:59Z to 2026-10-28T21:50:22Z
 
 Verdict: pass
