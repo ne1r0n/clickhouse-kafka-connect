@@ -21,7 +21,7 @@
 | E-08 | SWP-02 | 33-02 | pass |
 | E-09 | SWP-02 | 33-02 | pass |
 | E-10 | SWP-02 | 33-02 | pass |
-| E-11 | SWP-01, SWP-02 | 33-02 | pending (plan 33-02) |
+| E-11 | SWP-01, SWP-02 | 33-02 | pass |
 | E-12 | SWP-03 | 33-03 | pending (plan 33-03) |
 | E-13 | SWP-03 | 33-03 | pending (plan 33-03) |
 | E-14 | SWP-01, SWP-02, SWP-03, SWP-04 | 33-03 | pending (plan 33-03) |
@@ -446,5 +446,38 @@ jvm_crash: none
 The gated head is the PR #16 merge commit itself, before any evidence commit on top of it. The counts are summed from the 107 JUnit XML roots under `build/test-results/test` and equal E-02 and E-05 (1961 tests, 18 skipped) on the same image digest, so the three build-input bumps and the action bump changed no test outcome. The run used Gradle 9.8.2 and okhttp 5.5.1.
 
 Timestamp (UTC): 2026-10-28T19:17:23Z to 2026-10-28T19:20:07Z
+
+Verdict: pass
+
+### E-11: FORK-DELTA refreshed for the four absorbed bumps
+
+Backs: SWP-01, SWP-02 (the fork's re-litigation guard states lz4Java 1.12.1, okhttp 5.5.1 past upstream and setup-java v6.1.0 from values measured in this phase).
+
+```sh
+git ls-remote upstream refs/heads/main
+git cat-file -e 9bed6f7970670a55c66be8efda246889e1f95bd0^{commit}
+git show 9bed6f7970670a55c66be8efda246889e1f95bd0:gradle/libs.versions.toml
+git show a6f1df83:gradle/libs.versions.toml
+grep -nE '^\s*-?\s*uses:' .github/workflows/tests.yaml
+grep -cF 'lz4Java = "1.12.1"' docs/FORK-DELTA.md   # and the other four count gates
+git commit docs/FORK-DELTA.md
+```
+
+```text
+upstream_main: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_main_lz4java: 1.11.4
+upstream_main_okhttp: 5.5.0
+upstream_a6f1df83_lz4java: 1.11.4
+upstream_a6f1df83_okhttp: 5.5.0
+tests_yaml_pins: checkout v7.0.1; setup-java v6.1.0; setup-gradle v6.4.0; upload-artifact v7.0.2
+baseline_counts: lz4Java 1.12.1 = 0; lz4Java 1.12.0 = 2; setup-java v6.1.0 = 0; setup-java v6.0.1 = 1; open pull requests #4 and #10 phrase = 1; no github-actions pull request observed yet phrase = 1
+after_counts: lz4Java 1.12.1 = 2; lz4Java 1.12.0 = 0; setup-java v6.1.0 = 1; setup-java v6.0.1 = 0; open pull requests #4 and #10 phrase = 0; no github-actions pull request observed yet phrase = 0
+forkdelta_commit: cefdcb3964865c59c66ffd7446a16b1c253b823c
+forkdelta_rows: row 70 (version-catalog pins); row 76 (single-job CI workflow); row 83 (Dependabot); row 117 (retired lz4 capability rule)
+```
+
+`git ls-remote upstream` already had its commit locally, so no fetch was needed. No `uses:` version in row 76's parenthesis differed from `tests_yaml_pins` apart from setup-java, so no other action version was corrected. The row 70 GHSA clause is written because E-03's `pr19_body_ghsa` is `GHSA-48mj-8f7c-7qfm`. The docs commit changes 4 lines (the four rows) and touches only `docs/FORK-DELTA.md`.
+
+Timestamp (UTC): 2026-10-28T19:21:39Z
 
 Verdict: pass
