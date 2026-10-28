@@ -4,17 +4,17 @@ milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 current_phase: 34
 current_phase_name: Upstream Tail Merge
-status: planning
-stopped_at: Phase 33 complete, ready to plan Phase 34
-last_updated: "2026-10-28T20:20:57.862Z"
+status: executing
+stopped_at: Completed 34-01-PLAN.md
+last_updated: "2026-10-28T21:20:58.240Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 33 complete, transitioned to Phase 34
-state_head: fc60a187a3f597ed3d650ef309d9b3793178a56e
+last_activity_desc: Phase 34 execution started
+state_head: 967c55214c878172adb1713ad2fe75167f8da04d
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 6
+  completed_plans: 4
   percent: 17
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 33 — Dependency Sweep & Protobuf Decision
+**Current focus:** Phase 34 — Upstream Tail Merge
 
 ## Current Position
 
-Phase: 34 — Upstream Tail Merge
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-28 — Phase 33 complete, transitioned to Phase 34
+Phase: 34 (Upstream Tail Merge) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-10-28 — Phase 34 execution started
 
 Progress: [██░░░░░░░░] 17%
 
@@ -214,6 +214,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 33 P01 | 27 min | 2 tasks | 2 files |
 | Phase 33 P02 | 15 min | 3 tasks | 8 files |
 | Phase 33 P03 | 52 min | 3 tasks | 5 files |
+| Phase 34 P01 | 12 min | 2 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -276,6 +277,7 @@ The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands befo
 - [Phase 33]: 33-02: PRs #18 (okhttp 5.5.1), #20 (Gradle 9.8.2) and #16 (setup-java v6.1.0) absorbed unchanged from fetched heads, each as its own --no-ff merge; full suite green on the sweep tip 79f56a5e (1961 tests, 18 skipped)
 - [Phase 33]: Phase 33 plan 03: protobuf-java and protoc stay on 3.x via exact-name semver-major ignores in the gradle Dependabot entry only (the protobuf Gradle plugin stays updatable); cause is the ProtobufIngestTest VerifyError against the Confluent 7.9.1 test stack (run 39501799049); re-open trigger FUT-03
 - [Phase 33]: Phase 33 plan 03: PR #10 is recorded as closing-at-publication (ROADMAP criterion 4); no user words received and no agent touched the PR; REQUIREMENTS.md SWP-03 wording is slightly stricter and is flagged for the user to align
+- [Phase 34]: Plan 34-01: M3 adaf8c4e merges upstream 9bed6f79 mechanically with ProxySinkTask on the fork side; the DBWriter seam is deferred to 34-02 so the bare merge's 5 javac errors are exactly the predicted set
 
 ### Pending Todos
 
@@ -332,8 +334,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T20:14:15.144Z
-Stopped at: Phase 33 complete, ready to plan Phase 34
+Last session: 2026-10-28T21:20:58.206Z
+Stopped at: Completed 34-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
