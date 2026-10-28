@@ -343,6 +343,16 @@ before upgrading.
 * Bumped `org.json` from `20260522` to `20260814` (tests).
 * Bumped `mockito` from `5.23.0` to `5.24.0` (tests).
 
+# Unreleased
+
+## Improvements
+
+* New `additionalRetriableErrorCodes` setting (default empty). ClickHouse server error codes listed here are retried
+  like the built-in list, so a transient code the connector does not know about redelivers the batch instead of
+  failing the task. Redelivery follows the Connect framework's `RetriableException` semantics (no retry budget, bypasses
+  `errors.tolerance` and the DLQ). Motivating case: `216 QUERY_WITH_SAME_ID_IS_ALREADY_RUNNING` from the client's
+  same-query-id retry. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/847, https://github.com/ClickHouse/clickhouse-kafka-connect/issues/455)
+
 # 1.7.0, 2026-09-30
 
 ## Important Changes

@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.LongStream;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
@@ -36,7 +37,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
 
     public static final int DEFAULT_TOTAL_RECORDS = 1000;
 
-    private static final CreateTableStatement PRIMITIVE_TYPES_TABLE = new CreateTableStatement()
+    private static final Supplier<CreateTableStatement> PRIMITIVE_TYPES_TABLE = () -> CreateTableStatement.create()
             .column("off16", "Int16")
             .column("str", "String")
             .column("p_int8", "Int8")
@@ -46,7 +47,6 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
             .column("p_float32", "Float32")
             .column("p_float64", "Float64")
             .column("p_bool", "Bool")
-            .engine("MergeTree")
             .orderByColumn("off16");
 
     public Collection<SinkRecord> createDBTopicSplit(int dbRange, String databasePrefix, String topic, int partition, String splitChar) {
@@ -131,7 +131,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         LongStream.range(0, dbRange).forEachOrdered(i -> {
             String databaseName = databasePrefix + i;
             ClickHouseTestHelpers.createDatabase(databaseName, chc);
-            new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+            PRIMITIVE_TYPES_TABLE.get()
                     .database(databaseName)
                     .tableName(tableName)
                     .execute(chc);
@@ -180,7 +180,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         LongStream.range(0, dbRange).forEachOrdered(i -> {
             String databaseName = databasePrefix + i;
             ClickHouseTestHelpers.createDatabase(databaseName, chc);
-            new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+            PRIMITIVE_TYPES_TABLE.get()
                     .database(databaseName)
                     .tableName(tableName)
                     .execute(chc);
@@ -215,7 +215,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String topic = createTopicName("schemaless_simple_batch_test");
         ClickHouseTestHelpers.dropTable(chc, topic);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic)
                 .execute(chc);
         Collection<SinkRecord> sr = SchemalessTestData.createPrimitiveTypes(topic, 1);
@@ -244,7 +244,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String topic = createTopicName("schemaless_simple_batch_test");
         ClickHouseTestHelpers.dropTable(chc, topic);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic)
                 .execute(chc);
         Collection<SinkRecord> sr = SchemalessTestData.createPrimitiveTypes(topic, 1);
@@ -292,7 +292,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String topic = createTopicName("topic.statistics_test-01");
         ClickHouseTestHelpers.dropTable(chc, topic);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic)
                 .execute(chc);
         Collection<SinkRecord> sr = SchemalessTestData.createPrimitiveTypes(topic, 1);
@@ -358,7 +358,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         ClickHouseHelperClient chc = ClickHouseTestHelpers.createClient(props);
         String topic = createTopicName("schemaless_simple_batch_test");
         ClickHouseTestHelpers.dropTable(chc, topic);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic)
                 .execute(chc);
 
@@ -426,10 +426,10 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
 
         ClickHouseTestHelpers.dropTable(chc, topic1);
         ClickHouseTestHelpers.dropTable(chc, topic2);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic1)
                 .execute(chc);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic2)
                 .execute(chc);
 
@@ -473,7 +473,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
         String topic = createTopicName("precommit_ignore_partitions");
 
         ClickHouseTestHelpers.dropTable(chc, topic);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic)
                 .execute(chc);
 
@@ -508,10 +508,10 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
 
         ClickHouseTestHelpers.dropTable(chc, topic1);
         ClickHouseTestHelpers.dropTable(chc, topic2);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic1)
                 .execute(chc);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic2)
                 .execute(chc);
 
@@ -558,10 +558,10 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
 
         ClickHouseTestHelpers.dropTable(chc, topic1);
         ClickHouseTestHelpers.dropTable(chc, topic2);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic1)
                 .execute(chc);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic2)
                 .execute(chc);
 
@@ -604,7 +604,7 @@ public class ClickHouseSinkTaskTest extends ClickHouseBase {
 
         String topic = createTopicName("precommit_report_offsets_off");
         ClickHouseTestHelpers.dropTable(chc, topic);
-        new CreateTableStatement(PRIMITIVE_TYPES_TABLE)
+        PRIMITIVE_TYPES_TABLE.get()
                 .tableName(topic)
                 .execute(chc);
 
