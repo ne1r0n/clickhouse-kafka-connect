@@ -22,7 +22,7 @@
 | E-09 | SWP-02 | 33-02 | pass |
 | E-10 | SWP-02 | 33-02 | pass |
 | E-11 | SWP-01, SWP-02 | 33-02 | pass |
-| E-12 | SWP-03 | 33-03 | pending (plan 33-03) |
+| E-12 | SWP-03 | 33-03 | pass |
 | E-13 | SWP-03 | 33-03 | pending (plan 33-03) |
 | E-14 | SWP-01, SWP-02, SWP-03, SWP-04 | 33-03 | pending (plan 33-03) |
 
@@ -479,5 +479,47 @@ forkdelta_rows: row 70 (version-catalog pins); row 76 (single-job CI workflow); 
 `git ls-remote upstream` already had its commit locally, so no fetch was needed. No `uses:` version in row 76's parenthesis differed from `tests_yaml_pins` apart from setup-java, so no other action version was corrected. The row 70 GHSA clause is written because E-03's `pr19_body_ghsa` is `GHSA-48mj-8f7c-7qfm`. The docs commit changes 4 lines (the four rows) and touches only `docs/FORK-DELTA.md`.
 
 Timestamp (UTC): 2026-10-28T19:21:39Z
+
+Verdict: pass
+
+### E-12: Protobuf ignore guard red on the unchanged dependabot.yml, then green with the gradle-entry protobuf-java and protoc ignores
+
+Backs: SWP-03, ROADMAP Phase 33 criterion 4 (the gradle entry ignores major versions 4 and above for protobuf-java and protoc, the pin guards still pass).
+
+```sh
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*DependabotProtobufIgnoreGuardUnitTest' > /tmp/gsd33/exec/guard-red.log 2>&1
+cp build/test-results/testUnit/TEST-com.clickhouse.kafka.connect.ci.DependabotProtobufIgnoreGuardUnitTest.xml /tmp/gsd33/exec/guard-red.xml
+# edit .github/dependabot.yml (gradle entry, insert only), then
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*DependabotProtobufIgnoreGuardUnitTest' --tests '*WorkflowActionPinGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' > /tmp/gsd33/exec/guard-green.log 2>&1
+ruby -ryaml -e '<gradle ignore equals the two items, github-actions has no ignore, exclude-paths unchanged>; puts "YAML-OK"'
+git worktree add --detach /tmp/gsd33/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd33/fmt --console=plain spotlessApply > /tmp/gsd33/exec/fmt-33-03.log 2>&1
+cmp /tmp/gsd33/fmt/src/test/java/com/clickhouse/kafka/connect/ci/DependabotProtobufIgnoreGuardUnitTest.java src/test/java/com/clickhouse/kafka/connect/ci/DependabotProtobufIgnoreGuardUnitTest.java
+git worktree remove --force /tmp/gsd33/fmt && git worktree prune
+git commit -F /tmp/gsd33/exec/msg-33-03-t1.txt
+```
+
+```text
+red_exit: 1
+red_xml: tests/failures/errors/skipped = 11/1/0/0 (failures=1 errors=0), copy at /tmp/gsd33/exec/guard-red.xml
+red_failed_tests: dependabot.yml's gradle entry ignores com.google.protobuf:protobuf-java and com.google.protobuf:protoc major versions (SWP-03) (method gradleEntryIgnoresProtobufJavaAndProtocMajorVersions, from the stack frame of the failure)
+red_failure_message: .github/dependabot.yml: the gradle entry has no `ignore:` list; it must ignore version-update:semver-major updates of com.google.protobuf:protobuf-java and com.google.protobuf:protoc
+red_prediction: gradleEntryIgnoresProtobufJavaAndProtocMajorVersions only
+red_prediction_met: yes
+green_exit: 0
+green_xml: DependabotProtobufIgnoreGuardUnitTest 11/0/0/0; WorkflowActionPinGuardUnitTest 21/0/0/0; TestsWorkflowPinGuardUnitTest 39/0/0/0 (Class tests/failures/errors/skipped)
+yaml_semantics: YAML-OK
+dependabot_diff: 7 insertions, 0 deletions (git diff --numstat .github/dependabot.yml)
+spotless_worktree_cmp: identical
+guard_commit: 6ef8e14e10a786cf186fe1ad70aed1bd121c2760
+guard_commit_files: .github/dependabot.yml,src/test/java/com/clickhouse/kafka/connect/ci/DependabotProtobufIgnoreGuardUnitTest.java
+fmt_worktree_removed: yes
+```
+
+The red run failed on the planned assertion only: the unchanged file has no `ignore:` in the gradle entry. The other ten tests, including the nine fixtures and the real-file github-actions test, passed before the edit. The Edit tool trimmed the whitespace-only line 15 on its first write; it was restored byte-exact before the green run, so the diff is insertions only. The first green run was also executed before that restore and was repeated after it with the same result.
+
+Timestamp (UTC): 2026-10-28T19:24:59Z to 2026-10-28T19:25:44Z (guard commit)
 
 Verdict: pass
