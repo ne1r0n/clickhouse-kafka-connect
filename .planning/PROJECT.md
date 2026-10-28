@@ -170,16 +170,26 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
+## Current Milestone: v1.7.0_gg6-maintenance Dependency Absorption, Upstream Tail & Advisory Debt
+
+**Goal:** Absorb everything Dependabot has open (including the ClickHouse client jump `0.9.6` → `0.11.0`) and upstream's untagged tail, clear the carried review advisories and CI loose ends, and publish `v1.7.0_gg6` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
+
+**Target features:**
+- **Dependabot sweep.** Open PRs on `origin` (checked 2026-10-28; repository Dependabot *alerts* are disabled, so CVE coverage comes from PRs and a manual check): #20 Gradle wrapper 9.8.2, #19 lz4-java 1.12.1, #18 okhttp 5.5.1, #17 `clickHouseDriver` 0.9.6 → 0.11.0 (breaking: socket buffers no default, server error 159 no longer retried, other changes to be audited against the D-17 `network_compression_method=lz4` workaround and `Utils.handleException`), #16 `actions/setup-java` 6.1.0 (needs a SHA re-pin behind the pin guard), #10 protobuf-java 4.36.2 (testFixtures only). Each gets a suite gate; the client bump gets its own audit and live pins.
+- **Upstream tail.** `upstream/main` is `9bed6f79`, still no tag past `v1.7.0`: `additionalRetriableErrorCodes` (a new config, high-risk file `ClickHouseSinkConfig`) plus test-fixture refactors (`CreateTableStatement`). Merge in the usual sync shape (scratch branch, rollback tag, `verify-merge-invariants.sh`, two full runs).
+- **Carried review advisories:** Phase 30 and 31 WR/IN rows (`milestones/v1.7.0_gg5-ci-phases/*/…-REVIEW-DISPOSITION.md`) and the gg4 findings in `milestones/v1.7.0_gg4-hardening-phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md`.
+- **`increment-version.yml`** writes `vnull` for `_ggN` versions: fix.
+- **Real publish of the release path.** The user has already run it for real (release `v1.7.0_gg5`, 2026-10-28); this milestone verifies and records that evidence rather than re-running it, and closes the "no run exercised it" caveat.
+- **CI consumer for the archive compare:** `confluent-archive-allowlist-*.txt` is used only by a manual release-time step.
+- **Release.** `VERSION=v1.7.0_gg6`, CHANGELOG, FORK-DELTA, rollout note, independent review of operator documents, `--no-ff` merge after human approval, CI green on the published SHA.
+
+**Out of scope (to confirm in requirements):** new connector features beyond what upstream's tail brings, running the upgrade on production connectors.
+
+**Baseline at milestone start (2026-10-28):** `origin/custom_build` = `3a3a15a9` (`v1.7.0_gg5`); local `sync/v1.7.0` carries the bookkeeping and differs from origin only by the gg4/gg5 release merge commits. Open Dependabot PRs: #10, #16–#20. Dependabot PR #4 is gone (superseded by #17).
+
 ## Next Milestone Goals
 
-Not defined yet: `/gsd-new-milestone` starts with questioning. Candidates:
-
-- **The next upstream sync,** once upstream tags past `v1.7.0`.
-- **The carried review advisories:** Phase 30 and 31 WR/IN rows in `milestones/v1.7.0_gg5-ci-phases/*/…-REVIEW-DISPOSITION.md`, and the gg4 findings in `milestones/v1.7.0_gg4-hardening-phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md`. Each has an owner and a re-open trigger.
-- **`increment-version.yml`:** it writes `vnull` for `_ggN` versions.
-- **One real publish of the release path,** which no gg5 run has exercised (only dry runs).
-- **A CI consumer for the archive compare.** `confluent-archive-allowlist-*.txt` is used only by a manual release-time step.
-- **Still Future Requirements:** ClickHouse client `0.10.0` (PR #4) and the upstream workflows still on `@v3`-era actions.
+Superseded by the current milestone above. Still Future Requirements after it: the next *tagged* upstream sync and the upstream workflows still on `@v3`-era actions.
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg5-ci</code> CI &amp; Release Workflow Modernization (shipped 2026-10-27)</summary>
@@ -935,4 +945,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-28 after the v1.7.0_gg5-ci milestone close*
+*Last updated: 2026-10-28 after starting milestone v1.7.0_gg6-maintenance*

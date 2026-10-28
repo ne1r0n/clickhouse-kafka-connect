@@ -1,28 +1,12 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.7.0_gg5-ci — CI & Release Workflow Modernization",
-  "phases": [
-    {
-      "number": "30",
-      "name": "Release Workflows & Pin Guard",
-      "status": "complete"
-    },
-    {
-      "number": "31",
-      "name": "Fork-Owned Nightly Integration Tests",
-      "status": "complete"
-    },
-    {
-      "number": "32",
-      "name": "Release & Publication",
-      "status": "complete"
-    }
-  ],
+  "milestone": "v1.7.0_gg6-maintenance",
+  "phases": [],
   "next": {
-    "command": "/gsd-progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-10-28T12:55:59.080Z"
+  "updated_at": "2026-10-28T15:30:49.817Z"
 }

@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg5-ci
-milestone_name: CI & Release Workflow Modernization
-status: Awaiting next milestone
-stopped_at: Phase 32 complete — all phases complete
-last_updated: "2026-10-28T12:55:59.065Z"
+milestone: v1.7.0_gg6-maintenance
+milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
+status: planning
+last_updated: "2026-10-28T15:30:49.814Z"
 last_activity: 2026-10-28
-last_activity_desc: Milestone v1.7.0_gg5-ci completed and archived
-state_head: f71468bce5663a0293e7c21f4f3fbb20fbdae58e
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
-current_phase: 32
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,11 @@ See: .planning/PROJECT.md (updated 2026-10-28 after the v1.7.0_gg5-ci milestone 
 
 ## Current Position
 
-Phase: Milestone v1.7.0_gg5-ci complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-28 — Milestone v1.7.0_gg5-ci completed and archived
+Status: Defining requirements
+Last activity: 2026-10-28 — Milestone v1.7.0_gg6-maintenance started
+
 
 ## Performance Metrics
 
