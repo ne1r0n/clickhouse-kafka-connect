@@ -5,16 +5,16 @@ milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 current_phase: 34
 current_phase_name: Upstream Tail Merge
 status: executing
-stopped_at: Completed 34-01-PLAN.md
-last_updated: "2026-10-28T21:20:58.240Z"
+stopped_at: Completed 34-02-PLAN.md
+last_updated: "2026-10-28T22:16:50.330Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 34 execution started
-state_head: 967c55214c878172adb1713ad2fe75167f8da04d
+state_head: 85b5c1a78642954fa59c54826c30104569582489
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 17
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 34 (Upstream Tail Merge) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 34 execution started
 
@@ -215,6 +215,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 33 P02 | 15 min | 3 tasks | 8 files |
 | Phase 33 P03 | 52 min | 3 tasks | 5 files |
 | Phase 34 P01 | 12 min | 2 tasks | 30 files |
+| Phase 34 P02 | 38 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -278,6 +279,8 @@ The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands befo
 - [Phase 33]: Phase 33 plan 03: protobuf-java and protoc stay on 3.x via exact-name semver-major ignores in the gradle Dependabot entry only (the protobuf Gradle plugin stays updatable); cause is the ProtobufIngestTest VerifyError against the Confluent 7.9.1 test stack (run 39501799049); re-open trigger FUT-03
 - [Phase 33]: Phase 33 plan 03: PR #10 is recorded as closing-at-publication (ROADMAP criterion 4); no user words received and no agent touched the PR; REQUIREMENTS.md SWP-03 wording is slightly stricter and is flagged for the user to align
 - [Phase 34]: Plan 34-01: M3 adaf8c4e merges upstream 9bed6f79 mechanically with ProxySinkTask on the fork side; the DBWriter seam is deferred to 34-02 so the bare merge's 5 javac errors are exactly the predicted set
+- [Phase 34]: ProxySinkTask: both three-argument constructors delegate to one package-private four-argument core, so no caller passes an ambiguous null; fields processing and dbWriter keep their names (34-02)
+- [Phase 34]: BLD-16 list re-blessed only from the worker image jars plus 4.1.1 and 4.4.0; the diff was the date line plus one M line for ConfigException(String, Object, String) (34-02)
 
 ### Pending Todos
 
@@ -334,8 +337,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T21:20:58.206Z
-Stopped at: Completed 34-01-PLAN.md
+Last session: 2026-10-28T22:16:50.299Z
+Stopped at: Completed 34-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
