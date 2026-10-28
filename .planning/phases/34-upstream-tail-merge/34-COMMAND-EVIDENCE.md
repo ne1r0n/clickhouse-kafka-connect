@@ -20,7 +20,7 @@
 | E-06 | TAL-03, TAL-05 | 34-02 | pass |
 | E-07 | TAL-03 | 34-02 | pass |
 | E-08 | TAL-02 | 34-02 | pass |
-| E-09 | TAL-04 | 34-03 | pending (plan 34-03) |
+| E-09 | TAL-04 | 34-03 | pass |
 | E-10 | TAL-01, TAL-04, TAL-05 | 34-03 | pending (plan 34-03) |
 | E-11 | TAL-01, TAL-02, TAL-03, TAL-04, TAL-05 | 34-03 | pending (plan 34-03) |
 
@@ -400,5 +400,50 @@ testunit_delta_vs_e07: 4
 The new class has the four named tests, extends nothing, and runs 4/0/0/0 on the first run (it pins code Task 1 already landed). The mutation run, in a detached worktree only, applied M-A (the supplied writer ignored: `this.dbWriter = new ClickHouseWriter(this.statistics);`) and M-B (the connector name dropped: `new SinkTaskStatistics(null, id)`) to `ProxySinkTask.java`; the red set is exactly the seam-wiring test and the MBean test, while the constructor-set test and the connectorName-constructor test stay green (neither mutation touches what they read). Under M-A the MBean test fails because `start()` then reaches a real `ClickHouseWriter` with no server; so a second run kept only M-B and failed exactly the MBean test, proving that the connector-named MBean assertion bites on its own (`mutation_b_only_failed`). As in E-07, the helper reads the JUnit XML testcase name, which is the `@DisplayName` text, so `mutation_prediction_met: yes` is the helper's `failed ... --expect` check with the two display names in place of the plan's method names (the same two tests: `dbWriterSeamConstructorWiresTheSuppliedWriterIntoProcessingAndRoutesInsertsToIt` and `fourArgumentCoreRegistersTheConnectorNamedMBeanOnStartAndRemovesItOnStop`). The full `testunit_tests` count is 1422 (E-07's 1418 plus the 4 new tests) over 67 XML files; `testunit_skipped: 2` is the same two inherited skips as in E-01 and E-07, none of them in the new class.
 
 Timestamp (UTC): 2026-10-28T21:57:12Z to 2026-10-28T21:57:59Z
+
+Verdict: pass
+
+### E-09: TAL-04 pins: AdditionalRetriableErrorCodesPinUnitTest green with upstream's tests, the mutation red set
+
+Backs: TAL-04, ROADMAP Phase 34 criterion 3 (`additionalRetriableErrorCodes` is pinned from the config string through the ConfigDef, the constructor and the ProxySinkTask seam into handleException; the 15-code default and the unset-key no-op are pinned and the pins are proven to bite).
+
+```sh
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*AdditionalRetriableErrorCodesPinUnitTest' --tests '*AdditionalRetriableErrorCodesTest' --tests '*ClickHouseSinkConfigTest' --tests '*UtilsTest' --tests '*UtilsNullMessageClassificationUnitTest' > /tmp/gsd34/exec/tal04-green.log 2>&1
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py junit build/test-results/testUnit --class AdditionalRetriableErrorCodesPinUnitTest
+git worktree add --detach /tmp/gsd34/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd34/fmt --console=plain spotlessApply > /tmp/gsd34/exec/fmt-4.log 2>&1
+cmp /tmp/gsd34/fmt/src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java
+git worktree remove --force /tmp/gsd34/fmt
+grep -c 'new ServerException(' src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java
+git add src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java
+git commit -F /tmp/gsd34/exec/msg-t4.txt
+git worktree add --detach /tmp/gsd34/mut HEAD
+python3 -I -c '<assert-once replacement of "159, // TIMEOUT_EXCEEDED" with "// TAL-04 mutation: 159 removed" in /tmp/gsd34/mut/.../util/Utils.java>'
+rm -rf /tmp/gsd34/mut/build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd34/mut --console=plain testUnit --rerun --tests '*AdditionalRetriableErrorCodesPinUnitTest' > /tmp/gsd34/exec/mut-3.log 2>&1
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py failed /tmp/gsd34/mut/build/test-results/testUnit --expect '<the two DisplayNames>'
+git worktree remove --force /tmp/gsd34/mut
+```
+
+```text
+tal04_exit: 0
+tal04_class_xml: OK junit build/test-results/testUnit class *AdditionalRetriableErrorCodesPinUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+upstream_tal_tests_xml: AdditionalRetriableErrorCodesTest tests=3 failures=0 errors=0; ClickHouseSinkConfigTest tests=8 failures=0 errors=0; UtilsTest tests=34 failures=0 errors=0
+tal04_total_tests_in_filtered_run: 70
+spotless_worktree_cmp: identical
+server_exception_sites_in_class: 1
+tal04_commit: 31e99f81b5a7e1715d3597b1b71bdff0588a782b
+tal04_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java
+mutation_exit: 1
+mutation_failed: AdditionalRetriableErrorCodesPinUnitTest#TAL-04: the default retriable set is exactly the 15 pre-merge codes including 159 and is unmodifiable; AdditionalRetriableErrorCodesPinUnitTest#TAL-04: with the key unset every server code 0..1100 on client V2 and V1 classifies like the pre-merge switch
+mutation_prediction_met: yes
+```
+
+The new class has ten named tests (8 plain, a 4-case and a 7-case parameterized test, 19 executions), extends nothing, and ran 19/0/0/0 on the first run: it pins merged upstream behaviour. The filtered run also executed upstream's `AdditionalRetriableErrorCodesTest` (3), `ClickHouseSinkConfigTest` (8), `UtilsTest` (34) and `UtilsNullMessageClassificationUnitTest`, all green; 70 tests in all. The mutation run, in a detached worktree only, removed `159, // TIMEOUT_EXCEEDED` from `Utils.DEFAULT_RETRIABLE_ERROR_CODES`; the red set is exactly the default-set test and the unset-key sweep. As in E-07 and E-08, the helper reads the JUnit XML testcase name, which is the `@DisplayName` text, so `mutation_prediction_met: yes` is the helper's `failed ... --expect` check with the two display names in place of the plan's method names (the same two tests: `defaultRetriableSetIsExactlyTheFifteenPreMergeCodesIncluding159` and `unsetKeyClassifiesEveryServerCodeLikeThePreMergeSwitchOnBothClients`; the helper printed `OK failed: 2 failing testcases, 2 expected`). Both worktrees were removed; `/tmp/gsd34/fmt` and `/tmp/gsd34/mut` no longer exist.
+
+Observation relevant to the DataException interpretation: a writer `DataException` raised inside `Processing.doInsert` reaches `handleException` wrapped in a `RuntimeException(queryId, e)` (Processing lines 72 and 96), so on the ProxySinkTask path `e instanceof DataException` is false and the failure surfaces as `RuntimeException("Number of records: ...", e)`: non-retriable, with the DataException in its cause chain. The test asserts exactly that, and nothing about wrapped DataExceptions carrying a retriable server error or a socket timeout.
+
+Timestamp (UTC): 2026-10-28T22:18:45Z to 2026-10-28T22:21:00Z (start is the green run's clock marker; writing the class before it was not clocked, and the end is approximate)
 
 Verdict: pass
