@@ -1,0 +1,5 @@
+CHANGELOG.md
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskMappingTest.java
+src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterTest.java
