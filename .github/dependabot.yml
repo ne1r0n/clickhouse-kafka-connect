@@ -12,6 +12,13 @@ updates:
     labels:
       - "dependencies"
     open-pull-requests-limit: 5
+    # FORK: protobuf-java and protoc share the one libprotobuf version ref and stay on 3.x: the Confluent 7.9.1
+    # test stack is built on protobuf 3 (ProtobufIngestTest fails with VerifyError on 4.x). Re-open with FUT-03, see docs/FORK-DELTA.md.
+    ignore:
+      - dependency-name: "com.google.protobuf:protobuf-java"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.google.protobuf:protoc"
+        update-types: ["version-update:semver-major"]
       
   # FORK: keeps the SHA pins of every fork-owned workflow current (tests.yaml, release.yaml,
   # pre-release.yaml, increment-version.yml and any added later). Only upstream's integrationTests.yaml
