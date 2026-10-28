@@ -16,7 +16,7 @@
 | E-02 | TAL-01 | 34-01 | pass |
 | E-03 | TAL-01 | 34-01 | pass |
 | E-04 | TAL-03 | 34-01 | pass |
-| E-05 | TAL-02, TAL-05 | 34-02 | pending (plan 34-02) |
+| E-05 | TAL-02, TAL-05 | 34-02 | pass |
 | E-06 | TAL-03, TAL-05 | 34-02 | pending (plan 34-02) |
 | E-07 | TAL-03 | 34-02 | pending (plan 34-02) |
 | E-08 | TAL-02 | 34-02 | pending (plan 34-02) |
@@ -220,5 +220,45 @@ changelog_unreleased_present: yes
 The five errors are exactly the research prediction: three on the missing `ProxySinkTask(ClickHouseSinkConfig, ErrorReporter, DBWriter)` seam constructor (lines 59, 76, 88) and two on the one line of the stale four-argument `handleException` call (line 32; javac reports the method-applicability error and the follow-on `ArrayList<>` inference error). Only `CreateTableStatement.java` itself calls a `CreateTableStatement` constructor, so the TAL-03 `CreateTableStatement` clause needs no fork edit. `handle_exception_callers` counts every `handleException(` token outside the declaration, including test method names and calls in `UtilsTest`. Client-v2 0.11.0 has only the four-argument `ServerException(int, String, int, String)` constructor (read with `javap` at planning), so Phase 36 revisits 9 sites in 2 files, not the eight the ROADMAP note names.
 
 Timestamp (UTC): 2026-10-28T21:19:37Z to 2026-10-28T21:19:45Z
+
+Verdict: pass
+
+### E-05: ProxySinkTask re-expressed with three constructors and its 8 anchor rows
+
+Backs: TAL-02, TAL-05, ROADMAP Phase 34 criteria 2 and 4 (the fork's connectorName constructor and upstream's DBWriter seam both delegate to one four-argument core, with the ProxySinkTask anchor rows landing in the same commit; the tail gate over M3..that commit passes).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava > /tmp/gsd34/exec/compilejava-05.log 2>&1
+javap -p -cp build/classes/java/main com.clickhouse.kafka.connect.sink.ProxySinkTask | grep 'ProxySinkTask('
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileTestJava > /tmp/gsd34/exec/compiletest-05.log 2>&1
+grep -E '\.java:[0-9]+: error:' /tmp/gsd34/exec/compiletest-05.log
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git worktree add --detach /tmp/gsd34/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd34/fmt --console=plain spotlessApply > /tmp/gsd34/exec/fmt-1.log 2>&1
+cmp /tmp/gsd34/fmt/src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+git worktree remove --force /tmp/gsd34/fmt
+git add src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd34/exec/msg-t1.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 608d70a15cc898292daea425819edfd1c2eca405 > /tmp/gsd34/exec/tail-gate-05.log 2>&1
+```
+
+```text
+compile_java_exit: 0
+declared_constructors: public ProxySinkTask(ClickHouseSinkConfig, ErrorReporter, String); ProxySinkTask(ClickHouseSinkConfig, ErrorReporter, DBWriter) [package-private]; ProxySinkTask(ClickHouseSinkConfig, ErrorReporter, String, DBWriter) [package-private]
+compile_test_java_exit: 1
+compile_test_java_errors: 2
+compile_test_java_error_files: UtilsNullMessageClassificationUnitTest.java x2
+anchors_mirror: rows=139 bad=0
+new_anchor_rows: 8
+spotless_worktree_cmp: identical
+proxysinktask_commit: 608d70a15cc898292daea425819edfd1c2eca405
+proxysinktask_commit_files: .planning/scripts/fork-anchors.txt; src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=6 anchor_rows=139 marker_commits=13 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+The seam errors from E-04 (three in `AdditionalRetriableErrorCodesTest`) are gone; the two remaining errors are the stale four-argument `handleException` call on line 32 of `UtilsNullMessageClassificationUnitTest.java`. The tail gate log holds no VIOLATION line. The start time below is approximate (reconstructed from log file times; the clock was not captured at the first edit).
+
+Timestamp (UTC): 2026-10-28T21:21:40Z to 2026-10-28T21:22:48Z
 
 Verdict: pass
