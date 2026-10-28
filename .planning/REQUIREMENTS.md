@@ -8,10 +8,10 @@
 
 ### Dependency Sweep
 
-- [ ] **SWP-01**: The lz4-java 1.12.1 bump (PR #19) is absorbed as its own commit on the scratch branch, with the suite green.
-- [ ] **SWP-02**: The okhttp 5.5.1 (PR #18), Gradle wrapper 9.8.2 (PR #20, only `gradle-wrapper.properties` changes, `gradlew.bat` line endings intact) and `actions/setup-java` 6.1.0 (PR #16, SHA-pinned, pin-guard tests pass) bumps are each absorbed as their own commit.
-- [ ] **SWP-03**: PR #10 (protobuf-java 4.36.2) is closed with a Dependabot `ignore` for major versions >= 4 in the `gradle` block only, and the decision (the `VerifyError` against the Confluent 7.9.1 test stack) is recorded in `docs/FORK-DELTA.md`.
-- [ ] **SWP-04**: Dependabot PR heads are merged on the scratch branch, not on `origin`, and a fresh `pre-v1.7.0_gg6` rollback tag exists before the first change.
+- [x] **SWP-01**: The lz4-java 1.12.1 bump (PR #19) is absorbed as its own commit on the scratch branch, with the suite green.
+- [x] **SWP-02**: The okhttp 5.5.1 (PR #18), Gradle wrapper 9.8.2 (PR #20, only `gradle-wrapper.properties` changes, `gradlew.bat` line endings intact) and `actions/setup-java` 6.1.0 (PR #16, SHA-pinned, pin-guard tests pass) bumps are each absorbed as their own commit.
+- [x] **SWP-03**: PR #10 (protobuf-java 4.36.2) is closed with a Dependabot `ignore` for major versions >= 4 in the `gradle` block only, and the decision (the `VerifyError` against the Confluent 7.9.1 test stack) is recorded in `docs/FORK-DELTA.md`.
+- [x] **SWP-04**: Dependabot PR heads are merged on the scratch branch, not on `origin`, and a fresh `pre-v1.7.0_gg6` rollback tag exists before the first change.
 
 ### Upstream Tail
 
@@ -92,10 +92,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SWP-01 | Phase 33 | Pending |
-| SWP-02 | Phase 33 | Pending |
-| SWP-03 | Phase 33 | Pending |
-| SWP-04 | Phase 33 | Pending |
+| SWP-01 | Phase 33 | Complete |
+| SWP-02 | Phase 33 | Complete |
+| SWP-03 | Phase 33 | Complete |
+| SWP-04 | Phase 33 | Complete |
 | TAL-01 | Phase 34 | Pending |
 | TAL-02 | Phase 34 | Pending |
 | TAL-03 | Phase 34 | Pending |

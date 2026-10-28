@@ -4,17 +4,17 @@ milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 current_phase: 33
 current_phase_name: Dependency Sweep & Protobuf Decision
-status: executing
-stopped_at: Completed 33-02-PLAN.md
-last_updated: "2026-10-28T19:22:41.698Z"
+status: verifying
+stopped_at: Completed 33-03-PLAN.md
+last_updated: "2026-10-28T20:14:15.167Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 33 execution started
-state_head: 1bc7073849828ed5ff3c7756584de15a8c3d3339
+state_head: d06f8e5c07d079bcd7c5d6ca5dbbd095acd7db51
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg
 
 Phase: 33 (Dependency Sweep & Protobuf Decision) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-28 — Phase 33 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -212,6 +212,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 32 P03 | 9 min | 3 tasks | 3 files |
 | Phase 33 P01 | 27 min | 2 tasks | 2 files |
 | Phase 33 P02 | 15 min | 3 tasks | 8 files |
+| Phase 33 P03 | 52 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -272,6 +273,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands before the client bump, so it is releasable on 0.9.6, and the CLT-09 one-commit revert cannot touch it. The client bump is the last code change. The archive-compare consumer and every workflow fix sit in Phase 37, because the release phase cannot edit `.github/`. The gg6 allow-list, `VERSION`, CHANGELOG and the rollout note are written in Phase 38. Phase 35 records the BUF rollout item, and Phase 38 places it in the note.
 - [Phase 33]: 33-01: PR #19 (lz4-java 1.12.1, GHSA-48mj-8f7c-7qfm) absorbed from its fetched head 2a806038 as own --no-ff merge 6bf1c43b; local pre-v1.7.0_gg6 tag on origin tip 3a3a15a9, not pushed
 - [Phase 33]: 33-02: PRs #18 (okhttp 5.5.1), #20 (Gradle 9.8.2) and #16 (setup-java v6.1.0) absorbed unchanged from fetched heads, each as its own --no-ff merge; full suite green on the sweep tip 79f56a5e (1961 tests, 18 skipped)
+- [Phase 33]: Phase 33 plan 03: protobuf-java and protoc stay on 3.x via exact-name semver-major ignores in the gradle Dependabot entry only (the protobuf Gradle plugin stays updatable); cause is the ProtobufIngestTest VerifyError against the Confluent 7.9.1 test stack (run 39501799049); re-open trigger FUT-03
+- [Phase 33]: Phase 33 plan 03: PR #10 is recorded as closing-at-publication (ROADMAP criterion 4); no user words received and no agent touched the PR; REQUIREMENTS.md SWP-03 wording is slightly stricter and is flagged for the user to align
 
 ### Pending Todos
 
@@ -328,8 +331,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T19:22:41.677Z
-Stopped at: Completed 33-02-PLAN.md
+Last session: 2026-10-28T20:14:15.144Z
+Stopped at: Completed 33-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
