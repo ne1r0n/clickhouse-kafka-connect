@@ -154,7 +154,17 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
      Any anchor row that a bump moves changes in the same commit, and the full suite is green on the sweep tip.
   4. *[Docker-free, record]* PR #10 is not merged. `dependabot.yml` ignores protobuf-java major versions 4 and above, in the `gradle` block only, and the pin guard still passes. `docs/FORK-DELTA.md` records the decision with its measured cause and its re-open trigger. The cause is that `ProtobufIngestTest` fails with `VerifyError` against the Confluent 7.9.1 test stack (PR #10 run 39501799049). The trigger is FUT-03, a move to a Confluent 8.x test stack. PR #10 is either closed by the user, confirmed in their own words, or recorded as closing once the `ignore` reaches `custom_build` at publication (SWP-03).
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 33-01-PLAN.md — Wave 1: origin re-read and the local `pre-v1.7.0_gg6` tag first, a baseline full suite on the untouched tip, then the tracer: PR #19 (lz4-java 1.12.1) fetched by ref and merged as its own commit, proven by `dependencyInsight`, in the archive and by the full suite; cumulative anchors gate (SWP-01, SWP-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 33-02-PLAN.md — Wave 2: PR #18 (okhttp 5.5.1), PR #20 (Gradle 9.8.2, `gradlew.bat` CRLF intact) and PR #16 (setup-java 6.1.0), each fetched, merged as its own commit and gated, the full suite on the sweep tip, then the FORK-DELTA rows the sweep made stale (SWP-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 33-03-PLAN.md — Wave 3: the protobuf guard seen red, the `gradle`-entry `ignore` making it green, the FORK-DELTA protobuf row and open item with the `VerifyError` cause and the FUT-03 trigger, PR #10 recorded as closing at publication; the phase gate (SWP-03, SWP-04)
 
 **Research flag**: Standard. Each bump is one line with green PR CI, and the protobuf decision is already made. At plan time, confirm whether Dependabot closes PR #10 by itself once the `ignore` is on the default branch, or whether the user has to close it.
 
@@ -460,7 +470,7 @@ The order is the user's (2026-10-28). Phases 33 and 34 could share a phase under
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
+| 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 0/3 | Planned | - |
 | 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 35. Buffered Offset Commit Under Topic-Renaming SMTs | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |

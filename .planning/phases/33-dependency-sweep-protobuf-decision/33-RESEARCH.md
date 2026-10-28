@@ -375,15 +375,15 @@ PR #17 is `chore(deps): bump clickHouseDriver from 0.9.6 to 0.11.0` (head `6a535
 | A4 | The optional guard test is wanted by the user | FORK-DELTA / Optional guard | Extra test class the user did not want; low cost, discretionary |
 | A5 | "Dependabot reads this file from the default branch" is taken from FORK-DELTA row 83, not from a GitHub doc page fetched this session | Architectural map | If wrong, the ignore could take effect earlier or differently; the in-repo claim has been the project's working assumption |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Who closes PR #10, and when?**
+1. **(RESOLVED: record as closing at Phase 38 publication; no agent closes it; a user closure is recorded only in their own words) Who closes PR #10, and when?**
    - Known: it cannot self-close before the ignore is on `custom_build`; criterion 4 accepts "recorded as closing at publication".
    - Unclear: whether the user prefers to close it now.
    - Recommendation: ask once at the end of the phase; default to recording it as closing at Phase 38 publication.
-2. **Ask the user to hold Dependabot merges on `origin`** (ROADMAP note): do this at the start. Project memory records that the user merges Dependabot PRs directly on `origin/custom_build` and that this diverges the scratch branch (and can break the anchors invariant for an anchored line). Re-read `git ls-remote origin custom_build` at start and at the gate; if it moved, merge `origin/custom_build` in (never rebase), check anchors, and extend `fork-anchor-exemptions.txt` only per its rules.
-3. **Baseline full suite before the first merge?** Recommended (Pitfall 1); costs one run.
-4. **Record the first merge's extra ancestors** (the gg4 and gg5 release merges) explicitly in the evidence file.
+2. **(RESOLVED: non-blocking request relayed by orchestrator; origin tip re-read before each merge and at the gate, stop if moved) Ask the user to hold Dependabot merges on `origin`** (ROADMAP note): do this at the start. Project memory records that the user merges Dependabot PRs directly on `origin/custom_build` and that this diverges the scratch branch (and can break the anchors invariant for an anchored line). Re-read `git ls-remote origin custom_build` at start and at the gate; if it moved, merge `origin/custom_build` in (never rebase), check anchors, and extend `fork-anchor-exemptions.txt` only per its rules.
+3. **(RESOLVED: yes, included as 33-01 baseline E-02) Baseline full suite before the first merge?** Recommended (Pitfall 1); costs one run.
+4. **(RESOLVED: recorded in evidence E-03) Record the first merge's extra ancestors** (the gg4 and gg5 release merges) explicitly in the evidence file.
 
 ## Sources
 
