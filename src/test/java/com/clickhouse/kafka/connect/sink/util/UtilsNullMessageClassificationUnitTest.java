@@ -11,6 +11,7 @@ import com.clickhouse.kafka.connect.util.Utils;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Set;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,9 +28,10 @@ public class UtilsNullMessageClassificationUnitTest {
     private static final boolean TOLERANCE_NONE = false;
     private static final boolean TOLERANCE_ALL = true;
     private static final boolean NO_SOCKET_RETRY = false;
+    private static final Set<Integer> NO_ADDITIONAL_RETRIABLE_CODES = Set.of();
 
     private static void handle(Exception e, boolean errorsTolerance) {
-        Utils.handleException(e, errorsTolerance, NO_SOCKET_RETRY, new ArrayList<>());
+        Utils.handleException(e, errorsTolerance, NO_SOCKET_RETRY, NO_ADDITIONAL_RETRIABLE_CODES, new ArrayList<>());
     }
 
     private static boolean chainContains(Throwable top, Class<? extends Throwable> type) {

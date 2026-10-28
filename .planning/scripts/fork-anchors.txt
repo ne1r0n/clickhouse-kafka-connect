@@ -163,3 +163,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	this(clickHou
 src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	dbWriter != null ? dbWriter : new ClickHouseWriter(this.statistics)	1	TAL-02
 src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	final ErrorReporter errorReporter) {	0	TAL-02
 src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	clickHouseSinkConfig.getAdditionalRetriableErrorCodes()	1	TAL-04
+# Phase 34 (v1.7.0_gg6): the DEFAULT_RETRIABLE_ERROR_CODES lookup that replaced the retriable-code switch (TAL-05) and the five-argument handleException signature (TAL-03).
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	DEFAULT_RETRIABLE_ERROR_CODES.contains(errorCode)	1	TAL-05
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	boolean retryOnSocketException, Set	1	TAL-03
