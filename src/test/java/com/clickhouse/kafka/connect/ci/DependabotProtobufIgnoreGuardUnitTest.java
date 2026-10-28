@@ -52,6 +52,8 @@ class DependabotProtobufIgnoreGuardUnitTest {
     private static final String LIST_DASH = "- ";
 
     private static final String NO_GRADLE_ENTRY = "has no gradle package-ecosystem entry";
+    private static final String MULTIPLE_GRADLE_ENTRIES =
+            "must have exactly one gradle package-ecosystem entry";
     private static final String NO_GITHUB_ACTIONS_ENTRY = "has no github-actions package-ecosystem entry";
     private static final String NO_IGNORE = "has no `ignore:` list";
     private static final String WILDCARD = "wildcard";
@@ -191,6 +193,14 @@ class DependabotProtobufIgnoreGuardUnitTest {
     }
 
     static Optional<String> gradleProtobufIgnoreProblem(List<String> lines) {
+        // entryBlock reads only the first match; a later gradle entry would go unchecked, so refuse it.
+        long gradleEntries = lines.stream().filter(line -> GRADLE_ENTRY.matcher(line).matches()).count();
+        if (gradleEntries > 1) {
+            return Optional.of(
+                    FILE + " " + MULTIPLE_GRADLE_ENTRIES + ", found " + gradleEntries
+                            + "; the guard reads only the first, so a second entry covering"
+                            + " gradle/libs.versions.toml without the ignore would reopen PR #10");
+        }
         Optional<List<String>> block = entryBlock(lines, GRADLE_ENTRY);
         if (block.isEmpty()) {
             return Optional.of(FILE + " " + NO_GRADLE_ENTRY);
@@ -478,5 +488,28 @@ class DependabotProtobufIgnoreGuardUnitTest {
                         "gradle entry lacking the list when only github-actions has `ignore:  # note`",
                         gradleProtobufIgnoreProblem(actionsCommented),
                         NO_IGNORE));
+    }
+
+    @Test
+    @DisplayName("fixture: a second gradle entry is rejected, with or without its own ignore (SWP-03)")
+    void fixtureSecondGradleEntryIsRejected() throws IOException {
+        List<String> withoutIgnore = new ArrayList<>(fixtureLines(canonicalIgnore(), List.of()));
+        withoutIgnore.addAll(
+                List.of(
+                        "  - package-ecosystem: \"" + GRADLE + "\"",
+                        "    directory: \"/\"",
+                        "    schedule:",
+                        "      interval: \"monthly\""));
+        List<String> withIgnore = new ArrayList<>(withoutIgnore);
+        canonicalIgnore().forEach(line -> withIgnore.add("    " + line));
+        assertAll(
+                rejects(
+                        "second gradle entry without ignore",
+                        gradleProtobufIgnoreProblem(withoutIgnore),
+                        MULTIPLE_GRADLE_ENTRIES),
+                rejects(
+                        "second gradle entry carrying its own ignore",
+                        gradleProtobufIgnoreProblem(withIgnore),
+                        MULTIPLE_GRADLE_ENTRIES));
     }
 }
