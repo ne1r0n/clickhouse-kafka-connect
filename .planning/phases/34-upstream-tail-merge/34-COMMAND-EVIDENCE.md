@@ -13,8 +13,8 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | TAL-01 | 34-01 | pass |
-| E-02 | TAL-01 | 34-01 | pending (plan 34-01) |
-| E-03 | TAL-01 | 34-01 | pending (plan 34-01) |
+| E-02 | TAL-01 | 34-01 | pass |
+| E-03 | TAL-01 | 34-01 | pass |
 | E-04 | TAL-03 | 34-01 | pending (plan 34-01) |
 | E-05 | TAL-02, TAL-05 | 34-02 | pending (plan 34-02) |
 | E-06 | TAL-03, TAL-05 | 34-02 | pending (plan 34-02) |
@@ -95,6 +95,88 @@ baseline_docker_only_tests: 587
 
 `git ls-remote --exit-code` exited 2 for both the tag and the branch (absent on origin). The testUnit baseline is 1387 tests over 64 XML files in 6 s; the full suite is 1974 tests over 108 XML files. The dirty tree held only `.planning/STATE.md`, `.planning/config.json` and `.planning/state.json`. No `javacore.*`, `core.*.dmp`, `Snap.*.trc` or `jitdump.*` file appeared.
 
-Timestamp (UTC): 2026-10-28T21:12:46Z to 2026-10-28T21:18:40Z
+Timestamp (UTC): 2026-10-28T21:12:46Z to 2026-10-28T21:15:47Z (corrected in the E-02/E-03 commit: the entry was first committed with an end time of 21:18:40Z that was written ahead of the clock; the suite log's own end is 21:15:47Z)
+
+Verdict: pass
+
+### E-02: Rollback tag, upstream re-read immediately before the merge, and the mechanical merge M3
+
+Backs: TAL-01, ROADMAP Phase 34 criterion 1 (the rollback tag, the upstream re-read immediately before the merge, one mechanical merge commit with no authored line).
+
+```sh
+git tag pre-v1.7.0-tail-2 HEAD
+git rev-parse refs/tags/pre-v1.7.0-tail-2
+git cat-file -t refs/tags/pre-v1.7.0-tail-2
+git ls-remote upstream main
+git ls-remote --tags --refs upstream 'v*'
+git diff --name-only $(git merge-base HEAD 9bed6f7970670a55c66be8efda246889e1f95bd0) 9bed6f7970670a55c66be8efda246889e1f95bd0 | wc -l
+git merge-tree --write-tree --name-only HEAD 9bed6f7970670a55c66be8efda246889e1f95bd0
+git merge --no-ff --no-commit 9bed6f7970670a55c66be8efda246889e1f95bd0
+git diff --name-only --diff-filter=U | LC_ALL=C sort
+git add CHANGELOG.md src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java src/main/java/com/clickhouse/kafka/connect/util/Utils.java src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskMappingTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterTest.java
+git grep -n --cached -E '^(<{7}|>{7})( |$)' -- src CHANGELOG.md
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava
+git commit -F /tmp/gsd34/exec/msg-m3.txt
+git rev-list --parents -n 1 adaf8c4e76375e5099c076f2ca3bace892709765
+git diff --name-only adaf8c4e76375e5099c076f2ca3bace892709765^1 adaf8c4e76375e5099c076f2ca3bace892709765
+```
+
+```text
+pre_tag_target: 68f1b0cbfcb217fea1de769b48bc985dacdc40f3
+pre_tag_object_type: commit
+upstream_main_at_merge: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_newest_release_tag_at_merge: v1.7.0
+upstream_sha: 9bed6f7970670a55c66be8efda246889e1f95bd0
+expected_provenance_paths: 27
+merge_tree_conflicts_at_merge: CHANGELOG.md; src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java; src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskMappingTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterTest.java
+merge_conflicted_paths: CHANGELOG.md; src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java; src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskMappingTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterTest.java
+resolution_changelog: union, fork gg sections first, blank line, upstream Unreleased block
+resolution_proxysinktask: fork side in both hunks, seam deferred to 34-02
+resolution_utils: Set import first, then the five fork org.* imports
+resolution_mappingtest: Supplier import, then the two fork imports, duplicates dropped
+resolution_writertest: only upstream's Supplier import and its trailing blank line
+marker_scan_staged: clean
+compile_java_before_commit: 0
+merge_commit: adaf8c4e76375e5099c076f2ca3bace892709765
+merge_parent1: 68f1b0cbfcb217fea1de769b48bc985dacdc40f3
+merge_parent2: 9bed6f7970670a55c66be8efda246889e1f95bd0
+merge_changed_paths: 27
+merge_changed_paths_equal_upstream_changed: yes
+merge_planning_paths: 0
+merge_proxysinktask_fork_side: yes
+```
+
+The tag was created after the E-01 commit `68f1b0cb` and before the merge, so it equals M3's first parent. The ordered hunk lines are within-hunk reorderings only: the `Utils.java` and `ClickHouseSinkTaskMappingTest.java` import hunks were ordered for the fork's sorted import order, and `ClickHouseWriterTest.java`'s `Supplier` import sits at its within-hunk position after the `org.slf4j` imports. No commit was made between `git merge --no-commit` and M3. `git show M3:path` was read as `"${M}:path"` (zsh would otherwise treat `$M:src` as a history modifier).
+
+Timestamp (UTC): 2026-10-28T21:16:23Z to 2026-10-28T21:17:24Z
+
+Verdict: pass
+
+### E-03: Record commit and the unedited tail gate over M3
+
+Backs: TAL-01, ROADMAP Phase 34 criterion 1 (the record of every conflicted path and its resolution; the unedited `verify-merge-invariants.sh` passing on the merge with `UPSTREAM_REF` set to the full upstream SHA).
+
+```sh
+git merge-tree --write-tree --name-only adaf8c4e76375e5099c076f2ca3bace892709765^1 adaf8c4e76375e5099c076f2ca3bace892709765^2
+git add .planning/scripts/conflicted-paths-v1.7.0-tail-2.txt .planning/MERGE-CHECKLIST-v1.7.0-tail-2.md
+git commit -F /tmp/gsd34/exec/msg-record.txt
+git diff --name-only f6f4dd8e0da05d7e60473e0a391fa3c972906f9e^ f6f4dd8e0da05d7e60473e0a391fa3c972906f9e
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 f6f4dd8e0da05d7e60473e0a391fa3c972906f9e > /tmp/gsd34/exec/tail-gate-m3.log 2>&1
+```
+
+```text
+record_commit: f6f4dd8e0da05d7e60473e0a391fa3c972906f9e
+record_commit_files: .planning/MERGE-CHECKLIST-v1.7.0-tail-2.md; .planning/scripts/conflicted-paths-v1.7.0-tail-2.txt
+conflicted_paths_lines: 5
+checklist_sections: Section 1 (5 rows), Section 2 (27 rows), Section 3, Gate commands, Recorded Facts 44-45
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=2 anchor_rows=131 marker_commits=9 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 12s
+tail_gate_violations: 0
+```
+
+The gate ran unedited over M3..record commit with explicit SHAs; its log holds no VIOLATION or MISMATCH line. Section 1 and Section 2 of the checklist were generated by a scratch script (not committed) from the conflicted-paths file and `git diff --name-status`, not hand-transcribed.
+
+Timestamp (UTC): 2026-10-28T21:17:40Z to 2026-10-28T21:18:24Z
 
 Verdict: pass
