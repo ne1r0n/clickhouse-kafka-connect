@@ -19,8 +19,8 @@
 | E-06 | SWP-04 | 33-01 | pass |
 | E-07 | SWP-02 | 33-02 | pass |
 | E-08 | SWP-02 | 33-02 | pass |
-| E-09 | SWP-02 | 33-02 | pending (plan 33-02) |
-| E-10 | SWP-02 | 33-02 | pending (plan 33-02) |
+| E-09 | SWP-02 | 33-02 | pass |
+| E-10 | SWP-02 | 33-02 | pass |
 | E-11 | SWP-01, SWP-02 | 33-02 | pending (plan 33-02) |
 | E-12 | SWP-03 | 33-03 | pending (plan 33-03) |
 | E-13 | SWP-03 | 33-03 | pending (plan 33-03) |
@@ -352,5 +352,99 @@ anchors_mirror: rows=131 bad=0
 The head changes only the `distributionUrl` line (line 3). The merge-tree dry run printed a single tree-OID line (`d5ae47c785d34a023424ce5bd253448bd81c8413`). The first `./gradlew --version` after the merge downloaded the 9.8.2 distribution; `createConfluentArchive` ran on it and finished `BUILD SUCCESSFUL in 30s`. The scratch zip was deleted by name after the checksum comparison; the `wrapper` task was not run.
 
 Timestamp (UTC): 2026-10-28T19:09:19Z to 2026-10-28T19:16:14Z
+
+Verdict: pass
+
+### E-09: PR #16 fetched by ref, merged as its own commit and pin-guarded (setup-java 6.1.0)
+
+Backs: SWP-02, ROADMAP Phase 33 criterion 3 (every setup-java pin is a full SHA with `# v6.1.0`, the pin guards pass under `testUnit`, and the upstream-identical `integrationTests.yaml` is untouched).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git fetch origin refs/pull/16/head
+git rev-parse FETCH_HEAD
+git log -1 --format=%an cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+git rev-list --parents -n 1 cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+git diff --name-only cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f^ cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+git diff -U0 cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f^ cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+git ls-remote --heads origin 'dependabot/github_actions/*'
+git ls-remote https://github.com/actions/setup-java refs/tags/v6.1.0 'refs/tags/v6.1.0^{}'
+git merge-tree --write-tree --name-only HEAD cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+git merge --no-ff -F /tmp/gsd33/exec/msg-16.txt cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+git rev-parse HEAD HEAD^1 HEAD^2
+git diff --name-only HEAD^1 HEAD
+grep -cF 'actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0' .github/workflows/{tests,release,pre-release,nightly-integration-tests}.yaml
+grep -cF 'actions/setup-java@' .github/workflows/{tests,release,pre-release,nightly-integration-tests}.yaml
+git rev-parse HEAD:.github/workflows/integrationTests.yaml
+grep -c 'actions/setup-java@v3' .github/workflows/integrationTests.yaml
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*WorkflowActionPinGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' --tests '*NightlyWorkflowGuardUnitTest' --tests '*UpstreamIntegrationWorkflowBytesGuardUnitTest' > /tmp/gsd33/exec/pin-guards-16.log 2>&1
+/bin/bash /tmp/gsd33/exec/anchors.sh
+```
+
+```text
+pr16_head: cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+pr16_head_research: cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+rebased_since_research: no
+pr16_author: dependabot[bot]
+pr16_parent: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+pr16_files: .github/workflows/nightly-integration-tests.yaml,.github/workflows/pre-release.yaml,.github/workflows/release.yaml,.github/workflows/tests.yaml
+pr16_change: setup-java v6.0.1 -> v6.1.0 (b843ebf9b913146b38da2eaa7aeddf76074ae1ad), 4 lines
+pr16_branch: dependabot/github_actions/github-actions-4430c5f07e
+setup_java_tag_commit: b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+setup_java_tag_kind: lightweight
+origin_reread_before_merge: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+merge_tree: clean
+merge_commit: 79f56a5ec6f3cedad4d9ada4c5860344c262d285
+merge_second_parent: cb3c77187eb5c036dc3d6d155aca4e2cd85dd76f
+first_parent_diff_files: .github/workflows/nightly-integration-tests.yaml,.github/workflows/pre-release.yaml,.github/workflows/release.yaml,.github/workflows/tests.yaml
+setup_java_pins: tests.yaml 1/1; release.yaml 1/1; pre-release.yaml 1/1; nightly-integration-tests.yaml 1/1 (pinned v6.1.0 line count / any setup-java line count)
+integration_tests_yaml_blob: 3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+integration_tests_setup_java_refs: 3
+pin_guards_exit: 0
+pin_guards_xml: WorkflowActionPinGuardUnitTest 21/0/0/0; TestsWorkflowPinGuardUnitTest 39/0/0/0; NightlyWorkflowGuardUnitTest 58/0/0/0; UpstreamIntegrationWorkflowBytesGuardUnitTest 9/0/0/0
+anchors_mirror: rows=131 bad=0
+```
+
+The head changes exactly one line in each of the four workflows: the `actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1` pin becomes `actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0`. The tag lookup returned a single line and no peeled `^{}` line, so the tag is lightweight and the commit is the tag line's SHA. The merge-tree dry run printed a single tree-OID line (`fbe045c1cda875f20d7ef5b9ad2e1be75a57c737`). `pin_guards_xml` is `Class tests/failures/errors/skipped`. The `FIVE_PINNED` fixture of `TestsWorkflowPinGuardUnitTest` was not edited.
+
+Timestamp (UTC): 2026-10-28T19:16:57Z to 2026-10-28T19:17:18Z
+
+Verdict: pass
+
+### E-10: Full suite on the sweep tip (the PR #16 merge commit, latest x V2)
+
+Backs: SWP-02, ROADMAP Phase 33 criterion 3 (no anchor row moved and the full suite is green on the sweep tip that holds all four bumps).
+
+```sh
+git rev-parse HEAD
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd33/exec/suite-sweep.log 2>&1
+python3 -I /tmp/gsd33/exec/tally.py
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+git diff --quiet pre-v1.7.0_gg6 HEAD -- src/main
+/bin/bash /tmp/gsd33/exec/anchors.sh
+```
+
+```text
+gated_head: 79f56a5ec6f3cedad4d9ada4c5860344c262d285
+suite_exit: 0
+suite_tests: 1961
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_duration: BUILD SUCCESSFUL in 2m 43s
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e05: yes
+src_main_diff_vs_pre_tag: 0
+anchors_mirror: rows=131 bad=0
+jvm_crash: none
+```
+
+The gated head is the PR #16 merge commit itself, before any evidence commit on top of it. The counts are summed from the 107 JUnit XML roots under `build/test-results/test` and equal E-02 and E-05 (1961 tests, 18 skipped) on the same image digest, so the three build-input bumps and the action bump changed no test outcome. The run used Gradle 9.8.2 and okhttp 5.5.1.
+
+Timestamp (UTC): 2026-10-28T19:17:23Z to 2026-10-28T19:20:07Z
 
 Verdict: pass
