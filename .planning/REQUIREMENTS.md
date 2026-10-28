@@ -88,21 +88,59 @@
 
 ## Traceability
 
+Which phases cover which requirements. Updated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SWP-01..SWP-04 | TBD | Pending |
-| TAL-01..TAL-05 | TBD | Pending |
-| CLT-01..CLT-09 | TBD | Pending |
-| CIH-01..CIH-05 | TBD | Pending |
-| ADV-01..ADV-03 | TBD | Pending |
-| BUF-01..BUF-07 | TBD | Pending |
-| RLS-01..RLS-06 | TBD | Pending |
+| SWP-01 | Phase 33 | Pending |
+| SWP-02 | Phase 33 | Pending |
+| SWP-03 | Phase 33 | Pending |
+| SWP-04 | Phase 33 | Pending |
+| TAL-01 | Phase 34 | Pending |
+| TAL-02 | Phase 34 | Pending |
+| TAL-03 | Phase 34 | Pending |
+| TAL-04 | Phase 34 | Pending |
+| TAL-05 | Phase 34 | Pending |
+| BUF-01 | Phase 35 | Pending |
+| BUF-02 | Phase 35 | Pending |
+| BUF-03 | Phase 35 | Pending |
+| BUF-04 | Phase 35 | Pending |
+| BUF-05 | Phase 35 | Pending |
+| BUF-06 | Phase 35 | Pending |
+| BUF-07 | Phase 35 | Pending |
+| CLT-01 | Phase 36 | Pending |
+| CLT-02 | Phase 36 | Pending |
+| CLT-03 | Phase 36 | Pending |
+| CLT-04 | Phase 36 | Pending |
+| CLT-05 | Phase 36 | Pending |
+| CLT-06 | Phase 36 | Pending |
+| CLT-07 | Phase 36 | Pending |
+| CLT-08 | Phase 36 | Pending |
+| CLT-09 | Phase 36 | Pending |
+| CIH-01 | Phase 37 | Pending |
+| CIH-02 | Phase 37 | Pending |
+| CIH-03 | Phase 37 | Pending |
+| CIH-04 | Phase 37 | Pending |
+| CIH-05 | Phase 37 | Pending |
+| ADV-01 | Phase 37 | Pending |
+| ADV-02 | Phase 37 | Pending |
+| ADV-03 | Phase 37 | Pending |
+| RLS-01 | Phase 38 | Pending |
+| RLS-02 | Phase 38 | Pending |
+| RLS-03 | Phase 38 | Pending |
+| RLS-04 | Phase 38 | Pending |
+| RLS-05 | Phase 38 | Pending |
+| RLS-06 | Phase 38 | Pending |
 
 **Coverage:**
 - v1 requirements: 39 total
-- Mapped to phases: 0 (filled by the roadmapper)
-- Unmapped: 39 ⚠️
+- Mapped to phases: 39 (Phase 33: 4, Phase 34: 5, Phase 35: 7, Phase 36: 9, Phase 37: 8, Phase 38: 6)
+- Unmapped: 0 ✓
+
+Two mappings have a hand-off to Phase 38:
+- **BUF-07** is owned by Phase 35. Its FORK-DELTA row and anchor land with the fix, and its rollout item is recorded there with evidence. Phase 38 places that item in `docs/ROLLOUT-v1.7.0_gg6.md`, and RLS-02's success criterion checks it.
+- **CLT-09** is conditional. It is satisfied either by a recorded "go" on 0.11.0 or by the one-commit revert to 0.9.6. If it fires, RLS-02's note keeps only the items that hold on 0.9.6.
 
 ---
 *Requirements defined: 2026-10-28*
-*Last updated: 2026-10-28 after milestone v1.7.0_gg6-maintenance scoping*
+*Last updated: 2026-10-28 after roadmap creation (Phases 33-38, 39/39 mapped)*

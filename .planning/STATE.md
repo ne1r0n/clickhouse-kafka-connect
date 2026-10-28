@@ -3,10 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 status: planning
-last_updated: "2026-10-28T15:30:49.814Z"
+current_phase: "33"
+current_phase_name: "Dependency Sweep & Protobuf Decision"
+last_updated: "2026-10-28T16:17:17.000Z"
 last_activity: 2026-10-28
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,18 +19,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-28 after the v1.7.0_gg5-ci milestone close)
+See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 33 — Dependency Sweep & Protobuf Decision. A `pre-v1.7.0_gg6` rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads, one commit each, and PR #10 is declined with a Dependabot `ignore`.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-28 — Milestone v1.7.0_gg6-maintenance started
+Phase: 33 of 38 (Dependency Sweep & Protobuf Decision) — not started (ready to plan)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-28 — Roadmap created for v1.7.0_gg6-maintenance (Phases 33-38, 39/39 requirements mapped)
 
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -253,6 +256,16 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 32]: Four-row archive wording (32-AMENDMENT-01) used in CHANGELOG, FORK-DELTA and E-20: the gg5 archive differs from gg4 only in the release identity (Version constant, the two classes that inline it, manifest Implementation-Version)
 - [Phase 32]: The nightly is described as running the whole integrationTest task when dispatched or scheduled; its green run is stated as local (E-18) because no GitHub run exists before plan 32-07
 
+**`v1.7.0_gg6-maintenance` roadmap (2026-10-28):** six phases under `coarse` granularity, in the user's order:
+1. the dependency sweep (33);
+2. the upstream tail (34);
+3. the buffered offset-commit fix, upstream #777 (35);
+4. client 0.11.0 (36);
+5. CI hardening and the advisory debt (37);
+6. the release (38).
+
+The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands before the client bump, so it is releasable on 0.9.6, and the CLT-09 one-commit revert cannot touch it. The client bump is the last code change. The archive-compare consumer and every workflow fix sit in Phase 37, because the release phase cannot edit `.github/`. The gg6 allow-list, `VERSION`, CHANGELOG and the rollout note are written in Phase 38. Phase 35 records the BUF rollout item, and Phase 38 places it in the note.
+
 ### Pending Todos
 
 None.
@@ -279,9 +292,11 @@ None.
 - [CI] 2026-10-27: the nightly's first manual run 40474535605 on `custom_build` (`3a3a15a9`) ended success (63 tests, 0 failures, 9 skipped, 33 min; NIT-03); its one scheduled run so far was skipped; `NIGHTLY_ENABLED` was set by the operator after the run (their report, E-82). An accidental `release.yaml` dispatch (run 40474419526) was cancelled by the user before publishing; no release or tag resulted.
 - [Roadmap] 2026-10-24: GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. Phase 30's dry runs can use the existing `release.yaml` and `pre-release.yaml` on the scratch branch, but the new Phase 31 nightly reaches `custom_build` only at publication. Phase 31 research confirms the behaviour and settles how the NIT-03 dispatch runs before any schedule can fire. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
 - [Roadmap] 2026-10-24: `TestsWorkflowPinGuardUnitTest` pins `dependabot.yml`'s `exclude-paths` list of the four upstream workflows (`UPSTREAM_WORKFLOWS`). Letting Dependabot keep the three newly pinned release-path files current changes that assertion, which needs the user's sign-off (Phase 30).
-- [CI] 2026-10-26: Phase 30 dry runs: sync/v1.7.0 was pushed at b847fbdb (tests.yaml run 40103794037 green); pre-release.yaml run 40296330498 and release.yaml run 40296481765 finished green as dry runs (draft attached, checked and deleted, Publish release skipped); origin's tags and published releases are unchanged and sync/v1.7.0 was deleted from origin. Later .planning commits are a local tail, unpushed.
 - Phase 31-01: all 54 connector integration tests fail (Java 17 connector jar vs Java 11 Connect worker in cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0); Task 3 blocking-human decision (E-06) pending before 31-02
 - [Roadmap] 2026-10-26: NIT-03 moved to Phase 32 by the user's decision (D-02, 31-COMMAND-EVIDENCE.md E-16). Phase 31 delivered the measurement, the gated nightly, the NIT-02 byte guard and any skip list. The nightly reaches custom_build only with Phase 32's publication, and NIGHTLY_ENABLED stays unset until the dispatch run is recorded.
+- [Roadmap] 2026-10-28: Dependabot PRs #10 and #16–#20 are open on `origin`, and PR #4 is gone (superseded by #17). This replaces the PR lists in the older `[Publish]` and `[Dependabot]` lines above. Phase 33 absorbs #16, #18, #19 and #20 from their PR heads on the scratch branch, Phase 36 absorbs #17, and #10 is declined. Ask the user not to merge any of them on `origin` until publication, because a merge there diverges the scratch branch again.
+- [Roadmap] 2026-10-28: BUF-03 (Phase 35). `Processing.doLogic` keys exactly-once state by the transformed topic. A fix that changes the state key would orphan the KeeperMap state of existing exactly-once deployments, so it stops for a user decision before it lands. The operator's production connectors run `exactlyOnce=false`.
+- [Roadmap] 2026-10-28: Pushes. CLT-07's manual nightly dispatch (Phase 36) needs the scratch branch on `origin`, and so does any Phase 37 dry run of the archive-compare step. Each push publishes the local `.planning` tail one way and runs `tests.yaml` once, so it needs the user's direct approval and a SHA that no other pushed branch holds.
 
 ### Quick Tasks Completed
 
@@ -306,11 +321,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T21:29:57.833Z
-Stopped at: Phase 32 complete — all phases complete
+Last session: 2026-10-28
+Stopped at: Roadmap created for milestone `v1.7.0_gg6-maintenance` (Phases 33-38, 39/39 requirements mapped); Phase 33 ready to plan
 Resume file: None
 
 ## Operator Next Steps
 
-
-- Start the next milestone with /gsd-new-milestone
+- Discuss and plan Phase 33 with /gsd-discuss-phase 33, then /gsd-plan-phase 33
+- Do not merge Dependabot PRs on `origin` until `v1.7.0_gg6` is published. The milestone absorbs them from their PR heads on the scratch branch.
+- Phase 33 asks you to close PR #10 (protobuf-java 4.x), or to confirm that it may stay open until the `ignore` reaches `custom_build`
+- Phase 35 reruns your stand at `~/dev/clickhouse_mvp/local_kc_test` on the fixed jar
+- Phase 36's manual nightly dispatch, and any Phase 37 dry run, need you to approve a push of the scratch branch and to start the runs from GitHub's `Run workflow` control
