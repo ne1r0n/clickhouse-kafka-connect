@@ -2,44 +2,42 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg5-ci
 milestone_name: CI & Release Workflow Modernization
-current_phase: 32
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 32 complete — all phases complete
-last_updated: "2026-10-27T10:22:31.319Z"
-last_activity: 2026-10-27
-last_activity_desc: Phase 32 complete
-state_head: 34b27a599a277af96afda4db52682bfbefe6b99d
+last_updated: "2026-10-28T12:55:59.065Z"
+last_activity: 2026-10-28
+last_activity_desc: Milestone v1.7.0_gg5-ci completed and archived
+state_head: f71468bce5663a0293e7c21f4f3fbb20fbdae58e
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 16
   completed_plans: 16
   percent: 100
+current_phase: 32
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg5-ci)
+See: .planning/PROJECT.md (updated 2026-10-28 after the v1.7.0_gg5-ci milestone close)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 32 — Release & Publication
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 32
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-27 — Phase 32 complete
-
-Progress: [██████████] 100%
+Phase: Milestone v1.7.0_gg5-ci complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-28 — Milestone v1.7.0_gg5-ci completed and archived
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
+- Total plans completed: `v1.7.0_gg5-ci`: 16; `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -317,5 +315,5 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Discuss and plan Phase 30 with /gsd-discuss-phase 30, then /gsd-plan-phase 30
-- Phase 30's dry runs need you to approve one push of the scratch branch and to dispatch `pre-release.yaml` and `release.yaml` from GitHub's `Run workflow` control
+
+- Start the next milestone with /gsd-new-milestone

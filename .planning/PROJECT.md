@@ -2,7 +2,7 @@
 
 ## What This Is
 
-The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg4`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
+The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg5`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
 
 The second milestone (`v1.6.0_gg1-sync`) cashed that in: 581 commits of upstream (`v1.2.9` → `v1.6.0`) merged into `custom_build` with the suite as the acceptance gate, every fork feature either re-applied onto upstream's rewritten code or consciously retired in favour of upstream, and the result published as `v1.6.0_gg1`. What the fork still patches, and what it gave up, is recorded in `docs/FORK-DELTA.md`.
 
@@ -14,23 +14,31 @@ The fifth milestone (`v1.7.0_gg3-hardening`) closed the last known record-data e
 
 The sixth milestone (`v1.7.0_gg4-hardening`) absorbed nine Dependabot merges and upstream's untagged tail, repaired and guarded the Confluent archive under Shadow 9 (it had nested 25 jars into an unusable archive behind a green build), and fixed the two discovery defects `v1.7.0_gg3` disclosed. A Tuple element named `size`, `size0` or `size<digits>` is no longer dropped, and column, element and Enum-label names are matched under the raw identifier written in `CREATE TABLE` on both clients. The writer failure path no longer names a Map key, an unknown Enum label fails with a column-named message, and the carried 21–24 review debt is cleared. It shipped as `v1.7.0_gg4`.
 
+The seventh milestone (`v1.7.0_gg5-ci`) brought the fork's workflows current without touching connector code. The release-path workflows run only SHA-pinned actions behind a Docker-free pin guard, build with the Gradle wrapper through `setup-gradle` (so `verifyConfluentArchive` runs on the release path) and publish with `gh release create`. The integration harness moved to a Java 17 Connect worker (54 of 54 connector tests went from failing to passing), and a fork-owned, variable-gated nightly now runs `integrationTest` on ClickHouse `latest` × client V2 while upstream's `integrationTests.yaml` stays byte-identical and disabled. The result is published as `v1.7.0_gg5` (merge `3a3a15a9`, 2026-10-27), with its operator note in `docs/ROLLOUT-v1.7.0_gg5.md`.
+
 ## Core Value
 
 Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
-## Current Milestone: v1.7.0_gg5-ci CI & Release Workflow Modernization
-
-**Goal:** Bring the fork's workflows current and get a trustworthy integration-test signal, without touching connector code or ClickHouse client `0.10.0`.
-
-**Target features:**
-- `pre-release.yaml`: replace the pinned Gradle `7.4.2` (DEPS-F4) with the project wrapper / `setup-gradle`
-- `release.yaml`, `pre-release.yaml`, `increment-version.yml`: SHA-pin every action (checkout, setup-java, setup-node, setup-gradle); replace deprecated `gradle-build-action` and archived `create-release` / `upload-release-asset` with `gh release`
-- Nightly: leave upstream `integrationTests.yaml` byte-identical and disabled; add a fork-owned nightly running `integrationTest` on ClickHouse `latest` × client V2 in local Docker, with no cloud job
-- Verify with a dry run of the release path and green CI on the published SHA
-
-**Out of scope:** ClickHouse client `0.10.0`, connector source changes, editing upstream `integrationTests.yaml`.
-
 ## Current State
+
+**Shipped:** `v1.7.0_gg5-ci` (published 2026-10-27, closed 2026-10-28). It covered 3 phases (30–32), 16 plans, 26 tasks and 11/11 requirements. The milestone audit is `tech_debt` with no gaps: requirements 11/11, phases 3/3, integration 11/11, flows 3/3. It closed as a `verified_closeout`: the open-artifact audit was clear and all three phases read as complete and verified. The Phase 32 review hit its three-round cap with two Info findings fixed and not re-reviewed, accepted by the user.
+
+`v1.7.0_gg5` is on `origin/custom_build` as the `--no-ff` merge `3a3a15a9` (parents `21c51598` and `41e7d546`), tagged `v1.7.0_gg5`. The rollback tag `pre-v1.7.0_gg5` points at `21c51598`, and the merge has one green `tests.yaml` run, 40416215635. The nightly's first manual run, 40474535605, passed 63 integration tests with 0 failures and 9 skipped; the operator then set `NIGHTLY_ENABLED`. `sync/v1.7.0` carries the post-publication bookkeeping.
+
+The suite runs 1,961 tests on ClickHouse `latest` (26.10.3.7) × client V2 and passed twice, with 0 failures and 18 named skips. `testUnit` runs 1,374 tests with Docker stopped. Client `0.9.6` is unchanged.
+
+Code: **`src/main` did not change** between `v1.7.0_gg4` and `v1.7.0_gg5`. The milestone changed 12 files in `src/`, the build, `gradle/` and `.github/` (+2,125/−118). The fork delta against upstream is 287 files at the wide scope and 37 in `src/main`.
+
+**What operators will see** (each in `docs/ROLLOUT-v1.7.0_gg5.md`):
+- No connector behaviour change. The MBean `version=` segment and the client name read `v1.7.0_gg5`.
+- The release workflows build with the wrapper's Gradle and attach the verified Confluent archive to a `gh release create` release. A dry-run mode builds and attaches to a throwaway draft.
+- A nightly integration run exists on `custom_build` and is enabled by the repository variable `NIGHTLY_ENABLED`.
+
+**Knowingly open in the published `v1.7.0_gg5`:** the Phase 30 and 31 review advisories (WR-01..WR-03 and IN-01..IN-04 in Phase 30, WR-01..WR-03 and IN-01..IN-03 in Phase 31), `increment-version.yml` writing `vnull` for `_ggN` versions, and a real publish path that no run has exercised. See the milestone-close note under Requirements → Active.
+
+<details>
+<summary>Previous state — <code>v1.7.0_gg4-hardening</code> (shipped 2026-10-23)</summary>
 
 **Shipped:** `v1.7.0_gg4-hardening` (published 2026-10-23, closed 2026-10-24). It covered 5 phases (25–29), 32 plans, 81 tasks and 36/36 requirements. The milestone audit is `tech_debt` with no gaps: phases 5/5, integration 5/5, flows 5/5. It closed as an `override_closeout`: `init.manager` read Phases 25–28 as stale (later phases edited covered files) and Phase 27 success criterion 2 was narrowed by the user.
 
@@ -47,6 +55,8 @@ Code: `src/main` is 11,059 LOC and the tests are 38,839 LOC. Since the milestone
 - The MBean `version=` segment and the client name read `v1.7.0_gg4`. The rollback tree lists `gradlew.bat` as modified on a fresh checkout.
 
 **Knowingly open in the published `v1.7.0_gg4`:** the 16 unfixed review findings in `29-MILESTONE-CLOSE-RECORD.md`, the PUB-12 review-round deviation, and the manual archive compare. See the milestone-close note under Requirements → Active.
+
+</details>
 
 <details>
 <summary>Previous state — <code>v1.7.0_gg3-hardening</code> (shipped 2026-10-20)</summary>
@@ -165,10 +175,26 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 Not defined yet: `/gsd-new-milestone` starts with questioning. Candidates:
 
 - **The next upstream sync,** once upstream tags past `v1.7.0`.
-- **The carried review advisories** in `milestones/v1.7.0_gg4-hardening-phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md`: 25-REVIEW WR-01..WR-03 and IN-01..IN-04 (pin guard, `ConfluentArchiveCheck`, `ConnectApiReferencesUnitTest`) and the 26–28 findings. Each has an owner and a re-open trigger.
-- **A CI consumer for the archive compare.** `confluent-archive-allowlist-29.txt` is used only by a manual release-time step today.
-- **A test for a size-named Tuple element whose name also holds an escape character.**
-- **Still Future Requirements:** ClickHouse client `0.10.0` (PR #4), Gradle `7.4.2` in `pre-release.yaml` (DEPS-F4), and the upstream workflows still on `@v3`-era actions.
+- **The carried review advisories:** Phase 30 and 31 WR/IN rows in `milestones/v1.7.0_gg5-ci-phases/*/…-REVIEW-DISPOSITION.md`, and the gg4 findings in `milestones/v1.7.0_gg4-hardening-phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md`. Each has an owner and a re-open trigger.
+- **`increment-version.yml`:** it writes `vnull` for `_ggN` versions.
+- **One real publish of the release path,** which no gg5 run has exercised (only dry runs).
+- **A CI consumer for the archive compare.** `confluent-archive-allowlist-*.txt` is used only by a manual release-time step.
+- **Still Future Requirements:** ClickHouse client `0.10.0` (PR #4) and the upstream workflows still on `@v3`-era actions.
+
+<details>
+<summary>Milestone scope as planned — <code>v1.7.0_gg5-ci</code> CI &amp; Release Workflow Modernization (shipped 2026-10-27)</summary>
+
+**Goal:** Bring the fork's workflows current and get a trustworthy integration-test signal, without touching connector code or ClickHouse client `0.10.0`.
+
+**Target features:**
+- `pre-release.yaml`: replace the pinned Gradle `7.4.2` (DEPS-F4) with the project wrapper / `setup-gradle`
+- `release.yaml`, `pre-release.yaml`, `increment-version.yml`: SHA-pin every action (checkout, setup-java, setup-node, setup-gradle); replace deprecated `gradle-build-action` and archived `create-release` / `upload-release-asset` with `gh release`
+- Nightly: leave upstream `integrationTests.yaml` byte-identical and disabled; add a fork-owned nightly running `integrationTest` on ClickHouse `latest` × client V2 in local Docker, with no cloud job
+- Verify with a dry run of the release path and green CI on the published SHA
+
+**Out of scope:** ClickHouse client `0.10.0`, connector source changes, editing upstream `integrationTests.yaml`.
+
+</details>
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg4-hardening</code> Dependency Absorption, Discovery Defects &amp; Review Debt (shipped 2026-10-23)</summary>
@@ -506,9 +532,20 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ `jacocoForkReport` lists all 21 fork classes, and a Docker-free guard keeps its two copies equal (DEBT-17) — Phase 28
 - ✓ `v1.7.0_gg4` is published: `custom_build` = `21c51598`, tags `v1.7.0_gg4` and `pre-v1.7.0_gg4` on `origin`, one green CI run, and `docs/ROLLOUT-v1.7.0_gg4.md` reviewed (four rounds; the fourth was user-authorised) — Phase 29
 
+**v1.7.0_gg5-ci milestone (shipped 2026-10-27, 11/11 requirements):**
+
+- ✓ A Docker-free guard fails on any unpinned, local or `docker://` action in a fork-owned workflow, and `release.yaml`, `pre-release.yaml` and `increment-version.yml` pass it (REL-02, CIG-01) — Phase 30
+- ✓ Both release paths build with the project Gradle wrapper through `setup-gradle` (Gradle `7.4.2` is gone, DEPS-F4) and publish with `gh release create` with the Confluent archive attached (REL-01, REL-03, REL-04) — Phase 30
+- ✓ A ref-derived dry run proves both release paths build and attach the archive without creating a release or a tag (REL-05) — Phase 30
+- ✓ A fork-owned, SHA-pinned, variable-gated nightly runs `integrationTest` on ClickHouse `latest` × client V2 in the runner's Docker with no cloud job (NIT-01), after the harness moved to a Java 17 Connect worker (54 of 54 connector tests pass) — Phase 31
+- ✓ Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a SHA-256 plus length guard (NIT-02) — Phase 31
+- ✓ The nightly's first manual run passed on `custom_build` before the schedule was enabled (NIT-03, run 40474535605) — Phase 32
+- ✓ `VERSION=v1.7.0_gg5`, CHANGELOG, FORK-DELTA and a reviewed rollout note are updated (CIG-02) — Phase 32
+- ✓ `v1.7.0_gg5` is published: `custom_build` = `3a3a15a9`, tags `v1.7.0_gg5` and `pre-v1.7.0_gg5` on `origin`, one green `tests.yaml` run (CIG-03), and `docs/ROLLOUT-v1.7.0_gg5.md` — Phase 32
+
 ### Active
 
-<!-- Milestone `v1.7.0_gg4-hardening` is active (started 2026-10-21). Every open `[ ]` item below is in its scope except client 0.10.0; its REQ-IDs are in `REQUIREMENTS.md`. Struck-through items are history. -->
+<!-- No milestone is active. Open `[ ]` items below are candidates for the next one. Struck-through items are history. -->
 
 **v1.6.0_gg1-sync:** all 53 requirements shipped and moved to Validated.
 
@@ -667,6 +704,16 @@ None is an unmet requirement. 999.4 is the one item that can fail inserts for an
 - [ ] `docs/FORK-DELTA.md:224` still reads, as history, that gg3 shipped items 10 and 11 as open. Line 226 states they are closed.
 
 None is an unmet requirement and none loses data. The two discovery defects that could fail inserts or store a shifted row are fixed and shipped.
+
+**Milestone-close note (v1.7.0_gg5-ci):** all 11 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg5-ci-REQUIREMENTS.md`). These items are open:
+
+- [ ] Phase 30 review advisories: WR-01 (the two release workflows share the `release-publish` concurrency group, so a third dispatch can cancel a queued real publish), WR-02 (the pin guard tests only `uses:` lines), WR-03 (the `dependabot.yml` comment overstates the guard) and IN-01..IN-04, including about 180 duplicated lines between `release.yaml` and `pre-release.yaml`.
+- [ ] Phase 31 review advisories: WR-01 (`failed_tests_summary.py` prints "No failed tests." when every report is unreadable), WR-02 (Markdown escaping misses `<`, `&`, `[`, `*`, `\`), WR-03 (the byte guard can fail on autocrlf Windows clones) and IN-01..IN-03.
+- [ ] `increment-version.yml` writes `vnull` for `_ggN` versions (CHANGELOG Known Issues).
+- [ ] The real publish path was never exercised for gg5: no GitHub release exists, only tags. Both dry runs were green.
+- [ ] `NIGHTLY_ENABLED` ordering rests on the operator's report, because the REST API cannot read repository variables.
+
+None is an unmet requirement and none touches connector code.
 
 
 ### Out of Scope
@@ -857,6 +904,9 @@ None is an unmet requirement and none loses data. The two discovery defects that
 | Server-version smoke test asserts the container image reference plus a well-formed reported version, not an image version label | ClickHouse `latest` images carry no usable version label (ClickHouse issue #54224), so label equality is unsatisfiable | ✓ Phase 1 |
 | One shared ClickHouse container per test JVM fork (`alwaysPull`), a fresh database per test class, cleanup left to Ryuk (no JVM shutdown hook), default `maxParallelForks` kept | Fast runs with class isolation and no change to test semantics; 0 flakes observed at 6 forks | ✓ Phase 1 |
 | Fork coverage view is an explicit list of the 15 fork-changed classes (`X.class` + `X$*.class`) in a separate `jacocoForkReport` | Prefix globs over-match (e.g. `HeaderToValue*` would pull in `HeaderToValueConfig`) | ✓ Phase 1 |
+| Phase 31: move the integration harness to a Java 17 Connect worker (`cp-server-connect:7.9.6` plus the pinned datagen plugin) instead of building a skip list | The whole `integrationTest` task failed 54 of 54 for one cause, a Java 17 connector jar against a Java 11 worker; the user accepted E-06b with zero skip entries | ✓ 54 of 54 pass on `latest` × V2 — Phase 31 |
+| Phase 32 D-02: NIT-03 (the nightly's first manual run) moved from Phase 31 to Phase 32 | GitHub dispatches a workflow only from the default branch, and the nightly reaches `custom_build` only at publication | ✓ Run 40474535605 green before the schedule was enabled — Phase 32 |
+| Phase 32: gate the nightly's schedule on the repository variable `NIGHTLY_ENABLED`, set by the operator only after a green manual run | A schedule that runs before its first green run would report a failure nobody had classified | ✓ Set 2026-10-27T09:15:07Z; the one earlier scheduled run was skipped — Phase 32 |
 | `testUnit` selects tests via `excludeTags("clickhouse")` and stays out of `check` | Docker-free unit loop without a new source set or changing `check` | ✓ Phase 1 |
 | R-01's silent data loss is **pinned, not fixed** — a labelled test asserts the current outcome (no throw, 0 rows) | A fail-fast throw is rated costly and not pre-approved (D-01/D-07): it would break, loudly, any pipeline running `insertFormat=json` behind a Struct converter. Pinning makes the loss suite-detectable so a future rebase cannot change it unnoticed, without touching production behavior | ✓ Phase 4 — escalated at a `blocking-human` checkpoint in plan 04-01; user chose `pin-current-behavior`. Fix tracked as an Active follow-up needing its own plan. **Superseded in Phase 13:** fixed by routing (JSONP-05..07) |
 | `buildMBeanName` extracted from `ProxySinkTask.getMBeanName()` as the phase's only production change | `getMBeanName()` is private, reads the client jar's implementation version inline, and is reachable only through a constructor requiring a live ClickHouse — the real jar reports a plain `0.9.6`, so the null-version and colon-version branches could never execute in a test | ✓ Phase 4 (D-02) — +12/−2, 8 of them Javadoc; rendered name byte-for-byte unchanged, independently diff-verified by both the code reviewer and the verifier |
@@ -885,4 +935,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-24 after starting milestone v1.7.0_gg5-ci*
+*Last updated: 2026-10-28 after the v1.7.0_gg5-ci milestone close*
