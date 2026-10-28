@@ -13,7 +13,7 @@
 # result 4.1.1: classes-missing 0 members-missing 0
 # result 4.4.0: classes-missing 0 members-missing 0
 # re-bless: compileJava, then python3 -I .planning/scripts/connect-api-refs.py --classes build/classes/java/main --compile-classpath <connect-api>:<kafka-clients> --reference worker=<worker connect-api>:<worker kafka-clients> --write src/test/resources/connect-api-references.txt
-# date: 2026-10-21T16:23:41Z
+# date: 2026-10-28T21:50:10Z
 C org/apache/kafka/clients/consumer/OffsetAndMetadata
 C org/apache/kafka/common/TopicPartition
 C org/apache/kafka/common/cache/Cache
@@ -90,6 +90,7 @@ M org/apache/kafka/common/config/ConfigDef.define:(Ljava/lang/String;Lorg/apache
 M org/apache/kafka/common/config/ConfigDef.define:(Ljava/lang/String;Lorg/apache/kafka/common/config/ConfigDef$Type;Ljava/lang/Object;Lorg/apache/kafka/common/config/ConfigDef$Validator;Lorg/apache/kafka/common/config/ConfigDef$Importance;Ljava/lang/String;)Lorg/apache/kafka/common/config/ConfigDef;
 M org/apache/kafka/common/config/ConfigDef.define:(Ljava/lang/String;Lorg/apache/kafka/common/config/ConfigDef$Type;Ljava/lang/Object;Lorg/apache/kafka/common/config/ConfigDef$Validator;Lorg/apache/kafka/common/config/ConfigDef$Importance;Ljava/lang/String;Ljava/lang/String;ILorg/apache/kafka/common/config/ConfigDef$Width;Ljava/lang/String;)Lorg/apache/kafka/common/config/ConfigDef;
 M org/apache/kafka/common/config/ConfigException.<init>:(Ljava/lang/String;)V
+M org/apache/kafka/common/config/ConfigException.<init>:(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/String;)V
 M org/apache/kafka/connect/connector/ConnectRecord.headers:()Lorg/apache/kafka/connect/header/Headers;
 M org/apache/kafka/connect/connector/ConnectRecord.kafkaPartition:()Ljava/lang/Integer;
 M org/apache/kafka/connect/connector/ConnectRecord.key:()Ljava/lang/Object;
