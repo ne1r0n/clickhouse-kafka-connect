@@ -47,6 +47,16 @@
 - [ ] **ADV-02**: The 16 unfixed review findings in `29-MILESTONE-CLOSE-RECORD.md` are fixed or dispositioned the same way.
 - [ ] **ADV-03**: The real release of `v1.7.0_gg5` (GitHub release of 2026-10-28) is recorded as evidence, closing the "no run exercised the publish path" caveat.
 
+### Buffered Offset Commit (upstream #777)
+
+- [ ] **BUF-01**: With `bufferCount > 0` and a topic-renaming SMT (e.g. `RegexRouter`), `ChunkFlusher.flush` keys flushed offsets by `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset() + 1`, so `preCommit` returns offsets for the assigned partitions and Connect no longer logs "Ignoring invalid task provided offset".
+- [ ] **BUF-02**: `AtLeastOnceBufferStrategy.close` removes buffered records of revoked partitions by their original topic and partition, and `ExactlyOnceBufferStrategy.put` keys `perPartitionBuffer` by the original topic and partition.
+- [ ] **BUF-03**: `Processing.doLogic` is checked for the same defect: the exactly-once state record is keyed by `record.getSinkRecord().topic()` (the transformed topic); the result (fix with pins, or a measured and documented non-issue) is recorded, since the operator runs with `exactlyOnce=false`.
+- [ ] **BUF-04**: Docker-free unit tests build a `SinkRecord` through `newRecord` with a different topic and pin that `preCommit` returns offsets under the original topic and partition, that `close()` drops buffered records by the original partition, and that the exactly-once buffer groups by it; the non-renamed case is unchanged.
+- [ ] **BUF-05**: A live pin on ClickHouse `latest` × client V2 (`bufferCount > 0` plus `RegexRouter`) shows committed offsets equal the end offsets; the non-buffered `DirectDeliveryStrategy` path and the `bufferCount`/`bufferFlushTime` contract are unchanged.
+- [ ] **BUF-06**: The stand at `~/dev/clickhouse_mvp/local_kc_test` is rerun on the fixed jar (300000 records, 3 partitions, `buf-20k` and `buf-100k`): `scripts/offsets.sh` shows committed = end rather than none, and after `docker kill kc_connect_new` duplicates stay within the at-least-once window (reporter's measurement: 392k and 400k duplicates before, 41.5k and 0 after).
+- [ ] **BUF-07**: FORK-DELTA gets a row and `fork-anchors.txt` an anchor for the fix, and the rollout note states the behaviour change (offsets now committed, so the group no longer rereads from `auto.offset.reset` after a restart or rebalance). Upstream PR #786 was closed unmerged, so the fix is fork-only until upstream resolves #777.
+
 ### Release
 
 - [ ] **RLS-01**: `VERSION=v1.7.0_gg6` changes in the same commit as its anchor row, with CHANGELOG (absorbing upstream `Unreleased`) and `docs/FORK-DELTA.md` updated.
@@ -85,12 +95,13 @@
 | CLT-01..CLT-09 | TBD | Pending |
 | CIH-01..CIH-05 | TBD | Pending |
 | ADV-01..ADV-03 | TBD | Pending |
+| BUF-01..BUF-07 | TBD | Pending |
 | RLS-01..RLS-06 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 32 total
+- v1 requirements: 39 total
 - Mapped to phases: 0 (filled by the roadmapper)
-- Unmapped: 32 ⚠️
+- Unmapped: 39 ⚠️
 
 ---
 *Requirements defined: 2026-10-28*
