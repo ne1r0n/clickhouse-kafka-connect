@@ -2,16 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
-status: planning
-current_phase: "33"
-current_phase_name: "Dependency Sweep & Protobuf Decision"
-last_updated: "2026-10-28T16:17:17.000Z"
+current_phase: 33
+current_phase_name: Dependency Sweep & Protobuf Decision
+status: executing
+stopped_at: Completed 33-02-PLAN.md
+last_updated: "2026-10-28T19:22:41.698Z"
 last_activity: 2026-10-28
+last_activity_desc: Phase 33 execution started
+state_head: 1bc7073849828ed5ff3c7756584de15a8c3d3339
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 2
   percent: 0
 ---
 
@@ -22,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 33 — Dependency Sweep & Protobuf Decision. A `pre-v1.7.0_gg6` rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads, one commit each, and PR #10 is declined with a Dependabot `ignore`.
+**Current focus:** Phase 33 — Dependency Sweep & Protobuf Decision
 
 ## Current Position
 
-Phase: 33 of 38 (Dependency Sweep & Protobuf Decision) — not started (ready to plan)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-28 — Roadmap created for v1.7.0_gg6-maintenance (Phases 33-38, 39/39 requirements mapped)
+Phase: 33 (Dependency Sweep & Protobuf Decision) — EXECUTING
+Plan: 3 of 3
+Status: Ready to execute
+Last activity: 2026-10-28 — Phase 33 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -207,6 +210,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 32 P01 | 20 min | 3 tasks | 5 files |
 | Phase 32 P02 | 8 min | 3 tasks | 2 files |
 | Phase 32 P03 | 9 min | 3 tasks | 3 files |
+| Phase 33 P01 | 27 min | 2 tasks | 2 files |
+| Phase 33 P02 | 15 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -265,6 +270,8 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 6. the release (38).
 
 The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands before the client bump, so it is releasable on 0.9.6, and the CLT-09 one-commit revert cannot touch it. The client bump is the last code change. The archive-compare consumer and every workflow fix sit in Phase 37, because the release phase cannot edit `.github/`. The gg6 allow-list, `VERSION`, CHANGELOG and the rollout note are written in Phase 38. Phase 35 records the BUF rollout item, and Phase 38 places it in the note.
+- [Phase 33]: 33-01: PR #19 (lz4-java 1.12.1, GHSA-48mj-8f7c-7qfm) absorbed from its fetched head 2a806038 as own --no-ff merge 6bf1c43b; local pre-v1.7.0_gg6 tag on origin tip 3a3a15a9, not pushed
+- [Phase 33]: 33-02: PRs #18 (okhttp 5.5.1), #20 (Gradle 9.8.2) and #16 (setup-java v6.1.0) absorbed unchanged from fetched heads, each as its own --no-ff merge; full suite green on the sweep tip 79f56a5e (1961 tests, 18 skipped)
 
 ### Pending Todos
 
@@ -321,8 +328,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28
-Stopped at: Roadmap created for milestone `v1.7.0_gg6-maintenance` (Phases 33-38, 39/39 requirements mapped); Phase 33 ready to plan
+Last session: 2026-10-28T19:22:41.677Z
+Stopped at: Completed 33-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
