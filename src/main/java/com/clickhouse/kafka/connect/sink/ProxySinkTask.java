@@ -40,6 +40,16 @@ public final class ProxySinkTask {
     private final ErrorReporter errorReporter;
 
     public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final String connectorName) {
+        this(clickHouseSinkConfig, errorReporter, connectorName, null);
+    }
+
+    ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final DBWriter dbWriter) {
+        this(clickHouseSinkConfig, errorReporter, null, dbWriter);
+    }
+
+    // Both three-argument constructors delegate here so no caller passes an untyped null third argument,
+    // which would be ambiguous between String and DBWriter.
+    ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final String connectorName, final DBWriter dbWriter) {
         this.clickHouseSinkConfig = clickHouseSinkConfig;
         this.errorReporter = errorReporter;
         LOGGER.info("Enable ExactlyOnce? {}", clickHouseSinkConfig.isExactlyOnce());
@@ -49,8 +59,8 @@ public final class ProxySinkTask {
             this.stateProvider = new InMemoryState();
         }
         this.statistics = new SinkTaskStatistics(connectorName, id);
-        this.dbWriter = new ClickHouseWriter(this.statistics);
-        processing = new Processing(stateProvider, dbWriter, errorReporter, clickHouseSinkConfig, statistics);
+        this.dbWriter = dbWriter != null ? dbWriter : new ClickHouseWriter(this.statistics);
+        processing = new Processing(stateProvider, this.dbWriter, errorReporter, clickHouseSinkConfig, statistics);
     }
 
     public void start() {

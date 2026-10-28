@@ -154,3 +154,12 @@ src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatf
 .github/workflows/nightly-integration-tests.yaml	persist-credentials: false	1	NIT-01
 .github/workflows/nightly-integration-tests.yaml	secrets.	0	NIT-01
 .github/workflows/nightly-integration-tests.yaml	--tests	0	NIT-01
+# Phase 34 (v1.7.0_gg6): ProxySinkTask keeps the connectorName constructor beside upstream's DBWriter seam through one four-argument core (TAL-02) and its ORCH-02 statistics plumbing; the two 0 rows pin that upstream's connector-less statistics call and two-argument constructor stay gone; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	new SinkTaskStatistics(connectorName, id)	1	ORCH-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	new SinkTaskStatistics(id)	0	ORCH-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	final String connectorName	2	ORCH-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	this(clickHouseSinkConfig, errorReporter, connectorName, null);	1	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	this(clickHouseSinkConfig, errorReporter, null, dbWriter);	1	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	dbWriter != null ? dbWriter : new ClickHouseWriter(this.statistics)	1	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	final ErrorReporter errorReporter) {	0	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	clickHouseSinkConfig.getAdditionalRetriableErrorCodes()	1	TAL-04
