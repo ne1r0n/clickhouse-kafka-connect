@@ -23,7 +23,7 @@
 | E-10 | SWP-02 | 33-02 | pass |
 | E-11 | SWP-01, SWP-02 | 33-02 | pass |
 | E-12 | SWP-03 | 33-03 | pass |
-| E-13 | SWP-03 | 33-03 | pending (plan 33-03) |
+| E-13 | SWP-03 | 33-03 | pass |
 | E-14 | SWP-01, SWP-02, SWP-03, SWP-04 | 33-03 | pending (plan 33-03) |
 
 ### E-01: Phase start, origin re-read, open Dependabot PRs, rollback tag and environment
@@ -521,5 +521,63 @@ fmt_worktree_removed: yes
 The red run failed on the planned assertion only: the unchanged file has no `ignore:` in the gradle entry. The other ten tests, including the nine fixtures and the real-file github-actions test, passed before the edit. The Edit tool trimmed the whitespace-only line 15 on its first write; it was restored byte-exact before the green run, so the diff is insertions only. The first green run was also executed before that restore and was repeated after it with the same result.
 
 Timestamp (UTC): 2026-10-28T19:24:59Z to 2026-10-28T19:25:44Z (guard commit)
+
+Verdict: pass
+
+### E-13: PR #10 and its failed run re-read, the cause, protobuf in the archive, and the decision recorded
+
+Backs: SWP-03, ROADMAP Phase 33 criterion 4 (PR #10 not merged, the decision recorded in FORK-DELTA with its measured cause and its FUT-03 re-open trigger).
+
+```sh
+curl -sS --fail https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/pulls/10
+curl -sS --fail https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/runs/39501799049
+curl -sS --fail https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/runs/39501799049/jobs
+gh auth status -h github.com
+gh run view 39501799049 -R ne1r0n/clickhouse-kafka-connect --log-failed > /tmp/gsd33/exec/run-39501799049-failed.log 2>&1
+git show 9bed6f7970670a55c66be8efda246889e1f95bd0:gradle/libs.versions.toml
+git show 9bed6f7970670a55c66be8efda246889e1f95bd0:.github/dependabot.yml
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive > /tmp/gsd33/exec/archive-pb.log 2>&1
+unzip -q -o build/confluent/clickhouse-kafka-connect-v1.7.0_gg5.zip -d /tmp/gsd33/arch-pb
+unzip -l /tmp/gsd33/arch-pb/clickhouse-kafka-connect-v1.7.0_gg5/lib/clickhouse-kafka-connect-v1.7.0_gg5-confluent.jar > /tmp/gsd33/exec/arch-pb-listing.txt
+grep -c 'com/google/protobuf/' /tmp/gsd33/exec/arch-pb-listing.txt
+python3 -I /tmp/gsd33/scripts/edit_forkdelta.py docs/FORK-DELTA.md
+git commit -F /tmp/gsd33/exec/msg-33-03-t2.txt
+```
+
+```text
+pr10_state: open
+pr10_merged_at: null
+pr10_closed_at: null
+pr10_head: 011bc42bfe8d8230c430ec8001d481885daec5fa
+pr10_head_ref: dependabot/gradle/com.google.protobuf-protobuf-java-4.36.2
+pr10_base_sha: 71ac96600829dd3503447b1ece42f6a074dcb446
+run_conclusion: failure
+run_head_sha: 011bc42bfe8d8230c430ec8001d481885daec5fa
+run_head_equals_pr10_head: yes
+run_created_at: 2026-10-20T21:37:01Z
+run_failed_steps: job "ClickHouse latest Client version V2 tests": Run tests (failure), Generate coverage summary (failure)
+cause_source: gh run view --log-failed, re-read in Phase 33
+verifyerror_lines: 29
+protobuf_ingest_failed_cases: 27
+run_total_failures: 29 (1281 tests completed, 29 failed, 18 skipped); the two others are ClickHouseSinkTaskWithSchemaTest testInt32ToInt64ConversionWithProtobuf and testWritingProtoMessageWithRowBinary
+verifyerror_excerpt: java.lang.VerifyError: Bad type on operand stack; Location io/confluent/kafka/schemaregistry/protobuf/ProtobufSchema.toEnum(Lcom/google/protobuf/DescriptorProtos$EnumDescriptorProto;)...; Type 'com/google/protobuf/DescriptorProtos$EnumValueOptions' is not assignable to 'com/google/protobuf/GeneratedMessageV3$ExtendableMessage'
+upstream_main: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_libprotobuf: 3.25.9
+upstream_kafka_platform_protobuf: 7.9.1
+upstream_dependabot_ignore_count: 0
+archive_exit: 0
+archive_confluent_jars: 1
+archive_listing_entries: 7801
+archive_protobuf_entries: 0
+forkdelta_commit: 093bab9940f36403d1c47383463d110f07e57932
+forkdelta_rows: Build and dependencies protobuf row (after the version-catalog pins row); open item 12; Dependabot row clause and Pinned-by cell
+pr10_disposition: closing-at-publication
+pr10_user_words: none received
+swp03_wording_note: ROADMAP criterion 4 governs (PR #10 recorded as closing at publication); REQUIREMENTS.md SWP-03 "is closed with a Dependabot ignore" is slightly stricter; flagged in 33-03-SUMMARY.md for the user to align; SWP-03 text not edited
+```
+
+The log was read to key lines only and not pasted. `archive_listing_entries` is the file count on the last line of `unzip -l` (7801), equal to the 7801 inner entries `verifyConfluentArchive` reports; the listing was captured to a file first and counted, with `unzip` exiting 0, so a failed `unzip` cannot read as 0. `createConfluentArchive` reused its up-to-date outputs from the PR #20 run (inputs unchanged since), and `verifyConfluentArchive` ran as its finalizer. No pull request was touched: PR #10 is read only, nothing was closed, labelled or commented, and no `@dependabot` command was posted.
+
+Timestamp (UTC): 2026-10-28T19:26:03Z to 2026-10-28T19:27:24Z (FORK-DELTA commit)
 
 Verdict: pass
