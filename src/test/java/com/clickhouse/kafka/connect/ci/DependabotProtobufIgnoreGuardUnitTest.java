@@ -63,6 +63,8 @@ class DependabotProtobufIgnoreGuardUnitTest {
     private static final Pattern GRADLE_ENTRY = ecosystemEntry(GRADLE);
     private static final Pattern GITHUB_ACTIONS_ENTRY = ecosystemEntry(GITHUB_ACTIONS);
     private static final Pattern KEY_VALUE = Pattern.compile("^([\\w-]+):\\s*(.*)$");
+    // The bare `ignore:` key, tolerating indentation and a trailing " # comment" like ecosystemEntry.
+    private static final Pattern IGNORE_KEY_LINE = Pattern.compile("^\\s*ignore:(?:\\s+#.*)?\\s*$");
 
     private static final String FIXTURE_FILE = "dependabot-fixture.yml";
     private static final String FLOW_MAJOR = "    update-types: [\"" + SEMVER_MAJOR + "\"]";
@@ -138,7 +140,7 @@ class DependabotProtobufIgnoreGuardUnitTest {
     private static Optional<List<Map<String, List<String>>>> ignoreItems(List<String> block) {
         int key = -1;
         for (int i = 0; i < block.size() && key < 0; i++) {
-            if (block.get(i).strip().equals(IGNORE_KEY)) {
+            if (IGNORE_KEY_LINE.matcher(block.get(i)).matches()) {
                 key = i;
             }
         }
@@ -242,7 +244,7 @@ class DependabotProtobufIgnoreGuardUnitTest {
         if (block.isEmpty()) {
             return Optional.of(FILE + " " + NO_GITHUB_ACTIONS_ENTRY);
         }
-        if (block.get().stream().anyMatch(line -> line.strip().equals(IGNORE_KEY))) {
+        if (block.get().stream().anyMatch(line -> IGNORE_KEY_LINE.matcher(line).matches())) {
             return Optional.of(
                     FILE + ": the github-actions entry carries an `ignore:` list; the protobuf decision"
                             + " belongs to the " + GRADLE_ENTRY_BELONGS + " only");
@@ -455,5 +457,26 @@ class DependabotProtobufIgnoreGuardUnitTest {
         canonicalIgnore().forEach(line -> commented.add("# " + line));
         List<String> lines = fixtureLines(commented, List.of());
         assertAll(rejects("commented-out ignore", gradleProtobufIgnoreProblem(lines), NO_IGNORE));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: an ignore key with a trailing comment is read as the ignore list by both rules"
+                    + " (SWP-03)")
+    void fixtureIgnoreKeyWithTrailingCommentIsRecognised() throws IOException {
+        List<String> commentedKey = canonicalIgnore();
+        commentedKey.set(0, IGNORE_KEY + "   # FORK: see docs/FORK-DELTA.md");
+        List<String> gradleCommented = fixtureLines(commentedKey, List.of());
+        List<String> actionsCommented = fixtureLines(List.of(), commentedKey);
+        assertAll(
+                accepts("gradle `ignore:` with trailing comment", gradleProtobufIgnoreProblem(gradleCommented)),
+                rejects(
+                        "github-actions `ignore:` with trailing comment",
+                        githubActionsIgnoreProblem(actionsCommented),
+                        GRADLE_ENTRY_BELONGS),
+                rejects(
+                        "gradle entry lacking the list when only github-actions has `ignore:  # note`",
+                        gradleProtobufIgnoreProblem(actionsCommented),
+                        NO_IGNORE));
     }
 }
