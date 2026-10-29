@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
-current_phase: 34
-current_phase_name: Upstream Tail Merge
-status: verifying
-stopped_at: Completed 34-03-PLAN.md
-last_updated: "2026-10-29T07:41:12.826Z"
-last_activity: 2026-10-28
-last_activity_desc: Phase 34 execution started
-state_head: dced2c0fb9c2289d6f58975dfa505cc97279020f
+current_phase: 35
+current_phase_name: Buffered Offset Commit Under Topic-Renaming SMTs
+status: planning
+stopped_at: Phase 34 complete, ready to plan Phase 35
+last_updated: "2026-10-29T08:14:52.945Z"
+last_activity: 2026-10-29
+last_activity_desc: Phase 34 complete, transitioned to Phase 35
+state_head: 42fc90a86869f8791f7c7f69e3510d9eb5a7ed4b
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
   completed_plans: 6
-  percent: 17
+  percent: 33
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg
 
 ## Current Position
 
-Phase: 34 (Upstream Tail Merge) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-10-28 — Phase 34 execution started
+Phase: 35 — Buffered Offset Commit Under Topic-Renaming SMTs
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-29 — Phase 34 complete, transitioned to Phase 35
 
-Progress: [██░░░░░░░░] 17%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [██░░░░░░░░] 17%
 | 31 | 6 | - | - |
 | 32 | 7 | - | - |
 | 33 | 3 | - | - |
+| 34 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -341,7 +342,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-29T07:41:12.791Z
-Stopped at: Completed 34-03-PLAN.md
+Stopped at: Phase 34 complete, ready to plan Phase 35
 Resume file: None
 
 ## Operator Next Steps

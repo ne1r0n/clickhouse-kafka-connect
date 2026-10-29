@@ -127,7 +127,7 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker stopped. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
 - [x] **Phase 33: Dependency Sweep & Protobuf Decision** - A rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads on the scratch branch, one commit and one gate each. PR #10 (protobuf-java 4.x) is declined with a Dependabot `ignore` and a FORK-DELTA record (completed 2026-10-28)
-- [ ] **Phase 34: Upstream Tail Merge** - Upstream's untagged tail is merged as one mechanical commit while the client is still 0.9.6. `ProxySinkTask` keeps both constructors without an ambiguous `null`, every `handleException` caller uses the 5-argument form, and `additionalRetriableErrorCodes` is pinned with a no-op default
+- [x] **Phase 34: Upstream Tail Merge** - Upstream's untagged tail is merged as one mechanical commit while the client is still 0.9.6. `ProxySinkTask` keeps both constructors without an ambiguous `null`, every `handleException` caller uses the 5-argument form, and `additionalRetriableErrorCodes` is pinned with a no-op default (completed 2026-10-29)
 - [ ] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free, live and on the reporter's stand, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump
 - [ ] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6
 - [ ] **Phase 37: CI Hardening & Advisory Debt** - `increment-version.yml` stops writing `vnull`, through a script with a test. The release workflows compare the archive against a `VERSION`-keyed allow-list. Every Phase 25–31 review advisory is fixed or dispositioned, and the real `v1.7.0_gg5` release is on the record
@@ -196,7 +196,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2 with `SELECT
      - A `DataException` is never reclassified as retriable.
   4. *[Docker-free, live]* `fork-anchors.txt` has new rows for the `ProxySinkTask` statistics and `connectorName` plumbing (ORCH-02) and for the `DEFAULT_RETRIABLE_ERROR_CODES` lookup. The anchors gate passes on the phase tip (TAL-05). Two full `--rerun` suite runs on that tip are green on `latest` × V2 with the 18 named skips. That tip is the baseline for Phases 35–37.
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -481,7 +481,7 @@ The order is the user's (2026-10-28). Phases 33 and 34 could share a phase under
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-28 |
-| 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 3/3 | In Progress | - |
+| 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-29 |
 | 35. Buffered Offset Commit Under Topic-Renaming SMTs | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 37. CI Hardening & Advisory Debt | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
