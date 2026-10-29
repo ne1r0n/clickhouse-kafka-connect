@@ -16,7 +16,7 @@
 | E-02 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
 | E-03 | BUF-01, BUF-02, BUF-07 | 35-01 | pass |
 | E-04 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
-| E-05 | BUF-02, BUF-05 | 35-02 | pending (plan 35-02) |
+| E-05 | BUF-02, BUF-05 | 35-02 | pass |
 | E-06 | BUF-03 | 35-02 | pending (plan 35-02) |
 | E-07 | BUF-03 | 35-02 | pending (plan 35-02) |
 | E-08 | BUF-07 | 35-03 | pending (plan 35-03) |
@@ -247,5 +247,85 @@ main_tree_src_unchanged: yes
 Each mutation restored one edited main file to its content at the red-pins commit (no text replacement) and put the fix back before the next one, so the three runs were independent. Restoring `ChunkFlusher.java` turned the six offset pins red (the preCommit pins and the close pin, both strategies) and the three `ChunkFlusher` anchor rows; restoring `AtLeastOnceBufferStrategy.java` turned only the at-least-once close pin and its positive and zero anchor rows red; restoring `ExactlyOnceBufferStrategy.java` turned only the exactly-once grouping pin and its positive and zero anchor rows red. In every run the failing set equalled the expected set, which also shows the five controls (the not-renamed case, the direct strategy and table routing under the renamed topic) stay green under each mutation. No red set differed from the prediction, so no follow-up test commit and no second proof run was needed. The mutation worktree is removed and the main tree's `src` equals the fix commit's.
 
 Timestamp (UTC): 2026-10-29T09:33:00Z
+
+Verdict: pass
+
+### E-05: Live pin: red on the unchanged tree in a worktree, green on the fixed tip, mutation proof and the harness decision
+
+Backs: BUF-02, BUF-05, ROADMAP Phase 35 criterion 3 (a ClickHouse-backed pin shows the committed offsets equal to the end offsets under a renaming SMT, the direct path and the buffer contract are unchanged, and the harness choice is recorded with reasons).
+
+```sh
+grep -l integrationTest .github/workflows/*.yaml
+sed -n 474,492p src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+git worktree add --detach /tmp/gsd35/red <red_pins_commit>
+git -C /tmp/gsd35/red diff --quiet <local_head> HEAD -- src/main
+git worktree add --detach /tmp/gsd35/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/fmt --console=plain spotlessApply > /tmp/gsd35/exec/fmt-live.log 2>&1
+cmp /tmp/gsd35/red/src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java /tmp/gsd35/fmt/src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java
+git worktree remove --force /tmp/gsd35/fmt
+rm -rf /tmp/gsd35/red/build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/red --console=plain test --rerun --tests '*BufferedOffsetCommitLiveTest' > /tmp/gsd35/exec/live-red.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py failed /tmp/gsd35/red/build/test-results/test --expect <the 2 red names>
+cp /tmp/gsd35/red/src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java
+cmp /tmp/gsd35/red/src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java
+git worktree remove --force /tmp/gsd35/red
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*BufferedOffsetCommitLiveTest' --tests '*ClickHouseSinkTaskBufferTest' --tests 'com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskTest.preCommit*' --tests 'com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskTest.closeRemoves*' --tests 'com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskTest.onPartitionsRevoked*' > /tmp/gsd35/exec/live-green.log 2>&1
+git diff --quiet <local_head> HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskBufferTest.java src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskTest.java
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+git worktree add --detach /tmp/gsd35/mut <fix_commit>
+git -C /tmp/gsd35/mut checkout <red_pins_commit> -- <AtLeastOnceBufferStrategy.java, then ChunkFlusher.java; restored from <fix_commit> after each run>
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/mut --console=plain test --rerun --tests '*BufferedOffsetCommitLiveTest' > /tmp/gsd35/exec/live-mut-<a|b>.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py failed /tmp/gsd35/mut/build/test-results/test --expect <the expected names>
+git worktree remove --force /tmp/gsd35/mut
+git worktree prune
+git worktree list
+git commit -F /tmp/gsd35/exec/msg-live-pin.txt
+git diff --name-only <live_pin_commit>^ <live_pin_commit>
+git diff --quiet <fix_commit> <live_pin_commit> -- src/main src/testFixtures
+```
+
+```text
+integration_test_workflows: nightly-integration-tests.yaml; integrationTests.yaml
+confluent_platform_offset_helper: ConfluentPlatform.getOffset reads the endpoint topics/<topic>/partitions/<n>/offsets and returns obj.getLong("end_offset"), a topic's end offset and not a group's committed offset
+red_worktree_main_unchanged: yes
+spotless_worktree_cmp: identical
+live_red_exit: 1
+live_red_failed: BufferedOffsetCommitLiveTest#BUF-02: buffered sink under a topic-renaming SMT drops the revoked partition and commits only the partitions it still owns; BufferedOffsetCommitLiveTest#BUF-05: buffered sink under a topic-renaming SMT commits the end offset of every assigned original partition and inserts every row
+live_red_class_xml: OK junit /tmp/gsd35/red/build/test-results/test class *BufferedOffsetCommitLiveTest: tests=4 failures=2 errors=0 skipped=0 files=1
+live_red_prediction_met: yes
+live_class_bytes_equal_red_worktree: yes
+live_green_exit: 0
+live_class_xml: OK junit build/test-results/test class *BufferedOffsetCommitLiveTest: tests=4 failures=0 errors=0 skipped=0 files=1
+buffer_class_xml: OK junit build/test-results/test class *ClickHouseSinkTaskBufferTest: tests=35 failures=0 errors=0 skipped=0 files=1
+direct_offset_tests_xml: OK junit build/test-results/test class *ClickHouseSinkTaskTest: tests=5 failures=0 errors=0 skipped=0 files=1
+existing_tests_unedited: yes
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+digest_same_as_baseline: yes
+jvm_crash: none
+live_mutation_a_file: src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java
+live_mutation_a_failed: BufferedOffsetCommitLiveTest#BUF-02: buffered sink under a topic-renaming SMT drops the revoked partition and commits only the partitions it still owns
+live_mutation_a_prediction_met: yes
+live_mutation_b_file: src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java
+live_mutation_b_failed: BufferedOffsetCommitLiveTest#BUF-02: buffered sink under a topic-renaming SMT drops the revoked partition and commits only the partitions it still owns; BufferedOffsetCommitLiveTest#BUF-05: buffered sink under a topic-renaming SMT commits the end offset of every assigned original partition and inserts every row
+live_mutation_b_prediction_met: yes
+worktrees_removed: yes
+live_pin_harness: test suite, ClickHouseSinkTask against ClickHouse latest with client V2
+live_pin_observes: the offsets preCommit returns, which Connect commits exactly after dropping keys outside its assignment; the pin applies that drop through RenamedTopicRecords.acceptedByConnect, asserts it removes nothing, and asserts each value equals the end offset of its original partition
+broker_level_class: not added
+broker_level_reasons: no phase gate (testUnit, the full test --rerun, the anchors invariant) runs integrationTest, which runs only in the workflows named in integration_test_workflows, so a class there could not carry the guarantee through the suite gates of Phases 36 and 38; a broker-level class needs a connector archive built from the unfixed tree for its red run, a class start-up of about 95 seconds (RESEARCH, measured at 29.5 minutes for the whole integration task) and a new ConfluentPlatform helper, because the existing offset helper reads a topic's end offset (confluent_platform_offset_helper), not a group's committed offset; it would observe the same keys and values the test-suite pin observes, plus Connect's own filter, which the pin applies from the documented contract
+live_pin_commit: 2e99eadd98a370e5e9d1b17e3f0297a8c628f987
+live_pin_commit_files: docs/FORK-DELTA.md; src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java
+main_and_fixtures_unchanged: yes
+hygiene_scan: clean
+```
+
+On the unchanged tree both failing tests are assertion failures at the first offset assertion, not errors: the returned keys are the renamed topic (`<table>-0`, `<table>-1`, `<table>-2` and `<table>-0`, `<table>-2`) where the pin expects `<table>-dev-<p>`. The two controls (the not-renamed buffered case and the non-buffered direct case) pass on both trees. Restoring `AtLeastOnceBufferStrategy.java` turned only the revocation test red; restoring `ChunkFlusher.java` turned the commit and the revocation test red, as predicted, and each file was put back from the fix commit before the next run.
+
+A broker-level observation of a group's committed offsets, for example `kafka-consumer-groups --describe --group <group>`, remains a manual operator check that no gate depends on.
+
+Timestamp (UTC): 2026-10-29T09:34:00Z to 2026-10-29T09:40:00Z (approximate start; the plan did not capture it)
 
 Verdict: pass
