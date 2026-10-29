@@ -13,7 +13,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | BUF-01, BUF-04 | 35-01 | pass |
-| E-02 | BUF-01, BUF-02, BUF-04 | 35-01 | pending (plan 35-01) |
+| E-02 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
 | E-03 | BUF-01, BUF-02, BUF-07 | 35-01 | pending (plan 35-01) |
 | E-04 | BUF-01, BUF-02, BUF-04 | 35-01 | pending (plan 35-01) |
 | E-05 | BUF-02, BUF-05 | 35-02 | pending (plan 35-02) |
@@ -92,5 +92,43 @@ baseline_buffer_class_tests: 35
 `git ls-remote --exit-code` exited 2 for both the tag and the branch (absent on origin). The pull request state was `{"mergedAt":null,"state":"CLOSED"}`, recorded as `CLOSED unmerged`. The testUnit baseline is 1441 tests over 68 XML files; the full suite is 2028 tests over 112 XML files. The dirty tree held only `.planning/STATE.md`, `.planning/config.json` and `.planning/state.json`. No `javacore.*`, `core.*.dmp`, `Snap.*.trc` or `jitdump.*` file appeared. The `ClickHouseSinkTaskBufferTest` class ran 35 tests green; plan 35-02 must find it unchanged.
 
 Timestamp (UTC): 2026-10-29T09:21:41Z to 2026-10-29T09:24:29Z
+
+Verdict: pass
+
+### E-02: Red pins on the unchanged tree: BufferedOffsetCommitUnitTest fails exactly the BUF set
+
+Backs: BUF-01, BUF-02, BUF-04, ROADMAP Phase 35 criterion 1 (Docker-free unit tests built through newRecord fail on the unchanged code and their controls pass).
+
+```sh
+git diff --quiet 6ac0cdc0acfc22601dd19acdc6e564fb5a96e61e HEAD -- src/main
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BufferedOffsetCommitUnitTest' > /tmp/gsd35/exec/red-pins.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py junit build/test-results/testUnit --class BufferedOffsetCommitUnitTest
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py failed build/test-results/testUnit --expect <the 8 red names>
+git worktree add --detach /tmp/gsd35/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/fmt --console=plain spotlessApply > /tmp/gsd35/exec/fmt-1.log 2>&1
+cmp <each new Java file> /tmp/gsd35/fmt/<same path>
+git worktree remove --force /tmp/gsd35/fmt
+git commit -F /tmp/gsd35/exec/msg-red-pins.txt
+git diff --name-only <red_pins_commit>^ <red_pins_commit>
+git show <red_pins_commit>:<main file> | grep -cF <transformed-topic accessor call>
+```
+
+```text
+red_run_exit: 1
+red_failed: BufferedOffsetCommitUnitTest#BUF-01: preCommit keys the flushed offsets by the original topic and partition at the original offset plus one [AT_LEAST_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: preCommit keys the flushed offsets by the original topic and partition at the original offset plus one [EXACTLY_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: preCommit follows the original partition and offset when the SMT changes them as well [AT_LEAST_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: preCommit follows the original partition and offset when the SMT changes them as well [EXACTLY_ONCE]; BufferedOffsetCommitUnitTest#BUF-02: at-least-once close drops the buffered records of the revoked original partition and keeps the others; BufferedOffsetCommitUnitTest#BUF-02: exactly-once buffer groups by the original partition so a revoked partition leaves no stale records in a later chunk; BufferedOffsetCommitUnitTest#BUF-01: close forgets the flushed offsets of the revoked original partition only [AT_LEAST_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: close forgets the flushed offsets of the revoked original partition only [EXACTLY_ONCE]
+red_class_xml: OK junit build/test-results/testUnit class *BufferedOffsetCommitUnitTest: tests=13 failures=8 errors=0 skipped=0 files=1
+red_prediction_met: yes
+spotless_worktree_cmp: identical
+spotless_worktree_cmp_fixtures: identical
+red_pins_commit: e8573752bad7040e7de17e83ca35681910e0f685
+red_pins_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitUnitTest.java; src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/RecordingDBWriter.java; src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/RenamedTopicRecords.java
+main_unchanged_at_red_commit: yes
+unfixed_zero_row_counts: ChunkFlusher.java=1; AtLeastOnceBufferStrategy.java=1; ExactlyOnceBufferStrategy.java=1
+```
+
+The 8 failures are assertion failures, not errors: the preCommit pins report `expected {buf35-dev-1=110, buf35-dev-0=50} but was {buf35-0=50, buf35-1=110}` (the renamed topic as the key), the at-least-once pin writes the revoked partition's records, the exactly-once pin flushes stale records of the revoked partition in a later chunk, and the close pin keeps the renamed-topic keys after the revocation. The 5 controls (records that were not renamed in both strategies, the direct strategy, and table routing under the renamed topic in both strategies) pass. The red-pins commit is red by design and local. The three `unfixed_zero_row_counts` values are the baselines of the three zero anchor rows the fix commit adds: each is 1 here, so those rows fail on the unfixed code.
+
+Timestamp (UTC): 2026-10-29T09:26:17Z
 
 Verdict: pass
