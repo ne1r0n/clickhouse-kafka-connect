@@ -15,7 +15,7 @@
 | E-01 | BUF-01, BUF-04 | 35-01 | pass |
 | E-02 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
 | E-03 | BUF-01, BUF-02, BUF-07 | 35-01 | pass |
-| E-04 | BUF-01, BUF-02, BUF-04 | 35-01 | pending (plan 35-01) |
+| E-04 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
 | E-05 | BUF-02, BUF-05 | 35-02 | pending (plan 35-02) |
 | E-06 | BUF-03 | 35-02 | pending (plan 35-02) |
 | E-07 | BUF-03 | 35-02 | pending (plan 35-02) |
@@ -203,5 +203,49 @@ tail_gate_line: invariants: provenance_paths=27 anchor_commits=33 anchor_rows=14
 The three accessors are the lines `public java.lang.String originalTopic();`, `public java.lang.Integer originalKafkaPartition();` and `public long originalKafkaOffset();` that `javap` prints for `SinkRecord` in the worker's `connect-api-7.9.7-ccs.jar`. The worker jar hashes equal the `# reference worker:` header lines of the blessed file and the 4.1.1 and 4.4.0 jar hashes equal their header lines. The BLD-16 red run (the edit in the tree, the list not yet re-blessed) failed exactly that one test out of 1454. The fix commit holds six paths by design: BLD-16 goes red the instant the main edit lands without the re-bless, and an anchor may not precede or lag the code it pins. The exactly-once state key, `Processing.java`, `KeeperStateProvider.java` and table routing are untouched; the main diff changes no import line and adds no object creation.
 
 Timestamp (UTC): 2026-10-29T09:30:24Z
+
+Verdict: pass
+
+### E-04: Mutation proof: each edited file restored from the red commit turns exactly its pins and anchor rows red
+
+Backs: BUF-01, BUF-02, BUF-04, ROADMAP Phase 35 criterion 1 (every pin and anchor row of the fix can fail, and each of the three edits is individually guarded).
+
+```sh
+git worktree add --detach /tmp/gsd35/mut <fix_commit>
+git -C /tmp/gsd35/mut checkout <red_pins_commit> -- <one edited main file>
+rm -rf /tmp/gsd35/mut/build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/mut --console=plain testUnit --rerun --tests '*BufferedOffsetCommitUnitTest' > /tmp/gsd35/exec/mut-<a|b|c>.log 2>&1
+python3 -I <abs path>/35-evidence-check.py failed /tmp/gsd35/mut/build/test-results/testUnit --expect <the expected names>
+cd /tmp/gsd35/mut && python3 -I <abs path>/35-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git -C /tmp/gsd35/mut checkout <fix_commit> -- <the same file>
+git worktree remove --force /tmp/gsd35/mut
+git worktree prune
+git worktree list
+git diff --quiet <fix_commit> HEAD -- src
+```
+
+```text
+mutation_a_file: src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java
+mutation_a_exit: 1
+mutation_a_failed: BufferedOffsetCommitUnitTest#BUF-01: preCommit keys the flushed offsets by the original topic and partition at the original offset plus one [AT_LEAST_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: preCommit keys the flushed offsets by the original topic and partition at the original offset plus one [EXACTLY_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: preCommit follows the original partition and offset when the SMT changes them as well [AT_LEAST_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: preCommit follows the original partition and offset when the SMT changes them as well [EXACTLY_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: close forgets the flushed offsets of the revoked original partition only [AT_LEAST_ONCE]; BufferedOffsetCommitUnitTest#BUF-01: close forgets the flushed offsets of the revoked original partition only [EXACTLY_ONCE]
+mutation_a_prediction_met: yes
+mutation_a_anchor_bad: 3
+mutation_b_file: src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java
+mutation_b_exit: 1
+mutation_b_failed: BufferedOffsetCommitUnitTest#BUF-02: at-least-once close drops the buffered records of the revoked original partition and keeps the others
+mutation_b_prediction_met: yes
+mutation_b_anchor_bad: 2
+mutation_c_file: src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java
+mutation_c_exit: 1
+mutation_c_failed: BufferedOffsetCommitUnitTest#BUF-02: exactly-once buffer groups by the original partition so a revoked partition leaves no stale records in a later chunk
+mutation_c_prediction_met: yes
+mutation_c_anchor_bad: 2
+worktrees_removed: yes
+main_tree_src_unchanged: yes
+```
+
+Each mutation restored one edited main file to its content at the red-pins commit (no text replacement) and put the fix back before the next one, so the three runs were independent. Restoring `ChunkFlusher.java` turned the six offset pins red (the preCommit pins and the close pin, both strategies) and the three `ChunkFlusher` anchor rows; restoring `AtLeastOnceBufferStrategy.java` turned only the at-least-once close pin and its positive and zero anchor rows red; restoring `ExactlyOnceBufferStrategy.java` turned only the exactly-once grouping pin and its positive and zero anchor rows red. In every run the failing set equalled the expected set, which also shows the five controls (the not-renamed case, the direct strategy and table routing under the renamed topic) stay green under each mutation. No red set differed from the prediction, so no follow-up test commit and no second proof run was needed. The mutation worktree is removed and the main tree's `src` equals the fix commit's.
+
+Timestamp (UTC): 2026-10-29T09:33:00Z
 
 Verdict: pass
