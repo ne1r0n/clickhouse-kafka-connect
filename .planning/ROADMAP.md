@@ -293,7 +293,20 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - On go, two full `--rerun` suite runs are green on 0.11.0.
      - On no-go, the catalog commit is reverted, the record lists which fixes and pins were kept, and the suite is green on 0.9.6.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 36-01-PLAN.md — Wave 1: pre-flight and re-measured baselines, the `ServerExceptions` factory commit for the 10 three-argument `ServerException` sites (proven on a bare 0.11.0 worktree), the stub server and the error-shape, timeout-prefix, endpoint-and-options and insert-wire pins and the live `Client011BehaviourPinLiveTest` green on 0.9.6, the exact red set on a bare 0.11.0 worktree, and the RowBinary golden blessed on 0.9.6 with a mutation proof (CLT-01, CLT-03, CLT-04, CLT-06)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 36-02-PLAN.md — Wave 2: the `createClientV2` fix commit on 0.9.6 (endpoint of `protocol://host:port`, `ignore_unknown_config_key` before the property loop, 3 anchor rows, one FORK-DELTA row), the one revertable catalog commit (the marked line, `ClientCatalogPinUnitTest` seen red first, a mid-file anchor row) with the pins, BLD-16 and the golden green on 0.11.0, then the non-UTC date pins, the V1-mode run and the Connect-worker `integrationTest` on 0.11.0 (CLT-02, CLT-03, CLT-04, CLT-07)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 36-03-PLAN.md — Wave 3: the byte comparison of the 0.9.6 golden on 0.11.0 under four zones with the replay statement, the before and after Confluent archive listings with the `zstd-jni` and guava findings, and the D-17 rewording in three places plus the client-override wording in one documentation commit (CLT-05, CLT-06, CLT-08, CLT-02)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 36-04-PLAN.md — Wave 4: the 14 labelled rollout items for Phase 38 with the `custom_` probe and the CLT-09 revert rehearsed on the final history, the phase gate and go or no-go decision (cache-busted `testUnit`, two `--rerun` full suites on `latest` with client V2, the anchors mirror, the tail and cumulative gates), and the user-gated CLT-07 nightly handoff, with the plan ending before the user's push and dispatch (CLT-09, CLT-07)
 
 **Research flag**: Settle these before planning:
 - **503 and `ConnectException`.** This classification is derived from source and was never exercised against a real proxy. Decide whether a fault-injection pin is feasible, or label the rollout wording "read from the code".
