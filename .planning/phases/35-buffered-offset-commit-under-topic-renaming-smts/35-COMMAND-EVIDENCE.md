@@ -14,7 +14,7 @@
 |-------|-------------|------|---------|
 | E-01 | BUF-01, BUF-04 | 35-01 | pass |
 | E-02 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
-| E-03 | BUF-01, BUF-02, BUF-07 | 35-01 | pending (plan 35-01) |
+| E-03 | BUF-01, BUF-02, BUF-07 | 35-01 | pass |
 | E-04 | BUF-01, BUF-02, BUF-04 | 35-01 | pending (plan 35-01) |
 | E-05 | BUF-02, BUF-05 | 35-02 | pending (plan 35-02) |
 | E-06 | BUF-03 | 35-02 | pending (plan 35-02) |
@@ -130,5 +130,78 @@ unfixed_zero_row_counts: ChunkFlusher.java=1; AtLeastOnceBufferStrategy.java=1; 
 The 8 failures are assertion failures, not errors: the preCommit pins report `expected {buf35-dev-1=110, buf35-dev-0=50} but was {buf35-0=50, buf35-1=110}` (the renamed topic as the key), the at-least-once pin writes the revoked partition's records, the exactly-once pin flushes stale records of the revoked partition in a later chunk, and the close pin keeps the renamed-topic keys after the revocation. The 5 controls (records that were not renamed in both strategies, the direct strategy, and table routing under the renamed topic in both strategies) pass. The red-pins commit is red by design and local. The three `unfixed_zero_row_counts` values are the baselines of the three zero anchor rows the fix commit adds: each is 1 here, so those rows fail on the unfixed code.
 
 Timestamp (UTC): 2026-10-29T09:26:17Z
+
+Verdict: pass
+
+### E-03: The fix commit: three offset sites, the BLD-16 re-bless, 7 anchor rows, the FORK-DELTA row, pins green
+
+Backs: BUF-01, BUF-02, BUF-07, ROADMAP Phase 35 criterion 1 (the pins pass after the fix, the three accessors are blessed and shown present in the production worker's jar) and the first half of criterion 5 (the fix commit carries the FORK-DELTA row and the anchors).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava > /tmp/gsd35/exec/compilejava-fix.log 2>&1
+git diff --numstat -- src/main
+git diff -U0 -- src/main | grep -cE '^[-+]import '
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BufferedOffsetCommitUnitTest' > /tmp/gsd35/exec/pins-green.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd35/exec/testunit-bld16-red.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py failed build/test-results/testUnit --expect 'ConnectApiReferencesUnitTest#BLD-16: every org.apache.kafka class and member the compiled connector references is in the blessed worker-API list'
+docker image inspect --format '{{.Id}}' confluentinc/cp-kafka-connect-base:7.9.7
+docker create confluentinc/cp-kafka-connect-base:7.9.7
+docker cp <container>:/usr/share/java/kafka/connect-api-7.9.7-ccs.jar /tmp/gsd35/worker-jars/
+docker cp <container>:/usr/share/java/kafka/kafka-clients-7.9.7-ccs.jar /tmp/gsd35/worker-jars/
+docker rm <container>
+shasum -a 256 /tmp/gsd35/worker-jars/*.jar <the 4.1.1 and 4.4.0 connect-api and kafka-clients jars of the Gradle cache>
+javap -cp /tmp/gsd35/worker-jars/connect-api-7.9.7-ccs.jar org.apache.kafka.connect.sink.SinkRecord
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava > /tmp/gsd35/exec/compilejava-fresh.log 2>&1
+python3 -I .planning/scripts/connect-api-refs.py --classes build/classes/java/main --compile-classpath <4.4.0 jars> --reference worker=<worker jars> --reference 4.1.1=<4.1.1 jars> --reference 4.4.0=<4.4.0 jars> --image-note "image: confluentinc/cp-kafka-connect-base@sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055 (tag 7.9.7; linux/amd64 and linux/arm64 jars byte-identical; Temurin 17.0.19)" --write src/test/resources/connect-api-references.txt > /tmp/gsd35/exec/rebless.log 2>&1
+git diff -U0 -- src/test/resources/connect-api-references.txt
+grep -cF -e <each of the 7 anchor patterns> <its file>
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd35/exec/testunit-green.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-hygiene-check.py /tmp/gsd35/exec/added-lines-fix.txt
+git commit -F /tmp/gsd35/exec/msg-fix.txt
+git diff --name-only <fix_commit>^ <fix_commit>
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 <fix_commit> > /tmp/gsd35/exec/tail-gate-fix.log 2>&1
+```
+
+```text
+compilejava_exit: 0
+diff_numstat: AtLeastOnceBufferStrategy.java:1/1; ChunkFlusher.java:3/2; ExactlyOnceBufferStrategy.java:1/1
+import_lines_changed: 0
+object_creations_equal: yes
+unit_pins_exit: 0
+unit_pins_xml: OK junit build/test-results/testUnit class *BufferedOffsetCommitUnitTest: tests=13 failures=0 errors=0 skipped=0 files=1
+bld16_red_exit: 1
+bld16_red_failed: ConnectApiReferencesUnitTest#BLD-16: every org.apache.kafka class and member the compiled connector references is in the blessed worker-API list
+bld16_red_prediction_met: yes
+worker_image_id: sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055
+worker_connect_api_sha256: b57546e9160d5435238fded6f38756d621fac62bd9f64737c3f68e094ae01de4
+worker_kafka_clients_sha256: 28423086fbbf8f91b2f1d335eeeca6675916e24adf2f813b3f9c47f87b49f962
+worker_jar_hashes_match_header: yes
+reference_jar_hashes_match_header: yes
+worker_accessors_present: originalTopic; originalKafkaPartition; originalKafkaOffset
+rebless_exit: 0
+rebless_summary: REFERENCE worker classes-missing 0 members-missing 0; REFERENCE 4.1.1 classes-missing 0 members-missing 0; REFERENCE 4.4.0 classes-missing 0 members-missing 0
+rebless_diff: the # date: line replaced, and three M lines added (SinkRecord.originalKafkaOffset, SinkRecord.originalKafkaPartition, SinkRecord.originalTopic); derived members 138 to 141, total 177 to 180
+rebless_image_line_unchanged: yes
+anchor_counts_measured: 1; 1; 0; 1; 0; 1; 0
+new_anchor_rows: 7
+anchors_mirror: rows=148 bad=0
+testunit_exit: 0
+testunit_tests: 1454
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 13
+hygiene_scan: clean
+fix_commit: 6f3533c20098f048aa0d3fa9ee59638cbdb11ab5
+fix_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java; src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java; src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java; src/test/resources/connect-api-references.txt
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=33 anchor_rows=148 marker_commits=40 anchor_exempt=0 result=PASS
+```
+
+The three accessors are the lines `public java.lang.String originalTopic();`, `public java.lang.Integer originalKafkaPartition();` and `public long originalKafkaOffset();` that `javap` prints for `SinkRecord` in the worker's `connect-api-7.9.7-ccs.jar`. The worker jar hashes equal the `# reference worker:` header lines of the blessed file and the 4.1.1 and 4.4.0 jar hashes equal their header lines. The BLD-16 red run (the edit in the tree, the list not yet re-blessed) failed exactly that one test out of 1454. The fix commit holds six paths by design: BLD-16 goes red the instant the main edit lands without the re-bless, and an anchor may not precede or lag the code it pins. The exactly-once state key, `Processing.java`, `KeeperStateProvider.java` and table routing are untouched; the main diff changes no import line and adds no object creation.
+
+Timestamp (UTC): 2026-10-29T09:30:24Z
 
 Verdict: pass
