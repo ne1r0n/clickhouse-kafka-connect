@@ -106,9 +106,13 @@ class ProxySinkTaskConstructorUnitTest {
         assertSame(writer, fieldValue(task, DB_WRITER_FIELD));
         assertSame(writer, fieldValue(fieldValue(task, PROCESSING_FIELD), DB_WRITER_FIELD));
 
-        task.put(records);
+        try {
+            task.put(records);
 
-        assertEquals(RECORD_COUNT, writer.recordsInserted());
+            assertEquals(RECORD_COUNT, writer.recordsInserted());
+        } finally {
+            task.stop();
+        }
     }
 
     @Test

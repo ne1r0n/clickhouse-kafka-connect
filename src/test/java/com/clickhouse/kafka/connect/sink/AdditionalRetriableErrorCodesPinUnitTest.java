@@ -279,16 +279,19 @@ class AdditionalRetriableErrorCodesPinUnitTest {
         strictProps.put(ClickHouseSinkConfig.ERRORS_TOLERANCE, ClickHouseSinkConfig.ERROR_TOLERANCE_NONE);
         DataExceptionDBWriter strictWriter = new DataExceptionDBWriter();
         ProxySinkTask strictTask = new ProxySinkTask(new ClickHouseSinkConfig(strictProps), NO_ERROR_REPORTER, strictWriter);
-
-        RuntimeException thrown = assertThrows(RuntimeException.class, () -> strictTask.put(records));
-        assertFalse(thrown instanceof RetriableException, "A writer DataException must not become retriable");
-        Throwable cause = thrown;
-        boolean foundDataException = false;
-        while (cause != null && !foundDataException) {
-            foundDataException = cause instanceof DataException;
-            cause = cause.getCause();
+        try {
+            RuntimeException thrown = assertThrows(RuntimeException.class, () -> strictTask.put(records));
+            assertFalse(thrown instanceof RetriableException, "A writer DataException must not become retriable");
+            Throwable cause = thrown;
+            boolean foundDataException = false;
+            while (cause != null && !foundDataException) {
+                foundDataException = cause instanceof DataException;
+                cause = cause.getCause();
+            }
+            assertTrue(foundDataException, "The DataException must stay in the cause chain of " + thrown);
+        } finally {
+            strictTask.stop();
         }
-        assertTrue(foundDataException, "The DataException must stay in the cause chain of " + thrown);
 
         Map<String, String> tolerantProps = withCodes(WRITER_ERROR_CODES);
         tolerantProps.put(ClickHouseSinkConfig.ERRORS_TOLERANCE, ClickHouseSinkConfig.ERROR_TOLERANCE_ALL);
@@ -296,7 +299,11 @@ class AdditionalRetriableErrorCodesPinUnitTest {
         ProxySinkTask tolerantTask =
                 new ProxySinkTask(new ClickHouseSinkConfig(tolerantProps), NO_ERROR_REPORTER, tolerantWriter);
 
-        assertDoesNotThrow(() -> tolerantTask.put(records));
-        assertEquals(0, tolerantWriter.recordsInserted());
+        try {
+            assertDoesNotThrow(() -> tolerantTask.put(records));
+            assertEquals(0, tolerantWriter.recordsInserted());
+        } finally {
+            tolerantTask.stop();
+        }
     }
 }
