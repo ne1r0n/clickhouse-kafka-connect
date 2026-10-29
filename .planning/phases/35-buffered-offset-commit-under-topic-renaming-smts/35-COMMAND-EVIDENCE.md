@@ -19,7 +19,7 @@
 | E-05 | BUF-02, BUF-05 | 35-02 | pass |
 | E-06 | BUF-03 | 35-02 | pass |
 | E-07 | BUF-03 | 35-02 | pass |
-| E-08 | BUF-07 | 35-03 | pending (plan 35-03) |
+| E-08 | BUF-07 | 35-03 | pass |
 | E-09 | BUF-01, BUF-02, BUF-03, BUF-04, BUF-05, BUF-07 | 35-03 | pending (plan 35-03) |
 
 ### E-01: Pre-flight: upstream and origin re-read, Phase 34 gated, baselines on the untouched tree
@@ -432,5 +432,43 @@ open_items: OI-35-1; OI-35-2
 The tripwire pins unchanged behaviour, so it passed on its first run; the red half is the mutation. With the `topic` local read from `originalTopic()` in the worktree, both executions fail on their first state assertion (`expected: <AFTER_PROCESSING> but was: <NONE>` under the transformed topic), because the state is then stored under the original topic. The mutation edited `Processing.java` in the removed worktree only. The record also carries a third open item, OI-35-3 (exactly-once buffering under a partition-changing SMT, read from the code and not probed), beyond the two named in the `open_items` key.
 
 Timestamp (UTC): 2026-10-29T09:38:00Z to 2026-10-29T09:45:00Z (approximate start; the plan did not capture it)
+
+Verdict: pass
+
+### E-08: Rollout item for Phase 38 and the first-start decision
+
+Backs: BUF-07, ROADMAP Phase 35 criterion 5, second half (the rollout item with its evidence label, which RLS-02 checks), and the research flag on the first start after the upgrade.
+
+```sh
+git ls-remote upstream main
+git ls-remote --tags --refs upstream 'v*'
+gh issue view 777 -R ClickHouse/clickhouse-kafka-connect --json state --jq .state
+gh pr view 786 -R ClickHouse/clickhouse-kafka-connect --json state,mergedAt
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-hygiene-check.py .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-ROLLOUT-ITEM.md .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-COMMAND-EVIDENCE.md
+test ! -e docs/ROLLOUT-v1.7.0_gg6.md
+git add .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-ROLLOUT-ITEM.md
+git commit -F /tmp/gsd35/exec/msg-rollout-item.txt
+git diff --name-only <rollout_item_commit>^ <rollout_item_commit>
+```
+
+```text
+upstream_main_now: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_moved_since_preflight: no
+upstream_newest_release_tag: v1.7.0
+upstream_777_state_now: OPEN
+upstream_786_state_now: CLOSED unmerged
+first_start_measurement: not measured
+first_start_measurement_reasons: the behaviour is Kafka consumer-group semantics (committed offsets, auto.offset.reset, offset retention) that need a broker and a running Connect worker with a real consumer group, which is the integration harness with its roughly 95 second class start-up and a connector archive built from the unfixed tree for the before half (E-05 broker_level_reasons); a test in the test suite would measure a mock consumer, not Kafka; the rollout item therefore words the claim as derived and tells the reader how to check their own group read-only
+rollout_item_file: 35-ROLLOUT-ITEM.md
+rollout_item_commit: c2c2be3157d9877814c123e3a6584e0f6505f1d9
+rollout_item_sections: ## What changes; ## Who is affected; ## First start after the upgrade; ## What to do; ## Minimum Connect runtime; ## Evidence labels; ## Handoffs
+rollout_item_labels: measured; read from the code; derived from Kafka consumer-group semantics (not measured)
+gg6_rollout_note_absent: yes
+hygiene_scan: clean
+```
+
+The upstream state was re-read before the item was written: issue #777 is still open and pull request #786 is still closed without a merge, so the fork-only statement of FORK-DELTA and the wording of the item holds. Upstream main equals the pre-flight value of E-01 and the newest release tag is `v1.7.0`. The rollout-item commit holds exactly the item file; `docs/ROLLOUT-v1.7.0_gg6.md` was neither created nor edited.
+
+Timestamp (UTC): 2026-10-29T09:49:05Z
 
 Verdict: pass
