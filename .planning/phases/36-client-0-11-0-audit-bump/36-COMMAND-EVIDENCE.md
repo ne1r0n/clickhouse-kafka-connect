@@ -23,7 +23,7 @@
 | E-08 | CLT-06 | 36-03 | pass |
 | E-09 | CLT-08 | 36-03 | pass |
 | E-10 | CLT-05, CLT-02 | 36-03 | pass |
-| E-11 | CLT-09 | 36-04 | pending (plan 36-04) |
+| E-11 | CLT-09 | 36-04 | pass |
 | E-12 | CLT-09 | 36-04 | pending (plan 36-04) |
 | E-13 | CLT-07 | 36-04 | pending (plan 36-04) |
 
@@ -773,5 +773,91 @@ clickhouse_version: 26.10.3.7
 The D-17 default itself (`setCompressionMethod` true with `compress=false`) is untouched: no main file and no assertion changed, and every changed line of the two test files is a Javadoc comment line. The 15 edit blocks of the planning asset each matched exactly once and were applied in order with a script that asserts a single match per block and writes the result (a byte-for-byte equivalent of the Edit tool). The reworded text says what E-06 measured on 0.11.0 and what Recorded Fact 26 measured on 0.9.6: V2 of client 0.11.0 decodes ZSTD and loads the `zstd-jni` native, client V1 still fails with `Magic is not correct - expect [-126] but got [-112]` on both client lines, and client 0.9.6 fails on V2 with the LZ4 magic-byte error; each of these is pinned by `Client011BehaviourPinLiveTest`. The claim that a worker whose operator set `compress=true` with the lz4 setting never loads a zstd native, and the executable temp folder requirement, are labelled in the text as measured in the public confluentinc/cp-kafka-connect-base:7.9.7 image during the research, not pinned. The catalog row now carries the override marker, `CLT-02, CLT-09, BLD-08` and `ClientCatalogPinUnitTest`, and the sentence calling 0.9.6 upstream's own value is gone; the guava row says `redundant, not lost` with `E-09`; the httpclient5 row records `5.6.4 -> 5.6.5`. Recorded Fact 26 in the merge checklist is unchanged and stays the dated 0.9.6 record, cited beside this entry. The two test classes compile and `NetworkCompressionPinUnitTest` (9) and `SourcePlanningIdGuardUnitTest` (18) are green; their E-06 tally for the first class was also 9.
 
 Measured 2026-10-29T13:43:31Z (shape checks, compile, Docker-free classes, per-file formatting).
+
+Verdict: pass
+
+### E-11: Rollout items for Phase 38, the custom_ probe and the CLT-09 revert rehearsal
+
+Backs: CLT-09, CLT-05, CLT-06, CLT-08 and ROADMAP Phase 36 criterion 5 (the operator-visible effects of the bump are recorded with evidence labels for Phase 38, the one operator-breaking effect is measured on both client lines, and the CLT-09 revert is rehearsed on the final history in a detached worktree before the gate decides).
+
+```sh
+git worktree add --detach /tmp/gsd36/rehearse HEAD
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/ZzCustomProbeTest.java.txt /tmp/gsd36/rehearse/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ZzCustomProbeTest.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/rehearse --console=plain testUnit --rerun --tests '*ZzCustomProbeTest' -i > /tmp/gsd36/exec/custom-probe-0110.log 2>&1
+rm /tmp/gsd36/rehearse/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ZzCustomProbeTest.java
+git -C /tmp/gsd36/rehearse revert --no-edit 375c93be91d2a32eafd4e0364f905e51f8dfd280
+git -C /tmp/gsd36/rehearse revert --no-edit 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+git -C /tmp/gsd36/rehearse show --name-only --format= HEAD
+grep '^clickHouseDriver' /tmp/gsd36/rehearse/gradle/libs.versions.toml
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py anchors .planning/scripts/fork-anchors.txt   # run inside the worktree
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/rehearse --console=plain dependencies --configuration runtimeClasspath
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/ZzCustomProbeTest.java.txt /tmp/gsd36/rehearse/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ZzCustomProbeTest.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/rehearse --console=plain testUnit --rerun --tests '*ZzCustomProbeTest' -i > /tmp/gsd36/exec/custom-probe-096.log 2>&1
+rm /tmp/gsd36/rehearse/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ZzCustomProbeTest.java
+rm -rf /tmp/gsd36/rehearse/build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/rehearse --console=plain testUnit --rerun --tests '*ClientErrorShapePinUnitTest' --tests '*ClientTimeoutPrefixPinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*UtilsTest' --tests '*AdditionalRetriableErrorCodes*' --tests '*ConnectApiReferencesUnitTest' --tests '*SourcePlanningIdGuardUnitTest' > /tmp/gsd36/exec/rehearsal-dockerfree.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed /tmp/gsd36/rehearse/build/test-results/testUnit
+rm -rf /tmp/gsd36/rehearse/build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/rehearse --console=plain test --rerun --tests '*Client011BehaviourPinLiveTest' --tests '*RowBinaryClientParityLiveTest' --tests '*ClickHouseSinkJdbcPropertiesTest' > /tmp/gsd36/exec/rehearsal-live.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit /tmp/gsd36/rehearse/build/test-results/<testUnit | test> --class <each class>
+git worktree remove --force /tmp/gsd36/rehearse
+git worktree prune
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-hygiene-check.py .planning/phases/36-client-0-11-0-audit-bump/36-ROLLOUT-ITEMS.md
+git add .planning/phases/36-client-0-11-0-audit-bump/36-ROLLOUT-ITEMS.md
+git commit -F /tmp/gsd36/exec/msg-rollout.txt
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+docs_commit: 375c93be91d2a32eafd4e0364f905e51f8dfd280
+catalog_commit: 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+fix_commit: a1cc33825a07d960bc336e0e6c7474c6698ab40b
+rehearsal_base: 52a43e2d9a676b0052caf059544fcc6eb23bc933
+custom_probe_exit: 0
+custom_probe_uri_0110: /?custom_myparam=7&custom_settings=max_threads%253D3&query=INSERT%20INTO%20t%20FORMAT%20RowBinary&network_compression_method=lz4
+custom_forwarded_on_0110: yes
+revert_docs_exit: 0
+revert_docs_files: docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg1.md; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinUnitTest.java
+revert_catalog_exit: 0
+revert_catalog_files: .planning/scripts/fork-anchors.txt; gradle/libs.versions.toml; src/test/java/com/clickhouse/kafka/connect/ci/ClientCatalogPinUnitTest.java
+revert_conflicts: none
+rehearsal_catalog_line: clickHouseDriver = "0.9.6"
+rehearsal_anchors_mirror: rows=151 bad=0
+rehearsal_client_v2: +--- com.clickhouse:client-v2:0.9.6
+rehearsal_catalog_pin_absent: yes
+rehearsal_fixes_kept: yes
+rehearsal_fork_delta_row_kept: yes
+rehearsal_golden_kept: yes
+custom_probe_exit_096: 0
+custom_probe_uri_096: /?query=INSERT%20INTO%20t%20FORMAT%20RowBinary&network_compression_method=lz4
+custom_forwarded_on_096: no
+rehearsal_dockerfree_exit: 0
+rehearsal_dockerfree_failed: none
+rehearsal_error_shape_xml: tests=7 failures=0 errors=0 skipped=0
+rehearsal_timeout_prefix_xml: tests=2 failures=0 errors=0 skipped=0
+rehearsal_endpoint_xml: tests=3 failures=0 errors=0 skipped=0
+rehearsal_wire_xml: tests=2 failures=0 errors=0 skipped=0
+rehearsal_live_exit: 0
+rehearsal_live_failed: none
+rehearsal_live_xml: tests=6 failures=0 errors=0 skipped=0
+rehearsal_golden_xml: tests=1 failures=0 errors=0 skipped=0
+rehearsal_jdbc_xml: tests=2 failures=0 errors=0 skipped=0
+rehearse_worktree_removed: yes
+rollout_items_file: 36-ROLLOUT-ITEMS.md
+rollout_items_commit: 7464977bed6efe53c20827e6ef3bc38459a482bc
+rollout_items_count: 14
+rollout_sections: Items; Exactly-once replay across the upgrade; zstd-jni: platforms and the temp folder; custom_ keys in jdbcConnectionProperties; What to do; Handoffs
+rollout_labels: measured; read from the code; measured in research (not re-run)
+rollout_applies_values: either client; client 0.11.0 ships
+gg6_rollout_note_absent: yes
+hygiene_scan: clean
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+The probe builds a V2 client with `?custom_settings=max_threads%3D3&custom_myparam=7&ssl=true` against the in-process stub and prints the request URI: client 0.11.0 forwards both `custom_` keys and doubles the operator's percent-encoding (`%3D` becomes `%253D`), client 0.9.6 forwards neither. The rehearsal ran in one detached worktree at the committed head: the documentation commit and then the catalog commit reverted with no conflict, the catalog revert touched exactly the catalog line, `ClientCatalogPinUnitTest` and the one anchor row, and the worktree then showed the 0.9.6 catalog line, `rows=151 bad=0`, `client-v2` 0.9.6, and the two `createClientV2` fixes, their FORK-DELTA row and the golden still in place. The pins that carry a 0.9.6 row (error shapes 7, timeout prefixes 2, endpoint and options 3, insert wire 2), `UtilsTest`, the `AdditionalRetriableErrorCodes` classes, the Kafka and Connect API reference list and the planning-id guard are green on 0.9.6 with no failing testcase; the live class (6), the golden (1) and the JDBC-properties class (2) are green on ClickHouse `latest` with client V2. The probe file was removed from the worktree after each of its two runs, so it is not part of either revert, and the main tree and the branch were not touched by the rehearsal. The 14 rollout items each carry a label, an Applies-when value and an evidence citation; claims that were only read from the code or measured in research are labelled so, and the `custom_` alternative stays a user decision.
+
+Measured 2026-10-29T13:50:27Z (probe on both lines, the revert rehearsal and its green runs on 0.9.6).
 
 Verdict: pass
