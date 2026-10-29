@@ -47,6 +47,7 @@ build.gradle.kts	register<Test>("testUnit")	1	BLD-04
 build.gradle.kts	withCapability("org.lz4:lz4-java")	1	BLD-09
 build.gradle.kts	clickhouse.jdbc	0	BLD-13
 gradle/libs.versions.toml	kafka = "4.4.0"	1	BLD-08
+gradle/libs.versions.toml	clickHouseDriver = "0.11.0"  # FORK OVERRIDE (upstream 0.9.6)	1	CLT-02
 gradle/libs.versions.toml	clickhouse-jdbc	0	BLD-13
 src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	@Tag("clickhouse")	1	HARN-01
 src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	sharedContainerStarts()	2	HARN-03
