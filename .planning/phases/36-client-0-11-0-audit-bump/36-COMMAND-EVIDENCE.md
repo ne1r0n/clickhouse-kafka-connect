@@ -21,7 +21,7 @@
 | E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pass |
 | E-07 | CLT-07 | 36-02 | pass |
 | E-08 | CLT-06 | 36-03 | pass |
-| E-09 | CLT-08 | 36-03 | pending (plan 36-03) |
+| E-09 | CLT-08 | 36-03 | pass |
 | E-10 | CLT-05, CLT-02 | 36-03 | pending (plan 36-03) |
 | E-11 | CLT-09 | 36-04 | pending (plan 36-04) |
 | E-12 | CLT-09 | 36-04 | pending (plan 36-04) |
@@ -618,5 +618,94 @@ clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4
 The golden file is read, never written: `ROWBINARY_GOLDEN_BLESS` was not set, the file is byte-identical to its 0.9.6 commit and its data lines hash to the value E-04 recorded. A green `RowBinaryClientParityLiveTest` means the length and SHA-256 of the exact body of every one of the 96 lines equals the 0.9.6 line. The four zones are the workstation default (no `TZ`), `UTC`, `America/Los_Angeles` and `Pacific/Kiritimati`; plan 36-02's E-07 proved that `TZ` reaches the test JVM. The wire pin shows a 100,000-byte body, the `insert_deduplication_token` and no `Content-Encoding` arriving unchanged on 0.11.0, and a User-Agent that names the connector and `clickhouse-java-v2/0.11.0`. The token is built from the batch (`topic-partition-minOffset-maxOffset`), not from the client, and the query-id, writer, processing and state sources are unchanged since the phase start, which is why no clean stop is required for the compared matrix.
 
 Measured 2026-10-29T13:41:00Z (four golden runs, the wire pins, the code reads).
+
+Verdict: pass
+
+### E-09: The Confluent archive before and after the bump: +131 inner entries, zstd-jni with three natives, guava redundant
+
+Backs: CLT-08 and ROADMAP Phase 36 criterion 5, record half (the Confluent archive is listed before and after the bump and compared entry by entry; the `zstd-jni` addition with its natives and the redundant guava override are recorded).
+
+```sh
+git worktree add --detach /tmp/gsd36/arch-before 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8^
+git worktree add --detach /tmp/gsd36/arch-after 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+grep '^clickHouseDriver' <worktree>/gradle/libs.versions.toml
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/arch-<before|after> --console=plain createConfluentArchive
+python3 -I .planning/scripts/compare-confluent-archives.py <before>.zip <after>.zip <empty-allowlist>
+unzip -l <zip>
+unzip -p <zip> '*/lib/*-confluent.jar' > <fresh dir>/<before|after>-inner.jar
+unzip -l <inner> | awk 'NR>3 && NF>=4 {print $4"\t"$1}' | LC_ALL=C sort
+unzip -p <inner> clickhouse-client-version.properties
+shasum -a 256 <gradle cache>/zstd-jni-1.5.7-23-cloud.jar
+unzip -Z1 <gradle cache>/zstd-jni-1.5.7-23-cloud.jar
+unzip -Z1 <gradle cache>/zstd-jni-1.5.7-23.jar
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/arch-<before|after> --console=plain dependencies --configuration clickhouseDependencies
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/arch-after --console=plain dependencyInsight --dependency com.google.guava:guava --configuration clickhouseDependencies
+git worktree add --detach /tmp/gsd36/guava 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+sed -i '' '/libs\.guava/d' /tmp/gsd36/guava/build.gradle.kts
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/guava --console=plain dependencies --configuration <runtimeClasspath|clickhouseDependencies>
+git worktree remove --force /tmp/gsd36/<arch-before|arch-after|guava>
+git worktree prune
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+catalog_commit: 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+before_catalog_line: clickHouseDriver = "0.9.6"
+after_catalog_line: clickHouseDriver = "0.11.0"  # FORK OVERRIDE (upstream 0.9.6)
+archive_version_file: v1.7.0_gg5
+before_build_exit: 0
+after_build_exit: 0
+verify_before: verifyConfluentArchive: 7802 inner entries, no nested jar, no Kafka API class
+verify_after: verifyConfluentArchive: 7933 inner entries, no nested jar, no Kafka API class
+zip_bytes_before: 12456907
+zip_bytes_after: 13558637
+compare_exit: 1
+compare_totals: totals files-a 7400 files-b 7513 only-a 4 only-b 117 changed 94 same 7302
+compare_manifest: MANIFEST.MF: identical
+compare_nested_jars_in_b: nested jars in b: 0
+compare_kafka_classes_in_b: kafka classes in b: 0
+only_a_entries: client-v2-version.properties; com/clickhouse/client/api/internal/ClickHouseLZ4InputStream.class; com/clickhouse/client/api/internal/ClickHouseLZ4OutputStream.class; com/clickhouse/client/api/internal/LZ4Entity.class
+zstd_classes_added: 37
+zstd_multirelease_classes_added: 17
+zstd_natives_added: darwin/aarch64/libzstd-jni-1.5.7-23.dylib; linux/aarch64/libzstd-jni-1.5.7-23.so; linux/amd64/libzstd-jni-1.5.7-23.so
+guava_entries_in_diff: 0
+connector_classes_changed: 0
+inner_listing_lines_before: 7802
+inner_listing_lines_after: 7933
+inner_client_version_before: version=0.9.6
+inner_client_version_after: version=0.11.0
+zstd_cloud_jar_sha256: 37589ad51ad534e4fcee7cd5a3e006d73fac9d98dc3f06c07f35eadab432e7b3
+zstd_cloud_natives: darwin/aarch64/libzstd-jni-1.5.7-23.dylib; linux/aarch64/libzstd-jni-1.5.7-23.so; linux/amd64/libzstd-jni-1.5.7-23.so
+zstd_plain_natives_count: 18
+zstd_license: BSD 2-Clause License
+zstd_declared_by_client_v2_pom: yes
+deps_before_guava: com.google.guava:guava:33.4.6-jre -> 33.7.2-jre
+deps_after_guava: com.google.guava:guava:33.7.2-jre
+guava_arrow_after: no
+deps_before_httpclient5: org.apache.httpcomponents.client5:httpclient5:5.4.4 -> 5.6.5
+deps_after_httpclient5: org.apache.httpcomponents.client5:httpclient5:5.6.4 -> 5.6.5
+deps_before_lz4: at.yawk.lz4:lz4-java:1.10.2 -> 1.12.1
+deps_after_lz4: at.yawk.lz4:lz4-java:1.11.4 -> 1.12.1
+deps_after_zstd: com.github.luben:zstd-jni:1.5.7-23
+guava_requested_by_client_after: yes
+guava_experiment_numstat: 0/2
+guava_without_override_runtime: 33.7.2-jre
+guava_without_override_clickhouse_deps: 33.7.2-jre
+worktrees_removed: yes
+listings_commit: 4b4d488133189f637baa1f2fc75fa327eccbcba6
+listings_commit_files: .planning/phases/36-client-0-11-0-audit-bump/36-ARCHIVE-DIFF.txt; .planning/phases/36-client-0-11-0-audit-bump/36-ARCHIVE-INNER-AFTER.txt; .planning/phases/36-client-0-11-0-audit-bump/36-ARCHIVE-INNER-BEFORE.txt; .planning/phases/36-client-0-11-0-audit-bump/36-ARCHIVE-OUTER-AFTER.txt; .planning/phases/36-client-0-11-0-audit-bump/36-ARCHIVE-OUTER-BEFORE.txt
+hygiene_scan: clean
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+Both archives came from detached worktrees at the commit before the catalog commit (the createClientV2 fixes in, catalog still 0.9.6) and at the catalog commit itself, so the only source difference is the catalog line and what it pulls in; the comparison script ran with an empty allow-list, so its exit status 1 and `RESULT: FAIL` are by design (every difference is UNALLOWED and the script cannot tell an intended bump from a surprise, which is a Phase 37 allow-list task). The archives were read with `unzip -l` and `unzip -p` only; the two inner jars were piped into a fresh directory and never extracted or loaded.
+
+What changed: the four entries only in the before archive are the client V2 version properties file and the three LZ4 stream and entity classes that 0.11.0 removed; the 117 only-after files make the inner jar 113 files larger (7400 to 7513) and 18 directory entries larger (402 to 420), the 131 more inner entries, and include 37 `com/github/luben/zstd/` classes, 17 multi-release classes under `META-INF/versions/22/com/github/luben/zstd/` and exactly three native libraries. `zstd-jni` 1.5.7-23 arrives only through client-v2 0.11.0's own POM, as a compile dependency with the `cloud` classifier. That classifier carries natives for darwin/aarch64, linux/aarch64 and linux/amd64 only, against 18 in the plain jar; that a worker on any other platform (linux/arm, i386, ppc64le, s390x, riscv64, Windows, FreeBSD, AIX, Intel macOS) cannot load the native when a ZSTD path runs is read from the library's loader in the research and was not re-measured here. No connector class, no guava class and no Kafka API class changed, and the manifest is identical.
+
+The guava override is redundant, not lost: with both `libs.guava` lines removed from `build.gradle.kts` in a throwaway worktree (`0/2` numstat), guava 33.7.2-jre still resolves on `runtimeClasspath` and on `clickhouseDependencies`, requested by `com.clickhouse:client-v2:0.11.0`, and the archive diff holds no guava entry. The httpclient5 and lz4 pins still win (`5.6.4 -> 5.6.5`, `1.11.4 -> 1.12.1`). `build.gradle.kts` was not edited in this phase; the stale `// temp to override client's with CVE` comment and the pin are a follow-up recorded for plan 36-04's rollout items.
+
+Measured 2026-10-29T13:42:00Z (two archive builds, the comparison, the listings, the dependency trees and the guava experiment).
 
 Verdict: pass
