@@ -4,16 +4,16 @@ milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 current_phase: 36
 current_phase_name: Client 0.11.0 Audit & Bump
-status: planning
+status: executing
 stopped_at: Phase 35 complete, ready to plan Phase 36
-last_updated: "2026-10-29T10:29:53.960Z"
+last_updated: "2026-10-29T12:22:25.431Z"
 last_activity: 2026-10-29
-last_activity_desc: Phase 35 complete, transitioned to Phase 36
-state_head: 9d957c0af75b6443c460e04e5d5d4a06ac7f12ff
+last_activity_desc: Phase 36 execution started
+state_head: aad6ea3db55c08fcd7c8a8286a4e0f38afa7ade4
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 9
+  total_plans: 13
   completed_plans: 9
   percent: 50
 ---
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 35 — Buffered Offset Commit Under Topic-Renaming SMTs
+**Current focus:** Phase 36 — Client 0.11.0 Audit & Bump
 
 ## Current Position
 
-Phase: 36 — Client 0.11.0 Audit & Bump
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-29 — Phase 35 complete, transitioned to Phase 36
+Phase: 36 (Client 0.11.0 Audit & Bump) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 36
+Last activity: 2026-10-29 — Phase 36 execution started
 
 Progress: [█████░░░░░] 50%
 
