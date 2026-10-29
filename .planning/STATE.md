@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
-current_phase: 35
-current_phase_name: Buffered Offset Commit Under Topic-Renaming SMTs
+current_phase: 36
+current_phase_name: Client 0.11.0 Audit & Bump
 status: planning
-stopped_at: Phase 34 complete, ready to plan Phase 35
-last_updated: "2026-10-29T08:14:52.945Z"
+stopped_at: Phase 35 complete, ready to plan Phase 36
+last_updated: "2026-10-29T10:29:53.960Z"
 last_activity: 2026-10-29
-last_activity_desc: Phase 34 complete, transitioned to Phase 35
-state_head: 42fc90a86869f8791f7c7f69e3510d9eb5a7ed4b
+last_activity_desc: Phase 35 complete, transitioned to Phase 36
+state_head: 9d957c0af75b6443c460e04e5d5d4a06ac7f12ff
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 33
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 9
+  percent: 50
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 34 — Upstream Tail Merge
+**Current focus:** Phase 35 — Buffered Offset Commit Under Topic-Renaming SMTs
 
 ## Current Position
 
-Phase: 35 — Buffered Offset Commit Under Topic-Renaming SMTs
+Phase: 36 — Client 0.11.0 Audit & Bump
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-29 — Phase 34 complete, transitioned to Phase 35
+Last activity: 2026-10-29 — Phase 35 complete, transitioned to Phase 36
 
-Progress: [███░░░░░░░] 33%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [███░░░░░░░] 33%
 | 32 | 7 | - | - |
 | 33 | 3 | - | - |
 | 34 | 3 | - | - |
+| 35 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -218,6 +219,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 34 P01 | 12 min | 2 tasks | 30 files |
 | Phase 34 P02 | 38 min | 3 tasks | 6 files |
 | Phase 34 P03 | 55 min | 3 tasks | 2 files |
+| Phase 35 P01 | 14 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -285,6 +287,8 @@ The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands befo
 - [Phase 34]: BLD-16 list re-blessed only from the worker image jars plus 4.1.1 and 4.4.0; the diff was the date line plus one M line for ConfigException(String, Object, String) (34-02)
 - [Phase 34]: TAL-04 DataException clause pinned narrowly: adding codes never makes a DataException with no server error and no network root cause retriable; the wrapped retriable-server-error and wrapped socket-timeout (tolerance=all) cases are retriable today and not asserted (user decision on upstream behavior)
 - [Phase 34]: Phase 36 inherits 10 three-argument new ServerException( sites in 3 files (UtilsTest 8, AdditionalRetriableErrorCodesTest 1, AdditionalRetriableErrorCodesPinUnitTest 1), not the ROADMAP eight; Phase 38 carries the FUT-05 rollout item
+- [Phase 35]: Buffered offsets are keyed by originalTopic()/originalKafkaPartition()/originalKafkaOffset() + 1 in ChunkFlusher and both buffer strategies; Processing.java, state keys and table routing untouched — Connect validates preCommit offsets against its assignment; fork-only until upstream resolves #777 (PR #786 closed unmerged)
+- [Phase 35]: The Phase 35 fix commit carries six paths by design (three main files, BLD-16 re-bless, anchors, FORK-DELTA) — BLD-16 goes red the instant the edit lands without the re-bless, and anchors may not precede or lag the code they pin
 
 ### Pending Todos
 
@@ -341,8 +345,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T07:41:12.791Z
-Stopped at: Phase 34 complete, ready to plan Phase 35
+Last session: 2026-10-29T09:34:10.618Z
+Stopped at: Phase 35 complete, ready to plan Phase 36
 Resume file: None
 
 ## Operator Next Steps
