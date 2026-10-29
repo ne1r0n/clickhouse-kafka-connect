@@ -36,11 +36,15 @@ import org.slf4j.LoggerFactory;
  * 12). ClickHouse 26.9 answers {@code compress=1} requests with ZSTD native blocks unless
  * {@code network_compression_method=lz4} is in effect, and client 0.9.6 only decodes LZ4 ({@code
  * Invalid LZ4 magic byte: '-112'}, surfacing as {@code Connection to ClickHouse is not active}).
+ * Client V1 cannot decode ZSTD on any client line, and V2 of client 0.11.0 can (it loads the
+ * zstd-jni native), as {@code Client011BehaviourPinLiveTest} pins; the controls stay for V1, for
+ * 0.9.6 and to keep the native unloaded.
  * With the connector's controls in effect (upstream's {@code setCompressionMethod}, default true,
  * adds the lz4 setting, and {@code compress=false} is set unconditionally), queries round-trip on
  * both clients. Against 26.9.12.8, {@code compress=false} alone suffices on both clients, and the
  * lz4 setting alone suffices on V2 when an operator re-enables response compression; removing both
- * on V2 with {@code compress=true} fails with the magic-byte error above. An operator's {@code
+ * on V2 with {@code compress=true} fails with the magic-byte error above on client 0.9.6 and
+ * decodes ZSTD on client 0.11.0. An operator's {@code
  * compress=true} in {@code jdbcConnectionProperties} re-enables response compression on V2
  * (Recorded Facts 25 and 26).
  */

@@ -13,9 +13,12 @@ import org.junit.jupiter.api.Test;
  * setCompressionMethod} (default true) makes every client the connector builds send {@code
  * network_compression_method=lz4}, and {@code compress=false} is set unconditionally (V2 through
  * {@code compressServerResponse(false)}). This class pins both on the V1 options, the V1 node and
- * the V2 config, plus the {@code setCompressionMethod=false} case. ClickHouse 26.9 defaults the
- * method to ZSTD, which client 0.9.6 cannot decode, so a sync that drops both controls breaks
- * reads. An operator's {@code compress=true} in {@code jdbcConnectionProperties} re-enables
+ * the V2 config, plus the {@code setCompressionMethod=false} case. ClickHouse 26.9 and later
+ * default the method to ZSTD. Client 0.9.6 cannot decode it on V2 and client V1 cannot decode it
+ * on any client line, while V2 of client 0.11.0 can and then loads the zstd-jni native ({@code
+ * Client011BehaviourPinLiveTest} pins all three). The controls therefore stay: they keep V1 and
+ * 0.9.6 readable and keep the zstd native unloaded, and they are no longer what protects V2 reads
+ * on 0.11.0. An operator's {@code compress=true} in {@code jdbcConnectionProperties} re-enables
  * response compression on V2 (Recorded Facts 25 and 26). Deliberately extends nothing -
  * extending {@code ClickHouseBase} would inherit its {@code clickhouse} tag and exclude this
  * class from {@code testUnit}.
