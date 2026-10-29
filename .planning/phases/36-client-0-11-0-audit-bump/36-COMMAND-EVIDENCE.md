@@ -19,7 +19,7 @@
 | E-04 | CLT-06 | 36-01 | pass |
 | E-05 | CLT-03 | 36-02 | pass |
 | E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pass |
-| E-07 | CLT-07 | 36-02 | pending (plan 36-02) |
+| E-07 | CLT-07 | 36-02 | pass |
 | E-08 | CLT-06 | 36-03 | pending (plan 36-03) |
 | E-09 | CLT-08 | 36-03 | pending (plan 36-03) |
 | E-10 | CLT-05, CLT-02 | 36-03 | pending (plan 36-03) |
@@ -484,5 +484,80 @@ clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4
 The catalog pin was red on the unbumped catalog with exactly its version-line test (the second test, that the four client modules ride one ref, was green on both lines). After the one-line edit all four configurations resolve `client-v2` 0.11.0, and the four client modules (`client-v2`, `clickhouse-client`, `clickhouse-data`, `clickhouse-http-client`) all read 0.11.0. `zstd-jni` 1.5.7-23 comes in through the client's own POM and no other module version moved. The four compile tasks pass and the deprecation-warning count is 100 on both lines, so 0.11.0 deprecates nothing the connector uses beyond what 0.9.6 did. On 0.11.0 with the fixes every Docker-free pin is green, the Kafka and Connect API reference list (BLD-16) needs no re-bless, `UtilsTest` and the `AdditionalRetriableErrorCodes` class keep their baseline counts, and the live classes are green on ClickHouse 26.10.3.7 with client V2: the six behaviour pins, the golden blessed on 0.9.6, the JDBC-properties class, the compression pin and the lz4 round trip. The three bare-bump live reds of E-03 and the three Docker-free ones are green with the fixes. The cache-busted testUnit is exactly 16 larger than the E-01 baseline.
 
 Measured 2026-10-29T12:54:55Z (catalog commit, pins and gates on client 0.11.0).
+
+Verdict: pass
+
+### E-07: CLT-07 local halves: non-UTC date pins, the V1-mode run and the Connect-worker integrationTest on 0.11.0
+
+Backs: CLT-07 (first two halves) and ROADMAP Phase 36 criterion 3 (the date and datetime live pins pass on a non-UTC JVM, the connector runs the V1 client mode on 0.11.0, and the Connect-worker integrationTest passes with client 0.11.0 inside the shaded archive).
+
+```sh
+git worktree add --detach /tmp/gsd36/tz HEAD
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/ZzTzProbeTest.java.txt /tmp/gsd36/tz/src/test/java/com/clickhouse/kafka/connect/ZzTzProbeTest.java
+TZ=<zone> EXPECTED_ZONE=<zone> env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/tz --console=plain testUnit --rerun --tests '*ZzTzProbeTest'
+TZ=Asia/Kolkata EXPECTED_ZONE=UTC env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/tz --console=plain testUnit --rerun --tests '*ZzTzProbeTest'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed /tmp/gsd36/tz/build/test-results/testUnit --expect 'ZzTzProbeTest#jvmDefaultZoneIsTheRequestedOne'
+git worktree remove --force /tmp/gsd36/tz
+git worktree prune
+readlink /etc/localtime
+rm -rf build/test-results/test
+TZ=<UTC | America/Los_Angeles | Asia/Kolkata | Pacific/Kiritimati> CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*ClickHouseSinkTaskWithSchemaTest.supportDatesTest' --tests '*ClickHouseSinkTaskWithSchemaTest.supportArrayDateTime64Test' --tests '*ClickHouseSinkTaskWithSchemaTest.supportZonedDatesStringTest' --tests '*ClickHouseSinkTaskWithSchemaTest.supportFormattedDatesStringTest' --tests '*ClickHouseSinkTaskWithSchemaTest.testAvroDateAndTimeTypes' --tests '*MetadataFreeJsonTypeParityLiveTest' --tests '*ClickHouseSinkTaskWithSchemaProxyTest.supportDatesTest' > /tmp/gsd36/exec/dates-<zone-key>.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V1 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*ClickHouseSinkJdbcPropertiesTest' --tests '*NetworkCompressionPinLiveTest' --tests '*ClickHouseSinkTaskSchemalessTest' --tests '*ClickHouseSinkTaskStringTest' > /tmp/gsd36/exec/v1-0110.log 2>&1
+git diff --quiet 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8 HEAD -- src build.gradle.kts gradle .github
+rm -rf build/test-results/integrationTest build/reports/tests/integrationTest
+/bin/bash -c 'CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE JAVA_HOME=$HOME/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home ./gradlew --console=plain integrationTest > /tmp/gsd36/exec/integration.log 2>&1; echo $? > /tmp/gsd36/exec/integration.exit'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/integrationTest [--class <ClickHouseSinkConnectorIntegrationTest | ExactlyOnceTest | ClickHouseCloudTest>]
+unzip -p build/confluentArchive/clickhouse-kafka-connect-v1.7.0_gg5/lib/clickhouse-kafka-connect-v1.7.0_gg5-confluent.jar clickhouse-client-version.properties
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+tz_probe_la: pass
+tz_probe_kolkata: pass
+tz_probe_kiritimati: pass
+tz_probe_negative_control: red
+tz_worktree_removed: yes
+workstation_zone: Europe/Tallinn
+date_pins_selectors: ClickHouseSinkTaskWithSchemaTest.{supportDatesTest, supportArrayDateTime64Test, supportZonedDatesStringTest, supportFormattedDatesStringTest, testAvroDateAndTimeTypes}; MetadataFreeJsonTypeParityLiveTest (all); ClickHouseSinkTaskWithSchemaProxyTest.supportDatesTest
+date_pins_utc_exit: 0
+date_pins_utc_xml: tests=15 failures=0 errors=0 skipped=0 files=3
+date_pins_la_exit: 0
+date_pins_la_xml: tests=15 failures=0 errors=0 skipped=0 files=3
+date_pins_kolkata_exit: 0
+date_pins_kolkata_xml: tests=15 failures=0 errors=0 skipped=0 files=3
+date_pins_kiritimati_exit: 0
+date_pins_kiritimati_xml: tests=15 failures=0 errors=0 skipped=0 files=3
+date_pins_la_schema_xml: tests=5 failures=0 errors=0 skipped=0
+date_pins_la_metadata_free_xml: tests=9 failures=0 errors=0 skipped=0
+date_pins_la_proxy_xml: tests=1 failures=0 errors=0 skipped=0
+v1_exit: 0
+v1_xml: tests=35 failures=0 errors=0 skipped=0 files=4
+integration_head: 3d0b046118b4f2514655a76b66be72ee66ce8764
+utc_start: 2026-10-29T13:02:19Z
+utc_end: 2026-10-29T13:34:04Z
+integration_exit: 0
+integration_duration: BUILD SUCCESSFUL in 31m 30s
+integration_summary: Tests summary: 55 tests, 54 succeeded, 0 failed, 1 skipped
+integration_java_home: /Users/alexandr.chashnikov/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home
+integration_connector_class_xml: tests=54 failures=0 errors=0 skipped=0 files=1
+integration_skipped_classes: ExactlyOnceTest tests=8 failures=0 errors=0 skipped=8; ClickHouseCloudTest tests=1 failures=0 errors=0 skipped=1
+integration_all_xml: tests=63 failures=0 errors=0 skipped=9 files=3
+integration_vs_phase31: Same shape as Phase 31 E-18 (55 tests, 54 succeeded, 0 failed, 1 skipped, HotSpot Temurin 17): the connector class ran 54 executions green; the 31 minute wall time is about 2 minutes above the 29.5 minutes recorded there.
+integration_archive_client_version: version=0.11.0
+integration_clickhouse_version: 26.10.3.7
+integration_jvm_crash: none
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+The zone reaches the test JVM: the probe, which asserts that the JVM default zone id equals the requested one, passed under `America/Los_Angeles`, `Asia/Kolkata` and `Pacific/Kiritimati`, and a mismatched request (`TZ=Asia/Kolkata`, `EXPECTED_ZONE=UTC`) went red naming exactly the probe test. The 15 date and datetime live executions (5 in the schema class, 9 in the metadata-free parity class, 1 in the proxy class) are green on client 0.11.0 under the UTC control and under the three non-UTC zones; the workstation's own zone is `Europe/Tallinn` and CI runs UTC. The V1-mode run (35 executions in 4 files) is green, which also shows the createClientV2 fixes let a V1-mode connector build its V2 client on 0.11.0.
+
+The Connect-worker integrationTest ran with the HotSpot Temurin 17 toolchain against the shaded archive built from the catalog commit tree (`git diff --quiet` between the catalog commit and the starting head over `src`, `build.gradle.kts`, `gradle` and `.github` exited 0), and the archive's own `clickhouse-client-version.properties` reads `version=0.11.0`, so the worker ran client 0.11.0. Exit 0, no failure and no error in any class; the connector class ran 54 executions with none skipped. The `ExactlyOnceTest` (8) and `ClickHouseCloudTest` (1) executions are the skipped ones, aborted in `@BeforeAll` through assumptions because no cluster or cloud properties are set, which matches Gradle's own summary of 55 tests, 54 succeeded, 0 failed, 1 skipped.
+
+CLT-07's second half, the manual nightly dispatch, is the user's step and is not part of this entry: it needs a scratch branch on origin, and nothing was pushed or dispatched here.
+
+Measured 2026-10-29T13:34:45Z (zone probes, four date runs, V1-mode run and integrationTest).
 
 Verdict: pass
