@@ -10,11 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.client.ClickHouseException;
 import com.clickhouse.client.ClickHouseNode;
-import com.clickhouse.client.api.ServerException;
 import com.clickhouse.kafka.connect.sink.data.Record;
 import com.clickhouse.kafka.connect.sink.db.InMemoryDBWriter;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
 import com.clickhouse.kafka.connect.sink.helper.SchemalessTestData;
+import com.clickhouse.kafka.connect.sink.util.ServerExceptions;
 import com.clickhouse.kafka.connect.util.QueryIdentifier;
 import com.clickhouse.kafka.connect.util.Utils;
 import java.io.IOException;
@@ -82,7 +82,7 @@ class AdditionalRetriableErrorCodesPinUnitTest {
 
     private static Exception v2ServerError(int code) {
         // Client 0.11.0 changes this constructor (Phase 36).
-        return new ServerException(code, SERVER_ERROR_MESSAGE, SERVER_HTTP_STATUS);
+        return ServerExceptions.create(code, SERVER_ERROR_MESSAGE, SERVER_HTTP_STATUS);
     }
 
     private static Exception v1ServerError(int code) {
