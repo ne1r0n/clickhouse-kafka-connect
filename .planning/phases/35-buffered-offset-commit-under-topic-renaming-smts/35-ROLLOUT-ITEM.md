@@ -76,7 +76,12 @@ The fix calls `SinkRecord.originalTopic()`, `originalKafkaPartition()` and `orig
 - All three are present in `connect-api-7.9.7-ccs.jar` of the Confluent Platform worker image `confluentinc/cp-kafka-connect-base:7.9.7` (measured, E-03 `worker_accessors_present`, read with `javap`).
 - All three are present in connect-api 4.1.1 and 4.4.0. Measured: the BLD-16 re-bless of E-03 reports `classes-missing 0 members-missing 0` for each of the worker, 4.1.1 and 4.4.0 reference sets.
 
-A Connect runtime without them would fail the first buffered flush with a linkage error (derived from how the JVM links methods, not measured). BLD-16 guards the floor; nothing here exercised an older runtime.
+A Connect runtime without them fails with `NoSuchMethodError` (derived from reading the code and how the JVM links methods, not measured):
+
+- **Exactly-once:** `ExactlyOnceBufferStrategy.put` calls `originalTopic()` before any insert, so the first `put()` fails.
+- **At-least-once:** `ChunkFlusher.flush` inserts the chunk first and reaches the new accessors only afterwards. `NoSuchMethodError` is an `Error` and `AtLeastOnceBufferStrategy.put` catches only `RuntimeException`, so the inserted chunk stays buffered with no offset recorded and is redelivered as a duplicate.
+
+Only runtimes below the supported floor are affected, and BLD-16 guards the floor in CI; nothing here exercised an older runtime.
 
 ## Evidence labels
 
