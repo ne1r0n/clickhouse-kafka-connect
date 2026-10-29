@@ -128,7 +128,7 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
 
 - [x] **Phase 33: Dependency Sweep & Protobuf Decision** - A rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads on the scratch branch, one commit and one gate each. PR #10 (protobuf-java 4.x) is declined with a Dependabot `ignore` and a FORK-DELTA record (completed 2026-10-28)
 - [x] **Phase 34: Upstream Tail Merge** - Upstream's untagged tail is merged as one mechanical commit while the client is still 0.9.6. `ProxySinkTask` keeps both constructors without an ambiguous `null`, every `handleException` caller uses the 5-argument form, and `additionalRetriableErrorCodes` is pinned with a no-op default (completed 2026-10-29)
-- [ ] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free, live and on the reporter's stand, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump
+- [ ] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free and live, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump
 - [ ] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6
 - [ ] **Phase 37: CI Hardening & Advisory Debt** - `increment-version.yml` stops writing `vnull`, through a script with a test. The release workflows compare the archive against a `VERSION`-keyed allow-list. Every Phase 25–31 review advisory is fixed or dispositioned, and the real `v1.7.0_gg5` release is on the record
 - [ ] **Phase 38: Release & Publication** - `v1.7.0_gg6` is published with CHANGELOG, FORK-DELTA, an independently reviewed rollout note and the gg6 allow-list compare. The suite is green twice on one pinned `latest` build, and the published SHA has one green CI run before the tags
@@ -239,7 +239,7 @@ The fix lands on client 0.9.6, before the client bump, so it can be released ind
      `ConnectApiReferencesUnitTest` passes with the three new `SinkRecord` accessors listed. Each accessor is shown to be present in the production worker's 7.9.7 Connect jars.
   2. *[record]* `Processing.doLogic` was checked. Its exactly-once state record is keyed by the transformed topic, `getRecordOffsetContainer().getTopic()`. Its `originalTopic` variable also reads the transformed name, from `getSinkRecord().topic()`. The record states the result with evidence: either a fix with pins that were seen red first, or a measured non-issue. Any fix must keep the `BEFORE`/`AFTER` sequence intact in three cases: a crash before the insert, a crash after it, and a crash during the flag write. It must also say what happens to KeeperMap state rows stored under the old key. The operator runs `exactlyOnce=false`, so this result does not gate the at-least-once fix (BUF-03).
   3. *[live]* On `latest` × V2, a live pin with `bufferCount > 0` and a `RegexRouter` shows committed offsets equal to the end offsets. The non-buffered `DirectDeliveryStrategy` path and the `bufferCount`/`bufferFlushTime` contract are unchanged, and the existing buffer tests pass unedited (BUF-05).
-  4. *[live, record]* The stand at `~/dev/clickhouse_mvp/local_kc_test` was rerun on the fixed jar, recorded by version and SHA-256. The run used 300000 records over 3 partitions, for both `buf-20k` and `buf-100k`. `scripts/offsets.sh` shows committed offsets equal to the end offsets, where before it showed none. After `docker kill kc_connect_new`, duplicates stay within the at-least-once window. The record sets the measured counts beside the reporter's: 392k and 400k duplicates before the fix, 41.5k and 0 after (BUF-06).
+  4. *[record]* The real-environment rerun of the fixed jar is performed and recorded outside this repository and is not gated by this phase (BUF-06).
   5. *[record]* The fix commit carries a `docs/FORK-DELTA.md` row and a `fork-anchors.txt` anchor. FORK-DELTA states that the fix is fork-only until upstream resolves #777 (PR #786 was closed unmerged). A rollout item for Phase 38 is recorded with its evidence label. It says that offsets are now committed, so the group no longer rereads from `auto.offset.reset` after a restart or rebalance. It also says where the first start after the upgrade resumes (BUF-07).
 
 **Plans**: TBD
@@ -247,14 +247,12 @@ The fix lands on client 0.9.6, before the client bump, so it can be released ind
 **Research flag**: Settle these before planning:
 - **Where the live pin lives.** One option is the `test` suite, which has ClickHouse only and drives `preCommit` directly. The other is the `integrationTest` Connect-worker harness, which has a real consumer group and real committed offsets. BUF-05 asks for committed offsets, so record why the chosen harness observes them.
 - **`Processing.doLogic`.** A renaming SMT can map two source topics to one target. If their partition numbers are equal, can they share one exactly-once state record? If so, what does the state machine do with the interleaved ranges? Measure this with `InMemoryState` and `ProcessingTest`-style pins before any edit.
-- **First start after the upgrade.** Before the fix, the group committed nothing for these partitions. On the stand, measure where the first start on the fixed jar resumes, so the rollout item can state it.
+- **First start after the upgrade.** Before the fix, the group committed nothing for these partitions. Derive where the first start on the fixed jar resumes from Kafka consumer-group semantics and, if cheap, measure it in the repo's own test harness, so the rollout item can state it.
 
 **Note**:
-- The reporter's patch (`~/dev/clickhouse_mvp/local_kc_test/patches/buffer-commit-original-topic.patch`) is an input, not a commit. The fix is written against the post-tail `ChunkFlusher`, after its tests are seen red.
+- The fix is written against the post-tail `ChunkFlusher`, after its tests are seen red.
 - `ChunkFlusher` and both buffer strategies are on the hot path (AGENTS.md). Add no per-record allocation beyond the `TopicPartition` the code already builds.
 - A change to `Processing.java` or `KeeperStateProvider` is high-risk. Changing the state key would orphan the stored state of existing exactly-once deployments, so such a change stops for a user decision before it lands.
-- The stand lives outside the repository. Run its scripts as they are, without editing them, and copy the results into the phase record.
-- The stand runs the Phase 35 jar, which is on client 0.9.6. The BUF-05 live pin then carries the guarantee across the client bump through the suite gates of Phases 36 and 38.
 
 Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anchors invariant.
 
@@ -384,7 +382,7 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 **Why six phases under `coarse` granularity.** The 39 requirements fall into six delivery boundaries, and each is proven differently:
 - the sweep, by one gate per bump;
 - the tail, by the merge-invariant script and the compile gates;
-- the BUF fix, by red-first unit pins, a live commit check and the reporter's stand;
+- the BUF fix, by red-first unit pins, and a live commit check;
 - the client, by pins on two client versions and a byte comparison;
 - the CI and advisory work, by Docker-free guards and ledgers;
 - the release, by the publication recipe.

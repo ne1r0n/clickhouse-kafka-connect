@@ -350,5 +350,4 @@ Resume file: None
 - Discuss and plan Phase 33 with /gsd-discuss-phase 33, then /gsd-plan-phase 33
 - Do not merge Dependabot PRs on `origin` until `v1.7.0_gg6` is published. The milestone absorbs them from their PR heads on the scratch branch.
 - Phase 33 asks you to close PR #10 (protobuf-java 4.x), or to confirm that it may stay open until the `ignore` reaches `custom_build`
-- Phase 35 reruns your stand at `~/dev/clickhouse_mvp/local_kc_test` on the fixed jar
 - Phase 36's manual nightly dispatch, and any Phase 37 dry run, need you to approve a push of the scratch branch and to start the runs from GitHub's `Run workflow` control
