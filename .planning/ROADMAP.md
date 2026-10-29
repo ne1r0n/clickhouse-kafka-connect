@@ -196,7 +196,7 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2 with `SELECT
      - A `DataException` is never reclassified as retriable.
   4. *[Docker-free, live]* `fork-anchors.txt` has new rows for the `ProxySinkTask` statistics and `connectorName` plumbing (ORCH-02) and for the `DEFAULT_RETRIABLE_ERROR_CODES` lookup. The anchors gate passes on the phase tip (TAL-05). Two full `--rerun` suite runs on that tip are green on `latest` × V2 with the 18 named skips. That tip is the baseline for Phases 35–37.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -206,7 +206,7 @@ Plans:
 - [x] 34-02-PLAN.md — Wave 2: separate repair commits: `ProxySinkTask` with the `connectorName` constructor and the `DBWriter` seam on one four-argument core plus 8 anchor rows, the stale `handleException` caller on the five-argument form plus the `DEFAULT_RETRIABLE_ERROR_CODES` rows, all four compile tasks, the BLD-16 re-bless from the worker jars; the `ProxySinkTaskConstructorUnitTest` pins with a mutation run (TAL-02, TAL-03, TAL-05)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 34-03-PLAN.md — Wave 3: the `AdditionalRetriableErrorCodesPinUnitTest` pins (parse matrix on both paths, 15-code literal, unset-key sweep, DataException) with a mutation run, the Phase 36/38 handoff record, and the phase gate: origin and upstream re-read, cache-busted `testUnit`, two `--rerun` full suites with the 18 named skips, anchors mirror, tail and cumulative gates (TAL-04, TAL-05, TAL-01)
+- [x] 34-03-PLAN.md — Wave 3: the `AdditionalRetriableErrorCodesPinUnitTest` pins (parse matrix on both paths, 15-code literal, unset-key sweep, DataException) with a mutation run, the Phase 36/38 handoff record, and the phase gate: origin and upstream re-read, cache-busted `testUnit`, two `--rerun` full suites with the 18 named skips, anchors mirror, tail and cumulative gates (TAL-04, TAL-05, TAL-01)
 
 **Research flag**: Standard. The fork has a rehearsed recipe: the gg1, gg4 and earlier tail merges, the gate script and the checklist. The conflict set was measured with `git merge-tree` against both `sync/v1.7.0` and `origin/custom_build`. If `upstream/main` has moved past `9bed6f79`, re-measure the conflict set before planning. If upstream has tagged a release past `v1.7.0`, stop, because that makes this a tagged sync (FUT-01) and the user decides the scope.
 
@@ -481,7 +481,7 @@ The order is the user's (2026-10-28). Phases 33 and 34 could share a phase under
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-28 |
-| 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 2/3 | In Progress | - |
+| 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 3/3 | In Progress | - |
 | 35. Buffered Offset Commit Under Topic-Renaming SMTs | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 37. CI Hardening & Advisory Debt | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |

@@ -15,11 +15,11 @@
 
 ### Upstream Tail
 
-- [ ] **TAL-01**: Upstream `main` is merged (tail past `v1.7.0`, re-checked with `git ls-remote upstream main` and `git merge-tree` immediately before) as a mechanical merge commit that passes `verify-merge-invariants.sh`, with a `MERGE-CHECKLIST-v1.7.0-tail-2.md`.
+- [x] **TAL-01**: Upstream `main` is merged (tail past `v1.7.0`, re-checked with `git ls-remote upstream main` and `git merge-tree` immediately before) as a mechanical merge commit that passes `verify-merge-invariants.sh`, with a `MERGE-CHECKLIST-v1.7.0-tail-2.md`.
 - [x] **TAL-02**: `ProxySinkTask` keeps the fork's `connectorName` constructor and upstream's `DBWriter` test-seam constructor without an ambiguous `null`, through a 4-argument package-private constructor both delegate to.
 - [x] **TAL-03**: Every fork caller and test of `Utils.handleException` uses the 5-argument form, and `compileTestJava` and `compileIntegrationTestJava` pass after the upstream `CreateTableStatement` refactor.
-- [ ] **TAL-04**: `additionalRetriableErrorCodes` is a supported setting, pinned by tests: the parse/validate matrix (trim, de-duplicate, reject non-integers and values <= 0, on both the `ConfigDef` validator and the constructor path), the 15-code default set including 159, a default-empty no-op, and that a `DataException` is never reclassified.
-- [ ] **TAL-05**: New anchor rows protect the `ProxySinkTask` statistics/`connectorName` plumbing (ORCH-02) and the `DEFAULT_RETRIABLE_ERROR_CODES` lookup, and `fork-anchors.txt` passes after the merge.
+- [x] **TAL-04**: `additionalRetriableErrorCodes` is a supported setting, pinned by tests: the parse/validate matrix (trim, de-duplicate, reject non-integers and values <= 0, on both the `ConfigDef` validator and the constructor path), the 15-code default set including 159, a default-empty no-op, and that a `DataException` is never reclassified.
+- [x] **TAL-05**: New anchor rows protect the `ProxySinkTask` statistics/`connectorName` plumbing (ORCH-02) and the `DEFAULT_RETRIABLE_ERROR_CODES` lookup, and `fork-anchors.txt` passes after the merge.
 
 ### Client 0.11.0
 
@@ -96,11 +96,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SWP-02 | Phase 33 | Complete |
 | SWP-03 | Phase 33 | Complete |
 | SWP-04 | Phase 33 | Complete |
-| TAL-01 | Phase 34 | Pending |
+| TAL-01 | Phase 34 | Complete |
 | TAL-02 | Phase 34 | Complete |
 | TAL-03 | Phase 34 | Complete |
-| TAL-04 | Phase 34 | Pending |
-| TAL-05 | Phase 34 | Pending |
+| TAL-04 | Phase 34 | Complete |
+| TAL-05 | Phase 34 | Complete |
 | BUF-01 | Phase 35 | Pending |
 | BUF-02 | Phase 35 | Pending |
 | BUF-03 | Phase 35 | Pending |

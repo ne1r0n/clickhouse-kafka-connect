@@ -4,17 +4,17 @@ milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 current_phase: 34
 current_phase_name: Upstream Tail Merge
-status: executing
-stopped_at: Completed 34-02-PLAN.md
-last_updated: "2026-10-28T22:16:50.330Z"
+status: verifying
+stopped_at: Completed 34-03-PLAN.md
+last_updated: "2026-10-29T07:41:12.826Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 34 execution started
-state_head: 85b5c1a78642954fa59c54826c30104569582489
+state_head: dced2c0fb9c2289d6f58975dfa505cc97279020f
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 17
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg
 
 Phase: 34 (Upstream Tail Merge) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-28 — Phase 34 execution started
 
 Progress: [██░░░░░░░░] 17%
@@ -216,6 +216,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 33 P03 | 52 min | 3 tasks | 5 files |
 | Phase 34 P01 | 12 min | 2 tasks | 30 files |
 | Phase 34 P02 | 38 min | 3 tasks | 6 files |
+| Phase 34 P03 | 55 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -281,6 +282,8 @@ The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands befo
 - [Phase 34]: Plan 34-01: M3 adaf8c4e merges upstream 9bed6f79 mechanically with ProxySinkTask on the fork side; the DBWriter seam is deferred to 34-02 so the bare merge's 5 javac errors are exactly the predicted set
 - [Phase 34]: ProxySinkTask: both three-argument constructors delegate to one package-private four-argument core, so no caller passes an ambiguous null; fields processing and dbWriter keep their names (34-02)
 - [Phase 34]: BLD-16 list re-blessed only from the worker image jars plus 4.1.1 and 4.4.0; the diff was the date line plus one M line for ConfigException(String, Object, String) (34-02)
+- [Phase 34]: TAL-04 DataException clause pinned narrowly: adding codes never makes a DataException with no server error and no network root cause retriable; the wrapped retriable-server-error and wrapped socket-timeout (tolerance=all) cases are retriable today and not asserted (user decision on upstream behavior)
+- [Phase 34]: Phase 36 inherits 10 three-argument new ServerException( sites in 3 files (UtilsTest 8, AdditionalRetriableErrorCodesTest 1, AdditionalRetriableErrorCodesPinUnitTest 1), not the ROADMAP eight; Phase 38 carries the FUT-05 rollout item
 
 ### Pending Todos
 
@@ -337,8 +340,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T22:16:50.299Z
-Stopped at: Completed 34-02-PLAN.md
+Last session: 2026-10-29T07:41:12.791Z
+Stopped at: Completed 34-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
