@@ -15,7 +15,7 @@
 |-------|-------------|------|---------|
 | E-01 | CLT-01, CLT-02, CLT-09 | 36-01 | pass |
 | E-02 | CLT-01 | 36-01 | pass |
-| E-03 | CLT-01, CLT-03, CLT-04 | 36-01 | pending (plan 36-01) |
+| E-03 | CLT-01, CLT-03, CLT-04 | 36-01 | pass |
 | E-04 | CLT-06 | 36-01 | pending (plan 36-01) |
 | E-05 | CLT-03 | 36-02 | pending (plan 36-02) |
 | E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pending (plan 36-02) |
@@ -197,5 +197,67 @@ clickhouse_version: 26.10.3.7
 The Spotless numstat of an existing file is read against the staged copy of the edited file (`git add` of the copies in the throwaway worktree before the second `spotlessApply`), so the figure counts what Spotless still wants to change and not the call-site edit itself; the baseline is the same figure on the pristine worktree, and the pin class and the factory carry no Spotless hunk. On client 0.9.6 the seven shape rows are 502, 503, an unexpected status, 159, 252, 60 and a bare `ClientException`. The bare worktree without the factory fails `compileTestJava` with exactly the 10 constructor errors (`required: int,String,int,String`, `found: int,String,int`), and the one with the factory and the catalog value as the only change compiles the test sources and keeps the shape rows, `UtilsTest` and both `AdditionalRetriableErrorCodes` classes green on client 0.11.0.
 
 Measured 2026-10-29T12:30:00Z (factory, shape pin and bare worktrees).
+
+Verdict: pass
+
+### E-03: The remaining 0.9.6 pins are green, and the bare 0.11.0 red set is exactly the endpoint and unknown-key pins
+
+Backs: CLT-01, CLT-03, CLT-04, ROADMAP Phase 36 criteria 1 and 3 (the timeout prefixes, the endpoint and options pins, the insert wire and the live behaviours are green on the shipped client, and the break the two `createClientV2` fixes of plan 36-02 must repair is pinned exactly before any fix exists).
+
+```sh
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/<ClientTimeoutPrefixPinUnitTest | ClientEndpointAndOptionsPinUnitTest | ClientInsertWirePinUnitTest | Client011BehaviourPinLiveTest>.java.txt src/test/java/com/clickhouse/kafka/connect/sink/db/helper/<Name>.java
+cmp <each asset> <each copy>
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClientErrorShapePinUnitTest' --tests '*ClientTimeoutPrefixPinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*ClientInsertWirePinUnitTest' > /tmp/gsd36/exec/pins-096.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*Client011BehaviourPinLiveTest' > /tmp/gsd36/exec/live-096.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/<testUnit | test> --class <each class>
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+git worktree add --detach /tmp/gsd36/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply
+git commit -F /tmp/gsd36/exec/msg-pins.txt
+git worktree add --detach /tmp/gsd36/bare2 HEAD
+sed -i '' 's/^clickHouseDriver = "0.9.6"$/clickHouseDriver = "0.11.0"/' /tmp/gsd36/bare2/gradle/libs.versions.toml
+git -C /tmp/gsd36/bare2 diff --numstat
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/bare2 --console=plain testUnit --rerun --tests '*ClientErrorShapePinUnitTest' --tests '*ClientTimeoutPrefixPinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*UtilsTest' --tests '*AdditionalRetriableErrorCodes*' > /tmp/gsd36/exec/bare-dockerfree.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed /tmp/gsd36/bare2/build/test-results/testUnit --expect <the three endpoint names>
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/bare2 --console=plain test --rerun --tests '*Client011BehaviourPinLiveTest' --tests '*ClickHouseSinkJdbcPropertiesTest' > /tmp/gsd36/exec/bare-live.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed /tmp/gsd36/bare2/build/test-results/test --expect <the three live names>
+git worktree remove --force /tmp/gsd36/bare2
+git worktree prune
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+```
+
+```text
+assets_identical: yes
+pins_dockerfree_exit: 0
+error_shape_xml: tests=7 failures=0 errors=0 skipped=0
+timeout_prefix_xml: tests=2 failures=0 errors=0 skipped=0
+endpoint_xml: tests=3 failures=0 errors=0 skipped=0
+wire_xml: tests=2 failures=0 errors=0 skipped=0
+live_exit: 0
+live_xml: tests=6 failures=0 errors=0 skipped=0
+spotless_worktree_cmp: identical
+pins_commit: 765476af5d09c008e6b259299b6ff47deb83c06c
+pins_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/Client011BehaviourPinLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientInsertWirePinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientTimeoutPrefixPinUnitTest.java
+bare_catalog_numstat: 1/1
+bare_dockerfree_exit: 1
+bare_dockerfree_failed: ClientEndpointAndOptionsPinUnitTest#CLT-03: ssl=true and sslmode=strict build a working V2 client and never reach the server; ClientEndpointAndOptionsPinUnitTest#CLT-03: the V1-only keys of the live jdbcConnectionProperties pins are accepted too; ClientEndpointAndOptionsPinUnitTest#CLT-03: the request path is slash and the database travels in the X-ClickHouse-Database header
+bare_dockerfree_prediction_met: yes
+bare_other_pins_green: yes
+bare_live_exit: 1
+bare_live_failed: ClickHouseSinkJdbcPropertiesTest#primitiveTypesTest; ClickHouseSinkJdbcPropertiesTest#withEmptyDataRecordsTest; Client011BehaviourPinLiveTest#CLT-04: ssl=true and sslmode=strict still ping and query a real server on V2
+bare_live_prediction_met: yes
+bare_live_error: Unknown and unmapped config properties: [ssl, sslmode]
+bare2_worktree_removed: yes
+hygiene_scan: clean
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+bare_clickhouse_version: 26.10.3.7
+```
+
+On client 0.9.6 the four Docker-free classes run 7, 2, 3 and 2 executions green and the live class 6 green on ClickHouse `latest` with client V2 (the 159 pin uses a real `max_execution_time=1` query, the ZSTD pin takes its 0.9.6 branch `Invalid LZ4 magic byte`, and the V1 pin expects `Magic is not correct`). On the bare 0.11.0 worktree, whose only change is the catalog value, the Docker-free red set is exactly the three `ClientEndpointAndOptionsPinUnitTest` tests (the request path, the unknown-key break for `ssl` and `sslmode`, and the other V1-only keys), and the shape, timeout and wire classes report no failure there. The live red set is exactly `ClickHouseSinkJdbcPropertiesTest` `primitiveTypesTest` and `withEmptyDataRecordsTest` plus the `Client011BehaviourPinLiveTest` ssl-and-sslmode pin, and the other five live pins are green on 0.11.0. These are the red tests that plan 36-02's two `createClientV2` fixes turn green.
+
+Measured 2026-10-29T12:32:00Z (0.9.6 pins and the bare 0.11.0 worktree).
 
 Verdict: pass
