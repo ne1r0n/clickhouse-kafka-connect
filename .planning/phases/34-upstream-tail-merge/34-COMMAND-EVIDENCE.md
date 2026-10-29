@@ -22,7 +22,7 @@
 | E-08 | TAL-02 | 34-02 | pass |
 | E-09 | TAL-04 | 34-03 | pass |
 | E-10 | TAL-01, TAL-04, TAL-05 | 34-03 | pass |
-| E-11 | TAL-01, TAL-02, TAL-03, TAL-04, TAL-05 | 34-03 | pending (plan 34-03) |
+| E-11 | TAL-01, TAL-02, TAL-03, TAL-04, TAL-05 | 34-03 | pass |
 
 ### E-01: Pre-flight: upstream and origin re-read, conflict set, baseline suites on the untouched tip
 
@@ -491,5 +491,100 @@ The ROADMAP Phase 34 note says Phase 36 fixes "all eight" three-argument `Server
 FORK-DELTA note for Phase 38 (research Open Question 4): its `Utils.java` import-order row and its checklist reading-order sentence gain `MERGE-CHECKLIST-v1.7.0-tail-2.md`; `VERSION`, `CHANGELOG.md` and `docs/FORK-DELTA.md` are untouched by this phase, and the upstream `# Unreleased` block (one heading) is for RLS-01 to absorb. The null-set edge matters only to a future caller that passes a null set: `Utils.handleException` would throw a `NullPointerException` on the server-error path (probed at planning).
 
 Timestamp (UTC): 2026-10-29T07:12:16Z to 2026-10-29T07:15:03Z
+
+Verdict: pass
+
+### E-11: Phase 34 gate
+
+Backs: TAL-01, TAL-02, TAL-03, TAL-04, TAL-05, ROADMAP Phase 34 gate (origin and upstream re-read, cache-busted testUnit, two `--rerun` full suites on latest x V2 with the 18 named skips, the anchors mirror, the tail gate and the cumulative gate).
+
+```sh
+git rev-parse HEAD
+git status --porcelain
+git ls-remote origin refs/heads/custom_build
+git ls-remote --exit-code --tags origin pre-v1.7.0-tail-2
+git ls-remote --exit-code --heads origin sync/v1.7.0
+git ls-remote upstream main
+git ls-remote --tags --refs upstream 'v*'
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 7342319afd56203b6c2f1520f63befacb0a18659 > /tmp/gsd34/exec/cumulative-gate-11.log 2>&1   # background
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd34/exec/testunit-11.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd34/exec/suite-11-run1.log 2>&1
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py skips build/test-results/test
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd34/exec/suite-11-run2.log 2>&1
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 7342319afd56203b6c2f1520f63befacb0a18659 > /tmp/gsd34/exec/tail-gate-11.log 2>&1
+git diff --quiet c9443756eb85e601552cb8241f0e7b52ed6209da 7342319afd56203b6c2f1520f63befacb0a18659 -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh
+git log --format=%h -- .planning/phases/34-upstream-tail-merge/34-evidence-check.py | wc -l
+git rev-list --first-parent --merges pre-v1.7.0-tail-2..7342319afd56203b6c2f1520f63befacb0a18659
+git log --first-parent --format='%h %s' pre-v1.7.0-tail-2..7342319afd56203b6c2f1520f63befacb0a18659
+```
+
+```text
+gated_head: 7342319afd56203b6c2f1520f63befacb0a18659
+utc_start: 2026-10-29T07:15:15Z
+dirty_paths_at_gate: M .planning/config.json; M .planning/state.json
+origin_custom_build_at_gate: 3a3a15a9ae064ffe09c696b8bb87bce23419d463 refs/heads/custom_build
+origin_unchanged: yes
+pre_tail2_tag_on_origin: absent
+sync_branch_on_origin: absent
+upstream_main_at_gate: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_moved_during_phase: no
+upstream_newest_release_tag_at_gate: v1.7.0
+testunit_exit: 0
+testunit_tests: 1441
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_expected_tests: 1441
+testunit_count_matches: yes
+suite1_exit: 0
+suite1_tests: 2028
+suite1_failures: 0
+suite1_errors: 0
+suite1_skipped: 18
+suite1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite1_duration: BUILD SUCCESSFUL in 2m 50s
+suite1_clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite1_jvm_crash: none
+suite2_exit: 0
+suite2_tests: 2028
+suite2_failures: 0
+suite2_errors: 0
+suite2_skipped: 18
+suite2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite2_duration: BUILD SUCCESSFUL in 2m 44s
+suite2_clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite2_jvm_crash: none
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_across_runs: yes
+image_same_as_e01: yes
+docker_only_tests: 587
+docker_only_matches_baseline: yes
+anchors_mirror: rows=141 bad=0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=16 anchor_rows=141 marker_commits=23 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+gate_scripts_vs_33_e14: identical
+helper_commits: 1
+merges_since_tag: adaf8c4e76375e5099c076f2ca3bace892709765
+commits_since_tag: 7342319a docs(34-03): record the Phase 34 handoffs (E-10); bba5d9c7 docs(34-03): record the TAL-04 pins and the mutation run (E-09); 31e99f81 test(34-03): pin additionalRetriableErrorCodes parsing, the 15-code default, the unset-key no-op and DataException classification (TAL-04); 8e7e4481 docs(34-02): complete ProxySinkTask repair and pin plan; 85b5c1a7 docs(34-02): record the TAL-02 pins and the mutation run (E-08); 0c7c0b68 test(34-02): pin the ProxySinkTask constructor set, the DBWriter seam wiring and the connector-named MBean (TAL-02); 59bf69b0 docs(34-02): record the five-argument caller, the compile gates and the BLD-16 re-bless (E-06, E-07); 8bd35e59 test(34-02): re-bless the BLD-16 Kafka API list for ConfigException(String, Object, String) (TAL-03); 4c9b3ed8 test(34-02): UtilsNullMessageClassificationUnitTest calls the five-argument handleException (TAL-03); 0e4bea32 docs(34-02): record the ProxySinkTask re-expression (E-05); 608d70a1 fix(34-02): ProxySinkTask keeps the connectorName constructor beside the DBWriter seam through one four-argument core (TAL-02); e6079fd4 docs(34-01): complete upstream tail merge plan; 967c5521 docs(34-01): record the post-merge break inventory (E-04); 3bcc27f6 docs(34-01): record the tail-2 merge and its tail gate (E-02, E-03); f6f4dd8e docs(34-01): record the tail-2 conflicted paths and the resolution checklist (TAL-01); adaf8c4e Merge upstream tail 9bed6f79 (tagless mini-sync after v1.7.0) (TAL-01)
+cumulative_gate_line: invariants: provenance_paths=21 anchor_commits=1027 anchor_rows=141 marker_commits=1093 anchor_exempt=19 result=PASS
+cumulative_gate_exit: 0
+utc_end: 2026-10-29T07:39:00Z
+```
+
+Phase 34 summary: upstream `main` `9bed6f79` (the tagless commits after `v1.7.0`) was merged mechanically as `adaf8c4e` and recorded (E-02, E-03); three repairs followed, each in its own commit: `ProxySinkTask` keeps the fork's connectorName constructor beside upstream's DBWriter seam through one four-argument core, `UtilsNullMessageClassificationUnitTest` uses the five-argument `handleException`, and the BLD-16 Kafka API list was re-blessed for `ConfigException(String, Object, String)` (E-05 to E-07). Two Docker-free pin classes (`ProxySinkTaskConstructorUnitTest`, 4 tests, and `AdditionalRetriableErrorCodesPinUnitTest`, 19 tests) were each proven to bite by a mutation run (E-08, E-09). The fork anchor inventory gained 10 rows (131 to 141). Nothing was pushed: origin `custom_build` is still `3a3a15a9` and neither `pre-v1.7.0-tail-2` nor `sync/v1.7.0` exists on origin. This tip is the baseline for Phases 35-37.
+
+Notes: the two full-suite runs and the cache-busted testUnit ran while the cumulative gate was running in the background (the gate reads commit trees through git and does not touch the working tree or Gradle). The cumulative gate's `anchor_exempt=19` is the SHA-pinned exemption list for earlier history (as in Phase 33), while the tail gate over M3..tip has `anchor_exempt=0`. `testunit_skipped: 2` is the same two inherited skips as in E-01, E-07 and E-08. No `javacore`, `core.*.dmp`, `Snap` or `jitdump` file appeared. The recorded time of E-09's first start and E-05/E-06's start are approximate, as those entries state.
+
+Timestamp (UTC): 2026-10-29T07:15:15Z to 2026-10-29T07:39:00Z
 
 Verdict: pass
