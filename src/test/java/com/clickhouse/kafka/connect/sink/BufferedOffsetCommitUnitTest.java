@@ -42,6 +42,9 @@ class BufferedOffsetCommitUnitTest {
     private static final int TRANSFORMED_PARTITION = 0;
     private static final int MOVED_PARTITION = 3;
     private static final long MOVED_FIRST_OFFSET = 500L;
+    private static final int REVOKED_ORIGINAL_PARTITION = 1;
+    private static final int KEPT_ORIGINAL_PARTITION = 2;
+    private static final long KEPT_FIRST_OFFSET = 20L;
     private static final ErrorReporter NO_ERROR_REPORTER = null;
 
     enum StrategyKind {
@@ -81,6 +84,22 @@ class BufferedOffsetCommitUnitTest {
     private static List<SinkRecord> renamedRecords(int partition, long firstOffset, int count) {
         return RenamedTopicRecords.renamed(
                 RenamedTopicRecords.schemaless(ORIGINAL_TOPIC, partition, firstOffset, count), RENAMED_TOPIC);
+    }
+
+    /**
+     * Records of one original partition as an SMT that renames the topic and moves every record onto
+     * {@code TRANSFORMED_PARTITION} leaves them. The transformed offsets are unique across calls so the
+     * records of different original partitions never look like a redelivery to the state provider.
+     */
+    private static List<SinkRecord> movedRecords(
+            int originalPartition, long firstOffset, int count, long transformedFirstOffset) {
+        List<SinkRecord> consumed = RenamedTopicRecords.schemaless(ORIGINAL_TOPIC, originalPartition, firstOffset, count);
+        List<SinkRecord> moved = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            moved.add(RenamedTopicRecords.withTransformedPosition(
+                    consumed.get(i), RENAMED_TOPIC, TRANSFORMED_PARTITION, transformedFirstOffset + i));
+        }
+        return moved;
     }
 
     private static Set<Inserted> expectedInserted(
@@ -218,6 +237,29 @@ class BufferedOffsetCommitUnitTest {
                 Map.of(partition(ORIGINAL_TOPIC, 1), 110L),
                 nextOffsets(committed),
                 "Only the partition that stayed assigned may still be committed");
+    }
+
+    @ParameterizedTest(name = "BUF-02: close and put key the buffer by the original partition when the SMT moves every record onto one transformed partition [{0}]")
+    @EnumSource(StrategyKind.class)
+    void closeAndPutKeyTheBufferByTheOriginalPartitionWhenTheSmtMovesThePartition(StrategyKind kind) {
+        Harness harness = new Harness(kind);
+        harness.put(concat(
+                movedRecords(REVOKED_ORIGINAL_PARTITION, 0, 3, 0),
+                movedRecords(KEPT_ORIGINAL_PARTITION, KEPT_FIRST_OFFSET, 3, 3)));
+        harness.close(partition(ORIGINAL_TOPIC, REVOKED_ORIGINAL_PARTITION));
+
+        harness.put(movedRecords(KEPT_ORIGINAL_PARTITION, KEPT_FIRST_OFFSET + 3, 7, 6));
+
+        List<Inserted> written = harness.writer.inserted();
+        assertEquals(BUFFER_COUNT, written.size(), "Records written, " + written);
+        assertEquals(
+                Set.of(KEPT_ORIGINAL_PARTITION),
+                written.stream().map(Inserted::originalPartition).collect(Collectors.toSet()),
+                "Only records of the original partition that stayed assigned may be flushed");
+        assertEquals(
+                Map.of(partition(ORIGINAL_TOPIC, KEPT_ORIGINAL_PARTITION), KEPT_FIRST_OFFSET + BUFFER_COUNT),
+                nextOffsets(harness.preCommit()),
+                "preCommit must report the original partition that stayed assigned");
     }
 
     @ParameterizedTest(name = "BUF-04: records whose topic was not renamed commit and drop exactly as before [{0}]")
