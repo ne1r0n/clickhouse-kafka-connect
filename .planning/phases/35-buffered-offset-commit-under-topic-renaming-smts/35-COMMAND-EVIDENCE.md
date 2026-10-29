@@ -17,7 +17,7 @@
 | E-03 | BUF-01, BUF-02, BUF-07 | 35-01 | pass |
 | E-04 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
 | E-05 | BUF-02, BUF-05 | 35-02 | pass |
-| E-06 | BUF-03 | 35-02 | pending (plan 35-02) |
+| E-06 | BUF-03 | 35-02 | pass |
 | E-07 | BUF-03 | 35-02 | pending (plan 35-02) |
 | E-08 | BUF-07 | 35-03 | pending (plan 35-03) |
 | E-09 | BUF-01, BUF-02, BUF-03, BUF-04, BUF-05, BUF-07 | 35-03 | pending (plan 35-03) |
@@ -327,5 +327,60 @@ On the unchanged tree both failing tests are assertion failures at the first off
 A broker-level observation of a group's committed offsets, for example `kafka-consumer-groups --describe --group <group>`, remains a manual operator check that no gate depends on.
 
 Timestamp (UTC): 2026-10-29T09:34:00Z to 2026-10-29T09:40:00Z (approximate start; the plan did not capture it)
+
+Verdict: pass
+
+### E-06: BUF-03 probes: state key, many-to-one, the originalTopic local and the Direct path with reportInsertedOffsets, measured on the tip
+
+Backs: BUF-03, ROADMAP Phase 35 criterion 2 (Processing.doLogic was checked on the current tree and the outputs are recorded as printed; nothing in the repository changed).
+
+```sh
+git rev-parse HEAD
+git worktree add --detach /tmp/gsd35/probe <probe_base_commit>
+# throwaway class, worktree only: src/test/java/com/clickhouse/kafka/connect/sink/Buf03ProbeUnitTest.java (7 methods, one BUF03-PROBE line each, no assertion on a measured value)
+rm -rf /tmp/gsd35/probe/build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/probe --console=plain testUnit --rerun --tests '*Buf03ProbeUnitTest' > /tmp/gsd35/exec/probe.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py junit /tmp/gsd35/probe/build/test-results/testUnit --class Buf03ProbeUnitTest
+grep -ho 'BUF03-PROBE [A-Za-z0-9_=.,:+ -]*' /tmp/gsd35/probe/build/test-results/testUnit/TEST-*Buf03ProbeUnitTest.xml | sort -u
+python3 -I -c '<assert the old originalTopic line occurs once, then replace record.getSinkRecord().topic() by record.getSinkRecord().originalTopic() in the worktree Processing.java>'
+rm -rf /tmp/gsd35/probe/build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/probe --console=plain testUnit --rerun --tests '*Buf03ProbeUnitTest' --tests '*ProcessingTest' > /tmp/gsd35/exec/probe-p6b.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py junit /tmp/gsd35/probe/build/test-results/testUnit --class ProcessingTest
+git worktree remove --force /tmp/gsd35/probe
+git worktree prune
+git worktree list
+git diff --quiet <local_head> HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java src/main/java/com/clickhouse/kafka/connect/sink/state src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+```
+
+```text
+probe_base_commit: db4b7d0dbfab20180fb4540950a0074d58a08bf1
+probe_run_exit: 0
+probe_class_xml: OK junit /tmp/gsd35/probe/build/test-results/testUnit class *Buf03ProbeUnitTest: tests=7 failures=0 errors=0 skipped=0 files=1
+probe_p1: offered=400 written=400 last_inserted=t-0=200
+probe_p2: offered_a=200 offered_b=100 written_a=200 written_b=0
+probe_p3: exception=RuntimeException message_prefix=AFTER_PROCESSING: State MISMATCH as batch already processed
+probe_p4: offered_b=100 written_b=0 exception=none
+probe_p5: last_inserted_keys=bufT-0=10
+probe_p6: preCommit_keys=none control_keys=bufT-0=10
+probe_p7: preCommit_keys=bufT-dev-0=10 same_instance=true
+probe_prediction_met: yes
+probe_p6b: preCommit_keys=bufT-dev-0=10 control_keys=none
+processing_test_after_one_line_xml: OK junit /tmp/gsd35/probe/build/test-results/testUnit class *ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+worktrees_removed: yes
+probe_class_committed: no
+processing_untouched_in_main_tree: yes
+```
+
+The seven lines equal the planning-time observations of RESEARCH one for one (P1 400 written under the one key `t-0`; P2 `b` written 0 of 100; P3 the `AFTER_PROCESSING: State MISMATCH` exception; P4 `b` written 0; P5 key `bufT-0`; P6 no keys with the transformed key as the control; P7 `bufT-dev-0=10` and the same map instance), so there is no difference to report. In the P6b run the same probe class printed P1 `last_inserted=a-dev-0=200` and P5 `bufT-dev-0=10`: with the one-line change the offsets map is keyed by the original topic, and P2 to P4 and P7 print as before.
+
+P1 (equal offset ranges lose nothing): two sources renamed to one target, with equal offset ranges in interleaved batches, wrote all 400 offered records under one shared state record `t-0`; the state key is the transformed topic and the partition, and nothing is lost while the offset spaces coincide.
+
+P2 to P4 (skewed offsets lose or reject records of the lower-offset source): with a state of `a-dev` at offsets 5000 to 5099, the lower-offset source `b-dev` had 0 of 100 records written when it arrived with offsets 100 to 199 in the next batch (P2), the batch with offsets 10 to 109 raised a `RuntimeException` starting `AFTER_PROCESSING: State MISMATCH as batch already processed` (P3), and with `tolerateStateMismatch=true` it was skipped silently, 0 of 100 written (P4). This runs through `Processing` directly, so it is independent of buffering.
+
+P5 and P6 (`lastInsertedOffsets` is keyed by the transformed topic and the Direct path with `reportInsertedOffsets=true` returns no offsets under a renaming SMT): the offsets map holds `bufT-0`, the transformed topic, while Connect's own positions are keyed `bufT-dev-0`, so `preCommit` returns none (P6) and returns `bufT-0=10` only when the caller's keys are the wrong ones (the control). The default configuration is unaffected: P7 hands Connect its own map back, the same instance.
+
+P6b (the one-line counterfactual restores the keys and is not applied): changing the one line that assigns the `originalTopic` local in `Processing.doLogic`, in the removed worktree only, makes P6 return `bufT-dev-0=10` and leaves all 14 `ProcessingTest` cases green; the change is not applied in the repository, by the recorded decision that `Processing.java` is not edited in this phase.
+
+Timestamp (UTC): 2026-10-29T09:41:00Z to 2026-10-29T09:42:15Z
 
 Verdict: pass
