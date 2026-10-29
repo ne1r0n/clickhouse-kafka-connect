@@ -9,7 +9,7 @@ findings:
     title: "No test pins `originalKafkaPartition()` at the two strategy sites, so a partition-only regression passes"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`ChunkFlusher.flush` calls the new accessors only after the insert, and the rollout wording misdescribes the failure on a runtime that lacks them"
   - id: IN-01
     severity: info
@@ -31,9 +31,9 @@ findings:
     severity: info
     disposition: open
     title: "The state-key tripwire is described as the exactly-once key but exercises only `InMemoryState`"
-open: 6
+open: 5
 total: 7
-recorded: 2026-10-29T10:24:23.058Z
+recorded: 2026-10-29T10:24:31.763Z
 ---
 
 # Phase 35: Code Review Disposition
@@ -41,7 +41,7 @@ recorded: 2026-10-29T10:24:23.058Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-01 | warning | fixed | 35-REVIEW-FIX.md |
-| WR-02 | warning | open | - |
+| WR-02 | warning | fixed | 35-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
