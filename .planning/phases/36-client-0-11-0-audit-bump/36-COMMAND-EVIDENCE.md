@@ -22,7 +22,7 @@
 | E-07 | CLT-07 | 36-02 | pass |
 | E-08 | CLT-06 | 36-03 | pass |
 | E-09 | CLT-08 | 36-03 | pass |
-| E-10 | CLT-05, CLT-02 | 36-03 | pending (plan 36-03) |
+| E-10 | CLT-05, CLT-02 | 36-03 | pass |
 | E-11 | CLT-09 | 36-04 | pending (plan 36-04) |
 | E-12 | CLT-09 | 36-04 | pending (plan 36-04) |
 | E-13 | CLT-07 | 36-04 | pending (plan 36-04) |
@@ -707,5 +707,71 @@ What changed: the four entries only in the before archive are the client V2 vers
 The guava override is redundant, not lost: with both `libs.guava` lines removed from `build.gradle.kts` in a throwaway worktree (`0/2` numstat), guava 33.7.2-jre still resolves on `runtimeClasspath` and on `clickhouseDependencies`, requested by `com.clickhouse:client-v2:0.11.0`, and the archive diff holds no guava entry. The httpclient5 and lz4 pins still win (`5.6.4 -> 5.6.5`, `1.11.4 -> 1.12.1`). `build.gradle.kts` was not edited in this phase; the stale `// temp to override client's with CVE` comment and the pin are a follow-up recorded for plan 36-04's rollout items.
 
 Measured 2026-10-29T13:42:00Z (two archive builds, the comparison, the listings, the dependency trees and the guava experiment).
+
+Verdict: pass
+
+### E-10: The D-17 rationale reworded to the 0.11.0 measurements, in three places, and the client-override wording
+
+Backs: CLT-05, CLT-02, CLT-08 and ROADMAP Phase 36 criterion 5, record half (the D-17 default stays and its rationale is reworded to the 0.11.0 measurements in the Javadoc, `docs/FORK-DELTA.md` and the gg1 rollout warning; the client override, the redundant guava override and the httpclient5 pin are worded in FORK-DELTA).
+
+```sh
+python3 -I /tmp/gsd36/exec/apply-docs.py .planning/phases/36-client-0-11-0-audit-bump/36-assets/docs-rewording.txt
+git diff --name-only -- docs src
+git diff -U0 -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java | grep -E '^[-+][^-+]' | grep -vE '^[-+][[:space:]]*(/[*][*]|[*])'
+git diff --numstat -- docs/FORK-DELTA.md
+git diff --numstat -- docs/ROLLOUT-v1.7.0_gg1.md
+grep '^| Fork dependency pins in the version catalog:' docs/FORK-DELTA.md | grep -F <required text>
+grep "^| D-17's unconditional" docs/FORK-DELTA.md | grep -F <required text>
+grep "^| Upstream's guava override" docs/FORK-DELTA.md | grep -F <required text>
+grep "^| Upstream's httpclient5 pin" docs/FORK-DELTA.md | grep -F <required text>
+grep '^An eighth behaviour' docs/FORK-DELTA.md | grep -F 'Magic is not correct'
+grep -F <required text> docs/ROLLOUT-v1.7.0_gg1.md
+git diff --quiet -- .planning/MERGE-CHECKLIST-v1.7.0.md
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileTestJava
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*NetworkCompressionPinUnitTest' --tests '*SourcePlanningIdGuardUnitTest'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/testUnit --class NetworkCompressionPinUnitTest
+git worktree add --detach /tmp/gsd36/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply
+git -C /tmp/gsd36/fmt diff --numstat -- <the two test files>
+git -C /tmp/gsd36/fmt checkout -- .
+cp <the two test files> /tmp/gsd36/fmt/<same relative paths>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply
+cmp <each test file> /tmp/gsd36/fmt/<same relative path>
+git worktree remove --force /tmp/gsd36/fmt
+git worktree prune
+git diff -U0 -- docs src | grep '^+' > /tmp/gsd36/exec/added-lines-docs.txt
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-hygiene-check.py /tmp/gsd36/exec/added-lines-docs.txt
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+```
+
+```text
+docs_files_changed: docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg1.md; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinUnitTest.java
+javadoc_only: yes
+fork_delta_numstat: 5/5
+rollout_numstat: 2/2
+catalog_row_ok: yes
+d17_row_ok: yes
+guava_row_ok: yes
+httpclient_row_ok: yes
+paragraph_ok: yes
+gg1_note_ok: yes
+recorded_fact_26_untouched: yes
+compile_test_exit: 0
+docs_tests_exit: 0
+netcomp_unit_xml: tests=9 failures=0 errors=0 skipped=0
+guard_unit_xml: tests=18 failures=0 errors=0 skipped=0
+spotless_numstat_baseline: none (0 hunks on both files)
+spotless_numstat_edited: none (0 hunks: the formatted copies are byte-identical to the edited files)
+spotless_unchanged: yes
+hygiene_scan: clean
+docs_commit: 375c93be91d2a32eafd4e0364f905e51f8dfd280
+docs_commit_files: docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg1.md; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinUnitTest.java
+clickhouse_version: 26.10.3.7
+```
+
+The D-17 default itself (`setCompressionMethod` true with `compress=false`) is untouched: no main file and no assertion changed, and every changed line of the two test files is a Javadoc comment line. The 15 edit blocks of the planning asset each matched exactly once and were applied in order with a script that asserts a single match per block and writes the result (a byte-for-byte equivalent of the Edit tool). The reworded text says what E-06 measured on 0.11.0 and what Recorded Fact 26 measured on 0.9.6: V2 of client 0.11.0 decodes ZSTD and loads the `zstd-jni` native, client V1 still fails with `Magic is not correct - expect [-126] but got [-112]` on both client lines, and client 0.9.6 fails on V2 with the LZ4 magic-byte error; each of these is pinned by `Client011BehaviourPinLiveTest`. The claim that a worker whose operator set `compress=true` with the lz4 setting never loads a zstd native, and the executable temp folder requirement, are labelled in the text as measured in the public confluentinc/cp-kafka-connect-base:7.9.7 image during the research, not pinned. The catalog row now carries the override marker, `CLT-02, CLT-09, BLD-08` and `ClientCatalogPinUnitTest`, and the sentence calling 0.9.6 upstream's own value is gone; the guava row says `redundant, not lost` with `E-09`; the httpclient5 row records `5.6.4 -> 5.6.5`. Recorded Fact 26 in the merge checklist is unchanged and stays the dated 0.9.6 record, cited beside this entry. The two test classes compile and `NetworkCompressionPinUnitTest` (9) and `SourcePlanningIdGuardUnitTest` (18) are green; their E-06 tally for the first class was also 9.
+
+Measured 2026-10-29T13:43:31Z (shape checks, compile, Docker-free classes, per-file formatting).
 
 Verdict: pass
