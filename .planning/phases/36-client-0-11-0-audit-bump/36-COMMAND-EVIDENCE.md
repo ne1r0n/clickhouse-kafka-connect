@@ -25,7 +25,7 @@
 | E-10 | CLT-05, CLT-02 | 36-03 | pass |
 | E-11 | CLT-09 | 36-04 | pass |
 | E-12 | CLT-09 | 36-04 | pass |
-| E-13 | CLT-07 | 36-04 | pending (plan 36-04) |
+| E-13 | CLT-07 | 36-04 | pending (user-gated) |
 
 ### E-01: Pre-flight: origin, pull request and upstream re-read, Phase 35 gated, baselines on the untouched tree
 
@@ -996,3 +996,55 @@ Nothing is pushed: origin `custom_build` still reads `3a3a15a9`, none of `pre-v1
 Measured 2026-10-29T14:27:54Z (gated head, all gates and scope facts).
 
 Verdict: pass
+
+### E-13: CLT-07 nightly dispatch: handoff prepared, the dispatch is the user's step
+
+Backs: CLT-07, second half, and the user's decision that the nightly dispatch is the user's step (the plan prepares a handoff file and ends before the push and the dispatch).
+
+```sh
+git rev-parse HEAD
+git diff --quiet a8b61f1512ab245a584b506527beaceca7264b04 HEAD -- . ':(exclude).planning'
+git rev-list --count 3a3a15a9ae064ffe09c696b8bb87bce23419d463..HEAD
+git diff --stat 3a3a15a9ae064ffe09c696b8bb87bce23419d463 HEAD -- . ':(exclude).planning'
+grep -n 'name:\|workflow_dispatch\|timeout-minutes' .github/workflows/nightly-integration-tests.yaml
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/contents/.github/workflows/nightly-integration-tests.yaml?ref=custom_build' --jq .name
+git ls-remote origin refs/heads/custom_build
+git ls-remote --exit-code --heads origin 'scratch/*'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-hygiene-check.py .planning/phases/36-client-0-11-0-audit-bump/36-USER-DISPATCH.md
+git add .planning/phases/36-client-0-11-0-audit-bump/36-USER-DISPATCH.md
+git commit -F /tmp/gsd36/exec/msg-handoff.txt
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+```
+
+```text
+gated_head: a8b61f1512ab245a584b506527beaceca7264b04
+head_now: fccb5bb142843593c40332259889300b3de17b13
+non_planning_tree_equals_gated_head: yes
+commits_published_by_push: 157
+non_planning_files_published: 64 files changed, 3836 insertions(+), 528 deletions(-)
+scratch_branch_name: scratch/clt-07-client-0.11.0
+workflow_file_exists_at_head: yes
+workflow_dispatch_trigger_present: yes
+workflow_display_name: Nightly Integration Tests (ClickHouse latest, client V2)
+nightly_job_timeout: 85
+nightly_test_step_timeout: 75
+workflow_on_default_branch: nightly-integration-tests.yaml
+tests_yaml_push_trigger: on: push: branches: ['**']
+local_integration_summary: Tests summary: 55 tests, 54 succeeded, 0 failed, 1 skipped
+local_integration_duration: BUILD SUCCESSFUL in 31m 30s
+local_integration_connector_tests: tests=54 failures=0 errors=0 skipped=0 files=1
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+handoff_file: 36-USER-DISPATCH.md
+handoff_commit: fccb5bb142843593c40332259889300b3de17b13
+handoff_sections: Status; What you decide; Before you push; Push; Dispatch; What to report; If the run is red; Clean up; Resume (for the orchestrator)
+user_gated: yes
+nothing_pushed: yes
+hygiene_scan: clean
+clickhouse_version: 26.10.3.7
+```
+
+The handoff file gives the user the gated SHA, the five checks to run before pushing (the origin tip, tree equality outside `.planning`, no other origin branch at the SHA, no scratch branch), the exact push command for the scratch branch, the dispatch with the branch-selection warning, the fields to report, the red-run and clean-up steps and the resume instructions that record the user's report as E-15. The count of commits that the push publishes is 157 here (it was 156 before the handoff commit and rises with the commits that follow); the handoff file says so and gives the command for the exact figure. This entry stays `pending` as the record of the handoff and is never edited; CLT-07's second half is marked passed only through E-15 after the user's own report. No agent pushed, dispatched, commented or acted on a pull request: origin `custom_build` is still the published `v1.7.0_gg5` commit and no scratch branch exists on origin.
+
+Measured 2026-10-29T14:30:00Z (workflow facts, origin re-read, handoff committed).
+
+Verdict: pending (user-gated: the manual nightly dispatch is the user's step)
