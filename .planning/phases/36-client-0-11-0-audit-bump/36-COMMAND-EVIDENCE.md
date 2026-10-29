@@ -14,7 +14,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | CLT-01, CLT-02, CLT-09 | 36-01 | pass |
-| E-02 | CLT-01 | 36-01 | pending (plan 36-01) |
+| E-02 | CLT-01 | 36-01 | pass |
 | E-03 | CLT-01, CLT-03, CLT-04 | 36-01 | pending (plan 36-01) |
 | E-04 | CLT-06 | 36-01 | pending (plan 36-01) |
 | E-05 | CLT-03 | 36-02 | pending (plan 36-02) |
@@ -117,5 +117,85 @@ baseline_netcomp_live_tests: 9
 Phase 35's recorded baselines (testUnit 1456, full suite 2047) are not reused: the untouched tree at this HEAD measures testUnit 1458 and a full suite of 2049, both green, and every later count of this phase is compared with these re-measured numbers. Origin `custom_build` is still the published `v1.7.0_gg5` commit, none of `pre-v1.7.0-tail-2`, `sync/v1.7.0` or a scratch branch exists on origin, and PR #17 and the Dependabot branch were only read.
 
 Measured 2026-10-29T12:27:00Z (pre-flight reads and baselines).
+
+Verdict: pass
+
+### E-02: Factory and the error-shape pin: green on 0.9.6, the factory compiles on a bare 0.11.0 worktree
+
+Backs: CLT-01, ROADMAP Phase 36 criterion 1 (the 10 three-argument `ServerException` sites compile on both client lines through one factory, and the first client pin drives the real V2 client over a real socket into `Utils.handleException`), and the premise of the CLT-09 one-commit revert (the test sources compile on 0.11.0 without the catalog commit carrying them).
+
+```sh
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/ServerExceptions.java.txt src/test/java/com/clickhouse/kafka/connect/sink/util/ServerExceptions.java
+sed -i '' 's/new ServerException(/ServerExceptions.create(/g' <UtilsTest | AdditionalRetriableErrorCodesTest | AdditionalRetriableErrorCodesPinUnitTest>
+grep -rnE 'new[ ]ServerException[(]' src
+grep -rn 'ServerExceptions.create(' src/test
+git worktree add --detach /tmp/gsd36/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply
+git -C /tmp/gsd36/fmt diff --numstat -- <the three existing files and the factory>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileTestJava
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*UtilsTest' --tests '*AdditionalRetriableErrorCodes*'
+git commit -F /tmp/gsd36/exec/msg-factory.txt
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/<StubClickHouseServer | ClientErrorShapes | ClientErrorShapePinUnitTest>.java.txt src/test/java/com/clickhouse/kafka/connect/sink/db/helper/<Name>.java
+cmp <each asset> <each copy>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClientErrorShapePinUnitTest'
+git commit -F /tmp/gsd36/exec/msg-shape.txt
+git worktree add --detach /tmp/gsd36/bare0 c6c7edb4ab5c821ac1c5c53a0dae4872315a2059^
+sed -i '' 's/^clickHouseDriver = "0.9.6"$/clickHouseDriver = "0.11.0"/' /tmp/gsd36/bare0/gradle/libs.versions.toml
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/bare0 --console=plain compileTestJava
+git worktree add --detach /tmp/gsd36/bare HEAD
+sed -i '' 's/^clickHouseDriver = "0.9.6"$/clickHouseDriver = "0.11.0"/' /tmp/gsd36/bare/gradle/libs.versions.toml
+git -C /tmp/gsd36/bare diff --numstat
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/bare --console=plain compileTestJava
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/bare --console=plain testUnit --rerun --tests '*ClientErrorShapePinUnitTest' --tests '*UtilsTest' --tests '*AdditionalRetriableErrorCodes*'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/bare --console=plain dependencies --configuration testRuntimeClasspath
+git worktree remove --force /tmp/gsd36/bare0
+git worktree remove --force /tmp/gsd36/bare
+git worktree prune
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+```
+
+```text
+sites_before: 10
+sites_after: 0
+factory_calls: 10
+spotless_numstat_baseline: AdditionalRetriableErrorCodesTest.java=8/9; UtilsTest.java=10/11
+spotless_numstat_edited: AdditionalRetriableErrorCodesTest.java=8/9; UtilsTest.java=10/11
+spotless_unchanged: yes
+spotless_factory_cmp: identical
+spotless_new_files_cmp: identical
+compile_test_exit_096: 0
+utilstest_tests: 34
+additional_tests: 3
+additional_pin_tests: 19
+factory_tests_failed: none
+assets_identical: yes
+factory_commit: c6c7edb4ab5c821ac1c5c53a0dae4872315a2059
+factory_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesTest.java; src/test/java/com/clickhouse/kafka/connect/sink/util/ServerExceptions.java; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java
+shape_pin_exit: 0
+shape_pin_xml: tests=7 failures=0 errors=0 skipped=0
+shape_pin_failed: none
+shape_pin_commit: 9dd365882f2188ec27a8fb762aba300039a59523
+shape_pin_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientErrorShapePinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientErrorShapes.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+bare_unfactored_compile_exit: 1
+bare_unfactored_error_count: 10
+bare_unfactored_error_files: AdditionalRetriableErrorCodesPinUnitTest.java=1; AdditionalRetriableErrorCodesTest.java=1; UtilsTest.java=8
+bare_unfactored_required: int,String,int,String
+bare0_worktree_removed: yes
+bare_catalog_numstat: 1/1
+bare_compile_test_exit: 0
+bare_resolved_client: com.clickhouse:client-v2:0.11.0
+bare_shape_pin_xml: tests=7 failures=0 errors=0 skipped=0
+bare_utilstest_tests: 34
+bare_additional_tests: 3
+bare_additional_pin_tests: 19
+bare_failed: none
+bare_worktree_removed: yes
+hygiene_scan: clean
+clickhouse_version: 26.10.3.7
+```
+
+The Spotless numstat of an existing file is read against the staged copy of the edited file (`git add` of the copies in the throwaway worktree before the second `spotlessApply`), so the figure counts what Spotless still wants to change and not the call-site edit itself; the baseline is the same figure on the pristine worktree, and the pin class and the factory carry no Spotless hunk. On client 0.9.6 the seven shape rows are 502, 503, an unexpected status, 159, 252, 60 and a bare `ClientException`. The bare worktree without the factory fails `compileTestJava` with exactly the 10 constructor errors (`required: int,String,int,String`, `found: int,String,int`), and the one with the factory and the catalog value as the only change compiles the test sources and keeps the shape rows, `UtilsTest` and both `AdditionalRetriableErrorCodes` classes green on client 0.11.0.
+
+Measured 2026-10-29T12:30:00Z (factory, shape pin and bare worktrees).
 
 Verdict: pass
