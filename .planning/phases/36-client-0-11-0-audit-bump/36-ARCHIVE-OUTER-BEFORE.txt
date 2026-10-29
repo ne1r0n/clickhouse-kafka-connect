@@ -1,0 +1,14 @@
+Archive:  /tmp/gsd36/arch/before/clickhouse-kafka-connect-v1.7.0_gg5.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+        0  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/
+     1474  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/manifest.json
+        0  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/assets/
+      596  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/assets/logo.svg
+        0  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/doc/
+    11389  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/doc/LICENSE
+     1703  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/doc/README.md
+        0  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/lib/
+ 13702550  02-01-1980 00:00   clickhouse-kafka-connect-v1.7.0_gg5/lib/clickhouse-kafka-connect-v1.7.0_gg5-confluent.jar
+---------                     -------
+ 13717712                     9 files
