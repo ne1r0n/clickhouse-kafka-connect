@@ -242,7 +242,17 @@ The fix lands on client 0.9.6, before the client bump, so it can be released ind
   4. *[record]* The real-environment rerun of the fixed jar is performed and recorded outside this repository and is not gated by this phase (BUF-06).
   5. *[record]* The fix commit carries a `docs/FORK-DELTA.md` row and a `fork-anchors.txt` anchor. FORK-DELTA states that the fix is fork-only until upstream resolves #777 (PR #786 was closed unmerged). A rollout item for Phase 38 is recorded with its evidence label. It says that offsets are now committed, so the group no longer rereads from `auto.offset.reset` after a restart or rebalance. It also says where the first start after the upgrade resumes (BUF-07).
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 35-01-PLAN.md — Wave 1: pre-flight and baselines, the red-first Docker-free `BufferedOffsetCommitUnitTest` built through `newRecord` (8 of 13 executions red on the unchanged tree), then one fix commit: the three offset sites keyed by `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset() + 1`, the BLD-16 re-bless from the 7.9.7 worker jars, 7 anchor rows and the FORK-DELTA row, with a mutation proof (BUF-01, BUF-02, BUF-04, BUF-07)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 35-02-PLAN.md — Wave 2: the ClickHouse-backed live pin written red in a worktree on the unchanged tree, with the harness decision recorded, then the BUF-03 probes on `Processing.doLogic` in a worktree, a Docker-free state-key tripwire and `35-BUF03-RECORD.md` with the open items for the milestone close (BUF-02, BUF-03, BUF-05)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 35-03-PLAN.md — Wave 3: the labelled rollout item for Phase 38 with the first-start derivation, and the phase gate: cache-busted `testUnit`, one full `--rerun` suite on `latest` with client V2, the anchors mirror, the tail and cumulative merge gates and the scope facts (BUF-07, BUF-01 to BUF-05)
 
 **Research flag**: Settle these before planning:
 - **Where the live pin lives.** One option is the `test` suite, which has ClickHouse only and drives `preCommit` directly. The other is the `integrationTest` Connect-worker harness, which has a real consumer group and real committed offsets. BUF-05 asks for committed offsets, so record why the chosen harness observes them.

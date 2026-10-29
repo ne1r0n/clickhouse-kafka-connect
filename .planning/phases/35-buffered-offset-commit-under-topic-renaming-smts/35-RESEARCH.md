@@ -421,15 +421,15 @@ python3 -I .planning/phases/34-upstream-tail-merge/34-evidence-check.py anchors 
 | A6 | Two source topics collapsing to one table does not arise from the rendered templates alone (one jurisdiction per connector) | BUF-03 | Medium: if the operator has such a connector, P2-P4 data loss is live today and is a separate decision |
 | A8 | The 3.9-branch `WorkerSinkTask` behaviours (original keys, assignment filter, close-after-commit) as read through a summarising fetch | Architecture | Low |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does the user want the `Processing.java` L137 one-liner (Direct + `reportInsertedOffsets=true`)?** ANSWERED: record only, no edit. The defect (P6 `{}`) is recorded as an open item for the milestone close (owner, re-open trigger "operator sets `reportInsertedOffsets=true` with a renaming SMT"); no `Processing.java` change this phase.
-2. **Many-to-one state-key hazard (P2-P4):** record as measured evidence; any state-key change STOPS for the user (ROADMAP). Recommendation: surface it in the plan summary and the milestone close record; no code now.
-3. **Include the optional `integrationTest` class?** Cost about one task plus one helper on `ConfluentPlatform`; only repo-resident broker-level observer. Recommendation: include if budget allows; never a gate dependency.
+2. **Many-to-one state-key hazard (P2-P4):** RESOLVED (recorded as an open item, no code): record as measured evidence; any state-key change STOPS for the user (ROADMAP). Recommendation: surface it in the plan summary and the milestone close record; no code now.
+3. **Include the optional `integrationTest` class?** RESOLVED: not built; decision and reasons recorded in plan 35-02 Task 1. Cost about one task plus one helper on `ConfluentPlatform`; only repo-resident broker-level observer. Recommendation: include if budget allows; never a gate dependency.
 4. **Real-environment rerun (BUF-06):** ANSWERED: out of scope for this repository; performed and recorded outside it, not gated here.
-5. **Acceptance bound for duplicates after a hard kill:** not applicable here (belongs to the out-of-repository rerun).
-6. **FORK-DELTA item 9 wording** ("buffered delivery deliberately not adopted") after the BUF row: clause now or at RLS-01.
-7. **Re-check #777 / PR #786 at phase close** so FORK-DELTA's "fork-only until upstream resolves #777" stays true.
+5. **Acceptance bound for duplicates after a hard kill:** RESOLVED (not applicable): not applicable here (belongs to the out-of-repository rerun).
+6. **FORK-DELTA item 9 wording** RESOLVED (clause added in the fix commit, plan 35-01 Task 2): ("buffered delivery deliberately not adopted") after the BUF row: clause now or at RLS-01.
+7. **Re-check #777 / PR #786 at phase close** RESOLVED (plan 35-03 gate): so FORK-DELTA's "fork-only until upstream resolves #777" stays true.
 
 ## Environment Availability
 
