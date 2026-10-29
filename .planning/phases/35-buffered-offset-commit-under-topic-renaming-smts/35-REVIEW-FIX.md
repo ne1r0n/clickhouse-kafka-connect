@@ -37,7 +37,7 @@ Mutation proof (throwaway worktree at the pre-fix HEAD plus the new test file; o
 - On the unmutated tree all 17 executions of `BufferedOffsetCommitUnitTest` and `ProcessingRenamedTopicStateKeyUnitTest` pass.
 - The worktree was removed and `src/main` is unchanged in the main tree.
 
-### WR-02: Rollout wording misdescribes the failure on a runtime that lacks the new accessors
+### WR-02: `ChunkFlusher.flush` calls the new accessors only after the insert, and the rollout wording misdescribes the failure on a runtime that lacks them
 
 **Files modified:** `docs/FORK-DELTA.md`, `.planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-ROLLOUT-ITEM.md`
 **Commit:** b232c205
