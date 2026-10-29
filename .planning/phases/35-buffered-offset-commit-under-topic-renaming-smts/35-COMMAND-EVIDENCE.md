@@ -18,7 +18,7 @@
 | E-04 | BUF-01, BUF-02, BUF-04 | 35-01 | pass |
 | E-05 | BUF-02, BUF-05 | 35-02 | pass |
 | E-06 | BUF-03 | 35-02 | pass |
-| E-07 | BUF-03 | 35-02 | pending (plan 35-02) |
+| E-07 | BUF-03 | 35-02 | pass |
 | E-08 | BUF-07 | 35-03 | pending (plan 35-03) |
 | E-09 | BUF-01, BUF-02, BUF-03, BUF-04, BUF-05, BUF-07 | 35-03 | pending (plan 35-03) |
 
@@ -382,5 +382,55 @@ P5 and P6 (`lastInsertedOffsets` is keyed by the transformed topic and the Direc
 P6b (the one-line counterfactual restores the keys and is not applied): changing the one line that assigns the `originalTopic` local in `Processing.doLogic`, in the removed worktree only, makes P6 return `bufT-dev-0=10` and leaves all 14 `ProcessingTest` cases green; the change is not applied in the repository, by the recorded decision that `Processing.java` is not edited in this phase.
 
 Timestamp (UTC): 2026-10-29T09:41:00Z to 2026-10-29T09:42:15Z
+
+Verdict: pass
+
+### E-07: BUF-03 tripwire pinned, mutation-proved, and the record written
+
+Backs: BUF-03, ROADMAP Phase 35 criterion 2 (the part that must not move, the exactly-once state key, has a Docker-free tripwire that bites under a state-key mutation, and the outcome, open items, KeeperMap statement and stop rule are recorded).
+
+```sh
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ProcessingRenamedTopicStateKeyUnitTest' --tests '*ProcessingTest' > /tmp/gsd35/exec/tripwire-green.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py junit build/test-results/testUnit --class ProcessingRenamedTopicStateKeyUnitTest
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py junit build/test-results/testUnit --class ProcessingTest
+git worktree add --detach /tmp/gsd35/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/fmt --console=plain spotlessApply > /tmp/gsd35/exec/fmt-tripwire.log 2>&1
+cmp src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingRenamedTopicStateKeyUnitTest.java /tmp/gsd35/fmt/src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingRenamedTopicStateKeyUnitTest.java
+git worktree remove --force /tmp/gsd35/fmt
+git commit -F /tmp/gsd35/exec/msg-tripwire.txt
+git diff --name-only <tripwire_commit>^ <tripwire_commit>
+git worktree add --detach /tmp/gsd35/mut <tripwire_commit>
+python3 -I -c '<assert the line "String topic = record.getRecordOffsetContainer().getTopic();" followed by the originalTopic line occurs once in the worktree Processing.java, then read record.getSinkRecord().originalTopic() instead>'
+rm -rf /tmp/gsd35/mut/build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd35/mut --console=plain testUnit --rerun --tests '*ProcessingRenamedTopicStateKeyUnitTest' > /tmp/gsd35/exec/tripwire-mut.log 2>&1
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py failed /tmp/gsd35/mut/build/test-results/testUnit --expect <the 2 pinned names>
+git worktree remove --force /tmp/gsd35/mut
+git worktree prune
+git worktree list
+git diff --quiet <local_head> HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java src/main/java/com/clickhouse/kafka/connect/sink/state src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-hygiene-check.py <the record, the evidence and the test class>
+```
+
+```text
+tripwire_exit: 0
+tripwire_class_xml: OK junit build/test-results/testUnit class *ProcessingRenamedTopicStateKeyUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+processing_test_xml: OK junit build/test-results/testUnit class *ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+spotless_worktree_cmp: identical
+tripwire_commit: 3e4248e9d16b49cca8993e6ddb219f63a9fac28f
+tripwire_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingRenamedTopicStateKeyUnitTest.java
+mutation_state_key_exit: 1
+mutation_state_key_failed: ProcessingRenamedTopicStateKeyUnitTest#BUF-03: Processing keeps the exactly-once state of renamed records under the transformed topic and partition; ProcessingRenamedTopicStateKeyUnitTest#BUF-03: two renamed sources with equal offset ranges are written in full under one shared state record
+mutation_state_key_prediction_met: yes
+mutation_state_key_class_xml: OK junit /tmp/gsd35/mut/build/test-results/testUnit class *ProcessingRenamedTopicStateKeyUnitTest: tests=2 failures=2 errors=0 skipped=0 files=1
+worktrees_removed: yes
+processing_untouched_in_main_tree: yes
+record_file: 35-BUF03-RECORD.md
+open_items: OI-35-1; OI-35-2
+```
+
+The tripwire pins unchanged behaviour, so it passed on its first run; the red half is the mutation. With the `topic` local read from `originalTopic()` in the worktree, both executions fail on their first state assertion (`expected: <AFTER_PROCESSING> but was: <NONE>` under the transformed topic), because the state is then stored under the original topic. The mutation edited `Processing.java` in the removed worktree only. The record also carries a third open item, OI-35-3 (exactly-once buffering under a partition-changing SMT, read from the code and not probed), beyond the two named in the `open_items` key.
+
+Timestamp (UTC): 2026-10-29T09:38:00Z to 2026-10-29T09:45:00Z (approximate start; the plan did not capture it)
 
 Verdict: pass
