@@ -21,7 +21,7 @@
 | E-07 | TAL-03 | 34-02 | pass |
 | E-08 | TAL-02 | 34-02 | pass |
 | E-09 | TAL-04 | 34-03 | pass |
-| E-10 | TAL-01, TAL-04, TAL-05 | 34-03 | pending (plan 34-03) |
+| E-10 | TAL-01, TAL-04, TAL-05 | 34-03 | pass |
 | E-11 | TAL-01, TAL-02, TAL-03, TAL-04, TAL-05 | 34-03 | pending (plan 34-03) |
 
 ### E-01: Pre-flight: upstream and origin re-read, conflict set, baseline suites on the untouched tip
@@ -445,5 +445,51 @@ The new class has ten named tests (8 plain, a 4-case and a 7-case parameterized 
 Observation relevant to the DataException interpretation: a writer `DataException` raised inside `Processing.doInsert` reaches `handleException` wrapped in a `RuntimeException(queryId, e)` (Processing lines 72 and 96), so on the ProxySinkTask path `e instanceof DataException` is false and the failure surfaces as `RuntimeException("Number of records: ...", e)`: non-retriable, with the DataException in its cause chain. The test asserts exactly that, and nothing about wrapped DataExceptions carrying a retriable server error or a socket timeout.
 
 Timestamp (UTC): 2026-10-28T22:18:45Z to 2026-10-28T22:21:00Z (start is the green run's clock marker; writing the class before it was not clocked, and the end is approximate)
+
+Verdict: pass
+
+### E-10: Handoffs on the code-complete tip (Phase 36 ServerException sites, Phase 38 FUT-05, edges, scope)
+
+Backs: TAL-01, TAL-04, TAL-05, ROADMAP Phase 34 (what Phases 35-38 inherit from this tip: the three-argument ServerException sites, the FUT-05 rollout item, the null-set edge, the DataException interpretation and the files this phase left untouched).
+
+```sh
+git rev-parse HEAD
+grep -rn 'new ServerException(' src | wc -l
+grep -rn 'new ServerException(' src
+javap -cp ~/.gradle/caches/modules-2/files-2.1/com.clickhouse/client-v2/0.11.0/*/client-v2-0.11.0.jar com.clickhouse.client.api.ServerException | grep 'ServerException('
+javap -cp <clickhouse-client-0.11.0.jar> com.clickhouse.client.ClickHouseException | grep 'ClickHouseException('
+javap -cp <clickhouse-client-0.9.6.jar> com.clickhouse.client.ClickHouseException | grep 'ClickHouseException('
+git diff --quiet adaf8c4e76375e5099c076f2ca3bace892709765 HEAD -- CHANGELOG.md
+grep -c '^# Unreleased' CHANGELOG.md
+git diff --quiet pre-v1.7.0-tail-2 HEAD -- VERSION docs/FORK-DELTA.md
+grep -n 'additionalRetriableErrorCodes.contains' src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+grep -n 'etAdditionalRetriableErrorCodes' src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+git diff --name-only pre-v1.7.0-tail-2 HEAD -- src/main
+git diff --quiet pre-v1.7.0-tail-2 HEAD -- <Processing, KeeperStateProvider, ClickHouseWriter, RangeContainer>
+git diff --quiet adaf8c4e76375e5099c076f2ca3bace892709765 HEAD -- <ClickHouseSinkConfig, ChunkFlusher, Utils, UtilsTest, AdditionalRetriableErrorCodesTest, ClickHouseSinkConfigTest>
+```
+
+```text
+code_complete_head: bba5d9c7b524426f3c1c36c34ffabc2869f32e32
+server_exception_sites_total: 10
+server_exception_site_files: AdditionalRetriableErrorCodesPinUnitTest.java x1; AdditionalRetriableErrorCodesTest.java x1; UtilsTest.java x8
+server_exception_site_lines: src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java:85; src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesTest.java:42; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:84; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:93; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:102; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:112; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:130; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:139; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:147; src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java:162
+server_exception_011_constructors: public com.clickhouse.client.api.ServerException(int, java.lang.String, int, java.lang.String);
+v1_clickhouse_exception_011_unchanged: yes
+fut05_rollout_item: a code listed in additionalRetriableErrorCodes raises RetriableException, which Connect redelivers with no retry budget and outside errors.tolerance and the DLQ, so only transient codes belong there (upstream ConfigDef description and its Unreleased CHANGELOG entry say the same); FUT-05
+changelog_unreleased_block: present, unedited
+release_files_untouched: yes
+null_codes_edge: Utils.java:99 calls additionalRetriableErrorCodes.contains without a null guard; ProxySinkTask passes the config parsed set, which is never null; ChunkFlusher.java:74 guards a null config with Collections.emptySet(); every test passes Set.of(); not changed in this phase (upstream code)
+dataexception_interpretation: pinned as adding codes never makes a DataException with no ClickHouse server error and no network root cause retriable; not asserted and retriable today by the root-cause-first rule: a DataException wrapping a retriable server error, and a DataException whose root cause is a SocketTimeoutException or UnknownHostException under errors.tolerance=all; flagged for the user in the 34-03 SUMMARY
+src_main_changed_vs_pre_tag: src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java; src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java; src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+high_risk_untouched: yes
+merged_only_files_unedited_after_m3: yes
+```
+
+The ROADMAP Phase 34 note says Phase 36 fixes "all eight" three-argument `ServerException` sites. The measured count is 9 upstream sites in 2 files (E-04: `UtilsTest` 8, `AdditionalRetriableErrorCodesTest` 1) plus 1 in the new fork pin class `AdditionalRetriableErrorCodesPinUnitTest` (its single V2 server-error factory), so 10 sites in 3 files. Client-v2 0.11.0 declares only the four-argument `ServerException(int, String, int, String)`, so each site needs a fourth argument in Phase 36. The V1 `ClickHouseException` constructors are identical between clickhouse-client 0.9.6 and 0.11.0 (the `javap` constructor lists hash equal), so the V1 factory is unaffected.
+
+FORK-DELTA note for Phase 38 (research Open Question 4): its `Utils.java` import-order row and its checklist reading-order sentence gain `MERGE-CHECKLIST-v1.7.0-tail-2.md`; `VERSION`, `CHANGELOG.md` and `docs/FORK-DELTA.md` are untouched by this phase, and the upstream `# Unreleased` block (one heading) is for RLS-01 to absorb. The null-set edge matters only to a future caller that passes a null set: `Utils.handleException` would throw a `NullPointerException` on the server-error path (probed at planning).
+
+Timestamp (UTC): 2026-10-29T07:12:16Z to 2026-10-29T07:15:03Z
 
 Verdict: pass
