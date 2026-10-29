@@ -16,7 +16,7 @@
 | E-01 | CLT-01, CLT-02, CLT-09 | 36-01 | pass |
 | E-02 | CLT-01 | 36-01 | pass |
 | E-03 | CLT-01, CLT-03, CLT-04 | 36-01 | pass |
-| E-04 | CLT-06 | 36-01 | pending (plan 36-01) |
+| E-04 | CLT-06 | 36-01 | pass |
 | E-05 | CLT-03 | 36-02 | pending (plan 36-02) |
 | E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pending (plan 36-02) |
 | E-07 | CLT-07 | 36-02 | pending (plan 36-02) |
@@ -259,5 +259,70 @@ bare_clickhouse_version: 26.10.3.7
 On client 0.9.6 the four Docker-free classes run 7, 2, 3 and 2 executions green and the live class 6 green on ClickHouse `latest` with client V2 (the 159 pin uses a real `max_execution_time=1` query, the ZSTD pin takes its 0.9.6 branch `Invalid LZ4 magic byte`, and the V1 pin expects `Magic is not correct`). On the bare 0.11.0 worktree, whose only change is the catalog value, the Docker-free red set is exactly the three `ClientEndpointAndOptionsPinUnitTest` tests (the request path, the unknown-key break for `ssl` and `sslmode`, and the other V1-only keys), and the shape, timeout and wire classes report no failure there. The live red set is exactly `ClickHouseSinkJdbcPropertiesTest` `primitiveTypesTest` and `withEmptyDataRecordsTest` plus the `Client011BehaviourPinLiveTest` ssl-and-sslmode pin, and the other five live pins are green on 0.11.0. These are the red tests that plan 36-02's two `createClientV2` fixes turn green.
 
 Measured 2026-10-29T12:32:00Z (0.9.6 pins and the bare 0.11.0 worktree).
+
+Verdict: pass
+
+### E-04: The RowBinary golden: 96 lines blessed on client 0.9.6, verified, zone-independent and able to fail
+
+Backs: CLT-06, ROADMAP Phase 36 criterion 4, 0.9.6 half (the exact RowBinary body the connector hands the client is pinned for 48 type cases in both variants, so plan 36-03 can show the same bytes on 0.11.0 and a replayed exactly-once batch is the same block).
+
+```sh
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/<RowBinaryParityCases | RowBinaryClientParityLiveTest>.java.txt src/test/java/com/clickhouse/kafka/connect/sink/<Name>.java
+cmp <each asset> <each copy>
+rm -rf build/test-results/test
+ROWBINARY_GOLDEN_BLESS=true CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*RowBinaryClientParityLiveTest' > /tmp/gsd36/exec/golden-bless.log 2>&1
+sed -n 2p src/test/resources/rowbinary-golden-sha256.txt
+grep -v '^#' src/test/resources/rowbinary-golden-sha256.txt | shasum -a 256
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*RowBinaryClientParityLiveTest' > /tmp/gsd36/exec/golden-verify-096.log 2>&1
+rm -rf build/test-results/test
+TZ=America/Los_Angeles CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*RowBinaryClientParityLiveTest' > /tmp/gsd36/exec/golden-tz-096.log 2>&1
+git worktree add --detach /tmp/gsd36/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply
+git commit -F /tmp/gsd36/exec/msg-golden.txt
+git worktree add --detach /tmp/gsd36/mut 83d0b42a4e5e92a620577df74e83b684e8327439
+python3 -I <flip the first hex digit of the SHA-256 field of the line starting plain|string|rowbinary|false|>
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/mut --console=plain test --rerun --tests '*RowBinaryClientParityLiveTest' > /tmp/gsd36/exec/golden-mutation.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed /tmp/gsd36/mut/build/test-results/test --expect 'RowBinaryClientParityLiveTest#CLT-06: the RowBinary body of every type case equals the golden hash blessed on client 0.9.6'
+grep -c 'plain|string|rowbinary|false|' /tmp/gsd36/mut/build/test-results/test/TEST-com.clickhouse.kafka.connect.sink.RowBinaryClientParityLiveTest.xml
+git worktree remove --force /tmp/gsd36/mut
+git worktree prune
+git diff --quiet 83d0b42a4e5e92a620577df74e83b684e8327439 HEAD -- src/test/resources/rowbinary-golden-sha256.txt
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+assets_identical: yes
+bless_exit: 1
+bless_message_present: yes
+golden_header_line: # blessed on client-v2 0.9.6 (revision: 5777f5a)
+golden_data_lines: 96
+golden_plain_lines: 48
+golden_defaults_lines: 48
+golden_defaults_flag_ok: yes
+golden_data_sha256: 716b0f7e5de97198e031983d4602f135c0bd14753e6603d7747338e46c1acb6e
+verify_exit: 0
+verify_xml: tests=1 failures=0 errors=0 skipped=0
+tz_la_exit: 0
+tz_la_xml: tests=1 failures=0 errors=0 skipped=0
+spotless_worktree_cmp: identical
+golden_commit: 83d0b42a4e5e92a620577df74e83b684e8327439
+golden_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/RowBinaryClientParityLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/RowBinaryParityCases.java; src/test/resources/rowbinary-golden-sha256.txt
+mutated_line_prefix: plain|string|rowbinary|false|
+mutation_exit: 1
+mutation_failed: RowBinaryClientParityLiveTest#CLT-06: the RowBinary body of every type case equals the golden hash blessed on client 0.9.6
+mutation_prediction_met: yes
+mutation_names_case: yes
+mut_worktree_removed: yes
+golden_unmodified_in_main: yes
+hygiene_scan: clean
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+The bless run wrote the golden file and failed on purpose (exit 1), so a run with the switch set can never go green. The data-lines hash equals the planning prototype's, the header names client-v2 0.9.6, and the committed golden is green on 0.9.6 under the workstation zone and under `America/Los_Angeles`. Flipping one hex digit of the `plain|string|rowbinary|false|` line turned the test red and the failure message names that case.
+
+Measured 2026-10-29T12:36:00Z (golden bless, verify, zone run and mutation proof).
 
 Verdict: pass
