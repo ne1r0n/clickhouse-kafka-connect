@@ -13,7 +13,7 @@
 # result 4.1.1: classes-missing 0 members-missing 0
 # result 4.4.0: classes-missing 0 members-missing 0
 # re-bless: compileJava, then python3 -I .planning/scripts/connect-api-refs.py --classes build/classes/java/main --compile-classpath <connect-api>:<kafka-clients> --reference worker=<worker connect-api>:<worker kafka-clients> --write src/test/resources/connect-api-references.txt
-# date: 2026-10-28T21:50:10Z
+# date: 2026-10-29T09:27:43Z
 C org/apache/kafka/clients/consumer/OffsetAndMetadata
 C org/apache/kafka/common/TopicPartition
 C org/apache/kafka/common/cache/Cache
@@ -184,6 +184,9 @@ M org/apache/kafka/connect/sink/SinkConnector.context:()Lorg/apache/kafka/connec
 M org/apache/kafka/connect/sink/SinkConnector.validate:(Ljava/util/Map;)Lorg/apache/kafka/common/config/Config;
 M org/apache/kafka/connect/sink/SinkRecord.kafkaOffset:()J
 M org/apache/kafka/connect/sink/SinkRecord.kafkaPartition:()Ljava/lang/Integer;
+M org/apache/kafka/connect/sink/SinkRecord.originalKafkaOffset:()J
+M org/apache/kafka/connect/sink/SinkRecord.originalKafkaPartition:()Ljava/lang/Integer;
+M org/apache/kafka/connect/sink/SinkRecord.originalTopic:()Ljava/lang/String;
 M org/apache/kafka/connect/sink/SinkRecord.timestamp:()Ljava/lang/Long;
 M org/apache/kafka/connect/sink/SinkRecord.topic:()Ljava/lang/String;
 M org/apache/kafka/connect/sink/SinkRecord.value:()Ljava/lang/Object;
