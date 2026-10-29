@@ -20,7 +20,7 @@
 | E-06 | BUF-03 | 35-02 | pass |
 | E-07 | BUF-03 | 35-02 | pass |
 | E-08 | BUF-07 | 35-03 | pass |
-| E-09 | BUF-01, BUF-02, BUF-03, BUF-04, BUF-05, BUF-07 | 35-03 | pending (plan 35-03) |
+| E-09 | BUF-01, BUF-02, BUF-03, BUF-04, BUF-05, BUF-07 | 35-03 | pass |
 
 ### E-01: Pre-flight: upstream and origin re-read, Phase 34 gated, baselines on the untouched tree
 
@@ -470,5 +470,110 @@ hygiene_scan: clean
 The upstream state was re-read before the item was written: issue #777 is still open and pull request #786 is still closed without a merge, so the fork-only statement of FORK-DELTA and the wording of the item holds. Upstream main equals the pre-flight value of E-01 and the newest release tag is `v1.7.0`. The rollout-item commit holds exactly the item file; `docs/ROLLOUT-v1.7.0_gg6.md` was neither created nor edited.
 
 Timestamp (UTC): 2026-10-29T09:49:05Z
+
+Verdict: pass
+
+### E-09: Phase 35 gate
+
+Backs: BUF-01, BUF-02, BUF-03, BUF-04, BUF-05, BUF-07, ROADMAP Phase 35 gate (origin and upstream re-read, cache-busted testUnit, one full `--rerun` suite on latest with client V2 with the 18 named skips, the anchors mirror) plus the tail and cumulative merge gates of Phase 34 E-11.
+
+```sh
+git rev-parse HEAD
+git status --porcelain
+git ls-remote origin refs/heads/custom_build
+git ls-remote --exit-code --tags origin pre-v1.7.0-tail-2
+git ls-remote --exit-code --heads origin sync/v1.7.0
+git ls-remote upstream main
+git ls-remote --tags --refs upstream 'v*'
+gh issue view 777 -R ClickHouse/clickhouse-kafka-connect --json state --jq .state
+gh pr view 786 -R ClickHouse/clickhouse-kafka-connect --json state,mergedAt
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 3e574320ba889671a95c43767893100e28f866cf > /tmp/gsd35/exec/cumulative-gate-gate.log 2>&1   # background, exit code in a file
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd35/exec/testunit-gate.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd35/exec/suite-gate.log 2>&1   # background, exit code in a file
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py junit build/test-results/test --class <BufferedOffsetCommitUnitTest | BufferedOffsetCommitLiveTest | ClickHouseSinkTaskBufferTest | ProcessingRenamedTopicStateKeyUnitTest>
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 3e574320ba889671a95c43767893100e28f866cf > /tmp/gsd35/exec/tail-gate-gate.log 2>&1
+git diff --quiet c9443756eb85e601552cb8241f0e7b52ed6209da 3e574320ba889671a95c43767893100e28f866cf -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh
+git diff --name-only 6ac0cdc0acfc22601dd19acdc6e564fb5a96e61e 3e574320ba889671a95c43767893100e28f866cf -- src/main
+git diff --quiet 6ac0cdc0acfc22601dd19acdc6e564fb5a96e61e 3e574320ba889671a95c43767893100e28f866cf -- <the high-risk sink paths>
+git diff --quiet 6ac0cdc0acfc22601dd19acdc6e564fb5a96e61e 3e574320ba889671a95c43767893100e28f866cf -- build.gradle.kts settings.gradle.kts gradle VERSION CHANGELOG.md .github
+git diff --name-status 6ac0cdc0acfc22601dd19acdc6e564fb5a96e61e 3e574320ba889671a95c43767893100e28f866cf -- src/test src/testFixtures src/integrationTest
+git log --format=%h -- <35-evidence-check.py | 35-hygiene-check.py>
+cmp .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-evidence-check.py .planning/phases/34-upstream-tail-merge/34-evidence-check.py
+git rev-list --first-parent --merges pre-v1.7.0-tail-2..3e574320ba889671a95c43767893100e28f866cf
+git log --first-parent --format='%h %s' 6ac0cdc0acfc22601dd19acdc6e564fb5a96e61e..3e574320ba889671a95c43767893100e28f866cf
+```
+
+```text
+gated_head: 3e574320ba889671a95c43767893100e28f866cf
+utc_start: 2026-10-29T09:49:30Z
+dirty_paths_at_gate: M .planning/STATE.md; M .planning/config.json; M .planning/state.json
+origin_custom_build_at_gate: 3a3a15a9ae064ffe09c696b8bb87bce23419d463 refs/heads/custom_build
+origin_unchanged: yes
+pre_tail2_tag_on_origin: absent
+sync_branch_on_origin: absent
+upstream_main_at_gate: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_moved_during_phase: no
+upstream_newest_release_tag_at_gate: v1.7.0
+upstream_777_state_at_gate: OPEN
+upstream_786_state_at_gate: CLOSED unmerged
+testunit_exit: 0
+testunit_tests: 1456
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_expected_tests: 1456
+testunit_count_matches: yes
+suite_exit: 0
+suite_tests: 2047
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_duration: BUILD SUCCESSFUL in 2m 48s
+suite_jvm_crash: none
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_baseline: yes
+unit_class_xml: OK junit build/test-results/test class *BufferedOffsetCommitUnitTest: tests=13 failures=0 errors=0 skipped=0 files=1
+live_class_xml: OK junit build/test-results/test class *BufferedOffsetCommitLiveTest: tests=4 failures=0 errors=0 skipped=0 files=1
+buffer_class_xml: OK junit build/test-results/test class *ClickHouseSinkTaskBufferTest: tests=35 failures=0 errors=0 skipped=0 files=1
+tripwire_class_xml: OK junit build/test-results/test class *ProcessingRenamedTopicStateKeyUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+docker_only_tests: 591
+docker_only_delta: 4
+docker_only_delta_matches: yes
+anchors_mirror: rows=148 bad=0
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=44 anchor_rows=148 marker_commits=51 anchor_exempt=0 result=PASS
+gate_scripts_vs_33_e14: identical
+src_main_changed: src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java; src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java; src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java
+high_risk_untouched: yes
+build_and_release_files_untouched: yes
+test_side_not_added: M src/test/resources/connect-api-references.txt
+test_side_added: src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/BufferedOffsetCommitUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingRenamedTopicStateKeyUnitTest.java; src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/RecordingDBWriter.java; src/testFixtures/java/com/clickhouse/kafka/connect/sink/helper/RenamedTopicRecords.java
+no_gg6_rollout_note: yes
+helper_commits: 1
+hygiene_helper_commits: 1
+helper_identical_to_phase34: yes
+merges_since_tag: adaf8c4e76375e5099c076f2ca3bace892709765
+phase_commits: 3e574320 docs(35-03): record the rollout item and the first-start decision (E-08); c2c2be31 docs(35-03): record the buffered offset-commit rollout item for Phase 38 (BUF-07); eb06d0bd docs(35-02): complete the live pin and BUF-03 record plan; b7379a63 docs(35-02): record the Processing.doLogic check, its open items and the tripwire (E-07); 3e4248e9 test(35-02): pin the exactly-once state key of renamed records as a tripwire (BUF-03); a7b3138c docs(35-02): record the BUF-03 probes on the tip (E-06); db4b7d0d docs(35-02): record the live pin and the harness decision (E-05); 2e99eadd test(35-02): pin the committed offsets of a buffered sink under a topic-renaming SMT on ClickHouse (BUF-02, BUF-05); b4fb0ca8 docs(35-01): complete the buffered offset commit fix plan; 4db8087d docs(35-01): record the mutation proof of the fix (E-04); 76ed1511 docs(35-01): record the fix commit and its gates (E-03); 6f3533c2 fix(35-01): commit buffered offsets under the original topic and partition (BUF-01, BUF-02, BUF-07); ad978fcd docs(35-01): record the red pins (E-02); e8573752 test(35-01): pin offsets, revocation and buffering of renamed records, red on the unchanged tree (BUF-01, BUF-02, BUF-04); e23247b1 docs(35-01): open the Phase 35 evidence: pre-flight and baselines on the untouched tree
+cumulative_gate_exit: 0
+cumulative_gate_line: invariants: provenance_paths=21 anchor_commits=1055 anchor_rows=148 marker_commits=1121 anchor_exempt=19 result=PASS
+utc_end: 2026-10-29T10:13:56Z
+```
+
+The cumulative gate ran in the background from 09:49:44Z to 10:13:56Z (about 24 minutes) while testUnit and the full suite ran in the foreground; it reads commit trees through git only. Its line differs from Phase 34's in `anchor_rows=148` and in the commit counts. The tail gate over the merge commit to the tip ends `anchor_exempt=0 result=PASS`. The suite total is 2047 tests: the baseline 2028 plus 19 (13 unit pins, 4 live executions and 2 tripwire executions); of those, 15 are Docker-free (testUnit 1441 to 1456) and 4 are the live class, so the Docker-only count moved from 587 to 591. No `javacore.*`, `core.*.dmp`, `Snap.*.trc` or `jitdump.*` file appeared and the suite log has no `non-zero exit value 255`.
+
+`.planning/STATE.md` was modified in the tree at the gate, besides `.planning/config.json` and `.planning/state.json`. It is orchestrator-managed state, was already modified at the phase start (E-01 `dirty_paths`), is not part of any committed tree the gates read, and is never staged by this phase; it is recorded here, not treated as a stop.
+
+What Phase 35 delivered: the three-site fix of buffered offset commit under topic-renaming SMTs (`ChunkFlusher.java`, `AtLeastOnceBufferStrategy.java`, `ExactlyOnceBufferStrategy.java`) with 13 Docker-free pins that were red on the unchanged tree and are mutation-proved per file; the BLD-16 re-bless for the three `SinkRecord` accessors, shown present in the production worker image's jar; 7 anchor rows (141 to 148) and the FORK-DELTA row; the live pin on ClickHouse `latest` with client V2 (4 executions); the BUF-03 record with probes P1 to P7, the state-key tripwire and the open items; and the rollout item for Phase 38 with its evidence labels (E-08). Open items for the milestone close: OI-35-1 (the Direct path with `reportInsertedOffsets=true` under a renaming SMT commits nothing; the one-line fix is measured and not applied by decision), OI-35-2 (the many-to-one state-key hazard; any fix changes the state key and stops for a user decision) and OI-35-3 (exactly-once buffering under a partition-changing SMT, read from the code). Nothing is pushed: origin `custom_build` is unchanged, and the tag `pre-v1.7.0-tail-2` and the branch `sync/v1.7.0` exist only locally. This tip is the baseline for Phase 36, the client bump.
+
+Timestamp (UTC): 2026-10-29T09:49:30Z to 2026-10-29T10:14:38Z
 
 Verdict: pass
