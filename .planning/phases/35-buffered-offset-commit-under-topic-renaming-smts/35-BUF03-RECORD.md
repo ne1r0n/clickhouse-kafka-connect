@@ -29,6 +29,7 @@ Evidence labels: `measured` means a run recorded in `35-COMMAND-EVIDENCE.md` (E-
 **OI-35-1: the Direct path with `reportInsertedOffsets=true` under a renaming SMT commits nothing.**
 - What the user decides: whether to apply the known one-line change to `Processing.java` (`originalTopic` read from `getSinkRecord().originalTopic()`) or to keep the behaviour and the documented limit.
 - Evidence it rests on: E-06 P5, P6, P7 and P6b.
+- Related (review IN-04, read from the code, not probed): `ClickHouseSinkTask.close` passes original-key partitions to `onPartitionRemoved`, which holds its keys under the transformed topic, so that removal is a no-op under a renaming SMT. Same root cause, same decision.
 - Owner: milestone close, user decision.
 - When to re-open (the re-open trigger): a connector sets `reportInsertedOffsets=true` together with a renaming SMT.
 - Cost: `Processing.java` is a high-risk file, and the change alters the Direct path for that configuration only; the state key, the KeeperMap schema and the `BEFORE`/`AFTER` sequence are not touched by the one line.
