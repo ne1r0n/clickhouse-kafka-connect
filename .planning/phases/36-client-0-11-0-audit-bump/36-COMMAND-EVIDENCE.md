@@ -24,7 +24,7 @@
 | E-09 | CLT-08 | 36-03 | pass |
 | E-10 | CLT-05, CLT-02 | 36-03 | pass |
 | E-11 | CLT-09 | 36-04 | pass |
-| E-12 | CLT-09 | 36-04 | pending (plan 36-04) |
+| E-12 | CLT-09 | 36-04 | pass |
 | E-13 | CLT-07 | 36-04 | pending (plan 36-04) |
 
 ### E-01: Pre-flight: origin, pull request and upstream re-read, Phase 35 gated, baselines on the untouched tree
@@ -859,5 +859,140 @@ clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4
 The probe builds a V2 client with `?custom_settings=max_threads%3D3&custom_myparam=7&ssl=true` against the in-process stub and prints the request URI: client 0.11.0 forwards both `custom_` keys and doubles the operator's percent-encoding (`%3D` becomes `%253D`), client 0.9.6 forwards neither. The rehearsal ran in one detached worktree at the committed head: the documentation commit and then the catalog commit reverted with no conflict, the catalog revert touched exactly the catalog line, `ClientCatalogPinUnitTest` and the one anchor row, and the worktree then showed the 0.9.6 catalog line, `rows=151 bad=0`, `client-v2` 0.9.6, and the two `createClientV2` fixes, their FORK-DELTA row and the golden still in place. The pins that carry a 0.9.6 row (error shapes 7, timeout prefixes 2, endpoint and options 3, insert wire 2), `UtilsTest`, the `AdditionalRetriableErrorCodes` classes, the Kafka and Connect API reference list and the planning-id guard are green on 0.9.6 with no failing testcase; the live class (6), the golden (1) and the JDBC-properties class (2) are green on ClickHouse `latest` with client V2. The probe file was removed from the worktree after each of its two runs, so it is not part of either revert, and the main tree and the branch were not touched by the rehearsal. The 14 rollout items each carry a label, an Applies-when value and an evidence citation; claims that were only read from the code or measured in research are labelled so, and the `custom_` alternative stays a user decision.
 
 Measured 2026-10-29T13:50:27Z (probe on both lines, the revert rehearsal and its green runs on 0.9.6).
+
+Verdict: pass
+
+### E-12: Phase 36 gate: testUnit, two full suites on latest with client V2 on 0.11.0, the anchors mirror, the tail and cumulative gates, and the go decision
+
+Backs: CLT-09 and ROADMAP Phase 36 criterion 5 and its phase gate (cache-busted `testUnit`, two `--rerun` full suites on ClickHouse `latest` with client V2 on whichever client ships, the anchors invariant, the tail gate and the cumulative merge gate), plus the CLT-09 go or no-go decision on measured evidence.
+
+```sh
+git rev-parse HEAD
+git status --porcelain
+git ls-remote origin refs/heads/custom_build
+git ls-remote --exit-code --tags origin pre-v1.7.0-tail-2
+git ls-remote --exit-code --heads origin sync/v1.7.0
+git ls-remote --exit-code --heads origin 'scratch/*'
+gh pr view 17 -R ne1r0n/clickhouse-kafka-connect --json state,headRefOid
+git ls-remote origin refs/heads/dependabot/gradle/clickHouseDriver-0.11.0
+git ls-remote upstream main
+git ls-remote --tags --refs upstream 'v*'
+curl -s https://repo1.maven.org/maven2/com/clickhouse/client-v2/maven-metadata.xml
+/bin/bash -c 'bash .planning/scripts/verify-merge-invariants.sh 54e63648 a8b61f1512ab245a584b506527beaceca7264b04 > /tmp/gsd36/exec/cumulative-gate-gate.log 2>&1; echo $? > /tmp/gsd36/exec/cumulative-gate-gate.exit'
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd36/exec/testunit-gate.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd36/exec/suite1-gate.log 2>&1   # run 1 crashed (JVM exit 255), crash files deleted by name, run 2 green
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd36/exec/suite2-gate.log 2>&1   # runs 1 and 2 crashed (JVM exit 255), crash files deleted by name
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd36/exec/suite2-gate-java21.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/<testUnit | test> [--class <each class>]
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed build/test-results/<testUnit | test>
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 a8b61f1512ab245a584b506527beaceca7264b04
+git diff --quiet c9443756eb85e601552cb8241f0e7b52ed6209da a8b61f1512ab245a584b506527beaceca7264b04 -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh
+git diff --name-only 99b9d85c15ce1a9b76f5e843b9aec472d24f9708 a8b61f1512ab245a584b506527beaceca7264b04 -- <src/main | build and release files | docs | .planning/scripts | test side>
+git rev-list --first-parent --merges pre-v1.7.0-tail-2..a8b61f1512ab245a584b506527beaceca7264b04
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+gated_head: a8b61f1512ab245a584b506527beaceca7264b04
+utc_start: 2026-10-29T13:50:47Z
+utc_end: 2026-10-29T14:26:48Z
+dirty_paths_at_gate: M .planning/config.json; M .planning/state.json
+fix_commit: a1cc33825a07d960bc336e0e6c7474c6698ab40b
+catalog_commit: 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+docs_commit: 375c93be91d2a32eafd4e0364f905e51f8dfd280
+origin_custom_build_at_gate: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+origin_unchanged: yes
+pre_tail2_tag_on_origin: absent
+sync_branch_on_origin: absent
+scratch_branch_on_origin: absent
+pr17_state_at_gate: OPEN
+pr17_head_at_gate: 6a53525b738d90ee4c98a3761ebebe11421cf1f0
+dependabot_branch_at_gate: 6a53525b738d90ee4c98a3761ebebe11421cf1f0
+upstream_main_at_gate: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_moved_during_phase: no
+upstream_newest_release_tag_at_gate: v1.7.0
+maven_client_v2_latest_at_gate: 0.11.0
+testunit_exit: 0
+testunit_tests: 1474
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_expected_tests: 1474
+testunit_count_matches: yes
+suite1_exit: 0
+suite1_tests: 2072
+suite1_failures: 0
+suite1_errors: 0
+suite1_skipped: 18
+suite1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite1_duration: 3m 13s
+suite1_jvm_crash: run 1 ended with Gradle Test Executor exit value 255 after 1790 executions (javacore stack: sun/instrument/InstrumentationImpl.retransformClasses0 under org/mockito/internal/creation/bytebuddy/InlineBytecodeGenerator.mockClass, the known OpenJ9 Mockito inline-mocking fault; swap 44.7 GB of 46 GB in use); javacore, core, Snap files deleted by name; run 2 on the same tree and image exited 0 with the counts above
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_baseline: yes
+suite2_exit: 0
+suite2_tests: 2072
+suite2_failures: 0
+suite2_errors: 0
+suite2_skipped: 18
+suite2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite2_duration: 2m 52s
+suite2_jvm_crash: runs 1 and 2 on the default JVM both ended with exit value 255 after 1790 executions with the same javacore stack as suite 1's run 1 (no testcase failed); crash files deleted by name after each; the third run with -PjavaVersion=21 per the crash rule exited 0 with the counts above (the results this entry records)
+suite2_jdk: -PjavaVersion=21 for the recorded run; suite 1 ran on the default JDK 17
+suite2_clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_across_suites: yes
+shape_class_xml: tests=7 failures=0 errors=0 skipped=0
+timeout_class_xml: tests=2 failures=0 errors=0 skipped=0
+endpoint_class_xml: tests=3 failures=0 errors=0 skipped=0
+wire_class_xml: tests=2 failures=0 errors=0 skipped=0
+catalog_class_xml: tests=2 failures=0 errors=0 skipped=0
+live_class_xml: tests=6 failures=0 errors=0 skipped=0
+golden_class_xml: tests=1 failures=0 errors=0 skipped=0
+suite_tests_expected: 2072
+suite_count_matches: yes
+docker_only_delta: 7
+docker_only_delta_matches: yes
+anchors_mirror: rows=152 bad=0
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=86 anchor_rows=152 marker_commits=93 anchor_exempt=0 result=PASS
+cumulative_gate_exit: 0
+cumulative_gate_line: invariants: provenance_paths=21 anchor_commits=1097 anchor_rows=152 marker_commits=1163 anchor_exempt=19 result=PASS
+gate_scripts_vs_33_e14: identical
+src_main_changed: src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+high_risk_untouched: yes
+build_and_release_files_changed: gradle/libs.versions.toml
+docs_changed: docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg1.md
+scripts_changed: .planning/scripts/fork-anchors.txt
+test_side_modified: M src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java; M src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesTest.java; M src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java; M src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinUnitTest.java; M src/test/java/com/clickhouse/kafka/connect/sink/util/UtilsTest.java
+test_side_added_count: 12
+no_test_deleted: yes
+integration_run_still_valid: yes
+no_gg6_rollout_note: yes
+helper_commits: 1
+hygiene_helper_commits: 1
+helper_identical_to_phase35: yes
+merges_since_tag: adaf8c4e76375e5099c076f2ca3bace892709765
+phase_commits: a8b61f15 docs(36-04): record the rollout items and the revert rehearsal (E-11); 7464977b docs(36-04): record the client 0.11.0 rollout items for Phase 38 (CLT-05, CLT-06, CLT-08); 52a43e2d docs(36-03): complete the byte comparison, archive audit and D-17 rewording plan; 4edde777 docs(36-03): record the D-17 rewording and the client-override wording (E-10); 375c93be docs(36-03): reword the D-17 rationale to the 0.11.0 measurements and record the client override (CLT-05, CLT-02, CLT-08); 04ed4630 docs(36-03): record the archive comparison and the zstd-jni facts (E-09); 4b4d4881 docs(36-03): capture the Confluent archive before and after the client bump (CLT-08); 999453e6 docs(36-03): record the RowBinary byte comparison across the client bump (E-08); 18f229d1 docs(36-02): complete the createClientV2 fixes and client 0.11.0 bump plan; beeee6d8 docs(36-02): record the non-UTC date pins, the V1 run and the Connect-worker integrationTest on 0.11.0 (E-07); 3d0b0461 docs(36-02): record the catalog commit and the pins on 0.11.0 (E-06); 5ab3410e build(36-02): move clickHouseDriver to 0.11.0 as one fork override (CLT-02); 939e8992 docs(36-02): record the createClientV2 fix commit and its gates (E-05); a1cc3382 fix(36-02): build the V2 client with an endpoint of protocol, host and port only and ignore unknown config keys (CLT-03); 0a88f7b7 docs(36-01): complete the client 0.11.0 audit pins plan; 585ccb40 docs(36-01): record the RowBinary golden on 0.9.6 (E-04); 83d0b42a test(36-01): bless the RowBinary golden on client 0.9.6 (CLT-06); 5ccd15ea docs(36-01): record the 0.9.6 pins and the bare-bump red set (E-03); 765476af test(36-01): pin timeout prefixes, endpoint and options, the insert wire and the 0.11.0 behaviours on 0.9.6 (CLT-01, CLT-03, CLT-04); 681de964 docs(36-01): record the factory and the error-shape pin (E-02); 9dd36588 test(36-01): pin the client error shapes through a real socket on 0.9.6 (CLT-01); c6c7edb4 test(36-01): build the ServerException of the 10 three-argument call sites through one factory (CLT-01); 3db861ff docs(36-01): open the Phase 36 evidence: pre-flight and baselines on the untouched tree
+hygiene_scan: clean
+decision: go
+decision_basis: The cache-busted testUnit (1474, baseline plus 16) and both full suites on ClickHouse latest with client V2 on client 0.11.0 (2072 each, baseline plus 23, 18 named skips, Docker-only delta 7) are green with every class tally as listed, the anchors mirror reads rows=152 bad=0, the tail gate and the cumulative gate end result=PASS with exit 0, origin custom_build is unchanged with no tail tag, sync or scratch ref on origin, and every scope fact is as expected.
+clt_status: CLT-01 to CLT-06, CLT-08 and CLT-09 satisfied; CLT-07 first half satisfied, its nightly dispatch is user-gated
+clickhouse_digest_after_suites: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+Decision: go. Phase 36 delivers the 0.9.6 pin set, the factory for the ten call sites, the two `createClientV2` fixes, the catalog commit that moves `clickHouseDriver` to 0.11.0 as one marked override, the RowBinary golden, the reworded D-17 rationale, the archive record and the labelled rollout items. The connector ships on client 0.11.0 behind a green cache-busted `testUnit` and two green `--rerun` full suites on ClickHouse 26.10.3.7 with client V2, and the CLT-09 revert (documentation commit, then catalog commit) was rehearsed conflict-free in E-11 and is not applied.
+
+JVM crash record. The documented crash rule applied twice. Suite 1 crashed once (the OpenJ9 fault in Mockito's inline retransformation, reproduced under heavy swap use) and was green on its re-run on the unchanged tree and image. Suite 2 crashed in its first run and again in its re-run at the same point, in the same stack, with no failing testcase; the third run with `-PjavaVersion=21` was green with exactly the counts of suite 1, and that run is the one recorded. Suite 1 therefore ran on the default JDK 17 and suite 2 on JDK 21. The crashes are a fault of the test JVM and not a result of the bump: a failing testcase was never reported, and the same two suites are green on a different JVM. This is reported to the orchestrator in the plan summary.
+
+Nothing is pushed: origin `custom_build` still reads `3a3a15a9`, none of `pre-v1.7.0-tail-2`, `sync/v1.7.0` or a scratch branch exists on origin, and PR #17 (open, head `6a53525b`) and the Dependabot branch (same SHA) were only read. Upstream main is unchanged since E-01 (`9bed6f79`) and its newest release tag is `v1.7.0`; Maven's latest `client-v2` is `0.11.0`. The open item for the milestone is CLT-07's nightly dispatch, which is the user's step (plan task 3 writes the handoff).
+
+Measured 2026-10-29T14:27:54Z (gated head, all gates and scope facts).
 
 Verdict: pass
