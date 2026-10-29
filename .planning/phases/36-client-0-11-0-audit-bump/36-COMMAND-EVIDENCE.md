@@ -20,7 +20,7 @@
 | E-05 | CLT-03 | 36-02 | pass |
 | E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pass |
 | E-07 | CLT-07 | 36-02 | pass |
-| E-08 | CLT-06 | 36-03 | pending (plan 36-03) |
+| E-08 | CLT-06 | 36-03 | pass |
 | E-09 | CLT-08 | 36-03 | pending (plan 36-03) |
 | E-10 | CLT-05, CLT-02 | 36-03 | pending (plan 36-03) |
 | E-11 | CLT-09 | 36-04 | pending (plan 36-04) |
@@ -559,5 +559,64 @@ The Connect-worker integrationTest ran with the HotSpot Temurin 17 toolchain aga
 CLT-07's second half, the manual nightly dispatch, is the user's step and is not part of this entry: it needs a scratch branch on origin, and nothing was pushed or dispatched here.
 
 Measured 2026-10-29T13:34:45Z (zone probes, four date runs, V1-mode run and integrationTest).
+
+Verdict: pass
+
+### E-08: The RowBinary byte comparison: the 0.9.6 golden holds on 0.11.0 under four zones, the wire is the same, no clean stop
+
+Backs: CLT-06 and ROADMAP Phase 36 criterion 4 (the RowBinary golden blessed on client 0.9.6 is verified on client 0.11.0 and a `BEFORE_PROCESSING` batch replayed across the upgrade carries identical bytes and the same deduplication token).
+
+```sh
+git diff --quiet 83d0b42a4e5e92a620577df74e83b684e8327439 HEAD -- src/test/resources/rowbinary-golden-sha256.txt
+sed -n 2p src/test/resources/rowbinary-golden-sha256.txt
+grep -v '^#' src/test/resources/rowbinary-golden-sha256.txt | shasum -a 256
+grep -vc '^#' src/test/resources/rowbinary-golden-sha256.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain dependencies --configuration testRuntimeClasspath
+rm -rf build/test-results/test
+[TZ=<zone>] CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*RowBinaryClientParityLiveTest'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/test --class RowBinaryClientParityLiveTest
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClientInsertWirePinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/testUnit --class ClientInsertWirePinUnitTest
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/testUnit --class ClientEndpointAndOptionsPinUnitTest
+git diff --quiet 99b9d85c15ce1a9b76f5e843b9aec472d24f9708 HEAD -- src/main/java/com/clickhouse/kafka/connect/util/QueryIdentifier.java
+git diff --quiet 99b9d85c15ce1a9b76f5e843b9aec472d24f9708 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/main/java/com/clickhouse/kafka/connect/sink/processing src/main/java/com/clickhouse/kafka/connect/sink/state
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+golden_commit: 83d0b42a4e5e92a620577df74e83b684e8327439
+catalog_commit: 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+golden_not_reblessed: yes
+golden_header_line: # blessed on client-v2 0.9.6 (revision: 5777f5a)
+golden_data_sha256: 716b0f7e5de97198e031983d4602f135c0bd14753e6603d7747338e46c1acb6e
+golden_lines: 96
+client_v2_test_runtime: +--- com.clickhouse:client-v2:0.11.0
+golden_0110_default_exit: 0
+golden_0110_default_xml: tests=1 failures=0 errors=0 skipped=0
+golden_0110_utc_exit: 0
+golden_0110_utc_xml: tests=1 failures=0 errors=0 skipped=0
+golden_0110_la_exit: 0
+golden_0110_la_xml: tests=1 failures=0 errors=0 skipped=0
+golden_0110_kiritimati_exit: 0
+golden_0110_kiritimati_xml: tests=1 failures=0 errors=0 skipped=0
+wire_xml: tests=2 failures=0 errors=0 skipped=0
+endpoint_xml: tests=3 failures=0 errors=0 skipped=0
+dedup_token_source: QueryIdentifier.getDeduplicationToken: return String.format("%s-%s-%s-%s", topic, partition, minOffset, maxOffset);
+dedup_token_code_unchanged: yes
+writer_and_state_unchanged: yes
+clean_stop_required: no
+replay_statement: A BEFORE_PROCESSING batch replayed after the upgrade is rebuilt by the new task from the stored offset range, serialised by the same writer into the same bytes (the golden: E-04 on 0.9.6 and this entry on 0.11.0), and sent on the same path with the same body and the same insert_deduplication_token (the wire pin), so ClickHouse's block deduplication sees the block the old task would have sent; the User-Agent header is the only request header that differs.
+byte_comparison_scope: 48 type cases x 2 variants (96 lines), including nested Tuple and Map nullable markers; a column type outside the matrix, a time-zoned DateTime and a Variant fed plain text were not compared
+byte_comparison_labels: measured: the golden on 0.9.6 and on 0.11.0 under four zones, the wire pin; read from the code: the token format and that the writer and state package are unchanged
+hygiene_scan: clean
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+The golden file is read, never written: `ROWBINARY_GOLDEN_BLESS` was not set, the file is byte-identical to its 0.9.6 commit and its data lines hash to the value E-04 recorded. A green `RowBinaryClientParityLiveTest` means the length and SHA-256 of the exact body of every one of the 96 lines equals the 0.9.6 line. The four zones are the workstation default (no `TZ`), `UTC`, `America/Los_Angeles` and `Pacific/Kiritimati`; plan 36-02's E-07 proved that `TZ` reaches the test JVM. The wire pin shows a 100,000-byte body, the `insert_deduplication_token` and no `Content-Encoding` arriving unchanged on 0.11.0, and a User-Agent that names the connector and `clickhouse-java-v2/0.11.0`. The token is built from the batch (`topic-partition-minOffset-maxOffset`), not from the client, and the query-id, writer, processing and state sources are unchanged since the phase start, which is why no clean stop is required for the compared matrix.
+
+Measured 2026-10-29T13:41:00Z (four golden runs, the wire pins, the code reads).
 
 Verdict: pass
