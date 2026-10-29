@@ -17,7 +17,7 @@
 | E-02 | CLT-01 | 36-01 | pass |
 | E-03 | CLT-01, CLT-03, CLT-04 | 36-01 | pass |
 | E-04 | CLT-06 | 36-01 | pass |
-| E-05 | CLT-03 | 36-02 | pending (plan 36-02) |
+| E-05 | CLT-03 | 36-02 | pass |
 | E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pending (plan 36-02) |
 | E-07 | CLT-07 | 36-02 | pending (plan 36-02) |
 | E-08 | CLT-06 | 36-03 | pending (plan 36-03) |
@@ -324,5 +324,77 @@ clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4
 The bless run wrote the golden file and failed on purpose (exit 1), so a run with the switch set can never go green. The data-lines hash equals the planning prototype's, the header names client-v2 0.9.6, and the committed golden is green on 0.9.6 under the workstation zone and under `America/Los_Angeles`. Flipping one hex digit of the `plain|string|rowbinary|false|` line turned the test red and the failure message names that case.
 
 Measured 2026-10-29T12:36:00Z (golden bless, verify, zone run and mutation proof).
+
+Verdict: pass
+
+### E-05: The createClientV2 fix commit: nine added lines, three anchor rows, one FORK-DELTA row, every pin unchanged on 0.9.6
+
+Backs: CLT-03, ROADMAP Phase 36 criterion 2, first half (the two required `createClientV2` fixes land on client 0.9.6 where they are proven no-ops, so the catalog commit of E-06 can be one line and a revert of the bump keeps them).
+
+```sh
+git apply --check .planning/phases/36-client-0-11-0-audit-bump/36-assets/createClientV2-fix.patch.txt
+git apply .planning/phases/36-client-0-11-0-audit-bump/36-assets/createClientV2-fix.patch.txt
+git diff --numstat -- src/main
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava --rerun-tasks > /tmp/gsd36/exec/compilejava-fix.log 2>&1
+git worktree add --detach /tmp/gsd36/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply
+git worktree remove --force /tmp/gsd36/fmt
+cat .planning/phases/36-client-0-11-0-audit-bump/36-assets/fork-anchors-fix.txt >> .planning/scripts/fork-anchors.txt
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+python3 -I <insert the asset row directly below the row starting "| The server-side table filter:" in docs/FORK-DELTA.md>
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClientErrorShapePinUnitTest' --tests '*ClientTimeoutPrefixPinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*SourcePlanningIdGuardUnitTest' > /tmp/gsd36/exec/pins-fix-096.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*Client011BehaviourPinLiveTest' --tests '*RowBinaryClientParityLiveTest' --tests '*ClickHouseSinkJdbcPropertiesTest' > /tmp/gsd36/exec/live-fix-096.log 2>&1
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd36/exec/testunit-fix.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-hygiene-check.py /tmp/gsd36/exec/added-lines-fix.txt
+git commit -F /tmp/gsd36/exec/msg-fix.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 a1cc33825a07d960bc336e0e6c7474c6698ab40b
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+unfixed_row_counts: endpoint=0; url=1; ignore=0
+fix_numstat: ClickHouseHelperClient.java:9/1
+import_lines_changed: 0
+object_creations_equal: yes
+compilejava_exit: 0
+deprecation_warnings_096: 100
+spotless_numstat_baseline: ClickHouseHelperClient.java=3/4
+spotless_numstat_edited: ClickHouseHelperClient.java=3/4
+spotless_unchanged: yes
+anchor_counts_after: endpoint=1; url=0; ignore=1
+anchors_mirror: rows=151 bad=0
+fork_delta_numstat: 1/0
+pins_dockerfree_exit: 0
+error_shape_xml: tests=7 failures=0 errors=0 skipped=0
+timeout_prefix_xml: tests=2 failures=0 errors=0 skipped=0
+endpoint_xml: tests=3 failures=0 errors=0 skipped=0
+wire_xml: tests=2 failures=0 errors=0 skipped=0
+planning_id_guard_xml: tests=18 failures=0 errors=0 skipped=0
+live_exit: 0
+live_xml: tests=6 failures=0 errors=0 skipped=0
+golden_xml: tests=1 failures=0 errors=0 skipped=0
+jdbc_props_xml: tests=2 failures=0 errors=0 skipped=0
+testunit_exit: 0
+testunit_tests: 1472
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 14
+hygiene_scan: clean
+fix_commit: a1cc33825a07d960bc336e0e6c7474c6698ab40b
+fix_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=73 anchor_rows=151 marker_commits=80 anchor_exempt=0 result=PASS
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+The patch asset applied cleanly and the commit holds exactly the patch: nine added lines and one removed line in `createClientV2`, no import line, no new object. The zero row `.addEndpoint(url)` read 1 on the unfixed file and reads 0 after the fix, so it could not pass on unfixed code. Spotless keeps the same three added and four removed lines for `ClickHouseHelperClient.java` before and after the edit, so the fix moves no existing hunk. On client 0.9.6 every pin keeps its result (the fixes are no-ops there): 7, 2, 3 and 2 Docker-free executions, the planning-id guard, the 6 live behaviour pins, the golden and the JDBC-properties class are all green, and the cache-busted testUnit is exactly 14 larger than the E-01 baseline. The tail gate over the merge commit of Phase 34 up to the fix commit passes with `anchor_rows=151`.
+
+Measured 2026-10-29T12:44:17Z (fix commit and its gates on client 0.9.6).
 
 Verdict: pass
