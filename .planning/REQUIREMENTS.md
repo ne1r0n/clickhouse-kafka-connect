@@ -49,13 +49,13 @@
 
 ### Buffered Offset Commit (upstream #777)
 
-- [ ] **BUF-01**: With `bufferCount > 0` and a topic-renaming SMT (e.g. `RegexRouter`), `ChunkFlusher.flush` keys flushed offsets by `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset() + 1`, so `preCommit` returns offsets for the assigned partitions and Connect no longer logs "Ignoring invalid task provided offset".
-- [ ] **BUF-02**: `AtLeastOnceBufferStrategy.close` removes buffered records of revoked partitions by their original topic and partition, and `ExactlyOnceBufferStrategy.put` keys `perPartitionBuffer` by the original topic and partition.
-- [ ] **BUF-03**: `Processing.doLogic` is checked for the same defect: the exactly-once state record is keyed by `record.getSinkRecord().topic()` (the transformed topic); the result (fix with pins, or a measured and documented non-issue) is recorded, since the operator runs with `exactlyOnce=false`.
-- [ ] **BUF-04**: Docker-free unit tests build a `SinkRecord` through `newRecord` with a different topic and pin that `preCommit` returns offsets under the original topic and partition, that `close()` drops buffered records by the original partition, and that the exactly-once buffer groups by it; the non-renamed case is unchanged.
-- [ ] **BUF-05**: A live pin on ClickHouse `latest` × client V2 (`bufferCount > 0` plus `RegexRouter`) shows committed offsets equal the end offsets; the non-buffered `DirectDeliveryStrategy` path and the `bufferCount`/`bufferFlushTime` contract are unchanged.
+- [x] **BUF-01**: With `bufferCount > 0` and a topic-renaming SMT (e.g. `RegexRouter`), `ChunkFlusher.flush` keys flushed offsets by `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset() + 1`, so `preCommit` returns offsets for the assigned partitions and Connect no longer logs "Ignoring invalid task provided offset".
+- [x] **BUF-02**: `AtLeastOnceBufferStrategy.close` removes buffered records of revoked partitions by their original topic and partition, and `ExactlyOnceBufferStrategy.put` keys `perPartitionBuffer` by the original topic and partition.
+- [x] **BUF-03**: `Processing.doLogic` is checked for the same defect: the exactly-once state record is keyed by `record.getSinkRecord().topic()` (the transformed topic); the result (fix with pins, or a measured and documented non-issue) is recorded, since the operator runs with `exactlyOnce=false`.
+- [x] **BUF-04**: Docker-free unit tests build a `SinkRecord` through `newRecord` with a different topic and pin that `preCommit` returns offsets under the original topic and partition, that `close()` drops buffered records by the original partition, and that the exactly-once buffer groups by it; the non-renamed case is unchanged.
+- [x] **BUF-05**: A live pin on ClickHouse `latest` × client V2 (`bufferCount > 0` plus `RegexRouter`) shows committed offsets equal the end offsets; the non-buffered `DirectDeliveryStrategy` path and the `bufferCount`/`bufferFlushTime` contract are unchanged.
 - [ ] **BUF-06**: The real-environment rerun of the fixed jar (committed offsets equal end offsets; duplicates after a hard worker kill within the at-least-once window) is performed and recorded outside this repository; Phase 35 does not gate on it.
-- [ ] **BUF-07**: FORK-DELTA gets a row and `fork-anchors.txt` an anchor for the fix, and the rollout note states the behaviour change (offsets now committed, so the group no longer rereads from `auto.offset.reset` after a restart or rebalance). Upstream PR #786 was closed unmerged, so the fix is fork-only until upstream resolves #777.
+- [x] **BUF-07**: FORK-DELTA gets a row and `fork-anchors.txt` an anchor for the fix, and the rollout note states the behaviour change (offsets now committed, so the group no longer rereads from `auto.offset.reset` after a restart or rebalance). Upstream PR #786 was closed unmerged, so the fix is fork-only until upstream resolves #777.
 
 ### Release
 
@@ -101,13 +101,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TAL-03 | Phase 34 | Complete |
 | TAL-04 | Phase 34 | Complete |
 | TAL-05 | Phase 34 | Complete |
-| BUF-01 | Phase 35 | Pending |
-| BUF-02 | Phase 35 | Pending |
-| BUF-03 | Phase 35 | Pending |
-| BUF-04 | Phase 35 | Pending |
-| BUF-05 | Phase 35 | Pending |
+| BUF-01 | Phase 35 | Complete |
+| BUF-02 | Phase 35 | Complete |
+| BUF-03 | Phase 35 | Complete |
+| BUF-04 | Phase 35 | Complete |
+| BUF-05 | Phase 35 | Complete |
 | BUF-06 | Phase 35 | Out of scope (tracked outside this repo) |
-| BUF-07 | Phase 35 | Pending |
+| BUF-07 | Phase 35 | Complete |
 | CLT-01 | Phase 36 | Pending |
 | CLT-02 | Phase 36 | Pending |
 | CLT-03 | Phase 36 | Pending |
