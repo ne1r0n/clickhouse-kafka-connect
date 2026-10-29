@@ -18,7 +18,7 @@
 | E-03 | CLT-01, CLT-03, CLT-04 | 36-01 | pass |
 | E-04 | CLT-06 | 36-01 | pass |
 | E-05 | CLT-03 | 36-02 | pass |
-| E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pending (plan 36-02) |
+| E-06 | CLT-02, CLT-03, CLT-04 | 36-02 | pass |
 | E-07 | CLT-07 | 36-02 | pending (plan 36-02) |
 | E-08 | CLT-06 | 36-03 | pending (plan 36-03) |
 | E-09 | CLT-08 | 36-03 | pending (plan 36-03) |
@@ -396,5 +396,93 @@ clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4
 The patch asset applied cleanly and the commit holds exactly the patch: nine added lines and one removed line in `createClientV2`, no import line, no new object. The zero row `.addEndpoint(url)` read 1 on the unfixed file and reads 0 after the fix, so it could not pass on unfixed code. Spotless keeps the same three added and four removed lines for `ClickHouseHelperClient.java` before and after the edit, so the fix moves no existing hunk. On client 0.9.6 every pin keeps its result (the fixes are no-ops there): 7, 2, 3 and 2 Docker-free executions, the planning-id guard, the 6 live behaviour pins, the golden and the JDBC-properties class are all green, and the cache-busted testUnit is exactly 14 larger than the E-01 baseline. The tail gate over the merge commit of Phase 34 up to the fix commit passes with `anchor_rows=151`.
 
 Measured 2026-10-29T12:44:17Z (fix commit and its gates on client 0.9.6).
+
+Verdict: pass
+
+### E-06: The catalog commit: clickHouseDriver 0.11.0 as one marked override, the pins, BLD-16 and the golden green on 0.11.0
+
+Backs: CLT-02, CLT-03, CLT-04, ROADMAP Phase 36 criteria 2 and 3 (the client moves to 0.11.0 in one revertable commit, and with the two fixes every pin that was red on the bare bump is green, BLD-16 needs no re-bless, and the golden blessed on 0.9.6 still matches).
+
+```sh
+cp .planning/phases/36-client-0-11-0-audit-bump/36-assets/ClientCatalogPinUnitTest.java.txt src/test/java/com/clickhouse/kafka/connect/ci/ClientCatalogPinUnitTest.java
+cmp <asset> <copy>
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClientCatalogPinUnitTest' > /tmp/gsd36/exec/catalog-pin-red.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed build/test-results/testUnit --expect 'ClientCatalogPinUnitTest#CLT-02: clickHouseDriver is 0.11.0 and carries the FORK OVERRIDE marker naming upstream 0.9.6'
+sed -i '' 's/^clickHouseDriver = "0.9.6"$/clickHouseDriver = "0.11.0"  # FORK OVERRIDE (upstream 0.9.6)/' gradle/libs.versions.toml
+sed -i '' "49r .planning/phases/36-client-0-11-0-audit-bump/36-assets/fork-anchors-catalog-row.txt" .planning/scripts/fork-anchors.txt
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain dependencies --configuration <runtimeClasspath | clickhouseDependencies | testRuntimeClasspath | integrationTestRuntimeClasspath>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava compileTestFixturesJava compileTestJava compileIntegrationTestJava
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava --rerun-tasks > /tmp/gsd36/exec/compilejava-0110.log 2>&1
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClientErrorShapePinUnitTest' --tests '*ClientTimeoutPrefixPinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*ClientCatalogPinUnitTest' --tests '*UtilsTest' --tests '*AdditionalRetriableErrorCodes*' --tests '*ConnectApiReferencesUnitTest' --tests '*NetworkCompressionPinUnitTest' --tests '*ClickHouseHelperClientForkUnitTest' --tests '*SourcePlanningIdGuardUnitTest' > /tmp/gsd36/exec/pins-0110.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*Client011BehaviourPinLiveTest' --tests '*RowBinaryClientParityLiveTest' --tests '*ClickHouseSinkJdbcPropertiesTest' --tests '*NetworkCompressionPinLiveTest' --tests '*Lz4RoundTripLiveTest' > /tmp/gsd36/exec/live-0110.log 2>&1
+git worktree add --detach /tmp/gsd36/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply
+git worktree remove --force /tmp/gsd36/fmt
+git commit -F /tmp/gsd36/exec/msg-catalog.txt
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd36/exec/testunit-0110.log 2>&1
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+assets_identical: yes
+catalog_pin_red_exit: 1
+catalog_pin_red_failed: ClientCatalogPinUnitTest#CLT-02: clickHouseDriver is 0.11.0 and carries the FORK OVERRIDE marker naming upstream 0.9.6
+catalog_pin_red_prediction_met: yes
+catalog_numstat: libs.versions.toml:1/1
+anchor_row_follows_kafka_row: yes
+anchor_row_count: 1
+anchors_mirror: rows=152 bad=0
+client_v2_runtimeclasspath: +--- com.clickhouse:client-v2:0.11.0
+client_v2_clickhousedependencies: +--- com.clickhouse:client-v2:0.11.0
+client_v2_testruntimeclasspath: +--- com.clickhouse:client-v2:0.11.0
+client_v2_integrationtestruntimeclasspath: +--- com.clickhouse:client-v2:0.11.0
+clickhouse_modules_0110: com.clickhouse:client-v2:0.11.0; com.clickhouse:clickhouse-client:0.11.0; com.clickhouse:clickhouse-data:0.11.0; com.clickhouse:clickhouse-http-client:0.11.0
+zstd_jni_resolved: +--- com.github.luben:zstd-jni:1.5.7-23
+compile_all_exit: 0
+deprecation_warnings_0110: 100
+deprecation_warnings_equal: yes
+pins_exit: 0
+error_shape_xml: tests=7 failures=0 errors=0 skipped=0
+timeout_prefix_xml: tests=2 failures=0 errors=0 skipped=0
+endpoint_xml: tests=3 failures=0 errors=0 skipped=0
+wire_xml: tests=2 failures=0 errors=0 skipped=0
+catalog_pin_xml: tests=2 failures=0 errors=0 skipped=0
+utilstest_tests: 34
+additional_tests: 3
+bld16_xml: tests=3 failures=0 errors=0 skipped=0
+live_exit: 0
+live_xml: tests=6 failures=0 errors=0 skipped=0
+golden_xml: tests=1 failures=0 errors=0 skipped=0
+jdbc_props_xml: tests=2 failures=0 errors=0 skipped=0
+netcomp_live_xml: tests=9 failures=0 errors=0 skipped=0
+lz4_live_xml: tests=2 failures=0 errors=0 skipped=0
+bare_set_green_with_fix: yes
+spotless_worktree_cmp: identical
+catalog_commit: 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+catalog_commit_files: .planning/scripts/fork-anchors.txt; gradle/libs.versions.toml; src/test/java/com/clickhouse/kafka/connect/ci/ClientCatalogPinUnitTest.java
+catalog_commit_diff: -clickHouseDriver = "0.9.6"|+clickHouseDriver = "0.11.0"  # FORK OVERRIDE (upstream 0.9.6)
+testunit_exit: 0
+testunit_tests: 1474
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 16
+hygiene_scan: clean
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=75 anchor_rows=152 marker_commits=82 anchor_exempt=0 result=PASS
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+```
+
+The catalog pin was red on the unbumped catalog with exactly its version-line test (the second test, that the four client modules ride one ref, was green on both lines). After the one-line edit all four configurations resolve `client-v2` 0.11.0, and the four client modules (`client-v2`, `clickhouse-client`, `clickhouse-data`, `clickhouse-http-client`) all read 0.11.0. `zstd-jni` 1.5.7-23 comes in through the client's own POM and no other module version moved. The four compile tasks pass and the deprecation-warning count is 100 on both lines, so 0.11.0 deprecates nothing the connector uses beyond what 0.9.6 did. On 0.11.0 with the fixes every Docker-free pin is green, the Kafka and Connect API reference list (BLD-16) needs no re-bless, `UtilsTest` and the `AdditionalRetriableErrorCodes` class keep their baseline counts, and the live classes are green on ClickHouse 26.10.3.7 with client V2: the six behaviour pins, the golden blessed on 0.9.6, the JDBC-properties class, the compression pin and the lz4 round trip. The three bare-bump live reds of E-03 and the three Docker-free ones are green with the fixes. The cache-busted testUnit is exactly 16 larger than the E-01 baseline.
+
+Measured 2026-10-29T12:54:55Z (catalog commit, pins and gates on client 0.11.0).
 
 Verdict: pass
