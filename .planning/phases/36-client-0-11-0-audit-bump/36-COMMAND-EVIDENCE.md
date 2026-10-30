@@ -26,6 +26,8 @@
 | E-11 | CLT-09 | 36-04 | pass |
 | E-12 | CLT-09 | 36-04 | pass |
 | E-13 | CLT-07 | 36-04 | pending (user-gated) |
+| E-14 | CLT-09 | 36-04 | unmeasured (no-go branch not taken) |
+| E-15 | CLT-07 | 36-04 | fail |
 
 ### E-01: Pre-flight: origin, pull request and upstream re-read, Phase 35 gated, baselines on the untouched tree
 
@@ -1048,3 +1050,84 @@ The handoff file gives the user the gated SHA, the five checks to run before pus
 Measured 2026-10-29T14:30:00Z (workflow facts, origin re-read, handoff committed).
 
 Verdict: pending (user-gated: the manual nightly dispatch is the user's step)
+
+### E-14: Phase 36 gate on 0.9.6 after a no-go revert: not measured, the go branch was taken
+
+Backs: CLT-09, no-go branch only. E-12 decided go, so no revert was applied and no gate was re-run on 0.9.6; this entry exists only so the index stays contiguous with E-15.
+
+```sh
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py get .planning/phases/36-client-0-11-0-audit-bump/36-COMMAND-EVIDENCE.md E-12 decision
+```
+
+```text
+decision_outcome: not-applicable
+e12_decision: go
+revert_applied: no
+```
+
+Measured 2026-10-30 (read from E-12; nothing was run).
+
+Verdict: unmeasured (the no-go branch was not taken, E-12 decided go)
+
+### E-15: CLT-07 nightly dispatch, user-reported
+
+Backs: CLT-07, second half. This entry is the user-reported result of the manual nightly dispatch that `36-USER-DISPATCH.md` handed over (E-13 stays `pending` as the record of that handoff). The run facts below were reported by the user and re-read by the orchestrator with read-only `gh`; no agent pushed or dispatched anything. The numbering follows the handoff's Resume section; E-14 is the gate re-run of the no-go branch, which the go decision did not take, so it is recorded as `unmeasured` in its own entry below to keep the index contiguous.
+
+```sh
+git diff --quiet a8b61f1512ab245a584b506527beaceca7264b04 7da442f1b55163340d069b246b3281ac36c76770 -- . ':(exclude).planning'
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'scratch/*'
+gh run view 40971181887 -R ne1r0n/clickhouse-kafka-connect --json headSha,conclusion,event,headBranch,status
+gh run list -R ne1r0n/clickhouse-kafka-connect --commit 7da442f1b55163340d069b246b3281ac36c76770 --json name,conclusion,event,databaseId
+```
+
+```text
+reported_by: user-reported
+run_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40971181887
+run_id: 40971181887
+workflow: nightly-integration-tests.yaml
+event: workflow_dispatch
+head_branch: scratch/clt-07-client-0.11.0
+head_sha: 7da442f1b55163340d069b246b3281ac36c76770
+pushed_sha: 7da442f1b55163340d069b246b3281ac36c76770
+head_sha_equals_pushed_sha: yes
+non_planning_tree_equals_gated_head: yes
+run_status: completed
+conclusion: failure
+started_at: 2026-10-29T23:09:40Z
+finished_at: 2026-10-29T23:58:00Z
+run_duration: 48m20s
+job_duration: 48m15s
+job_id: 123788031133
+runner_nproc: 4
+runner_memory_total_mb: 15983
+runner_memory_available_mb: 14536
+runner_docker_server: 28.0.4
+summary_line: tests=63 failures=5 errors=0 skipped=9
+tests_summary: Tests summary: 55 tests, 49 succeeded, 5 failed, 1 skipped
+failed_class: ClickHouseSinkConnectorIntegrationTest
+failed_first: stockGenSingleTaskTest (ConditionTimeoutException, alias 'connector running', 5 min)
+failed_then: stockGenMultiTaskSchemalessTest; stockGenMultiTaskInterruptTest; stockGenWithJdbcPropSingleTaskTest; stockGenMultiTaskTopicTest (each RuntimeException: Data generation failed at ConfluentPlatform.generateData:516)
+preceding_test_passed: stockGenSingleTaskInterruptTest (generated 25000 records, Diff from Theoretical Total: [-12500])
+connect_worker_logs_in_artifacts: no
+cause: undetermined
+baseline_run: 40474535605 (nightly-integration-tests.yaml, workflow_dispatch on custom_build at 3a3a15a9ae064ffe09c696b8bb87bce23419d463, client 0.9.6, 2026-10-27, success)
+baseline_tests_summary: Tests summary: 55 tests, 54 succeeded, 0 failed, 1 skipped
+baseline_summary_line: tests=63 failures=0 errors=0 skipped=9
+local_connect_worker_integration_on_0_11_0: E-07, green (54 succeeded)
+tests_yaml_run_on_push: 40971068623 success (informational)
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+scratch_branch_on_origin: scratch/clt-07-client-0.11.0 at 7da442f1b55163340d069b246b3281ac36c76770
+scratch_branch_decision: user kept the branch until the investigation is over (not deleted)
+user_approved_push_and_dispatch: yes (the user's own message)
+attribution_to_bump: not established
+clt_07_passed: no
+next_step: pre-bump dispatch at 939e899298c2f12dec2cfe1e69b1a6b53b4f511e, handoff in 36-USER-DISPATCH-PREBUMP.md, user-gated
+hygiene_scan: clean
+```
+
+The run is red, so the Verdict is `fail`, and CLT-07 is not passed. The five failures are all in the Connect-worker class and start with the worker never reaching the running state in `stockGenSingleTaskTest`; the four later data-generation failures may be a consequence of it, and the passing `stockGenSingleTaskInterruptTest` still shows a record-count deviation (a record-count deviation of 12500 from the theoretical total). The artifacts hold no Connect-worker logs, so the cause is undetermined. In particular, attribution to the bump is NOT established: the baseline differs from this run in the client version, but also in date, runner, Docker version and the ClickHouse `latest` digest, and the local Connect-worker integration run on 0.11.0 was green (E-07). The unit and full-suite evidence of E-12 is unaffected by this entry. The next step is the same nightly on the commit before the catalog commit (client 0.9.6, same `.github`), which needs a second user-approved push (`36-USER-DISPATCH-PREBUMP.md`); the branch `scratch/clt-07-client-0.11.0` stays until that is done. A fail verdict is fixed by re-measuring in a new run, never by editing this entry.
+
+Measured 2026-10-30 (user-reported run facts, re-read with read-only `gh` and `git ls-remote`).
+
+Verdict: fail
