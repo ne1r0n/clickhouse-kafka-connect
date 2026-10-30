@@ -28,6 +28,7 @@
 | E-13 | CLT-07 | 36-04 | pending (user-gated) |
 | E-14 | CLT-09 | 36-04 | unmeasured (no-go branch not taken) |
 | E-15 | CLT-07 | 36-04 | fail |
+| E-16 | CLT-09, CLT-07 | 36-04 | go |
 
 ### E-01: Pre-flight: origin, pull request and upstream re-read, Phase 35 gated, baselines on the untouched tree
 
@@ -1131,3 +1132,121 @@ The run is red, so the Verdict is `fail`, and CLT-07 is not passed. The five fai
 Measured 2026-10-30 (user-reported run facts, re-read with read-only `gh` and `git ls-remote`).
 
 Verdict: fail
+
+### E-16: CLT-09 re-decision after the red CLT-07 nightly: go, harness fix
+
+Backs: CLT-09 (the go decision is re-taken after E-15) and CLT-07 (the cause of the red nightly, the harness fix and the third dispatch). This entry does not pass CLT-07: that needs a green nightly on the fixed commit, which is reported as a new entry later. E-12's gate, E-13 (pending, the first handoff) and E-15 (fail, the first red run) stay as they are.
+
+```sh
+git apply --check /tmp/gsd36/invest/datagen-race-fix.patch
+git apply /tmp/gsd36/invest/datagen-race-fix.patch
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileIntegrationTestJava > /tmp/gsd36/exec/fix-compile.log 2>&1
+git worktree add --detach /tmp/gsd36/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply > /tmp/gsd36/exec/fmt-fix1.log 2>&1
+git -C /tmp/gsd36/fmt diff --numstat -- src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+git -C /tmp/gsd36/fmt checkout -- .
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/fmt --console=plain spotlessApply > /tmp/gsd36/exec/fmt-fix2.log 2>&1
+git worktree remove --force /tmp/gsd36/fmt
+git worktree prune
+rm -rf build/test-results/integrationTest build/reports/tests/integrationTest
+/bin/bash -c 'CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE JAVA_HOME=$HOME/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home ./gradlew --console=plain integrationTest --tests "*ClickHouseSinkConnectorIntegrationTest.stockGen*" > /tmp/gsd36/exec/stockgen-fix.log 2>&1; echo $? > /tmp/gsd36/exec/stockgen-fix.exit'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit build/test-results/integrationTest tests=7 failures=0 errors=0 skipped=0
+git add src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java docs/FORK-DELTA.md
+git commit -F /tmp/gsd36/exec/msg-harness-fix.txt
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad
+git diff --quiet a8b61f1512ab245a584b506527beaceca7264b04 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad -- src/main
+git diff --name-only a8b61f1512ab245a584b506527beaceca7264b04 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad -- . ':(exclude).planning'
+git merge-base --is-ancestor 7da442f1b55163340d069b246b3281ac36c76770 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'scratch/*'
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+decision: go
+decision_scope: CLT-09 re-taken after E-15 (fail): keep client 0.11.0, apply the harness fix, dispatch the nightly a third time
+decision_source: user-decided, the user's own answer to the orchestrator's question (CLT-09 go, keep 0.11.0, apply the harness patch, then the user pushes the new SHA and dispatches the nightly again); the executor received it through the orchestrator's task text and not as verbatim wording
+run1_id: 40971181887
+run1_head_sha: 7da442f1b55163340d069b246b3281ac36c76770
+run1_client: 0.11.0
+run1_attempt1_failures: 5
+run1_attempt2_failures: 2
+run1_conclusion: failure (E-15)
+run2_id: 41110577512
+run2_head_sha: 939e899298c2f12dec2cfe1e69b1a6b53b4f511e
+run2_client: 0.9.6
+run2_branch: scratch/clt-07-prebump-0.9.6
+run2_conclusion: success
+baseline_run_id: 40474535605
+baseline_conclusion: success
+nightly_conclusions: 0.9.6 baseline success, 0.11.0 red in attempts 1 and 2, 0.9.6 pre-bump success
+cause_component: integration-test harness (ConfluentPlatform), not the client
+cause_connector: the Datagen source connector never reaches RUNNING, not the sink connector
+mechanism_wait: Datagen tasks finish their 100 iterations in about 5 s, and the first status poll of createConnectorAndWaitUntilRunning is at 5 s and checks tasks[0] == RUNNING only, so in about 20 percent of calls task 0 is already FAILED with the message done and the wait times out after 5 minutes
+mechanism_leak: generateData throws before deleteConnectors, the leftover Datagen connector's finished tasks inflate the count of Stopping connector: generated the configured (counted across all connectors), and every later generateData fails with Data generation failed after 120 polls 2 s apart
+mechanism_lines_verified_by_orchestrator: yes
+proven_locally: reproduced on client 0.11.0, the stockGen tests with the unmodified code failed the same way and the patched code passed 7 of 7
+hypothesis_not_proven: the exact rate on the CI runner and why attempt 1 had 5 failures and attempt 2 had 2; the CI artifacts hold no Connect-worker logs, so the CI mechanism is inferred from the local reproduction
+client_attribution: 0.9.6 against 0.11.0 is not significant (Fisher exact p about 0.17); the failure is not attributed to the bump
+patch_file: /tmp/gsd36/invest/datagen-race-fix.patch
+diagnostics_patch_applied: no
+patch_apply_check_exit: 0
+patch_files_changed: src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+sink_path_uses_wait_until_running: yes
+harness_commit: 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad
+harness_commit_files: docs/FORK-DELTA.md; src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+harness_commit_message: test(36): wait for datagen completion instead of the RUNNING status and always delete the datagen connector
+compile_integration_exit: 0
+fork_anchors_covers_file: yes (3 rows of ConfluentPlatform.java: confluentinc/cp-server-connect: 1, new ImageFromDockerfile( 1, new GenericContainer<>(CP_DATA_GEN) 0), none of the anchored lines edited
+fork_anchors_rows_added: 0
+anchors_mirror: rows=152 bad=0
+fork_delta_row_added: yes, one row after the Java 17 worker row, in the harness commit (precedent a1cc3382 and 781fd526)
+spotless_numstat_baseline: ConfluentPlatform.java=9/11
+spotless_numstat_edited: ConfluentPlatform.java=9/11
+spotless_unchanged: yes (the changed lines are the pre-existing import-order lines only)
+local_stockgen_exit: 0
+local_stockgen_summary: Tests summary: 7 tests, 7 succeeded, 0 failed, 0 skipped
+local_stockgen_xml: tests=7 failures=0 errors=0 skipped=0 files=1
+local_stockgen_duration: BUILD SUCCESSFUL in 10m 18s
+local_stockgen_utc_start: 2026-10-30T21:42:23Z
+local_stockgen_utc_end: 2026-10-30T21:52:42Z
+local_stockgen_java_home: /Users/alexandr.chashnikov/.gradle/jdks/adoptium-17-aarch64-hotspot-mac/Contents/Home
+local_stockgen_archive_client_version: version=0.11.0
+local_stockgen_jvm_crash: none
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e12: yes
+gated_head_e12: a8b61f1512ab245a584b506527beaceca7264b04
+new_gated_head: 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad
+src_main_changed_since_e12_head: none
+src_main_vs_e12_note: src/main differs from the E-12 starting head only by ClickHouseHelperClient.java (the createClientV2 fix), as recorded in E-12
+non_planning_files_changed_since_e12_head: docs/FORK-DELTA.md; src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+src_changed_since_e12_head: src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+suites_vs_change: E-12's testUnit and two full suites ran at a8b61f15, before this test-only change, and the change touches neither src/main nor src/test nor src/testFixtures, so the unit and feature suites are not affected and were not re-run
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=93 anchor_rows=152 marker_commits=100 anchor_exempt=0 result=PASS
+cumulative_gate_exit: 0
+cumulative_gate_line: invariants: provenance_paths=21 anchor_commits=1104 anchor_rows=152 marker_commits=1170 anchor_exempt=19 result=PASS
+gate_scripts_vs_e12: identical
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+scratch_branches_on_origin: scratch/clt-07-client-0.11.0 at 7da442f1b55163340d069b246b3281ac36c76770; scratch/clt-07-prebump-0.9.6 at 939e899298c2f12dec2cfe1e69b1a6b53b4f511e
+harness_commit_descends_from_scratch_tip: yes
+clt_07_passed: no
+clt_07_next: third nightly dispatch on the fixed commit, handoff in 36-USER-DISPATCH-FIX.md, user-gated; a green run is recorded as a new entry
+followups_file: 36-FOLLOWUPS.md
+nothing_pushed: yes
+hygiene_scan: clean
+```
+
+The cause is in the test harness and not in the client. The connector that never reached the running state is the Datagen source connector. Its tasks finish their 100 iterations in about 5 s and the first status poll of `createConnectorAndWaitUntilRunning` is also at 5 s and looks at task 0 only, so in about one call in five task 0 was already `FAILED` with the message `done`, and the wait timed out after 5 minutes. `generateData` then threw before it deleted the connector, the finished tasks of the leftover connector inflated the completion count (which is taken across all connectors), and every later `generateData` call failed with `Data generation failed` after 120 polls. Proven: the mechanism was reproduced locally on client 0.11.0, where the unmodified code failed the same way and the patched code passed all seven `stockGen*` tests. Hypothesis: the exact failure rate on the CI runner and the split of 5 failures in attempt 1 and 2 in attempt 2 were not measured, because the CI artifacts hold no Connect-worker logs. The difference between the 0.9.6 and 0.11.0 nightlies (one green run against one red run with two attempts) is not statistically significant (Fisher exact p about 0.17), so the red result is not attributed to the bump.
+
+The fix follows the patch of the investigation: `createConnector` is split out of `createConnectorAndWaitUntilRunning` so that the sink path keeps its RUNNING wait unchanged, and `generateData` creates the Datagen connector without a status wait, counts `Stopping connector: generated the configured` in its own connector's task status until it equals the task count (at most 120 polls of 2 s), and deletes the connector in a `finally` block. It is test code only, and `src/main` is unchanged. The Spotless check of the edited file found only the import-order lines that were already pending in the committed file, the same 9 and 11 changed lines as before. `ConfluentPlatform.java` is covered by three anchor rows of `fork-anchors.txt`; none of the anchored lines was edited, so no anchor row was added or changed, and the working-tree mirror still reads `rows=152 bad=0`. One `docs/FORK-DELTA.md` row describes the fix and went into the harness commit, as in the earlier harness and client fix commits. The tail gate and the cumulative merge gate still end `result=PASS` with unchanged scripts.
+
+Decision: go, keep client 0.11.0. This is the user's own decision, given as their answer to the orchestrator's question; the agent that wrote this entry only received it through the orchestrator's task text. E-12's `testUnit` and its two full suites ran before this change at the gated head `a8b61f15`; the change touches only the integration-test source set and one document, so those suites are neither affected by it nor re-run. The local result for the change itself is the 7 of 7 `stockGen*` run above. CLT-07 stays not passed until a nightly on the fixed commit is green and is recorded as a new entry. Nothing was pushed or dispatched, and origin `custom_build` still reads `3a3a15a9`. The three findings of the investigation that are not fixed here are in `36-FOLLOWUPS.md`.
+
+Measured 2026-10-30T22:23:36Z (harness fix, local `stockGen*` run, Spotless check, anchors and merge gates, origin re-read).
+
+Verdict: go
