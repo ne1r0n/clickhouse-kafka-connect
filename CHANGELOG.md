@@ -27,7 +27,9 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
     `jdbcConnectionProperties` are now forwarded to the server, which rejects them, so the task fails at start.
     Client V1, which a connector runs when it does not set `client_version`, is not affected. Search every connector
     for them before upgrading: this item breaks an upgrade on client V2.
-  * `zstd-jni` natives ship for linux/amd64, linux/aarch64 and darwin/aarch64 only.
+  * `zstd-jni` natives ship for linux/amd64, linux/aarch64 and darwin/aarch64 only. Only a connector that takes the ZSTD
+    path (`compress=true` with `setCompressionMethod=false`, or `decompress=true`) is affected; the default
+    configuration does not load the native (measured in the maintainers' research, not re-run).
   * The client no longer sets 804800-byte socket buffers; the operating system auto-tunes them.
   * A batch replayed across the upgrade is byte-identical on the wire for the compared type matrix, so no clean stop is
     needed for it.
