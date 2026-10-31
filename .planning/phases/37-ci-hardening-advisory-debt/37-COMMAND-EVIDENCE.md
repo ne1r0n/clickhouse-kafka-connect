@@ -15,7 +15,7 @@
 |-------|-------------|------|---------|
 | E-01 | CIH-01, CIH-02, CIH-03 | 37-01 | pass |
 | E-02 | CIH-01, CIH-02, CIH-03 | 37-01 | pass |
-| E-03 | CIH-01, CIH-03 | 37-01 | pending (plan 37-01) |
+| E-03 | CIH-01, CIH-03 | 37-01 | pass |
 | E-04 | CIH-02 | 37-01 | pending (plan 37-01) |
 | E-05 | CIH-05 | 37-02 | pending (plan 37-02) |
 | E-06 | CIH-04 | 37-02 | pending (plan 37-02) |
@@ -182,5 +182,59 @@ hygiene_scan: clean
 Before the script existed both tracer tests failed with python3 reporting that it could not open `.github/scripts/bump_version.py`; with the asset copied unchanged both passed. The workflow's own `Increment version` run block, extracted from the committed YAML and run the way GitHub runs it (`bash -eo pipefail` with `GITHUB_ENV` set), turned `v1.7.0_gg5` into `v1.7.0_gg6` in `VERSION` and in the `VERSION` row of the anchors file and nothing else; the anchors mirror read `bad=0` afterwards. A bump of `VERSION` alone, the old workflow's behaviour, reads `bad=1`. The Spotless baseline of the pristine worktree changed 50 existing files and the same 50 after the new file was added; the new file was unchanged by Spotless. The pin guard tallies equal their E-01 baselines (21 and 39).
 
 2026-10-31T08:55:30Z
+
+Verdict: pass
+
+### E-03: The bump rule table, the refused texts and the anchors-row fixtures, with both mutations seen red
+
+Backs: CIH-01, CIH-03, ROADMAP Phase 37 criteria 1 and 2 (the rules of the bump pinned by a Docker-free table, and the failure of the row check seen red on a fixture and by mutation).
+
+```sh
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BumpVersionScriptUnitTest' > /tmp/gsd37/exec/table-green.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit --class BumpVersionScriptUnitTest
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+cmp src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java /tmp/gsd37/w/fmt/src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java
+git worktree remove --force /tmp/gsd37/w/fmt
+git diff -w -U0 ff8730860ba8560171fcda44bc1cdcd6dba1ba2a HEAD -- src/test src/integrationTest src/testFixtures
+git worktree add --detach /tmp/gsd37/w/mut1 56cc488c1dfafbe3b678c3b19c0d9e16e6c074f3
+# in the worktree script: delete the equality check of the row's pattern field against the current version (5 lines)
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/mut1 --console=plain testUnit --rerun --tests '*BumpVersionScriptUnitTest' > /tmp/gsd37/exec/mut1.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed /tmp/gsd37/w/mut1/build/test-results/testUnit
+git worktree remove --force /tmp/gsd37/w/mut1
+git worktree add --detach /tmp/gsd37/w/mut2 56cc488c1dfafbe3b678c3b19c0d9e16e6c074f3
+# in the worktree script: replace the statement fields[1] = new by pass
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/mut2 --console=plain testUnit --rerun --tests '*BumpVersionScriptUnitTest' > /tmp/gsd37/exec/mut2.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed /tmp/gsd37/w/mut2/build/test-results/testUnit
+git worktree remove --force /tmp/gsd37/w/mut2
+git diff --quiet 56cc488c1dfafbe3b678c3b19c0d9e16e6c074f3 HEAD -- .github/scripts/bump_version.py
+```
+
+```text
+assets_identical: yes
+table_exit: 0
+table_junit: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=48 failures=0 errors=0 skipped=0 files=1
+table_executions: 48
+spotless_new_file_cmp: identical
+assertion_diff: clean
+hygiene_scan: clean
+table_commit: 56cc488c1dfafbe3b678c3b19c0d9e16e6c074f3
+table_commit_files: src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java
+mut1_exit: 1
+mut1_junit: OK junit /tmp/gsd37/w/mut1/build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=48 failures=1 errors=0 skipped=0 files=1
+mut1_failed: BumpVersionScriptUnitTest#CIH-03: a VERSION row that does not match VERSION refuses and writes nothing
+mut1_names_mismatch: yes
+mut1_worktree_removed: yes
+mut2_exit: 1
+mut2_junit: OK junit /tmp/gsd37/w/mut2/build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=48 failures=17 errors=0 skipped=0 files=1
+mut2_failures: 17
+mut2_worktree_removed: yes
+script_unmodified_in_main: yes
+```
+
+The 48 executions are 14 accepted bumps, 17 refused version texts, 4 unknown-bump usage errors, the run without a bump argument, 10 anchors-row fixtures and the 2 tracer tests. The mismatch mutation (the equality check of the row pattern against the current version deleted) turned exactly the tracer's mismatch fixture red and nothing else; the skipped-rewrite mutation (the row pattern never updated) turned 17 executions red: the 14 accepted bumps, the tracer's gg test, the decoy fixture and the CRLF fixture, as predicted. Both mutations ran in detached worktrees that were removed, and the script in the main tree is unmodified. The per-file Spotless check ran against a worktree at HEAD, which already held the tracer version of the class, so the only numstat difference against the pristine baseline is that class itself; the 50 pre-existing violations are the same files before and after, and Spotless did not change the new file. The table commit also rebuilds the anchors template from a header, an example row, the VERSION row and a Gradle row, a refactor of fixture helpers only: the two tracer tests keep their text.
+
+2026-10-31T08:58:30Z
 
 Verdict: pass
