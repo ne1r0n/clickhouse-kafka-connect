@@ -60,10 +60,10 @@
 ### Release
 
 - [ ] **RLS-01**: `VERSION=v1.7.0_gg6` changes in the same commit as its anchor row, with CHANGELOG (absorbing upstream `Unreleased`) and `docs/FORK-DELTA.md` updated.
-- [ ] **RLS-02**: `docs/ROLLOUT-v1.7.0_gg6.md` states each operator-visible effect with a "measured" or "read from the code" label: `ssl`/`sslmode` never honoured on V2, 159 retry cadence, 502/503 shape, `User-Agent` tail, socket-buffer opt-back keys, zstd native platforms, `additionalRetriableErrorCodes`, and the clean-stop requirement.
+- [ ] **RLS-02**: `docs/ROLLOUT-v1.7.0_gg6.md` states each operator-visible effect with one of four defined labels ("measured", "read from the code", "derived from Kafka consumer-group semantics (not measured)", "measured in research (not re-run)"): `ssl`/`sslmode` never honoured on V2, 159 retry cadence, 502/503 shape, `User-Agent` tail, socket-buffer opt-back keys, zstd native platforms, `additionalRetriableErrorCodes`, and the clean-stop requirement.
 - [ ] **RLS-03**: The gg6 allow-list is generated last from the final tree and the compare passes against it.
 - [ ] **RLS-04**: A freshly spawned reviewer checks the operator documents before the push gate.
-- [ ] **RLS-05**: The release dry run passes, `git log sync/v1.7.0..origin/custom_build` is checked for divergence, a `--no-ff` merge is made after human approval, and one `tests.yaml` run on the published SHA is green before the tag is pushed.
+- [ ] **RLS-05**: The release dry run (a `release.yaml` run from the scratch branch, launched by the user) passes, `git log sync/v1.7.0..origin/custom_build` is checked for divergence (expected empty), a `--no-ff` merge is made after human approval, and one `tests.yaml` run on the published SHA is green before the user's publish run, which creates the tag `v1.7.0_gg6`; only `pre-v1.7.0_gg6` is pushed by hand.
 - [ ] **RLS-06**: The suite passes twice on one pinned ClickHouse `latest` build (`SELECT version()` recorded) with client V2, and `testUnit` passes with Docker stopped.
 
 ## v2 Requirements

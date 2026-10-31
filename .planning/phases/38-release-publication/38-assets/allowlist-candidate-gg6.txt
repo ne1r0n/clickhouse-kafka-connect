@@ -1,0 +1,33 @@
+# Plan-time REFERENCE ONLY (plan 38-04): the rows the planning research derived on a scratch build of tag v1.7.0_gg5 against the tree with VERSION set to v1.7.0_gg6.
+# It is never copied into .planning/scripts/. Plan 38-04 derives the real list from archives built on the final tree and then compares the glob sets with this file; a difference is recorded and explained, not hidden.
+com/clickhouse/client/*	clickhouse-client and client-v2 0.9.6 -> 0.11.0 (classes of the V1 http/config packages and of client-v2 api)
+com/clickhouse/data/*	clickhouse-data 0.9.6 -> 0.11.0 (classes)
+META-INF/versions/11/com/clickhouse/client/http/*	clickhouse-http-client 0.9.6 -> 0.11.0 (multi-release HttpClientConnectionImpl classes)
+META-INF/versions/11/module-info.class	clickhouse-http-client 0.9.6 -> 0.11.0 (module descriptor; this jar supplies the descriptor at this path)
+clickhouse-client-version.properties	clickhouse-client version properties 0.9.6 -> 0.11.0
+client-v2-version.properties	client-v2 0.9.6 ships this file, 0.11.0 does not
+com/github/luben/zstd/*	zstd-jni 1.5.7-23 (new: client 0.11.0's POM declares it, classifier cloud; classes)
+META-INF/versions/22/com/github/luben/zstd/*	zstd-jni 1.5.7-23 (new: multi-release classes)
+darwin/aarch64/libzstd-jni-1.5.7-23.dylib	zstd-jni 1.5.7-23 native, darwin/aarch64 (new)
+linux/aarch64/libzstd-jni-1.5.7-23.so	zstd-jni 1.5.7-23 native, linux/aarch64 (new)
+linux/amd64/libzstd-jni-1.5.7-23.so	zstd-jni 1.5.7-23 native, linux/amd64 (new)
+net/jpountz/lz4/*	lz4-java 1.12.0 -> 1.12.1 (classes)
+META-INF/maven/at.yawk.lz4/lz4-java/*	lz4-java 1.12.0 -> 1.12.1 (pom.properties and pom.xml)
+com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.class	BUF fix (original topic and partition committed) and additionalRetriableErrorCodes plumbing
+com/clickhouse/kafka/connect/sink/ChunkFlusher.class	BUF fix (original topic and partition committed) and additionalRetriableErrorCodes plumbing
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$DbTopicSplitCharValidatorAndRecommender.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$ErrorCodeListValidator.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$InsertFormatValidatorAndRecommender.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$InsertFormats.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$ProxyTypeValidatorAndRecommender.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$UTF8String.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$ZKPathValidator.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.class	additionalRetriableErrorCodes setting (ErrorCodeListValidator); inner classes change with the InnerClasses attribute
+com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.class	BUF fix (original topic and partition committed) and additionalRetriableErrorCodes plumbing
+com/clickhouse/kafka/connect/sink/ProxySinkTask.class	ProxySinkTask constructors and retriable-code plumbing
+com/clickhouse/kafka/connect/sink/Version.class	release identity v1.7.0_gg5 -> v1.7.0_gg6 (inlined compile-time constant Version.ARTIFACT_VERSION)
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient$ClickHouseClientBuilder.class	createClientV2 fixes for client 0.11.0 and release identity (CONNECT_CLIENT_NAME)
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class	createClientV2 fixes for client 0.11.0 and release identity (CONNECT_CLIENT_NAME)
+com/clickhouse/kafka/connect/util/Utils.class	handleException five-argument form with the additional retriable codes
+com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class	release identity v1.7.0_gg5 -> v1.7.0_gg6 (inlined compile-time constant Version.ARTIFACT_VERSION)
+META-INF/MANIFEST.MF	Implementation-Version v1.7.0_gg5 -> v1.7.0_gg6

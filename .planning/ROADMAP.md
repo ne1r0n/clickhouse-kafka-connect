@@ -346,7 +346,7 @@ Phase gate: cache-busted `testUnit`, two `--rerun` full suites on `latest` × V2
   4. *[record]* The Phase 30 review rows (WR-01..WR-03, IN-01..IN-04) and the Phase 31 rows (WR-01..WR-03, IN-01..IN-03) are each closed. A row is either fixed, with a commit pointer, or dispositioned with an owner and a re-open trigger (ADV-01). The same holds for the 16 unfixed findings in `29-MILESTONE-CLOSE-RECORD.md` (ADV-02). A diff check shows that no existing assertion was deleted or weakened, and an assertion changes only with the user's sign-off.
   5. *[record, CI]* The real `v1.7.0_gg5` GitHub release of 2026-10-28 is recorded as evidence, read from the REST API. The record gives the release, its tag commit, the attached archive's name, size and SHA-256, and what the REST API shows about how the release was created. Measured: no workflow run created it (the publish-mode run was cancelled and the asset was uploaded by the repository owner's account), so the "no run exercised the publish path" caveat stays open until the Phase 38 publication (ADV-03, reworded by the user's decision of 2026-10-31).
 
-**Plans**: TBD
+**Plans**: 5 plans (37-01 to 37-05)
 
 **Research flag**: Settle these before planning:
 - **The compare before `VERSION` moves.** Phase 38 owns the `VERSION` bump and the gg6 allow-list, which is generated last (RLS-03). Decide what this phase's step runs against. One option is a dry-run dispatch against a provisional allow-list. The other is to prove here only that the step runs and reports, and to leave the passing compare to RLS-03 and RLS-05.
@@ -362,7 +362,7 @@ Phase gate: cache-busted `testUnit` with the pin-guard and script self-tests, a 
 
 ### Phase 38: Release & Publication
 
-**Goal**: `v1.7.0_gg6` is published on `custom_build`. Operators get an independently reviewed rollout note that labels every operator-visible effect with its evidence. That covers the buffered-offset fix, the client 0.11.0 shifts (or the fact that the client stayed 0.9.6), `additionalRetriableErrorCodes` and the clean-stop requirement. The gg6 allow-list compare passes on the final tree. The suite is green twice on one pinned `latest` build, and the published SHA has one green `tests.yaml` run before the tags are pushed.
+**Goal**: `v1.7.0_gg6` is published on `custom_build`. Operators get an independently reviewed rollout note that labels every operator-visible effect with its evidence. That covers the buffered-offset fix, the client 0.11.0 shifts (or the fact that the client stayed 0.9.6), `additionalRetriableErrorCodes` and the clean-stop requirement. The gg6 allow-list compare passes on the final tree. The suite is green twice on one pinned `latest` build, and the published SHA has one green `tests.yaml` run before the user's publish run, which creates `v1.7.0_gg6`.
 
 **Depends on**: Phases 33–37 (it documents and publishes their outcome)
 
@@ -371,7 +371,7 @@ Phase gate: cache-busted `testUnit` with the pin-guard and script self-tests, a 
 **Success Criteria** (what must be TRUE):
 
   1. *[Docker-free]* After `clean`, `VERSION` reads `v1.7.0_gg6` and the generated version agrees. The `VERSION` anchor row changes in the same commit. `CHANGELOG.md` has a complete `1.7.0_gg6` section that absorbs upstream's `Unreleased` entries. `docs/FORK-DELTA.md` is final, with its raw numbers refreshed once (RLS-01).
-  2. *[record]* `docs/ROLLOUT-v1.7.0_gg6.md` states each operator-visible effect, labelled "measured" or "read from the code" (RLS-02):
+  2. *[record]* `docs/ROLLOUT-v1.7.0_gg6.md` states each operator-visible effect, labelled with one of four defined labels: "measured", "read from the code", "derived from Kafka consumer-group semantics (not measured)" or "measured in research (not re-run)" (RLS-02):
      - `ssl` and `sslmode` were never honoured on V2.
      - The 159 retry cadence and the 502/503 shape.
      - The `User-Agent` tail.
@@ -381,24 +381,24 @@ Phase gate: cache-busted `testUnit` with the pin-guard and script self-tests, a 
      - The buffered offset-commit change that Phase 35 recorded (BUF-07).
      If CLT-09 fired, the note says the client stayed 0.9.6 and keeps only the items that hold on 0.9.6.
   3. *[record]* Before the push gate, an orchestrator-spawned, fresh-context `gsd-code-reviewer` checked the note together with `CHANGELOG.md` and `docs/FORK-DELTA.md`. Rounds repeated until one found nothing, at most three unless the user authorised another. Every finding's disposition is recorded (RLS-04). The gg6 allow-list was generated last, from the final tree, and the compare passes against it (RLS-03).
-  4. *[live]* On the release tip, two full `--rerun` suite runs pass on one pinned `latest` build with client V2, with `SELECT version()` recorded and the named skips. `testUnit` passes with Docker stopped, and the anchors gate passes (RLS-06).
-  5. *[CI, operator]* The release dry run passes. `git log sync/v1.7.0..origin/custom_build` was checked for divergence, and any change there was absorbed before gating. After the user's own direct approval (RLS-05):
+  4. *[live]* On the release tip, two full `--rerun` suite runs pass on one pinned `latest` build with client V2, with `SELECT version()` recorded and the named skips. `testUnit` passes with Docker unreachable (`DOCKER_HOST` pointing at a socket that does not exist, the VM left running, as in Phases 36 and 37), and the anchors gate passes (RLS-06).
+  5. *[CI, operator]* The release dry run (a `release.yaml` run from the scratch branch, launched by the user) passes. `git log sync/v1.7.0..origin/custom_build` was checked for divergence (expected empty; measured 0), and any change there was absorbed before gating. After the user's own direct approval (RLS-05):
      - `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip.
-     - The published SHA has exactly one `tests.yaml` run, and it is green before the tags `v1.7.0_gg6` and `pre-v1.7.0_gg6` are pushed.
+     - The published SHA has exactly one `tests.yaml` run, and it is green before the user launches the publish run (`release.yaml`, `dry_run` not ticked). That run creates the tag `v1.7.0_gg6` and the GitHub release (it must not be hand-pushed). Only `pre-v1.7.0_gg6` is pushed by hand, after the publish run.
      - The scratch branch is deleted from `origin`.
 
-**Plans**: TBD
+**Plans**: 5 plans (38-01 to 38-05). Closure shape: local-complete; RLS-05 and criterion 5 stay pending and human-gated until the user-run steps are recorded.
 
-**Research flag**: Standard; this phase follows Phases 29 and 32. Decide at plan time where the `v1.7.0_gg6` tag and the GitHub release come from. One option is the hand-pushed tags of the Phase 29 recipe. The other is a real `release.yaml` dispatch after the green run, which is the path the user took for gg5 (ADV-03).
+**Research flag**: Resolved by the user's decision of 2026-10-31: the tag `v1.7.0_gg6` and the GitHub release come from a real `release.yaml` dispatch launched by the user after the green run (the path taken for gg5); this also exercises the publish path (ADV-03). Agents prepare locally only.
 
 **Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (the Phase 29 D-05 standing rule). A defect found here goes back to its phase as a gap. Otherwise it is deferred with a reason, an owner and a re-open trigger in the milestone close record. The phase follows the Phase 29 and Phase 32 recipe (rehearse, measure, approve, publish):
 1. Push the scratch branch once, at a SHA that no other pushed branch holds, and wait for green.
 2. Merge with `--no-ff` from a throwaway worktree, so the merged tree equals the rehearsed tip.
 3. Push `custom_build` only, and wait for its single run.
-4. Push the tags by name, only after that run is green.
+4. The user launches the publish run (`release.yaml`, `dry_run` not ticked) from `custom_build` after that run is green; it creates `v1.7.0_gg6` and the GitHub release. Then push `pre-v1.7.0_gg6` by name.
 5. Delete the scratch branch.
 
-The approval gates run orchestrator-inline, because executors refuse relayed approvals and `custom_build` is GSD's protected base branch. The divergence check's left side is expected to hold the gg4 and gg5 release merges, so its count is not 0. After publication, re-read the state of the absorbed Dependabot PRs and of PR #10 (SWP-03).
+The approval gates run orchestrator-inline, because executors refuse relayed approvals and `custom_build` is GSD's protected base branch. The divergence check's left side measures 0 (the gg5 merge is already an ancestor of `sync/v1.7.0`); a count above 0 means origin moved, and the contingency in the research applies. After publication, re-read the state of the absorbed Dependabot PRs and of PR #10 (SWP-03).
 
 ## Structure Notes
 

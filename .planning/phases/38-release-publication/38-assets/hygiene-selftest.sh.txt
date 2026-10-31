@@ -1,0 +1,25 @@
+#!/bin/bash
+# Plan-time self-test of 38-hygiene-check.py (plan 38-01). Usage: bash hygiene-selftest.sh.txt <path of 38-hygiene-check.py> <new empty scratch dir>
+# The probe file is assembled from fragments at run time, so this script contains none of the identifiers.
+# Expected output: selftest_default_hits=7 selftest_strict_hits=9
+set -eu
+helper="${1:?path of 38-hygiene-check.py}"
+dir="${2:?a new empty scratch directory}"
+mkdir -p "${dir}"
+probe="${dir}/probe.txt"
+{
+  printf '%s\n' "a line without any hit"
+  printf '%s\n' "click""house_""mvp"
+  printf '%s\n' "ne""o/""data"
+  printf '%s\n' "jin""ja"
+  printf '%s\n' "the repo""rter"
+  printf '%s\n' "a st""and here"
+  printf '%s\n' "local_""kc_""test"
+  printf '%s\n' "kc_""connect_""new"
+  printf '%s\n' "a produc""tion environ""ment"
+  printf '%s\n' "a repro""duction"
+  printf '%s\n' "standard and reproducible words are fine"
+} > "${probe}"
+d=$(python3 -I "${helper}" "${probe}" | grep -c '^HYGIENE HIT' || true)
+s=$(python3 -I "${helper}" --strict "${probe}" | grep -c '^HYGIENE HIT' || true)
+echo "selftest_default_hits=${d} selftest_strict_hits=${s}"
