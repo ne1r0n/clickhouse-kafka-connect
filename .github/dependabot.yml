@@ -23,7 +23,7 @@ updates:
   # FORK: keeps the SHA pins of every fork-owned workflow current (tests.yaml, release.yaml,
   # pre-release.yaml, increment-version.yml and any added later). Only upstream's integrationTests.yaml
   # is excluded: it stays byte-identical to upstream and unpinned, so a stray bump PR for it is closed,
-  # not merged. WorkflowActionPinGuardUnitTest fails if this list changes.
+  # not merged. WorkflowActionPinGuardUnitTest fails if the exclude-paths of this entry hold anything but integrationTests.yaml.
   - package-ecosystem: "github-actions"
     directory: "/"
     exclude-paths:
