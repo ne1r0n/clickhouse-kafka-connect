@@ -10,7 +10,7 @@ This is the optional last part of CIH-04. It needs one push to origin and one wo
 
 ## What you decide
 
-- Pushing a scratch branch publishes every local commit made since the published `v1.7.0_gg5`, including the local `.planning` tail. That is 198 commits at the time of writing, a few more by the time you push; the exact figure is `git rev-list --count 3a3a15a9ae064ffe09c696b8bb87bce23419d463.."$SHA"` once you have `SHA` from the next section. Outside `.planning` the push carries 75 changed files (7218 insertions, 584 deletions) against the published tip. Deleting the branch afterwards does not unpublish the commits.
+- Pushing a scratch branch publishes every local commit made since the published `v1.7.0_gg5`, including the local `.planning` tail. That is 208 commits up to the gated sha plus the `.planning`-only commits made after it (a handful: the last two of plan 37-04 and those of plan 37-05); the exact figure is `git rev-list --count 3a3a15a9ae064ffe09c696b8bb87bce23419d463.."$SHA"` once you have `SHA` from the next section. Outside `.planning` the push carries 85 changed files (7501 insertions, 607 deletions) against the published tip, all of them at or before the gated sha. Deleting the branch afterwards does not unpublish the commits.
 - `tests.yaml` (`ClickHouse Kafka Connect Tests CI`) runs once on the push, because it triggers on pushes of any branch. That run is informational.
 - The pushed SHA must be held by no other origin branch. Two branches pushed at one SHA share a concurrency group, and one run cancels the other.
 - Nothing else is needed from you before the push: no secret, no repository variable.
