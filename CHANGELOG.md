@@ -13,8 +13,9 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   returned keys named by the renamed topic, which Connect does not accept for the group, so no offset advanced (the
   second half follows from Connect's offset contract and was not measured). The first start after the upgrade resumes
   at the group's committed offset, or at the position `auto.offset.reset` selects, and can reread a retained topic once
-  (derived from Kafka consumer-group semantics, not measured). The fix needs a Connect runtime whose `SinkRecord` has
-  `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset()`, and it is fork-only while upstream issue
+  (derived from Kafka consumer-group semantics, not measured). Every buffered connector, renamed or not, now needs a
+  Connect runtime whose `SinkRecord` has `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset()`; the
+  offsets a buffered connector without renamed topics returns are unchanged. The fix is fork-only while upstream issue
   777 stays open (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/777).
 * The ClickHouse Java client moves from `0.9.6` to `0.11.0`. A connector runs client V2 only when `client_version` is
   set to a value other than `V1`; the bullets below say "client V2" where they hold only there, and what the move
