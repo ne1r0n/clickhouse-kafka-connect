@@ -148,7 +148,7 @@ class ReleaseWorkflowGuardUnitTest {
             "          fetch-depth: 0 # the baseline tag is built from its own worktree";
     private static final String PERSIST_LINE = "          persist-credentials: false";
     private static final String PIPEFAIL_LINE =
-            "          " + PIPEFAIL + " # defaults.run.shell is bash -e: the tee would hide a failing build";
+            "          " + PIPEFAIL + " # the runner shell already has pipefail; explicit so the tee cannot hide a failing build";
     private static final String BASELINE_CALL_LINE =
             "          " + BASELINE_WRAPPER + " -p \"$baseline_dir\" createConfluentArchive";
     private static final String COMPARE_LINE = "          " + COMPARE_CALL + COMPARE_REDIRECTION;
@@ -489,9 +489,11 @@ class ReleaseWorkflowGuardUnitTest {
     }
 
     /**
-     * The shell of the job is {@code bash -e {0}}, which has no {@code pipefail}: the baseline build is
-     * piped through {@code tee}, so without the option the step would carry on after a failed build.
-     * The option must be set as its own line before the first call of the baseline wrapper.
+     * The baseline build is piped through {@code tee}, so a shell without {@code pipefail} would carry
+     * on after a failed build. The runner's own shell for {@code defaults.run.shell: bash} already
+     * runs with {@code -o pipefail} (measured in a runner log, 37-SECURITY UF-37-2), so the option is
+     * defence in depth, not a repair. It must be set as its own line before the first call of the
+     * baseline wrapper.
      */
     static Optional<String> baselinePipefailProblem(List<String> lines) {
         Optional<List<String>> block = stepBlock(lines, BASELINE_STEP);
