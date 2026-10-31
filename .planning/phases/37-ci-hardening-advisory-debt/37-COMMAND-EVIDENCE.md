@@ -23,8 +23,8 @@
 | E-08 | ADV-03 | 37-02 | pass |
 | E-09 | CIH-04, ADV-01 | 37-03 | pass |
 | E-10 | CIH-04, ADV-01, ADV-02 | 37-03 | pass |
-| E-11 | CIH-04 | 37-03 | pending (plan 37-03) |
-| E-12 | CIH-04 | 37-03 | pending (plan 37-03) |
+| E-11 | CIH-04 | 37-03 | pass |
+| E-12 | CIH-04 | 37-03 | pending (user-gated) |
 | E-13 | ADV-01 | 37-04 | pending (plan 37-04) |
 | E-14 | ADV-02 | 37-04 | pending (plan 37-04) |
 | E-15 | ADV-02 | 37-04 | pending (plan 37-04) |
@@ -735,3 +735,84 @@ gmut_worktree_removed: yes
 2026-10-31T09:25:49Z
 
 Verdict: pass
+
+### E-11: The three new compare steps replayed locally with the runner's shell options, red and green
+
+Backs: CIH-04, threat T-37-09 (the compare fails the block on exit 1, and the two closed failures of the select step fail it too).
+
+```sh
+ruby -ryaml -e 'y=YAML.load_file(ARGV[0]); s=y["jobs"]["build_release"]["steps"].find{|x| x["name"]==ARGV[1]}; puts s["run"]' .github/workflows/release.yaml "Select the baseline tag" > /tmp/gsd37/exec/replay-select-release.sh
+ruby -ryaml -e '<the same extraction>' .github/workflows/release.yaml "Build the baseline archive from the previous tag" > /tmp/gsd37/exec/replay-build-release.sh
+ruby -ryaml -e '<the same extraction>' .github/workflows/release.yaml "Compare the archive with the previous release" > /tmp/gsd37/exec/replay-compare-release.sh
+env RELEASE_VERSION=v1.7.0_gg5 GITHUB_ENV=/tmp/gsd37/exec/replay-env-select RUNNER_TEMP=/tmp/gsd37/w/runner-temp bash --noprofile --norc -eo pipefail /tmp/gsd37/exec/replay-select-release.sh
+env RELEASE_VERSION=v1.7.0_gg6 GITHUB_ENV=/tmp/gsd37/exec/replay-env-missing RUNNER_TEMP=/tmp/gsd37/w/runner-temp bash --noprofile --norc -eo pipefail /tmp/gsd37/exec/replay-select-release.sh
+env RELEASE_VERSION=v0.0.1 GITHUB_ENV=/tmp/gsd37/exec/replay-env-nobase RUNNER_TEMP=/tmp/gsd37/w/runner-temp bash --noprofile --norc -eo pipefail /tmp/gsd37/exec/replay-select-release.sh
+env -u TESTCONTAINERS_HOST_OVERRIDE BASELINE_TAG=v1.7.0_gg4 GITHUB_ENV=/tmp/gsd37/exec/replay-env-build RUNNER_TEMP=/tmp/gsd37/w/runner-temp bash --noprofile --norc -eo pipefail /tmp/gsd37/exec/replay-build-release.sh
+env BASELINE_ARCHIVE=<the BASELINE_ARCHIVE line of the build env file> ARCHIVE=/tmp/gsd37/w/archives/cand_tip/archive.zip ALLOWLIST=.planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt BASELINE_TAG=v1.7.0_gg4 RUNNER_TEMP=/tmp/gsd37/w/runner-temp GITHUB_STEP_SUMMARY=/tmp/gsd37/exec/replay-summary-red.md bash --noprofile --norc -eo pipefail /tmp/gsd37/exec/replay-compare-release.sh
+env BASELINE_ARCHIVE=<the same> ARCHIVE=/tmp/gsd37/w/archives/cand_gg5/archive.zip ALLOWLIST=.planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt BASELINE_TAG=v1.7.0_gg4 RUNNER_TEMP=/tmp/gsd37/w/runner-temp GITHUB_STEP_SUMMARY=/tmp/gsd37/exec/replay-summary-green.md bash --noprofile --norc -eo pipefail /tmp/gsd37/exec/replay-compare-release.sh
+cmp /tmp/gsd37/exec/replay-select-release.sh /tmp/gsd37/exec/replay-select-pre-release.sh   # and the same for the build and compare blocks
+git worktree remove --force /tmp/gsd37/w/runner-temp/baseline
+git worktree prune
+```
+
+```text
+replay_select_exit: 0
+replay_select_baseline: BASELINE_TAG=v1.7.0_gg4
+replay_select_allowlist: ALLOWLIST=.planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt
+replay_missing_allowlist_exit: 1
+replay_missing_allowlist_error: ::error title=Allow-list::.planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt does not exist; the archive compare needs the allow-list named by VERSION
+replay_no_baseline_exit: 1
+replay_no_baseline_error: ::error title=Baseline tag::no release tag below v0.0.1 is reachable from this commit
+replay_build_exit: 0
+replay_build_archive: BASELINE_ARCHIVE=/tmp/gsd37/w/runner-temp/baseline/build/confluent/clickhouse-kafka-connect-v1.7.0_gg4.zip
+replay_build_archive_exists: yes
+replay_build_archive_bytes: 12453558
+replay_build_wrapper: Gradle 9.8.1 (the tag's gradle-wrapper.properties names gradle-9.8.1-bin.zip and the build log's documentation link names docs.gradle.org/9.8.1)
+replay_red_exit: 1
+replay_red_error_line: ::error title=Archive compare::exit 1, 238 unallowed, 0 stale rows, baseline v1.7.0_gg4, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt; the report is the archive-compare-report artifact
+replay_red_unallowed: 238
+replay_red_report_result: RESULT: FAIL
+replay_red_summary: yes
+replay_green_exit: 0
+replay_green_notice: ::notice title=Archive compare::exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg4, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt
+replay_green_report_result: RESULT: PASS
+replay_twin_blocks_identical: yes
+replay_worktree_removed: yes
+replay_ci_difference: the replay uses this workstation, the runner's bash options and the same variable names, and does not exercise the runner image, setup-java, setup-gradle, the tag fetch of the checkout or the artifact upload action
+hygiene_scan: clean
+```
+
+The run blocks were extracted from the committed `release.yaml` (not typed) and run from the repository root with `bash --noprofile --norc -eo pipefail`. The select block chose `v1.7.0_gg4` for `v1.7.0_gg5` and wrote the baseline and the list name to its env file; for `v1.7.0_gg6` (baseline `v1.7.0_gg5`) it failed closed because no gg6 list exists, and for `v0.0.1` it failed closed because no release tag sorts below it (the script's own `ERROR:` line precedes the annotation). The build block made a worktree of the tag `v1.7.0_gg4` under the runner-temp directory, read its `VERSION`, built with the tag's own wrapper (Gradle 9.8.1, `BUILD SUCCESSFUL in 11s`, `verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class`) and exported an archive of 12453558 bytes, the size of the earlier gg4 scratch archive. The compare block failed red on the archive built from the tip with exit 1, an error annotation counting 238 unallowed lines (the number E-07 `runb_unallowed` recorded), 0 stale rows, a report ending `RESULT: FAIL` and the step summary heading `### Archive compare`; it passed green on the `v1.7.0_gg5` rebuild with a notice of 0 unallowed and 0 stale rows and a report ending `RESULT: PASS`. The three run blocks are byte-identical in `release.yaml` and `pre-release.yaml` (`cmp` on the extracted files). One Gradle build ran at a time, and the baseline worktree was removed and pruned afterwards. The replay does not prove the upload step or anything that needs the runner; that is the user-gated dry run of E-12.
+
+2026-10-31T09:28:36Z
+
+Verdict: pass
+
+### E-12: The CI dry run is a user-gated handoff, expected RED
+
+Backs: CIH-04, O-5, threat T-37-13 (nothing is pushed, dispatched or run through a mutating gh call, and the expected red run is never counted as a pass).
+
+```sh
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-hygiene-check.py .planning/phases/37-ci-hardening-advisory-debt/37-USER-DISPATCH-DRYRUN.md
+grep -c 'Expected result: RED' .planning/phases/37-ci-hardening-advisory-debt/37-USER-DISPATCH-DRYRUN.md
+grep -c 'never counted as a pass' .planning/phases/37-ci-hardening-advisory-debt/37-USER-DISPATCH-DRYRUN.md
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'scratch/*'
+```
+
+```text
+handoff_file: .planning/phases/37-ci-hardening-advisory-debt/37-USER-DISPATCH-DRYRUN.md
+handoff_expected_red: yes
+handoff_hygiene: clean
+nothing_pushed: yes
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+origin_scratch_refs_now: de8c685b80d40b0a6e19338271e07b08ede84f3b refs/heads/scratch/clt-07-client-0.11.0; 939e899298c2f12dec2cfe1e69b1a6b53b4f511e refs/heads/scratch/clt-07-prebump-0.9.6
+scratch_branch_name: scratch/cih-04-dry-run
+user_report: not yet received
+```
+
+The handoff `37-USER-DISPATCH-DRYRUN.md` gives the user the checks before the push, the one push command, the dispatch (Actions UI or `gh workflow run`, always from the scratch branch), the fields to report, the clean-up and the resume instruction for the orchestrator (entry E-19). It states under the heading `Expected result: RED` that the run is expected to fail at the step `Compare the archive with the previous release` with about 238 unallowed lines, that this proves the plumbing, and that it is never counted as a pass of any criterion. Nothing in this plan pushed a branch or tag, dispatched or re-ran a workflow, or made a gh call that is not a plain GET: origin `custom_build` still equals the `v1.7.0_gg5` commit and the only `scratch/*` refs on origin are the two Phase 36 refs that E-01 recorded (so the plan's expectation that no `scratch/*` ref exists is replaced by the absence of `scratch/cih-04-dry-run`). E-12 stays pending as the record of the handoff and is never edited; the user's report, if it arrives, becomes the new entry E-19.
+
+2026-10-31T09:28:36Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
