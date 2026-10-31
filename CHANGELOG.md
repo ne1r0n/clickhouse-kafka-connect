@@ -20,11 +20,13 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   set to a value other than `V1`; the bullets below say "client V2" where they hold only there, and what the move
   changes in the client V1 artifacts was not audited beyond what the rollout note's section D states for client V1.
   What an operator can see:
-  * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the client V2 transport; they are now ignored with
-    a WARN that names them. Every connector builds a client V2 object at start and, on client V1, again for every
+  * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the client V2 transport; they are still ignored,
+    with a WARN that names them. Every connector builds a client V2 object at start and, on client V1, again for every
     insert (read from the code: `ClickHouseWriter.getMutationRequest` builds a `ClickHouseHelperClient`, whose
-    constructor builds both clients), so the WARN reaches client V1 connectors that carry `ssl` or `sslmode` and is
-    logged there once for every insert batch; on client V1 they are also read from the connection URL and must stay.
+    constructor builds both clients), so a client V1 connector that carries `ssl` or `sslmode` logs that WARN once for
+    every insert batch. That held on `v1.7.0_gg5` with client `0.9.6` too, which already logged a WARN for them; only
+    the text changes, from the remaining keys with their values to the key names (read from the code and the client
+    bytecode, the `0.9.6` half not run). On client V1 they are also read from the connection URL and must stay.
   * On client V2, error 159 (`TIMEOUT_EXCEEDED`) is still retriable, but the client no longer retries it itself.
   * On client V2, a 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is
     `false`, so the task fails as before.
