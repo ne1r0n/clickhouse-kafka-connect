@@ -42,6 +42,7 @@ class FailedTestsSummaryScriptUnitTest {
     private static final int ANNOTATION_BODY_LIMIT = 1100;
     private static final int MANY_FAILURES = 200;
     private static final String SMOKE_CLASS = "com.example.SmokeTest";
+    private static final String UNKNOWN_TWO_FILES = "Result unknown: 2 report file(s)";
 
     @TempDir Path temp;
 
@@ -322,5 +323,106 @@ class FailedTestsSummaryScriptUnitTest {
         assertTrue(markdown.contains(NO_FAILURES), markdown);
         assertFalse(markdown.contains("skippedOne"), markdown);
         assertFalse(markdown.contains("skippedTwo"), markdown);
+    }
+
+    @Test
+    @DisplayName(
+            "ADV-01: a directory whose reports all fail to parse is an unknown result, not a clean one")
+    void allUnreadableReportsAreAnUnknownResult() throws IOException, InterruptedException {
+        Path reports = reportsDirectory();
+        Files.writeString(reports.resolve("TEST-bad.xml"), "<testsuite><testcase", StandardCharsets.UTF_8);
+        Files.writeString(reports.resolve("TEST-bad2.xml"), "<<<", StandardCharsets.UTF_8);
+        Path summary = temp.resolve("summary.md");
+
+        Run run = run(summary, reports.toString());
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        assertEquals(
+                List.of(WARNING_PREFIX + "unreadable report files: TEST-bad.xml, TEST-bad2.xml"),
+                commands(run));
+        String stdout = String.join("\n", run.stdout());
+        assertTrue(stdout.contains(UNKNOWN_TWO_FILES), stdout);
+        assertFalse(stdout.contains(NO_FAILURES), stdout);
+        String markdown = summaryOf(summary);
+        assertTrue(markdown.contains(UNKNOWN_TWO_FILES), markdown);
+        assertFalse(markdown.contains(NO_FAILURES), markdown);
+    }
+
+    @Test
+    @DisplayName("ADV-01: an unreadable report beside a passing one is an unknown result")
+    void unreadableReportBesideAPassingOneIsAnUnknownResult()
+            throws IOException, InterruptedException {
+        Path reports = reportsDirectory();
+        Files.writeString(reports.resolve("TEST-bad.xml"), "<testsuite><testcase", StandardCharsets.UTF_8);
+        writeReport(reports, "TEST-good.xml", passing(SMOKE_CLASS, "passes()"));
+        Path summary = temp.resolve("summary.md");
+
+        Run run = run(summary, reports.toString());
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        assertEquals(List.of(WARNING_PREFIX + "unreadable report files: TEST-bad.xml"), commands(run));
+        String stdout = String.join("\n", run.stdout());
+        assertTrue(stdout.contains("Result unknown: 1 report file(s)"), stdout);
+        assertTrue(stdout.contains("tests=1 failures=0 errors=0 skipped=0"), stdout);
+        assertFalse(stdout.contains(NO_FAILURES), stdout);
+    }
+
+    @Test
+    @DisplayName("ADV-01: reports without any testcase warn instead of noticing")
+    void reportsWithoutAnyTestcaseWarnInsteadOfNoticing() throws IOException, InterruptedException {
+        Path reports = reportsDirectory();
+        writeReport(reports, "TEST-empty.xml", "");
+        Path summary = temp.resolve("summary.md");
+
+        Run run = run(summary, reports.toString());
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        List<String> commands = commands(run);
+        assertEquals(1, commands.size(), commands.toString());
+        assertTrue(commands.get(0).startsWith(WARNING_PREFIX + "no testcases in the reports under "), commands.get(0));
+        assertTrue(commands.stream().noneMatch(line -> line.startsWith(NOTICE_PREFIX)), commands.toString());
+        String stdout = String.join("\n", run.stdout());
+        assertTrue(stdout.contains("No testcases found in the reports."), stdout);
+        assertFalse(stdout.contains(NO_FAILURES), stdout);
+    }
+
+    @Test
+    @DisplayName("ADV-01: Markdown metacharacters in a name and a message are escaped, backslash first")
+    void markdownMetacharactersAreEscapedBackslashFirst() throws IOException, InterruptedException {
+        Path reports = reportsDirectory();
+        writeReport(
+                reports,
+                "TEST-markdown.xml",
+                failing(
+                        "com.example.Md",
+                        "t[1] a*b",
+                        "failure",
+                        "expected &lt;1&gt; but was &lt;2&gt;; List&lt;String&gt; &amp; a\\|b"));
+        Path summary = temp.resolve("summary.md");
+
+        Run run = run(summary, reports.toString());
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        List<String> rows =
+                summaryOf(summary).lines().filter(line -> line.startsWith("| com.example.Md#")).toList();
+        assertEquals(1, rows.size(), rows.toString());
+        String row = rows.get(0);
+        assertTrue(row.contains("t\\[1] a\\*b"), row);
+        assertTrue(
+                row.contains("expected &lt;1&gt; but was &lt;2&gt;; List&lt;String&gt; &amp; a"), row);
+        assertTrue(row.contains("a\\\\\\|b"), row);
+    }
+
+    @Test
+    @DisplayName("ADV-01: glob characters in the directory name are literal")
+    void globCharactersInTheDirectoryNameAreLiteral() throws IOException, InterruptedException {
+        Path reports = Files.createDirectory(temp.resolve("reports[1]"));
+        writeReport(reports, "TEST-ok.xml", passing(SMOKE_CLASS, "passes()"));
+        Path summary = temp.resolve("summary.md");
+
+        Run run = run(summary, reports.toString());
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        assertEquals(List.of(NOTICE_PREFIX + "tests=1 failures=0 errors=0 skipped=0"), commands(run));
     }
 }

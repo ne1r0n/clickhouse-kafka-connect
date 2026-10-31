@@ -24,6 +24,8 @@ NOTICE_TITLE = "Integration tests"
 WARNING_TITLE = "Integration test reports"
 SUMMARY_ENV = "GITHUB_STEP_SUMMARY"
 REPORT_PATTERN = "TEST-*.xml"
+UNKNOWN_RESULT = "Result unknown: {} report file(s) could not be read, so failed tests may be missing from this summary."
+NO_TESTCASES = "No testcases found in the reports."
 MESSAGE_CAP = 200
 # A single name longer than this is cut, so the first name always fits ANNOTATION_CAP once
 # percent-escaped (every character grows to at most three).
@@ -37,10 +39,16 @@ def escape_command(text):
 
 
 def escape_markdown(text):
-    """Make text safe inside one Markdown table cell."""
+    """Make text safe inside one Markdown table cell (backslash first, so no escape is escaped twice)."""
     return (
-        text.replace("|", "\\|")
+        text.replace("\\", "\\\\")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("|", "\\|")
         .replace("`", "'")
+        .replace("*", "\\*")
+        .replace("[", "\\[")
         .replace("\r", " ")
         .replace("\n", " ")
     )
@@ -54,8 +62,13 @@ def first_line(text):
     return ""
 
 
-def collect(directory):
-    """Parse every TEST-*.xml of directory, in sorted order.
+def report_files(directory):
+    """The TEST-*.xml files of directory in sorted order; glob characters in directory are literal."""
+    return sorted(glob.glob(os.path.join(glob.escape(directory), REPORT_PATTERN)))
+
+
+def collect(paths):
+    """Parse every report file of paths, in the order given.
 
     Returns (totals, failed, unreadable): totals counts tests, failures, errors
     and skipped testcases; failed lists (classname#name, kind, first message
@@ -65,7 +78,7 @@ def collect(directory):
     totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
     failed = []
     unreadable = []
-    for path in sorted(glob.glob(os.path.join(directory, REPORT_PATTERN))):
+    for path in paths:
         try:
             root = ET.parse(path).getroot()
         except (ET.ParseError, OSError):
@@ -111,7 +124,7 @@ def failed_annotation(names):
 
 def render(directory):
     """Return (markdown lines, annotation lines) for the reports under directory."""
-    reports = glob.glob(os.path.join(directory, REPORT_PATTERN))
+    reports = report_files(directory)
     if not os.path.isdir(directory) or not reports:
         markdown = [
             SUMMARY_HEADING,
@@ -125,7 +138,7 @@ def render(directory):
         ]
         return markdown, annotations
 
-    totals, failed, unreadable = collect(directory)
+    totals, failed, unreadable = collect(reports)
     markdown = [
         SUMMARY_HEADING,
         "",
@@ -141,6 +154,10 @@ def render(directory):
                     escape_markdown(name), kind, escape_markdown(message)
                 )
             )
+    elif unreadable:
+        markdown.append(UNKNOWN_RESULT.format(len(unreadable)))
+    elif totals["tests"] == 0:
+        markdown.append(NO_TESTCASES)
     else:
         markdown.append("No failed tests.")
     annotations = []
@@ -153,6 +170,14 @@ def render(directory):
         )
     if failed:
         annotations.append(failed_annotation([name for name, _, _ in failed]))
+    elif unreadable:
+        pass  # the unreadable-files warning above is the whole verdict: a notice would claim a clean result
+    elif totals["tests"] == 0:
+        annotations.append(
+            "::warning title={}::no testcases in the reports under {}".format(
+                WARNING_TITLE, escape_command(directory)
+            )
+        )
     else:
         annotations.append(
             "::notice title={}::tests={} failures=0 errors=0 skipped={}".format(
