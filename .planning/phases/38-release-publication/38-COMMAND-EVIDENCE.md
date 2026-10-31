@@ -20,7 +20,7 @@
 | E-04 | RLS-01 | 38-01 | pass |
 | E-05 | RLS-02 | 38-02 | pass |
 | E-06 | RLS-02 | 38-02 | pass |
-| E-07 | RLS-02 | 38-02 | pending (plan 38-02) |
+| E-07 | RLS-02 | 38-02 | pass |
 | E-08 | RLS-04 | 38-03 | pending (plan 38-03) |
 | E-09 | RLS-04 | 38-03 | pending (plan 38-03) |
 | E-10 | RLS-04 | 38-03 | pending (plan 38-03) |
@@ -414,5 +414,73 @@ note1_commit_files: docs/ROLLOUT-v1.7.0_gg6.md
 The two upstream states are plain GET reads taken while the note was written (issue 777 `open`, pull request 786 `closed` and not merged); the note says they are re-read when the release is published. The numbers of `src/main` since `v1.7.0_gg5` equal the planning-time values and the E-04 `narrow_since_gg5` triple. Row labels follow the plan's table: B1, B5, B6, B7, B8, C1 carry `measured` (B5, B6 and B8 as a split), C2 and C3 `read from the code`, B2 to B4 `derived from Kafka consumer-group semantics (not measured)`; no row of this part carries `measured in research (not re-run)`. Two wording choices keep a label no stronger than its source: B1's text says that earlier releases returned offsets keyed by the renamed topic and leaves what Connect does with such a key to row B2, and B8's How cell says that the Direct-path and many-to-one behaviours were measured by a scratch test probe of the maintainers that is not in the repository, naming `ProcessingRenamedTopicStateKeyUnitTest` only for the state key it pins. The note is committed alone; the secrets and hygiene helpers also ran over this evidence entry before its own commit.
 
 2026-10-31T13:01:07Z
+
+Verdict: pass
+
+### E-07: The rollout note is complete: 29 labelled rows, the custom_ item, the rollback rehearsed on a dry-run merge, the gg5 sentence corrected
+
+Backs: RLS-02, ROADMAP Phase 38 criterion 2 (the second part of `docs/ROLLOUT-v1.7.0_gg6.md`: rows D1 to D14 with the `custom_` item as an upgrade-breaking change and its search recipe, the zstd platforms, the replay statement, rows E1 to E4, the release identity, a rollback whose own fenced block ran unchanged on a dry-run merge, the carried limits, and the one-sentence correction of `docs/ROLLOUT-v1.7.0_gg5.md`).
+
+```sh
+python3 -I /tmp/gsd38/exec/extract_block.py docs/ROLLOUT-v1.7.0_gg6.md /tmp/gsd38/exec/rollback-block.sh
+git worktree add --detach /tmp/gsd38/w/rb 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+/bin/bash /tmp/gsd38/exec/rehearse.sh d3bf18859531b4a484e150d1aed162ae9dcecd0e
+git worktree remove --force /tmp/gsd38/w/rb && git worktree prune
+git branch -D rollback-v1.7.0_gg6
+git diff --numstat docs/ROLLOUT-v1.7.0_gg5.md
+python3 -I .planning/phases/38-release-publication/38-note-check.py all docs/ROLLOUT-v1.7.0_gg6.md --allow 3a3a15a9ae064ffe09c696b8bb87bce23419d463 4c69b6fb3b22ab8f7c329383079cc284d3d2e0ae497f3ffb2f0114d171bc6767
+python3 -I .planning/phases/38-release-publication/38-doc-check.py links docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg5.md docs/FORK-DELTA.md CHANGELOG.md
+git diff -U0 eb8c163ab9cdc7951612931f7c49b23e3ec37d6b -- docs/ROLLOUT-v1.7.0_gg5.md | grep -E '^\+' | grep -vE '^\+\+\+' | sed 's/^+//' > /tmp/gsd38/exec/gg5-added.txt
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg6.md /tmp/gsd38/exec/gg5-added.txt
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets docs/ROLLOUT-v1.7.0_gg6.md
+git diff --name-only eb8c163ab9cdc7951612931f7c49b23e3ec37d6b HEAD -- . ':(exclude).planning'
+git add docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg5.md && git commit -F /tmp/gsd38/exec/msg2-note2.txt
+git diff --name-only 7112974fadec03ba875bce778a7dcc3f90f73cc9^ 7112974fadec03ba875bce778a7dcc3f90f73cc9
+```
+
+```text
+rollback_block_unchanged: yes
+rehearsal_base: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+rehearsal_head: d3bf18859531b4a484e150d1aed162ae9dcecd0e
+rehearsal_merge: 65fa32e5971f486fe3f96c210dd94ab470b2aa73
+rehearsal_parents: 3a3a15a9ae064ffe09c696b8bb87bce23419d463 d3bf18859531b4a484e150d1aed162ae9dcecd0e
+rehearsal_tree_equal: yes
+rehearsal_note_present_before: yes
+rollback_exit: 0
+rollback_output: ok
+rollback_version: v1.7.0_gg5
+rollback_note_absent: yes
+rollback_tree_equals_tag: yes
+revert_restores_tree: yes
+rehearsal_worktree_removed: yes
+rehearsal_branch_removed: yes
+forward_path_tested: yes
+gradlew_bat_finding: a fresh worktree at the base 3a3a15a9 lists M gradlew.bat (the base blob has CRLF and .gitattributes asks for normalisation) and a plain merge of the release tip aborts on it; a fresh worktree of the release tip lists nothing (its blob is LF); after the rollback block git status lists M gradlew.bat again and a plain git switch or git revert stops with local changes would be overwritten; git --attr-source with the empty tree makes the merge, the switch and the revert run
+note_all: OK rows=29 measured=20 code=15 derived=3 research=4; OK labels: 4 of 4 defined; OK forbidden: 0 lines; OK claims: 0 hex strings outside the allowed set
+note_rows: OK rows=29 measured=20 code=15 derived=3 research=4
+note_all_exit: 0
+rows_per_label: measured=20 code=15 derived=3 research=4
+links_ok: OK links: 31 relative targets checked, 0 broken
+release_object_absent: yes
+no_destructive_sql: yes
+strict_hygiene: clean
+secrets_scan: clean
+label_d6_final: insert and queryId texts: read from the code; non-ClickHouse HTTP error text: measured in research (not re-run)
+label_d7_final: forwarding: measured; rejection: measured; task failure: read from the code
+label_reasons: d6 split because the old text of a non-ClickHouse HTTP error was not found in the 0.9.6 sources, so that claim keeps the research label; d7 gains a third claim because that code 115 is not retriable and so the task fails is read from Utils.DEFAULT_RETRIABLE_ERROR_CODES, not measured; both changes only weaken a label
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg5.md; docs/ROLLOUT-v1.7.0_gg6.md
+note2_commit: 7112974fadec03ba875bce778a7dcc3f90f73cc9
+note2_commit_files: docs/ROLLOUT-v1.7.0_gg5.md; docs/ROLLOUT-v1.7.0_gg6.md
+gg5_numstat: 1 1
+gg5_old_clause_gone: yes
+gg5_other_stale_sentence: line 39 of the gg5 note still says that no GitHub release is published for v1.7.0_gg5; left unchanged because the plan allows exactly one changed line, reported for the orchestrator
+src_unchanged: yes
+```
+
+The block that the note gives (`git switch -c`, `git read-tree -u --reset`, `git commit`, `git diff --quiet`) was extracted from the note by script and run unchanged with `bash -e` in a detached worktree on a dry-run merge of the release tip (the commit that held part 1 of the note) onto `3a3a15a9`: it printed `ok`, left `VERSION` at `v1.7.0_gg5`, removed the note and matched the tag's tree, and a revert restored the merged tree. The first two attempts of the rehearsal did not merge: the worktree at the base lists ` M gradlew.bat` (the base blob has CRLF line endings and `.gitattributes` has `*.bat text eol=crlf`) and the release tip changes that file (its commit normalised the line endings), so the merge aborted and the block then had nothing to commit (HEAD was the tag). The third attempt ran the merge and the revert with `git --attr-source` set to the empty tree, which makes git ignore `.gitattributes` for that command; the block itself was run plain. A separate check of the forward path (switch back to the merged branch, fast-forward to the rollback commit, revert) failed without that option and passed with it, so the note says so in step 2 and in the forward path, and its step 1 no longer claims an exception for a fresh checkout (a fresh worktree of the release tip lists nothing). The same trap applies to the merge commit that the publication builds on `3a3a15a9`, which is a handoff for plan 38-05. The rehearsal branch `rollback-v1.7.0_gg6` that the block creates in the shared repository was deleted after each run, the worktree is removed and `git worktree list` lists only the main tree.
+
+The two labels that differ from the E-05 decision are weakenings: D6 is split because the 0.9.6 sources hold no text for the old non-ClickHouse HTTP error, and D7 gets a third claim for the task failure that rests on the code. The correction of the gg5 note changed one line (`1 1`); its section 2 (line 39) still says that no GitHub release exists for `v1.7.0_gg5`, which contradicts the corrected line 111 and is reported, not edited. The note states no fact about the `v1.7.0_gg6` release object (none of the three phrases of `release_object_absent` occurs).
+
+2026-10-31T13:08:48Z
 
 Verdict: pass
