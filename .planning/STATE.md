@@ -4,18 +4,18 @@ milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 current_phase: 38
 current_phase_name: Release & Publication
-status: planning
+status: executing
 stopped_at: Phase 37 complete, ready to plan Phase 38
-last_updated: "2026-10-31T11:46:57.941Z"
+last_updated: "2026-10-31T12:42:02.843Z"
 last_activity: 2026-10-31
-last_activity_desc: Phase 37 complete, transitioned to Phase 38
-state_head: d09d922dc2dcbd25a31a10c3a2a16e44bac95f7e
+last_activity_desc: Phase 38 execution started
+state_head: 0d4763ee73d56fba499f3e8d7d3963400dcc4a51
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 18
+  total_plans: 23
   completed_plans: 18
-  percent: 83
+  percent: 78
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 37 — CI Hardening & Advisory Debt
+**Current focus:** Phase 38 — Release & Publication
 
 ## Current Position
 
-Phase: 38 — Release & Publication
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-31 — Phase 37 complete, transitioned to Phase 38
+Phase: 38 (Release & Publication) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 38
+Last activity: 2026-10-31 — Phase 38 execution started
 
-Progress: [████████░░] 83%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
