@@ -18,7 +18,7 @@
 | E-03 | CIH-01, CIH-03 | 37-01 | pass |
 | E-04 | CIH-02 | 37-01 | pass |
 | E-05 | CIH-05 | 37-02 | pass |
-| E-06 | CIH-04 | 37-02 | pending (plan 37-02) |
+| E-06 | CIH-04 | 37-02 | pass |
 | E-07 | CIH-04, CIH-05 | 37-02 | pending (plan 37-02) |
 | E-08 | ADV-03 | 37-02 | pending (plan 37-02) |
 | E-09 | CIH-04, ADV-01 | 37-03 | pending (plan 37-03) |
@@ -365,5 +365,67 @@ script_unmodified_in_main: yes
 The rename commit is a pure 100 percent rename of one file. The 27 executions (6 exit 0, 8 exit 1, 13 exit 2) were first run against the moved but unedited script: exactly the two star-row executions failed, because that copy accepted a row of only stars as an ordinary glob. After the plan asset replaced the script (byte-identical, mode 100755 kept) all 27 are green. The mutation that empties the STALE-ROW list failed exactly the STALE-ROW execution, and the one that drops the UNALLOWED append failed five executions (the changed, only-B, only-A, manifest.json and mixed-pair ones), so neither failure kind can change without a test going red. The mutation keys are lowercase (`muta_*`, `mutb_*`) because the evidence helper's fact grammar is `[a-z0-9_]+`; the plan's `mutA_*` spelling cannot be read by the unmodified helper. FORK-DELTA names the new path three times and the old path no longer.
 
 2026-10-31T09:09:00Z
+
+Verdict: pass
+
+### E-06: The baseline tag rule: a tested script, the real tags and one mutation seen red
+
+Backs: CIH-04 (the previous release tag, derived from `VERSION`, is the baseline of the compare), threat T-37-08.
+
+```sh
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BaselineTagScriptUnitTest' > /tmp/gsd37/exec/baseline-red.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit --class BaselineTagScriptUnitTest
+cp .planning/phases/37-ci-hardening-advisory-debt/37-assets/baseline_tag.py.txt .github/scripts/baseline_tag.py
+chmod +x .github/scripts/baseline_tag.py
+cmp .github/scripts/baseline_tag.py .planning/phases/37-ci-hardening-advisory-debt/37-assets/baseline_tag.py.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BaselineTagScriptUnitTest' > /tmp/gsd37/exec/baseline-green.log 2>&1
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+cmp src/test/java/com/clickhouse/kafka/connect/ci/BaselineTagScriptUnitTest.java /tmp/gsd37/w/fmt/src/test/java/com/clickhouse/kafka/connect/ci/BaselineTagScriptUnitTest.java
+git worktree remove --force /tmp/gsd37/w/fmt
+git commit -F /tmp/gsd37/exec/msg-p2-baseline.txt
+tags=$(git tag --merged HEAD --list 'v*')
+echo "$tags" | python3 -I .github/scripts/baseline_tag.py v1.7.0_gg5
+echo "$tags" | python3 -I .github/scripts/baseline_tag.py v1.7.0_gg6
+echo "$tags" | python3 -I .github/scripts/baseline_tag.py "$(cat VERSION)"
+git merge-base --is-ancestor v1.7.0_gg4 HEAD
+git merge-base --is-ancestor v1.7.0_gg5 HEAD
+git worktree add --detach /tmp/gsd37/w/bmut {baseline_commit}
+python3 -I /tmp/gsd37/exec/mutate.py /tmp/gsd37/w/bmut/.github/scripts/baseline_tag.py 'int(gg) if gg else 0' '0'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/bmut --console=plain testUnit --rerun --tests '*BaselineTagScriptUnitTest' > /tmp/gsd37/exec/bmut.log 2>&1
+git worktree remove --force /tmp/gsd37/w/bmut
+git worktree prune
+git diff --quiet {baseline_commit} HEAD -- .github/scripts/baseline_tag.py
+```
+
+```text
+red_exit: 1
+red_junit: OK junit build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=19 errors=0 skipped=0 files=1
+assets_identical: yes
+script_mode: 100755
+green_exit: 0
+green_junit: OK junit build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+spotless_new_file_cmp: identical
+hygiene_scan: clean
+baseline_commit: b6cf6d30885dee5b43a61e7176c2db3d4733b8d4
+baseline_commit_files: .github/scripts/baseline_tag.py; src/test/java/com/clickhouse/kafka/connect/ci/BaselineTagScriptUnitTest.java
+real_tags_count: 78
+real_baseline_gg5: v1.7.0_gg4
+real_baseline_gg6: v1.7.0_gg5
+real_baseline_current: v1.7.0_gg4
+real_gg4_is_ancestor: yes
+real_gg5_is_ancestor: yes
+non_release_tags_ignored: 20
+mut_exit: 1
+mut_junit: OK junit /tmp/gsd37/w/bmut/build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=7 errors=0 skipped=0 files=1
+mut_failed: BaselineTagScriptUnitTest#CIH-04: a list with carriage return line endings is read; BaselineTagScriptUnitTest#CIH-04: a tag with an Arabic-Indic digit is ignored; BaselineTagScriptUnitTest#CIH-04: a tag without a suffix sorts below the first counter; BaselineTagScriptUnitTest#CIH-04: counters compare numerically and not as text; BaselineTagScriptUnitTest#CIH-04: names that are not release tags are ignored; BaselineTagScriptUnitTest#CIH-04: the counter below a later release; BaselineTagScriptUnitTest#CIH-04: the previous counter is chosen over the same and an older one
+mut_worktree_removed: yes
+script_unmodified_in_main: yes
+```
+
+All 19 executions (10 printed baselines, 3 no-baseline exit 1, 6 exit 2 of which 4 are invalid versions and 2 argument-count errors) were red while the script did not exist, and green with the plan asset copied byte for byte. On the 78 release-looking tags reachable from `HEAD` the rule gives `v1.7.0_gg4` for `v1.7.0_gg5` and `v1.7.0_gg5` for `v1.7.0_gg6`, and `v1.7.0_gg4` for the current `VERSION`; both of those tags are ancestors of `HEAD`. Twenty of the 78 names (for example `v1.7.0_gg4-hardening`, `v1.2.9_gg4-tests`, `v1.7.0_gg5-ci` and the thirteen `-alfa` and `-beta` tags) are rejected by the grammar and ignored. Treating every counter as zero turned seven executions red, so the numeric counter order is pinned.
+
+2026-10-31T09:11:30Z
 
 Verdict: pass
