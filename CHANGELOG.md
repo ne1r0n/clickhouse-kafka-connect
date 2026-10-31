@@ -1,3 +1,73 @@
+# 1.7.0_gg6, 2026-10-31
+
+This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `9bed6f79` (the `1.7.0_gg4` and
+`1.7.0_gg5` sections name `a6f1df83`). It lists the fork's own changes since `v1.7.0_gg5` and absorbs the `Unreleased`
+entry that upstream left in this file. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on
+top of upstream, and read [docs/ROLLOUT-v1.7.0_gg6.md](docs/ROLLOUT-v1.7.0_gg6.md) before upgrading from `v1.7.0_gg5`.
+If you are coming from an earlier release, start with the `1.7.0_gg5` note's pointers.
+
+## Important Changes
+
+* Buffered connectors (`bufferCount > 0`) under an SMT that changes the record's topic, for example `RegexRouter`, now
+  commit offsets under the original topic and partition, at the last flushed offset plus one. Before, `preCommit`
+  returned keys named by the renamed topic, which Connect does not accept for the group, so no offset advanced (the
+  second half follows from Connect's offset contract and was not measured). The first start after the upgrade resumes
+  at the group's committed offset, or at the position `auto.offset.reset` selects, and can reread a retained topic once
+  (derived from Kafka consumer-group semantics, not measured). The fix needs a Connect runtime whose `SinkRecord` has
+  `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset()`, and it is fork-only while upstream issue
+  777 stays open (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/777).
+* The ClickHouse Java client moves from `0.9.6` to `0.11.0`. What an operator can see:
+  * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the V2 transport; they are now ignored with a WARN
+    that names them.
+  * Error 159 (`TIMEOUT_EXCEEDED`) is still retriable, but the client no longer retries it itself.
+  * A 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is `false`, so the task
+    fails as before.
+  * The `User-Agent` and some log texts change: update proxy rules and log alerts that match them.
+  * Keys that start with `custom_` in `jdbcConnectionProperties` are now forwarded to the server, which rejects them,
+    so the task fails. Search every connector for them before upgrading: this item breaks an upgrade.
+  * `zstd-jni` natives ship for linux/amd64, linux/aarch64 and darwin/aarch64 only.
+  * The client no longer sets 804800-byte socket buffers; the operating system auto-tunes them.
+  * A batch replayed across the upgrade is byte-identical on the wire for the compared type matrix, so no clean stop is
+    needed for it.
+* New `additionalRetriableErrorCodes` setting, from upstream's tail (see Improvements). A code listed there is
+  redelivered with no retry budget and outside `errors.tolerance` and the DLQ, so only transient codes belong in it.
+* `lz4-java` moves from `1.12.0` to `1.12.1`, a security release (`GHSA-48mj-8f7c-7qfm`), and `zstd-jni` `1.5.7-23` is
+  new in the archive.
+* The JMX MBean `version=` segment and the client name sent on every request now read `version=v1.7.0_gg6` and
+  `clickhouse-kafka-connect/v1.7.0_gg6`. Update dashboard, alert and exporter matchers that spell out the
+  `v1.7.0_gg5` value; matchers that do not spell out the version are unaffected.
+* The archive built from tag `v1.7.0_gg6` differs from the one built from tag `v1.7.0_gg5` in the client libraries, the
+  new natives, `lz4-java`, the connector classes changed above and the release identity. The release workflows compare
+  the two entry by entry; the rollout note carries the counts.
+
+## Improvements
+
+* New `additionalRetriableErrorCodes` setting (default empty). ClickHouse server error codes listed here are retried
+  like the built-in list, so a transient code the connector does not know about redelivers the batch instead of
+  failing the task. Redelivery follows the Connect framework's `RetriableException` semantics (no retry budget, bypasses
+  `errors.tolerance` and the DLQ). Motivating case: `216 QUERY_WITH_SAME_ID_IS_ALREADY_RUNNING` from the client's
+  same-query-id retry. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/847, https://github.com/ClickHouse/clickhouse-kafka-connect/issues/455)
+
+## Known Issues
+
+* The writer's `stop()` does not close its `ClickHouseHelperClient`, so one V2 client is left per task start, on both
+  client lines.
+* The four-minute insert timeout has no effect while `async=false` and `socket_timeout` is `0`.
+* The buffered fix has documented limits: the Direct path with `reportInsertedOffsets=true` under a topic-changing SMT
+  commits nothing, a many-to-one rename shares one state record, and exactly-once buffering is claimed only for a rename
+  that maps each source topic to its own target.
+* A `DataException` that wraps a retriable server error, and one whose root cause is a socket timeout or an unknown
+  host under `errors.tolerance=all`, stay retriable and are asserted by no test. A decision on changing them is open.
+* The nightly's Datagen completion counting spans all connectors outside the generating helper.
+
+## Build and CI
+
+* The release workflows rebuild the previous tag's archive in a separate worktree and compare the two entry by entry
+  under an allow-list keyed by `VERSION`, and publish the report as an artifact.
+* `increment-version.yml` bumps through `.github/scripts/bump_version.py` and no longer writes `vnull`.
+* Dependabot's `gradle` block ignores protobuf-java major versions 4 and above; protobuf-java stays on 3.x.
+* Bumped Gradle to `9.8.2`, `okhttp` to `5.5.1` (integration tests only) and `actions/setup-java` to `6.1.0` (CI only).
+
 # 1.7.0_gg5, 2026-10-26
 
 This is the fork release built on the same upstream base, `1.7.0` plus upstream's untagged tail `a6f1df83`, as
@@ -342,16 +412,6 @@ before upgrading.
 * Bumped `okhttp` from `5.4.0` to `5.5.0` (integration tests).
 * Bumped `org.json` from `20260522` to `20260814` (tests).
 * Bumped `mockito` from `5.23.0` to `5.24.0` (tests).
-
-# Unreleased
-
-## Improvements
-
-* New `additionalRetriableErrorCodes` setting (default empty). ClickHouse server error codes listed here are retried
-  like the built-in list, so a transient code the connector does not know about redelivers the batch instead of
-  failing the task. Redelivery follows the Connect framework's `RetriableException` semantics (no retry budget, bypasses
-  `errors.tolerance` and the DLQ). Motivating case: `216 QUERY_WITH_SAME_ID_IS_ALREADY_RUNNING` from the client's
-  same-query-id retry. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/847, https://github.com/ClickHouse/clickhouse-kafka-connect/issues/455)
 
 # 1.7.0, 2026-09-30
 
