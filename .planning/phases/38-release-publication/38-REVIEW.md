@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg5.md
 findings:
   critical: 0
-  warning: 17
-  info: 9
-  total: 26
+  warning: 18
+  info: 10
+  total: 28
 status: issues_found
-rounds: 5
+rounds: 6
 ---
 
 # Phase 38: Code Review Report
@@ -347,4 +347,51 @@ Operator-eyes read of the five documents: the order a connector operator needs i
 Totals across the five rounds: 26 findings (17 warnings, 9 info, 0 critical): round 1 16, round 2 4, round 3 2, round 4 2, round 5 2. The checker's `rounds` command is expected to print FAIL for this round: its rule allows only four rounds (`1 to 4 allowed`) and, with a last round that has findings, requires a recorded `round3_decision`; the `round` command with the nine mandated tokens prints OK.
 
 _Round 5 reviewed: 2026-10-31_
+_Reviewer: Claude (gsd-code-reviewer), fresh context_
+
+## Round 6
+
+**Reviewed:** 2026-10-31
+**Scope:** the round-5 fix commits only (`git diff 04b7c299 HEAD -- . ':(exclude).planning'`, commits `2ff65bb2` WR-16 and `6595c5e9` WR-17; `3b1b90cb` changes only the review checker). They touch `docs/ROLLOUT-v1.7.0_gg6.md`, `CHANGELOG.md` and `docs/FORK-DELTA.md`; `docs/ROLLOUT-v1.7.0_gg5.md` is unchanged in this range and was read at HEAD, together with `docs/ROLLOUT-v1.7.0_gg1.md` (its half of WR-08 stays deferred, not a new finding).
+**Status:** issues_found
+
+WR-16 and WR-17 are resolved and the fixes introduce no wrong fact, version, command or cross-reference. I re-did the two bytecode proofs myself, as data only (`javap`, nothing extracted or run). WR-16: in the `client-v2` 0.9.6 jar `ClientConfigProperties.parseConfigMap` copies the config map, removes every enum key, and when the remainder is not empty calls `Logger.warn(String "Unknown and unmapped config properties: {}", Object)` with the remaining map, with no ignore option; the 0.9.6 enum has `ssl_key_store`, `ssl_key`, `ssl_authentication` and `ssl_socket_sni` but no `ssl` and no `sslmode`; `Client.<init>` of 0.9.6 calls `parseConfigMap` (offset 56). The 0.11.0 class removes `ignore_unknown_config_key`, builds `"Unknown and unmapped config properties: " + leftover.keySet()` and calls `Logger.warn(String)` only when that option parses true, otherwise throws `ClientMisconfigurationException`. In the tree of tag `v1.7.0_gg5`, `createClientV2` passes every `jdbcConnectionProperties` pair to `Client.Builder.setOption` and `ClickHouseWriter.getMutationRequest` (line 1784, `chcTmp` at 1786) is called from the three client V1 insert methods (1407/1409, 1537, 1692), so the per-insert WARN did exist on `v1.7.0_gg5`, with the same frequency, and only the text differs. The note, the CHANGELOG bullet and `FORK-DELTA` item 13 say exactly that and carry "read from the code, the `0.9.6` half not run". WR-17: `ClickHouseClientOption` of 0.11.0 holds `compress_algorithm` and `decompress_algorithm`; `ClickHouseCompressionAlgorithm.of` reaches `compress.ZstdSupport.getInstance()`; `ZstdSupport$DefaultImpl` references `com.github.luben.zstd.Zstd`, `ZstdOutputStream` and `ZstdInputStream`; `git grep` of `src/main` for `compress_algorithm` and `ZSTD` is empty, so "the connector sets neither option" holds. The new text scopes the "only with" condition to client V2, says the V1 condition was not verified, and claims no native load. What remains is one place where the WR-16 fact is stated but not carried to where an operator looks for it (WR-18) and one readability point (IN-10).
+
+## Warnings (round 6)
+
+### WR-18: The text change of the unmapped-key WARN is stated only in a section paragraph, while the log-alert guidance (step 5, row D6, client step 3) is scoped to client V2 and lists no such text
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:32`, `docs/ROLLOUT-v1.7.0_gg6.md:123`, `docs/ROLLOUT-v1.7.0_gg6.md:181`, `docs/ROLLOUT-v1.7.0_gg6.md:114`
+**Issue:** After the WR-16 fix the note says that the `ssl` and `sslmode` WARN of a client V1 connector changes its text on this release (`0.9.6` printed the remaining keys with their values as a map, `0.11.0` prints `Unknown and unmapped config properties: [ssl, sslmode]`) and that it is logged once for every insert batch, which makes it one of the most frequent log lines of such a connector. The only place that says the text changes is one sentence inside the 3,255-character scoping paragraph (line 114) and, for the new text only, row D1. The places that tell an operator to re-check log matchers do not carry it: step 5 (line 32) and client step 3 (line 181) send the operator to rows D3, D5 and D6 "on client V2" and add "client V1 was not audited for them", and row D6 ("Log text changes ... Update log alerts that match these strings") lists three texts and not this one. A client V1 operator, which is the default, who filters, rate-limits or alerts on the old `{ssl=..., sslmode=...}` text therefore gets no pointer, and the same per-insert line then reappears under a text the filter no longer matches: the symptom the WR-16 correction was written to prevent. The fact is certain (bytecode above); only its placement is incomplete.
+**Fix:** Add one sentence to row D6, for example "The unmapped-key WARN of row D1 changes too, on both client lines: `0.9.6` printed the remaining keys with their values as a map, `0.11.0` prints the key names; a client V1 connector that carries `ssl` or `sslmode` logs it once for every insert batch", keep its label `read from the code` (the `0.9.6` half not run), and in step 5 and client step 3 add "a filter or alert on the unmapped-key WARN (row D6), which also reaches client V1 connectors". Do not change the CHANGELOG bullet, which already says it.
+
+## Info (round 6)
+
+### IN-10: The scoping paragraph of section D is one block of about 3,300 characters that mixes the rule an operator needs with log history and tool provenance
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:114`
+**Issue:** Line 114 holds, in one paragraph, the rule of which client a connector runs, the list of rows that are V2-only, the exception that reaches client V1 connectors (the per-start and per-insert V2 object), the WARN history on `v1.7.0_gg5` and `0.9.6` with its `javap` provenance, the reason `custom_` keys do not harm client V1, and the scoping of rows D9, D12, D13 and D14 and of the V1 artifacts. Each round added a clause to it (WR-13, IN-09, WR-14, WR-16). All of it is true and labelled, but the one sentence that decides which rows apply to an operator ("A connector runs client V2 only when ...") is buried at the start of a block that is read once and then looked up by a reader who has to find the rows that describe their own connector. This is the section that carries the whole V1 versus V2 scoping.
+**Fix:** Split the paragraph into a short list without changing any statement: (a) which client a connector runs, (b) rows D1 to D8, D10 and D11 are V2-only, (c) what reaches client V1 connectors (the V2 object per start and per insert, the `ignore_unknown_config_key` default and the WARN with its history, the reason `custom_` keys do not harm client V1), (d) rows D9, D12, D13 and D14 and what was not audited. Keep every label and the `javap` provenance sentence as it is.
+
+---
+
+round: 6 findings: 2
+
+## Mandated confirmations (RLS-04)
+
+- (1) fixes resolve their findings and introduce no new error of their own in their facts: confirmed for WR-16 and WR-17, with one placement gap recorded as WR-18 and one readability point as IN-10. WR-16: the note (line 114), the CHANGELOG bullet and `FORK-DELTA` item 13 say the same thing (the per-insert WARN held on `v1.7.0_gg5` with `0.9.6`, frequency unchanged, only the text changes, labelled read from the code with the `0.9.6` half not run), the CHANGELOG "now ignored" became "still ignored", and the `createClientV2` row of `FORK-DELTA` (line 50) already said "only warns about a key it does not know" and needed no change. WR-17: the "only with" condition is scoped to client V2 in the note (line 162) and the CHANGELOG zstd bullet, the V1 half is stated as not verified and names the two options and the classes, and row D9, which says "a ZSTD path cannot load the native" and "the default configuration never loads the native", was correctly left alone. No wrong command, version (`v1.7.0_gg6`, `3a3a15a9`, 7 changed `src/main` files, 112 insertions, 31 deletions), broken cross-reference (`38-doc-check.py links` prints 31 relative targets, 0 broken) or inconsistency between the four documents in the changed lines.
+- (2) labels: confirmed. `38-note-check.py all` prints `OK rows=29 measured=19 code=16 derived=3 research=7`, `OK labels: 4 of 4 defined`, `OK forbidden: 0 lines` and `OK claims: 0 hex strings outside the allowed set`, so the table keeps its `29 rows`, all four labels are used verbatim, and every row's label is earned by its How cell: the halves not repeated carry `measured in research (not re-run)`. The new inline sentences are outside the table and each says "read from the code" and names its sources.
+- (3) D7 against `src/main` and the evidence: confirmed. Client V2 is selected for any `client_version` other than `V1` (`ClickHouseWriter.start`); `ClickHouseSinkTask.start` has no `errors.tolerance` branch, `ClickHouseWriter.start` returns false when the ping fails and `ProxySinkTask.start` throws `Connection to ClickHouse is not active.`, so a `custom_` key fails the start under `none` and `all`; a client V1 connector is unaffected because its V2 object sends no request. The row carries `measured in research (not re-run)` only for the forwarding, the doubled percent-encoding and the `0.9.6` contrast.
+- (4) rollback bullets: confirmed, unchanged in this range. `lz4Java` is `1.12.0` in the tree of tag `pre-v1.7.0_gg6` (also `clickHouseDriver` `0.9.6`) and `1.12.1` at HEAD; the frozen-offset bullet carries `derived from Kafka consumer-group semantics (not measured)` and claims no run. `pre-v1.7.0_gg6` exists locally and is described as published together with this release, which is a plan, not a fact about origin.
+- (5) gg5 note lines 39 and 111: confirmed. Line 39 dates the release (2026-10-28) and says what held when the note was written, line 111 says "as of 2026-10-28"; both agree with the release record (`gh api repos/ne1r0n/clickhouse-kafka-connect/releases`: one release, `v1.7.0_gg5`, not a draft, published 2026-10-28T13:16:09Z, one asset), and neither goes stale when `v1.7.0_gg6` appears. `FORK-DELTA` item 22 uses the same dated wording.
+- (6) `FORK-DELTA` open items 12 to 23: confirmed. All 12 items carry "Owner: fork maintainer (the user)." and a "Re-open trigger" (items 22 and 23 are marked condition), the file holds exactly 12 such owner lines, and the closing paragraph says "open items 12 to 23", which is the count. The gg6 allow-list is stated as a plan with its condition ("written from the final tree before the merge and does not exist before that").
+- (7) identifiers: confirmed. A grep of the note and of the CHANGELOG `1.7.0_gg6` section for finding identifiers, `round:`, requirement and phase identifiers and `.planning` paths is empty; the added lines of `04b7c299..HEAD` hold none of the forbidden environment names; no host, connector or cluster name appears, only `<connector-name>`-style placeholders. `FORK-DELTA` keeps its planning identifiers by design.
+- (8) `release object` and the allow-list: confirmed. Neither the note nor the CHANGELOG states a digest, tag commit or URL of the `release object` of `v1.7.0_gg6`; the rollback paragraph says the workflow is "meant to create the release" and points at the open condition of `FORK-DELTA` item 22; the only digest in the note is the one of the published `v1.7.0_gg5` asset. `additionalRetriableErrorCodes` is described as a setting of this release with its `errors.tolerance` bypass, as rows C1 to C3 state.
+- (9) CHANGELOG: confirmed. Every section from `# 1.7.0_gg5` down (line 92) is byte-identical to `git show v1.7.0_gg5:CHANGELOG.md` (`diff` prints nothing); the new section's lines stay within 120 characters, and its `custom_`, `additionalRetriableErrorCodes` and `errors.tolerance` statements agree with rows D7 and C1 to C3.
+
+Operator-eyes read of the five documents: the order a connector operator needs is right (six steps, then the rows), the two statements that mattered most for a client V1 operator in round 5 (the per-insert WARN and the ZSTD condition) are now scoped and labelled, and I found no other statement presented as new that already held at `v1.7.0_gg5` or on `0.9.6`, and no other unscoped client-V2-only statement: rows C1 to C3 state the built-in set as the setting's base, rows D2 to D8, D10 and D11 are scoped by line 114, rows D13 and D14 carry their own scope, and the carried limits and `FORK-DELTA` items 13 and 14 are scoped. The `docs/ROLLOUT-v1.7.0_gg1.md` item-6 sentence "on client V1 of any line it still fails" remains the deferred half of WR-08, not a new finding. What a reader still trips over is the two points above: where to look for the WARN text change (WR-18) and one very dense paragraph (IN-10).
+
+Totals across the six rounds: 28 findings (18 warnings, 10 info, 0 critical): round 1 16, round 2 4, round 3 2, round 4 2, round 5 2, round 6 2. The checker's `rounds` command is expected to print FAIL only on the missing `round3_decision` (the last round has findings), which the orchestrator records later; the `round` command with the nine mandated tokens prints OK.
+
+_Round 6 reviewed: 2026-10-31_
 _Reviewer: Claude (gsd-code-reviewer), fresh context_
