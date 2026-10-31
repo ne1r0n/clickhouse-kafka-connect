@@ -23,8 +23,10 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   * A 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is `false`, so the task
     fails as before.
   * The `User-Agent` and some log texts change: update proxy rules and log alerts that match them.
-  * Keys that start with `custom_` in `jdbcConnectionProperties` are now forwarded to the server, which rejects them,
-    so the task fails. Search every connector for them before upgrading: this item breaks an upgrade.
+  * On client V2 (`client_version` set to a value other than `V1`), keys that start with `custom_` in
+    `jdbcConnectionProperties` are now forwarded to the server, which rejects them, so the task fails. Client V1, which a
+    connector runs when it does not set `client_version`, is not affected. Search every connector for them before
+    upgrading: this item breaks an upgrade on client V2.
   * `zstd-jni` natives ship for linux/amd64, linux/aarch64 and darwin/aarch64 only.
   * The client no longer sets 804800-byte socket buffers; the operating system auto-tunes them.
   * A batch replayed across the upgrade is byte-identical on the wire for the compared type matrix, so no clean stop is
