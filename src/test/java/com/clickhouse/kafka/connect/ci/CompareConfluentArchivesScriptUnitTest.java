@@ -11,10 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -63,6 +65,20 @@ class CompareConfluentArchivesScriptUnitTest {
     private static final String COMMENT_ONLY = "# no differences are expected\n";
     private static final String TOTALS_IDENTICAL =
             "totals files-a 3 files-b 3 only-a 0 only-b 0 changed 0 same 3";
+
+    private static final Pattern UNSAFE_REPORT_CHARS =
+            Pattern.compile("[\\x00-\\x1f\\x7f-\\x9f\\u2028\\u2029]");
+    private static final String FORGED_ERROR = "::error title=forged::boom";
+    private static final String SAFE_LINE_DRIVER =
+            String.join(
+                    "\n",
+                    "import importlib.util, sys",
+                    "spec = importlib.util.spec_from_file_location('compare', sys.argv[1])",
+                    "module = importlib.util.module_from_spec(spec)",
+                    "spec.loader.exec_module(module)",
+                    "for text in ['::error::x', '  ::add-mask::x', '##[error]x', ' ##[group]x',",
+                    "             'ONLY-A a\\\\b', 'ONLY-A plain']:",
+                    "    print(module.safe_line(text))");
 
     @TempDir Path temp;
 
@@ -508,5 +524,115 @@ class CompareConfluentArchivesScriptUnitTest {
             assertEquals("", run.stderr(), () -> list + " must load\n" + run.describe());
             assertHasLine(run, "STALE-ROW ");
         }
+    }
+
+    // UF-37-1: entry names are untrusted text that the workflow prints to the job log
+
+    private static void assertLogSafe(Run run) {
+        for (String line : run.stdout().split("\n", -1)) {
+            assertFalse(line.startsWith("::"), () -> "a report line starts a workflow command\n" + run.describe());
+            assertFalse(line.startsWith("##["), () -> "a report line starts a log command\n" + run.describe());
+        }
+        assertFalse(
+                UNSAFE_REPORT_CHARS.matcher(run.stdout().replace("\n", "")).find(),
+                () -> "the report holds a raw control character\n" + run.describe());
+    }
+
+    private static long linesStartingWith(Run run, String prefix) {
+        return Arrays.stream(run.stdout().split("\n", -1))
+                .filter(line -> line.startsWith(prefix))
+                .count();
+    }
+
+    @ParameterizedTest(
+            name = "UF-37-1: an added entry named \"{0}\" cannot put a workflow command at the start of a report line")
+    @ValueSource(
+            strings = {
+                "a/Evil.class\n" + FORGED_ERROR,
+                "a/Evil.class\n::add-mask::secret",
+                "a/Evil.class\n::stop-commands::token",
+                "a/Evil.class\n##[error]forged",
+                "a/Evil.class\r\n::error::crlf",
+                "::error::leading"
+            })
+    void anEntryNameCannotForgeAWorkflowCommand(String hostileName) throws Exception {
+        Run run = compare(baseInner(), baseWith(hostileName, "X"), COMMENT_ONLY);
+
+        assertFail(run);
+        assertLogSafe(run);
+        assertEquals(1, linesStartingWith(run, "ONLY-B "), run::describe);
+        assertEquals(1, linesStartingWith(run, UNALLOWED), run::describe);
+    }
+
+    @Test
+    @DisplayName("UF-37-1: the forged line is still visible in the report, as escaped text on the entry's own line")
+    void theForgedTextStaysVisibleAsEscapedText() throws Exception {
+        Run run = compare(baseInner(), baseWith("a/Evil.class\n" + FORGED_ERROR, "X"), COMMENT_ONLY);
+
+        assertFail(run);
+        assertTrue(run.hasLine("ONLY-B a/Evil.class\\n" + FORGED_ERROR + " "), run::describe);
+        assertTrue(run.hasLine(UNALLOWED + "ONLY-B a/Evil.class\\n" + FORGED_ERROR), run::describe);
+    }
+
+    @Test
+    @DisplayName("UF-37-1: control characters, DEL, C1, U+2028 and U+2029 in an entry name are escaped and the rest is untouched")
+    void controlCharactersInAnEntryNameAreEscaped() throws Exception {
+        String hostileName = "a/ctl\u001b[31m\r\u0007\u007f\u0085\u2028\u2029\tdir\\x.class";
+        Run run = compare(baseInner(), baseWith(hostileName, "X"), COMMENT_ONLY);
+
+        assertFail(run);
+        assertLogSafe(run);
+        assertTrue(
+                run.hasLine(
+                        UNALLOWED
+                                + "ONLY-B a/ctl\\x1b[31m\\r\\x07\\x7f\\x85\\u2028\\u2029\\tdir\\\\x.class"),
+                run::describe);
+    }
+
+    @Test
+    @DisplayName("UF-37-1: a hostile name that an allow-list row covers still passes, the changed entry is reported escaped")
+    void aHostileNameCoveredByARowStillPasses() throws Exception {
+        String hostileName = "a/ok\n::add-mask::secret.class";
+        Run run =
+                compare(
+                        baseWith(hostileName, "1"),
+                        baseWith(hostileName, "2"),
+                        row("a/ok*", REASON));
+
+        assertPass(run);
+        assertLogSafe(run);
+        assertEquals(1, linesStartingWith(run, "CHANGED "), run::describe);
+        assertFalse(run.hasLine(UNALLOWED), run::describe);
+    }
+
+    @Test
+    @DisplayName("UF-37-1: an allow-list glob that holds a control character is printed escaped on its STALE-ROW line")
+    void aStaleRowGlobWithAControlCharacterIsEscaped() throws Exception {
+        Run run = compare(baseInner(), baseInner(), row("zz/\u001b[31mNothing.class", REASON));
+
+        assertFail(run);
+        assertLogSafe(run);
+        assertTrue(run.hasLine("STALE-ROW zz/\\x1b[31mNothing.class"), run::describe);
+    }
+
+    @Test
+    @DisplayName("UF-37-1: safe_line escapes a line that would still begin with a workflow command, and doubles a backslash")
+    void safeLineNeutralisesACommandStart() throws Exception {
+        Process process =
+                new ProcessBuilder(PYTHON, "-I", "-B", "-c", SAFE_LINE_DRIVER, SCRIPT.toString())
+                        .redirectErrorStream(true)
+                        .start();
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertTrue(process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        assertEquals(0, process.exitValue(), output);
+        assertEquals(
+                List.of(
+                        "\\::error::x",
+                        "\\  ::add-mask::x",
+                        "\\##[error]x",
+                        "\\ ##[group]x",
+                        "ONLY-A a\\\\b",
+                        "ONLY-A plain"),
+                output.lines().toList());
     }
 }

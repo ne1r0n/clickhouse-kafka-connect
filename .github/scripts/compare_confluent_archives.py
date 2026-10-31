@@ -22,6 +22,15 @@ STALE-ROW. Both fail.
 Exit codes: 0 PASS, 1 FAIL, 2 unusable input (missing, duplicated or empty inner
 jar, unreadable archive, malformed or catch-all allow-list).
 
+The report is printed to the job log, and archive entry names are untrusted text: a
+name that holds a newline would start a log line of the attacker's choosing, and the
+runner reads a line that starts with "::" (error, add-mask, stop-commands, ...) or
+"##[" as a workflow command. So every report line goes through safe_line(): control
+characters (C0, DEL, C1, U+2028, U+2029) and the backslash become \\n, \\r, \\t,
+\\xNN, \\uNNNN and \\\\, which is reversible, and a line that would still begin
+with "::" or "##[" gets a leading backslash. Comparison and classification use the
+raw names; only the printed text is escaped.
+
 Standard library only. Nothing is extracted to disk or executed.
 """
 
@@ -45,10 +54,29 @@ MANIFEST_IGNORED_FRAGMENTS = ('"release_date"', '"version"')
 VERSION_LINE = "Implementation-Version:"
 CATCH_ALL_GLOB = re.compile(r"\*+")
 WILDCARD_STARTS = "*?["
+UNSAFE_CHARS = re.compile("[\\x00-\\x1f\\x7f-\\x9f\\u2028\\u2029\\\\]")
+NAMED_ESCAPES = {"\n": "\\n", "\r": "\\r", "\t": "\\t", "\\": "\\\\"}
+COMMAND_STARTS = ("::", "##[")
 
 
 class InputError(Exception):
     pass
+
+
+def _escape_char(match):
+    char = match.group(0)
+    if char in NAMED_ESCAPES:
+        return NAMED_ESCAPES[char]
+    code = ord(char)
+    return "\\x%02x" % code if code < 0x100 else "\\u%04x" % code
+
+
+def safe_line(text):
+    """Return text as one log-safe line: no control character, no workflow-command start."""
+    text = UNSAFE_CHARS.sub(_escape_char, text)
+    if text.lstrip().startswith(COMMAND_STARTS):
+        text = "\\" + text
+    return text
 
 
 def sha256(data):
@@ -207,7 +235,7 @@ def compare(a, b, rows):
     lines.append("kafka classes in b: %d" % kafka)
     passed = nested == 0 and not unallowed and not stale and manifest_ok
     lines.append("RESULT: PASS" if passed else "RESULT: FAIL")
-    return lines, passed
+    return [safe_line(line) for line in lines], passed
 
 
 def main(argv=None):
@@ -220,7 +248,7 @@ def main(argv=None):
         a = load_inner(argv[0])
         b = load_inner(argv[1])
     except InputError as e:
-        print("ERROR: %s" % e, file=sys.stderr)
+        print("ERROR: %s" % safe_line(str(e)), file=sys.stderr)
         return 2
     lines, passed = compare(a, b, rows)
     print("\n".join(lines))
