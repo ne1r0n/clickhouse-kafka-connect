@@ -21,7 +21,7 @@
 | E-06 | CIH-04 | 37-02 | pass |
 | E-07 | CIH-04, CIH-05 | 37-02 | pass |
 | E-08 | ADV-03 | 37-02 | pass |
-| E-09 | CIH-04, ADV-01 | 37-03 | pending (plan 37-03) |
+| E-09 | CIH-04, ADV-01 | 37-03 | pass |
 | E-10 | CIH-04, ADV-01, ADV-02 | 37-03 | pending (plan 37-03) |
 | E-11 | CIH-04 | 37-03 | pending (plan 37-03) |
 | E-12 | CIH-04 | 37-03 | pending (plan 37-03) |
@@ -593,5 +593,79 @@ hygiene_scan: clean
 Every reading is a plain GET (`gh api` without `-X`, `-f`, `-F` or `--input`). The release exists once, was authored by the user account, and its asset was uploaded by the same account about four and a half minutes after the successful dry run finished (13:11:25Z to 13:15:52Z), not by a workflow bot. `release.yaml` has exactly three runs: a dry run from `sync/v1.7.0`, the only publish-mode run (cancelled during `Build and verify Confluent archive`, so `Publish release` and every later step were skipped) and a later dry run on `custom_build` (its `Publish release` step also skipped; it created, checked and deleted its own draft, and reported an archive of 12453661 bytes with another digest than the published asset). So no workflow run created the release, the publish path of `release.yaml` has not been exercised, and the caveat stays open until Phase 38 publishes through it. This deviates from the ROADMAP wording of criterion 5, which asks for the run that created the release and for the caveat to be closed: the facts allow neither, so this record states them as measured. The downloaded copy matches the API's size and digest. The download counter read 0 after the download as well as before it, so the API download did not move it (the plan expected it to rise by one). A rebuild of the tag compares PASS against the published asset under a comment-only allow-list with `changed 0 same 7399`: the two archives differ in bytes only because the archive carries a build date, which the compare ignores (the research found the `manifest.json` `release_date` line to be the only differing file of an extracted copy; this entry measured the entries, not the extracted bytes). The downloaded asset was never extracted or executed, and its directory was removed after the compare.
 
 2026-10-31T09:16:00Z
+
+Verdict: pass
+
+### E-09: The release workflows compare the archive with the previous release: four tested edits, the anchors rows and the docs row
+
+Backs: CIH-04, ROADMAP Phase 37 criterion 3 (workflow half), 30-REVIEW WR-01 (the shared concurrency group), threats T-37-09 to T-37-12.
+
+```sh
+for each of release.yaml and pre-release.yaml: grep -cF -e '<gate text>' <file>   # the gates this task moves, before and after
+diff .github/workflows/release.yaml .github/workflows/pre-release.yaml | grep '^[<>]' | wc -l
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt release-workflow .github/workflows/release.yaml
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt release-workflow .github/workflows/pre-release.yaml
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt release-anchors .planning/scripts/fork-anchors.txt
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt insert-after docs/FORK-DELTA.md .planning/phases/37-ci-hardening-advisory-debt/37-assets/fork-delta-row-3-release-compare.md.txt '| The built Confluent archive is compare'
+ruby -ryaml -e 'YAML.load_file(ARGV[0])' .github/workflows/release.yaml
+ruby -ryaml -e 'YAML.load_file(ARGV[0])' .github/workflows/pre-release.yaml
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 171
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*WorkflowActionPinGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' --tests '*IncrementVersionWorkflowGuardUnitTest' > /tmp/gsd37/exec/p3t1-verify.log 2>&1
+git commit -F /tmp/gsd37/exec/msg-p3-workflows.txt
+```
+
+```text
+base_dry_expr_release: 5
+base_dry_expr_prerelease: 5
+base_publish_expr_release: 3
+base_publish_expr_prerelease: 3
+base_create_archive_release: 1
+base_create_archive_prerelease: 1
+base_release_create_release: 2
+base_release_create_prerelease: 2
+base_continue_release: 0
+base_continue_prerelease: 0
+base_twin_diff_lines: 16
+editor_exit_release: 0
+editor_exit_prerelease: 0
+editor_exit_anchors: 0
+editor_exit_forkdelta: 0
+yaml_parse: ok
+dry_expr_after_release: 6
+dry_expr_after_prerelease: 6
+publish_expr_after_release: 3
+publish_expr_after_prerelease: 3
+create_archive_after_release: 1
+create_archive_after_prerelease: 1
+release_create_after_release: 2
+release_create_after_prerelease: 2
+continue_after_release: 0
+continue_after_prerelease: 0
+compare_call_release: 1
+compare_call_prerelease: 1
+baseline_tag_call_release: 1
+baseline_tag_call_prerelease: 1
+worktree_add_release: 1
+worktree_add_prerelease: 1
+upload_artifact_release: 1
+upload_artifact_prerelease: 1
+fetch_depth_release: 1
+fetch_depth_prerelease: 1
+allowlist_path_release: 1
+allowlist_path_prerelease: 1
+twin_diff_lines_after: 16
+anchors_mirror: rows=171 bad=0
+step_names: Checkout code; Set up JDK 17; Set up Gradle; Read version; Build and verify Confluent archive; Check archive; Select the baseline tag; Build the baseline archive from the previous tag; Compare the archive with the previous release; Upload the archive compare report; Check tests.yaml is green on this SHA; Check the release tag is absent; Publish release; Create draft release (dry run); Check the draft holds the archive (dry run); Check no tag exists for the draft (dry run); Delete draft release (dry run)
+no_other_file_touched: yes
+assets_identical: yes
+pin_guard_junit: OK junit build/test-results/testUnit: tests=76 failures=0 errors=0 skipped=0 files=3
+hygiene_scan: clean
+workflows_commit: 44b8fb62c2177558ff38d075eef9401a4426286a
+workflows_commit_files: .github/workflows/pre-release.yaml; .github/workflows/release.yaml; .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md
+```
+
+Every baseline of the gates this task moves matched the plan before any edit (dry-run expression 5, publish expression 3, archive call 1, release create 2, continue-on-error 0, twin diff 16). The line editor wrote all four files with exit 0 and its inputs are the plan assets unchanged (`git diff --quiet` of the assets directory against the phase-start commit). Both workflows parse as YAML; the dry-run expression rose from 5 to 6 in each (the `group:` line reuses it), and the other gate counts did not move. The new steps sit between `Check archive` and `Check tests.yaml is green on this SHA`; each compare, baseline, worktree, upload, fetch-depth and allow-list text occurs once per file. The twin diff is 16 lines before and after, so the four edits are identical in both files. Before the commit `git status --porcelain` listed exactly the four committed paths plus the two orchestrator-owned state files; the evidence file is the fifth path and was committed separately. The three pin guard classes pass on the edited workflows (76 executions, 0 failures). The scan for names of other systems over the two workflows, the anchors file and the added FORK-DELTA line printed nothing.
+
+2026-10-31T09:27:00Z
 
 Verdict: pass
