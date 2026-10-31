@@ -19,7 +19,7 @@
 | E-03 | RLS-01 | 38-01 | pass |
 | E-04 | RLS-01 | 38-01 | pass |
 | E-05 | RLS-02 | 38-02 | pass |
-| E-06 | RLS-02 | 38-02 | pending (plan 38-02) |
+| E-06 | RLS-02 | 38-02 | pass |
 | E-07 | RLS-02 | 38-02 | pending (plan 38-02) |
 | E-08 | RLS-04 | 38-03 | pending (plan 38-03) |
 | E-09 | RLS-04 | 38-03 | pending (plan 38-03) |
@@ -370,5 +370,49 @@ The probe container needed `CLICKHOUSE_SKIP_USER_SETUP=1`: without it the image'
 The 0.9.6 sources were read in addition to the plan's 0.11.0 jar because the rows D5, D6 and D10 each make a claim about the old line too, and a label must not be stronger than what was read. The row D9's loader behaviour and the D8 failure text were not touched by the sources of the client and keep their labels.
 
 2026-10-31T12:58:19Z
+
+Verdict: pass
+
+### E-06: The rollout note's frame, label definitions, upgrade checklist and the B and C rows
+
+Backs: RLS-02, ROADMAP Phase 38 criterion 2 (the first part of `docs/ROLLOUT-v1.7.0_gg6.md`: the frame, the four defined labels before the first section, the six-step upgrade list, the rows B1 to B8 for buffered connectors and C1 to C3 for `additionalRetriableErrorCodes`, each row with one of the four labels or a split of them).
+
+```sh
+gh api repos/ClickHouse/clickhouse-kafka-connect/issues/777 --jq .state
+gh api repos/ClickHouse/clickhouse-kafka-connect/pulls/786 --jq '[.state, .merged] | join(" ")'
+git diff --shortstat v1.7.0_gg5 HEAD -- src/main
+git diff --quiet v1.7.0_gg5 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/processing src/main/java/com/clickhouse/kafka/connect/sink/state
+python3 -I .planning/phases/38-release-publication/38-note-check.py rows docs/ROLLOUT-v1.7.0_gg6.md --only B C
+python3 -I .planning/phases/38-release-publication/38-note-check.py labels docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/38-release-publication/38-note-check.py forbidden docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/38-release-publication/38-note-check.py claims docs/ROLLOUT-v1.7.0_gg6.md --allow 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+git ls-files | grep "/<TestClass>.java"
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+git add docs/ROLLOUT-v1.7.0_gg6.md && git commit -F /tmp/gsd38/exec/msg2-note1.txt
+git diff --name-only 3c1f00312760ecc6d38e8daa3f480167c29b4805^ 3c1f00312760ecc6d38e8daa3f480167c29b4805
+```
+
+```text
+upstream_777_state: open
+upstream_786_state: closed false
+src_main_since_gg5: 7 files changed, 112 insertions(+), 31 deletions(-)
+processing_and_state_untouched_since_gg5: yes
+part1_rows: OK rows=11 measured=6 code=5 derived=3 research=0
+labels_check: OK labels: 4 of 4 defined
+forbidden_check: OK forbidden: 0 lines
+claims_check: OK claims: 0 hex strings outside the allowed set
+tests_named_exist: yes
+tests_named: BufferedOffsetCommitUnitTest; BufferedOffsetCommitLiveTest; ConnectApiReferencesUnitTest; AdditionalRetriableErrorCodesPinUnitTest; ProcessingRenamedTopicStateKeyUnitTest
+hygiene_scan: clean
+secrets_scan: clean
+anchors_mirror_after: rows=172 bad=0
+note1_commit: 3c1f00312760ecc6d38e8daa3f480167c29b4805
+note1_commit_files: docs/ROLLOUT-v1.7.0_gg6.md
+```
+
+The two upstream states are plain GET reads taken while the note was written (issue 777 `open`, pull request 786 `closed` and not merged); the note says they are re-read when the release is published. The numbers of `src/main` since `v1.7.0_gg5` equal the planning-time values and the E-04 `narrow_since_gg5` triple. Row labels follow the plan's table: B1, B5, B6, B7, B8, C1 carry `measured` (B5, B6 and B8 as a split), C2 and C3 `read from the code`, B2 to B4 `derived from Kafka consumer-group semantics (not measured)`; no row of this part carries `measured in research (not re-run)`. Two wording choices keep a label no stronger than its source: B1's text says that earlier releases returned offsets keyed by the renamed topic and leaves what Connect does with such a key to row B2, and B8's How cell says that the Direct-path and many-to-one behaviours were measured by a scratch test probe of the maintainers that is not in the repository, naming `ProcessingRenamedTopicStateKeyUnitTest` only for the state key it pins. The note is committed alone; the secrets and hygiene helpers also ran over this evidence entry before its own commit.
+
+2026-10-31T13:01:07Z
 
 Verdict: pass
