@@ -201,6 +201,18 @@ class ColumnTest {
     }
 
     @Test
+    public void enumLabelHoldingABellIsReadFromTheJsonEscapeAndFromTheRawCharacter() {
+        // The server writes a bell as the JSON escape in the DESCRIBE row and as the raw character in
+        // system.columns.type, unlike backspace, form feed and NUL, which arrive as backslash escapes.
+        String jsonLayer = "Enum8('a" + '\\' + "u0007b' = 1, 'z' = 2)";
+        String rawCharacter = "Enum8('a" + '\u0007' + "b' = 1, 'z' = 2)";
+        java.util.Map<String, Integer> expected = java.util.Map.of("a\u0007b", 1, "z", 2);
+
+        assertEquals(expected, Column.extractColumn(newDescriptor("c_enum8", jsonLayer)).getEnumValues());
+        assertEquals(expected, Column.extractColumn(newDescriptor("c_enum8", rawCharacter)).getEnumValues());
+    }
+
+    @Test
     public void enumLabelWithAnEscapeTheServerDoesNotWriteIsRefusedNotMisread() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> Column.extractColumn(newDescriptor("c_enum8", "Enum8('\\\\q' = 1)")));
