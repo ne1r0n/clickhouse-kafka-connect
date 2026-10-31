@@ -16,7 +16,7 @@
 |-------|-------------|------|---------|
 | E-01 | RLS-01 | 38-01 | pass |
 | E-02 | RLS-01 | 38-01 | pass |
-| E-03 | RLS-01 | 38-01 | pending (plan 38-01) |
+| E-03 | RLS-01 | 38-01 | pass |
 | E-04 | RLS-01 | 38-01 | pending (plan 38-01) |
 | E-05 | RLS-02 | 38-02 | pending (plan 38-02) |
 | E-06 | RLS-02 | 38-02 | pending (plan 38-02) |
@@ -111,7 +111,7 @@ testunit_baseline: not re-measured: Phase 38 changes no Java file, scope facts a
 
 The six helpers and the two assets were already tracked at `local_head` (committed with the plan), so this evidence commit stages only the evidence file. The first syntax check used `py_compile` under `-I`, which ignores `PYTHONPYCACHEPREFIX` and left a `__pycache__` directory in the phase directory; it was removed file by file and the check was redone with `compile()`, which writes nothing. Origin holds two `scratch/clt-07-*` branches that belong to the user and are not touched. The swap reading is high (about 16 of 17 GB used), so an OpenJ9 crash in a later Gradle run is a known risk and not a test failure.
 
-2026-10-31T12:46:00Z
+2026-10-31T12:44:00Z
 
 Verdict: pass
 
@@ -171,6 +171,42 @@ hygiene_scan: clean
 
 The baseline selection still names `v1.7.0_gg5` after the bump, the scratch rehearsal and the real bump changed one line in each of the two files, and the clean build read back the new constant (the generated file is not an input of `generateVersionFile`, so `clean` is required). The three Docker-free classes that touch the version ran with `DOCKER_HOST` pointing nowhere: 82 tests, no failure, no JVM crash file.
 
-2026-10-31T12:55:00Z
+2026-10-31T12:45:00Z
+
+Verdict: pass
+
+### E-03: The 1.7.0_gg6 CHANGELOG section absorbs upstream's Unreleased entry and leaves every released section untouched
+
+Backs: RLS-01, ROADMAP Phase 38 criterion 1 (a complete dated `1.7.0_gg6` section, upstream's `Unreleased` entry inside it verbatim, no `Unreleased` heading left, every released section byte-identical, no planning identifier and no fact about the release object in the section).
+
+```sh
+date -u +%F
+git show eb8c163ab9cdc7951612931f7c49b23e3ec37d6b:CHANGELOG.md > /tmp/gsd38/exec/changelog-old.md
+python3 -I <assemble>   # section text with the date and the old Unreleased entry, then the old file minus its Unreleased block
+python3 -I .planning/phases/38-release-publication/38-doc-check.py changelog CHANGELOG.md /tmp/gsd38/exec/changelog-old.md --date 2026-10-31 --require 9bed6f79 0.11.0 1.12.1 GHSA-48mj-8f7c-7qfm additionalRetriableErrorCodes errors.tolerance custom_ zstd-jni v1.7.0_gg6 ROLLOUT-v1.7.0_gg6 FORK-DELTA issues/777 retryOnSocketException
+grep -c '^# Unreleased' CHANGELOG.md
+git diff -U0 eb8c163ab9cdc7951612931f7c49b23e3ec37d6b -- CHANGELOG.md | grep -E '^\+' | grep -vE '^\+\+\+' | sed 's/^+//' > /tmp/gsd38/exec/changelog-added.txt
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict /tmp/gsd38/exec/changelog-added.txt
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+git add CHANGELOG.md && git commit -F /tmp/gsd38/exec/msg-changelog.txt
+git diff --name-only fdf3be31016acccdc0813ddca0ee6063dd278d39^ fdf3be31016acccdc0813ddca0ee6063dd278d39
+```
+
+```text
+changelog_date: 2026-10-31
+changelog_check: OK changelog: section_lines=71 required=13
+unreleased_headings: 0
+released_sections_identical: yes
+link_to_note_pending: yes
+hygiene_scan_added_lines: clean
+secrets_scan: clean
+anchors_mirror_after: rows=172 bad=0
+changelog_commit: fdf3be31016acccdc0813ddca0ee6063dd278d39
+changelog_commit_files: CHANGELOG.md
+```
+
+The section was assembled by script from a section template and the old file, so the rest of the file equals the phase-start file minus the `Unreleased` block (`released_sections_identical` is the helper's tail comparison). The link to `docs/ROLLOUT-v1.7.0_gg6.md` has no target yet; plan 38-02 creates it and its gate runs the link check. The date is the UTC date at writing and is re-checked against the merge date at the user's gate. Correction of this file: the timestamp lines of E-01 and E-02, which the first two commits wrote as estimates, were replaced by the commit times read from `git log` (12:44 and 12:45 UTC); no fact or verdict changed.
+
+2026-10-31T12:47:18Z
 
 Verdict: pass
