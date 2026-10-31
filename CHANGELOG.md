@@ -21,8 +21,10 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   changes in the client V1 artifacts was not audited beyond what the rollout note's section D states for client V1.
   What an operator can see:
   * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the client V2 transport; they are now ignored with
-    a WARN that names them. Every connector builds a client V2 object at start, so this reaches client V1 connectors
-    too; on client V1 they are also read from the connection URL and must stay.
+    a WARN that names them. Every connector builds a client V2 object at start and, on client V1, again for every
+    insert (read from the code: `ClickHouseWriter.getMutationRequest` builds a `ClickHouseHelperClient`, whose
+    constructor builds both clients), so the WARN reaches client V1 connectors that carry `ssl` or `sslmode` and is
+    logged there once for every insert batch; on client V1 they are also read from the connection URL and must stay.
   * On client V2, error 159 (`TIMEOUT_EXCEEDED`) is still retriable, but the client no longer retries it itself.
   * On client V2, a 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is
     `false`, so the task fails as before.
@@ -58,8 +60,10 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
 
 ## Known Issues
 
-* The writer's `stop()` does not close its `ClickHouseHelperClient`, so one V2 client is left per task start, on both
-  client lines.
+* The writer's `stop()` does not close its `ClickHouseHelperClient`, so at least one V2 client is left per task start,
+  on both client lines (`0.9.6` and `0.11.0`). Read from the code, not measured: an exactly-once connector builds one
+  more such helper in its state provider and a client V1 connector builds one with every insert, and none of them is
+  closed; whether the extra objects are released in some other way was not checked.
 * The four-minute insert timeout has no effect while `async=false` and `socket_timeout` is `0`.
 * The buffered fix has documented limits: the Direct path with `reportInsertedOffsets=true` under a topic-changing SMT
   commits nothing (unless `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`, where Connect's own offsets are
