@@ -101,8 +101,8 @@ final class RowBinaryParityCases {
         l.add(c("float32", "Float32", F32, 1.5f, -0.0f, Float.NaN, Float.MAX_VALUE));
         l.add(c("float64", "Float64", F64, 1.5d, -0.0d, Double.NaN, Double.MIN_VALUE));
         l.add(c("bool", "Bool", BOOL, true, false));
-        l.add(c("string", "String", STR, "", "hello", "unicodé 中文 😀", "a\u0000b"));
-        l.add(c("fixedstring8", "FixedString(8)", STR, "abc", "12345678", "é"));
+        l.add(c("string", "String", STR, "", "hello", "unicod\u00e9 \u4e2d\u6587 \ud83d\ude00", "a\u0000b"));
+        l.add(c("fixedstring8", "FixedString(8)", STR, "abc", "12345678", "\u00e9"));
         l.add(c("uuid", "UUID", STR, UUID_TEXT, "00000000-0000-0000-0000-000000000000"));
         l.add(c("enum8", "Enum8('a' = 1, 'b' = 2)", STR, "a", "b"));
         l.add(c("enum16", "Enum16('x' = 1000, 'y' = -2)", STR, "x", "y"));
