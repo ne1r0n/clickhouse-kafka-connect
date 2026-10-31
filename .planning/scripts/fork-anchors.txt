@@ -129,7 +129,14 @@ build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.cla
 .github/workflows/release.yaml	gradle/actions/setup-gradle@	1	REL-03
 .github/workflows/release.yaml	./gradlew createConfluentArchive	1	REL-03
 .github/workflows/release.yaml	!inputs.dry_run && github.ref == 'refs/heads/custom_build'	3	REL-05
-.github/workflows/release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	5	REL-05
+.github/workflows/release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	6	REL-05
+.github/workflows/release.yaml	compare_confluent_archives.py	1	CIH-04
+.github/workflows/release.yaml	baseline_tag.py	1	CIH-04
+.github/workflows/release.yaml	git worktree add	1	CIH-04
+.github/workflows/release.yaml	actions/upload-artifact@	1	CIH-04
+.github/workflows/release.yaml	fetch-depth: 0	1	CIH-04
+.github/workflows/release.yaml	continue-on-error	0	CIH-04
+.github/workflows/release.yaml	.planning/scripts/confluent-archive-allowlist-	1	CIH-04
 .github/workflows/pre-release.yaml	actions/create-release	0	REL-04
 .github/workflows/pre-release.yaml	actions/upload-release-asset	0	REL-04
 .github/workflows/pre-release.yaml	gh release create	2	REL-04
@@ -142,7 +149,14 @@ build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.cla
 .github/workflows/pre-release.yaml	gradle/actions/setup-gradle@	1	REL-03
 .github/workflows/pre-release.yaml	./gradlew createConfluentArchive	1	REL-01
 .github/workflows/pre-release.yaml	!inputs.dry_run && github.ref == 'refs/heads/custom_build'	3	REL-05
-.github/workflows/pre-release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	5	REL-05
+.github/workflows/pre-release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	6	REL-05
+.github/workflows/pre-release.yaml	compare_confluent_archives.py	1	CIH-04
+.github/workflows/pre-release.yaml	baseline_tag.py	1	CIH-04
+.github/workflows/pre-release.yaml	git worktree add	1	CIH-04
+.github/workflows/pre-release.yaml	actions/upload-artifact@	1	CIH-04
+.github/workflows/pre-release.yaml	fetch-depth: 0	1	CIH-04
+.github/workflows/pre-release.yaml	continue-on-error	0	CIH-04
+.github/workflows/pre-release.yaml	.planning/scripts/confluent-archive-allowlist-	1	CIH-04
 .github/workflows/increment-version.yml	node-version	0	CIH-02
 .github/workflows/increment-version.yml	setup-node	0	CIH-02
 .github/workflows/increment-version.yml	npm install	0	CIH-02
