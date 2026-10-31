@@ -64,7 +64,10 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   on both client lines (`0.9.6` and `0.11.0`). Read from the code, not measured: an exactly-once connector builds one
   more such helper in its state provider and a client V1 connector builds one with every insert, and none of them is
   closed; whether the extra objects are released in some other way was not checked.
-* The four-minute insert timeout has no effect while `async=false` and `socket_timeout` is `0`.
+* On client V2, the four-minute insert timeout has no effect while `async=false` and `socket_timeout` is `0`. A client
+  V1 insert has no such timeout: its three insert methods wait with `future.get()` and no timeout argument (read from
+  the code: `ClickHouseWriter`), so `clickhouseClientInsertTimeoutMs` does not bound it; the client V1 library's own
+  timeout options were not examined.
 * The buffered fix has documented limits: the Direct path with `reportInsertedOffsets=true` under a topic-changing SMT
   commits nothing (unless `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`, where Connect's own offsets are
   returned), a many-to-one rename shares one state record, and exactly-once buffering is claimed only for a rename that
