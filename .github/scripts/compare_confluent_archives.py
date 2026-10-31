@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """Compare two Confluent archives entry by entry (BLD-15, D-05).
 
-Usage: python3 -I compare-confluent-archives.py A.zip B.zip ALLOWLIST
+Usage: python3 -I compare_confluent_archives.py A.zip B.zip ALLOWLIST
 
-A is the baseline archive (v1.7.0_gg3), B the archive under test. Each archive
+A is the baseline archive (the previous release rebuilt from its tag), B the archive under test. Each archive
 must hold exactly one lib/*-confluent.jar; that inner jar is read in memory and
 every file entry is compared by SHA-256. The other outer entries are compared
 too (manifest.json ignoring its release_date and version lines, everything else
 by SHA-256) under the path prefix "outer/".
 
 ALLOWLIST rows are "glob<TAB>reason"; "#" lines and blank lines are skipped, a
-reason is required, and a star matches across slashes (fnmatch). A difference no
-row matches is UNALLOWED; a row that matched nothing is STALE-ROW. Both fail.
+reason is required, and a star matches across slashes (fnmatch). A row whose glob is
+only stars is a catch-all and makes the list unusable. A difference no row matches is
+UNALLOWED; a row that matched nothing is STALE-ROW. Both fail.
 
 Exit codes: 0 PASS, 1 FAIL, 2 unusable input (missing, duplicated or empty inner
-jar, unreadable archive, malformed allow-list).
+jar, unreadable archive, malformed or catch-all allow-list).
 
 Standard library only. Nothing is extracted to disk or executed.
 """
@@ -23,6 +24,7 @@ import difflib
 import fnmatch
 import hashlib
 import io
+import re
 import sys
 import zipfile
 
@@ -36,6 +38,7 @@ KAFKA_PREFIX = "org/apache/kafka/"
 OUTER_MANIFEST = "manifest.json"
 MANIFEST_IGNORED_FRAGMENTS = ('"release_date"', '"version"')
 VERSION_LINE = "Implementation-Version:"
+CATCH_ALL_GLOB = re.compile(r"\*+")
 
 
 class InputError(Exception):
@@ -109,6 +112,8 @@ def load_allowlist(path):
                 parts = line.split("\t")
                 if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
                     raise InputError("%s:%d: a row needs glob<TAB>reason with a non-empty reason" % (path, number))
+                if CATCH_ALL_GLOB.fullmatch(parts[0].strip()):
+                    raise InputError("%s:%d: a glob of only stars matches every difference and is refused" % (path, number))
                 rows.append((parts[0], parts[1]))
     except OSError as e:
         raise InputError("%s: %s" % (path, e))
@@ -197,7 +202,7 @@ def compare(a, b, rows):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) != 3:
-        print("usage: compare-confluent-archives.py A.zip B.zip ALLOWLIST", file=sys.stderr)
+        print("usage: compare_confluent_archives.py A.zip B.zip ALLOWLIST", file=sys.stderr)
         return 2
     try:
         rows = load_allowlist(argv[2])
