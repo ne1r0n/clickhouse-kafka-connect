@@ -1,15 +1,15 @@
 ---
 phase: "36"
 slug: client-0-11-0-audit-bump
-status: open
-threats_open: 1
+status: secured
+threats_open: 0
 asvs_level: 1
 created: "2026-10-31"
 ---
 
 # Phase 36 — Security
 
-> Plan-time threat registers (36-01..36-04) classified against `36-COMMAND-EVIDENCE.md` (E-01..E-17), the four SUMMARYs, `36-REVIEW.md`/`36-REVIEW-FIX.md`, `36-FOLLOWUPS.md` and the committed tree at `cacaa18d`, then re-checked live by a security auditor (ASVS 1, `block_on: high`). Each plan repeats T-36-SC, so the registers hold 20 distinct threats: 14 mitigate, 6 accept. **Result: OPEN_THREATS.** 19 closed, 1 open and blocking (T-36-17: after the CLT-09 revert the kept pins are no longer all green on 0.9.6; see Open Threats). Evidence ids `E-NN` are entries of `36-COMMAND-EVIDENCE.md`; ids `A-NN` are the auditor's own re-checks listed below. Nothing was verified by reading a plan or a summary alone: every closed row cites code, a committed record or a re-run.
+> Plan-time threat registers (36-01..36-04) classified against `36-COMMAND-EVIDENCE.md` (E-01..E-18), the four SUMMARYs, `36-REVIEW.md`/`36-REVIEW-FIX.md`, `36-FOLLOWUPS.md` and the committed tree at `cacaa18d`, then re-checked live by a security auditor (ASVS 1, `block_on: high`). Each plan repeats T-36-SC, so the registers hold 20 distinct threats: 14 mitigate, 6 accept. **Result: SECURED.** 20 closed, 0 open. The audit found one blocking threat, T-36-17 (after the CLT-09 revert the kept pins were not all green on 0.9.6); it is closed by `195fe556` and the re-rehearsal E-18, see the Closure note under Open Threats. Evidence ids `E-NN` are entries of `36-COMMAND-EVIDENCE.md`; ids `A-NN` are the auditor's own re-checks listed below. Nothing was verified by reading a plan or a summary alone: every closed row cites code, a committed record or a re-run.
 
 ## Trust Boundaries
 
@@ -60,20 +60,27 @@ created: "2026-10-31"
 | T-36-14 | Tampering | guava experiment edits `build.gradle.kts` | low | mitigate | `build.gradle.kts` unchanged since phase start (A-02); experiment ran in a removed worktree (E-09, `guava_experiment_numstat: 0/2`); `git worktree list` shows one worktree (A-01) | closed |
 | T-36-15 | Tampering | an agent pushing, dispatching or acting on a pull request | high | mitigate | No push or dispatch step in any plan action or evidence command (A-08); origin tip, tag, branch and PR #17 state re-read at every gate and again now (A-01); handoffs are files for the user (`36-USER-DISPATCH*.md`); the three origin writes that exist are scratch-branch pushes the user ran after the handoffs (E-15, E-16, E-17), none touches `custom_build`, a tag or a pull request. Attribution to the user rests on the handoff and evidence records; the feed alone cannot prove it (A-08) | closed |
 | T-36-16 | Repudiation | the go or no-go decision and its evidence | high | mitigate | Decision rule written in the plan before the run (`36-04-PLAN.md:111`); E-12 records `--rerun` counts (testUnit 1474; two suites of 2072 with the 18 named skips) read from JUnit XML, the tail and cumulative gates `result=PASS`, scope facts; the JVM crashes are disclosed (one in suite 1; two in suite 2, whose recorded run is on JDK 21); E-16 re-decides go after the red nightly and states the decision reached the executor through the orchestrator, not verbatim. Not re-run by the auditor: the full suites (Docker); the HEAD Docker-free slice is A-04 | closed |
-| T-36-17 | Tampering | the CLT-09 revert damaging a kept fix or leaving a half-reverted tree | high | mitigate | Mechanics hold at HEAD: both reverts conflict-free, exactly the expected paths, 0.9.6 resolved, anchors 151/0, fixes and golden kept (A-06; E-11 at the earlier head). **The "pins green" part of the rehearsal no longer holds**: the post-gate review fix `bdd2e592` added `operatorIgnoreFlagWins`, which expects `ClientMisconfigurationException` and is red on 0.9.6 (A-06) | **open** |
+| T-36-17 | Tampering | the CLT-09 revert damaging a kept fix or leaving a half-reverted tree | high | mitigate | Mechanics hold at HEAD: both reverts conflict-free, exactly the expected paths, 0.9.6 resolved, anchors 151/0, fixes and golden kept (A-06; E-11 at the earlier head). The audit found `operatorIgnoreFlagWins` (`bdd2e592`) red on 0.9.6 after the revert (A-06). Fixed in `195fe556`: the pin is line-aware (`ClientErrorShapes.line()`; 0.11.0 still asserts `ClientMisconfigurationException` naming `ssl`, 0.9.6 asserts the client is built and inserts). Re-rehearsed in E-18 (scratch clone at `195fe556`): both reverts exit 0 with the same paths, 0.9.6 resolved, anchors 151/0; the four Docker-free pin classes that exist on 0.9.6 are green (15 tests) and the same command on 0.11.0 is green (17 tests, catalog pin included); the main tree stays at anchors 152/0 | closed |
 | T-36-18 | Information Disclosure | rollout items, handoffs, evidence naming a deployment, host or secret | medium | mitigate | Hygiene and secrets clean over `36-ROLLOUT-ITEMS.md`, the three handoff files and the evidence (A-07); handoffs ask for no secret and no token; E-11, E-13, E-15..E-17 record `hygiene_scan: clean` | closed |
 | T-36-19 | Tampering | operator guidance in the rollout items | medium | mitigate | 14 items, each with one of the three labels and an evidence cell (`36-ROLLOUT-ITEMS.md`); research-only claims read `measured in research (not re-run)` (items 2, 5, 6, 7, 8, 9); items 6 and 10 are labelled not pinned or read from the code; Alpine/musl stated untested; the `custom_` alternative is "a user decision ... was not added"; `retryOnSocketException` is item 3 | closed |
 | T-36-SC | Tampering | npm/pip/cargo installs | low | accept | No npm, pip or cargo package installed. The one Maven change is the disclosed catalog line (T-36-06); the package-legitimacy seam covers other ecosystems, so the research checked the coordinates against Maven Central metadata and the POM, and A-03 re-checked the checksums. See AR-36-06 | closed |
 
 ## Open Threats (blocking, severity >= high)
 
-### T-36-17 — kept pins are not all green after the CLT-09 revert
+None. T-36-17, the one threat found open by the audit, is closed; its record is kept below.
+
+### T-36-17 — kept pins were not all green after the CLT-09 revert (closed by E-18)
 
 - **Declared mitigation:** the revert is rehearsed on the final history (conflict-free, exactly three paths for the catalog commit, `rows=151`, 0.9.6 resolved, pins green), and the no-go branch reverts two named commits and re-runs the gate on 0.9.6 (`36-04-PLAN.md`, T-36-17).
 - **Found (A-06):** at HEAD `cacaa18d` in a scratch clone, `git revert 375c93be` and `git revert 5ab3410e` apply cleanly and leave the catalog on 0.9.6. `ClientEndpointAndOptionsPinUnitTest.operatorIgnoreFlagWins` (`ClientEndpointAndOptionsPinUnitTest.java:72-78`, added by review fix `bdd2e592`, after the E-11 rehearsal and the E-12 gate) then fails: client 0.9.6 only warns about an unknown key, so `?ignore_unknown_config_key=false&ssl=true` builds a client and no `ClientMisconfigurationException` is thrown. Every other Docker-free pin and guard in the revert set is green.
 - **Why it matters:** the pin set is meant to be two-line (`ClientErrorShapes.Line` rows) so that a revert leaves a green tree. A no-go taken now would re-run the gate on 0.9.6, meet one red kept test, and fall into the plan's stop-and-report case (`36-04-PLAN.md:111`) instead of a clean revert. It fails closed (a red test, no changed runtime behaviour), but the declared property is false at the tip. The go decision (E-12, E-16) means the revert is not applied today.
 - **Not verified:** the Docker-bound classes (live pin class, golden, JDBC-properties class) on the reverted tip. Only the Docker-free set was re-run.
 - **To close:** make `operatorIgnoreFlagWins` line-aware with `ClientErrorShapes.line()` (on `V0_9_6` assert that the build succeeds and the request URI carries no `ssl`; on `V0_11_0` keep the current assertions), then re-run A-06 and A-05; or record a user risk acceptance for the regression. The auditor does not edit implementation files.
+
+**Closure (E-18).** `195fe556` makes `operatorIgnoreFlagWins` line-aware and changes that one test method only; no other test was touched and no assertion on 0.11.0 was removed. The revert was re-rehearsed with `git clone --local` into `/tmp/gsd36/rehearse2` at `195fe556`: `git revert 375c93be` and `git revert 5ab3410e` both exit 0 with no conflict, on the same four and three paths as before; the catalog line reads 0.9.6, `client-v2` resolves to 0.9.6, anchors `rows=151 bad=0`. On that tree `ClientEndpointAndOptionsPinUnitTest` (4), `ClientErrorShapePinUnitTest` (7), `ClientTimeoutPrefixPinUnitTest` (2) and `ClientInsertWirePinUnitTest` (2) are green (15 tests, 0 failed); the catalog pin class is deleted by the catalog revert, so its filter matches nothing. On the main tree (0.11.0) the same command is green with 17 tests, the catalog pin included, and the fixed test takes its 0.11.0 branch. Anchors on the main tree are `rows=152 bad=0`. No other pin is red after the revert.
+
+**Not re-run:** the pin fix commit post-dates the E-12, E-16 and E-17 gates, so those full suites (and the Docker-bound live classes) were not re-run on it; the change is one test method, and E-18 re-ran the Docker-free pin classes on both lines. The A-05 mutation run was also not repeated on the fixed test: on 0.11.0 the branch with the original assertions is unchanged.
+
 
 ## Open (non-blocking)
 
@@ -87,7 +94,7 @@ SUMMARY `## Threat Flags` of all four plans read "None" or "None beyond the plan
 |------|------|--------|--------|
 | UF-36-1 | WARNING | Two scratch branches exist on a PUBLIC origin: `scratch/clt-07-client-0.11.0` (`de8c685b`) and `scratch/clt-07-prebump-0.9.6` (`939e8992`). The user pushed them for CLT-07 (E-15..E-17). Each push published every local commit since `v1.7.0_gg5` including the `.planning` tail (160, 143 and 163 commits for the three pushes, counted from `3a3a15a9`; the first handoff warned that deleting a branch does not unpublish commits). `tests.yaml` triggers on a push of any branch; a run is recorded for the first push (E-15). The published range holds no token shape or credential URL and no deployment name (A-07). The branches remain; deleting them is the user's call at the milestone close | open, user action |
 | UF-36-2 | informational | `36-FOLLOWUPS.md` F-1 (`ClickHouseWriter.stop()` never closes its `ClickHouseHelperClient`, so each task start leaks one V2 client and its connection pool) and F-2 (`clickhouseClientInsertTimeoutMs` does not bound a V2 insert with `async=false`, and `socket_timeout` defaults to 0, so an insert can block indefinitely on a stalled server). Both are availability issues, observed on both client lines, not caused by this phase, deferred to a plan of their own (`ClickHouseWriter.java` is a high-risk file) | open, carried to the backlog |
-| UF-36-3 | informational | Review fixes `7e717d2d`, `bdd2e592` and the harness commit `0bb894a4` are test-only and came after the E-12 gate. The full suites were not re-run for them; the review-fix report records targeted runs, E-16 the 7 of 7 `stockGen*` run and E-17 the green CI nightly at `de8c685b` (before the two review-fix commits). A-04 re-ran 76 Docker-free tests at HEAD. The last full-suite gate is E-12 at `a8b61f15` | open, informational |
+| UF-36-3 | informational | Review fixes `7e717d2d`, `bdd2e592` and the harness commit `0bb894a4` are test-only and came after the E-12 gate. The full suites were not re-run for them; the review-fix report records targeted runs, E-16 the 7 of 7 `stockGen*` run and E-17 the green CI nightly at `de8c685b` (before the two review-fix commits). A-04 re-ran 76 Docker-free tests at HEAD. The last full-suite gate is E-12 at `a8b61f15`. The later pin fix `195fe556` (T-36-17, E-18) is also test-only and was covered by the Docker-free pin re-run of E-18, not by a full suite | open, informational |
 | UF-36-4 | informational | The repository has no `gradle/verification-metadata.xml`, so the checksums that T-36-06 relies on were checked once (E-09, A-03) and nothing enforces them on a later build. The compare script's `VERSION` table has no `zstd-jni` row, so the library version is attested by entry names (`libzstd-jni-1.5.7-23.*`); Phase 37's allow-list handoff names this | open, carried to Phase 37 |
 | UF-36-5 | informational | `ConfluentPlatform.generateData` was rewritten after the plans (E-16, `ConfluentPlatform.java:499-537`): integration-test source set only, not in the archive (A-03), creates the Datagen connector without a status wait and deletes it in `finally` (`:527-528`). No shipped attack surface. Review IN-06 (a `deleteConnectors` `IOException` in `finally` can mask the primary failure; strict `!=` loop test) is open | open, informational |
 
@@ -96,7 +103,7 @@ SUMMARY `## Threat Flags` of all four plans read "None" or "None beyond the plan
 Code review (`36-REVIEW.md`): 0 critical, 2 warnings, 6 info. `36-REVIEW-FIX.md` fixed both warnings.
 
 - WR-01 (golden hashes depended on the compile-time source encoding): fixed in `7e717d2d`; `RowBinaryParityCases.java` now has no non-ASCII byte and the golden file is untouched (supports T-36-02).
-- WR-02 (operator override of the ignore flag pinned by no test): fixed in `bdd2e592`; the test exists at HEAD and is mutation-proven (A-05). It is also the source of the T-36-17 regression.
+- WR-02 (operator override of the ignore flag pinned by no test): fixed in `bdd2e592`; the test exists at HEAD and is mutation-proven (A-05). It was also the source of the T-36-17 regression, closed by `195fe556` (E-18).
 - IN-01 (`createClientV2` logs `jdbcConnectionProperties` verbatim at INFO and a URL the client no longer receives): open, not fixed (review scope was warnings only). Maps to T-36-07. The line is inherited from upstream and unchanged in this phase; the review's fix (log endpoint and database, drop the properties) is not applied. Recorded as an accepted residual, AR-36-01.
 - IN-02 (the `ssl=true` pin does not check `ssl`), IN-03 (stale comment), IN-04 (`clientVersion()` assumes two lines), IN-05 (`http://` hardcoded in the V1 ZSTD pin), IN-06 (generateData loop): open, test-hygiene only, no threat mapping.
 
@@ -106,14 +113,14 @@ Code review (`36-REVIEW.md`): 0 critical, 2 warnings, 6 info. `36-REVIEW-FIX.md`
 |---------|------------|-----------|-----------------|-------------|------|
 | AR-36-01 | T-36-07 | The `ClickHouse URL` INFO line is upstream behaviour since v1.5.0, unchanged here; this phase adds no log line and the 0.11.0 client's WARN names keys only. Residual: credentials an operator places in `jdbcConnectionProperties` reach the log. Review IN-01's fix is available and not applied | A change to either `LOGGER.info("ClickHouse URL: {}", url)` site, or a decision to apply IN-01 | Plan 36-02 | 2026-10-29 |
 | AR-36-02 | T-36-08 | No third client option; the `custom_` effect is measured on both lines (E-11) and handed to Phase 38 as rollout item 7; the input is operator configuration that can already set server settings | The user decides to add the client option that restores 0.9.6 behaviour | Plan 36-02, 36-04 | 2026-10-29 |
-| AR-36-03 | T-36-09 | Matches 0.9.6's warn-only behaviour; the operator's own value still wins and is pinned | Revert of the bump (see T-36-17) or a client change to unknown-key handling | Plan 36-02 | 2026-10-29 |
+| AR-36-03 | T-36-09 | Matches 0.9.6's warn-only behaviour; the operator's own value still wins and is pinned | A client change to unknown-key handling | Plan 36-02 | 2026-10-29 |
 | AR-36-04 | T-36-10 | Default configuration never selects ZSTD; remedies and platform limits are in the rollout items; worker behaviour is a research measurement, not re-run | An operator reports a ZSTD path in use, or a worker platform outside the three natives | Plan 36-02 | 2026-10-29 |
 | AR-36-05 | T-36-05 | Loopback ephemeral-port stub, attempt counts instead of timings | A Docker-free pin shows a flake | Plan 36-01 | 2026-10-29 |
 | AR-36-06 | T-36-SC | No package-manager install; one disclosed Maven coordinate change | A second dependency change in the phase | Plans 36-01..36-04 | 2026-10-29 |
 
 ## Open Items Carried
 
-- OI-36-1: T-36-17 (above). Blocking until the pin is line-aware and the revert re-rehearsed, or the regression is accepted by the user.
+- OI-36-1: closed. T-36-17 was blocking until the pin was made line-aware (`195fe556`) and the revert re-rehearsed (E-18).
 - OI-36-2: UF-36-1, the two scratch branches on origin. Deleting them (and any further push) is the user's action.
 - OI-36-3: Phase 37 handoff: archive allow-list rows for the 37 `zstd` classes, 17 multi-release classes and three natives; the stale guava comment and redundant pin (E-09, `36-ROLLOUT-ITEMS.md` Handoffs).
 - OI-36-4: Phase 38 handoff: the 14 rollout items into `docs/ROLLOUT-v1.7.0_gg6.md` (E-11 records it absent); PR #17 is closed by the user at publication, and no agent comments on it or merges any Dependabot PR.
@@ -124,12 +131,13 @@ Code review (`36-REVIEW.md`): 0 critical, 2 warnings, 6 info. `36-REVIEW-FIX.md`
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-10-31 | 20 | 19 | 1 | gsd-security-auditor (evidence read plus live re-checks A-01..A-09) |
+| 2026-10-31 | 20 | 20 | 0 | closure of T-36-17 by the pin fix `195fe556` and the revert re-rehearsal E-18 (Docker-free pins on both lines; the E-12, E-16 and E-17 full suites not re-run) |
 
 ## Sign-Off
 
 - [x] All threats have a disposition
 - [x] Accepted risks documented
-- [ ] `threats_open: 0` confirmed (1 open: T-36-17)
-- [ ] `status: verified` set (`status: open`)
+- [x] `threats_open: 0` confirmed (T-36-17 closed via E-18)
+- [x] `status: secured` set
 
-**Approval:** pending, on closing T-36-17 or on the user's recorded acceptance of it
+**Approval:** T-36-17 closed by evidence, not by acceptance: `195fe556` and E-18. The pin fix commit post-dates the E-12, E-16 and E-17 gates, so those full suites were not re-run on it.

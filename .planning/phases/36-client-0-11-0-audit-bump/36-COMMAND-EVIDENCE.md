@@ -30,6 +30,7 @@
 | E-15 | CLT-07 | 36-04 | fail |
 | E-16 | CLT-09, CLT-07 | 36-04 | go |
 | E-17 | CLT-07 | 36-04 | pass |
+| E-18 | CLT-09 | 36-04 | pass |
 
 ### E-01: Pre-flight: origin, pull request and upstream re-read, Phase 35 gated, baselines on the untouched tree
 
@@ -1316,5 +1317,73 @@ What this does and does not establish. The two earlier reds (E-15) had the Datag
 E-13 is left as `pending (user-gated)` in the index: it is the record of the first handoff, the evidence rules forbid editing an entry, and this entry is the new record that resolves its open question.
 
 Measured 2026-10-31T01:23:46Z (user-reported run facts, re-read with read-only `gh` and `git ls-remote`, JUnit totals from the downloaded artifact).
+
+Verdict: pass
+
+### E-18: CLT-09 revert re-rehearsed after the line-aware pin fix: the Docker-free pins are green on 0.9.6 and on 0.11.0
+
+Backs: CLT-09 and threat T-36-17 of `36-SECURITY.md`. The security audit found that after the CLT-09 revert the review-fix pin `operatorIgnoreFlagWins` (`bdd2e592`) was red on client 0.9.6, which only warns on an unknown config key. The pin was made line-aware (`ClientErrorShapes.line()`, the helper the other pins in `db/helper` use) in `195fe556`: on 0.11.0 it still asserts `ClientMisconfigurationException` naming `ssl`; on 0.9.6 it asserts the client is built and the insert reaches the stub with the path `/`. The revert was then re-rehearsed in a scratch clone and the Docker-free pins were run on both lines. E-11 and its earlier rehearsal stay as they are.
+
+```sh
+git rev-parse HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*ClientEndpointAndOptionsPin*' --tests '*ClientErrorShapePin*' --tests '*ClientTimeoutPrefixPin*' --tests '*ClientInsertWirePin*' --tests '*ClientCatalogPin*' > /tmp/gsd36/exec/main2-dockerfree.log 2>&1
+git clone --local . /tmp/gsd36/rehearse2
+git -C /tmp/gsd36/rehearse2 checkout 195fe5564c469b220d67012d884414516b4fca3d
+git -C /tmp/gsd36/rehearse2 revert --no-edit 375c93be91d2a32eafd4e0364f905e51f8dfd280
+git -C /tmp/gsd36/rehearse2 revert --no-edit 5ab3410e94fd64e8fa6a8bca6ffd3510b13d68f8
+git -C /tmp/gsd36/rehearse2 show --name-only --format= HEAD
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py anchors .planning/scripts/fork-anchors.txt   # in the clone, then in the main tree
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/rehearse2 --console=plain dependencies --configuration runtimeClasspath
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd36/rehearse2 --console=plain test --rerun --tests '*ClientEndpointAndOptionsPin*' --tests '*ClientErrorShapePin*' --tests '*ClientTimeoutPrefixPin*' --tests '*ClientInsertWirePin*' --tests '*ClientCatalogPin*' > /tmp/gsd36/exec/rehearsal2-dockerfree.log 2>&1
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py failed <results dir of each tree>
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-hygiene-check.py <changed files>
+```
+
+```text
+pin_fix_commit: 195fe5564c469b220d67012d884414516b4fca3d
+pin_fix_files: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java
+pin_fix_scope: one test method, operatorIgnoreFlagWins; no other test touched, no assertion removed on 0.11.0
+rehearsal_clone: /tmp/gsd36/rehearse2 (git clone --local, detached at the pin fix commit)
+revert_docs_exit: 0
+revert_docs_files: docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg1.md; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinUnitTest.java
+revert_catalog_exit: 0
+revert_catalog_files: .planning/scripts/fork-anchors.txt; gradle/libs.versions.toml; src/test/java/com/clickhouse/kafka/connect/ci/ClientCatalogPinUnitTest.java
+revert_conflicts: none
+rehearsal_catalog_line: clickHouseDriver = "0.9.6"
+rehearsal_client_v2: +--- com.clickhouse:client-v2:0.9.6
+rehearsal_anchors_mirror: rows=151 bad=0
+rehearsal_dockerfree_exit: 0
+rehearsal_dockerfree_failed: none
+rehearsal_dockerfree_totals: tests=15 failures=0 errors=0 skipped=0
+rehearsal_endpoint_xml: tests=4 failures=0 errors=0 skipped=0
+rehearsal_error_shape_xml: tests=7 failures=0 errors=0 skipped=0
+rehearsal_timeout_prefix_xml: tests=2 failures=0 errors=0 skipped=0
+rehearsal_wire_xml: tests=2 failures=0 errors=0 skipped=0
+rehearsal_catalog_pin_xml: absent (the catalog revert deletes ClientCatalogPinUnitTest, so the filter matches no class and the run is still green)
+rehearsal_operator_flag_pin_on_096: passed, takes the 0.9.6 branch
+main_client_v2: com.clickhouse:client-v2:0.11.0
+main_dockerfree_exit: 0
+main_dockerfree_failed: none
+main_dockerfree_totals: tests=17 failures=0 errors=0 skipped=0
+main_endpoint_xml: tests=4 failures=0 errors=0 skipped=0
+main_error_shape_xml: tests=7 failures=0 errors=0 skipped=0
+main_timeout_prefix_xml: tests=2 failures=0 errors=0 skipped=0
+main_wire_xml: tests=2 failures=0 errors=0 skipped=0
+main_catalog_pin_xml: tests=2 failures=0 errors=0 skipped=0
+main_operator_flag_pin_on_0110: passed, takes the 0.11.0 branch (ClientMisconfigurationException naming ssl)
+main_anchors_mirror: rows=152 bad=0
+other_red_pins_after_revert: none among the five Docker-free pin classes
+not_rerun: the live classes and the full suites (E-12, E-16, E-17) were not re-run after the pin fix
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+nothing_pushed: yes
+hygiene_scan: clean
+```
+
+The revert applied with no conflict to exactly the same paths as in E-11, resolved 0.9.6, and kept the anchors mirror at 151 (the catalog row goes with its revert; the main tree stays at 152). All Docker-free pin classes that exist on 0.9.6 are green there, including the fixed `operatorIgnoreFlagWins`. The same command on the main tree on 0.11.0 is green with the catalog pin included, and that run takes the 0.11.0 branch of the fixed test, so the original assertion is not weakened. Only the Docker-free pins were run in this entry: the live classes were green on 0.9.6 in E-11 and are not affected by a one-test change, but they were not re-run here. The pin fix commit comes after the E-12, E-16 and E-17 gates, so those full suites were not re-run on it; the change is confined to one test method.
+
+Measured 2026-10-31T01:46:00Z (clone and revert, Docker-free pin runs on both lines, anchors on both trees).
 
 Verdict: pass
