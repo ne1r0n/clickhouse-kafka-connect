@@ -25,11 +25,11 @@ A row that makes claims of different strength says which label each claim has. T
 
 Work through these six steps before you roll the new archive out. Each names the rows it comes from.
 
-1. Search every connector's `jdbcConnectionProperties` for keys that start with `custom_`, for `decompress=true`, and for any expectation that `ssl` or `sslmode` there changes the transport (rows D1, D7, D8). On client V2 (`client_version` set to a value other than `V1`), a `custom_` key makes the task fail after the upgrade; client V1, which a connector runs when it does not set `client_version`, is not affected (row D7).
+1. Search every connector's `jdbcConnectionProperties` for keys that start with `custom_`, for `decompress=true`, and for any expectation that `ssl` or `sslmode` there changes the transport (rows D1, D7, D8). On client V2 (`client_version` set to a value other than `V1`), `ssl` and `sslmode` never changed the transport, and a `custom_` key makes the task fail after the upgrade (row D7). A connector runs client V1 when it does not set `client_version`: there `ssl` and `sslmode` are read from the connection URL and must stay (read from the code: `ClickHouseHelperClient.createClientV1`; what the V1 artifacts of `0.11.0` do with them was not audited), and `custom_` keys are not affected (row D7).
 2. For a connector with `bufferCount > 0` and a topic-changing SMT, describe its consumer group and decide where the first start should resume (rows B3, B4).
 3. Check that the Connect runtime has the three `SinkRecord` original-topic accessors; the `javap` command is in the section "Minimum Connect runtime" (row B6).
 4. Check the platform and the temp folder of a worker that may take the ZSTD path (row D9).
-5. Review `retryOnSocketException`, proxy rules that match the `User-Agent`, and log alerts that match the old texts (rows D3, D5, D6).
+5. On client V2, review `retryOnSocketException`, proxy rules that match the `User-Agent`, and log alerts that match the old texts (rows D3, D5, D6, which were measured or read for client V2; client V1 was not audited for them).
 6. Update dashboard, alert and exporter matchers that spell out `version=v1.7.0_gg5` or `clickhouse-kafka-connect/v1.7.0_gg5` (row E3).
 
 A connector that sets `additionalRetriableErrorCodes` lists only transient codes (row C2).
@@ -164,19 +164,21 @@ Each fact carries the label of row D9.
 
 ### A batch replayed across the upgrade (the clean-stop requirement)
 
-A `BEFORE_PROCESSING` batch that is replayed after the upgrade is rebuilt by the new task from the stored offset range. The same writer serialises it into the same bytes, and the same path sends it with the same body and the same `insert_deduplication_token`, so ClickHouse's block deduplication sees the block the old task would have sent. The `User-Agent` header is the only request header that differs (row D11).
+For a connector on client V2: a `BEFORE_PROCESSING` batch that is replayed after the upgrade is rebuilt by the new task from the stored offset range. The same writer serialises it into the same bytes, and the same path sends it with the same body and the same `insert_deduplication_token`, so ClickHouse's block deduplication sees the block the old task would have sent. The `User-Agent` header is the only request header that differs (row D11).
 
-- The golden (measured): 96 RowBinary bodies, 48 type cases in two variants, blessed on client 0.9.6 and green on 0.11.0.
-- The wire pin (measured): `ClientInsertWirePinUnitTest` shows a 100,000-byte body, the token and no `Content-Encoding` arriving unchanged on 0.11.0.
+- The golden (measured): 96 RowBinary bodies, 48 type cases in two variants, blessed on client 0.9.6 and green on 0.11.0. It compares the serialiser's bytes, which the test's own comment says do not depend on the client.
+- The wire pin (measured): `ClientInsertWirePinUnitTest`, which builds its client with `useClientV2(true)`, shows a 100,000-byte body, the token and no `Content-Encoding` arriving unchanged on 0.11.0.
 - The token (read from the code): `QueryIdentifier.getDeduplicationToken` builds `topic-partition-minOffset-maxOffset` from the batch, not from the client.
 
-No clean stop is required, for the compared matrix only. The scope is the 48 type cases in both variants: a column type outside the matrix, a time-zoned `DateTime` and a `Variant` fed plain text were not compared.
+On client V2, no clean stop is required, for the compared matrix only. The scope is the 48 type cases in both variants: a column type outside the matrix, a time-zoned `DateTime` and a `Variant` fed plain text were not compared.
+
+A connector on client V1, which a connector runs when it does not set `client_version`, is not covered by the wire pin: no test compares the body or the `insert_deduplication_token` that a client V1 insert sends, and the V1 artifacts of `0.11.0` are the part that section D says was not audited. Read from the code: `doInsertRawBinaryV1` calls the same `writeRecordsRowBinary` as the V2 method, and `getMutationRequest` sets `insert_deduplication_token` from the same `QueryIdentifier.getDeduplicationToken`, so the body bytes and the token do not depend on the client. What was not compared is the client V1 wire path on `0.11.0`. For a client V1 connector with `exactlyOnce=true` the replay question is therefore open for this release; stopping it cleanly before the upgrade is the cautious choice, a precaution that this release did not measure.
 
 ### What to do for the client
 
-1. Search your `jdbcConnectionProperties` for `custom_` keys, for `decompress=true`, and for any expectation that `ssl` or `sslmode` there changes the transport (rows D1, D7, D8).
+1. Search your `jdbcConnectionProperties` for `custom_` keys, for `decompress=true`, and for any expectation that `ssl` or `sslmode` there changes the transport (rows D1, D7, D8). On client V2 (`client_version` set to a value other than `V1`), `ssl` and `sslmode` never changed the transport. On client V1 they are read from the connection URL and must stay (read from the code: `ClickHouseHelperClient.createClientV1`; what the V1 artifacts of `0.11.0` do with them was not audited).
 2. If you set `compress=true` together with `setCompressionMethod=false`, check the worker's platform and its temp folder first (row D9).
-3. Review `retryOnSocketException` and your log alerts against rows D3 and D6, and proxy rules against row D5.
+3. On client V2, review `retryOnSocketException` and your log alerts against rows D3 and D6, and proxy rules against row D5; those rows were measured or read for client V2.
 
 ## E. Dependencies, release identity and rollback
 

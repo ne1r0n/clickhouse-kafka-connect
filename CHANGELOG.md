@@ -16,13 +16,16 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   (derived from Kafka consumer-group semantics, not measured). The fix needs a Connect runtime whose `SinkRecord` has
   `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset()`, and it is fork-only while upstream issue
   777 stays open (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/777).
-* The ClickHouse Java client moves from `0.9.6` to `0.11.0`. What an operator can see:
-  * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the V2 transport; they are now ignored with a WARN
-    that names them.
-  * Error 159 (`TIMEOUT_EXCEEDED`) is still retriable, but the client no longer retries it itself.
-  * A 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is `false`, so the task
-    fails as before.
-  * The `User-Agent` and some log texts change: update proxy rules and log alerts that match them.
+* The ClickHouse Java client moves from `0.9.6` to `0.11.0`. A connector runs client V2 only when `client_version` is
+  set to a value other than `V1`; the bullets below say "client V2" where they hold only there, and what the move
+  changes in the client V1 artifacts was not audited beyond what the rollout note's section D states for client V1.
+  What an operator can see:
+  * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the client V2 transport; they are now ignored with
+    a WARN that names them. On client V1 they are read from the connection URL and must stay.
+  * On client V2, error 159 (`TIMEOUT_EXCEEDED`) is still retriable, but the client no longer retries it itself.
+  * On client V2, a 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is
+    `false`, so the task fails as before.
+  * On client V2, the `User-Agent` and some log texts change: update proxy rules and log alerts that match them.
   * On client V2 (`client_version` set to a value other than `V1`), keys that start with `custom_` in
     `jdbcConnectionProperties` are now forwarded to the server, which rejects them, so the task fails at start.
     Client V1, which a connector runs when it does not set `client_version`, is not affected. Search every connector
@@ -30,9 +33,9 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   * `zstd-jni` natives ship for linux/amd64, linux/aarch64 and darwin/aarch64 only. Only a connector that takes the ZSTD
     path (`compress=true` with `setCompressionMethod=false`, or `decompress=true`) is affected; the default
     configuration does not load the native (measured in the maintainers' research, not re-run).
-  * The client no longer sets 804800-byte socket buffers; the operating system auto-tunes them.
-  * A batch replayed across the upgrade is byte-identical on the wire for the compared type matrix, so no clean stop is
-    needed for it.
+  * On client V2, the client no longer sets 804800-byte socket buffers; the operating system auto-tunes them.
+  * On client V2, a batch replayed across the upgrade is byte-identical on the wire for the compared type matrix, so no
+    clean stop is needed for it. A client V1 connector with `exactlyOnce=true` is not covered by that comparison.
 * New `additionalRetriableErrorCodes` setting, from upstream's tail (see Improvements). A code listed there is
   redelivered with no retry budget and outside `errors.tolerance` and the DLQ, so only transient codes belong in it.
 * `lz4-java` moves from `1.12.0` to `1.12.1`, a security release (`GHSA-48mj-8f7c-7qfm`), and `zstd-jni` `1.5.7-23` is
