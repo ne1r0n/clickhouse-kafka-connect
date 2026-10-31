@@ -29,7 +29,7 @@
 | E-14 | ADV-02 | 37-04 | pass |
 | E-15 | ADV-02 | 37-04 | pass |
 | E-16 | ADV-01, ADV-02 | 37-05 | pass |
-| E-17 | ADV-02, ADV-03 | 37-05 | pending (plan 37-05) |
+| E-17 | ADV-02, ADV-03 | 37-05 | pass |
 | E-18 | CIH-01 to CIH-05, ADV-01 to ADV-03 | 37-05 | pending (plan 37-05) |
 
 ### E-01: Pre-flight: origin re-read, Phase 36 complete, baselines on the untouched tree
@@ -1045,5 +1045,45 @@ hygiene_scan: clean
 The ledger holds 36 rows for the 29 base findings (7 of Phase 30, 6 of Phase 31, 16 of the Phase 29 close record; seven findings are split into lettered rows with one status each). Fifteen rows are fixed and three closed, each with a pointer that resolves in git and lies in this phase's history except 25 IN-04 (d), whose pointer `496de32a` is the Phase 30 commit that closed it; eighteen rows are dispositions with an owner and a re-open trigger (owner `fork maintainer (the user)` except 30 IN-04, owner Phase 38). The four `src/main` findings (26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01) are dispositioned because the user has not approved a `src/main` change in this phase, and the four in-plan dispositions of plan 37-04 are carried: the classpath half of 25 WR-02, the live half of 28 IN-04, the null assertion of 28 IN-05 (owner the user, because tightening it changes an existing assertion) and the stale class name of 27 IN-02. The 25 WR-02 (a) and 28 IN-04 (a) rows read `fixed` because E-14 `derive_decision` and E-15 `bell_pin` both read `committed`, and their pointers equal E-14 `derive_commit` and E-15 `pin_commit`. The ledger is committed on its own, before this entry, because an entry cannot name the commit that carries it; the plan's single ledger-and-evidence commit is therefore two commits, the ledger first (`ledger_commit`) and this evidence second.
 
 2026-10-31T09:42:30Z
+
+Verdict: pass
+
+### E-17: The release record: the real v1.7.0_gg5 release as measured, the stated deviation, the carried items and the handoffs
+
+Backs: ADV-03, ROADMAP Phase 37 criterion 5 (with its wording deviation, O-6), threat T-37-18; the items carried outside the 29 rows (UF-36-4, F-1 to F-3) by disposition.
+
+```sh
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py get .planning/phases/37-ci-hardening-advisory-debt/37-COMMAND-EVIDENCE.md E-08 <key>
+grep -qF 'created_by_workflow_run: no' .planning/phases/37-ci-hardening-advisory-debt/37-RELEASE-RECORD.md
+grep -qF 'publish_path_exercised: no' .planning/phases/37-ci-hardening-advisory-debt/37-RELEASE-RECORD.md
+grep -qF 'Deviation from the ROADMAP wording' .planning/phases/37-ci-hardening-advisory-debt/37-RELEASE-RECORD.md
+grep -qF 'The caveat stays open until Phase 38' .planning/phases/37-ci-hardening-advisory-debt/37-RELEASE-RECORD.md
+grep -ciE 'caveat (is )?closed|publish path (was|is) exercised' .planning/phases/37-ci-hardening-advisory-debt/37-RELEASE-RECORD.md
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-hygiene-check.py .planning/phases/37-ci-hardening-advisory-debt/37-RELEASE-RECORD.md
+git commit -F /tmp/gsd37/exec/msg-p5-handoff.txt
+```
+
+```text
+record_file: .planning/phases/37-ci-hardening-advisory-debt/37-RELEASE-RECORD.md
+findings_stated: yes
+deviation_stated: yes
+closing_phrase_count: 0
+caveat_not_closed: yes
+values_match_e08: yes
+release_id_read: 426690002
+asset_digest_read: sha256:4c69b6fb3b22ab8f7c329383079cc284d3d2e0ae497f3ffb2f0114d171bc6767
+run_ids_read: 40474419526 40693904004 40296481765
+carried_items: 4
+handoff_items: 6
+header_comment_item: recorded as an open item with owner the fork maintainer (the user) and trigger the next edit of increment-version.yml; Phase 38 may not edit .github/
+handoff_figures_commit: 325348775e9ee52742d0585cc41b5f414db5127b
+handoff_figures_now: 208 commits up to the gated sha; 85 changed files outside .planning (7501 insertions, 607 deletions)
+e12_state_in_record: pending, expected RED, never counted as a pass
+hygiene_scan: clean
+```
+
+The record repeats the E-08 values (release id, asset id, name, size and digest, tag commit and parents, the three `release.yaml` runs and the green `tests.yaml` run) and quotes the keys `created_by_workflow_run: no` and `publish_path_exercised: no`. It states that no workflow run created the release, quotes the ROADMAP wording of criterion 5 that the facts do not meet, and says that the caveat stays open until Phase 38 publishes through `release.yaml` from `custom_build`; the verify phrases that would close it count 0. UF-36-4 (with the zstd VERSION row) and F-1 to F-3 are carried by disposition with an owner and a re-open trigger, and six numbered handoffs go to Phase 38. The open item of the `increment-version.yml` header comment (it names `ReleaseWorkflowGuardUnitTest`, the pinning class is `IncrementVersionWorkflowGuardUnitTest`) is recorded with its trigger and an honest owner: fixing it edits a workflow, plan 37-05 may not do that and Phase 38 may not edit `.github/`, so it stays with the user. The handoff `37-USER-DISPATCH-DRYRUN.md` had stale commit and file figures from plan 37-03 (198 commits, 75 files); a separate commit (`handoff_figures_commit`) refreshed them, and its reference to the gated sha stays valid because plan 37-05 makes no commit outside `.planning`. The dry run (E-12) is still pending with the user and is not counted as a pass.
+
+2026-10-31T09:45:30Z
 
 Verdict: pass
