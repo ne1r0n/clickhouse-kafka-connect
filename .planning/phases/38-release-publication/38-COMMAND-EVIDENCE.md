@@ -32,7 +32,7 @@
 | E-16 | RLS-05 | 38-05 | pending (user-gated) |
 | E-17 | RLS-05 | 38-05 | pending (user-gated) |
 | E-18 | RLS-05 | 38-05 | pending (user-gated) |
-| E-19 | RLS-01 to RLS-06 | 38-05 | pending (plan 38-05) |
+| E-19 | RLS-01 to RLS-06 | 38-05 | pass |
 
 ### E-01: Pre-flight: origin and pull requests re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1176,3 +1176,59 @@ The document has the sections Status, What you decide, Before you push or Before
 2026-10-31T18:33:24Z
 
 Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-19: The phase closes locally: RLS-01 to RLS-04 and RLS-06 satisfied, RLS-05 pending with the user's steps, nothing pushed
+
+Backs: RLS-05 and the closure shape (O-6): the phase closes locally when plans 38-01 to 38-05 are executed and gated; `38-LOCAL-CLOSE-RECORD.md` states the requirement status with its evidence, the wording changes the orchestrator applies, the carried items with owner and re-open trigger, and the review and verification facts that are not proven. RLS-05 and ROADMAP criterion 5 stay pending and human-gated until E-20 to E-27 are recorded.
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*'
+git ls-remote --tags origin 'v1.7.0_gg6*'
+git ls-remote --tags origin 'pre-v1.7.0_gg6'
+git tag -l 'v1.7.0_gg6'
+git diff --name-only <local_head> HEAD -- . ':(exclude).planning'
+git diff --name-only <local_head> HEAD -- .planning/scripts
+git diff --quiet <local_head> HEAD -- src build.gradle.kts settings.gradle.kts gradle .github
+git diff --quiet <local_head> HEAD -- .planning/ROADMAP.md .planning/REQUIREMENTS.md
+git diff --quiet ea613ec35ebade7a2182cac4e6ecd5d86d099def HEAD -- . ':(exclude).planning'
+git diff --quiet ea613ec35ebade7a2182cac4e6ecd5d86d099def HEAD -- .planning/scripts
+git diff --name-only --diff-filter=A <local_head> HEAD
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py <every file added since the phase start>
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict <the files added under the phase directory> <the added lines of the modified documents> docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets .planning/phases/38-release-publication/38-LOCAL-CLOSE-RECORD.md
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git worktree list
+git log --format='%h %s' <local_head>..HEAD
+```
+
+```text
+local_complete: yes
+requirements_status: RLS-01=satisfied; RLS-02=satisfied; RLS-03=satisfied; RLS-04=satisfied; RLS-05=pending; RLS-06=satisfied
+pending_user_steps: U1; U2; U3; U4; U5
+wording_changes_listed: 11
+carried_items_listed: 18
+origin_custom_build_final: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+nothing_pushed: yes
+no_gg6_tag_anywhere: yes
+pre_tag_local_only: yes
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg5.md; docs/ROLLOUT-v1.7.0_gg6.md
+scope_planning_scripts: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt; .planning/scripts/fork-anchors.txt
+no_protected_change: yes
+roadmap_requirements_unchanged: yes
+tip_equals_gate_outside_planning: yes
+index_rows: E-01..E-19 present; E-15..E-18 pending
+hygiene_scan_all: clean
+secrets_scan: clean
+worktrees_clean: yes
+anchors_mirror: rows=172 bad=0
+close_commit: 5c7f51a7538eaf627af1ce864a098e16765db888
+final_head: 5c7f51a7538eaf627af1ce864a098e16765db888
+phase_commits: 5c7f51a7 docs(38-05): the local close record: requirement status, wording changes, carried items (RLS-05); e65fb537 docs(38-05): record the four pending handoffs (E-15 to E-18); de51a8c8 docs(38-05): the user-run handoffs U1 to U5 and the orchestrator runbook (RLS-05); d4749271 docs(38-05): record the publication rehearsal (E-14); 36dd3f8a docs(38-05): the merge message and the approval bundle for the user-run publication (RLS-05); b0ab8c7b docs(38-04): summary of the allow-list and the release gates (RLS-03, RLS-06); 048a9ba2 docs(38-04): gate the release tip with two full suites (E-13); 3f195713 docs(38-04): gate the release tip without Docker (E-12); ea613ec3 docs(38-04): record the allow-list (E-11); cc928221 release(38-04): the v1.7.0_gg6 archive allow-list, generated from the final tree (RLS-03); ae71d671 docs(38-03): summary of the independent review (RLS-04); d9d8d41b docs(38-03): record the frozen documents (E-10); 5031bb00 docs(38-03): disposition every Phase 38 review finding (RLS-04); a06428f7 docs(38-03): record the review rounds (E-09); 927ac07c docs(38-03): IN-15 say that a chunk skipped under tolerateStateMismatch logs a WARN; fd8b8575 docs(38-03): IN-14 bound the exactly-once reload to include the chunk of the stored range and name the other first-chunk cases; 4a33d9ad docs(38-03): review round 12 of the release documents (RLS-04); 663105b4 docs(38-03): allow up to twelve review rounds in the review checker (user-authorised extra round); 8c20804d docs(38-03): sweep bound the exactly-once reread outcomes to a connector with stored state and to where the reread starts; 0e25bb5f docs(38-03): sweep say that a later restart resumes from the committed offset, with the records flushed after the last commit possibly delivered again; 99757d2d docs(38-03): WR-28 state that an exactly-once reread from offset 0 reloads the retained topic without a failure; dfbbe5b4 docs(38-03): WR-27 limit the revocation change to a topic-changing SMT and state the offset-only and partition-only cases as read from the code; 0a0ab81d docs(38-03): review round 11 of the release documents (RLS-04); dd023c41 docs(38-03): allow up to eleven review rounds in the review checker (user-authorised extra round); cd7183b1 docs(38-03): IN-13 say what the revocation call removes: map entries only, never a state record; 73ef2e6f docs(38-03): WR-26 cover an SMT that changes only the partition or the offset and move the partition-changing limit to the not-characterised list; 50104166 docs(38-03): WR-25 bound the first-start reread by exactlyOnce and label what the connector does with it as read from the code; 3330b185 docs(38-03): WR-24 state the revocation change under a rename in B1, the rollback list, the CHANGELOG and FORK-DELTA, not among the unchanged items of B5; 97be60ba docs(38-03): WR-23 bound the commit sentences to a rename target that is not an input topic and list the rename onto an input topic as not characterised; 418908fd docs(38-03): review round 10 of the release documents (RLS-04); c085c308 docs(38-03): allow up to ten review rounds in the review checker (user-authorised extra round); 2e1ad498 docs(38-03): sweep scope the state-removal limit to a renamed topic and tidy the carried-limit wording; 17aaa713 docs(38-03): sweep scope 'nothing was committed' to the partitions of the renamed topics; 3d664af2 docs(38-03): IN-12 scope 'commits nothing' to the partitions of the renamed topics; 58fdadc3 docs(38-03): WR-22 scope the unbuffered-path claim to offset selection and name the changed insert-path files; 9e5afc41 docs(38-03): WR-21 separate the unchanged offsets from the new accessor requirement for every buffered connector; f8f1507c docs(38-03): review round 9 of the fixes (RLS-04); 02b72f81 docs(38-03): allow up to nine review rounds in the review checker (user-authorised extra round); 6dfd9202 docs(38-03): sweep define state record, state key, KeeperMap row schema and BEFORE/AFTER on first use; 897c0baf docs(38-03): sweep gloss preCommit on first use; 046aebcf docs(38-03): sweep define SMT on first use; 4c765423 docs(38-03): WR-20 define the Direct path as the unbuffered path and state each limit's scope; b4550087 docs(38-03): WR-19 label the worker-image javap check measured in research (not re-run); c2d8d28b docs(38-03): review round 8 of the fixes (RLS-04); b060274a docs(38-03): allow up to eight review rounds in the review checker (user-authorised extra round); 26056ca1 docs(38-03): IN-11 define the client V1 insert path value of the Applies when column; 6d3dafdb docs(38-03): review round 7 of the fixes (RLS-04); 66792125 docs(38-03): allow up to seven review rounds in the review checker (user-authorised extra round); 667cfe21 docs(38-03): IN-10 split the section D scoping paragraph into a six-item list; 3e27f23c docs(38-03): WR-18 carry the unmapped-key WARN text change to row D6, step 5 and client step 3; 3e007c51 docs(38-03): review round 6 of the fixes (RLS-04); 3b1b90cb docs(38-03): allow up to six review rounds in the review checker (user-authorised extra rounds); 6595c5e9 docs(38-03): WR-17 scope the ZSTD path condition to client V2 and say the client V1 route was not verified; 2ff65bb2 docs(38-03): WR-16 state that the per-insert ssl and sslmode WARN on client V1 already held on 0.9.6 and only its text changes; 04b7c299 docs(38-03): review round 5 of the fixes (RLS-04); e00a0682 docs(38-03): scope the user agent tail in the release identity section to client V2; e00026fe docs(38-03): WR-15 scope the insert-timeout limit to client V2 and state that a client V1 insert has no insert timeout; 93db97f8 docs(38-03): WR-14 state that a client V1 connector builds a client V2 object with every insert and count the unclosed helper clients; 4ef5f17e docs(38-03): review round 4 of the fixes (RLS-04); 45defb53 docs(38-03): IN-09 state that every connector builds a client V2 object, so row D1 reaches client V1 connectors; 3d55172c docs(38-03): WR-13 scope the statements that hold only on client V2 to client V2 and state the client V1 situation as far as the code supports; 593fb972 docs(38-03): review round 3 of the fixes (RLS-04); 266d157e docs(38-03): IN-08 scope row D14 to the client V1 insert path; 292c82d3 docs(38-03): WR-12 release-process sentences state conditions, not outcomes, of the release object; b0edab5a docs(38-03): WR-11 labels of rows B1, B8 and D7 name only what the phase ran; ed11c7ff docs(38-03): WR-10 state the Direct-path limit with its exception in the CHANGELOG and FORK-DELTA; 07101993 docs(38-03): review round 2 of the fixes (RLS-04); 21d70b07 docs(38-03): IN-07 FORK-DELTA states the gg6 allow-list as a plan, not a fact; e9d7796e docs(38-03): IN-06 CHANGELOG zstd-jni bullet says who is affected; a987e97c docs(38-03): IN-05 say what a chosen reset position costs; 299a6fed docs(38-03): IN-04 row D7 says its forwarding probe is not in the repository; 8185099d docs(38-03): IN-03 the carried limits use the defined labels instead of observed; 08acd104 docs(38-03): IN-02 state the Direct-path condition and the partition-changing SMT limit; 51dcf7cf docs(38-03): IN-01 row B1 names the red run behind its before claim; 00ed58ff docs(38-03): WR-09 give FORK-DELTA item 12 an owner and publish items 12 to 23; f1e32844 docs(38-03): WR-08 FORK-DELTA no longer says client V1 of any line; 59afabb1 docs(38-03): WR-07 give the Connect accessor check and the evidence for the floor; c01224a8 docs(38-03): WR-06 the rollback list says what happens to the group's offsets; 0d984e53 docs(38-03): WR-05 the rollback list names the lz4-java reversal; cc3f119d docs(38-03): WR-04 the gg5 note no longer says no release exists; a8d05b43 docs(38-03): WR-03 a custom_ key fails the start-up ping, not the rows; ccdd14df docs(38-03): WR-02 say which client rows apply to client V1 and client V2; 63d51d56 docs(38-03): WR-01 scope the custom_ upgrade item to client V2; 020fc9fe docs(38-03): record review round 1 (E-08); cdbdbbd7 docs(38-03): review round 1 of the release documents (RLS-04); 83026266 docs(38-02): complete the rollout note plan; fda39e17 docs(38-02): record the complete rollout note (E-07); 7112974f docs(38-02): rollout note part 2: client 0.11.0, identity and rollback, carried limits; correct the gg5 asset sentence (RLS-02); d3bf1885 docs(38-02): record the rollout note part 1 (E-06); 3c1f0031 docs(38-02): rollout note part 1: frame, labels, buffered offsets and additionalRetriableErrorCodes (RLS-02); 174d5682 docs(38-02): re-measure the cheap rollout-note rows locally (E-05); 80225b72 docs(38-01): complete the version bump, CHANGELOG and FORK-DELTA plan; 64040101 docs(38-01): record the FORK-DELTA pass (E-04); 21697379 docs(38-01): final FORK-DELTA pass for v1.7.0_gg6: gg6 sentences, stale forward references, refreshed raw numbers, open items (RLS-01); 180ac6aa docs(38-01): record the CHANGELOG section (E-03); fdf3be31 docs(38-01): write the 1.7.0_gg6 CHANGELOG section and absorb upstream's Unreleased entry (RLS-01); 4b252aaa docs(38-01): record the VERSION bump tracer (E-02); 70bf8108 release(38-01): bump VERSION to v1.7.0_gg6 with its anchors row (RLS-01); 0a9599f6 docs(38-01): open the Phase 38 evidence: pre-flight, helpers and the premise re-read
+```
+
+The verdict is pass for the local gate only: it says that everything an agent may do is done, not that the release exists. RLS-05 is pending and human-gated; the five user steps (U1 and U2, U3, U4, U5) and the orchestrator's steps are in `38-ORCHESTRATOR-RUNBOOK.md`, and no handoff entry (E-15 to E-18) was counted as passed. The wide hygiene scan used the default mode over the 17 files added since the phase start; the strict mode ran over the 15 files added under the phase directory (helper scripts excluded), over the added lines of CHANGELOG.md, VERSION, docs/FORK-DELTA.md and docs/ROLLOUT-v1.7.0_gg5.md, and over docs/ROLLOUT-v1.7.0_gg6.md. The key `phase_commits` lists every commit of the phase up to the close record; the evidence commits that follow it are not in it. The wording of the ROADMAP and REQUIREMENTS changes is listed in the close record; this plan edited neither file.
+
+2026-10-31T18:36:05Z
+
+Verdict: pass
