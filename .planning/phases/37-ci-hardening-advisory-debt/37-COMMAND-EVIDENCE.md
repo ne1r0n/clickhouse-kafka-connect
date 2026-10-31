@@ -27,7 +27,7 @@
 | E-12 | CIH-04 | 37-03 | pending (user-gated) |
 | E-13 | ADV-01 | 37-04 | pass |
 | E-14 | ADV-02 | 37-04 | pass |
-| E-15 | ADV-02 | 37-04 | pending (plan 37-04) |
+| E-15 | ADV-02 | 37-04 | pass |
 | E-16 | ADV-01, ADV-02 | 37-05 | pending (plan 37-05) |
 | E-17 | ADV-02, ADV-03 | 37-05 | pending (plan 37-05) |
 | E-18 | CIH-01 to CIH-05, ADV-01 to ADV-03 | 37-05 | pending (plan 37-05) |
@@ -936,5 +936,68 @@ hygiene_scan: clean
 `ConfluentArchiveCheck.Result` gained the third component `libJarNames` (the entry names counted as lib jars, in discovery order); `run` prints one extra stderr line after the header and before the listed violations only when that list does not hold exactly one name: `lib jars found: <names joined by ", ">; a version directory left under build/confluentArchive by an earlier VERSION adds a jar, run clean first`. The line is also printed when no jar is found (the names are then empty). The existing tests read `violations()`, `innerEntries()`, the header and the 20-line listing of a one-jar archive, so none changed; the new CI-20 test reads the header, the unchanged `found 2` line and the new line with both jar names and the word `clean` (executions 6 to 7). The derivation measurement: in a throwaway worktree of the plan's start tip, the lookup that walks the superclass chain and then the interfaces now returns the declaring type, and a member that no type on either walk declares is collected and reported together by one `IllegalStateException` (the member declared by a non-Kafka type is still no entry). It differs from the plan's wording only in structure: the lookup returns the type or an empty result and the caller collects the unresolved members, instead of the lookup throwing and the caller catching, so that the class-load failure of the existing code is not caught by mistake. The run was green with zero unresolved members (`derive_unresolved: 0`), so by the plan's rule the same change was applied in the main tree, the class stayed green with its three executions, and it was committed. The second half of the row (the derivation resolves members on the test classpath, whose Kafka version can differ from the compile pin) is a disposition either way and was not touched. The Spotless numstat of the three edited existing files is empty before and after (the edited copies were staged in the detached worktree before Spotless ran, as in E-13). The typo fix changes one line of `.gitignore`. The cumulative assertion diff printed nothing.
 
 2026-10-31T09:36:18Z
+
+Verdict: pass
+
+### E-15: The bell pin, the closed helper clients, the 27 IN-02 re-read, the cumulative assertion diff and the plan gate
+
+Backs: ADV-02; 28-REVIEW IN-04 (a) and IN-05 (close half), 27-REVIEW IN-02 (re-read), and the plan gate of 37-04; threat T-37-14.
+
+```sh
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+git -C /tmp/gsd37/w/fmt diff --numstat -- <ColumnTest.java and DescribeUnreadableEnumMockServerTest.java>
+git worktree remove --force /tmp/gsd37/w/fmt
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ColumnTest' --tests '*DescribeUnreadableEnumMockServerTest' > /tmp/gsd37/exec/t3-run.log 2>&1
+git commit -F /tmp/gsd37/exec/msg-p4-pin.txt
+grep -c 'JsonAsStringKeyResidualLiveTest' docs/FORK-DELTA.md CHANGELOG.md
+git diff -w -U0 {L0} HEAD -- src/test src/integrationTest src/testFixtures
+git diff --quiet {L0} HEAD -- src/main
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd37/exec/testunit-plan04.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+```
+
+```text
+bell_pin: committed
+bell_observed: both inputs gave the map of the key a, U+0007, b to 1 and z to 2
+bell_live_half: dispositioned
+columntest_before: 50
+columntest_after: 51
+close_helper: try-with-resources
+describe_before: 2
+describe_after: 2
+null_assertion: unchanged, dispositioned
+intro_reads_current: yes
+class_name_stale: yes
+rename_cost: 4
+spotless_numstat_baseline: DescribeUnreadableEnumMockServerTest 6/8; ColumnTest 5/7
+spotless_numstat_edited: DescribeUnreadableEnumMockServerTest 6/8; ColumnTest 5/7
+spotless_hunks_touch_additions: no
+t3_exit: 0
+t3_junit: OK junit build/test-results/testUnit: tests=53 failures=0 errors=0 skipped=0 files=2
+assertion_diff_cumulative: clean
+src_main_unchanged: yes
+hygiene_scan: clean
+pin_commit: 1c583b46249ab9bd30ff717c256c7f583c4f0ed9
+pin_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumMockServerTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/ColumnTest.java
+plan_testunit_exit: 0
+plan_testunit_tests: 1633
+plan_testunit_failures: 0
+plan_testunit_errors: 0
+plan_testunit_skipped: 2
+plan_testunit_delta_since_e04: 94
+plan_additions_sum: 94
+plan_additions_detail: compare 27 + baseline 19 + release guard 34 + pin guard 5 + summary script 5 + bytes guard 2 + archive check 1 + columntest 1
+anchors_mirror_main: rows=172 bad=0
+pin_classes_unchanged_except_additions: yes
+pin_class_tallies: FailedTestsSummaryScriptUnitTest 13; UpstreamIntegrationWorkflowBytesGuardUnitTest 11; ConfluentArchiveCheckUnitTest 7; ConnectApiReferencesUnitTest 3; ColumnTest 51; DescribeUnreadableEnumMockServerTest 2; TestsWorkflowPinGuardUnitTest 44
+fmt_worktree_removed: yes
+```
+
+The bell pin was committed: the code path gives the measured key for both inputs. A label text with a backslash and `u0007` (the JSON layer as the DESCRIBE row carries it) is decoded once by the JSON-layer step and a label text holding the raw character U+0007 (as `system.columns.type` holds it) has no backslash and is scanned as it is, so both give the key of the letter a, the bell, and the letter b. The live half of the row (an entry for the four characters in the shared raw-name matrix needs a Docker run and an edit of that matrix) stays a disposition. `DescribeUnreadableEnumMockServerTest` now closes the helper client by try-with-resources in its shared helper; the two assertion lines and the two calls from the tests are unchanged (only their indentation moved), and the null assertion is not tightened, because that edit would change an assertion and needs the user's sign-off, so it stays a disposition. The Spotless numstat of both edited files equals the baseline taken on the pristine tree (6/8 and 5/7, pre-existing import-order hunks), and the diff of both shows hunks only in the import blocks and the file end, none in the added lines. The 27 IN-02 re-read of `JsonAsStringKeyResidualLiveTest`: its Javadoc intro says the key must reach none of the destinations an operator reads (the task status cause chain, the DLQ headers, the `Error inserting records` throwable and the `Error writing value of` line), which is the present behaviour; the class name still says `Residual`, which is the stale part, and four lines of `docs/FORK-DELTA.md` (none of `CHANGELOG.md`) name the class, so the finding's own alternative, to accept the stale name, is what plan 37-05 dispositions. No edit was made to that file. The cumulative diff from `local_head` of the removed or changed lines that hold `assert`, `fail(` or `expect` printed nothing, and `src/main` is unchanged. The plan-level cache-busted `testUnit` ran 1633 tests with 0 failures, 0 errors and 2 skipped (the E-01 baseline skips), 94 more than the 1539 of E-04, which is exactly the sum of the executions added by plans 37-02 to 37-04: 27 compare, 19 baseline tag, 34 release guard, 5 pin guard, 5 summary script, 2 bytes guard, 1 archive check and 1 column test. No OpenJ9 crash file appeared.
+
+2026-10-31T09:38:23Z
 
 Verdict: pass
