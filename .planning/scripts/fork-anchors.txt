@@ -198,3 +198,4 @@ src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java	r
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(endpoint)	1	CLT-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(url)	0	CLT-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setOption(IGNORE_UNKNOWN_CONFIG_KEY, "true");	1	CLT-03
+.gitattributes	.github/workflows/integrationTests.yaml -text	1	ADV-01

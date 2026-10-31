@@ -11,6 +11,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,10 @@ class UpstreamIntegrationWorkflowBytesGuardUnitTest {
                     + " synced upstream tag for TAG) and replace EXPECTED_SHA256 and EXPECTED_LENGTH in"
                     + " the same commit";
 
+    private static final Path GITATTRIBUTES = Path.of(".gitattributes");
+    private static final String WORKFLOW_PATH = ".github/workflows/integrationTests.yaml";
+    private static final String NO_CONVERSION_LINE = WORKFLOW_PATH + " -text";
+
     private static final String FIRST_BYTE_FLIPPED = "the first byte flipped";
     private static final byte FLIP_MASK = 0x01;
 
@@ -68,6 +73,23 @@ class UpstreamIntegrationWorkflowBytesGuardUnitTest {
                         + found
                         + "; "
                         + UPDATE_PROCEDURE);
+    }
+
+    // The byte rule above reads raw bytes, but a clone with autocrlf or a text attribute could still
+    // convert the checked-out file, so the attributes file must keep the workflow out of conversion.
+    static Optional<String> gitattributesProblem(List<String> lines) {
+        List<String> aboutWorkflow =
+                lines.stream().map(String::strip).filter(line -> line.startsWith(WORKFLOW_PATH)).toList();
+        if (aboutWorkflow.equals(List.of(NO_CONVERSION_LINE))) {
+            return Optional.empty();
+        }
+        return Optional.of(
+                ".gitattributes must hold exactly one line for "
+                        + WORKFLOW_PATH
+                        + ", the line '"
+                        + NO_CONVERSION_LINE
+                        + "', so the upstream-identical workflow is never converted; found "
+                        + aboutWorkflow);
     }
 
     private static byte[] flipped(byte[] bytes, int index) {
@@ -124,5 +146,36 @@ class UpstreamIntegrationWorkflowBytesGuardUnitTest {
         assertTrue(message.contains(EXPECTED_SHA256), message);
         assertTrue(message.contains(sha256Hex(edited)), message);
         assertTrue(message.contains("replace EXPECTED_SHA256"), message);
+    }
+
+    @Test
+    @DisplayName("ADV-01: .gitattributes keeps integrationTests.yaml out of line-ending conversion")
+    void gitattributesKeepsTheWorkflowOutOfLineEndingConversion() throws IOException {
+        gitattributesProblem(Files.readAllLines(GITATTRIBUTES, StandardCharsets.UTF_8))
+                .ifPresent(problem -> fail(problem));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: the attributes rule rejects a missing, commented-out or converting line and accepts"
+                    + " the real shape (ADV-01)")
+    void attributesRuleRejectsEveryOtherShapeAndAcceptsTheRealOne() {
+        List<String> other = List.of("*.bat text eol=crlf", "");
+        assertTrue(gitattributesProblem(other).isPresent(), "must reject a list without the line");
+        assertTrue(
+                gitattributesProblem(List.of("# " + NO_CONVERSION_LINE)).isPresent(),
+                "must reject the line commented out");
+        assertTrue(
+                gitattributesProblem(List.of(WORKFLOW_PATH + " text")).isPresent(),
+                "must reject text instead of -text");
+        assertTrue(
+                gitattributesProblem(List.of(WORKFLOW_PATH + " text eol=crlf")).isPresent(),
+                "must reject text eol=crlf instead of -text");
+        assertTrue(
+                gitattributesProblem(List.of(NO_CONVERSION_LINE, WORKFLOW_PATH + " text")).isPresent(),
+                "must reject a later line that turns conversion back on");
+        assertTrue(
+                gitattributesProblem(List.of("*.bat text eol=crlf", "", NO_CONVERSION_LINE)).isEmpty(),
+                "must accept the real shape");
     }
 }
