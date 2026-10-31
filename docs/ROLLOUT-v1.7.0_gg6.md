@@ -236,6 +236,7 @@ Rolling back brings back:
 - row B1 reversed: with a topic-changing SMT and `bufferCount > 0`, offsets are again keyed by the renamed topic (section B);
 - rows D1 to D10 reversed: client `0.9.6`, with its retry cadence, error shapes, `User-Agent`, log texts, socket buffers and the quiet handling of `custom_` keys (section D);
 - row E1 reversed: `lz4-java` goes back to `1.12.0`, the version before the security release of that row (`GHSA-48mj-8f7c-7qfm`); weigh that before you roll back for a reason that has nothing to do with the client or the offsets (section E);
+- row B2 applies again to a buffered connector under a topic-changing SMT: the `v1.7.0_gg5` archive commits nothing for those partitions, so the group's committed offset stays at the last offset that `v1.7.0_gg6` committed. A later restart or rebalance on `v1.7.0_gg5` resumes from that offset and rereads what was loaded since (a duplicate load for a table without deduplication), and a group that stays empty can lose even that offset (row B4). This follows the reasoning of rows B2 to B4 and carries the label `derived from Kafka consumer-group semantics (not measured)`; no broker ran for it. Run the describe command of section B before and after a rollback, and decide with the try-first caution of its step 2 whether to reset the offsets;
 - the `additionalRetriableErrorCodes` setting is not known to the older connector, so a configuration that sets it has no effect (section C);
 - on the branch, the `v1.7.0_gg6` documents are gone, this note included.
 
