@@ -70,10 +70,17 @@ class ClientEndpointAndOptionsPinUnitTest {
     }
 
     @Test
-    @DisplayName("CLT-03: an operator's ignore_unknown_config_key=false in jdbcConnectionProperties makes a V1-only key fail the build")
-    void operatorIgnoreFlagWins() {
-        ClientMisconfigurationException e = assertThrows(
-                ClientMisconfigurationException.class, () -> insertOnce("?" + IGNORE_KEY + "=false&ssl=true"));
-        assertTrue(e.getMessage().contains("ssl"), e.getMessage());
+    @DisplayName("CLT-03: an operator's ignore_unknown_config_key=false in jdbcConnectionProperties makes a V1-only key fail the build on 0.11.0 and only warn on 0.9.6")
+    void operatorIgnoreFlagWins() throws Exception {
+        String properties = "?" + IGNORE_KEY + "=false&ssl=true";
+        if (ClientErrorShapes.line() == ClientErrorShapes.Line.V0_11_0) {
+            ClientMisconfigurationException e =
+                    assertThrows(ClientMisconfigurationException.class, () -> insertOnce(properties));
+            assertTrue(e.getMessage().contains("ssl"), e.getMessage());
+        } else {
+            // 0.9.6 only warns about an unknown key, whatever the flag says, so the client is built and inserts.
+            StubClickHouseServer.Request request = insertOnce(properties);
+            assertEquals("/", URI.create(request.rawUri()).getPath());
+        }
     }
 }
