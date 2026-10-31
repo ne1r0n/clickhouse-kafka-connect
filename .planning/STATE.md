@@ -4,16 +4,16 @@ milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
 current_phase: 37
 current_phase_name: CI Hardening & Advisory Debt
-status: planning
+status: executing
 stopped_at: Phase 36 complete, ready to plan Phase 37
-last_updated: "2026-10-31T07:56:00.466Z"
+last_updated: "2026-10-31T08:50:18.769Z"
 last_activity: 2026-10-31
-last_activity_desc: Phase 36 complete, transitioned to Phase 37
-state_head: 913749132ef65c57b5372068ba0f1fa7c479016e
+last_activity_desc: Phase 37 execution started
+state_head: c9d426aedd2021c413fbb35eb03bdc32865a6727
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 13
+  total_plans: 18
   completed_plans: 13
   percent: 67
 ---
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 36 — Client 0.11.0 Audit & Bump
+**Current focus:** Phase 37 — CI Hardening & Advisory Debt
 
 ## Current Position
 
-Phase: 37 — CI Hardening & Advisory Debt
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-31 — Phase 36 complete, transitioned to Phase 37
+Phase: 37 (CI Hardening & Advisory Debt) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 37
+Last activity: 2026-10-31 — Phase 37 execution started
 
 Progress: [███████░░░] 67%
 
