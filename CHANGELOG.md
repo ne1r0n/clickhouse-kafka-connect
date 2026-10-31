@@ -15,8 +15,11 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   topics, for a rename whose target is not another input topic (the rollout note lists what it does not characterise, a
   rename onto an input topic among it; the second half follows from Connect's offset contract and was not measured). The
   first start after the upgrade resumes at the group's committed offset, or at the position `auto.offset.reset` selects,
-  and can reread a retained topic once (derived from Kafka consumer-group semantics, not measured). Every buffered
-  connector, renamed or not, now needs a Connect runtime whose `SinkRecord` has `originalTopic()`,
+  and can reread a retained topic. With `exactlyOnce=false` that loads what the table already holds a second time; with
+  `exactlyOnce=true` the stored state decides, and a chunk below the stored range that does not start at offset 0 fails
+  the task with `State MISMATCH` unless `tolerateStateMismatch=true`. The Kafka part is derived from Kafka
+  consumer-group semantics, not measured; the connector part was read from the code, not run (rollout note, section B).
+  Every buffered connector, renamed or not, now needs a Connect runtime whose `SinkRecord` has `originalTopic()`,
   `originalKafkaPartition()` and `originalKafkaOffset()`; the offsets a buffered connector without renamed topics
   returns are unchanged. The fix is fork-only while upstream issue 777 stays open
   (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/777).
