@@ -30,7 +30,7 @@
 | E-15 | ADV-02 | 37-04 | pass |
 | E-16 | ADV-01, ADV-02 | 37-05 | pass |
 | E-17 | ADV-02, ADV-03 | 37-05 | pass |
-| E-18 | CIH-01 to CIH-05, ADV-01 to ADV-03 | 37-05 | pending (plan 37-05) |
+| E-18 | CIH-01 to CIH-05, ADV-01 to ADV-03 | 37-05 | pass |
 
 ### E-01: Pre-flight: origin re-read, Phase 36 complete, baselines on the untouched tree
 
@@ -1085,5 +1085,112 @@ hygiene_scan: clean
 The record repeats the E-08 values (release id, asset id, name, size and digest, tag commit and parents, the three `release.yaml` runs and the green `tests.yaml` run) and quotes the keys `created_by_workflow_run: no` and `publish_path_exercised: no`. It states that no workflow run created the release, quotes the ROADMAP wording of criterion 5 that the facts do not meet, and says that the caveat stays open until Phase 38 publishes through `release.yaml` from `custom_build`; the verify phrases that would close it count 0. UF-36-4 (with the zstd VERSION row) and F-1 to F-3 are carried by disposition with an owner and a re-open trigger, and six numbered handoffs go to Phase 38. The open item of the `increment-version.yml` header comment (it names `ReleaseWorkflowGuardUnitTest`, the pinning class is `IncrementVersionWorkflowGuardUnitTest`) is recorded with its trigger and an honest owner: fixing it edits a workflow, plan 37-05 may not do that and Phase 38 may not edit `.github/`, so it stays with the user. The handoff `37-USER-DISPATCH-DRYRUN.md` had stale commit and file figures from plan 37-03 (198 commits, 75 files); a separate commit (`handoff_figures_commit`) refreshed them, and its reference to the gated sha stays valid because plan 37-05 makes no commit outside `.planning`. The dry run (E-12) is still pending with the user and is not counted as a pass.
 
 2026-10-31T09:45:30Z
+
+Verdict: pass
+
+### E-18: Phase 37 gate: testUnit with Docker unreachable, the full suite on latest with client V2, the anchors mirror, the tail gate and the go decision
+
+Backs: all CIH and ADV requirements, ROADMAP Phase 37 phase gate (cache-busted `testUnit` with the pin-guard and script self-tests, a full suite on `latest` with client V2, the anchors invariant, an empty `src/main` diff), O-8.
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'scratch/cih-04-*'
+git log -1 --format=%H -- . ':(exclude).planning'
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd37/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit --class <ClassName>
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed build/test-results/testUnit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd37/exec/gate-suite.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed build/test-results/test
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=<upstream_sha of Phase 34 E-02> CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh <merge_commit of Phase 34 E-02> <gated_head> > /tmp/gsd37/exec/gate-tail.log 2>&1
+git diff --quiet {L0} <gated_head> -- src/main
+git diff --quiet {L0} <gated_head> -- build.gradle.kts settings.gradle.kts gradle VERSION CHANGELOG.md .github/workflows/tests.yaml .github/workflows/nightly-integration-tests.yaml .github/workflows/integrationTests.yaml src/integrationTest src/testFixtures
+git diff --name-only {L0} <gated_head> -- . ':(exclude).planning'
+git diff -w -U0 {L0} <gated_head> -- src/test src/integrationTest src/testFixtures
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-hygiene-check.py <every added or modified text file of git diff --name-only --diff-filter=AM {L0} <gated_head>, in batches>
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py secrets <evidence, ledger, record>
+git ls-remote origin
+git worktree list
+```
+
+```text
+gated_head: b2b2d265db1437706ab95c8c3fbecc786e052352
+utc_start: 2026-10-31T09:45:47Z
+dirty_paths_at_gate: M .planning/config.json; M .planning/state.json
+origin_custom_build_at_gate: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+origin_unchanged: yes
+scratch_branch_on_origin: absent
+scratch_refs_on_origin: de8c685b80d40b0a6e19338271e07b08ede84f3b refs/heads/scratch/clt-07-client-0.11.0; 939e899298c2f12dec2cfe1e69b1a6b53b4f511e refs/heads/scratch/clt-07-prebump-0.9.6
+e12_state: Verdict: pending (user-gated: the push and the dispatch are the user's)
+last_non_planning_commit: 1c583b46249ab9bd30ff717c256c7f583c4f0ed9
+testunit_exit: 0
+testunit_tests: 1633
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_baseline_e01: 1475
+testunit_delta_vs_e01: 158
+testunit_additions_sum: 158
+testunit_delta_matches: yes
+testunit_jvm_crash: none
+bump_xml: failures=0 errors=0 tests=48
+incguard_xml: failures=0 errors=0 tests=16
+compare_xml: failures=0 errors=0 tests=27
+baseline_xml: failures=0 errors=0 tests=19
+relguard_xml: failures=0 errors=0 tests=34
+pinguard_xml: failures=0 errors=0 tests=44
+actionpin_xml: failures=0 errors=0 tests=21
+summary_xml: failures=0 errors=0 tests=13
+bytes_xml: failures=0 errors=0 tests=11
+archivecheck_xml: failures=0 errors=0 tests=7
+connectapi_xml: failures=0 errors=0 tests=3
+column_xml: failures=0 errors=0 tests=51
+describe_xml: failures=0 errors=0 tests=2
+failed_ok: yes
+suite_exit: 0
+suite_tests: 2231
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_duration: 2m 43s (09:46:25Z to 09:49:08Z)
+suite_jvm_crash: none
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_minus_testunit: 598
+phase36_suite_minus_testunit: 598
+docker_only_delta_matches: yes
+anchors_mirror: rows=172 bad=0
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=145 anchor_rows=172 marker_commits=152 anchor_exempt=0 result=PASS
+src_main_diff_empty: yes
+untouched_files: yes
+changed_outside_planning_count: 24
+changed_outside_planning: .gitattributes; .github/dependabot.yml; .github/scripts/baseline_tag.py; .github/scripts/bump_version.py; .github/scripts/compare_confluent_archives.py; .github/scripts/failed_tests_summary.py; .github/workflows/increment-version.yml; .github/workflows/pre-release.yaml; .github/workflows/release.yaml; .gitignore; docs/FORK-DELTA.md; src/test/java/com/clickhouse/kafka/connect/ci/BaselineTagScriptUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/CompareConfluentArchivesScriptUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheck.java; src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheckUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/ConnectApiReferencesUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/FailedTestsSummaryScriptUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/IncrementVersionWorkflowGuardUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/UpstreamIntegrationWorkflowBytesGuardUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumMockServerTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/ColumnTest.java
+changed_outside_planning_ok: yes
+assertion_diff_cumulative: clean
+hygiene_files_scanned: 32 of 32
+hygiene_scan_all: clean
+secrets_scan: OK secrets: 0 token shapes
+extra_pattern_scan: 0 hits
+nothing_pushed: yes
+worktrees_clean: yes
+gate_decision: go
+gate_failures: none
+gate_note: E-12 (the CI dry run, expected RED) is pending with the user and is not part of the gate; it is never counted as a pass.
+utc_end: 2026-10-31T09:54:26Z
+```
+
+The gate ran on one head (`gated_head`), with the tree clean apart from the two orchestrator-owned state files. The cache-busted `testUnit` ran with Docker unreachable: 1633 tests, 0 failures, 0 errors, 2 skipped, which is the E-01 baseline of 1475 plus the 158 executions added by plans 37-01 to 37-04 (E-04 `plan_testunit_delta` 64 plus E-15 `plan_additions_sum` 94); all 13 tallies of the classes this phase wrote or extended are green. The full suite on ClickHouse `latest` (server 26.10.3.7, the image digest of E-01, so `latest` did not drift) with client V2 ran 2231 tests with exit 0, 0 failures, 0 errors and the 18 named skips (7 disabled methods and the 11 `exactlyOnceStateMismatchTest` cases); the Docker-only count 2231 minus 1633 is 598, equal to Phase 36's 2072 minus 1474. No OpenJ9 crash file appeared in either run, so no re-run and no `-PjavaVersion=21` run was needed. The tail merge gate over the Phase 34 merge commit up to `gated_head` ended `result=PASS` with `anchor_rows=172` over 145 anchor-evaluated commits. The `src/main` diff against `local_head` is empty, the build files, `VERSION`, `CHANGELOG.md` and the three untouched workflows are unchanged, and the 24 paths outside `.planning` are all on the allowed list. The `scratch/*` clause of the plan (no ref at all) is replaced by `scratch/cih-04-*`: the two `scratch/clt-07-*` refs on origin are the ones Phase 36 left (user-owned, equal to E-01) and were not touched. `nothing_pushed` rests on origin `custom_build` still equal to the `v1.7.0_gg5` commit, no `sync/v1.7.0` branch, no `scratch/cih-04-*` branch and no `v1.7.0_gg6` tag on origin; no `gh` call other than plain GETs was made by this plan, and `git worktree list` shows one entry. `last_non_planning_commit` is the SHA the handoff `37-USER-DISPATCH-DRYRUN.md` calls the gated SHA: plan 37-05 made no commit outside `.planning`, so it is the last commit of plan 37-04.
+
+2026-10-31T09:54:26Z
 
 Verdict: pass
