@@ -17,7 +17,7 @@
 | E-02 | CIH-01, CIH-02, CIH-03 | 37-01 | pass |
 | E-03 | CIH-01, CIH-03 | 37-01 | pass |
 | E-04 | CIH-02 | 37-01 | pass |
-| E-05 | CIH-05 | 37-02 | pending (plan 37-02) |
+| E-05 | CIH-05 | 37-02 | pass |
 | E-06 | CIH-04 | 37-02 | pending (plan 37-02) |
 | E-07 | CIH-04, CIH-05 | 37-02 | pending (plan 37-02) |
 | E-08 | ADV-03 | 37-02 | pending (plan 37-02) |
@@ -297,5 +297,73 @@ guard_commit_files: src/test/java/com/clickhouse/kafka/connect/ci/IncrementVersi
 Both new classes ran green with `DOCKER_HOST` pointing at a socket that does not exist, so neither needs Docker. The guard class holds eight real-file tests (one per rule) and eight fixture tests, each accepting the valid workflow and rejecting one edit per bad form. The mutation (an env expression put into the `git commit -m` argument of a worktree copy of the workflow) turned two tests red: the commit-step rule and the run-block rule. The plan-level testUnit tally of 1539 is the E-01 baseline of 1475 plus 48 and 16, and the two pin guards keep their baseline tallies of 21 and 39. The class Javadoc says "has no superclass" instead of the words "extends nothing", because the plan's own verify greps the class for the text "extends " and that text matches a comment.
 
 2026-10-31T09:02:30Z
+
+Verdict: pass
+
+### E-05: The compare script moved with git mv, edited to the asset and pinned on synthetic archives: exit 0, 1, 2, UNALLOWED and STALE-ROW
+
+Backs: CIH-05, ROADMAP Phase 37 criterion 3 (the script half: the compare lives under `.github/scripts/` and its self-test covers UNALLOWED, STALE-ROW and the exit codes 0, 1 and 2), O-1 and O-2 (the move and the all-stars refusal), threat T-37-05.
+
+```sh
+git mv .planning/scripts/compare-confluent-archives.py .github/scripts/compare_confluent_archives.py
+git commit -F /tmp/gsd37/exec/msg-p2-move.txt
+git diff -M --summary {move_commit}^ {move_commit}
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*CompareConfluentArchivesScriptUnitTest' > /tmp/gsd37/exec/compare-red.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit --class CompareConfluentArchivesScriptUnitTest
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed build/test-results/testUnit
+cp .planning/phases/37-ci-hardening-advisory-debt/37-assets/compare_confluent_archives.py.txt .github/scripts/compare_confluent_archives.py
+cmp .github/scripts/compare_confluent_archives.py .planning/phases/37-ci-hardening-advisory-debt/37-assets/compare_confluent_archives.py.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*CompareConfluentArchivesScriptUnitTest' > /tmp/gsd37/exec/compare-green.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt replace-text docs/FORK-DELTA.md 3 '`.planning/scripts/compare-confluent-archives.py`' '`.github/scripts/compare_confluent_archives.py` (moved there in Phase 37)'
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+cmp src/test/java/com/clickhouse/kafka/connect/ci/CompareConfluentArchivesScriptUnitTest.java /tmp/gsd37/w/fmt/src/test/java/com/clickhouse/kafka/connect/ci/CompareConfluentArchivesScriptUnitTest.java
+git worktree remove --force /tmp/gsd37/w/fmt
+git commit -F /tmp/gsd37/exec/msg-p2-edit.txt
+git worktree add --detach /tmp/gsd37/w/cmut1 {edit_commit}
+python3 -I /tmp/gsd37/exec/mutate.py /tmp/gsd37/w/cmut1/.github/scripts/compare_confluent_archives.py '<the stale list statement>' '    stale = []'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/cmut1 --console=plain testUnit --rerun --tests '*CompareConfluentArchivesScriptUnitTest' > /tmp/gsd37/exec/cmut1.log 2>&1
+git worktree add --detach /tmp/gsd37/w/cmut2 {edit_commit}
+python3 -I /tmp/gsd37/exec/mutate.py /tmp/gsd37/w/cmut2/.github/scripts/compare_confluent_archives.py '<the unallowed.append statement>' '            pass'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/cmut2 --console=plain testUnit --rerun --tests '*CompareConfluentArchivesScriptUnitTest' > /tmp/gsd37/exec/cmut2.log 2>&1
+git worktree remove --force /tmp/gsd37/w/cmut1
+git worktree remove --force /tmp/gsd37/w/cmut2
+git worktree prune
+git diff --quiet {edit_commit} HEAD -- .github/scripts/compare_confluent_archives.py
+```
+
+```text
+move_commit: 4eee1466f6e61db89cb64463c4d2c0f2b4407b17
+move_similarity: rename .planning/scripts/compare-confluent-archives.py => .github/scripts/compare_confluent_archives.py (100%)
+old_path_gone: yes
+red_exit: 1
+red_junit: OK junit build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=27 failures=2 errors=0 skipped=0 files=1
+red_failed: CompareConfluentArchivesScriptUnitTest#CIH-05: a row of one star is refused as a catch-all; CompareConfluentArchivesScriptUnitTest#CIH-05: a row of two stars is refused as a catch-all
+assets_identical: yes
+script_mode: 100755
+green_exit: 0
+green_junit: OK junit build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=27 failures=0 errors=0 skipped=0 files=1
+forkdelta_script_refs: 3
+forkdelta_old_path_refs: 0
+forkdelta_new_path_lines: 3
+spotless_new_file_cmp: identical
+assertion_diff: clean
+hygiene_scan: clean
+edit_commit: 10d90f61fcf10212a87bcc1cdf30d71949fd1932
+edit_commit_files: .github/scripts/compare_confluent_archives.py; docs/FORK-DELTA.md; src/test/java/com/clickhouse/kafka/connect/ci/CompareConfluentArchivesScriptUnitTest.java
+muta_exit: 1
+muta_junit: OK junit /tmp/gsd37/w/cmut1/build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=27 failures=1 errors=0 skipped=0 files=1
+muta_failed: CompareConfluentArchivesScriptUnitTest#CIH-05: a row that names no difference is a STALE-ROW and fails
+mutb_exit: 1
+mutb_junit: OK junit /tmp/gsd37/w/cmut2/build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=27 failures=5 errors=0 skipped=0 files=1
+mutb_failed: CompareConfluentArchivesScriptUnitTest#CIH-05: a changed entry with an empty allow-list is UNALLOWED CHANGED; CompareConfluentArchivesScriptUnitTest#CIH-05: an entry only in the baseline archive is UNALLOWED ONLY-A; CompareConfluentArchivesScriptUnitTest#CIH-05: an entry only in the candidate archive is UNALLOWED ONLY-B; CompareConfluentArchivesScriptUnitTest#CIH-05: manifest.json differing in its name line is UNALLOWED CHANGED; CompareConfluentArchivesScriptUnitTest#CIH-05: one allowed and one unallowed difference together fail on the unallowed one
+mut_worktrees_removed: yes
+script_unmodified_in_main: yes
+```
+
+The rename commit is a pure 100 percent rename of one file. The 27 executions (6 exit 0, 8 exit 1, 13 exit 2) were first run against the moved but unedited script: exactly the two star-row executions failed, because that copy accepted a row of only stars as an ordinary glob. After the plan asset replaced the script (byte-identical, mode 100755 kept) all 27 are green. The mutation that empties the STALE-ROW list failed exactly the STALE-ROW execution, and the one that drops the UNALLOWED append failed five executions (the changed, only-B, only-A, manifest.json and mixed-pair ones), so neither failure kind can change without a test going red. The mutation keys are lowercase (`muta_*`, `mutb_*`) because the evidence helper's fact grammar is `[a-z0-9_]+`; the plan's `mutA_*` spelling cannot be read by the unmodified helper. FORK-DELTA names the new path three times and the old path no longer.
+
+2026-10-31T09:09:00Z
 
 Verdict: pass
