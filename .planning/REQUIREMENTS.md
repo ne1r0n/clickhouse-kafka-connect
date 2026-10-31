@@ -35,17 +35,17 @@
 
 ### CI Hardening
 
-- [ ] **CIH-01**: `increment-version.yml` never writes `vnull`: input and output are validated against `^v\d+\.\d+\.\d+(_gg[1-9]\d*)?$`, a new `gg` step bumps the counter (a suffix-less version becomes `_gg1`), and patch/minor/major reset the suffix to `_gg1`.
-- [ ] **CIH-02**: The version logic lives in a script with a table-driven Docker-free test, the npm `semver` install is gone, SHA pins and permissions are unchanged, and the "known and left unfixed" note is removed.
-- [ ] **CIH-03**: A version-bump PR also edits the `VERSION` row of `fork-anchors.txt`, or the script fails when it does not.
-- [ ] **CIH-04**: `release.yaml` and `pre-release.yaml` run the archive compare against an allow-list keyed by `VERSION`, with the baseline rebuilt from the previous tag in a separate worktree, the report published as an artifact, and `REL-xx` anchor counts and `TestsWorkflowPinGuardUnitTest` updated.
-- [ ] **CIH-05**: The compare script lives under `.github/scripts/` and has a synthetic-archive self-test covering the UNALLOWED and STALE-ROW failures and the exit codes 0, 1 and 2.
+- [x] **CIH-01**: `increment-version.yml` never writes `vnull`: input and output are validated against `^v\d+\.\d+\.\d+(_gg[1-9]\d*)?$`, a new `gg` step bumps the counter (a suffix-less version becomes `_gg1`), and patch/minor/major reset the suffix to `_gg1`.
+- [x] **CIH-02**: The version logic lives in a script with a table-driven Docker-free test, the npm `semver` install is gone, SHA pins and permissions are unchanged, and the "known and left unfixed" note is removed.
+- [x] **CIH-03**: A version-bump PR also edits the `VERSION` row of `fork-anchors.txt`, or the script fails when it does not.
+- [x] **CIH-04**: `release.yaml` and `pre-release.yaml` run the archive compare against an allow-list keyed by `VERSION`, with the baseline rebuilt from the previous tag in a separate worktree, the report published as an artifact, and `REL-xx` anchor counts and `TestsWorkflowPinGuardUnitTest` updated.
+- [x] **CIH-05**: The compare script lives under `.github/scripts/` and has a synthetic-archive self-test covering the UNALLOWED and STALE-ROW failures and the exit codes 0, 1 and 2.
 
 ### Advisory Debt
 
-- [ ] **ADV-01**: Every Phase 30 review row (WR-01..WR-03, IN-01..IN-04) and Phase 31 row (WR-01..WR-03, IN-01..IN-03) is fixed or dispositioned with an owner and a re-open trigger.
-- [ ] **ADV-02**: The 16 unfixed review findings in `29-MILESTONE-CLOSE-RECORD.md` are fixed or dispositioned the same way.
-- [ ] **ADV-03**: The real release of `v1.7.0_gg5` (GitHub release of 2026-10-28) is recorded as evidence. No workflow run created it, so the "no run exercised the publish path" caveat stays open until the Phase 38 publication (reworded by the user's decision of 2026-10-31).
+- [x] **ADV-01**: Every Phase 30 review row (WR-01..WR-03, IN-01..IN-04) and Phase 31 row (WR-01..WR-03, IN-01..IN-03) is fixed or dispositioned with an owner and a re-open trigger.
+- [x] **ADV-02**: The 16 unfixed review findings in `29-MILESTONE-CLOSE-RECORD.md` are fixed or dispositioned the same way.
+- [x] **ADV-03**: The real release of `v1.7.0_gg5` (GitHub release of 2026-10-28) is recorded as evidence. No workflow run created it, so the "no run exercised the publish path" caveat stays open until the Phase 38 publication (reworded by the user's decision of 2026-10-31).
 
 ### Buffered Offset Commit (upstream #777)
 
@@ -117,14 +117,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLT-07 | Phase 36 | Complete |
 | CLT-08 | Phase 36 | Complete |
 | CLT-09 | Phase 36 | Complete |
-| CIH-01 | Phase 37 | Pending |
-| CIH-02 | Phase 37 | Pending |
-| CIH-03 | Phase 37 | Pending |
-| CIH-04 | Phase 37 | Pending |
-| CIH-05 | Phase 37 | Pending |
-| ADV-01 | Phase 37 | Pending |
-| ADV-02 | Phase 37 | Pending |
-| ADV-03 | Phase 37 | Pending |
+| CIH-01 | Phase 37 | Complete |
+| CIH-02 | Phase 37 | Complete |
+| CIH-03 | Phase 37 | Complete |
+| CIH-04 | Phase 37 | Complete |
+| CIH-05 | Phase 37 | Complete |
+| ADV-01 | Phase 37 | Complete |
+| ADV-02 | Phase 37 | Complete |
+| ADV-03 | Phase 37 | Complete |
 | RLS-01 | Phase 38 | Pending |
 | RLS-02 | Phase 38 | Pending |
 | RLS-03 | Phase 38 | Pending |

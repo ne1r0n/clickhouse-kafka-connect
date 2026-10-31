@@ -130,7 +130,7 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
 - [x] **Phase 34: Upstream Tail Merge** - Upstream's untagged tail is merged as one mechanical commit while the client is still 0.9.6. `ProxySinkTask` keeps both constructors without an ambiguous `null`, every `handleException` caller uses the 5-argument form, and `additionalRetriableErrorCodes` is pinned with a no-op default (completed 2026-10-29)
 - [x] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free and live, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump (completed 2026-10-29)
 - [x] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6 (completed 2026-10-31)
-- [ ] **Phase 37: CI Hardening & Advisory Debt** - `increment-version.yml` stops writing `vnull`, through a script with a test. The release workflows compare the archive against a `VERSION`-keyed allow-list. Every Phase 25–31 review advisory is fixed or dispositioned, and the real `v1.7.0_gg5` release is on the record
+- [x] **Phase 37: CI Hardening & Advisory Debt** - `increment-version.yml` stops writing `vnull`, through a script with a test. The release workflows compare the archive against a `VERSION`-keyed allow-list. Every Phase 25–31 review advisory is fixed or dispositioned, and the real `v1.7.0_gg5` release is on the record (completed 2026-10-31)
 - [ ] **Phase 38: Release & Publication** - `v1.7.0_gg6` is published with CHANGELOG, FORK-DELTA, an independently reviewed rollout note and the gg6 allow-list compare. The suite is green twice on one pinned `latest` build, and the published SHA has one green CI run before the tags
 
 ## Phase Details
@@ -505,7 +505,7 @@ The order is the user's (2026-10-28). Phases 33 and 34 could share a phase under
 | 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-29 |
 | 35. Buffered Offset Commit Under Topic-Renaming SMTs | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-29 |
 | 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 4/4 | Complete    | 2026-10-31 |
-| 37. CI Hardening & Advisory Debt | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
+| 37. CI Hardening & Advisory Debt | v1.7.0_gg6-maintenance | 5/5 | Complete    | 2026-10-31 |
 | 38. Release & Publication | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 
 ---
