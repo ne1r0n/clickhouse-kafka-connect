@@ -8,10 +8,11 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
 
 ## Important Changes
 
-* Buffered connectors (`bufferCount > 0`) under an SMT that changes the record's topic, for example `RegexRouter` (read
-  from the code: also one that changes only the partition or the offset), now commit offsets under the original topic
-  and partition, at the last flushed offset plus one, and a revoked partition now drops its buffered records under such
-  an SMT, which before it kept. Before, `preCommit` returned keys named by the renamed topic, which Connect does not
+* Buffered connectors (`bufferCount > 0`) under an SMT that changes the record's topic, for example `RegexRouter`, now
+  commit offsets under the original topic and partition, at the last flushed offset plus one, and a revoked partition
+  now drops its buffered records under such an SMT, which before it kept (read from the code: an SMT that changes only
+  the partition or the offset also changes the offsets committed, and the rollout note lists what it does for
+  revocation). Before, `preCommit` returned keys named by the renamed topic, which Connect does not
   accept for the group, so no offset advanced for the partitions of the renamed topics, for a rename whose target is not
   another input topic (the rollout note lists what it does not characterise, a rename onto an input topic among it; the
   second half follows from Connect's offset contract and was not measured). The first start after the upgrade resumes at
