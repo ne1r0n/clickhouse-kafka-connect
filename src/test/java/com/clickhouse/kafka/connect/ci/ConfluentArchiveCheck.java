@@ -36,6 +36,10 @@ public final class ConfluentArchiveCheck {
     static final String FAILURE_HEADER = "Confluent archive check failed";
     static final String SUCCESS_SUFFIX = " inner entries, no nested jar, no Kafka API class";
     static final String SUCCESS_PREFIX = "verifyConfluentArchive: ";
+    static final String LIB_JARS_FOUND_PREFIX = "lib jars found: ";
+    static final String STALE_DIRECTORY_HINT =
+            "; a version directory left under build/confluentArchive by an earlier VERSION adds a jar,"
+                    + " run clean first";
     static final String USAGE = "usage: ConfluentArchiveCheck <path to the Confluent archive zip>";
 
     private static final String LIB_DIRECTORY = "/lib/";
@@ -43,16 +47,20 @@ public final class ConfluentArchiveCheck {
     private static final String KAFKA_PACKAGE = "org/apache/kafka/";
     private static final int USAGE_EXIT = 2;
     private static final int VIOLATION_EXIT = 1;
+    private static final String NAME_SEPARATOR = ", ";
 
-    /** The number of inner entries read (directories included) and every violation found. */
-    record Result(int innerEntries, List<String> violations) {}
+    /**
+     * The number of inner entries read (directories included), every violation found and the names
+     * of the entries counted as lib jars, in discovery order.
+     */
+    record Result(int innerEntries, List<String> violations, List<String> libJarNames) {}
 
     private ConfluentArchiveCheck() {}
 
     static Result check(Path archive) throws IOException {
         List<String> innerViolations = new ArrayList<>();
         Set<String> seenClasses = new HashSet<>();
-        int libJars = 0;
+        List<String> libJarNames = new ArrayList<>();
         int innerEntries = 0;
         try (ZipFile outer = new ZipFile(archive.toFile())) {
             Enumeration<? extends ZipEntry> entries = outer.entries();
@@ -61,7 +69,7 @@ public final class ConfluentArchiveCheck {
                 if (!entry.getName().contains(LIB_DIRECTORY) || !entry.getName().endsWith(JAR_SUFFIX)) {
                     continue;
                 }
-                libJars++;
+                libJarNames.add(entry.getName());
                 try (ZipInputStream inner = new ZipInputStream(outer.getInputStream(entry))) {
                     ZipEntry innerEntry;
                     while ((innerEntry = inner.getNextEntry()) != null) {
@@ -79,8 +87,8 @@ public final class ConfluentArchiveCheck {
             }
         }
         List<String> violations = new ArrayList<>();
-        if (libJars != 1) {
-            violations.add(SHAPE_PREFIX + libJars);
+        if (libJarNames.size() != 1) {
+            violations.add(SHAPE_PREFIX + libJarNames.size());
         }
         violations.addAll(innerViolations);
         if (innerEntries == 0) {
@@ -91,7 +99,7 @@ public final class ConfluentArchiveCheck {
                 violations.add(MISSING_CLASS_PREFIX + required);
             }
         }
-        return new Result(innerEntries, violations);
+        return new Result(innerEntries, violations, libJarNames);
     }
 
     static int run(String[] args, PrintStream out, PrintStream err) throws IOException {
@@ -111,6 +119,12 @@ public final class ConfluentArchiveCheck {
                         + " violations of "
                         + result.innerEntries()
                         + " entries):");
+        if (result.libJarNames().size() != 1) {
+            err.println(
+                    LIB_JARS_FOUND_PREFIX
+                            + String.join(NAME_SEPARATOR, result.libJarNames())
+                            + STALE_DIRECTORY_HINT);
+        }
         result.violations().stream().limit(MAX_LISTED).forEach(err::println);
         return VIOLATION_EXIT;
     }
