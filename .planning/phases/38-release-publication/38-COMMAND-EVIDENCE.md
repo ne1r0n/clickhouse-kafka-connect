@@ -28,10 +28,10 @@
 | E-12 | RLS-03, RLS-06 | 38-04 | pass |
 | E-13 | RLS-06 | 38-04 | pass |
 | E-14 | RLS-05 | 38-05 | pass |
-| E-15 | RLS-05 | 38-05 | pending (plan 38-05) |
-| E-16 | RLS-05 | 38-05 | pending (plan 38-05) |
-| E-17 | RLS-05 | 38-05 | pending (plan 38-05) |
-| E-18 | RLS-05 | 38-05 | pending (plan 38-05) |
+| E-15 | RLS-05 | 38-05 | pending (user-gated) |
+| E-16 | RLS-05 | 38-05 | pending (user-gated) |
+| E-17 | RLS-05 | 38-05 | pending (user-gated) |
+| E-18 | RLS-05 | 38-05 | pending (user-gated) |
 | E-19 | RLS-01 to RLS-06 | 38-05 | pending (plan 38-05) |
 
 ### E-01: Pre-flight: origin and pull requests re-read, helpers checked, premise confirmed on the untouched tree
@@ -1044,3 +1044,135 @@ D is the merge the orchestrator will build as M after the user's own direct appr
 2026-10-31T18:31:00Z
 
 Verdict: pass
+
+### E-15: Handoff U1 and U2 (scratch push and release dry run) is a user-gated handoff
+
+Backs: RLS-05, ROADMAP Phase 38 criterion 5 (the user-run step: the push of the tip to the scratch branch sync/v1.7.0 and the dispatch of the release workflow from it as a dry run; the user's reports become E-20 and E-21). The handoff file is written and checked; the step itself is the user's and is never counted as passed through this entry.
+
+```sh
+awk '/^## Before you/{s=1;next} /^## /{s=0} s && /^[0-9]+\. /{n++} END{print n}' .planning/phases/38-release-publication/38-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+grep -nE 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/38-release-publication/38-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+grep -nE '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg6' .planning/phases/38-release-publication/38-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+grep -nE '^[[:space:]]*gh (release|pr|issue|run|workflow)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/38-release-publication/38-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict .planning/phases/38-release-publication/38-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets .planning/phases/38-release-publication/38-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/38-release-publication/38-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+handoff_hygiene: clean
+pre_checks_listed: 7
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+user_report: not yet received
+```
+
+The document has the sections Status, What you decide, Before you push or Before you dispatch (numbered pre-checks with their expected values, the first of which is the check that `custom_build` has not moved), the step itself, Expected result, What to confirm and report, If it fails, Clean up and Resume (for the orchestrator). It states at its top that no agent pushes, tags, dispatches or comments, that it asks for no secret and that the user runs every step with their own account. It carries no command that pushes the v1.7.0_gg6 tag, none with the options named in the key `dangerous_commands`, and no mutating `gh` line. This entry is pending by design and stays pending: the user's report is recorded as a new entry from E-20 on.
+
+2026-10-31T18:33:24Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-16: Handoff U3 (push of M to custom_build) is a user-gated handoff
+
+Backs: RLS-05, ROADMAP Phase 38 criterion 5 (the user-run step: the push of the merge commit M to custom_build by SHA and its single tests.yaml run; the user's reports become E-22 and E-23). The handoff file is written and checked; the step itself is the user's and is never counted as passed through this entry.
+
+```sh
+awk '/^## Before you/{s=1;next} /^## /{s=0} s && /^[0-9]+\. /{n++} END{print n}' .planning/phases/38-release-publication/38-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+grep -nE 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/38-release-publication/38-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+grep -nE '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg6' .planning/phases/38-release-publication/38-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+grep -nE '^[[:space:]]*gh (release|pr|issue|run|workflow)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/38-release-publication/38-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict .planning/phases/38-release-publication/38-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets .planning/phases/38-release-publication/38-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/38-release-publication/38-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+handoff_hygiene: clean
+pre_checks_listed: 7
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+user_report: not yet received
+```
+
+The document has the sections Status, What you decide, Before you push or Before you dispatch (numbered pre-checks with their expected values, the first of which is the check that `custom_build` has not moved), the step itself, Expected result, What to confirm and report, If it fails, Clean up and Resume (for the orchestrator). It states at its top that no agent pushes, tags, dispatches or comments, that it asks for no secret and that the user runs every step with their own account. It carries no command that pushes the v1.7.0_gg6 tag, none with the options named in the key `dangerous_commands`, and no mutating `gh` line. This entry is pending by design and stays pending: the user's report is recorded as a new entry from E-20 on.
+
+2026-10-31T18:33:24Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-17: Handoff U4 (the real publish dispatch) is a user-gated handoff
+
+Backs: RLS-05, ROADMAP Phase 38 criterion 5 (the user-run step: the real publish dispatch from custom_build with dry_run not ticked; the user's report becomes E-24 and the read-back E-25). The handoff file is written and checked; the step itself is the user's and is never counted as passed through this entry.
+
+```sh
+awk '/^## Before you/{s=1;next} /^## /{s=0} s && /^[0-9]+\. /{n++} END{print n}' .planning/phases/38-release-publication/38-USER-DISPATCH-3-PUBLISH.md
+grep -nE 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/38-release-publication/38-USER-DISPATCH-3-PUBLISH.md
+grep -nE '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg6' .planning/phases/38-release-publication/38-USER-DISPATCH-3-PUBLISH.md
+grep -nE '^[[:space:]]*gh (release|pr|issue|run|workflow)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/38-release-publication/38-USER-DISPATCH-3-PUBLISH.md
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict .planning/phases/38-release-publication/38-USER-DISPATCH-3-PUBLISH.md
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets .planning/phases/38-release-publication/38-USER-DISPATCH-3-PUBLISH.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/38-release-publication/38-USER-DISPATCH-3-PUBLISH.md
+handoff_hygiene: clean
+pre_checks_listed: 4
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+user_report: not yet received
+```
+
+The document has the sections Status, What you decide, Before you push or Before you dispatch (numbered pre-checks with their expected values, the first of which is the check that `custom_build` has not moved), the step itself, Expected result, What to confirm and report, If it fails, Clean up and Resume (for the orchestrator). It states at its top that no agent pushes, tags, dispatches or comments, that it asks for no secret and that the user runs every step with their own account. It carries no command that pushes the v1.7.0_gg6 tag, none with the options named in the key `dangerous_commands`, and no mutating `gh` line. This entry is pending by design and stays pending: the user's report is recorded as a new entry from E-20 on.
+
+2026-10-31T18:33:24Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-18: Handoff U5 (rollback tag, scratch deletion, pull-request clean-up) is a user-gated handoff
+
+Backs: RLS-05, ROADMAP Phase 38 criterion 5 (the user-run step: the push of pre-v1.7.0_gg6 by name, the deletion of the scratch branch and the pull-request clean-up; the user's report becomes E-26 and the final reads E-27). The handoff file is written and checked; the step itself is the user's and is never counted as passed through this entry.
+
+```sh
+awk '/^## Before you/{s=1;next} /^## /{s=0} s && /^[0-9]+\. /{n++} END{print n}' .planning/phases/38-release-publication/38-USER-DISPATCH-4-PRETAG-CLEANUP.md
+grep -nE 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/38-release-publication/38-USER-DISPATCH-4-PRETAG-CLEANUP.md
+grep -nE '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg6' .planning/phases/38-release-publication/38-USER-DISPATCH-4-PRETAG-CLEANUP.md
+grep -nE '^[[:space:]]*gh (release|pr|issue|run|workflow)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/38-release-publication/38-USER-DISPATCH-4-PRETAG-CLEANUP.md
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict .planning/phases/38-release-publication/38-USER-DISPATCH-4-PRETAG-CLEANUP.md
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets .planning/phases/38-release-publication/38-USER-DISPATCH-4-PRETAG-CLEANUP.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/38-release-publication/38-USER-DISPATCH-4-PRETAG-CLEANUP.md
+handoff_hygiene: clean
+pre_checks_listed: 5
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+user_report: not yet received
+```
+
+The document has the sections Status, What you decide, Before you push or Before you dispatch (numbered pre-checks with their expected values, the first of which is the check that `custom_build` has not moved), the step itself, Expected result, What to confirm and report, If it fails, Clean up and Resume (for the orchestrator). It states at its top that no agent pushes, tags, dispatches or comments, that it asks for no secret and that the user runs every step with their own account. It carries no command that pushes the v1.7.0_gg6 tag, none with the options named in the key `dangerous_commands`, and no mutating `gh` line. This entry is pending by design and stays pending: the user's report is recorded as a new entry from E-20 on.
+
+2026-10-31T18:33:24Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
