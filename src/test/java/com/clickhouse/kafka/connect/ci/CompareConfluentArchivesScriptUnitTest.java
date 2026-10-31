@@ -15,11 +15,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Docker-free pin for the archive compare: it runs {@code .github/scripts/compare_confluent_archives.py}
@@ -54,6 +57,9 @@ class CompareConfluentArchivesScriptUnitTest {
     private static final String ERROR_PREFIX = "ERROR:";
     private static final String USAGE = "usage:";
     private static final String STARS = "stars";
+    private static final String LITERAL_PREFIX = "literal path prefix";
+    private static final Path ALLOW_LISTS = Path.of(".planning", "scripts");
+    private static final String ALLOW_LIST_PREFIX = "confluent-archive-allowlist-";
     private static final String COMMENT_ONLY = "# no differences are expected\n";
     private static final String TOTALS_IDENTICAL =
             "totals files-a 3 files-b 3 only-a 0 only-b 0 changed 0 same 3";
@@ -465,5 +471,42 @@ class CompareConfluentArchivesScriptUnitTest {
         Path empty = archive("a.zip", Map.of("a/", ""));
         assertUnusableInput(
                 compare(empty, archive("b.zip", baseInner()), COMMENT_ONLY), "zero file entries");
+    }
+
+    @ParameterizedTest(name = "WR-02: the row \"{0}\" can match every path and is refused")
+    @ValueSource(
+            strings = {"*?", "**/*", "*/*", "[!x]*", "?*", "[a-z]/*", "*.class", "*.*", "*/A.class"})
+    void aRowThatStartsWithAWildcardIsRefused(String glob) throws Exception {
+        assertUnusableInput(compare(baseInner(), baseInner(), row(glob, REASON)), LITERAL_PREFIX);
+    }
+
+    @ParameterizedTest(name = "WR-02: the row \"{0}\" starts with a literal and still excuses the changed class")
+    @ValueSource(
+            strings = {"a/A.class", "a/*", "a/*.class", "a/?.class", "a/[A].class", "a/[!x].class", "a*"})
+    void aRowWithALiteralPrefixIsStillAccepted(String glob) throws Exception {
+        Run run = compare(baseInner(), baseWith(CLASS_A, "A2"), row(glob, REASON));
+        assertPass(run);
+        assertHasLine(run, "CHANGED " + CLASS_A);
+    }
+
+    @Test
+    @DisplayName("WR-02: every allow-list shipped under .planning/scripts loads (a stale row is exit 1, never exit 2)")
+    void everyShippedAllowListStillLoads() throws Exception {
+        List<Path> lists;
+        try (Stream<Path> files = Files.list(ALLOW_LISTS)) {
+            lists =
+                    files.filter(f -> f.getFileName().toString().startsWith(ALLOW_LIST_PREFIX))
+                            .sorted()
+                            .toList();
+        }
+        assertTrue(lists.size() >= 3, () -> "the shipped allow-lists were not found: " + lists);
+        Path a = archive("a.zip", baseInner());
+        Path b = archive("b.zip", baseInner());
+        for (Path list : lists) {
+            Run run = run(a.toString(), b.toString(), list.toString());
+            assertFail(run);
+            assertEquals("", run.stderr(), () -> list + " must load\n" + run.describe());
+            assertHasLine(run, "STALE-ROW ");
+        }
     }
 }

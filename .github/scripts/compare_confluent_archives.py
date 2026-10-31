@@ -10,9 +10,14 @@ too (manifest.json ignoring its release_date and version lines, everything else
 by SHA-256) under the path prefix "outer/".
 
 ALLOWLIST rows are "glob<TAB>reason"; "#" lines and blank lines are skipped, a
-reason is required, and a star matches across slashes (fnmatch). A row whose glob is
-only stars is a catch-all and makes the list unusable. A difference no row matches is
-UNALLOWED; a row that matched nothing is STALE-ROW. Both fail.
+reason is required, and a star matches across slashes (fnmatch). A glob must start
+with a literal character, so that it is anchored to a path prefix: a glob that starts
+with "*", "?" or "[" (only stars, "*?", "**/*", "*/*", "[!x]*", "*.class", ...) can
+match every path or a whole file type in every directory, and makes the list unusable.
+This is sound because a glob that starts with the literal character c can never match
+a path that does not start with c; it is deliberately conservative, so "[x]*" is
+refused too. A difference no row matches is UNALLOWED; a row that matched nothing is
+STALE-ROW. Both fail.
 
 Exit codes: 0 PASS, 1 FAIL, 2 unusable input (missing, duplicated or empty inner
 jar, unreadable archive, malformed or catch-all allow-list).
@@ -39,6 +44,7 @@ OUTER_MANIFEST = "manifest.json"
 MANIFEST_IGNORED_FRAGMENTS = ('"release_date"', '"version"')
 VERSION_LINE = "Implementation-Version:"
 CATCH_ALL_GLOB = re.compile(r"\*+")
+WILDCARD_STARTS = "*?["
 
 
 class InputError(Exception):
@@ -114,6 +120,11 @@ def load_allowlist(path):
                     raise InputError("%s:%d: a row needs glob<TAB>reason with a non-empty reason" % (path, number))
                 if CATCH_ALL_GLOB.fullmatch(parts[0].strip()):
                     raise InputError("%s:%d: a glob of only stars matches every difference and is refused" % (path, number))
+                if parts[0].strip()[0] in WILDCARD_STARTS:
+                    raise InputError(
+                        "%s:%d: a glob must start with a literal path prefix; one that starts with a wildcard "
+                        "(* ? [) is not anchored to a path and is refused" % (path, number)
+                    )
                 rows.append((parts[0], parts[1]))
     except OSError as e:
         raise InputError("%s: %s" % (path, e))
