@@ -71,6 +71,14 @@ class IncrementVersionWorkflowGuardUnitTest {
     private static final List<String> FORBIDDEN_HEADER_TEXT = List.of("left unfixed", "vnull");
     private static final String CHECKOUT_USES =
             "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1";
+    /**
+     * The shape of the pin, not its value: Dependabot moves the SHA and the version comment together in
+     * its grouped monthly pull request, so the guard accepts any 40-hex SHA with a {@code # vX.Y.Z}
+     * comment and still refuses a tag, a branch, a short or upper-case SHA and a missing comment.
+     */
+    private static final Pattern CHECKOUT_PIN =
+            Pattern.compile("^uses: actions/checkout@[0-9a-f]{40} # v\\d+\\.\\d+\\.\\d+$");
+    private static final String USES_PREFIX = "uses:";
     private static final String PERSIST_CREDENTIALS = "persist-credentials";
     private static final Pattern RUN_KEY = Pattern.compile("^\\s*(?:-\\s+)?run:(.*)$");
 
@@ -323,12 +331,21 @@ class IncrementVersionWorkflowGuardUnitTest {
     }
 
     static Optional<String> checkoutProblem(List<String> lines) {
-        if (lines.stream().map(String::strip).noneMatch(CHECKOUT_USES::equals)) {
-            return problem(RULE_CHECKOUT, "a line must be exactly " + CHECKOUT_USES);
-        }
         Optional<List<String>> block = stepBlock(lines, CHECKOUT_STEP);
         if (block.isEmpty()) {
             return problem(RULE_CHECKOUT, "no step named '" + CHECKOUT_STEP + "'");
+        }
+        List<String> uses =
+                block.get().stream().map(String::strip).filter(line -> line.startsWith(USES_PREFIX)).toList();
+        if (uses.size() != 1 || !CHECKOUT_PIN.matcher(uses.get(0)).matches()) {
+            return problem(
+                    RULE_CHECKOUT,
+                    "the step '"
+                            + CHECKOUT_STEP
+                            + "' must have one line of the shape "
+                            + CHECKOUT_PIN.pattern()
+                            + " but has "
+                            + uses);
         }
         for (String line : block.get()) {
             if (line.contains(PERSIST_CREDENTIALS)) {
@@ -569,6 +586,70 @@ class IncrementVersionWorkflowGuardUnitTest {
                         IncrementVersionWorkflowGuardUnitTest::headerProblem,
                         VALID,
                         RULE_HEADER));
+    }
+
+    private static final String PIN_PREFIX = "      uses: actions/checkout@";
+    private static final String OTHER_SHA = "0123456789abcdef0123456789abcdef01234567";
+
+    @Test
+    @DisplayName("WR-03: fixture: the checkout rule accepts a bumped SHA and version and still rejects every pin that is not a 40-hex SHA with a vX.Y.Z comment")
+    void fixtureCheckoutRuleAcceptsABumpAndRejectsLoosePins() {
+        Function<String, List<String>> withPin = pin -> replacing(VALID, CHECKOUT_LINE, pin);
+        assertAll(
+                accepts(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA + " # v7.1.0")),
+                accepts(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA + " # v10.12.3")),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + "v7.0.1"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + "main"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA.substring(1) + " # v7.1.0"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA + "0 # v7.1.0"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA.toUpperCase(Locale.ROOT) + " # v7.1.0"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA + " # main"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply(PIN_PREFIX + OTHER_SHA + " # v7"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply("      uses: actions/checkout-fork@" + OTHER_SHA + " # v7.1.0"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        withPin.apply("      uses: other/checkout@" + OTHER_SHA + " # v7.1.0"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        after(VALID, CHECKOUT_LINE, PIN_PREFIX + OTHER_SHA + " # v7.1.0"),
+                        RULE_CHECKOUT),
+                rejects(
+                        IncrementVersionWorkflowGuardUnitTest::checkoutProblem,
+                        replacing(VALID, CHECKOUT_LINE),
+                        RULE_CHECKOUT));
     }
 
     @Test
