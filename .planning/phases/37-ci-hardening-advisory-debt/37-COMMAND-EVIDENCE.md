@@ -14,7 +14,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | CIH-01, CIH-02, CIH-03 | 37-01 | pass |
-| E-02 | CIH-01, CIH-02, CIH-03 | 37-01 | pending (plan 37-01) |
+| E-02 | CIH-01, CIH-02, CIH-03 | 37-01 | pass |
 | E-03 | CIH-01, CIH-03 | 37-01 | pending (plan 37-01) |
 | E-04 | CIH-02 | 37-01 | pending (plan 37-01) |
 | E-05 | CIH-05 | 37-02 | pending (plan 37-02) |
@@ -105,5 +105,82 @@ baseline_jvm_crash: none
 The planning-time research found no `scratch/*` ref on origin; two now exist (`scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6`, the Phase 36 CLT-07 scratch refs). They are recorded, not a stop condition: this phase merges nothing and pushes nothing. `origin_custom_build` still equals the `v1.7.0_gg5` tag. The phase helper files and the 16 assets were already tracked at `local_head` (committed with the plan), so this evidence commit stages only the evidence file. The untouched testUnit run reports 2 skipped tests; the 18 skips of the full suite belong to the `test` task, not to `testUnit`.
 
 2026-10-31T08:52:00Z
+
+Verdict: pass
+
+### E-02: Tracer: the bump script, red first, the workflow wired to it, and the real files bumped end to end
+
+Backs: CIH-01, CIH-02, CIH-03, ROADMAP Phase 37 criteria 1 and 2 (the thinnest end-to-end path of the tooling chain: the script, a first table test seen red before the script existed, the workflow that calls it, the anchors rows and the docs row, run on the real files).
+
+```sh
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BumpVersionScriptUnitTest' > /tmp/gsd37/exec/tracer-red.log 2>&1
+cp .planning/phases/37-ci-hardening-advisory-debt/37-assets/bump_version.py.txt .github/scripts/bump_version.py
+chmod +x .github/scripts/bump_version.py
+cmp .github/scripts/bump_version.py .planning/phases/37-ci-hardening-advisory-debt/37-assets/bump_version.py.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BumpVersionScriptUnitTest' > /tmp/gsd37/exec/tracer-green.log 2>&1
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+cmp src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java /tmp/gsd37/w/fmt/src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java
+git worktree remove --force /tmp/gsd37/w/fmt
+cp .planning/phases/37-ci-hardening-advisory-debt/37-assets/increment-version.yml.txt .github/workflows/increment-version.yml
+ruby -ryaml -e 'YAML.load_file(ARGV[0])' .github/workflows/increment-version.yml
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt replace-line .planning/scripts/fork-anchors.txt .planning/phases/37-ci-hardening-advisory-debt/37-assets/anchors-rows-plan01.txt "$(printf '.github/workflows/increment-version.yml\tnode-version')"
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt replace-line docs/FORK-DELTA.md .planning/phases/37-ci-hardening-advisory-debt/37-assets/fork-delta-row-1-increment-version.md.txt '| `increment-version.yml` is hardened'
+git worktree add --detach /tmp/gsd37/w/e2e HEAD
+ruby -ryaml -e 'y=YAML.load_file(ARGV[0]); s=y["jobs"]["build"]["steps"].find{|x| x["name"]=="Increment version"}; puts s["run"]' .github/workflows/increment-version.yml > /tmp/gsd37/exec/step-increment.sh
+cd /tmp/gsd37/w/e2e && env BUMP=gg GITHUB_ENV=/tmp/gsd37/exec/e2e-github-env bash --noprofile --norc -eo pipefail /tmp/gsd37/exec/step-increment.sh
+git -C /tmp/gsd37/w/e2e diff --name-only
+git -C /tmp/gsd37/w/e2e diff --numstat
+cd /tmp/gsd37/w/e2e && python3 -I <repo>/.planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git -C /tmp/gsd37/w/e2e checkout -- .
+printf 'v1.7.0_gg6\n' > /tmp/gsd37/w/e2e/VERSION
+cd /tmp/gsd37/w/e2e && python3 -I <repo>/.planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git worktree remove --force /tmp/gsd37/w/e2e
+git worktree prune
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BumpVersionScriptUnitTest' --tests '*WorkflowActionPinGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' > /tmp/gsd37/exec/tracer-guards.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit --class <ClassName>
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed build/test-results/testUnit
+git diff --quiet ff8730860ba8560171fcda44bc1cdcd6dba1ba2a HEAD -- src/main
+git grep -n -I -E '<the three identifier words of the hygiene rule>'
+```
+
+```text
+assets_identical: yes
+tracer_red_exit: 1
+tracer_red_junit: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=2 failures=2 errors=0 skipped=0 files=1
+tracer_red_reason: script missing
+tracer_green_exit: 0
+tracer_green_junit: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+spotless_new_file_cmp: identical
+script_commit: 1f2ba9f359e9819f6cf1707a5b5c13327914a69d
+script_commit_files: .github/scripts/bump_version.py; src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java
+anchors_rows_before: rows=152
+anchors_rows_after: rows=157
+anchors_mirror_after_edit: rows=157 bad=0
+forkdelta_numstat: 1/1
+forkdelta_defect_sentence_gone: yes
+workflow_commit: 501d069644b452db7405aee96a9c9e9df056bce0
+workflow_commit_files: .github/workflows/increment-version.yml; .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md
+e2e_exit: 0
+e2e_new_version: v1.7.0_gg6
+e2e_version_file: v1.7.0_gg6
+e2e_changed_files: .planning/scripts/fork-anchors.txt; VERSION
+e2e_numstat: 1/1; 1/1
+e2e_anchors_after: rows=157 bad=0
+e2e_version_only_anchors: rows=157 bad=1
+e2e_version_only_moved: ANCHOR MOVED VERSION [v1.7.0_gg5] expected 1 got 0
+e2e_worktree_removed: yes
+guards_exit: 0
+guards_failed: OK failed: 0 failing testcases, 0 expected
+guards_tallies: BumpVersionScriptUnitTest tests=2 failures=0 errors=0 skipped=0; WorkflowActionPinGuardUnitTest tests=21 failures=0 errors=0 skipped=0; TestsWorkflowPinGuardUnitTest tests=39 failures=0 errors=0 skipped=0
+anchors_mirror_main: rows=157 bad=0
+src_main_unchanged: yes
+hygiene_scan: clean
+```
+
+Before the script existed both tracer tests failed with python3 reporting that it could not open `.github/scripts/bump_version.py`; with the asset copied unchanged both passed. The workflow's own `Increment version` run block, extracted from the committed YAML and run the way GitHub runs it (`bash -eo pipefail` with `GITHUB_ENV` set), turned `v1.7.0_gg5` into `v1.7.0_gg6` in `VERSION` and in the `VERSION` row of the anchors file and nothing else; the anchors mirror read `bad=0` afterwards. A bump of `VERSION` alone, the old workflow's behaviour, reads `bad=1`. The Spotless baseline of the pristine worktree changed 50 existing files and the same 50 after the new file was added; the new file was unchanged by Spotless. The pin guard tallies equal their E-01 baselines (21 and 39).
+
+2026-10-31T08:55:30Z
 
 Verdict: pass
