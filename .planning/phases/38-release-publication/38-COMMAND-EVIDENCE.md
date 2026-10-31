@@ -15,7 +15,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | RLS-01 | 38-01 | pass |
-| E-02 | RLS-01 | 38-01 | pending (plan 38-01) |
+| E-02 | RLS-01 | 38-01 | pass |
 | E-03 | RLS-01 | 38-01 | pending (plan 38-01) |
 | E-04 | RLS-01 | 38-01 | pending (plan 38-01) |
 | E-05 | RLS-02 | 38-02 | pending (plan 38-02) |
@@ -112,5 +112,65 @@ testunit_baseline: not re-measured: Phase 38 changes no Java file, scope facts a
 The six helpers and the two assets were already tracked at `local_head` (committed with the plan), so this evidence commit stages only the evidence file. The first syntax check used `py_compile` under `-I`, which ignores `PYTHONPYCACHEPREFIX` and left a `__pycache__` directory in the phase directory; it was removed file by file and the check was redone with `compile()`, which writes nothing. Origin holds two `scratch/clt-07-*` branches that belong to the user and are not touched. The swap reading is high (about 16 of 17 GB used), so an OpenJ9 crash in a later Gradle run is a known risk and not a test failure.
 
 2026-10-31T12:46:00Z
+
+Verdict: pass
+
+### E-02: Tracer: VERSION bumped through the script with its anchors row, the generated version, the baseline tag and the anchors mirror agree
+
+Backs: RLS-01, ROADMAP Phase 38 criterion 1 (the thinnest end-to-end path through the version layers on the real files: the bump script, one commit of `VERSION` with its anchors row, the clean build's generated constant, the baseline selection and the anchors mirror; no tag, no push, no Docker).
+
+```sh
+git tag --merged HEAD --list 'v*' | python3 -I .github/scripts/baseline_tag.py v1.7.0_gg6
+python3 -I .github/scripts/bump_version.py gg --version-file /tmp/gsd38/w/bump/VERSION --anchors-file /tmp/gsd38/w/bump/fork-anchors.txt
+git diff --no-index --numstat /tmp/gsd38/w/bump-orig/VERSION /tmp/gsd38/w/bump/VERSION
+git diff --no-index --numstat /tmp/gsd38/w/bump-orig/fork-anchors.txt /tmp/gsd38/w/bump/fork-anchors.txt
+python3 -I .github/scripts/bump_version.py gg
+cat VERSION
+git diff --name-only
+git diff --numstat -- VERSION .planning/scripts/fork-anchors.txt
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean generateVersionFile > /tmp/gsd38/exec/version-clean.log 2>&1
+grep ARTIFACT_VERSION build/generated/sources/version/java/main/com/clickhouse/kafka/connect/sink/Version.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*MBeanNameUnitTest' --tests '*BumpVersionScriptUnitTest' --tests '*BaselineTagScriptUnitTest' > /tmp/gsd38/exec/bump-guards.log 2>&1
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit --class BumpVersionScriptUnitTest
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit --class MBeanNameUnitTest
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit --class BaselineTagScriptUnitTest
+git add VERSION .planning/scripts/fork-anchors.txt && git commit -F /tmp/gsd38/exec/msg-bump.txt
+git diff --name-only 70bf8108d1720c229453782dbae6250de0931eba^ 70bf8108d1720c229453782dbae6250de0931eba
+git diff --quiet eb8c163ab9cdc7951612931f7c49b23e3ec37d6b HEAD -- src build.gradle.kts settings.gradle.kts gradle .github
+```
+
+```text
+baseline_for_gg6: v1.7.0_gg5
+scratch_bump_stdout: v1.7.0_gg6
+scratch_bump_numstat: 1/1; 1/1
+bump_stdout: v1.7.0_gg6
+bump_version_file: v1.7.0_gg6
+bump_changed_files: .planning/scripts/fork-anchors.txt; VERSION
+bump_numstat: 1/1; 1/1
+version_rows_in_anchors: 1
+anchors_mirror_after: rows=172 bad=0
+version_clean_exit: 0
+generated_version_line: public static final String ARTIFACT_VERSION = "v1.7.0_gg6";
+bump_guard_exit: 0
+bump_guard_failed: OK
+bump_guard_tally: OK junit build/test-results/testUnit: tests=82 failures=0 errors=0 skipped=0 files=3
+bump_xml: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=52 failures=0 errors=0 skipped=0 files=1
+mbean_xml: OK junit build/test-results/testUnit class *MBeanNameUnitTest: tests=11 failures=0 errors=0 skipped=0 files=1
+baseline_xml: OK junit build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+bump_commit: 70bf8108d1720c229453782dbae6250de0931eba
+bump_commit_files: .planning/scripts/fork-anchors.txt; VERSION
+allowlist_gg6_present: no
+local_gg6_tag_absent: yes
+src_unchanged: yes
+hygiene_scan: clean
+```
+
+The baseline selection still names `v1.7.0_gg5` after the bump, the scratch rehearsal and the real bump changed one line in each of the two files, and the clean build read back the new constant (the generated file is not an input of `generateVersionFile`, so `clean` is required). The three Docker-free classes that touch the version ran with `DOCKER_HOST` pointing nowhere: 82 tests, no failure, no JVM crash file.
+
+2026-10-31T12:55:00Z
 
 Verdict: pass
