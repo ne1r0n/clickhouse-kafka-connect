@@ -19,7 +19,7 @@ This note names no host, connector, cluster or production system. Every environm
 - `derived from Kafka consumer-group semantics (not measured)`: the claim follows from how Kafka and Kafka Connect define the behaviour; no broker and no Connect worker ran for it.
 - `measured in research (not re-run)`: the maintainers measured it while preparing the release, on throwaway clones and in the public `confluentinc/cp-kafka-connect-base:7.9.7` image, and did not repeat it on the release tip.
 
-A row that makes claims of different strength says which label each claim has. The column `Applies when` reads `either client` (the row holds on client `0.9.6` and on `0.11.0`), `client 0.11.0 ships` (the row exists because the client moves to `0.11.0`) or `this release`.
+A row that makes claims of different strength says which label each claim has. The column `Applies when` reads `either client` (the row holds on client library `0.9.6` and on `0.11.0`; it does not say client V1 or client V2), `client 0.11.0 ships` (the row exists because the client moves to `0.11.0`) or `this release`.
 
 ## Before you upgrade
 
@@ -110,6 +110,8 @@ Row C3 names two cases that are retriable today although no test asserts them. A
 ## D. ClickHouse Java client 0.11.0
 
 The connector's ClickHouse Java client moves from `0.9.6` to `0.11.0`. The connector keeps working on the new client, and one effect breaks an upgrade for a connector on client V2 that sets `custom_` keys in `jdbcConnectionProperties` (row D7). A row says in `Applies when` whether it holds on both client lines or only because the client moves.
+
+Which client a connector runs decides which rows describe it. A connector runs client V2 only when its configuration sets `client_version` to a value other than `V1`; without `client_version` it runs client V1 (read from the code: `ClickHouseSinkConfig` and `ClickHouseWriter.start`). Rows D1 to D8, D10 and D11 were measured or read for client V2 and are not a statement about client V1. Rows D9 and D12 concern the archive that both clients ship in. Rows D13 and D14 also hold on client V1. What the move to `0.11.0` changes in the V1 library artifacts (`clickhouse-client`, `clickhouse-http-client` and `clickhouse-data`, which share the version with the V2 client) was not audited beyond rows D13 and D14 and one V1-mode run of the live tests in the maintainers' research (35 tests, no failure; `measured in research (not re-run)`).
 
 | ID | Effect | Label | Applies when | How it is known |
 |----|--------|-------|--------------|-----------------|
