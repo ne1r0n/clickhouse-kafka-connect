@@ -26,7 +26,7 @@
 | E-11 | CIH-04 | 37-03 | pass |
 | E-12 | CIH-04 | 37-03 | pending (user-gated) |
 | E-13 | ADV-01 | 37-04 | pass |
-| E-14 | ADV-02 | 37-04 | pending (plan 37-04) |
+| E-14 | ADV-02 | 37-04 | pass |
 | E-15 | ADV-02 | 37-04 | pending (plan 37-04) |
 | E-16 | ADV-01, ADV-02 | 37-05 | pending (plan 37-05) |
 | E-17 | ADV-02, ADV-03 | 37-05 | pending (plan 37-05) |
@@ -882,5 +882,59 @@ fmt_worktree_removed: yes
 The five new executions failed on the unedited script (13 executions, 5 failures, exactly the five new names and none of the eight existing ones) and passed on the plan asset (13 executions, 0 failures); the script is a byte copy of the asset and keeps mode 100755. The Spotless baseline run was done once on a pristine detached worktree for all seven existing test files that plan 37-04 edits (the numstat was empty for the five files of this task and the next task and 6/8 and 5/7 for `DescribeUnreadableEnumMockServerTest` and `ColumnTest`, recorded again in E-15); the edited copies of this task's two classes were staged in the worktree before Spotless ran, so the working-tree numstat shows only Spotless's own changes, and it was empty for both (the same method as plan 37-03). The attribute line was appended to `.gitattributes` (which already ended with a line feed); `git check-attr` moved from `text: unspecified` to `text: unset`, the workflow blob stays `3e9b9be0` and `git status` for the file prints nothing. The guard class `UpstreamIntegrationWorkflowBytesGuardUnitTest` went from 9 to 11 executions: a real-file test and one fixture test. The rule is slightly stricter than the plan's wording: it requires that the only line of `.gitattributes` that begins with the workflow path is exactly `.github/workflows/integrationTests.yaml -text`, so a later line that turns conversion back on is rejected too (the fixture covers a missing line, a commented-out line, `text`, `text eol=crlf`, a later `text` line and the accepted real shape). The anchors file holds the new row for the attribute line (`rows=172 bad=0`), and FORK-DELTA names the attribute in the byte-guard row and gains the summary-script row after it. The cumulative assertion diff from `local_head` printed nothing.
 
 2026-10-31T09:36:00Z
+
+Verdict: pass
+
+### E-14: Jar names in the archive check, the reference derivation measured, the comment typo fixed
+
+Backs: ADV-02; 25-REVIEW IN-01, WR-02 (first half) and IN-04 b, carried by the Phase 29 close record; threat T-37-14.
+
+```sh
+git worktree add --detach /tmp/gsd37/w/derive HEAD
+python3 -I /tmp/gsd37/exec/derive-edit.py /tmp/gsd37/w/derive
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/derive --console=plain testUnit --rerun --tests '*ConnectApiReferencesUnitTest' > /tmp/gsd37/exec/derive.log 2>&1
+python3 -I /tmp/gsd37/exec/derive-edit.py .
+git worktree remove --force /tmp/gsd37/w/derive
+git worktree prune
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt replace-text .gitignore 1 '# ecliose' '# eclipse'
+git diff --numstat .gitignore
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+git -C /tmp/gsd37/w/fmt diff --numstat -- <the three edited test files>
+git worktree remove --force /tmp/gsd37/w/fmt
+git diff -w -U0 {L0} -- src/test src/integrationTest src/testFixtures
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ConfluentArchiveCheckUnitTest' --tests '*ConnectApiReferencesUnitTest' > /tmp/gsd37/exec/t2-run.log 2>&1
+git commit -F /tmp/gsd37/exec/msg-p4-check.txt
+git commit -F /tmp/gsd37/exec/msg-p4-derive.txt
+git commit -F /tmp/gsd37/exec/msg-p4-typo.txt
+```
+
+```text
+ic_before: 6
+ic_after: 7
+derive_exit: 0
+derive_junit: OK junit /tmp/gsd37/w/derive/build/test-results/testUnit class *ConnectApiReferencesUnitTest: tests=3 failures=0 errors=0 skipped=0 files=1
+derive_unresolved: 0
+derive_unresolved_names: none
+derive_decision: committed
+derive_main_junit: OK junit build/test-results/testUnit class *ConnectApiReferencesUnitTest: tests=3 failures=0 errors=0 skipped=0 files=1
+derive_commit: d93ff6298ef9e63121a50eeec40f1676ad5bb6f3
+derive_worktree_removed: yes
+derive_classpath_half: dispositioned
+gitignore_numstat: 1/1
+spotless_numstat_baseline: none
+spotless_numstat_edited: none
+assertion_diff: clean
+t2_exit: 0
+t2_junit: OK junit build/test-results/testUnit: tests=10 failures=0 errors=0 skipped=0 files=2
+check_commit: e266a5b4609f175bfbe0f8000569a9282533dc47
+check_commit_files: src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheck.java; src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheckUnitTest.java
+typo_commit: 6ca4c460ba246b3cb47ec422218cf255fe2805cc
+hygiene_scan: clean
+```
+
+`ConfluentArchiveCheck.Result` gained the third component `libJarNames` (the entry names counted as lib jars, in discovery order); `run` prints one extra stderr line after the header and before the listed violations only when that list does not hold exactly one name: `lib jars found: <names joined by ", ">; a version directory left under build/confluentArchive by an earlier VERSION adds a jar, run clean first`. The line is also printed when no jar is found (the names are then empty). The existing tests read `violations()`, `innerEntries()`, the header and the 20-line listing of a one-jar archive, so none changed; the new CI-20 test reads the header, the unchanged `found 2` line and the new line with both jar names and the word `clean` (executions 6 to 7). The derivation measurement: in a throwaway worktree of the plan's start tip, the lookup that walks the superclass chain and then the interfaces now returns the declaring type, and a member that no type on either walk declares is collected and reported together by one `IllegalStateException` (the member declared by a non-Kafka type is still no entry). It differs from the plan's wording only in structure: the lookup returns the type or an empty result and the caller collects the unresolved members, instead of the lookup throwing and the caller catching, so that the class-load failure of the existing code is not caught by mistake. The run was green with zero unresolved members (`derive_unresolved: 0`), so by the plan's rule the same change was applied in the main tree, the class stayed green with its three executions, and it was committed. The second half of the row (the derivation resolves members on the test classpath, whose Kafka version can differ from the compile pin) is a disposition either way and was not touched. The Spotless numstat of the three edited existing files is empty before and after (the edited copies were staged in the detached worktree before Spotless ran, as in E-13). The typo fix changes one line of `.gitignore`. The cumulative assertion diff printed nothing.
+
+2026-10-31T09:36:18Z
 
 Verdict: pass
