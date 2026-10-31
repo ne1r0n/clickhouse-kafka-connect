@@ -1,7 +1,7 @@
 ---
 phase: 37-ci-hardening-advisory-debt
 verified: 2026-10-31T13:30:00Z
-status: human_needed
+status: passed
 score: 3/5 roadmap success criteria verified (0 failed, 1 behavior-unverified, 1 not meetable as worded and routed to human judgement); 8/8 requirement ids have implementation evidence, ADV-03 only in a reduced form
 covered_files:
   - ".gitattributes"
@@ -181,3 +181,12 @@ What the reader should weigh:
 
 _Verified: 2026-10-31T13:30:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+## Human-judgment disposition (2026-10-31)
+
+The verifier returned `human_needed`. The user answered (AskUserQuestion) as follows, and the status was changed from `human_needed` to `passed` on that basis only; no check result was altered.
+
+1. Close the phase accepting the open items: the CI wiring has never run on GitHub (criterion 3 stays behavior-unverified; the optional dry-run E-12 stays pending with the user); the five dispositioned rows stay dispositions with owners (26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01 in `src/main`, and 28 IN-05(b)); `src/main` is not changed.
+2. ADV-03 and ROADMAP criterion 5 were reworded to say that no workflow run created `v1.7.0_gg5` and that the caveat stays open until Phase 38. The record is complete for what exists.
+3. UF-37-1 (log forging via archive entry names) was to be fixed now. It is fixed in `f523cf3c` and its coverage was completed by `5ba9b84f` (`37-REVIEW-UF.md`, `37-REVIEW-UF-FIX.md`). UF-37-2 (false premise of review WR-01) was corrected in `e1e05604`. These fixes post-date the verifier's HEAD `e5d85761`; the Docker-free suite was re-run after them (1672 tests, 0 failures, 2 skipped); the Docker-backed suite was not re-run since E-18.
+4. Open for Phase 38: the gg6 allow-list must respect the WR-02 glob rule (a row starting with `*`, `?` or `[` is refused); the `increment-version.yml` header comment names the wrong guard class (owner the user); review Info items remain open.

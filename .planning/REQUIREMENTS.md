@@ -45,7 +45,7 @@
 
 - [ ] **ADV-01**: Every Phase 30 review row (WR-01..WR-03, IN-01..IN-04) and Phase 31 row (WR-01..WR-03, IN-01..IN-03) is fixed or dispositioned with an owner and a re-open trigger.
 - [ ] **ADV-02**: The 16 unfixed review findings in `29-MILESTONE-CLOSE-RECORD.md` are fixed or dispositioned the same way.
-- [ ] **ADV-03**: The real release of `v1.7.0_gg5` (GitHub release of 2026-10-28) is recorded as evidence, closing the "no run exercised the publish path" caveat.
+- [ ] **ADV-03**: The real release of `v1.7.0_gg5` (GitHub release of 2026-10-28) is recorded as evidence. No workflow run created it, so the "no run exercised the publish path" caveat stays open until the Phase 38 publication (reworded by the user's decision of 2026-10-31).
 
 ### Buffered Offset Commit (upstream #777)
 
