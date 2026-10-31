@@ -1,6 +1,6 @@
 ---
 phase: 38
-reviewed: 2026-10-31T14:35:00Z
+reviewed: 2026-10-31T16:10:00Z
 depth: standard
 diff_base: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
 files_reviewed: 5
@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg5.md
 findings:
   critical: 0
-  warning: 15
+  warning: 17
   info: 9
-  total: 24
+  total: 26
 status: issues_found
-rounds: 4
+rounds: 5
 ---
 
 # Phase 38: Code Review Report
@@ -302,4 +302,49 @@ round: 4 findings: 2
 Totals across the four rounds: 24 findings (15 warnings, 9 info, 0 critical): round 1 16, round 2 4, round 3 2, round 4 2. The checker's `rounds` command is expected to print FAIL only on the line "the last round still has findings and no round3_decision is recorded", which is its rule for a round that ends with findings; the `round` command with the nine mandated tokens prints OK.
 
 _Round 4 reviewed: 2026-10-31_
+_Reviewer: Claude (gsd-code-reviewer), fresh context_
+
+## Round 5
+
+**Reviewed:** 2026-10-31
+**Scope:** the round-4 fix commits only (`git diff 4ef5f17e HEAD -- . ':(exclude).planning'`, three commits: WR-14 `93db97f8`, WR-15 `e00026fe` and the user-agent scope fix `e00a0682`; HEAD `e00a0682`). They touch `docs/ROLLOUT-v1.7.0_gg6.md`, `CHANGELOG.md` and `docs/FORK-DELTA.md`; `docs/ROLLOUT-v1.7.0_gg5.md` is unchanged in this range and was read at HEAD, together with `docs/ROLLOUT-v1.7.0_gg1.md` (its half of WR-08 stays deferred, not a new finding).
+**Status:** issues_found
+
+WR-14 and WR-15 are resolved: the helper-client count and the insert-timeout scoping are true against the tree, and no wrong command, version, count or broken cross-reference was introduced. What I re-checked against the tree and the sources rather than the fixer's log: every `new ClickHouseHelperClient` site in `src/main` (`ClickHouseWriter.start` line 87, `KeeperStateProvider` line 50, `ClickHouseWriter.getMutationRequest` line 1786, and no other), that `getMutationRequest` is called only from the three client V1 insert methods (lines 1407/1409, 1537, 1692), that `ClickHouseHelperClient`'s constructor builds both clients (lines 105-106), that no code closes any helper (`ClickHouseWriter.stop` shuts the executor only, `KeeperStateProvider` has no close of its helper, `ClickHouseHelperClient.close` is called nowhere in `src/main`), that `awaitInsertResponse` is called at exactly three sites (1324, 1599, 1746) and the three client V1 methods wait with a bare `future.get()` (1423, 1549, 1704) with no other reader of `clickhouseClientInsertTimeoutMs`, and the `KeeperStateProvider` start path under `exactlyOnce=true` with a `custom_` key on client V2 (the constructor logs and swallows its failures, then `ClickHouseWriter.start` returns false and `ProxySinkTask.start` throws, so row D7's symptom holds there too). The `client-v2` 0.11.0 sources confirm the unknown-key WARN is raised in `ClientConfigProperties.parseConfigMap`, which the `Client` constructor calls (line 186) and `Client.Builder.build` does not. Two findings remain, one about how the fix frames a log line and one about a ZSTD sentence the scoping did not reach.
+
+## Warnings (round 5)
+
+### WR-16: The note, the CHANGELOG and FORK-DELTA item 13 present the per-insert `ssl`/`sslmode` WARN on client V1 as a consequence of this release, but client `0.9.6` already logged the same warning at the same site
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:114`, `CHANGELOG.md:23-27`, `docs/FORK-DELTA.md:224`
+**Issue:** The new text says that "the `ignore_unknown_config_key` default and the WARN of row D1 therefore apply to client V1 connectors as well, and a client V1 connector that carries `ssl` or `sslmode` logs that WARN once for every insert batch, not only at start" (note), and the CHANGELOG bullet under "What an operator can see" says the WARN "reaches client V1 connectors that carry `ssl` or `sslmode` and is logged there once for every insert batch"; `FORK-DELTA` item 13 repeats it. Read in a release note, that tells a client V1 operator that a new log line now appears for every insert batch. It is not new. The `v1.7.0_gg5` tree already built the helper per client V1 insert (`git show v1.7.0_gg5:.../ClickHouseWriter.java`: `getMutationRequest` at line 1784, `chcTmp` at 1786, called at 1407, 1409, 1537, 1692) and its `createClientV2` (same file as shipped at `v1.7.0_gg5`) passes every `jdbcConnectionProperties` pair to `Client.Builder.setOption` exactly as now. The `client-v2` 0.9.6 jar's `ClientConfigProperties.parseConfigMap` already calls `Logger.warn("Unknown and unmapped config properties: {}", map)` for a leftover key (javap of the 0.9.6 class: the `ldc` of that string is followed by `Logger.warn(String, Object)`), and row D1 of the note itself says "Client 0.9.6 only warned about them". So a client V1 connector with `ssl` or `sslmode` already logged one such WARN per insert batch on `v1.7.0_gg5`; what 0.11.0 changes is the text (0.9.6 prints the remaining map, 0.11.0 prints the key names: `Unknown and unmapped config properties: [ssl, sslmode]`), not the frequency. The CHANGELOG sentence "they are now ignored with a WARN that names them" has the same "now" problem for the V2 half. I did not run 0.9.6; this rests on the bytecode and on the `v1.7.0_gg5` sources.
+**Fix:** In the three places keep the true part (the object is built per insert on client V1, and the warning is logged each time) and state that this holds on `0.9.6` as well, so only the text changes: for example "a client V1 connector that carries `ssl` or `sslmode` already logged this warning once for every insert batch on `0.9.6`; on `0.11.0` the text lists the key names". Drop "now" from the CHANGELOG sentence or say "still ignored, with a WARN that names them". Label the 0.9.6 half `read from the code` (the 0.9.6 binary and the gg5 sources) and say it was not run.
+
+### WR-17: "A connector reaches the ZSTD path only with `compress=true` together with `setCompressionMethod=false`, or with `decompress=true`" is stated for every connector, but the client V1 artifacts reach `zstd-jni` through their own algorithm options
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:162`, `docs/ROLLOUT-v1.7.0_gg6.md:126`, `CHANGELOG.md:36-38`
+**Issue:** Note line 114 scopes rows D1 to D8, D10 and D11 to client V2 and says "Rows D9 and D12 concern the archive that both clients ship in", which covers the row. It does not cover the sentence at line 162 ("A connector reaches it only with `compress=true` together with `setCompressionMethod=false`, or with `decompress=true`") or the CHANGELOG zstd bullet ("Only a connector that takes the ZSTD path (`compress=true` with `setCompressionMethod=false`, or `decompress=true`) is affected"), which are condition claims ("only") and are written for any connector. For client V2 the condition comes from the `compression.method` default and the 0.11.0 sources. For client V1 it was never checked, and the V1 artifacts that the archive ships contain a ZSTD route of their own: `clickhouse-client` 0.11.0 declares the options `compress_algorithm` and `decompress_algorithm` (`ClickHouseClientOption`), `ClickHouseCompression.ZSTD` exists in `clickhouse-data` 0.11.0, `ClickHouseCompressionAlgorithm.of(ZSTD)` calls `ZstdSupport.getInstance()`, and `ZstdSupport$DefaultImpl` constructs `com.github.luben.zstd.ZstdOutputStream` and `ZstdInputStream` and calls `Zstd.defaultCompressionLevel()` (all from javap of the jars in the Gradle cache; `clickhouse-http-client` and `clickhouse-client` have no reference of their own). The same classes exist in 0.9.6, but the 0.9.6 archive does not ship `zstd-jni` (row D9: "new in the archive"), so a client V1 connector that sets one of those V1 options in `jdbcConnectionProperties` could not load a native before and can now, which is exactly the change D9 documents for the archive. I did not run it, so I do not claim that the native loads; I claim that "only with" is unverified for client V1 and that the note elsewhere says the V1 artifacts of `0.11.0` "were not audited". The sentence therefore overclaims for client V1 and is not covered by the scoping sentence.
+**Fix:** Scope both sentences: "On client V2, a connector reaches the ZSTD path only with ...", and add "On client V1 the condition was not verified: the V1 artifacts of `0.11.0` contain a ZSTD route behind the options `compress_algorithm` and `decompress_algorithm` (read from the code, not run), so a client V1 connector that sets either of them is covered by the platform and temp-folder checks of row D9 until shown otherwise". Keep row D9 as it is.
+
+---
+
+round: 5 findings: 2
+
+## Mandated confirmations (RLS-04)
+
+- (1) fixes resolve their findings and introduce no new error of their own in their facts: confirmed for WR-14 and WR-15, with the framing and the unscoped sentence recorded as WR-16 and WR-17. WR-14: the wording is "at least one V2 client per task start, one more per exactly-once state provider, and on client V1 one more per insert", and the code agrees at all three construction sites; the WARN-per-insert sentence is true as a statement about the object, but WR-16 shows that it is not a change of this release. WR-15: every statement of the insert timeout is now scoped (note line 250, CHANGELOG line 63, `FORK-DELTA` item 14), the six call sites match the text, and the new text says the V1 library's own timeout options were not examined and nothing was measured for V1. The user-agent scope fix reads correctly (V2 changes with 0.11.0, V1 artifacts not audited). No wrong command, version (`v1.7.0_gg6`, `3a3a15a9`, 7 changed `src/main` files), broken cross-reference or inconsistency between the four documents in the three changed files; the V1 versus V2 wording is the same in the note, the CHANGELOG and `FORK-DELTA`.
+- (2) labels: confirmed. `38-note-check.py rows`, `labels` and `forbidden` print `OK rows=29 measured=19 code=16 derived=3 research=7`, `OK labels: 4 of 4 defined` and `OK forbidden: 0 lines`, so the table keeps its `29 rows`, all four labels are used verbatim, and every row's label is earned by its How cell: the halves not repeated carry `measured in research (not re-run)`. The new inline sentences are outside the table and each names its source file and says "read from the code".
+- (3) D7 against `src/main` and the evidence: confirmed. Client V2 is selected for any `client_version` other than `V1` (`ClickHouseWriter.start` line 85, `KeeperStateProvider` line 47), the start fails under every `errors.tolerance` (`ClickHouseSinkTask.start` has no tolerance branch; `pingV2` false, `ClickHouseWriter.start` returns false, `ProxySinkTask.start` throws `Connection to ClickHouse is not active.`), also with `exactlyOnce=true` (the `KeeperStateProvider` constructor logs and swallows its own failure before that), and client V1 is unaffected because the V2 object sends no request there (the helper is used only for `getServer()` in `getMutationRequest`). The `custom_` key reaches the server only through the V2 `Client`, as `parseConfigMap` maps it to a server setting.
+- (4) rollback bullets: confirmed, unchanged in this range. The `lz4-java` bullet matches `1.12.0` at tag `pre-v1.7.0_gg6` and `1.12.1` at HEAD; the frozen-offset bullet carries `derived from Kafka consumer-group semantics (not measured)` and claims no run; `pre-v1.7.0_gg6` and `v1.7.0_gg5` are both `3a3a15a9`, and no `v1.7.0_gg6` tag exists locally or on origin.
+- (5) gg5 note lines 39 and 111: confirmed. Line 39 dates the release (2026-10-28) and says what held when the note was written, line 111 says "as of 2026-10-28", both agree with the release record (`gh api repos/ne1r0n/clickhouse-kafka-connect/releases`: one release, `v1.7.0_gg5`, published 2026-10-28T13:16:09Z, one asset of 12453556 bytes, digest `sha256:4c69b6fb3b22ab8f7c329383079cc284d3d2e0ae497f3ffb2f0114d171bc6767`), and neither goes stale when `v1.7.0_gg6` appears.
+- (6) `FORK-DELTA` open items 12 to 23: confirmed. Each of the 12 items carries "Owner: fork maintainer (the user)." and a re-open trigger (items 21 to 23 also a condition), and the paragraph says "open items 12 to 23", which is the count. The gg6 allow-list `.planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt` does not exist in the tree (only the -25, gg4 and gg5 files do) and is stated as a plan with its condition. Items 13 and 14 carry the WR-14 and WR-15 wording consistently with the note.
+- (7) identifiers: confirmed. A grep of the note and of the CHANGELOG `1.7.0_gg6` section (lines 1-87) for finding identifiers, `round:`, `RLS`, phase and requirement identifiers and `.planning` paths is empty; no host, connector or cluster name appears. `FORK-DELTA` keeps its planning identifiers by design.
+- (8) `release object` and the allow-list: confirmed. Neither the note nor the CHANGELOG states a digest, tag commit or URL of the `release object` of `v1.7.0_gg6`; the rollback paragraph says the workflow is "meant to create the release" and points at the open condition of `FORK-DELTA` item 22. The only digest in the note is that of the published `v1.7.0_gg5` asset, which I re-read from the release record.
+- (9) CHANGELOG: confirmed. Every section from `# 1.7.0_gg5` down is byte-identical to the file at tag `v1.7.0_gg5` (`git diff --no-index` of tag file against the current file shows 86 insertions at the top and no deletion). The new section's `custom_`, `additionalRetriableErrorCodes` and `errors.tolerance` statements are consistent with rows D7 and C1 to C3.
+
+Operator-eyes read of the five documents: the order a connector operator needs is the right one (the six steps, then the rows). Two things a client V1 operator, which is the default (no `client_version`), would trip over are the two findings above: a "new" WARN per insert batch that was already there (WR-16), and a ZSTD condition that was not checked for V1 (WR-17). The `docs/ROLLOUT-v1.7.0_gg1.md` item-6 sentence "on client V1 of any line it still fails" remains the deferred half of WR-08, not a new finding.
+
+Totals across the five rounds: 26 findings (17 warnings, 9 info, 0 critical): round 1 16, round 2 4, round 3 2, round 4 2, round 5 2. The checker's `rounds` command is expected to print FAIL for this round: its rule allows only four rounds (`1 to 4 allowed`) and, with a last round that has findings, requires a recorded `round3_decision`; the `round` command with the nine mandated tokens prints OK.
+
+_Round 5 reviewed: 2026-10-31_
 _Reviewer: Claude (gsd-code-reviewer), fresh context_
