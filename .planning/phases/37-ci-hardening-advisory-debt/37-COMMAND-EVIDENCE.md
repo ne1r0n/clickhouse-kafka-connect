@@ -28,7 +28,7 @@
 | E-13 | ADV-01 | 37-04 | pass |
 | E-14 | ADV-02 | 37-04 | pass |
 | E-15 | ADV-02 | 37-04 | pass |
-| E-16 | ADV-01, ADV-02 | 37-05 | pending (plan 37-05) |
+| E-16 | ADV-01, ADV-02 | 37-05 | pass |
 | E-17 | ADV-02, ADV-03 | 37-05 | pending (plan 37-05) |
 | E-18 | CIH-01 to CIH-05, ADV-01 to ADV-03 | 37-05 | pending (plan 37-05) |
 
@@ -999,5 +999,51 @@ fmt_worktree_removed: yes
 The bell pin was committed: the code path gives the measured key for both inputs. A label text with a backslash and `u0007` (the JSON layer as the DESCRIBE row carries it) is decoded once by the JSON-layer step and a label text holding the raw character U+0007 (as `system.columns.type` holds it) has no backslash and is scanned as it is, so both give the key of the letter a, the bell, and the letter b. The live half of the row (an entry for the four characters in the shared raw-name matrix needs a Docker run and an edit of that matrix) stays a disposition. `DescribeUnreadableEnumMockServerTest` now closes the helper client by try-with-resources in its shared helper; the two assertion lines and the two calls from the tests are unchanged (only their indentation moved), and the null assertion is not tightened, because that edit would change an assertion and needs the user's sign-off, so it stays a disposition. The Spotless numstat of both edited files equals the baseline taken on the pristine tree (6/8 and 5/7, pre-existing import-order hunks), and the diff of both shows hunks only in the import blocks and the file end, none in the added lines. The 27 IN-02 re-read of `JsonAsStringKeyResidualLiveTest`: its Javadoc intro says the key must reach none of the destinations an operator reads (the task status cause chain, the DLQ headers, the `Error inserting records` throwable and the `Error writing value of` line), which is the present behaviour; the class name still says `Residual`, which is the stale part, and four lines of `docs/FORK-DELTA.md` (none of `CHANGELOG.md`) name the class, so the finding's own alternative, to accept the stale name, is what plan 37-05 dispositions. No edit was made to that file. The cumulative diff from `local_head` of the removed or changed lines that hold `assert`, `fail(` or `expect` printed nothing, and `src/main` is unchanged. The plan-level cache-busted `testUnit` ran 1633 tests with 0 failures, 0 errors and 2 skipped (the E-01 baseline skips), 94 more than the 1539 of E-04, which is exactly the sum of the executions added by plans 37-02 to 37-04: 27 compare, 19 baseline tag, 34 release guard, 5 pin guard, 5 summary script, 2 bytes guard, 1 archive check and 1 column test. No OpenJ9 crash file appeared.
 
 2026-10-31T09:38:23Z
+
+Verdict: pass
+
+### E-16: The advisory ledger: 29 rows closed, pointers resolved, the src/main rows dispositioned, no assertion touched
+
+Backs: ADV-01, ADV-02, ROADMAP Phase 37 criterion 4, O-7, threat T-37-17.
+
+```sh
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py get .planning/phases/37-ci-hardening-advisory-debt/37-COMMAND-EVIDENCE.md E-NN <commit key>
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-hygiene-check.py .planning/phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+git add .planning/phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+git commit -F /tmp/gsd37/exec/msg-p5-ledger.txt
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-ledger-check.py check .planning/phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-ledger-check.py counts .planning/phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-ledger-check.py status .planning/phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md 26-IN-02 27-WR-01 27-IN-01 28-IN-01
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-ledger-check.py pointers .planning/phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+git cat-file -e <pointer>^{commit}
+git rev-list {L0}..HEAD
+git diff --quiet {L0} HEAD -- src/main
+git diff -w -U0 {L0} HEAD -- src/test src/integrationTest src/testFixtures
+```
+
+```text
+ledger_file: .planning/phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+ledger_commit: d95f800ab60e3be71af18f23ab27763b51477367
+ledger_head: d95f800ab60e3be71af18f23ab27763b51477367
+ledger_check: OK ledger: 36 rows, 0 problems
+ledger_counts: rows=36 bases=29 fixed=15 closed=3 dispositioned=18
+fixed_rows: 15
+closed_rows: 3
+dispositioned_rows: 18
+ledger_srcmain_rows: 26-IN-02=dispositioned 27-WR-01=dispositioned 27-IN-01=dispositioned 28-IN-01=dispositioned
+ledger_pointers: 44b8fb62c2177558ff38d075eef9401a4426286a fb63b0e9cf477d34f0830cd30e8c17132c660f22 501d069644b452db7405aee96a9c9e9df056bce0 46fcba8d97ded2f5243b31b4a147e962e7612ae7 b3446dc59348733d420add3e036e1a1f1582a103 d93ff6298ef9e63121a50eeec40f1676ad5bb6f3 e266a5b4609f175bfbe0f8000569a9282533dc47 6ca4c460ba246b3cb47ec422218cf255fe2805cc 496de32a 1c583b46249ab9bd30ff717c256c7f583c4f0ed9
+ledger_pointers_resolve: yes
+ledger_pointers_in_phase: yes
+src_main_unchanged: yes
+assertion_diff_cumulative: clean
+derive_row_consistent: yes
+bell_row_consistent: yes
+in_plan_dispositions: 25-WR-02(b); 28-IN-04(b); 28-IN-05(b); 27-IN-02
+hygiene_scan: clean
+```
+
+The ledger holds 36 rows for the 29 base findings (7 of Phase 30, 6 of Phase 31, 16 of the Phase 29 close record; seven findings are split into lettered rows with one status each). Fifteen rows are fixed and three closed, each with a pointer that resolves in git and lies in this phase's history except 25 IN-04 (d), whose pointer `496de32a` is the Phase 30 commit that closed it; eighteen rows are dispositions with an owner and a re-open trigger (owner `fork maintainer (the user)` except 30 IN-04, owner Phase 38). The four `src/main` findings (26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01) are dispositioned because the user has not approved a `src/main` change in this phase, and the four in-plan dispositions of plan 37-04 are carried: the classpath half of 25 WR-02, the live half of 28 IN-04, the null assertion of 28 IN-05 (owner the user, because tightening it changes an existing assertion) and the stale class name of 27 IN-02. The 25 WR-02 (a) and 28 IN-04 (a) rows read `fixed` because E-14 `derive_decision` and E-15 `bell_pin` both read `committed`, and their pointers equal E-14 `derive_commit` and E-15 `pin_commit`. The ledger is committed on its own, before this entry, because an entry cannot name the commit that carries it; the plan's single ledger-and-evidence commit is therefore two commits, the ledger first (`ledger_commit`) and this evidence second.
+
+2026-10-31T09:42:30Z
 
 Verdict: pass
