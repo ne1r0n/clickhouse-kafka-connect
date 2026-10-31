@@ -26,7 +26,7 @@
 | E-10 | RLS-04 | 38-03 | pass |
 | E-11 | RLS-03 | 38-04 | pass |
 | E-12 | RLS-03, RLS-06 | 38-04 | pass |
-| E-13 | RLS-06 | 38-04 | pending (plan 38-04) |
+| E-13 | RLS-06 | 38-04 | pass |
 | E-14 | RLS-05 | 38-05 | pending (plan 38-05) |
 | E-15 | RLS-05 | 38-05 | pending (plan 38-05) |
 | E-16 | RLS-05 | 38-05 | pending (plan 38-05) |
@@ -831,5 +831,117 @@ utc_end: 2026-10-31T18:08:11Z
 Every expectation held and the decision is go. The total of 1672 equals the Phase 37 verifier's re-run exactly, so Phase 37's additions are in it and Phase 38 added no test; the cache-busted second run (the plan's own verify, `verify_rerun_tests`) read the same 1672 tests and 2 skips. `testUnit` was run with the daemon socket pointing at a path that does not exist (the proof is the `docker info` failure above), while the colima VM stayed up. The cumulative gate ran in the background from the explicit gated SHA, concurrently with the tail gate and the two `testUnit` runs (the merge gates only read git objects and create no worktree); its log is `/tmp/gsd38/exec/cumulative-gate.log`. The non-`.planning` change set since the phase start and since the Phase 37 gate head (`5ba9b84f`) is the same five document paths; the two script paths are the allow-list and the anchors file. The `hygiene_scan_all` key covers the eight files this phase added (default mode), the documents, evidence and list (strict) and the added lines of `CHANGELOG.md`, `docs/FORK-DELTA.md`, `docs/ROLLOUT-v1.7.0_gg5.md` and `VERSION` (strict); this entry and the plan summary are scanned again at the verify. `worktrees_clean` means one line in `git worktree list`; the directories under `/tmp/gsd38/w` are scratch, none is a git worktree. `integration_test` is stated as what it is: not run here.
 
 2026-10-31T18:08:11Z
+
+Verdict: pass
+
+### E-13: Two full suites on one pinned ClickHouse latest with client V2 and the go decision
+
+Backs: RLS-06 (second half), ROADMAP Phase 38 criterion 4 (two full `--rerun` suites on the release tip against one pinned ClickHouse `latest` image with client V2, `SELECT version()` recorded, the named skips, one JVM line for both, and a go or no-go decision with every failure named). Both suites ran on JDK 21 (`-PjavaVersion=21`), because the default JDK 17 crashed twice on suite 1 (below). The Docker-free `testUnit` of E-12 ran on the default JDK 17.
+
+```sh
+git diff --quiet ea613ec35ebade7a2182cac4e6ecd5d86d099def HEAD -- . ':(exclude).planning'
+git diff --quiet ea613ec35ebade7a2182cac4e6ecd5d86d099def HEAD -- .planning/scripts
+colima list
+sysctl vm.swapusage
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --stop
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd38/exec/suite1.log 2>&1
+rm javacore.20261031.201046.82935.0002.txt core.20261031.201046.82935.0001.dmp Snap.20261031.201046.82935.0003.trc
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --stop
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd38/exec/suite1.log 2>&1
+rm javacore.20261031.201407.89192.0002.txt core.20261031.201407.89192.0001.dmp jitdump.20261031.201407.89192.0004.dmp Snap.20261031.201407.89192.0003.trc
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --stop
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd38/exec/suite1.log 2>&1
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py failed build/test-results/test
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/test --class <ClassName> 'tests>=1' failures=0 errors=0
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --stop
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd38/exec/suite2.log 2>&1
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py failed build/test-results/test
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/test --class <ClassName> 'tests>=1' failures=0 errors=0
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+git ls-remote --heads origin 'sync/*'
+git worktree list
+```
+
+```text
+utc_start: 2026-10-31T18:08:39Z
+gate_head_same: yes
+swap_before: vm.swapusage: total = 17408.00M  used = 15816.25M  free = 1591.75M  (encrypted)
+colima_vz: Running
+digest_before_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_before_run1: 26.10.3.7
+digest_same_as_phase37: yes
+suite1_attempt_1: default JDK 17: exit 1 (Gradle: Test Executor 2 finished with non-zero exit value 255), 2026-10-31T18:08:45Z to 2026-10-31T18:11:31Z, a JVM crash and not a test result
+suite1_attempt_1_crash: javacore dump event traceassert at 18:11:12Z, JRE 17 build 17.0.9+5 (IBM, OpenJ9); current thread Test worker in sun/instrument/InstrumentationImpl.retransformClasses0 called from org/mockito/internal/creation/bytebuddy/InlineBytecodeGenerator.triggerRetransformation; files core.20261031.201046.82935.0001.dmp (8284157648 bytes), javacore.20261031.201046.82935.0002.txt and Snap.20261031.201046.82935.0003.trc deleted by name
+suite1_attempt_2: default JDK 17 again, after ./gradlew --stop: exit 1 (non-zero exit value 255), 2026-10-31T18:12:01Z to 2026-10-31T18:14:49Z
+suite1_attempt_2_crash: javacore dump event gpf at 18:14:26Z, JRE 17 build 17.0.9+5, the same stack through retransformClasses0 and the Mockito inline mock maker; files core.20261031.201407.89192.0001.dmp (8351939192 bytes), javacore.20261031.201407.89192.0002.txt, jitdump.20261031.201407.89192.0004.dmp and Snap.20261031.201407.89192.0003.trc deleted by name
+suite1_attempt_3: -PjavaVersion=21 (the escape after the crash recurred), 2026-10-31T18:15:05Z to 2026-10-31T18:17:50Z, the run recorded below
+suite1_exit: 0
+suite1_tests: 2270
+suite1_failures: 0
+suite1_errors: 0
+suite1_skipped: 18
+suite1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite1_failed_ok: yes
+suite1_duration: BUILD SUCCESSFUL in 2m 44s
+suite1_jdk: -PjavaVersion=21
+suite1_jvm_crash: attempts 1 and 2 on the default JDK 17 crashed (the two accounts above); the recorded run on JDK 21 did not
+suite1_buffered_live_xml: OK junit build/test-results/test class *BufferedOffsetCommitLiveTest: tests=4 failures=0 errors=0 skipped=0 files=1
+suite1_client_live_xml: OK junit build/test-results/test class *Client011BehaviourPinLiveTest: tests=6 failures=0 errors=0 skipped=0 files=1
+suite1_compression_live_xml: OK junit build/test-results/test class *NetworkCompressionPinLiveTest: tests=9 failures=0 errors=0 skipped=0 files=1
+digest_after_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run1: 26.10.3.7
+suite2_exit: 0
+suite2_start: 2026-10-31T18:18:17Z
+suite2_tests: 2270
+suite2_failures: 0
+suite2_errors: 0
+suite2_skipped: 18
+suite2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite2_failed_ok: yes
+suite2_duration: BUILD SUCCESSFUL in 2m 43s
+suite2_jdk: -PjavaVersion=21
+suite2_jvm_crash: none
+suite2_buffered_live_xml: OK junit build/test-results/test class *BufferedOffsetCommitLiveTest: tests=4 failures=0 errors=0 skipped=0 files=1
+suite2_client_live_xml: OK junit build/test-results/test class *Client011BehaviourPinLiveTest: tests=6 failures=0 errors=0 skipped=0 files=1
+suite2_compression_live_xml: OK junit build/test-results/test class *NetworkCompressionPinLiveTest: tests=9 failures=0 errors=0 skipped=0 files=1
+digest_after_run2: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run2: 26.10.3.7
+suites_jdk: -PjavaVersion=21 for both suites (Homebrew JDK 21.0.12.1, the only JDK 21 Gradle lists)
+suites_same_jvm: yes
+suite_tests_equal: yes
+docker_only_delta: 598
+docker_only_delta_expected: 598
+docker_only_delta_matches: yes
+pinned_image_same: yes
+crash_files_left: none
+nothing_pushed: yes
+worktrees_clean: yes
+clt07_nightly: run 41152289179 on scratch de8c685b, 63 tests, 0 failures, accepted by the user (the Phase 36 disposition); the release tree has the same src/main, build and gradle files
+gate_decision: go
+gate_failures: none
+gate_note: The CI side of the release (the dry run, the single tests.yaml run on the merged SHA and the publish run) belongs to the user and is not part of this gate.
+utc_end: 2026-10-31T18:22:03Z
+```
+
+Every expectation held and the decision is go. Both suites read 2270 tests with 0 failures, 0 errors and 18 skips (`named=7 state_mismatch_cases=11 unexpected=0`), and the Docker-only delta over E-12's 1672 is 598, the value Phase 37 measured (2231 minus 1633). The image digest and `SELECT version()` were read before run 1, after run 1 and after run 2 and are the same value each time; the digest equals Phase 37's, so the pin is also unchanged since the earlier phases, and nothing was pulled.
+
+The JVM line is JDK 21 for both suites, which is a departure from the preferred record (both on the default JDK 17): the default JDK 17 here is an IBM OpenJ9 build (17.0.9+5) and the full suite crashed on it twice in the Mockito inline mock maker with the host's swap nearly full (about 15.8 of 17.0 GB used before attempt 1). Attempt 1 ended in a `traceassert` dump and attempt 2 in a `gpf` dump, both in `retransformClasses0`; neither wrote a result, so neither counts as a pass or a failure of a test. After each crash the crash files were deleted by name, `./gradlew --stop` was run, and the crashed run's log was kept in scratch (`suite1-crash1.log`, `suite1-crash2.log`). The two recorded suites then ran on JDK 21 with `-PjavaVersion=21`. The Docker-free `testUnit` of E-12 ran on the default JDK 17 and was green there, so the one JVM line applies to the two full suites, not to E-12.
+
+`integrationTest` was not run (it needs a Connect stack): the nightly acceptance of E-12 stands as stated there.
+
+2026-10-31T18:22:03Z
 
 Verdict: pass
