@@ -16,7 +16,7 @@
 | E-01 | CIH-01, CIH-02, CIH-03 | 37-01 | pass |
 | E-02 | CIH-01, CIH-02, CIH-03 | 37-01 | pass |
 | E-03 | CIH-01, CIH-03 | 37-01 | pass |
-| E-04 | CIH-02 | 37-01 | pending (plan 37-01) |
+| E-04 | CIH-02 | 37-01 | pass |
 | E-05 | CIH-05 | 37-02 | pending (plan 37-02) |
 | E-06 | CIH-04 | 37-02 | pending (plan 37-02) |
 | E-07 | CIH-04, CIH-05 | 37-02 | pending (plan 37-02) |
@@ -236,5 +236,66 @@ script_unmodified_in_main: yes
 The 48 executions are 14 accepted bumps, 17 refused version texts, 4 unknown-bump usage errors, the run without a bump argument, 10 anchors-row fixtures and the 2 tracer tests. The mismatch mutation (the equality check of the row pattern against the current version deleted) turned exactly the tracer's mismatch fixture red and nothing else; the skipped-rewrite mutation (the row pattern never updated) turned 17 executions red: the 14 accepted bumps, the tracer's gg test, the decoy fixture and the CRLF fixture, as predicted. Both mutations ran in detached worktrees that were removed, and the script in the main tree is unmodified. The per-file Spotless check ran against a worktree at HEAD, which already held the tracer version of the class, so the only numstat difference against the pristine baseline is that class itself; the 50 pre-existing violations are the same files before and after, and Spotless did not change the new file. The table commit also rebuilds the anchors template from a header, an example row, the VERSION row and a Gradle row, a refactor of fixture helpers only: the two tracer tests keep their text.
 
 2026-10-31T08:58:30Z
+
+Verdict: pass
+
+### E-04: increment-version.yml is pinned line by line, the pin guards and the anchors hold, and the new classes pass with Docker unreachable
+
+Backs: CIH-02, ROADMAP Phase 37 criterion 1, and the Phase 30 review rows IN-01 and IN-02 (the workflow cannot regain an npm step, an expression inside a run block, a missing anchors add or the old defect note).
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*IncrementVersionWorkflowGuardUnitTest' --tests '*BumpVersionScriptUnitTest' > /tmp/gsd37/exec/guard-nodocker.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit --class <ClassName>
+grep -nE '^[[:space:]]*@(Disabled|Tag)\b|Assumptions\.|^(public |final |abstract )*class .* extends ' src/test/java/com/clickhouse/kafka/connect/ci/BumpVersionScriptUnitTest.java src/test/java/com/clickhouse/kafka/connect/ci/IncrementVersionWorkflowGuardUnitTest.java
+git worktree add --detach /tmp/gsd37/w/mut3 HEAD
+cp src/test/java/com/clickhouse/kafka/connect/ci/IncrementVersionWorkflowGuardUnitTest.java /tmp/gsd37/w/mut3/src/test/java/com/clickhouse/kafka/connect/ci/
+# in the worktree workflow: the git commit -m argument gets an env expression
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/mut3 --console=plain testUnit --rerun --tests '*IncrementVersionWorkflowGuardUnitTest' > /tmp/gsd37/exec/guard-mutation.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed /tmp/gsd37/w/mut3/build/test-results/testUnit
+git worktree remove --force /tmp/gsd37/w/mut3
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd37/exec/testunit-plan01.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+cmp src/test/java/com/clickhouse/kafka/connect/ci/IncrementVersionWorkflowGuardUnitTest.java /tmp/gsd37/w/fmt/src/test/java/com/clickhouse/kafka/connect/ci/IncrementVersionWorkflowGuardUnitTest.java
+git worktree remove --force /tmp/gsd37/w/fmt
+git diff -w -U0 ff8730860ba8560171fcda44bc1cdcd6dba1ba2a HEAD -- src/test src/integrationTest src/testFixtures
+git diff --quiet ff8730860ba8560171fcda44bc1cdcd6dba1ba2a HEAD -- src/main
+```
+
+```text
+guard_exit: 0
+guard_junit: OK junit build/test-results/testUnit class *IncrementVersionWorkflowGuardUnitTest: tests=16 failures=0 errors=0 skipped=0 files=1
+bump_junit: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=48 failures=0 errors=0 skipped=0 files=1
+guard_executions: 16
+bump_executions: 48
+extends_nothing: yes
+guard_mutation_exit: 1
+guard_mutation_junit: OK junit /tmp/gsd37/w/mut3/build/test-results/testUnit class *IncrementVersionWorkflowGuardUnitTest: tests=16 failures=2 errors=0 skipped=0 files=1
+guard_mutation_failed: IncrementVersionWorkflowGuardUnitTest#CIH-02: increment-version.yml adds VERSION together with the anchors file and commits with the new version; IncrementVersionWorkflowGuardUnitTest#CIH-02: increment-version.yml has no expression inside any run block
+guard_mutation_worktree_removed: yes
+plan_testunit_exit: 0
+plan_testunit_tests: 1539
+plan_testunit_delta: 64
+plan_testunit_failures: 0
+plan_testunit_errors: 0
+pin_classes_unchanged: yes
+pin_class_tallies: WorkflowActionPinGuardUnitTest tests=21; TestsWorkflowPinGuardUnitTest tests=39
+anchors_mirror_main: rows=157 bad=0
+assertion_diff: clean
+spotless_new_file_cmp: identical
+src_main_unchanged: yes
+hygiene_scan: clean
+guard_commit: b40263edb679a8e6588ec1a898244d735c0f116f
+guard_commit_files: src/test/java/com/clickhouse/kafka/connect/ci/IncrementVersionWorkflowGuardUnitTest.java
+```
+
+Both new classes ran green with `DOCKER_HOST` pointing at a socket that does not exist, so neither needs Docker. The guard class holds eight real-file tests (one per rule) and eight fixture tests, each accepting the valid workflow and rejecting one edit per bad form. The mutation (an env expression put into the `git commit -m` argument of a worktree copy of the workflow) turned two tests red: the commit-step rule and the run-block rule. The plan-level testUnit tally of 1539 is the E-01 baseline of 1475 plus 48 and 16, and the two pin guards keep their baseline tallies of 21 and 39. The class Javadoc says "has no superclass" instead of the words "extends nothing", because the plan's own verify greps the class for the text "extends " and that text matches a comment.
+
+2026-10-31T09:02:30Z
 
 Verdict: pass
