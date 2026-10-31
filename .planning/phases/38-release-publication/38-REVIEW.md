@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg5.md
 findings:
   critical: 0
-  warning: 9
-  info: 7
-  total: 16
+  warning: 12
+  info: 8
+  total: 20
 status: issues_found
-rounds: 1
+rounds: 2
 ---
 
 # Phase 38: Code Review Report
@@ -158,3 +158,58 @@ Rows by label in the note, counted by its own check: 29 rows, with 20 measured, 
 _Reviewed: 2026-10-31T14:35:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+## Round 2
+
+**Reviewed:** 2026-10-31
+**Scope:** the fix commits only (`git diff cdbdbbd7 HEAD -- . ':(exclude).planning'`, 16 fix commits and the evidence commit, HEAD `21d70b07`): `docs/ROLLOUT-v1.7.0_gg6.md`, `docs/ROLLOUT-v1.7.0_gg5.md`, `CHANGELOG.md`, `docs/FORK-DELTA.md`.
+**Status:** issues_found
+
+All 16 round-1 findings are resolved by their fix commits, apart from the gg1 half of WR-08, which was deferred by the orchestrator. I re-checked, against the sources and the tree and not from the fixer's log: the client selection (`ClickHouseSinkConfig.java:380` default `V1`; `ClickHouseWriter.start` and `KeeperStateProvider` use client V2 for any other value, an empty value included), the `custom_` start-up failure path (`ClickHouseHelperClient.pingV2`, `ClickHouseWriter.start`, and the E-11 probe record of the forwarding), the `javap` command on the two cached `connect-api` jars (4.1.1 and 4.4.0 both print the three accessors), the rollback block (run unchanged in a throwaway worktree under `/tmp/gsd38/review/`, removed afterwards with its branch: it printed `ok`, `VERSION` read `v1.7.0_gg5`, the note was absent, ` M gradlew.bat` showed, `lz4Java` read `1.12.0` and `clickHouseDriver` `0.9.6` after it, and `git show HEAD^:docs/ROLLOUT-v1.7.0_gg6.md` read the note), the `lz4Java` values at `3a3a15a9` and at HEAD (`1.12.0` and `1.12.1`), the released CHANGELOG sections (byte-identical to `3a3a15a9`, checked by `diff`), the open-item owners and triggers (items 12 to 23, each has both), and `38-note-check.py all` (29 rows, 20 measured, 15 read from the code, 3 derived, 4 research; no forbidden identifier). The new text introduces no wrong command and no identifier. Four defects remain, none about the `custom_` item itself.
+
+### WR-10: The CHANGELOG and FORK-DELTA item 16 state the Direct-path limit without the condition that the note now carries
+
+**File:** `CHANGELOG.md:60`, `docs/FORK-DELTA.md:230`, against `docs/ROLLOUT-v1.7.0_gg6.md:48` and `docs/ROLLOUT-v1.7.0_gg6.md:249`
+**Issue:** The fix of IN-02 added to row B8 and to the carried limits that the Direct path with `reportInsertedOffsets=true` commits nothing under a rename "except when `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`" (read from `DirectDeliveryStrategy.preCommit`, lines 37-44: the first branch returns Connect's own offsets). The CHANGELOG Known Issues bullet ("the Direct path with `reportInsertedOffsets=true` under a topic-changing SMT commits nothing") and FORK-DELTA item 16 ("still commits nothing") kept the unconditional wording, and the FORK-DELTA item is the text the next syncer reads. The three documents now list different limits for the same fix, which is the inconsistency IN-02 was about, moved to the other two documents. The CHANGELOG bullet also overstates the limit for a connector that sets `ignorePartitionsWhenBatching=true` without exactly-once.
+**Fix:** Add "(unless `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`, where Connect's own offsets are returned)" to the CHANGELOG bullet and to item 16, wording them as the note does. The CHANGELOG edit stays inside the new `1.7.0_gg6` section.
+
+### WR-11: Row B1 carries the label `measured` for a half of its claim that its own How cell says was not repeated; D7's forwarding and B8's probe are the same case
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:41`, `docs/ROLLOUT-v1.7.0_gg6.md:124`, `docs/ROLLOUT-v1.7.0_gg6.md:48`
+**Issue:** The note defines `measured` as "a command or a test ran, and the row names it" and `measured in research (not re-run)` as measured by the maintainers while preparing the release and "did not repeat it on the release tip". The IN-01 fix added to B1 that the unit test "also failed 8 of its tests on the tree before the fix, in a run recorded when the fix was written and not repeated for this note". That is the second definition, word for word, but the Label cell of B1 still reads the bare `measured`, so the "Before, `preCommit` returned offsets keyed by the renamed topic" half is labelled stronger than the definition allows (the recorded run exists, `tests=13 failures=8`, and I confirmed it; only the label is wrong). The same applies to the forwarding half of D7 (a stub-server probe recorded on the tree of the client bump and not repeated on the release tip; the sibling rows D6 and D8, which rest on the same kind of stub probe, carry the research label) and to the Direct-path and many-to-one half of B8 (a scratch probe the row itself calls not in the repository). A reader who relies on the four labels reads those halves as measured on this release.
+**Fix:** Split the Label cells: B1 `after: measured; before: measured in research (not re-run)`, D7 `forwarding: measured in research (not re-run)` (keeping rejection, start-up failure and the V1 `custom_settings` claim as measured, which were run on the release tip), and B8 `Direct path and many-to-one rename: measured in research (not re-run)`. The check script accepts claim-qualified label cells, so `38-note-check.py rows` still passes; the counts it prints change and the FORK-DELTA or evidence text that quotes them, if any, changes with them.
+
+### WR-12: FORK-DELTA item 22 says "The one release that exists" and goes stale when `v1.7.0_gg6` is published; the same file states the release process as a fact
+
+**File:** `docs/FORK-DELTA.md:242`, `docs/FORK-DELTA.md:286`, `docs/ROLLOUT-v1.7.0_gg6.md:210`
+**Issue:** The fix of WR-04 took the time-relative wording out of the gg5 note. Item 22 still reads "The one release that exists, `v1.7.0_gg5`", in a file that is part of the published tree: the moment the `v1.7.0_gg6` release object exists the sentence is false, and the file cannot be corrected afterwards without another release. Item 22 also records that the only release was made outside any workflow and that no publish-mode run has completed its publish step, yet the release-object sentences (`FORK-DELTA.md:286` "are created by the release workflow at the merged SHA", note line 210 "The release workflow creates the release and its tag") are written as what will happen. They describe the workflow's design, as round 1 accepted, but they read as fact and become wrong if the release is made by hand as `v1.7.0_gg5` was, which item 22 lists as a re-open trigger.
+**Fix:** Item 22: "The one release that existed when this item was written, `v1.7.0_gg5`, was created outside any workflow run ...". Line 286 and the note's line 210: "is meant to be created by the release workflow ... (the first publish-mode run is item 22's open condition)", with no word about the outcome.
+
+### IN-08: The new client scoping lists row D14 as also holding on client V1, but the piped streams behind it are used only on the V1 insert path
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:114`, `docs/ROLLOUT-v1.7.0_gg6.md:131`
+**Issue:** The intro of section D (WR-02 fix) says rows D1 to D8, D10 and D11 describe client V2 and that "Rows D13 and D14 also hold on client V1", which reads as holding on both. D14's evidence, `ClientTimeoutPrefixPinUnitTest`, builds a `ClickHousePipedOutputStream` directly and names no connector client. In the connector the piped stream is created only in the three insert methods that start with `try (ClickHouseClient client = getClient())` (`ClickHouseWriter.java:1404-1416`, `1536-1541`, `1691-1696`, the client V1 path); the three client V2 insert methods (`1298`, `1574`, `1722`) call `client.insert(...)` and create none. So the row's prefixes are produced by the V1 path, and a connector on V2 is told, by the word "also", that the row is its own.
+**Fix:** Say "Row D14 concerns the client V1 insert path (read from the code: `ClickHouseWriter` creates the piped streams only there); row D13 holds on both." If a V2 source of the same prefixes is known, name it instead.
+
+---
+
+round: 2 findings: 4
+
+## Mandated confirmations (RLS-04)
+
+- (1) fixes resolve their findings: confirmed for 15 of 16. WR-01, WR-02, WR-03, WR-04, WR-05, WR-06, WR-07, WR-09 and IN-01 to IN-07 hold as fixed (the V2 scoping, the start-up failure path, the one-release wording, the rollback bullets, the 3.6 attribution and the `javap` command, the item 12 owner, the new label and condition wording). WR-08 is half resolved by design: `FORK-DELTA` line 290 now says "on both client lines checked", but `docs/ROLLOUT-v1.7.0_gg1.md:242` still says "of any line" (deferred, not a new finding), so the two documents disagree until gg1 is edited. New defects of the fixes: WR-10 (the IN-02 condition reached only the note), WR-11 (the IN-01 clause contradicts B1's label) and IN-08 (the WR-02 scoping of D14). No wrong command, broken cross-reference, version, change set or rollback target was introduced: `v1.7.0_gg6`, `3a3a15a9`, 7 changed `src/main` files and client `0.11.0` agree in all four documents.
+- (2) labels: not confirmed, see WR-11. The four labels are written verbatim in the note and `38-note-check.py` accepts all 29 rows (20 measured, 15 read from the code, 3 derived, 4 `measured in research (not re-run)`, split rows counted once per label). B1, D7 and B8 carry the bare `measured` for a half that was run earlier and not repeated; every other row is earned by its How cell. The CHANGELOG paraphrases the research label ("measured in the maintainers' research, not re-run") in its `zstd-jni` bullet, which is acceptable for a section that does not define the labels.
+- (3) D7 against `src/main` and the evidence: confirmed. A connector runs client V2 for any `client_version` other than `V1` (`ClickHouseWriter.start`, `KeeperStateProvider`), the default is `V1`, `ClickHouseHelperClient.pingV2` logs "Unable to ping ClickHouse instance." and `ClickHouseWriter.start` returns false, so the task fails at start under every `errors.tolerance` before any `put`; V1 and default connectors are unaffected (their start-up ping goes through client V1, and `NetworkCompressionPinLiveTest.operatorOverrideReachesServerOnV1` pins `custom_settings` there). The measured run had `errors.tolerance` set to `none` and `all`, the only two values Connect accepts. The forwarding itself is recorded in the Phase 36 evidence (`custom_forwarded_on_0110: yes`, `custom_forwarded_on_096: no`) and no test in `src/test` asserts it, which the How cell now says. One caveat for operators: `client_version` set to an empty string selects client V2, which the wording "set to a value other than V1" covers.
+- (4) rollback bullets: confirmed. The `lz4-java` bullet is accurate (`lz4Java` `1.12.0` at `3a3a15a9` and in the tree after the rollback block, `1.12.1` at HEAD) and does not claim that `1.12.0` is the affected version beyond "before the security release of that row". The frozen-offset bullet is labelled `derived from Kafka consumer-group semantics (not measured)`, cites rows B2 to B4 and claims no run. The rollback block, run unchanged in a throwaway worktree, printed `ok`, left `VERSION` `v1.7.0_gg5` and no copy of the note, and the worktree and the branch it created were removed; nothing was pushed. The rollback to `pre-v1.7.0_gg6` and to tag `v1.7.0_gg5` is one commit, `3a3a15a9`.
+- (5) gg5 note: confirmed for lines 39 and 111, with a consequence for another file. The two lines agree with each other and with the release record (one release, `v1.7.0_gg5`, one asset, published 2026-10-28): line 39 dates the release, line 111 uses "as of 2026-10-28", and neither goes stale. The same staleness exists in `FORK-DELTA` item 22 ("The one release that exists"): WR-12.
+- (6) `FORK-DELTA` open items 12 to 23: confirmed. Each of the 12 items carries "Owner: fork maintainer (the user)." and a re-open trigger (checked item by item), item 12 included, and the paragraph says "open items 12 to 23", which is the count (12 items). The statement of the allow-list is a plan and a condition (see 8).
+- (7) identifiers: confirmed. The note and the new CHANGELOG section hold no host, connector, cluster or system name, no planning, requirement or review identifier and no `round:` text (`38-note-check.py forbidden` and `38-hygiene-check.py --strict` clean; the only `.com` hits are the two upstream issue URLs of the verbatim upstream entry). The ClickHouse server version `26.10.3.7` is a version, not a name.
+- (8) `release object` and the allow-list: confirmed with one wording risk. The note and the CHANGELOG state no digest, tag commit or URL of the `v1.7.0_gg6` release object, and the `FORK-DELTA` paragraph now says the `.planning/scripts` allow-list "is written from the final tree before the merge and does not exist before that", a plan with a stated condition (the release workflows stop at the baseline step without it, as `pre-release.yaml` and `release.yaml` lines 97-103 show). The release-process sentences are worded as fact: WR-12.
+- (9) CHANGELOG: confirmed. Every section from `# 1.7.0_gg5` down is byte-identical to the file at `3a3a15a9` (`diff` of the two tails prints nothing), and only the new `1.7.0_gg6` section changed in the fix commits (the `custom_` bullet, the `zstd-jni` bullet and the Known Issues bullet). Its `custom_` wording is consistent with the note (client V2 only, fails at start).
+
+Totals across both rounds: 20 findings (12 warnings, 8 info, 0 critical): round 1 16, round 2 4. The checker's `rounds` command ends with FAIL only on the line "the last round still has findings and no round3_decision is recorded", which is its rule for a round with findings; every structural check (numbering, unique IDs, heading level, counts) passes.
+
+_Round 2 reviewed: 2026-10-31_
+_Reviewer: Claude (gsd-code-reviewer), fresh context_
