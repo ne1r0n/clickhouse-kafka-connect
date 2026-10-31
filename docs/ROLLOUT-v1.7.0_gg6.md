@@ -207,7 +207,7 @@ What to do: change dashboard, alert and exporter matchers that spell out `versio
 
 ### Rollback
 
-The release workflow creates the release and its tag at the merged commit and attaches the archive. Nothing in the data format changes, so a rollback is a code rollback. Tag `pre-v1.7.0_gg6` names commit `3a3a15a9`, the published tip of `custom_build` before this release, which is also tag `v1.7.0_gg5`. The tag is published together with this release.
+The release workflow is meant to create the release and its tag at the merged commit and attach the archive; whether a publish-mode run of it does so is the open condition of `FORK-DELTA` item 22. Nothing in the data format changes, so a rollback is a code rollback. Tag `pre-v1.7.0_gg6` names commit `3a3a15a9`, the published tip of `custom_build` before this release, which is also tag `v1.7.0_gg5`. The tag is published together with this release.
 
 1. Start from the published tip with nothing uncommitted. Run `git fetch --tags origin`, `git checkout custom_build` and `git merge --ff-only origin/custom_build`, and check that `git status --porcelain` prints nothing; a fresh checkout of the release tip lists nothing (measured). Set whatever it lists aside with `git stash -u`, keep it on its own branch, or work in a fresh clone, so that none of it becomes part of the rollback; do not commit it on `custom_build`, because step 2 branches from there and step 4 publishes that branch: the `git read-tree` of step 2 discards uncommitted and staged changes to tracked files without asking, and it overwrites untracked files at paths that the tag contains.
 2. Restore the tree of the tag in one commit on a new branch, so that your local `custom_build` stays as published. This commit is `<rollback-commit>`:
