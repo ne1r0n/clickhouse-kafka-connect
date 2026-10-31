@@ -24,7 +24,7 @@
 | E-08 | RLS-04 | 38-03 | pass |
 | E-09 | RLS-04 | 38-03 | pass |
 | E-10 | RLS-04 | 38-03 | pass |
-| E-11 | RLS-03 | 38-04 | pending (plan 38-04) |
+| E-11 | RLS-03 | 38-04 | pass |
 | E-12 | RLS-03, RLS-06 | 38-04 | pending (plan 38-04) |
 | E-13 | RLS-06 | 38-04 | pending (plan 38-04) |
 | E-14 | RLS-05 | 38-05 | pending (plan 38-05) |
@@ -618,5 +618,99 @@ pending_index_rows: E-11; E-12; E-13; E-14; E-15; E-16; E-17; E-18; E-19 (entrie
 Every expectation held. Two clauses of the plan's wording do not hold literally at this tip and are recorded as deviations, not hidden. First, `pending_verdicts` reads `none` for evidence entries: no entry E-01 to E-10 has a pending verdict and E-11 to E-19 do not exist as entries; the index already lists rows E-11 to E-19 as `pending (plan ...)` since plan 38-01, so a count of pending index rows would not be none, and `pending_index_rows` names them. Second, the task verify blocks of plans 38-01 and 38-02 carry clauses fixed to the tip of their own time (the three-file or one-file non-planning change set, an unchanged `CHANGELOG.md` and `docs`, the one-line change count of `docs/ROLLOUT-v1.7.0_gg5.md`, the `--only B C` part-1 note check); they fail on this tip by construction, because the review fixes changed those files and the gg5 note by two lines instead of one. The owning checks that the plan 38-03 text names (the note, links, changelog, numbers, strict hygiene and anchors checks) were re-run as written and pass, which is what `owning_checks_at_tip` records. The E-01 `local_head` base is used for every scope check.
 
 2026-10-31T17:28:48Z
+
+Verdict: pass
+
+### E-11: The gg6 archive allow-list is generated last from the final tree and proved in both polarities
+
+Backs: RLS-03, ROADMAP Phase 38 criterion 3, second half (the allow-list that the release workflow reads for `v1.7.0_gg6` is derived from the differences of two archives rebuilt on the final tree, after the documents were frozen in E-10 and with no archive input changed since; it names every difference once, names nothing else, and turns the compare red when a row is stale, a native row is missing or a row starts with a wildcard).
+
+```sh
+git rev-parse HEAD
+git diff --quiet 5031bb0042570b978f789895dee34966c4194bb6 HEAD -- src build.gradle.kts settings.gradle.kts gradle README.md LICENSE config .github VERSION
+git tag --merged HEAD --list 'v*' | python3 -I .github/scripts/baseline_tag.py v1.7.0_gg6
+grep -n 'confluent-archive-allowlist-' .github/workflows/release.yaml
+mkdir /tmp/gsd38/w/final-base-src /tmp/gsd38/w/final-tip-src /tmp/gsd38/w/final-arch
+git archive v1.7.0_gg5 | tar -x -C /tmp/gsd38/w/final-base-src
+git archive HEAD | tar -x -C /tmp/gsd38/w/final-tip-src
+( cd /tmp/gsd38/w/final-base-src && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive > /tmp/gsd38/exec/final-build-base.log 2>&1 )
+( cd /tmp/gsd38/w/final-tip-src && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive > /tmp/gsd38/exec/final-build-tip.log 2>&1 )
+cp /tmp/gsd38/w/final-base-src/build/confluent/clickhouse-kafka-connect-v1.7.0_gg5.zip /tmp/gsd38/w/final-arch/base.zip
+cp /tmp/gsd38/w/final-tip-src/build/confluent/clickhouse-kafka-connect-v1.7.0_gg6.zip /tmp/gsd38/w/final-arch/tip.zip
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd38/w/arch/tip.zip /tmp/gsd38/w/final-arch/tip.zip /tmp/gsd38/w/final-arch/empty.txt
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd38/w/final-arch/base.zip /tmp/gsd38/w/final-arch/tip.zip /tmp/gsd38/w/final-arch/empty.txt > /tmp/gsd38/exec/cmp-empty-final.out
+python3 -I .planning/phases/38-release-publication/38-allowlist-check.py rows .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+python3 -I .planning/phases/38-release-publication/38-allowlist-check.py cover /tmp/gsd38/exec/cmp-empty-final.out .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd38/w/final-arch/base.zip /tmp/gsd38/w/final-arch/tip.zip .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt > /tmp/gsd38/exec/cmp-final.out
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd38/w/final-arch/base.zip /tmp/gsd38/w/final-arch/tip.zip /tmp/gsd38/w/final-arch/mut-stale.txt
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd38/w/final-arch/base.zip /tmp/gsd38/w/final-arch/tip.zip /tmp/gsd38/w/final-arch/mut-deleted.txt
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd38/w/final-arch/base.zip /tmp/gsd38/w/final-arch/tip.zip /tmp/gsd38/w/final-arch/mut-wild.txt
+python3 -I .planning/phases/38-release-publication/38-allowlist-check.py same-globs .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt .planning/phases/38-release-publication/38-assets/allowlist-candidate-gg6.txt
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*CompareConfluentArchivesScriptUnitTest' --tests '*ReleaseWorkflowGuardUnitTest' > /tmp/gsd38/exec/allowlist-guards.log 2>&1
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit --class CompareConfluentArchivesScriptUnitTest failures=0 errors=0 'tests>=1'
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit --class ReleaseWorkflowGuardUnitTest failures=0 errors=0 'tests>=1'
+git add .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+git commit -F /tmp/gsd38/exec/msg-p4-list.txt
+```
+
+```text
+utc_start: 2026-10-31T17:31:29Z
+tip_head: ae71d671759a78ae4634d7f869dd6f3d18049fd0
+docs_frozen_tip: 5031bb0042570b978f789895dee34966c4194bb6
+archive_inputs_unchanged_since_freeze: yes
+baseline_tag: v1.7.0_gg5
+workflow_allowlist_path_matches: yes
+final_base_verify_line: verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class
+final_tip_verify_line: verifyConfluentArchive: 7933 inner entries, no nested jar, no Kafka API class
+final_base_entries: 7801
+final_tip_entries: 7933
+entries_equal_e05: yes
+final_base_bytes: 12453556
+final_tip_bytes: 13558634
+final_base_sha256: efa6cca4f30d182eea52565f331581f2c4ccee30c99e91ce0f053b341629e0fe
+final_tip_sha256: a1b9108859fc73b84ad6ac6931c387bd10800dde9fec8b6a488e8bb5b402f1cf
+archive_stable_since_e05: yes
+empty_compare_exit: 1
+empty_compare_totals: totals files-a 7399 files-b 7513 only-a 4 only-b 118 changed 120 same 7275
+empty_compare_unallowed: 242
+empty_compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+empty_compare_version_table: VERSION at.yawk.lz4:lz4-java 1.12.0 -> 1.12.1
+empty_compare_version_lines_total: 18
+empty_compare_matches_e05: yes
+unexpected_differences: none
+list_rows: OK rows=31
+list_cover: OK differences=242 covered=242 uncovered=0 overlapping=0 stale_rows=0
+list_compare_exit: 0
+list_compare_result: RESULT: PASS
+list_compare_unallowed: 0
+list_compare_stale: 0
+list_compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+list_compare_nested_jars: 0
+list_compare_kafka_classes: 0
+mutation_stale: exit=1 STALE-ROW zz/nothing/*
+mutation_deleted: exit=1 UNALLOWED ONLY-B linux/amd64/libzstd-jni-1.5.7-23.so
+mutation_wildcard: exit=2 ERROR: a glob must start with a literal path prefix; one that starts with a wildcard (* ? [) is not anchored to a path and is refused
+candidate_same_globs: OK same-globs: a=31 b=31 only_a=0 only_b=0
+candidate_difference_note: none
+guards_exit: 0
+guards_failed: OK
+compare_xml: OK junit build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=58 failures=0 errors=0 skipped=0 files=1
+relguard_xml: OK junit build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=37 failures=0 errors=0 skipped=0 files=1
+allowlist_commit: cc928221b7f2a19ccad3fa2f160f970b35c671e9
+allowlist_commit_files: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+generated_last: yes
+inner_class_check: the six inner classes of ClickHouseSinkConfig and ClickHouseHelperClient$ClickHouseClientBuilder were read with javap -v -p on both archives (a scratch extract, removed): each differs only in shifted line numbers, so the rows say so
+hygiene_scan: clean
+secrets_scan: clean
+utc_end: 2026-10-31T17:34:52Z
+```
+
+Every expectation held. The archives rebuilt on the final tree are byte-identical to the ones E-05 measured (entries, byte sizes and SHA-256), so the note's archive numbers are not stale, and the compare of the E-05 tip archive with this one reads `RESULT: PASS` against a comment-only list. The 242 `UNALLOWED` lines of the comment-only compare were grouped by owner (client and data classes 0.9.6 to 0.11.0, the http client's multi-release classes and module descriptor, the two version-properties files, zstd-jni 1.5.7-23 with its three natives as exact paths, lz4-java 1.12.0 to 1.12.1, the manifest, and 17 connector classes); no difference was left without an owner, and the list was written from that grouping, not from the candidate. The candidate of the research holds the same 31 globs (the reasons are worded differently). The compare version table prints 18 `VERSION` lines, 17 of which read the same version on both sides; the key holds the one that differs. The three scratch mutations (a row that names nothing, the deleted `linux/amd64` native row and an added `*.class` row) lived in `/tmp/gsd38/w/final-arch/` only. The `empty.txt` used here is a byte copy of the comment-only list of E-05.
+
+The shipped-lists test (`CompareConfluentArchivesScriptUnitTest`, 58 tests) loads every list under `.planning/scripts` including the new one; the release-workflow guard class ran with it. Both ran with the Docker socket pointing nowhere. The allow-list is valid for this tree only: any later change of `src`, `build.gradle.kts`, `gradle` or `README.md` moves the archive.
+
+2026-10-31T17:34:52Z
 
 Verdict: pass
