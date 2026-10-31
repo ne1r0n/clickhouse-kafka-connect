@@ -13,9 +13,9 @@ Subcommands (exit 0 = every check holds, 1 = a check failed, 2 = usage or unread
       line exists and `rounds:` equals their number; the section `## Mandated confirmations (RLS-04)` exists and holds
       every T.
   rounds REVIEW [DISPOSITION]
-      rounds are numbered 1..n with `rounds:` equal to n (1 to 4), IDs unique, total equal to the headings and to the sum
+      rounds are numbered 1..n with `rounds:` equal to n (1 to 6), IDs unique, total equal to the headings and to the sum
       of the round counts, the last round has no finding or (three or more rounds and a `round3_decision:` line in
-      DISPOSITION), and a fourth round only with that line.
+      DISPOSITION), and a round after the third only with that line.
   disposition REVIEW DISPOSITION --commits FILE
       the DISPOSITION frontmatter lists exactly the REVIEW's finding IDs with `open: 0` and `total: <n>`; every table row
       `| ID | severity | disposition | source |` has disposition fixed, rejected or deferred and a non-empty source; a
@@ -119,8 +119,8 @@ def cmd_rounds(args):
     problems = []
     if [a for a, _ in rd] != list(range(1, len(rd) + 1)):
         problems.append("round lines are not numbered 1..n")
-    if rounds_fm != len(rd) or not 1 <= len(rd) <= 4:
-        problems.append("rounds %d, round lines %d (1 to 4 allowed)" % (rounds_fm, len(rd)))
+    if rounds_fm != len(rd) or not 1 <= len(rd) <= 6:
+        problems.append("rounds %d, round lines %d (1 to 6 allowed)" % (rounds_fm, len(rd)))
     if len(set(ids)) != len(ids):
         problems.append("a finding ID repeats")
     if total != len(ids) or sum(b for _, b in rd) != len(ids):
@@ -129,7 +129,7 @@ def cmd_rounds(args):
     if not (last_clean or (len(rd) >= 3 and decision)):
         problems.append("the last round still has findings and no round3_decision is recorded")
     if len(rd) > 3 and not decision:
-        problems.append("a fourth round ran without a recorded round3_decision")
+        problems.append("a round after the third ran without a recorded round3_decision")
     for p in problems:
         print("FAIL rounds: " + p)
     print("%s rounds: %s last_clean=%s decision=%s" % ("OK" if not problems else "FAIL", rd, last_clean, decision))
