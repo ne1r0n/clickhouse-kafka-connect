@@ -75,7 +75,7 @@ A group that stays without commits can lose even a stale committed offset once i
 
    The output shows whether committed offsets exist and where they are.
 
-2. Decide where the first start should resume. Either accept one reread, when the table deduplicates or the load is idempotent, or stop the connector and set the group's offsets to the position you want before starting the new archive, with `kafka-consumer-groups --bootstrap-server <bootstrap> --group <group> --topic <topic> --reset-offsets <position option> --execute`. The offset reset changes live state: try it first on a group that no live pipeline uses, and verify the options against your Kafka version.
+2. Decide where the first start should resume. Either accept one reread, when the table deduplicates or the load is idempotent, or stop the connector and set the group's offsets to the position you want before starting the new archive, with `kafka-consumer-groups --bootstrap-server <bootstrap> --group <group> --topic <topic> --reset-offsets <position option> --execute`. Choose a position at or before the last record already in the table: a later position skips records for good, and an earlier one reloads them (derived from Kafka consumer-group semantics (not measured)). The offset reset changes live state: try it first on a group that no live pipeline uses, and verify the options against your Kafka version.
 3. After the first successful flush, run the describe command again and confirm that the committed offsets advance.
 
 ### Minimum Connect runtime
