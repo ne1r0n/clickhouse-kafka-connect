@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg5.md
 findings:
   critical: 0
-  warning: 12
-  info: 8
-  total: 20
+  warning: 13
+  info: 9
+  total: 22
 status: issues_found
-rounds: 2
+rounds: 3
 ---
 
 # Phase 38: Code Review Report
@@ -212,4 +212,51 @@ round: 2 findings: 4
 Totals across both rounds: 20 findings (12 warnings, 8 info, 0 critical): round 1 16, round 2 4. The checker's `rounds` command ends with FAIL only on the line "the last round still has findings and no round3_decision is recorded", which is its rule for a round with findings; every structural check (numbering, unique IDs, heading level, counts) passes.
 
 _Round 2 reviewed: 2026-10-31_
+_Reviewer: Claude (gsd-code-reviewer), fresh context_
+
+---
+
+## Round 3
+
+**Reviewed:** 2026-10-31
+**Scope:** the round-2 fix commits only (`git diff 07101993 HEAD -- . ':(exclude).planning'`, four commits: WR-10, WR-11, WR-12, IN-08; HEAD `266d157e`): `docs/ROLLOUT-v1.7.0_gg6.md`, `CHANGELOG.md`, `docs/FORK-DELTA.md`, plus one last read of all five documents.
+**Status:** issues_found
+
+All four round-2 findings are resolved by their fix commits, apart from the gg1 half of WR-08, which stays deferred (`docs/ROLLOUT-v1.7.0_gg1.md:242` still says "of any line" while `FORK-DELTA` says "on both client lines checked"; deferred by the orchestrator, not a new finding). I re-checked against the sources and the tree, not from the fixer's log: `DirectDeliveryStrategy.preCommit` (the `exactlyOnce=false` with `ignorePartitionsWhenBatching=true` branch comes first, then the `reportInsertedOffsets` branch), the CHANGELOG, `FORK-DELTA` item 16 and the note's B8 and carried-limits bullet (the three now carry the same condition), the B1, B8 and D7 label cells (the research label now covers exactly the halves whose How cell says they were not repeated), `FORK-DELTA` item 22 and the release paragraph (no time-relative wording, no outcome stated), `ClickHouseWriter` (the three `ClickHousePipedOutputStream` sites at 1415, 1541 and 1696 sit inside the V1 insert methods; the V2 methods create none), the rollback block (run unchanged in a throwaway worktree under `/tmp/gsd38/review/`, removed afterwards with its branch: it printed `ok`, `VERSION` read `v1.7.0_gg5`, the note was absent, ` M gradlew.bat` showed, `lz4Java` read `1.12.0`, and `git show HEAD^:docs/ROLLOUT-v1.7.0_gg6.md` read the note; the local tag `pre-v1.7.0_gg6` still points at `3a3a15a9`; nothing was pushed), the `gh release list` read (one release, `v1.7.0_gg5`, 2026-10-28) and the owner and trigger of each of `FORK-DELTA` items 12 to 23. The owning checks (`/tmp/gsd38/review/fix/chk.sh`) print OK for all 29 rows, the labels, the forbidden identifiers, the hex strings, the links, the CHANGELOG, the numbers and the hygiene scan. The fixes introduce no wrong command, version, change set or rollback target. One scope defect and one understated fact remain, both about client V1 versus client V2, which the round-2 fix of the client scoping touched only in the places it named.
+
+## Warnings (round 3)
+
+### WR-13: Statements that hold only for client V2 are repeated outside the scoped rows without their scope, among them the clean-stop advice
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:28`, `docs/ROLLOUT-v1.7.0_gg6.md:32`, `docs/ROLLOUT-v1.7.0_gg6.md:165-173`, `docs/ROLLOUT-v1.7.0_gg6.md:177`, `CHANGELOG.md:22-25`, `CHANGELOG.md:33-35`
+**Issue:** Line 114 declares rows D1 to D8, D10 and D11 "not a statement about client V1", and a connector that does not set `client_version` runs client V1. The prose that restates those rows does not carry the scope, apart from the `custom_` item. (a) Step 1 and step 1 of "What to do for the client" tell the operator to look for "any expectation that `ssl` or `sslmode` there changes the transport". On client V1 that expectation is correct: `ClickHouseHelperClient.createClientV1` builds the V1 node from a URL that carries `jdbcConnectionProperties`, and the default `?ssl=true&sslmode=strict` of the repository's own usage example reaches client V1 that way. Row D1 says only that V2's transport never followed them. A V1 operator can conclude that `sslmode=strict` is inert and drop it, which silently weakens certificate checking. (b) The section "A batch replayed across the upgrade (the clean-stop requirement)" ends "No clean stop is required" with no scope. Its pins (`ClientInsertWirePinUnitTest` builds the client with `.useClientV2(true)`; the golden file compares serialiser bytes, which the test's own comment says do not depend on the client) cover the V2 wire path. The V1 insert path (`doInsertRawBinaryV1`, `doInsertJsonV1`, `doInsertStringV1`) on the V1 artifacts of `0.11.0` is the path that line 114 says was not audited. The advice concerns exactly-once connectors, where a wrong "no clean stop" means duplicates or loss, and the default client is V1. (c) Step 5 (rows D3, D5, D6) and the CHANGELOG bullets for error 159, a 502 or 503, the `User-Agent` and log texts, the socket buffers and the replay carry no scope either; only the `ssl`/`sslmode` and `custom_` bullets say V2.
+**Fix:** In step 1 and in the `What to do for the client` step 1 write "on client V2 (`client_version` set to a value other than `V1`), `ssl` and `sslmode` never changed the transport; on client V1 they are read from the connection URL and must stay". Open the clean-stop section with "For a connector on client V2:" and add "A connector on client V1 builds the same bytes and the same `insert_deduplication_token` (read from the code: the same writer, `getMutationRequest`), but its wire path on the V1 artifacts of `0.11.0` was not compared; stop it cleanly before the upgrade if it uses exactly-once, or say that the question is open". Add "(client V2)" to step 5 and to the CHANGELOG bullets of rows D2 to D6, D10 and D11, as the `custom_` bullet already has it.
+
+## Info (round 3)
+
+### IN-09: The scoping sentence omits that every connector builds a V2 client at construction, so row D1's effects reach client V1 connectors too
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:114`, `docs/ROLLOUT-v1.7.0_gg6.md:118`
+**Issue:** `ClickHouseHelperClient`'s constructor builds both clients, with the comment "We are creating two clients, one for V1 and one for V2", and `createClientV2` hands the V2 builder the operator's `jdbcConnectionProperties` pairs whatever `client_version` says. Client `0.11.0` throws `Unknown and unmapped config properties: [ssl, sslmode]` in that build unless unknown keys are ignored, and logs the WARN when they are; both happen on client V1 connectors as well. Line 114 says rows D1 to D8, D10 and D11 are "not a statement about client V1", which is true of the transport and the request behaviour but hides this one effect: a V1 connector's start depended on the `ignore_unknown_config_key` default that the connector now sets, and its log gains the WARN. The same fact is why "client V1 is not affected" by `custom_` keys holds only because the V2 client built for a V1 connector is never used for a request.
+**Fix:** Add one sentence to line 114: "Every connector also builds a client V2 object at start from `jdbcConnectionProperties` (read from the code: the `ClickHouseHelperClient` constructor), so the `ignore_unknown_config_key` default and its WARN of row D1 apply to client V1 connectors as well; that object sends no request on client V1."
+
+---
+
+round: 3 findings: 2
+
+## Mandated confirmations (RLS-04)
+
+- (1) fixes resolve their findings: confirmed for all four. WR-10 (the condition `exactlyOnce=false` with `ignorePartitionsWhenBatching=true` is in the CHANGELOG Known Issues bullet, `FORK-DELTA` item 16, row B8 and the carried-limits bullet, worded alike, and matches the first branch of `DirectDeliveryStrategy.preCommit`), WR-11 (B1, B8 and D7 each name which half is `measured in research (not re-run)` and which was run on the release tip), WR-12 (item 22 and the release paragraph state a condition, the note's rollback paragraph says "is meant to create ... open condition of `FORK-DELTA` item 22") and IN-08 (D14 scoped to the V1 insert path, checked at `ClickHouseWriter` 1404-1415, 1536-1541, 1691-1696 against the V2 methods). No new wrong command, broken cross-reference or version: `v1.7.0_gg6`, `3a3a15a9`, the 7 changed `src/main` files (112 insertions, 31 deletions, re-derived) and client `0.11.0` agree in all documents. The gg1 half of WR-08 stays deferred. New defects: WR-13 and IN-09, both about the V1 versus V2 scope that the round-2 scoping fix applied only to the rows and to the `custom_` item.
+- (2) labels: confirmed. The note holds the four labels verbatim, `38-note-check.py` accepts all 29 rows (19 measured, 16 read from the code, 3 derived, 7 `measured in research (not re-run)`; split rows count once per label), and every row's label is earned by its How cell: the halves that were not repeated carry the research label, B1's before-half included. The CHANGELOG paraphrases the research label in its `zstd-jni` bullet, which is acceptable in a section that does not define the labels.
+- (3) D7 against `src/main` and the evidence: confirmed. A connector runs client V2 for any `client_version` other than `V1` (`ClickHouseWriter.start`, `KeeperStateProvider`; the value is case-sensitive, so `v1` selects V2, which "a value other than `V1`" covers); `ClickHouseHelperClient.pingV2` logs "Unable to ping ClickHouse instance.", `ClickHouseWriter.start` logs "Unable to ping Clickhouse server." and returns false, and `ProxySinkTask.start` throws "Connection to ClickHouse is not active.", so the task fails at start under every `errors.tolerance`; with `exactlyOnce=true` the `KeeperStateProvider` constructor logs the same ping failure first and continues, the outcome is the same. A V1 connector builds an unused V2 client (IN-09) and is unaffected, as the measured run says.
+- (4) rollback bullets: confirmed. The `lz4-java` bullet matches `lz4Java` `1.12.0` at `3a3a15a9` and in the rolled-back tree and `1.12.1` at HEAD; the frozen-offset bullet is labelled `derived from Kafka consumer-group semantics (not measured)` and claims no run. The rollback block run unchanged in a throwaway worktree printed `ok` and left `VERSION` `v1.7.0_gg5`; `pre-v1.7.0_gg6` is `3a3a15a9`, the same commit as tag `v1.7.0_gg5`; nothing was pushed and the worktree and its branch were removed.
+- (5) gg5 note lines 39 and 111: confirmed. Line 39 dates the release and says what held when the note was written, line 111 says "as of 2026-10-28", the two agree with each other and with the release record (`gh release list`: one release, `v1.7.0_gg5`, published 2026-10-28T13:16:09Z), and neither goes stale when `v1.7.0_gg6` appears.
+- (6) `FORK-DELTA` open items 12 to 23: confirmed. Checked item by item, each of the 12 carries "Owner: fork maintainer (the user)." and a re-open trigger; the paragraph says "open items 12 to 23", the count of items. The `.planning/scripts` allow-list for gg6 is stated as a plan with its condition ("written from the final tree before the merge and does not exist before that"), and the file is indeed absent at HEAD.
+- (7) identifiers: confirmed. The note and the new CHANGELOG section hold no host, connector, cluster or system name, no planning, requirement or review identifier and no `round:` text (`38-note-check.py forbidden`, `38-hygiene-check.py --strict` and a grep of the note for finding IDs are clean). `FORK-DELTA` keeps its planning identifiers by design.
+- (8) `release object` and the allow-list: confirmed. Neither the note nor the CHANGELOG states a digest, tag commit or URL of the `release object` of `v1.7.0_gg6`; the process sentences say "meant to be created" and point at the open condition of item 22; `git ls-remote` shows no `v1.7.0_gg6` tag and no `pre-v1.7.0_gg6` tag on origin yet, which agrees with "published together with this release" being a plan.
+- (9) CHANGELOG: confirmed. Every section from `# 1.7.0_gg5` down is byte-identical to the file at `3a3a15a9` (`diff` of the two tails prints nothing, the old file starts at its first line); the round-2 fix commits changed only the Known Issues bullet inside the new `1.7.0_gg6` section. Its `custom_` wording is consistent with the note (client V2 only, fails at start), and the `additionalRetriableErrorCodes` and `errors.tolerance` statements are consistent with rows C1 to C3.
+
+Totals across the three rounds: 22 findings (13 warnings, 9 info, 0 critical): round 1 16, round 2 4, round 3 2. The checker's `rounds` command ends with FAIL only on the line "the last round still has findings and no round3_decision is recorded", which is its rule for a round 3 with findings; every structural check (numbering, unique IDs, heading level, counts) passes.
+
+_Round 3 reviewed: 2026-10-31_
 _Reviewer: Claude (gsd-code-reviewer), fresh context_
