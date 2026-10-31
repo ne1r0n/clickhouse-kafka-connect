@@ -2,7 +2,7 @@
 
 **The connector source changes in this release.** The previous release changed no connector code; this one does. `git diff --shortstat v1.7.0_gg5 HEAD -- src/main` on the release tip reports 7 files changed, 112 insertions and 31 deletions: the buffer strategies and `ChunkFlusher`, `ClickHouseSinkConfig`, `ProxySinkTask`, `Utils` and `ClickHouseHelperClient`. The five changes at a glance:
 
-1. A buffered connector (`bufferCount > 0`) under a topic-changing SMT now commits offsets under the original topic and partition (section B).
+1. A buffered connector (`bufferCount > 0`) under a topic-changing SMT (a single message transform, such as `RegexRouter`, that changes the record's topic) now commits offsets under the original topic and partition (section B).
 2. The ClickHouse Java client moves to `0.11.0`, with one item that breaks an upgrade on client V2: `custom_` keys in `jdbcConnectionProperties` (section D).
 3. A new setting, `additionalRetriableErrorCodes` (section C).
 4. Dependency changes, among them a security release of `lz4-java` (section E).
