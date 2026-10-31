@@ -18,7 +18,7 @@
 | E-02 | RLS-01 | 38-01 | pass |
 | E-03 | RLS-01 | 38-01 | pass |
 | E-04 | RLS-01 | 38-01 | pass |
-| E-05 | RLS-02 | 38-02 | pending (plan 38-02) |
+| E-05 | RLS-02 | 38-02 | pass |
 | E-06 | RLS-02 | 38-02 | pending (plan 38-02) |
 | E-07 | RLS-02 | 38-02 | pending (plan 38-02) |
 | E-08 | RLS-04 | 38-03 | pending (plan 38-03) |
@@ -266,5 +266,109 @@ forkdelta_commit_files: docs/FORK-DELTA.md
 The numbers equal the planning-time values. The two commands ran on the release tip (`HEAD` of `sync/v1.7.0`); the scopes contain no file that a documentation commit can move, and the since-gg5 directory split sums to the since-gg5 total (79 files, 7939 insertions, 478 deletions: `src/main` 7, `src/test` 52, `src/testFixtures` 4, `src/integrationTest` 4, `.github` 10, `gradle` 2 files). The recount script is a scratch file outside the repository that applies the file's own method (a pair counts as import-only when the lines that are not blank and do not start with `import ` are equal); run at `v1.7.0_gg5` it reproduces the figures the file published for gg5, which is why its result for the tip is used: 33 byte-identical, 14 import-only, 16 modified and 10 new files, 40 differing in all. The three files that moved from byte-identical to modified since gg5 are `AtLeastOnceBufferStrategy`, `ChunkFlusher` and `ExactlyOnceBufferStrategy`. The two PR-state sentences (the protobuf row and open item 12) now state a condition and no outcome. The Dependabot pull request 17 and the publish-path caveat are items 22 and 23, stated as conditions. Link check: the one broken target is the rollout note, created by plan 38-02; the paragraph for the next syncer names the note in code form, so exactly one link line is broken. The edits were made with the Edit tool, except one scripted batch of four single-occurrence replacements (each asserted to match exactly once) that reworded items 14, 15 and 21 and the item range in the paragraph for the next syncer.
 
 2026-10-31T12:52:59Z
+
+Verdict: pass
+
+### E-05: The cheap local re-measures: archives built on the release tip, eight pin classes green, the client sources read, the custom_ rejection measured, the final labels
+
+Backs: RLS-02, ROADMAP Phase 38 criterion 2 (the rollout note's labels are decided from what Phase 38 itself measured or read: both archives rebuilt the way the release workflow builds them, eight Docker-free pin classes green on the release tip, the public 0.11.0 and 0.9.6 client sources read for the rows that were measured only in research, one throwaway-container request for the `custom_` rejection, and the final label of every research-only row).
+
+```sh
+git archive v1.7.0_gg5 | tar -x -C /tmp/gsd38/w/base-src
+git archive HEAD | tar -x -C /tmp/gsd38/w/tip-src
+( cd /tmp/gsd38/w/base-src && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive > /tmp/gsd38/exec/build-base.log 2>&1 )
+( cd /tmp/gsd38/w/tip-src && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive > /tmp/gsd38/exec/build-tip.log 2>&1 )
+cp /tmp/gsd38/w/base-src/build/confluent/clickhouse-kafka-connect-v1.7.0_gg5.zip /tmp/gsd38/w/arch/base.zip
+cp /tmp/gsd38/w/tip-src/build/confluent/clickhouse-kafka-connect-v1.7.0_gg6.zip /tmp/gsd38/w/arch/tip.zip
+shasum -a 256 /tmp/gsd38/w/arch/base.zip /tmp/gsd38/w/arch/tip.zip
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd38/w/arch/base.zip /tmp/gsd38/w/arch/tip.zip /tmp/gsd38/w/arch/empty.txt > /tmp/gsd38/exec/cmp-empty-note.out
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BufferedOffsetCommitUnitTest' --tests '*AdditionalRetriableErrorCodesPinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*ClientErrorShapePinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*ClientTimeoutPrefixPinUnitTest' --tests '*ClientCatalogPinUnitTest' --tests '*NetworkCompressionPinUnitTest' > /tmp/gsd38/exec/pins.log 2>&1
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit --class <ClassName> 'tests>=1' failures=0 errors=0
+curl -sSfL -o /tmp/gsd38/w/src011/client-v2-0.11.0-sources.jar https://repo1.maven.org/maven2/com/clickhouse/client-v2/0.11.0/client-v2-0.11.0-sources.jar
+curl -sSfL -o /tmp/gsd38/w/src096/client-v2-0.9.6-sources.jar https://repo1.maven.org/maven2/com/clickhouse/client-v2/0.9.6/client-v2-0.9.6-sources.jar
+python3 -I /tmp/gsd38/exec/readsrc.py /tmp/gsd38/w/src011/client-v2-0.11.0-sources.jar '<search strings>'
+python3 -I /tmp/gsd38/exec/readsrc.py /tmp/gsd38/w/src096/client-v2-0.9.6-sources.jar '<search strings>'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+docker run -d --rm --pull=never --name gsd38-note-probe -e CLICKHOUSE_SKIP_USER_SETUP=1 -p 127.0.0.1:18123:8123 clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+curl -s http://127.0.0.1:18123/ping
+curl -s -G http://127.0.0.1:18123/ --data-urlencode 'query=SELECT 1'
+curl -s -G http://127.0.0.1:18123/ --data-urlencode 'query=SELECT 1' --data-urlencode 'custom_myparam=7'
+docker rm -f gsd38-note-probe
+docker ps -a --filter name=gsd38-note-probe -q
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf /tmp/gsd38/w/base-src /tmp/gsd38/w/tip-src
+```
+
+```text
+base_verify_line: verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class
+tip_verify_line: verifyConfluentArchive: 7933 inner entries, no nested jar, no Kafka API class
+base_entries: 7801
+tip_entries: 7933
+entries_delta: 132
+base_bytes: 12453556
+tip_bytes: 13558634
+base_sha256: efa6cca4f30d182eea52565f331581f2c4ccee30c99e91ce0f053b341629e0fe
+tip_sha256: a1b9108859fc73b84ad6ac6931c387bd10800dde9fec8b6a488e8bb5b402f1cf
+compare_exit: 1
+compare_totals: totals files-a 7399 files-b 7513 only-a 4 only-b 118 changed 120 same 7275
+compare_unallowed: 242
+compare_version_table: VERSION at.yawk.lz4:lz4-java 1.12.0 -> 1.12.1
+compare_version_lines_total: 18
+compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+compare_nested_jars: nested jars in b: 0
+compare_kafka_classes: kafka classes in b: 0
+archive_matches_research: yes
+pins_exit: 0
+pins_failed: OK
+buffered_xml: OK junit build/test-results/testUnit class *BufferedOffsetCommitUnitTest: tests=15 failures=0 errors=0 skipped=0 files=1
+retriable_xml: OK junit build/test-results/testUnit class *AdditionalRetriableErrorCodesPinUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+endpoint_xml: OK junit build/test-results/testUnit class *ClientEndpointAndOptionsPinUnitTest: tests=4 failures=0 errors=0 skipped=0 files=1
+shape_xml: OK junit build/test-results/testUnit class *ClientErrorShapePinUnitTest: tests=7 failures=0 errors=0 skipped=0 files=1
+wire_xml: OK junit build/test-results/testUnit class *ClientInsertWirePinUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+timeout_xml: OK junit build/test-results/testUnit class *ClientTimeoutPrefixPinUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+catalog_xml: OK junit build/test-results/testUnit class *ClientCatalogPinUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+compression_xml: OK junit build/test-results/testUnit class *NetworkCompressionPinUnitTest: tests=9 failures=0 errors=0 skipped=0 files=1
+pins_total: OK junit build/test-results/testUnit: tests=60 failures=0 errors=0 skipped=0 files=8
+pins_map: buffered: B1, B5; retriable: C1; endpoint: D1; shape: D2 attempts, D3, D4; wire: D5 prefix, D11; timeout: D14; catalog: D12 and the 0.11.0 catalog line; compression: D13
+source_jar: client-v2-0.11.0-sources.jar downloaded, read as data with python3 -I and zipfile, never extracted
+ua_site: com/clickhouse/client/api/Client.java:2628 CLIENT_USER_AGENT = "clickhouse-java-v2/"; com/clickhouse/client/api/internal/WorkloadIdentitySupport.java:34-38 keys lv, os, hc; :157-160 putIfAbsent of lv:java/<java.version>, os:<os.name>, hc:ahc_<Apache HttpClient version>
+ua_format_found: yes
+ua_old_format_site: client-v2-0.9.6-sources.jar com/clickhouse/client/api/internal/HttpAPIClientHelper.java:781 appends jvm: and :805 appends Apache-HttpClient
+log_sites: com/clickhouse/client/api/Client.java:2745 requestExMsg builds operation + " request failed (attempt: n, duration: Nms, queryId: id)" and :1663, :1678, :1889, :1912 pass "Insert"; com/clickhouse/client/api/internal/HttpAPIClientHelper.java:431 and :534 append " (queryId= <id>)"; :430, :473, :532 carry "transport error: <status>"
+log_text_found: yes
+log_old_text_site: client-v2-0.9.6-sources.jar com/clickhouse/client/api/Client.java:1496 "Insert failed (Attempt: %s/%s - Duration: %s)"
+compression_default_site: com/clickhouse/client/api/ClientConfigProperties.java:105 COMPRESSION_METHOD("compression.method", CompressionMethod.class, CompressionMethod.ZSTD.name())
+compression_default_value: ZSTD
+socket_options_site: com/clickhouse/client/api/ClientConfigProperties.java:78 SOCKET_RCVBUF_OPT("socket_rcvbuf", Integer.class) and :85 SOCKET_SNDBUF_OPT("socket_sndbuf", Integer.class); applied only if set at com/clickhouse/client/api/internal/HttpAPIClientHelper.java:359-362
+socket_options_default: none
+socket_options_old_default: client-v2-0.9.6-sources.jar com/clickhouse/client/api/ClientConfigProperties.java:68 and :70 declare both keys with the default 804800, applied at HttpAPIClientHelper.java:278
+probe_image: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+probe_server_version: 26.10.3.7
+probe_control_response: 1
+d7_rejection_text: Code: 115. DB::Exception: Setting custom_myparam is neither a builtin setting nor started with the prefix 'SQL_' registered for user-defined settings. (UNKNOWN_
+d7_rejection_measured: yes
+probe_container_removed: yes
+image_digest_after: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_unchanged: yes
+label_d2: attempts: measured; cadence: measured in research (not re-run)
+label_d5: prefix: measured; tail: read from the code
+label_d6: read from the code
+label_d7: forwarding: measured; rejection: measured
+label_d8: default method: read from the code; client-side failure: measured in research (not re-run)
+label_d9: archive and natives: measured; worker behaviour: measured in research (not re-run); loader behaviour: read from the code
+label_d12: measured
+relabel_reasons: d5 tail from research to read from the code by ua_format_found (the strings lv:java, os: and hc:ahc_ are in WorkloadIdentitySupport of 0.11.0 and the old jvm: and Apache-HttpClient text in 0.9.6); d6 from research to read from the code by log_text_found and log_old_text_site (both the new text and the old text are in the public sources, nothing was run); d7 rejection from research to measured by d7_rejection_measured (a real server answered Code 115 UNKNOWN_SETTING); d8 default method from research to read from the code by compression_default_value ZSTD, the client-side failure keeps its research label; d2 cadence, d8 failure and d9 worker behaviour keep measured in research (not re-run) because they need a server with a one-second max_execution_time on both client lines, a body of 1000000 incompressible bytes through a probe, and a Connect worker image with a platform matrix; d10 stays read from the code and is now backed on both lines by socket_options_site and socket_options_old_default
+exports_removed: yes
+```
+
+Both archives came out equal to the planning-time research on every figure (entries, bytes, digests, compare totals and the 242 unallowed lines), so the research figures and the measured ones are the same. The `compare_version_table` key holds the one version that differs: the compare tool prints one `VERSION` line per third-party library (18 lines, `compare_version_lines_total`) and 17 of them read the same version on both sides. A digest is recorded only; it is never compared with the runner's or the published asset's digest.
+
+The probe container needed `CLICKHOUSE_SKIP_USER_SETUP=1`: without it the image's `default` user refuses a request that arrives through the published port (error 194, a password is required), for any query, with or without the `custom_` parameter. With it the control query `SELECT 1` answers `1` and the same query with `custom_myparam=7` answers error 115. The container ran by digest with `--pull=never` and published on `127.0.0.1` only, nothing left the machine, and `docker rm -f` removed it. A first attempt without the variable (also loopback-only, also removed) answered 194 and is not used.
+
+The 0.9.6 sources were read in addition to the plan's 0.11.0 jar because the rows D5, D6 and D10 each make a claim about the old line too, and a label must not be stronger than what was read. The row D9's loader behaviour and the D8 failure text were not touched by the sources of the client and keep their labels.
+
+2026-10-31T12:58:19Z
 
 Verdict: pass
