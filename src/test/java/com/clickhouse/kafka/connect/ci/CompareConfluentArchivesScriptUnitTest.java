@@ -79,6 +79,8 @@ class CompareConfluentArchivesScriptUnitTest {
                     "for text in ['::error::x', '  ::add-mask::x', '##[error]x', ' ##[group]x',",
                     "             'ONLY-A a\\\\b', 'ONLY-A plain']:",
                     "    print(module.safe_line(text))");
+    private static final String HOSTILE_PATH_NAME = "bad\n::error::x\u001b[31m.zip";
+    private static final String HOSTILE_PATH_ESCAPED = "bad\\n::error::x\\x1b[31m.zip";
 
     @TempDir Path temp;
 
@@ -634,5 +636,56 @@ class CompareConfluentArchivesScriptUnitTest {
                         "ONLY-A a\\\\b",
                         "ONLY-A plain"),
                 output.lines().toList());
+    }
+
+    // UF-37-1 re-review (WR-01): the manifest diff and the ERROR line are escaped too
+
+    private static void assertStreamLogSafe(Run run, String stream) {
+        for (String line : stream.split("\n", -1)) {
+            String start = line.stripLeading();
+            assertFalse(
+                    start.startsWith("::") || start.startsWith("##["),
+                    () -> "a line starts a workflow command after its leading whitespace\n" + run.describe());
+        }
+        assertFalse(
+                UNSAFE_REPORT_CHARS.matcher(stream.replace("\n", "")).find(),
+                () -> "the stream holds a raw control character\n" + run.describe());
+    }
+
+    @Test
+    @DisplayName("WR-01: MANIFEST.MF lines that hold a command or an escape code are escaped in the manifest diff")
+    void aManifestDiffLineCannotStartAWorkflowCommand() throws Exception {
+        String baseline = "Manifest-Version: 1.0\n::error::ctx\nImplementation-Version: v1\n";
+        String candidate =
+                "Manifest-Version: 2.0\n::error::ctx\nImplementation-Version: v1\n"
+                        + "::add-mask::added\n\u001b[31m red\n";
+        Run run =
+                compare(
+                        baseWith(MANIFEST_MF, baseline),
+                        baseWith(MANIFEST_MF, candidate),
+                        row(MANIFEST_MF, REASON));
+
+        assertFail(run);
+        assertTrue(run.stdout().lines().anyMatch("MANIFEST.MF: differs"::equals), run::describe);
+        assertStreamLogSafe(run, run.stdout());
+        // the unchanged context line is the one a runner would read as a command: its prefix is a space
+        assertTrue(run.hasLine("\\ ::error::ctx"), run::describe);
+        assertTrue(run.hasLine("+::add-mask::added"), run::describe);
+        assertTrue(run.hasLine("+\\x1b[31m red"), run::describe);
+    }
+
+    @ParameterizedTest(name = "WR-01: a hostile {0} path in the error text is escaped on the single ERROR line")
+    @ValueSource(strings = {"archive", "allow-list"})
+    void aHostilePathCannotForgeAWorkflowCommandOnTheErrorLine(String argument) throws Exception {
+        Path hostile = temp.resolve(HOSTILE_PATH_NAME);
+        Path good = archive("good.zip", baseInner());
+        Run run =
+                "archive".equals(argument)
+                        ? run(hostile.toString(), good.toString(), allowList(COMMENT_ONLY).toString())
+                        : run(good.toString(), good.toString(), hostile.toString());
+
+        assertUnusableInput(run, HOSTILE_PATH_ESCAPED);
+        assertEquals(1, run.stderr().lines().count(), run::describe);
+        assertStreamLogSafe(run, run.stderr());
     }
 }
