@@ -9,15 +9,16 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
 ## Important Changes
 
 * Buffered connectors (`bufferCount > 0`) under an SMT that changes the record's topic, for example `RegexRouter`, now
-  commit offsets under the original topic and partition, at the last flushed offset plus one. Before, `preCommit`
-  returned keys named by the renamed topic, which Connect does not accept for the group, so no offset advanced for the
-  partitions of the renamed topics, for a rename whose target is not another input topic (the rollout note lists what it
-  does not characterise, a rename onto an input topic among it; the second half follows from Connect's offset contract
-  and was not measured). The first start after the upgrade resumes at the group's committed offset, or at the position
-  `auto.offset.reset` selects, and can reread a retained topic once (derived from Kafka consumer-group semantics, not
-  measured). Every buffered connector, renamed or not, now needs a Connect runtime whose `SinkRecord` has
-  `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset()`; the offsets a buffered connector without
-  renamed topics returns are unchanged. The fix is fork-only while upstream issue 777 stays open
+  commit offsets under the original topic and partition, at the last flushed offset plus one, and a revoked partition
+  now drops its buffered records under such an SMT, which before it kept. Before, `preCommit` returned keys named by the
+  renamed topic, which Connect does not accept for the group, so no offset advanced for the partitions of the renamed
+  topics, for a rename whose target is not another input topic (the rollout note lists what it does not characterise, a
+  rename onto an input topic among it; the second half follows from Connect's offset contract and was not measured). The
+  first start after the upgrade resumes at the group's committed offset, or at the position `auto.offset.reset` selects,
+  and can reread a retained topic once (derived from Kafka consumer-group semantics, not measured). Every buffered
+  connector, renamed or not, now needs a Connect runtime whose `SinkRecord` has `originalTopic()`,
+  `originalKafkaPartition()` and `originalKafkaOffset()`; the offsets a buffered connector without renamed topics
+  returns are unchanged. The fix is fork-only while upstream issue 777 stays open
   (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/777).
 * The ClickHouse Java client moves from `0.9.6` to `0.11.0`. A connector runs client V2 only when `client_version` is
   set to a value other than `V1`; the bullets below say "client V2" where they hold only there, and what the move
