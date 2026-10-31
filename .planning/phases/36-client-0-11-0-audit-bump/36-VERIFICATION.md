@@ -1,7 +1,7 @@
 ---
 phase: 36-client-0-11-0-audit-bump
 verified: 2026-10-31T02:30:00Z
-status: human_needed
+status: passed
 score: 5/5 roadmap success criteria verified (0 failed, 0 behavior-unverified); 4 judgment items routed to human review
 covered_files:
   - ".planning/phases/36-client-0-11-0-audit-bump/36-01-PLAN.md"
@@ -157,3 +157,12 @@ Placeholders and open items the reader should weigh, none of which fails a truth
 
 _Verified: 2026-10-31_
 _Verifier: Claude (gsd-verifier)_
+
+## Human-judgment disposition (2026-10-31)
+
+The verifier returned `human_needed` for four judgment items. The user accepted them as listed and asked to close the phase (AskUserQuestion, option "Принять и закрыть"). The frontmatter status was changed from `human_needed` to `passed` on that basis only; no check result was altered.
+
+1. CLT-07: accepted on the single green nightly at `de8c685b` (E-17). Phase 38 gates two full suites on a pinned `latest` at the publication SHA.
+2. CLT-05: accepted as read (D-17 default unchanged; rationale reworded in the FORK-DELTA D-17 row and paragraph, the two pin-class Javadocs and gg1 item 6; FORK-DELTA has no CMP rows; Recorded Fact 26 untouched).
+3. Rollout-items wording: the operator-comprehension read is carried to Phase 38.
+4. Full-suite coverage of the tip: later test-only commits (`0bb894a4`, `7e717d2d`, `bdd2e592`, `195fe556`) were not re-gated by a full suite; carried to the Phase 38 gate.
