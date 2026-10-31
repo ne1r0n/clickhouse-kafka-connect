@@ -27,7 +27,7 @@
 | E-11 | RLS-03 | 38-04 | pass |
 | E-12 | RLS-03, RLS-06 | 38-04 | pass |
 | E-13 | RLS-06 | 38-04 | pass |
-| E-14 | RLS-05 | 38-05 | pending (plan 38-05) |
+| E-14 | RLS-05 | 38-05 | pass |
 | E-15 | RLS-05 | 38-05 | pending (plan 38-05) |
 | E-16 | RLS-05 | 38-05 | pending (plan 38-05) |
 | E-17 | RLS-05 | 38-05 | pending (plan 38-05) |
@@ -943,5 +943,104 @@ The JVM line is JDK 21 for both suites, which is a departure from the preferred 
 `integrationTest` was not run (it needs a Connect stack): the nightly acceptance of E-12 stands as stated there.
 
 2026-10-31T18:22:03Z
+
+Verdict: pass
+
+### E-14: Publication rehearsal without a push: the merge message, a dry-run merge with its checks, the rollback on it, the date check and the approval bundle
+
+Backs: RLS-05, ROADMAP Phase 38 criterion 5 as far as an agent may go (the divergence is checked with the left count 0; the merge message is a committed file; a `--no-ff` merge D of the tip onto `3a3a15a9` was built in a throwaway detached worktree with every check M will face; the rollback block of the note ran unchanged on D; `SELECT version()` and the image digest are recorded; the CHANGELOG date was compared with today's UTC date; the eight-item approval bundle exists; D was never pushed).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-list --count sync/v1.7.0..origin/custom_build
+git rev-list --count 3a3a15a9ae064ffe09c696b8bb87bce23419d463..HEAD
+git rev-list --count HEAD --not --remotes=origin
+git cat-file -t pre-v1.7.0_gg6
+git ls-remote --heads origin 'sync/*'
+git ls-remote --tags origin 'v1.7.0_gg6*'
+git tag -l 'v1.7.0_gg6'
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/pulls?state=open&per_page=50' --jq '[.[] | "\(.number) \(.head.sha[0:8])"] | sort | join("; ")'
+git diff --shortstat 3a3a15a9ae064ffe09c696b8bb87bce23419d463 HEAD -- . ':(exclude).planning'
+git diff --shortstat 3a3a15a9ae064ffe09c696b8bb87bce23419d463 HEAD -- .planning
+git diff --quiet ea613ec35ebade7a2182cac4e6ecd5d86d099def HEAD -- . ':(exclude).planning'
+git diff --quiet ea613ec35ebade7a2182cac4e6ecd5d86d099def HEAD -- .planning/scripts
+git worktree add --detach /tmp/gsd38/w/pubdry 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+git --attr-source="$(git hash-object -t tree /dev/null)" merge --no-ff -F .planning/phases/38-release-publication/38-MERGE-MESSAGE.txt b0ab8c7b1b47185b58a22561742c00ec95b24f73
+git tag --merged HEAD --list 'v*' | python3 -I .github/scripts/baseline_tag.py v1.7.0_gg6
+grep -inE 'TRUNCATE|DROP TABLE|DROP DATABASE|DELETE FROM' docs/ROLLOUT-v1.7.0_gg6.md <CHANGELOG section> <added FORK-DELTA lines>
+python3 -I /tmp/gsd38/exec/extract_block.py docs/ROLLOUT-v1.7.0_gg6.md /tmp/gsd38/exec/p5-rollback-block.sh
+bash -e /tmp/gsd38/exec/p5-rollback-block.sh
+git --attr-source="$(git hash-object -t tree /dev/null)" revert --no-edit HEAD
+git worktree remove --force /tmp/gsd38/w/pubdry && git worktree prune
+git branch -D rollback-v1.7.0_gg6
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+head -1 CHANGELOG.md
+date -u +%F
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict <merge message> <approval bundle>
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets <merge message> <approval bundle>
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git add <merge message> <approval bundle> && git commit -F /tmp/gsd38/exec/msg-p5-bundle.txt
+```
+
+```text
+tip_head: b0ab8c7b1b47185b58a22561742c00ec95b24f73
+origin_custom_build: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+origin_unchanged: yes
+left_count: 0
+ahead_commits: 331
+unpublished_commits: 168
+pre_tag_local: commit 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+origin_sync_ref: none
+origin_gg6_tags: none
+local_gg6_tag: none
+pr_heads: 10 011bc42b; 16 cb3c7718; 17 6a53525b; 18 cb898dc2; 19 2a806038; 20 8786723b
+pr_heads_unchanged: yes
+non_planning_vs_gg5: 88 files changed, 8499 insertions(+), 619 deletions(-)
+planning_vs_gg5: 237 files changed, 49912 insertions(+), 507 deletions(-)
+gated_sha: 927ac07c30274c46b2330d597d417f9f1eda8f8b
+gated_head: ea613ec35ebade7a2182cac4e6ecd5d86d099def
+tip_equals_gate_outside_planning: yes
+merge_message_file: .planning/phases/38-release-publication/38-MERGE-MESSAGE.txt
+merge_subject: Merge sync/v1.7.0: release v1.7.0_gg6
+merge_trailer_last: yes
+d_commit: 9e31f79c7d9f4ef8c946cf5ff8de56daba5588f8
+d_parents: 3a3a15a9ae064ffe09c696b8bb87bce23419d463 b0ab8c7b1b47185b58a22561742c00ec95b24f73
+d_tree_equal: yes
+d_subject: Merge sync/v1.7.0: release v1.7.0_gg6
+d_message_identical_to_file: yes
+d_no_gsd_ws_arg: yes
+d_version: v1.7.0_gg6
+d_allowlist_present: yes
+d_baseline_tag: v1.7.0_gg5
+d_no_gg6_tag_merged: yes
+d_operator_doc_check: none
+d_rollback_block_unchanged_since_e07: yes
+d_rollback_exit: 0
+d_rollback_output: ok
+d_rollback_version: v1.7.0_gg5
+d_rollback_note_absent: yes
+d_rollback_tree_equals_tag: yes
+d_revert_restores_tree: yes
+d_worktree_removed: yes
+local_custom_build_ref_unmoved: yes
+gradlew_bat_at_base: a fresh worktree at 3a3a15a9 lists M gradlew.bat before the merge and after the rollback block; the merge and the revert ran with git --attr-source set to the empty tree, as the rollout note's rollback section and the runbook state
+select_version: 26.10.3.7
+image_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e13: yes
+changelog_heading_date: 2026-10-31
+utc_today: 2026-10-31
+changelog_date_vs_today: equal
+bundle_items: yes
+message_check: yes
+hygiene_scan: clean
+secrets_scan: clean
+anchors_mirror: rows=172 bad=0
+bundle_commit: 36dd3f8a0786129f26bc0b334d0079cfb4b11340
+```
+
+D is the merge the orchestrator will build as M after the user's own direct approval, on the tip `b0ab8c7b` of the day; it was never pushed, and its worktree and the rollback branch the block creates were removed. The commit object `9e31f79c` stays in the repository's object store as an unreachable commit until git collects it; no ref names it. M will have the same shape with the tip X0 the user pushes in the first handoff, which may differ from this tip only by commits under `.planning` (the `.planning/scripts` files and everything outside `.planning` are the gated ones). The merge message file holds no planning identifier, no commit hash of 40 characters, no digest and no gg6 asset name; the bundle holds eight items, each starting a line with `(1) ` to `(8) `. The CHANGELOG date equals the UTC date at the time of this entry; the orchestrator compares them again before the push of M, because the merge may happen on another date, in which case it asks the user directly (the runbook, step O2).
+
+2026-10-31T18:31:00Z
 
 Verdict: pass
