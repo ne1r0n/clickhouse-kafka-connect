@@ -19,13 +19,13 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   group's committed offset, or at the position `auto.offset.reset` selects, and can reread a retained topic. With
   `exactlyOnce=false` that loads what the table already holds a second time; with `exactlyOnce=true` the stored state
   decides: a chunk inside the stored range is skipped, and when the retained log starts at offset 0 the first chunk
-  resets the state and every later chunk up to the stored range is inserted as new, so the whole retained topic is
-  loaded again without a failure, while a chunk below the stored range that does not start at offset 0 fails the task
-  with `State MISMATCH` unless `tolerateStateMismatch=true`. The Kafka part is derived from Kafka consumer-group
-  semantics, not measured; the connector part was read from the code, not run (rollout note, section B). Every
-  buffered connector, renamed or not, now needs a Connect runtime whose `SinkRecord` has `originalTopic()`,
-  `originalKafkaPartition()` and `originalKafkaOffset()`; the offsets a buffered connector returns for records that
-  keep their topic, partition and offset are unchanged. The fix is fork-only while upstream issue 777 stays open
+  resets the state and every later chunk, the chunk of the stored range included, is inserted as new, so the whole
+  retained topic is loaded again without a failure, while a chunk below the stored range that does not start at offset 0
+  fails the task with `State MISMATCH` unless `tolerateStateMismatch=true`. The Kafka part is derived from Kafka
+  consumer-group semantics, not measured; the connector part was read from the code, not run (rollout note, section B).
+  Every buffered connector, renamed or not, now needs a Connect runtime whose `SinkRecord` has `originalTopic()`,
+  `originalKafkaPartition()` and `originalKafkaOffset()`; the offsets a buffered connector returns for records that keep
+  their topic, partition and offset are unchanged. The fix is fork-only while upstream issue 777 stays open
   (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/777).
 * The ClickHouse Java client moves from `0.9.6` to `0.11.0`. A connector runs client V2 only when `client_version` is
   set to a value other than `V1`; the bullets below say "client V2" where they hold only there, and what the move
