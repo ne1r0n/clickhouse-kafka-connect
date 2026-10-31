@@ -49,6 +49,49 @@ class BumpVersionScriptUnitTest {
     private static final String GG4 = "v1.7.0_gg4";
     private static final String EMPTY_LABEL = "<empty>";
     private static final String ANCHORS_HEADER = "# fixture anchors\n";
+    private static final String TEMP_PREFIX = ".bump-";
+    private static final String KEPT_IN = "its original is kept in ";
+
+    /**
+     * Runs the script's own functions with {@code os.replace} made to fail for chosen targets, because a
+     * failing second rename cannot be produced through the command line: staging and replacing need the
+     * same directory permission. It prints one {@code replaced NAME} line per rename that went through,
+     * so a test can see that the first file really was replaced before the failure.
+     */
+    private static final String DRIVER =
+            """
+            import importlib.util
+            import os
+            import sys
+
+            script, mode, first, second = sys.argv[1:5]
+            spec = importlib.util.spec_from_file_location("bump_version", script)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            real_replace = os.replace
+            calls_to_first = []
+
+            def replace(source, target, *args, **kwargs):
+                if target == second and mode != "staging-write-error":
+                    raise OSError("injected failure for " + os.path.basename(target))
+                if target == first and mode == "restore-fails":
+                    calls_to_first.append(source)
+                    if len(calls_to_first) == 2:
+                        raise OSError("injected restore failure")
+                real_replace(source, target, *args, **kwargs)
+                print("replaced", os.path.basename(target))
+
+            os.replace = replace
+            try:
+                if mode == "main":
+                    print("EXIT", module.main(["gg", "--version-file", second, "--anchors-file", first]))
+                else:
+                    text = chr(0xD800) if mode == "staging-write-error" else "NEW\\n"
+                    module.write_both((first, "NEW\\n"), (second, text))
+                    print("NO-ERROR")
+            except module.BumpError as exc:
+                print("BUMP-ERROR", exc)
+            """;
     private static final String EXAMPLE_ROW = row("src/main/java/Example.java", "foo", "1", "X-01");
     private static final String GRADLE_ROW = row("build.gradle.kts", "windows-1252", "2", "BLD-05");
 
@@ -416,5 +459,108 @@ class BumpVersionScriptUnitTest {
         assertEquals(0, run.exitCode(), run.stderr());
         assertEquals(GG6 + "\n", read(versionFile()));
         assertEquals(anchorsFor(GG6).replace("\n", "\r\n"), read(anchorsFile()));
+    }
+
+    private Run drive(String mode) throws IOException, InterruptedException {
+        List<String> command =
+                List.of(
+                        PYTHON,
+                        "-I",
+                        "-B",
+                        "-c",
+                        DRIVER,
+                        SCRIPT.toString(),
+                        mode,
+                        anchorsFile().toString(),
+                        versionFile().toString());
+        Path out = Files.createTempFile(temp, "stdout", ".txt");
+        Path err = Files.createTempFile(temp, "stderr", ".txt");
+        Process process =
+                new ProcessBuilder(command)
+                        .redirectOutput(out.toFile())
+                        .redirectError(err.toFile())
+                        .start();
+        if (!process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            fail("The bump driver did not finish within " + TIMEOUT_SECONDS + " seconds");
+        }
+        return new Run(process.exitValue(), read(out), read(err));
+    }
+
+    private List<String> strayTempFiles() throws IOException {
+        try (Stream<Path> files = Files.list(temp)) {
+            return files.map(file -> file.getFileName().toString())
+                    .filter(name -> name.startsWith(TEMP_PREFIX))
+                    .toList();
+        }
+    }
+
+    private void writeFixtures() throws IOException {
+        write(versionFile(), GG5 + "\n");
+        write(anchorsFile(), anchorsFor(GG5));
+    }
+
+    @Test
+    @DisplayName("WR-04: a failing second replace puts the first file back, leaves both files unchanged and no temp file")
+    void aFailingSecondReplaceLeavesBothFilesUnchanged() throws IOException, InterruptedException {
+        writeFixtures();
+
+        Run run = drive("second-replace-fails");
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        assertTrue(run.stdout().contains("replaced " + ANCHORS_FILE_NAME), run.stdout());
+        assertTrue(run.stdout().contains("BUMP-ERROR"), run.stdout());
+        assertTrue(run.stdout().contains("injected failure"), run.stdout());
+        assertEquals(GG5 + "\n", read(versionFile()));
+        assertEquals(anchorsFor(GG5), read(anchorsFile()));
+        assertEquals(List.of(), strayTempFiles());
+    }
+
+    @Test
+    @DisplayName("WR-04: a failing second replace through the command line contract is exit 1 with an ERROR line and unchanged files")
+    void aFailingSecondReplaceThroughMainIsARefusal() throws IOException, InterruptedException {
+        writeFixtures();
+
+        Run run = drive("main");
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        assertTrue(run.stdout().contains("replaced " + ANCHORS_FILE_NAME), run.stdout());
+        assertTrue(run.stdout().contains("EXIT 1"), run.stdout());
+        assertTrue(run.stderr().startsWith(ERROR_PREFIX), run.stderr());
+        assertEquals(GG5 + "\n", read(versionFile()));
+        assertEquals(anchorsFor(GG5), read(anchorsFile()));
+        assertEquals(List.of(), strayTempFiles());
+    }
+
+    @Test
+    @DisplayName("WR-04: when the first file cannot be put back the error names the kept backup, which holds the original")
+    void aFailedRestoreKeepsTheBackupAndNamesIt() throws IOException, InterruptedException {
+        writeFixtures();
+
+        Run run = drive("restore-fails");
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        String line =
+                run.stdout().lines().filter(l -> l.startsWith("BUMP-ERROR")).findFirst().orElse("");
+        assertTrue(line.contains(KEPT_IN), run.stdout());
+        Path backup = Path.of(line.substring(line.indexOf(KEPT_IN) + KEPT_IN.length()).strip());
+        assertEquals(anchorsFor(GG5), read(backup));
+        assertEquals(GG5 + "\n", read(versionFile()));
+        assertEquals(1, strayTempFiles().size(), strayTempFiles().toString());
+    }
+
+    @Test
+    @DisplayName("WR-04: an error that is not an OSError while staging leaves both files unchanged, no temp file and a BumpError")
+    void aNonOsErrorWhileStagingLeavesNoStrayFile() throws IOException, InterruptedException {
+        writeFixtures();
+
+        Run run = drive("staging-write-error");
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        assertTrue(run.stdout().contains("BUMP-ERROR"), run.stdout());
+        assertFalse(run.stdout().contains("replaced"), run.stdout());
+        assertEquals(GG5 + "\n", read(versionFile()));
+        assertEquals(anchorsFor(GG5), read(anchorsFile()));
+        assertEquals(List.of(), strayTempFiles());
     }
 }

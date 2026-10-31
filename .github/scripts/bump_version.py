@@ -10,8 +10,12 @@ _gg1. Numbers are written without leading zeros. The new version is validated ag
 
 The anchors file must hold exactly one non-comment row whose first TAB field is VERSION, with four
 fields, a pattern field equal to the current version and the count 1; that row's pattern becomes the new
-version. Both new contents are computed and staged before either file is replaced, so any failure leaves
-VERSION and the anchors file as they were. On success the new version is the only line on stdout.
+version. Both new contents and a backup of the anchors file are computed and staged before either file
+is replaced. Two renames cannot be one atomic step, so the guarantee is: a failure while staging or while
+replacing either file leaves VERSION and the anchors file as they were (a replaced anchors file is put
+back from its staged backup), and every staged temp file is removed. Only a process kill between the two
+renames can leave the anchors row ahead of VERSION; the next run then refuses and says to fix the row
+first. On success the new version is the only line on stdout.
 
 Exit codes: 0 written, 1 refused (invalid version, anchors row missing or not matching, unreadable
 file), 2 usage error. Standard library only.
@@ -29,6 +33,7 @@ DEFAULT_ANCHORS_FILE = os.path.join(".planning", "scripts", "fork-anchors.txt")
 ANCHOR_PATH_FIELD = "VERSION"
 ANCHOR_COUNT_FIELD = "1"
 ANCHOR_FIELDS = 4
+TEMP_PREFIX = ".bump-"
 EXIT_REFUSED = 1
 
 
@@ -97,25 +102,47 @@ def rewrite_anchor_row(anchors_text, old, new):
     return "\n".join(lines)
 
 
+def stage(path, data, staged):
+    """Write data (bytes) to a new temp file next to path, with path's permissions; record it in staged."""
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(path)), prefix=TEMP_PREFIX)
+    staged.append(tmp)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(data)
+    os.chmod(tmp, os.stat(path).st_mode & 0o777)
+    return tmp
+
+
 def write_both(first, second):
-    """Stage both (path, text) pairs next to their targets, then replace them."""
+    """Replace two (path, text) pairs, first then second; see the module docstring for the guarantee."""
     staged = []
     try:
-        for path, text in (first, second):
-            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(path)), prefix=".bump-")
-            staged.append((tmp, path))
-            with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
-                handle.write(text)
-            os.chmod(tmp, os.stat(path).st_mode & 0o777)
-        for tmp, path in staged:
-            os.replace(tmp, path)
-    except OSError as exc:
-        for tmp, _ in staged:
+        new_first = stage(first[0], first[1].encode("utf-8"), staged)
+        new_second = stage(second[0], second[1].encode("utf-8"), staged)
+        with open(first[0], "rb") as handle:
+            backup = stage(first[0], handle.read(), staged)
+        os.replace(new_first, first[0])
+        try:
+            os.replace(new_second, second[0])
+        except OSError:
+            try:
+                os.replace(backup, first[0])
+            except OSError as restore_exc:
+                staged.remove(backup)
+                raise BumpError(
+                    "cannot replace %s and cannot put %s back (%s); its original is kept in %s"
+                    % (second[0], first[0], restore_exc, backup)
+                )
+            raise
+    except BumpError:
+        raise
+    except Exception as exc:
+        raise BumpError("cannot write the new version: %s" % exc)
+    finally:
+        for tmp in staged:
             try:
                 os.remove(tmp)
             except OSError:
                 pass
-        raise BumpError("cannot write the new version: %s" % exc)
 
 
 def run(kind, version_file, anchors_file):
