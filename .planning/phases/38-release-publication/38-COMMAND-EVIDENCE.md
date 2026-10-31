@@ -25,7 +25,7 @@
 | E-09 | RLS-04 | 38-03 | pass |
 | E-10 | RLS-04 | 38-03 | pass |
 | E-11 | RLS-03 | 38-04 | pass |
-| E-12 | RLS-03, RLS-06 | 38-04 | pending (plan 38-04) |
+| E-12 | RLS-03, RLS-06 | 38-04 | pass |
 | E-13 | RLS-06 | 38-04 | pending (plan 38-04) |
 | E-14 | RLS-05 | 38-05 | pending (plan 38-05) |
 | E-15 | RLS-05 | 38-05 | pending (plan 38-05) |
@@ -712,5 +712,124 @@ Every expectation held. The archives rebuilt on the final tree are byte-identica
 The shipped-lists test (`CompareConfluentArchivesScriptUnitTest`, 58 tests) loads every list under `.planning/scripts` including the new one; the release-workflow guard class ran with it. Both ran with the Docker socket pointing nowhere. The allow-list is valid for this tree only: any later change of `src`, `build.gradle.kts`, `gradle` or `README.md` moves the archive.
 
 2026-10-31T17:34:52Z
+
+Verdict: pass
+
+### E-12: Docker-free gates on one head: testUnit with Docker unreachable, the anchors mirror, the tail and cumulative gates, the scope facts
+
+Backs: RLS-06 (first half) and RLS-03, ROADMAP Phase 38 criterion 4 (on one gated head the Docker-free suite is green with the daemon unreachable and with the Phase 37 verifier's total, the anchors mirror reads rows=172 bad=0, the tail and cumulative merge gates end result=PASS, the non-planning change set is the five document paths, `src/main` differs from `v1.7.0_gg5` by the numbers FORK-DELTA states, and the FORK-DELTA raw numbers equal a fresh run). "Docker stopped" is read as the Phase 36 and 37 way (G-3): the daemon socket is made unreachable for the Gradle run and the colima VM keeps running for the suites of E-13.
+
+```sh
+git rev-parse HEAD
+git status --porcelain
+git ls-remote origin refs/heads/custom_build
+git rev-list --count sync/v1.7.0..origin/custom_build
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/pulls?state=open&per_page=50' --jq '[.[] | "\(.number) \(.head.sha[0:8])"] | sort | join("; ")'
+git ls-remote --heads origin
+git ls-remote --tags origin 'v1.7.0_gg6*' 'pre-v1.7.0_gg6*'
+git tag -l 'v1.7.0_gg6'
+git log -1 --format=%H -- . ':(exclude).planning'
+git log -1 --format=%H -- .planning/scripts
+/bin/bash -c 'bash .planning/scripts/verify-merge-invariants.sh 54e63648 ea613ec35ebade7a2182cac4e6ecd5d86d099def > /tmp/gsd38/exec/cumulative-gate.log 2>&1; echo $? > /tmp/gsd38/exec/cumulative-gate.exit'
+DOCKER_HOST=unix:///nonexistent/docker.sock /opt/homebrew/Cellar/docker/29.8.2/bin/docker info
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd38/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py junit build/test-results/testUnit --class <ClassName> failures=0 errors=0 'tests>=1'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q javaToolchains
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0-tail-2 UPSTREAM_REF=9bed6f7970670a55c66be8efda246889e1f95bd0 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-2.txt bash .planning/scripts/verify-merge-invariants.sh adaf8c4e76375e5099c076f2ca3bace892709765 ea613ec35ebade7a2182cac4e6ecd5d86d099def > /tmp/gsd38/exec/gate-tail.log 2>&1
+git diff --name-only eb8c163ab9cdc7951612931f7c49b23e3ec37d6b ea613ec35ebade7a2182cac4e6ecd5d86d099def -- . ':(exclude).planning'
+git diff --name-only eb8c163ab9cdc7951612931f7c49b23e3ec37d6b ea613ec35ebade7a2182cac4e6ecd5d86d099def -- .planning/scripts
+git diff --shortstat v1.7.0_gg5 ea613ec35ebade7a2182cac4e6ecd5d86d099def -- src/main
+git diff --quiet eb8c163ab9cdc7951612931f7c49b23e3ec37d6b ea613ec35ebade7a2182cac4e6ecd5d86d099def -- src build.gradle.kts settings.gradle.kts gradle .github
+git diff --name-only 5ba9b84f8ebace8c748a3669dffe19d18a241b07 ea613ec35ebade7a2182cac4e6ecd5d86d099def -- . ':(exclude).planning'
+git diff --shortstat v1.7.0 ea613ec35ebade7a2182cac4e6ecd5d86d099def -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 ea613ec35ebade7a2182cac4e6ecd5d86d099def -- src/main
+git diff --quiet de8c685b ea613ec35ebade7a2182cac4e6ecd5d86d099def -- src/main build.gradle.kts gradle
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py $(git diff --name-only --diff-filter=A eb8c163ab9cdc7951612931f7c49b23e3ec37d6b ea613ec35ebade7a2182cac4e6ecd5d86d099def)
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict <the added documents, the evidence and the allow-list, and the added lines of the three modified documents>
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py secrets <the evidence and each added document>
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd38/exec/p4t2-verify.log 2>&1
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+git worktree list
+```
+
+```text
+utc_start: 2026-10-31T17:35:30Z
+gated_head: ea613ec35ebade7a2182cac4e6ecd5d86d099def
+dirty_paths_at_gate: M .planning/config.json; M .planning/state.json
+origin_custom_build_at_gate: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+origin_unchanged: yes
+left_count_at_gate: 0
+pr_heads_at_gate: 10 011bc42b; 16 cb3c7718; 17 6a53525b; 18 cb898dc2; 19 2a806038; 20 8786723b
+pr_heads_unchanged: yes
+origin_sync_ref: none
+origin_gg6_tags: none
+local_gg6_tag: none
+last_non_planning_commit: 927ac07c30274c46b2330d597d417f9f1eda8f8b
+last_scripts_commit: cc928221b7f2a19ccad3fa2f160f970b35c671e9
+docker_unreachable_proof: exit=1 failed to connect to the docker API at unix:///nonexistent/docker.sock; check if the path is correct and if the daemon is running: dial unix /nonexistent/docker.sock: connect: no such file or directory
+testunit_exit: 0
+testunit_tests: 1672
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_expected_tests: 1672
+testunit_count_matches: yes
+testunit_jvm_crash: none
+testunit_jvm: default JDK 17 (the toolchain default, no javaVersion property); Gradle's toolchain list holds three IBM JDK 17 builds (17.0.9+5, +7 and +9) and no other 17, and a Homebrew JDK 21 that is not used
+failed_ok: yes
+compare_xml: OK junit build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=58 failures=0 errors=0 skipped=0 files=1
+bump_xml: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=52 failures=0 errors=0 skipped=0 files=1
+baseline_xml: OK junit build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+relguard_xml: OK junit build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=37 failures=0 errors=0 skipped=0 files=1
+pinguard_xml: OK junit build/test-results/testUnit class *TestsWorkflowPinGuardUnitTest: tests=44 failures=0 errors=0 skipped=0 files=1
+actionpin_xml: OK junit build/test-results/testUnit class *WorkflowActionPinGuardUnitTest: tests=21 failures=0 errors=0 skipped=0 files=1
+connectapi_xml: OK junit build/test-results/testUnit class *ConnectApiReferencesUnitTest: tests=3 failures=0 errors=0 skipped=0 files=1
+mbean_xml: OK junit build/test-results/testUnit class *MBeanNameUnitTest: tests=11 failures=0 errors=0 skipped=0 files=1
+buffered_xml: OK junit build/test-results/testUnit class *BufferedOffsetCommitUnitTest: tests=15 failures=0 errors=0 skipped=0 files=1
+retriable_xml: OK junit build/test-results/testUnit class *AdditionalRetriableErrorCodesPinUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+endpoint_xml: OK junit build/test-results/testUnit class *ClientEndpointAndOptionsPinUnitTest: tests=4 failures=0 errors=0 skipped=0 files=1
+shape_xml: OK junit build/test-results/testUnit class *ClientErrorShapePinUnitTest: tests=7 failures=0 errors=0 skipped=0 files=1
+wire_xml: OK junit build/test-results/testUnit class *ClientInsertWirePinUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+timeout_xml: OK junit build/test-results/testUnit class *ClientTimeoutPrefixPinUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+catalog_xml: OK junit build/test-results/testUnit class *ClientCatalogPinUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+compression_xml: OK junit build/test-results/testUnit class *NetworkCompressionPinUnitTest: tests=9 failures=0 errors=0 skipped=0 files=1
+verify_rerun_tests: OK junit build/test-results/testUnit: tests=1672 failures=0 errors=0 skipped=2 files=80
+anchors_mirror: rows=172 bad=0
+tail_gate_exit: 0
+tail_gate_line: invariants: provenance_paths=27 anchor_commits=259 anchor_rows=172 marker_commits=266 anchor_exempt=0 result=PASS
+cumulative_gate_exit: 0
+cumulative_gate_line: invariants: provenance_paths=21 anchor_commits=1270 anchor_rows=172 marker_commits=1336 anchor_exempt=19 result=PASS
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg5.md; docs/ROLLOUT-v1.7.0_gg6.md
+scope_planning_scripts: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt; .planning/scripts/fork-anchors.txt
+src_main_vs_gg5: 7 files changed, 112 insertions(+), 31 deletions(-)
+src_main_vs_gg5_equals_forkdelta: yes
+no_java_change: yes
+untouched_since_phase37_gate: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg5.md; docs/ROLLOUT-v1.7.0_gg6.md
+forkdelta_numbers_equal: yes
+forkdelta_wider_fresh: 331 files changed, 39665 insertions(+), 1161 deletions(-)
+forkdelta_narrow_fresh: 40 files changed, 2989 insertions(+), 272 deletions(-)
+note_archive_numbers_match: yes
+integration_test: not re-run: it needs a Connect stack and the nightly run 41152289179 on scratch de8c685b is the record that the user accepted; the gated tree has the same src/main, build and gradle files as that run (git diff de8c685b HEAD over them is empty, VERSION aside)
+nightly_tree_check: yes
+hygiene_scan_all: clean
+secrets_scan: clean
+nothing_pushed: yes
+worktrees_clean: yes
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+docker_free_decision: go
+gate_failures: none
+utc_end: 2026-10-31T18:08:11Z
+```
+
+Every expectation held and the decision is go. The total of 1672 equals the Phase 37 verifier's re-run exactly, so Phase 37's additions are in it and Phase 38 added no test; the cache-busted second run (the plan's own verify, `verify_rerun_tests`) read the same 1672 tests and 2 skips. `testUnit` was run with the daemon socket pointing at a path that does not exist (the proof is the `docker info` failure above), while the colima VM stayed up. The cumulative gate ran in the background from the explicit gated SHA, concurrently with the tail gate and the two `testUnit` runs (the merge gates only read git objects and create no worktree); its log is `/tmp/gsd38/exec/cumulative-gate.log`. The non-`.planning` change set since the phase start and since the Phase 37 gate head (`5ba9b84f`) is the same five document paths; the two script paths are the allow-list and the anchors file. The `hygiene_scan_all` key covers the eight files this phase added (default mode), the documents, evidence and list (strict) and the added lines of `CHANGELOG.md`, `docs/FORK-DELTA.md`, `docs/ROLLOUT-v1.7.0_gg5.md` and `VERSION` (strict); this entry and the plan summary are scanned again at the verify. `worktrees_clean` means one line in `git worktree list`; the directories under `/tmp/gsd38/w` are scratch, none is a git worktree. `integration_test` is stated as what it is: not run here.
+
+2026-10-31T18:08:11Z
 
 Verdict: pass
