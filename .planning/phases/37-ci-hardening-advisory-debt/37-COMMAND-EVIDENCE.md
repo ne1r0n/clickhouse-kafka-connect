@@ -19,8 +19,8 @@
 | E-04 | CIH-02 | 37-01 | pass |
 | E-05 | CIH-05 | 37-02 | pass |
 | E-06 | CIH-04 | 37-02 | pass |
-| E-07 | CIH-04, CIH-05 | 37-02 | pending (plan 37-02) |
-| E-08 | ADV-03 | 37-02 | pending (plan 37-02) |
+| E-07 | CIH-04, CIH-05 | 37-02 | pass |
+| E-08 | ADV-03 | 37-02 | pass |
 | E-09 | CIH-04, ADV-01 | 37-03 | pending (plan 37-03) |
 | E-10 | CIH-04, ADV-01, ADV-02 | 37-03 | pending (plan 37-03) |
 | E-11 | CIH-04 | 37-03 | pending (plan 37-03) |
@@ -427,5 +427,171 @@ script_unmodified_in_main: yes
 All 19 executions (10 printed baselines, 3 no-baseline exit 1, 6 exit 2 of which 4 are invalid versions and 2 argument-count errors) were red while the script did not exist, and green with the plan asset copied byte for byte. On the 78 release-looking tags reachable from `HEAD` the rule gives `v1.7.0_gg4` for `v1.7.0_gg5` and `v1.7.0_gg5` for `v1.7.0_gg6`, and `v1.7.0_gg4` for the current `VERSION`; both of those tags are ancestors of `HEAD`. Twenty of the 78 names (for example `v1.7.0_gg4-hardening`, `v1.2.9_gg4-tests`, `v1.7.0_gg5-ci` and the thirteen `-alfa` and `-beta` tags) are rejected by the grammar and ignored. Treating every counter as zero turned seven executions red, so the numeric counter order is pinned.
 
 2026-10-31T09:11:30Z
+
+Verdict: pass
+
+### E-07: Allow-lists named by VERSION, and the compare on real archives in both polarities
+
+Backs: CIH-04 and CIH-05, ROADMAP Phase 37 criterion 3, O-1, O-3 and O-5 (the lists are keyed by `VERSION`; both polarities of the compare are proven on real archives without Docker; no provisional list; no `zstd-jni` row), threats T-37-05, T-37-06 and T-37-07.
+
+```sh
+git mv .planning/scripts/confluent-archive-allowlist-29.txt .planning/scripts/confluent-archive-allowlist-v1.7.0_gg4.txt
+git mv .planning/scripts/confluent-archive-allowlist-32.txt .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt replace-text docs/FORK-DELTA.md 1 '<the -29 path>' '<the -v1.7.0_gg4 path> (renamed from the -29 file in Phase 37)'
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt replace-text docs/FORK-DELTA.md 1 '<the -32 path>' '<the -v1.7.0_gg5 path> (renamed from the -32 file in Phase 37)'
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt insert-after docs/FORK-DELTA.md .planning/phases/37-ci-hardening-advisory-debt/37-assets/fork-delta-row-2-compare.md.txt '| `increment-version.yml` bumps'
+git commit -F /tmp/gsd37/exec/msg-p2-rename.txt
+git diff -M --summary {rename_commit}^ {rename_commit}
+git diff --quiet 3003b763 HEAD -- src/main build.gradle.kts gradle settings.gradle.kts VERSION
+git worktree add --detach /tmp/gsd37/w/<name> <v1.7.0_gg4 | v1.7.0_gg5 | HEAD>
+env -u TESTCONTAINERS_HOST_OVERRIDE /tmp/gsd37/w/<name>/gradlew -p /tmp/gsd37/w/<name> --console=plain createConfluentArchive > /tmp/gsd37/exec/build-<name>.log 2>&1
+cp /tmp/gsd37/w/<name>/build/confluent/clickhouse-kafka-connect-<VERSION>.zip /tmp/gsd37/w/archives/<name>/archive.zip
+shasum -a 256 /tmp/gsd37/w/archives/<name>/archive.zip
+git worktree remove --force /tmp/gsd37/w/<name>
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd37/w/archives/base_gg4/archive.zip /tmp/gsd37/w/archives/cand_gg5/archive.zip .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt > /tmp/gsd37/exec/runA.out 2>&1
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd37/w/archives/base_gg4/archive.zip /tmp/gsd37/w/archives/cand_tip/archive.zip .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt > /tmp/gsd37/exec/runB.out 2>&1
+cp .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt /tmp/gsd37/exec/allow-stale.txt
+printf 'zz/never\ta row that names no difference\n' >> /tmp/gsd37/exec/allow-stale.txt
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd37/w/archives/base_gg4/archive.zip /tmp/gsd37/w/archives/cand_gg5/archive.zip /tmp/gsd37/exec/allow-stale.txt > /tmp/gsd37/exec/runC.out 2>&1
+```
+
+```text
+rename_commit: 163c0f33d09cb61df00a27c23c2c660587c61501
+rename_similarity: 2
+rename_commit_files: .planning/scripts/confluent-archive-allowlist-29.txt; .planning/scripts/confluent-archive-allowlist-32.txt; .planning/scripts/confluent-archive-allowlist-v1.7.0_gg4.txt; .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt; docs/FORK-DELTA.md
+allowlists_present: confluent-archive-allowlist-25.txt; confluent-archive-allowlist-v1.7.0_gg4.txt; confluent-archive-allowlist-v1.7.0_gg5.txt
+forkdelta_row2_added: yes
+inputs_unchanged_since_research: yes
+base_gg4_build_exit: 0
+base_gg4_verify_line: verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class
+base_gg4_gradle: Gradle 9.8.1 (the wrapper of v1.7.0_gg4, distributionUrl gradle-9.8.1-bin.zip)
+base_gg4_archive_size: 12453558
+base_gg4_archive_sha256: 5ab57c9bc5b864a3e195e880c756ed192aec548d00a56ccbb6a6a21c6315bc48
+cand_gg5_build_exit: 0
+cand_gg5_verify_line: verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class
+cand_gg5_gradle: Gradle 9.8.1 (the wrapper of v1.7.0_gg5, distributionUrl gradle-9.8.1-bin.zip)
+cand_gg5_archive_size: 12453556
+cand_gg5_archive_sha256: efa6cca4f30d182eea52565f331581f2c4ccee30c99e91ce0f053b341629e0fe
+cand_tip_build_exit: 0
+cand_tip_verify_line: verifyConfluentArchive: 7933 inner entries, no nested jar, no Kafka API class
+cand_tip_gradle: Gradle 9.8.2 (the wrapper of the current tip)
+cand_tip_archive_size: 13558637
+cand_tip_archive_sha256: 0027568f5fba22fbe5e9b7c5d31f0f3b4d2f94cb345efeb58411b7925769e5c9
+runa_exit: 0
+runa_result: RESULT: PASS
+runa_totals: totals files-a 7399 files-b 7399 only-a 0 only-b 0 changed 4 same 7395
+runa_unallowed: 0
+runa_stale: 0
+runb_exit: 1
+runb_result: RESULT: FAIL
+runb_totals: totals files-a 7399 files-b 7513 only-a 4 only-b 118 changed 120 same 7275
+runb_unallowed: 238
+runb_kinds: 116/118/4
+runb_zstd_natives: 3
+runb_stale: 0
+runb_connector_paths: 31
+runb_version_table: VERSION at.yawk.lz4:lz4-java 1.12.0 -> 1.12.1; VERSION com.fasterxml.jackson.core:jackson-annotations 2.22 -> 2.22; VERSION com.fasterxml.jackson.core:jackson-core 2.22.4 -> 2.22.4; VERSION com.fasterxml.jackson.core:jackson-databind 2.22.4 -> 2.22.4; VERSION com.google.code.gson:gson 2.14.0 -> 2.14.0; VERSION com.google.errorprone:error_prone_annotations 2.50.0 -> 2.50.0; VERSION com.google.guava:failureaccess 1.0.3 -> 1.0.3; VERSION com.google.guava:guava 33.7.2-jre -> 33.7.2-jre; VERSION com.google.guava:listenablefuture 9999.0-empty-to-avoid-conflict-with-guava -> 9999.0-empty-to-avoid-conflict-with-guava; VERSION com.google.j2objc:j2objc-annotations 3.1 -> 3.1; VERSION commons-codec:commons-codec 1.19.0 -> 1.19.0; VERSION commons-io:commons-io 2.20.0 -> 2.20.0; VERSION org.apache.commons:commons-compress 1.28.0 -> 1.28.0; VERSION org.apache.commons:commons-lang3 3.20.0 -> 3.20.0; VERSION org.apache.httpcomponents.client5:httpclient5 5.6.5 -> 5.6.5; VERSION org.apache.httpcomponents.core5:httpcore5 5.4.4 -> 5.4.4; VERSION org.apache.httpcomponents.core5:httpcore5-h2 5.4.4 -> 5.4.4; VERSION org.slf4j:slf4j-api 2.0.7 -> 2.0.7
+version_table_has_zstd: no
+research_numbers_match: yes
+runc_exit: 1
+runc_stale_line: STALE-ROW zz/never
+runc_unallowed: 0
+worktrees_removed: yes
+hygiene_scan: clean
+compare_scope_note: the passing compare in CI belongs to the release that bumps VERSION (Phase 38, RLS-03 and RLS-05); here the passing polarity (run A), the failing polarity (run B) and the stale polarity (run C) were shown on real archives built locally without Docker
+```
+
+Both renames are pure 100 percent renames, so the rows of the published releases' lists are byte-identical, and `-25` stays. Run A (the gg4 baseline against gg5 rebuilt from its tag, under the gg5 list) passes with exactly the four changed entries the list names. Run B (the same baseline against the archive built from the current tip, still `VERSION` `v1.7.0_gg5`, under the same list) fails with 238 UNALLOWED lines, among them the three `libzstd-jni-1.5.7-23` natives (darwin/aarch64, linux/aarch64, linux/amd64) and the connector classes, and no STALE-ROW; its numbers equal the research's exactly (the inputs have not moved since the research). The VERSION table has no `zstd-jni` line because that jar ships no `pom.properties`, so the natives surface as UNALLOWED instead, and no row and no table line was added for them (O-3). Run C adds one row that names nothing to the gg5 list and fails with `STALE-ROW zz/never` and no UNALLOWED line. The scratch archives under `/tmp/gsd37/w/archives/` (`base_gg4`, `cand_gg5`, `cand_tip`, each `archive.zip`) stay for plan 37-03. The `runa_*`, `runb_*` and `runc_*` keys are lowercase because the evidence helper's fact grammar is `[a-z0-9_]+`; the plan's `runA_*` spelling cannot be read by the unmodified helper.
+
+2026-10-31T09:15:00Z
+
+Verdict: pass
+
+### E-08: The real v1.7.0_gg5 release, read from the REST API: no workflow run created it
+
+Backs: ADV-03, ROADMAP Phase 37 criterion 5 (with its wording deviation, O-6), threat T-37-06 for the downloaded copy.
+
+```sh
+gh auth status
+gh api repos/ne1r0n/clickhouse-kafka-connect/releases --jq '<length, and the fields of the release with tag v1.7.0_gg5 and of its asset>'
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/ref/tags/v1.7.0_gg5 --jq '<ref, object type, sha>'
+git rev-parse v1.7.0_gg5
+gh api repos/ne1r0n/clickhouse-kafka-connect/commits/3a3a15a9ae064ffe09c696b8bb87bce23419d463 --jq '<parents, date, first message line>'
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/release.yaml/runs?per_page=10' --jq '<id:event:branch:sha8:conclusion:title>'
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/pre-release.yaml/runs?per_page=10' --jq '.total_count'
+gh api repos/ne1r0n/clickhouse-kafka-connect/actions/runs/40474419526/jobs --jq '<steps and conclusions>'
+gh api repos/ne1r0n/clickhouse-kafka-connect/actions/runs/40693904004/jobs --jq '<job id and the Publish step>'
+gh api repos/ne1r0n/clickhouse-kafka-connect/check-runs/122835509071/annotations --jq '<annotation messages>'
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/actions/workflows/tests.yaml/runs?head_sha=3a3a15a9ae064ffe09c696b8bb87bce23419d463&status=success&per_page=3' --jq '<run id, event, branch>'
+mkdir /tmp/gsd37/w/asset-dl
+gh api repos/ne1r0n/clickhouse-kafka-connect/releases/assets/685055288 -H 'Accept: application/octet-stream' > /tmp/gsd37/w/asset-dl/asset.zip
+shasum -a 256 /tmp/gsd37/w/asset-dl/asset.zip
+gh api repos/ne1r0n/clickhouse-kafka-connect/releases --jq '<download_count of the asset>'
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd37/w/asset-dl/asset.zip /tmp/gsd37/w/archives/cand_gg5/archive.zip /tmp/gsd37/exec/allow-empty.txt > /tmp/gsd37/exec/rebuild-vs-asset.out 2>&1
+rm -rf /tmp/gsd37/w/asset-dl
+```
+
+```text
+release_id: 426690002
+release_tag: v1.7.0_gg5
+release_draft: false
+release_prerelease: false
+release_target: custom_build
+release_author: ne1r0n
+release_author_type: User
+release_created_at: 2026-10-26T22:56:14Z
+release_published_at: 2026-10-28T13:16:09Z
+releases_total: 1
+asset_id: 685055288
+asset_name: clickhouse-kafka-connect-v1.7.0_gg5.zip
+asset_size: 12453556
+asset_digest: sha256:4c69b6fb3b22ab8f7c329383079cc284d3d2e0ae497f3ffb2f0114d171bc6767
+asset_uploader: ne1r0n
+asset_uploader_type: User
+asset_created_at: 2026-10-28T13:15:52Z
+download_count_before: 0
+tag_ref: refs/tags/v1.7.0_gg5
+tag_object_type: commit
+tag_sha: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+tag_commit_parents: 21c51598b06b6f5af58430765d57b1e5f6747c5a,41e7d5465e8353abb43a5f56dcf9f697c96b537a
+tag_commit_date: 2026-10-26T22:56:14Z
+tag_commit_subject: Merge sync/v1.7.0: release v1.7.0_gg5
+tag_matches_local: yes
+release_runs_total: 3
+release_runs: 40693904004:workflow_dispatch:custom_build:3a3a15a9:success:Release custom_build (dry run); 40474419526:workflow_dispatch:custom_build:3a3a15a9:cancelled:Release custom_build (publish); 40296481765:workflow_dispatch:sync/v1.7.0:b847fbdb:success:Release sync/v1.7.0 (dry run)
+pre_release_runs_total: 1
+publish_run_id: 40474419526
+publish_run_conclusion: cancelled
+publish_run_stopped_step: Build and verify Confluent archive (cancelled)
+publish_run_publish_step: skipped
+dry_run_id: 40693904004
+dry_run_conclusion: success
+dry_run_archive_annotation: clickhouse-kafka-connect-v1.7.0_gg5.zip 12453661 bytes sha256=d61a69324393f961410b35a861551f3f6783a77b957262516cb813efb264fa99
+dry_run_archive_size: 12453661
+dry_run_archive_sha256: d61a69324393f961410b35a861551f3f6783a77b957262516cb813efb264fa99
+tests_green_run_id: 40416215635
+tests_green_event: push
+tests_green_branch: custom_build
+asset_downloaded_size: 12453556
+asset_downloaded_sha256: 4c69b6fb3b22ab8f7c329383079cc284d3d2e0ae497f3ffb2f0114d171bc6767
+asset_matches_api: yes
+download_count_after: 0
+rebuild_vs_asset_exit: 0
+rebuild_vs_asset_result: RESULT: PASS
+rebuild_vs_asset_totals: totals files-a 7399 files-b 7399 only-a 0 only-b 0 changed 0 same 7399
+rebuild_sha256: efa6cca4f30d182eea52565f331581f2c4ccee30c99e91ce0f053b341629e0fe
+rebuild_size: 12453556
+rebuild_byte_identical: no
+asset_dir_removed: yes
+created_by_workflow_run: no
+publish_path_exercised: no
+caveat_state: open until Phase 38
+roadmap_wording_deviation: criterion 5 says the record gives the workflow run that created the release and closes the caveat; the facts allow neither, so the record states them as measured and the caveat stays open
+hygiene_scan: clean
+```
+
+Every reading is a plain GET (`gh api` without `-X`, `-f`, `-F` or `--input`). The release exists once, was authored by the user account, and its asset was uploaded by the same account about four and a half minutes after the successful dry run finished (13:11:25Z to 13:15:52Z), not by a workflow bot. `release.yaml` has exactly three runs: a dry run from `sync/v1.7.0`, the only publish-mode run (cancelled during `Build and verify Confluent archive`, so `Publish release` and every later step were skipped) and a later dry run on `custom_build` (its `Publish release` step also skipped; it created, checked and deleted its own draft, and reported an archive of 12453661 bytes with another digest than the published asset). So no workflow run created the release, the publish path of `release.yaml` has not been exercised, and the caveat stays open until Phase 38 publishes through it. This deviates from the ROADMAP wording of criterion 5, which asks for the run that created the release and for the caveat to be closed: the facts allow neither, so this record states them as measured. The downloaded copy matches the API's size and digest. The download counter read 0 after the download as well as before it, so the API download did not move it (the plan expected it to rise by one). A rebuild of the tag compares PASS against the published asset under a comment-only allow-list with `changed 0 same 7399`: the two archives differ in bytes only because the archive carries a build date, which the compare ignores (the research found the `manifest.json` `release_date` line to be the only differing file of an extracted copy; this entry measured the entries, not the extracted bytes). The downloaded asset was never extracted or executed, and its directory was removed after the compare.
+
+2026-10-31T09:16:00Z
 
 Verdict: pass
