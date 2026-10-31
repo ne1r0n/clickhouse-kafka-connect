@@ -58,8 +58,9 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   client lines.
 * The four-minute insert timeout has no effect while `async=false` and `socket_timeout` is `0`.
 * The buffered fix has documented limits: the Direct path with `reportInsertedOffsets=true` under a topic-changing SMT
-  commits nothing, a many-to-one rename shares one state record, and exactly-once buffering is claimed only for a rename
-  that maps each source topic to its own target; it was not probed under an SMT that changes the partition.
+  commits nothing (unless `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`, where Connect's own offsets are
+  returned), a many-to-one rename shares one state record, and exactly-once buffering is claimed only for a rename that
+  maps each source topic to its own target; it was not probed under an SMT that changes the partition.
 * A `DataException` that wraps a retriable server error, and one whose root cause is a socket timeout or an unknown
   host under `errors.tolerance=all`, stay retriable and are asserted by no test. A decision on changing them is open.
 * The nightly's Datagen completion counting spans all connectors outside the generating helper.
