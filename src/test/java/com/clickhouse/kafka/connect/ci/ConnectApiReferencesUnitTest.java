@@ -181,9 +181,21 @@ class ConnectApiReferencesUnitTest {
             }
         }
         ClassLoader loader = ClickHouseSinkConnector.class.getClassLoader();
+        Set<String> unresolved = new TreeSet<>();
         for (MemberRef ref : connectorRefs) {
-            declaringKafkaType(ref, loader)
+            Optional<Class<?>> declaring = declaringType(ref, loader);
+            if (declaring.isEmpty()) {
+                unresolved.add(ref.owner() + "." + ref.name() + ":" + ref.descriptor());
+                continue;
+            }
+            kafkaTypeName(declaring.get())
                     .ifPresent(type -> entries.add(MEMBER_ENTRY + type + "." + ref.name() + ":" + ref.descriptor()));
+        }
+        if (!unresolved.isEmpty()) {
+            throw new IllegalStateException(
+                    "No loaded type declares these members referenced by the connector, so the derivation cannot"
+                            + " tell whether they are Kafka API members: "
+                            + unresolved);
         }
         return entries;
     }
@@ -247,8 +259,11 @@ class ConnectApiReferencesUnitTest {
         return stripped;
     }
 
-    /** Walks the superclass chain, then the interfaces, to the first type declaring the member. */
-    private static Optional<String> declaringKafkaType(MemberRef ref, ClassLoader loader) {
+    /**
+     * Walks the superclass chain, then the interfaces, to the first type declaring the member; empty
+     * when no type on either walk declares it.
+     */
+    private static Optional<Class<?>> declaringType(MemberRef ref, ClassLoader loader) {
         Class<?> owner;
         try {
             owner = Class.forName(ref.owner().replace('/', '.'), false, loader);
@@ -260,7 +275,7 @@ class ConnectApiReferencesUnitTest {
         for (Class<?> type = owner; type != null; type = type.getSuperclass()) {
             seen.add(type);
             if (declares(type, ref)) {
-                return kafkaTypeName(type);
+                return Optional.of(type);
             }
             interfaces.addAll(List.of(type.getInterfaces()));
         }
@@ -270,7 +285,7 @@ class ConnectApiReferencesUnitTest {
                 continue;
             }
             if (declares(type, ref)) {
-                return kafkaTypeName(type);
+                return Optional.of(type);
             }
             interfaces.addAll(List.of(type.getInterfaces()));
         }
