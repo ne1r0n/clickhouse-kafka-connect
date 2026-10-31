@@ -22,7 +22,7 @@
 | E-07 | CIH-04, CIH-05 | 37-02 | pass |
 | E-08 | ADV-03 | 37-02 | pass |
 | E-09 | CIH-04, ADV-01 | 37-03 | pass |
-| E-10 | CIH-04, ADV-01, ADV-02 | 37-03 | pending (plan 37-03) |
+| E-10 | CIH-04, ADV-01, ADV-02 | 37-03 | pass |
 | E-11 | CIH-04 | 37-03 | pending (plan 37-03) |
 | E-12 | CIH-04 | 37-03 | pending (plan 37-03) |
 | E-13 | ADV-01 | 37-04 | pending (plan 37-04) |
@@ -667,5 +667,71 @@ workflows_commit_files: .github/workflows/pre-release.yaml; .github/workflows/re
 Every baseline of the gates this task moves matched the plan before any edit (dry-run expression 5, publish expression 3, archive call 1, release create 2, continue-on-error 0, twin diff 16). The line editor wrote all four files with exit 0 and its inputs are the plan assets unchanged (`git diff --quiet` of the assets directory against the phase-start commit). Both workflows parse as YAML; the dry-run expression rose from 5 to 6 in each (the `group:` line reuses it), and the other gate counts did not move. The new steps sit between `Check archive` and `Check tests.yaml is green on this SHA`; each compare, baseline, worktree, upload, fetch-depth and allow-list text occurs once per file. The twin diff is 16 lines before and after, so the four edits are identical in both files. Before the commit `git status --porcelain` listed exactly the four committed paths plus the two orchestrator-owned state files; the evidence file is the fifth path and was committed separately. The three pin guard classes pass on the edited workflows (76 executions, 0 failures). The scan for names of other systems over the two workflows, the anchors file and the added FORK-DELTA line printed nothing.
 
 2026-10-31T09:27:00Z
+
+Verdict: pass
+
+### E-10: The release safety gates and the compare chain are pinned line by line, the archive step rules are stronger, and three mutations were seen red
+
+Backs: CIH-04, ADV-01, ADV-02; 30-REVIEW WR-02, WR-03, IN-03 and 25-REVIEW WR-01; threats T-37-09, T-37-10, T-37-12.
+
+```sh
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ReleaseWorkflowGuardUnitTest' > /tmp/gsd37/exec/guard-green.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py junit build/test-results/testUnit --class ReleaseWorkflowGuardUnitTest 'tests>=30' failures=0 errors=0 skipped=0
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt replace-text .github/dependabot.yml 1 'WorkflowActionPinGuardUnitTest fails if this list changes.' 'WorkflowActionPinGuardUnitTest fails if the exclude-paths of this entry hold anything but integrationTests.yaml.'
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt insert-after docs/FORK-DELTA.md .planning/phases/37-ci-hardening-advisory-debt/37-assets/fork-delta-row-4-release-guard.md.txt '<the first 90 characters of the row inserted in Task 1>'
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ReleaseWorkflowGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' --tests '*WorkflowActionPinGuardUnitTest' --tests '*DependabotProtobufIgnoreGuardUnitTest' > /tmp/gsd37/exec/p3t2-pins.log 2>&1
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+git -C /tmp/gsd37/w/fmt diff --numstat -- src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java
+cmp src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java /tmp/gsd37/w/fmt/src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java
+git worktree remove --force /tmp/gsd37/w/fmt
+git diff -w -U0 {L0} HEAD -- src/test src/integrationTest src/testFixtures
+git commit -F /tmp/gsd37/exec/msg-p3-guard.txt
+git worktree add --detach /tmp/gsd37/w/gmut {guard_commit}
+python3 -I /tmp/gsd37/exec/<mutation script> 1   # continue-on-error: true added to the compare step of release.yaml
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/gmut --console=plain testUnit --rerun --tests '*ReleaseWorkflowGuardUnitTest' > /tmp/gsd37/exec/gmut1.log 2>&1
+python3 -I /tmp/gsd37/exec/<mutation script> 2   # the first PUBLISH value of pre-release.yaml changed to true
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/gmut --console=plain testUnit --rerun --tests '*ReleaseWorkflowGuardUnitTest' > /tmp/gsd37/exec/gmut2.log 2>&1
+python3 -I /tmp/gsd37/exec/<mutation script> 3   # the fetch-depth line of release.yaml deleted
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/gmut --console=plain testUnit --rerun --tests '*ReleaseWorkflowGuardUnitTest' > /tmp/gsd37/exec/gmut3.log 2>&1
+git -C /tmp/gsd37/w/gmut checkout -- .
+git worktree remove --force /tmp/gsd37/w/gmut
+git worktree prune
+```
+
+```text
+guard_exit: 0
+guard_junit: OK junit build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=34 failures=0 errors=0 skipped=0 files=1
+guard_executions: 34
+guard_class_tag: none
+guard_class_superclass: none
+spotless_new_file_cmp: identical
+spotless_numstat_baseline: none
+spotless_numstat_edited: none
+assertion_diff: clean
+pinguard_before: 39
+pinguard_after: 44
+pins_exit: 0
+pins_junit: OK junit build/test-results/testUnit: tests=112 failures=0 errors=0 skipped=0 files=4
+dependabot_sentence: fails if the exclude-paths of this entry hold anything but integrationTests.yaml.
+forkdelta_prefix_chars: 90
+hygiene_scan: clean
+guard_commit: fb63b0e9cf477d34f0830cd30e8c17132c660f22
+guard_commit_files: .github/dependabot.yml; docs/FORK-DELTA.md; src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java; src/test/java/com/clickhouse/kafka/connect/ci/TestsWorkflowPinGuardUnitTest.java
+gmut1_exit: 1
+gmut1_junit: OK junit /tmp/gsd37/w/gmut/build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=34 failures=3 errors=0 skipped=0 files=1
+gmut2_exit: 1
+gmut2_junit: OK junit /tmp/gsd37/w/gmut/build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=34 failures=2 errors=0 skipped=0 files=1
+gmut3_exit: 1
+gmut3_junit: OK junit /tmp/gsd37/w/gmut/build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=34 failures=2 errors=0 skipped=0 files=1
+gmut1_failed: ReleaseWorkflowGuardUnitTest#CIH-04: release.yaml has no continue-on-error; ReleaseWorkflowGuardUnitTest#CIH-04: the compare step of release.yaml has no condition and does not swallow its exit status; ReleaseWorkflowGuardUnitTest#CIH-04: release.yaml and pre-release.yaml are equal once name, flag and expectation lines are normalised
+gmut2_failed: ReleaseWorkflowGuardUnitTest#CIH-04: the publish step of pre-release.yaml runs only from custom_build and every PUBLISH value agrees; ReleaseWorkflowGuardUnitTest#CIH-04: release.yaml and pre-release.yaml are equal once name, flag and expectation lines are normalised
+gmut3_failed: ReleaseWorkflowGuardUnitTest#CIH-04: release.yaml checks out the full history and persists no credentials; ReleaseWorkflowGuardUnitTest#CIH-04: release.yaml and pre-release.yaml are equal once name, flag and expectation lines are normalised
+gmut_worktree_removed: yes
+```
+
+`ReleaseWorkflowGuardUnitTest` has no superclass and no tag, 34 executions (20 real-file executions over the two workflows, the twin equality test, and 13 fixture tests), all green with Docker unreachable. Each rule has a fixture test with an accepted list and rejected lists built by anchor-checked edit helpers. The compare rule is stricter than the plan's wording in one respect: besides requiring the compare call (after the report redirection and status capture are removed) and no `if:` or `continue-on-error`, it requires the line `exit "$status"`, so a step that captures the status and then ignores it is rejected. `TestsWorkflowPinGuardUnitTest` gained five executions (39 to 44): one real-file order test and four fixtures, and `archiveStepProblem` now also rejects `-x`, `--exclude-task`, `--dry-run` and ` -m ` on the call line, `|| true`, `|| :` and `|| exit 0` after it, and a step `if:`; the existing archive fixtures pass unedited and no existing assertion or fixture was changed (the removed-line scan of assertion, fail and expect text over the test source sets printed nothing). Spotless made no change to either edited test file in a detached worktree, so the numstat of the existing class is empty before and after, and the new file is identical to its formatted copy. The FORK-DELTA insertion needed a prefix longer than the 40 characters the plan names, because the first 40 characters of the compare row also start the existing release-workflow row and the editor refuses an ambiguous prefix; the first 90 characters are unique, and the editor wrote the row after the compare row. The three mutations of a copy at the guard commit were each red: the compare made advisory failed the strictness rule, the no-`continue-on-error` rule and the twin equality (3 executions); one drifted `PUBLISH:` value failed the publish rule and the twin equality (2); the `fetch-depth: 0` line deleted from `release.yaml` alone failed the checkout rule and the twin equality (2). The mutation worktree was removed and pruned (`git worktree list` shows one entry).
+
+2026-10-31T09:25:49Z
 
 Verdict: pass
