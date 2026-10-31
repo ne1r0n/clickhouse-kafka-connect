@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Plan-time line editor for the Phase 37 plans. It only edits the one file it is given, fails (exit 1)
+and writes nothing unless every match count is exactly what its subcommand expects, and never runs git.
+
+Usage (run it with `python3 -I`; the asset files sit next to this script):
+  edit_lines.py insert-after FILE ASSET PREFIX    insert the lines of ASSET after the one line of FILE
+                                                  that starts with PREFIX
+  edit_lines.py replace-line FILE ASSET PREFIX    replace the one line of FILE that starts with PREFIX by
+                                                  the lines of ASSET
+  edit_lines.py replace-text FILE COUNT OLD NEW   replace OLD by NEW, which must occur exactly COUNT times
+  edit_lines.py release-workflow FILE             plan 37-03: the four edits of a release workflow
+  edit_lines.py release-anchors FILE              plan 37-03: the anchors rows of both release workflows
+  edit_lines.py bytes-guard-row FILE              plan 37-04: the three text edits of the byte-guard row of FORK-DELTA
+Exit codes: 0 written, 1 refused, 2 usage error.
+"""
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+STEPS = os.path.join(HERE, "release-compare-steps.yaml.txt")
+ROWS_RELEASE = os.path.join(HERE, "anchors-rows-plan03-release.txt")
+ROWS_PRERELEASE = os.path.join(HERE, "anchors-rows-plan03-prerelease.txt")
+HEADER_ANCHOR = "nothing is created for VERSION.\nname: "
+HEADER = (
+    "nothing is created for VERSION.\n"
+    "# Before the tag gate, the archive is compared entry by entry with the one built from the previous release\n"
+    "# tag in a separate worktree, under the allow-list named by VERSION under .planning/scripts. A difference the\n"
+    "# list does not name, and a list row that matches nothing, fail the run before anything is published, and the\n"
+    "# report is uploaded as an artifact. This file and its prerelease twin differ only in the names and the\n"
+    "# prerelease flag, which ReleaseWorkflowGuardUnitTest pins.\n"
+    "name: "
+)
+GROUP_OLD = "  group: release-publish\n"
+GROUP_NEW = (
+    "  group: ${{ (inputs.dry_run || github.ref != 'refs/heads/custom_build') && "
+    "format('release-dry-run-{0}', github.run_id) || 'release-publish' }}\n"
+)
+CHECKOUT_OLD = "        with:\n          persist-credentials: false\n"
+CHECKOUT_NEW = CHECKOUT_OLD + "          fetch-depth: 0 # the baseline tag is built from its own worktree\n"
+STEPS_ANCHOR = '          echo "::notice title=Archive::${message}"\n\n      - name: Check tests.yaml is green on this SHA'
+DRY_RUN_PATTERN = "inputs.dry_run || github.ref != 'refs/heads/custom_build'"
+BYTES_GUARD_EDITS = (
+    (
+        "with no scheduled run after 2026-10-16 (`32-COMMAND-EVIDENCE.md` E-05) |",
+        "with no scheduled run after 2026-10-16 (`32-COMMAND-EVIDENCE.md` E-05). `.gitattributes` marks the file `-text`, "
+        "so a checkout that converts line endings cannot turn the guard red on an unchanged file (`31-REVIEW.md` WR-03) |",
+    ),
+    (
+        "UpstreamIntegrationWorkflowBytesGuardUnitTest.java`, `.github/workflows/integrationTests.yaml` |",
+        "UpstreamIntegrationWorkflowBytesGuardUnitTest.java`, `.github/workflows/integrationTests.yaml`, `.gitattributes` |",
+    ),
+    (
+        "NIT-02; `UpstreamIntegrationWorkflowBytesGuardUnitTest`; `31-COMMAND-EVIDENCE.md` E-10, E-11 |",
+        "NIT-02, ADV-01; `UpstreamIntegrationWorkflowBytesGuardUnitTest`; the `.gitattributes` row of "
+        "`.planning/scripts/fork-anchors.txt`; `31-COMMAND-EVIDENCE.md` E-10, E-11 |",
+    ),
+)
+
+
+class Refused(Exception):
+    pass
+
+
+def read(path):
+    with open(path, encoding="utf-8", newline="") as handle:
+        return handle.read()
+
+
+def write(path, text):
+    with open(path, "w", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+
+
+def once(text, old, new, label):
+    if text.count(old) != 1:
+        raise Refused("%s: expected exactly one match, found %d" % (label, text.count(old)))
+    return text.replace(old, new)
+
+
+def matching_lines(lines, prefix):
+    found = [i for i, line in enumerate(lines) if line.startswith(prefix)]
+    if len(found) != 1:
+        raise Refused("expected exactly one line starting with %r, found %d" % (prefix[:70], len(found)))
+    return found[0]
+
+
+def line_edit(path, asset, prefix, replace):
+    lines = read(path).split("\n")
+    index = matching_lines(lines, prefix)
+    added = read(asset).rstrip("\n").split("\n")
+    lines[index:index + 1] = added if replace else [lines[index]] + added
+    write(path, "\n".join(lines))
+
+
+def release_workflow(path):
+    text = read(path)
+    text = once(text, HEADER_ANCHOR, HEADER, "header")
+    text = once(text, GROUP_OLD, GROUP_NEW, "concurrency group")
+    text = once(text, CHECKOUT_OLD, CHECKOUT_NEW, "checkout")
+    steps = read(STEPS)
+    text = once(text, STEPS_ANCHOR, '          echo "::notice title=Archive::${message}"\n\n' + steps + "      - name: Check tests.yaml is green on this SHA", "compare steps")
+    write(path, text)
+
+
+def release_anchors(path):
+    lines = read(path).split("\n")
+    for workflow, rows_file in (("release.yaml", ROWS_RELEASE), ("pre-release.yaml", ROWS_PRERELEASE)):
+        prefix = ".github/workflows/%s\t%s\t" % (workflow, DRY_RUN_PATTERN)
+        index = matching_lines(lines, prefix)
+        fields = lines[index].split("\t")
+        if fields[2] != "5":
+            raise Refused("%s: the dry-run row holds the count %s, expected 5" % (workflow, fields[2]))
+        fields[2] = "6"
+        lines[index] = "\t".join(fields)
+        lines[index + 1:index + 1] = read(rows_file).rstrip("\n").split("\n")
+    write(path, "\n".join(lines))
+
+
+def bytes_guard_row(path):
+    text = read(path)
+    for old, new in BYTES_GUARD_EDITS:
+        text = once(text, old, new, "byte-guard row")
+    write(path, text)
+
+
+def main(argv):
+    try:
+        if len(argv) == 4 and argv[0] in ("insert-after", "replace-line"):
+            line_edit(argv[1], argv[2], argv[3], argv[0] == "replace-line")
+        elif len(argv) == 5 and argv[0] == "replace-text":
+            text = read(argv[1])
+            if text.count(argv[3]) != int(argv[2]):
+                raise Refused("replace-text: expected %s matches, found %d" % (argv[2], text.count(argv[3])))
+            write(argv[1], text.replace(argv[3], argv[4]))
+        elif len(argv) == 2 and argv[0] == "release-workflow":
+            release_workflow(argv[1])
+        elif len(argv) == 2 and argv[0] == "release-anchors":
+            release_anchors(argv[1])
+        elif len(argv) == 2 and argv[0] == "bytes-guard-row":
+            bytes_guard_row(argv[1])
+        else:
+            print("usage: see the module docstring", file=sys.stderr)
+            return 2
+    except (Refused, OSError, ValueError) as exc:
+        print("REFUSED: %s" % exc, file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

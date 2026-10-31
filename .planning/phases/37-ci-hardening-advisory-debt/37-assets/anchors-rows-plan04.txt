@@ -1,0 +1,1 @@
+.gitattributes	.github/workflows/integrationTests.yaml -text	1	ADV-01

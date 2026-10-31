@@ -1,0 +1,54 @@
+      - name: Select the baseline tag
+        run: |
+          baseline="$(git tag --merged HEAD --list 'v*' | python3 -I .github/scripts/baseline_tag.py "$RELEASE_VERSION")" || {
+            echo "::error title=Baseline tag::no release tag below ${RELEASE_VERSION} is reachable from this commit"
+            exit 1
+          }
+          allowlist=".planning/scripts/confluent-archive-allowlist-${RELEASE_VERSION}.txt"
+          if [ ! -f "$allowlist" ]; then
+            echo "::error title=Allow-list::${allowlist} does not exist; the archive compare needs the allow-list named by VERSION"
+            exit 1
+          fi
+          echo "BASELINE_TAG=${baseline}" >> "$GITHUB_ENV"
+          echo "ALLOWLIST=${allowlist}" >> "$GITHUB_ENV"
+          echo "::notice title=Baseline::${RELEASE_VERSION} is compared with ${baseline} under ${allowlist}"
+
+      - name: Build the baseline archive from the previous tag
+        run: |
+          baseline_dir="$RUNNER_TEMP/baseline"
+          git worktree add --detach "$baseline_dir" "refs/tags/${BASELINE_TAG}"
+          baseline_version="$(tr -d '[:space:]' < "$baseline_dir/VERSION")"
+          if [ "$baseline_version" != "$BASELINE_TAG" ]; then
+            echo "::error title=Baseline tag::VERSION at ${BASELINE_TAG} reads ${baseline_version}"
+            exit 1
+          fi
+          "$baseline_dir/gradlew" -p "$baseline_dir" --console=plain createConfluentArchive | tee "$RUNNER_TEMP/baseline-build.log"
+          baseline_archive="$baseline_dir/build/confluent/clickhouse-kafka-connect-${baseline_version}.zip"
+          test -s "$baseline_archive"
+          echo "BASELINE_ARCHIVE=${baseline_archive}" >> "$GITHUB_ENV"
+
+      - name: Compare the archive with the previous release
+        run: |
+          report="$RUNNER_TEMP/archive-compare-report.txt"
+          status=0
+          python3 -I .github/scripts/compare_confluent_archives.py "$BASELINE_ARCHIVE" "$ARCHIVE" "$ALLOWLIST" > "$report" 2>&1 || status=$?
+          cat "$report"
+          unallowed="$(grep -c '^UNALLOWED ' "$report" || true)"
+          stale="$(grep -c '^STALE-ROW ' "$report" || true)"
+          summary="exit ${status}, ${unallowed} unallowed, ${stale} stale rows, baseline ${BASELINE_TAG}, allow-list ${ALLOWLIST}"
+          echo "### Archive compare" >> "$GITHUB_STEP_SUMMARY"
+          echo "$summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Archive compare::${summary}; the report is the archive-compare-report artifact"
+            exit "$status"
+          fi
+          echo "::notice title=Archive compare::${summary}"
+
+      - name: Upload the archive compare report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: archive-compare-report
+          path: ${{ runner.temp }}/archive-compare-report.txt
+          retention-days: 14
+
