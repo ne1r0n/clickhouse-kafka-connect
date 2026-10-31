@@ -17,7 +17,7 @@
 | E-01 | RLS-01 | 38-01 | pass |
 | E-02 | RLS-01 | 38-01 | pass |
 | E-03 | RLS-01 | 38-01 | pass |
-| E-04 | RLS-01 | 38-01 | pending (plan 38-01) |
+| E-04 | RLS-01 | 38-01 | pass |
 | E-05 | RLS-02 | 38-02 | pending (plan 38-02) |
 | E-06 | RLS-02 | 38-02 | pending (plan 38-02) |
 | E-07 | RLS-02 | 38-02 | pending (plan 38-02) |
@@ -208,5 +208,63 @@ changelog_commit_files: CHANGELOG.md
 The section was assembled by script from a section template and the old file, so the rest of the file equals the phase-start file minus the `Unreleased` block (`released_sections_identical` is the helper's tail comparison). The link to `docs/ROLLOUT-v1.7.0_gg6.md` has no target yet; plan 38-02 creates it and its gate runs the link check. The date is the UTC date at writing and is re-checked against the merge date at the user's gate. Correction of this file: the timestamp lines of E-01 and E-02, which the first two commits wrote as estimates, were replaced by the commit times read from `git log` (12:44 and 12:45 UTC); no fact or verdict changed.
 
 2026-10-31T12:47:18Z
+
+Verdict: pass
+
+### E-04: docs/FORK-DELTA.md is final for gg6: pointers, outcomes in place of forward references, raw numbers refreshed once, open items with owners
+
+Backs: RLS-01, ROADMAP Phase 38 criterion 1 (the final fork ledger: gg6 sentences and the note pointer, forward references replaced by outcomes or conditions, the two raw-number commands re-run once on the release tip with the gg6 rows added, the counts derived from the comparison with `v1.7.0` recounted by the file's own method, and the new open items with an owner and a re-open trigger).
+
+```sh
+git show eb8c163ab9cdc7951612931f7c49b23e3ec37d6b:docs/FORK-DELTA.md | grep -c gg6
+git show eb8c163ab9cdc7951612931f7c49b23e3ec37d6b:docs/FORK-DELTA.md | grep -c 'Phase 38'
+git show eb8c163ab9cdc7951612931f7c49b23e3ec37d6b:docs/FORK-DELTA.md | wc -l
+grep -nE 'Phase 3[6-9]|next phase|later phase|will be' docs/FORK-DELTA.md
+git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github | python3 -I .planning/phases/38-release-publication/38-doc-check.py shortstat
+git diff --shortstat v1.7.0 HEAD -- src/main | python3 -I .planning/phases/38-release-publication/38-doc-check.py shortstat
+git diff --shortstat v1.7.0_gg5 HEAD -- src build.gradle.kts gradle .github | python3 -I .planning/phases/38-release-publication/38-doc-check.py shortstat
+git diff --shortstat v1.7.0_gg5 HEAD -- src/main | python3 -I .planning/phases/38-release-publication/38-doc-check.py shortstat
+for p in src/main src/test src/testFixtures src/integrationTest .github build.gradle.kts gradle; do git diff --shortstat v1.7.0_gg5 HEAD -- $p; done
+python3 -I /tmp/gsd38/exec/recount.py HEAD      # recount by the file's method: pairs compared with import lines and blank lines removed
+python3 -I /tmp/gsd38/exec/recount.py v1.7.0_gg5
+python3 -I .planning/phases/38-release-publication/38-doc-check.py numbers docs/FORK-DELTA.md 'after gg6: `v1.7.0` to `v1.7.0_gg6`' --wider "331 39665 1161" --narrow "40 2989 272"
+python3 -I .planning/phases/38-release-publication/38-doc-check.py links docs/FORK-DELTA.md
+git diff --numstat eb8c163ab9cdc7951612931f7c49b23e3ec37d6b HEAD -- docs/FORK-DELTA.md
+git diff -U0 eb8c163ab9cdc7951612931f7c49b23e3ec37d6b -- docs/FORK-DELTA.md | grep -E '^\+' | grep -vE '^\+\+\+' | sed 's/^+//' > /tmp/gsd38/exec/forkdelta-added.txt
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict /tmp/gsd38/exec/forkdelta-added.txt
+python3 -I .planning/phases/38-release-publication/38-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd38/exec/msg-forkdelta.txt
+```
+
+```text
+forkdelta_gg6_mentions_before: 2
+forkdelta_phase38_refs_before: 2
+forkdelta_lines_before: 264
+wider_now: 331 39665 1161
+narrow_now: 40 2989 272
+wider_since_gg5: 79 7939 478
+narrow_since_gg5: 7 112 31
+numbers_check: OK numbers: label 'after gg6: `v1.7.0` to `v1.7.0_gg6`'
+import_only_recount: 14 of 40
+identical_files_recount: 33 of 63
+recount_method_check: the same script at v1.7.0_gg5 gives 36 identical, 14 import-only, 13 modified and 10 new, the figures the file published for gg5
+forkdelta_gg6_mentions_after: 10
+forkdelta_phase38_refs_after: 0
+forkdelta_lines_after: 294
+forkdelta_numstat: 42 12
+stale_spots_done: 2a intro clause; 2b rollout pointer and older-notes order; 2c MBean and VERSION rows; 3 gg6 syncer paragraph and tail checklists in the reading order; 4 open item 8; 5a protobuf row and open item 12; 5c compare-red sentence; 6 raw numbers, growth paragraph and recounts; 7 open items
+forkdelta_forward_refs_note: 5b found no sentence saying that no github-actions pull request was observed (the row already names PR 16 as the first observed one and says Phase 33 absorbed it), so that row is unchanged; 5c judged every grep hit for Phase 3[6-9], next phase, later phase and will be: the hits that remain name work already done (Phase 37 moved the compare script, Phase 36 research) and are left, the compare-red sentence was replaced by a condition and an outcome
+open_items_added: 11
+links_ok: 1 broken target, docs/ROLLOUT-v1.7.0_gg6.md at line 7, created by plan 38-02
+hygiene_scan_added_lines: clean
+secrets_scan: clean
+anchors_mirror_after: rows=172 bad=0
+forkdelta_commit: 21697379e188f163b1f2f401642be1a7401a1ada
+forkdelta_commit_files: docs/FORK-DELTA.md
+```
+
+The numbers equal the planning-time values. The two commands ran on the release tip (`HEAD` of `sync/v1.7.0`); the scopes contain no file that a documentation commit can move, and the since-gg5 directory split sums to the since-gg5 total (79 files, 7939 insertions, 478 deletions: `src/main` 7, `src/test` 52, `src/testFixtures` 4, `src/integrationTest` 4, `.github` 10, `gradle` 2 files). The recount script is a scratch file outside the repository that applies the file's own method (a pair counts as import-only when the lines that are not blank and do not start with `import ` are equal); run at `v1.7.0_gg5` it reproduces the figures the file published for gg5, which is why its result for the tip is used: 33 byte-identical, 14 import-only, 16 modified and 10 new files, 40 differing in all. The three files that moved from byte-identical to modified since gg5 are `AtLeastOnceBufferStrategy`, `ChunkFlusher` and `ExactlyOnceBufferStrategy`. The two PR-state sentences (the protobuf row and open item 12) now state a condition and no outcome. The Dependabot pull request 17 and the publish-path caveat are items 22 and 23, stated as conditions. Link check: the one broken target is the rollout note, created by plan 38-02; the paragraph for the next syncer names the note in code form, so exactly one link line is broken. The edits were made with the Edit tool, except one scripted batch of four single-occurrence replacements (each asserted to match exactly once) that reworded items 14, 15 and 21 and the item range in the paragraph for the next syncer.
+
+2026-10-31T12:52:59Z
 
 Verdict: pass
