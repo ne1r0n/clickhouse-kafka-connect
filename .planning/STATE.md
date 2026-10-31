@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
-current_phase: 36
-current_phase_name: Client 0.11.0 Audit & Bump
-status: executing
-stopped_at: Phase 35 complete, ready to plan Phase 36
-last_updated: "2026-10-29T12:22:25.431Z"
-last_activity: 2026-10-29
-last_activity_desc: Phase 36 execution started
-state_head: aad6ea3db55c08fcd7c8a8286a4e0f38afa7ade4
+current_phase: 37
+current_phase_name: CI Hardening & Advisory Debt
+status: planning
+stopped_at: Phase 36 complete, ready to plan Phase 37
+last_updated: "2026-10-31T07:56:00.466Z"
+last_activity: 2026-10-31
+last_activity_desc: Phase 36 complete, transitioned to Phase 37
+state_head: 913749132ef65c57b5372068ba0f1fa7c479016e
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 9
-  percent: 50
+  completed_plans: 13
+  percent: 67
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg
 
 ## Current Position
 
-Phase: 36 (Client 0.11.0 Audit & Bump) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 36
-Last activity: 2026-10-29 — Phase 36 execution started
+Phase: 37 — CI Hardening & Advisory Debt
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-31 — Phase 36 complete, transitioned to Phase 37
 
-Progress: [█████░░░░░] 50%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [█████░░░░░] 50%
 | 33 | 3 | - | - |
 | 34 | 3 | - | - |
 | 35 | 3 | - | - |
+| 36 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -346,7 +347,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-29T09:34:10.618Z
-Stopped at: Phase 35 complete, ready to plan Phase 36
+Stopped at: Phase 36 complete, ready to plan Phase 37
 Resume file: None
 
 ## Operator Next Steps

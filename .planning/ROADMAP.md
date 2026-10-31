@@ -129,7 +129,7 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
 - [x] **Phase 33: Dependency Sweep & Protobuf Decision** - A rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads on the scratch branch, one commit and one gate each. PR #10 (protobuf-java 4.x) is declined with a Dependabot `ignore` and a FORK-DELTA record (completed 2026-10-28)
 - [x] **Phase 34: Upstream Tail Merge** - Upstream's untagged tail is merged as one mechanical commit while the client is still 0.9.6. `ProxySinkTask` keeps both constructors without an ambiguous `null`, every `handleException` caller uses the 5-argument form, and `additionalRetriableErrorCodes` is pinned with a no-op default (completed 2026-10-29)
 - [x] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free and live, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump (completed 2026-10-29)
-- [ ] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6
+- [x] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6 (completed 2026-10-31)
 - [ ] **Phase 37: CI Hardening & Advisory Debt** - `increment-version.yml` stops writing `vnull`, through a script with a test. The release workflows compare the archive against a `VERSION`-keyed allow-list. Every Phase 25–31 review advisory is fixed or dispositioned, and the real `v1.7.0_gg5` release is on the record
 - [ ] **Phase 38: Release & Publication** - `v1.7.0_gg6` is published with CHANGELOG, FORK-DELTA, an independently reviewed rollout note and the gg6 allow-list compare. The suite is green twice on one pinned `latest` build, and the published SHA has one green CI run before the tags
 
@@ -293,20 +293,20 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
      - On go, two full `--rerun` suite runs are green on 0.11.0.
      - On no-go, the catalog commit is reverted, the record lists which fixes and pins were kept, and the suite is green on 0.9.6.
 
-**Plans**: 4 plans
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
-- [ ] 36-01-PLAN.md — Wave 1: pre-flight and re-measured baselines, the `ServerExceptions` factory commit for the 10 three-argument `ServerException` sites (proven on a bare 0.11.0 worktree), the stub server and the error-shape, timeout-prefix, endpoint-and-options and insert-wire pins and the live `Client011BehaviourPinLiveTest` green on 0.9.6, the exact red set on a bare 0.11.0 worktree, and the RowBinary golden blessed on 0.9.6 with a mutation proof (CLT-01, CLT-03, CLT-04, CLT-06)
+- [x] 36-01-PLAN.md — Wave 1: pre-flight and re-measured baselines, the `ServerExceptions` factory commit for the 10 three-argument `ServerException` sites (proven on a bare 0.11.0 worktree), the stub server and the error-shape, timeout-prefix, endpoint-and-options and insert-wire pins and the live `Client011BehaviourPinLiveTest` green on 0.9.6, the exact red set on a bare 0.11.0 worktree, and the RowBinary golden blessed on 0.9.6 with a mutation proof (CLT-01, CLT-03, CLT-04, CLT-06)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 36-02-PLAN.md — Wave 2: the `createClientV2` fix commit on 0.9.6 (endpoint of `protocol://host:port`, `ignore_unknown_config_key` before the property loop, 3 anchor rows, one FORK-DELTA row), the one revertable catalog commit (the marked line, `ClientCatalogPinUnitTest` seen red first, a mid-file anchor row) with the pins, BLD-16 and the golden green on 0.11.0, then the non-UTC date pins, the V1-mode run and the Connect-worker `integrationTest` on 0.11.0 (CLT-02, CLT-03, CLT-04, CLT-07)
+- [x] 36-02-PLAN.md — Wave 2: the `createClientV2` fix commit on 0.9.6 (endpoint of `protocol://host:port`, `ignore_unknown_config_key` before the property loop, 3 anchor rows, one FORK-DELTA row), the one revertable catalog commit (the marked line, `ClientCatalogPinUnitTest` seen red first, a mid-file anchor row) with the pins, BLD-16 and the golden green on 0.11.0, then the non-UTC date pins, the V1-mode run and the Connect-worker `integrationTest` on 0.11.0 (CLT-02, CLT-03, CLT-04, CLT-07)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 36-03-PLAN.md — Wave 3: the byte comparison of the 0.9.6 golden on 0.11.0 under four zones with the replay statement, the before and after Confluent archive listings with the `zstd-jni` and guava findings, and the D-17 rewording in three places plus the client-override wording in one documentation commit (CLT-05, CLT-06, CLT-08, CLT-02)
+- [x] 36-03-PLAN.md — Wave 3: the byte comparison of the 0.9.6 golden on 0.11.0 under four zones with the replay statement, the before and after Confluent archive listings with the `zstd-jni` and guava findings, and the D-17 rewording in three places plus the client-override wording in one documentation commit (CLT-05, CLT-06, CLT-08, CLT-02)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 36-04-PLAN.md — Wave 4: the 14 labelled rollout items for Phase 38 with the `custom_` probe and the CLT-09 revert rehearsed on the final history, the phase gate and go or no-go decision (cache-busted `testUnit`, two `--rerun` full suites on `latest` with client V2, the anchors mirror, the tail and cumulative gates), and the user-gated CLT-07 nightly handoff, with the plan ending before the user's push and dispatch (CLT-09, CLT-07)
+- [x] 36-04-PLAN.md — Wave 4: the 14 labelled rollout items for Phase 38 with the `custom_` probe and the CLT-09 revert rehearsed on the final history, the phase gate and go or no-go decision (cache-busted `testUnit`, two `--rerun` full suites on `latest` with client V2, the anchors mirror, the tail and cumulative gates), and the user-gated CLT-07 nightly handoff, with the plan ending before the user's push and dispatch (CLT-09, CLT-07)
 
 **Research flag**: Settle these before planning:
 - **503 and `ConnectException`.** This classification is derived from source and was never exercised against a real proxy. Decide whether a fault-injection pin is feasible, or label the rollout wording "read from the code".
@@ -504,7 +504,7 @@ The order is the user's (2026-10-28). Phases 33 and 34 could share a phase under
 | 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-28 |
 | 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-29 |
 | 35. Buffered Offset Commit Under Topic-Renaming SMTs | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-29 |
-| 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
+| 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 4/4 | Complete    | 2026-10-31 |
 | 37. CI Hardening & Advisory Debt | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 | 38. Release & Publication | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 
