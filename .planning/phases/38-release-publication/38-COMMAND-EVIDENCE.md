@@ -21,7 +21,7 @@
 | E-05 | RLS-02 | 38-02 | pass |
 | E-06 | RLS-02 | 38-02 | pass |
 | E-07 | RLS-02 | 38-02 | pass |
-| E-08 | RLS-04 | 38-03 | pending (plan 38-03) |
+| E-08 | RLS-04 | 38-03 | pass |
 | E-09 | RLS-04 | 38-03 | pending (plan 38-03) |
 | E-10 | RLS-04 | 38-03 | pending (plan 38-03) |
 | E-11 | RLS-03 | 38-04 | pending (plan 38-04) |
@@ -482,5 +482,30 @@ The block that the note gives (`git switch -c`, `git read-tree -u --reset`, `git
 The two labels that differ from the E-05 decision are weakenings: D6 is split because the 0.9.6 sources hold no text for the old non-ClickHouse HTTP error, and D7 gets a third claim for the task failure that rests on the code. The correction of the gg5 note changed one line (`1 1`); its section 2 (line 39) still says that no GitHub release exists for `v1.7.0_gg5`, which contradicts the corrected line 111 and is reported, not edited. The note states no fact about the `v1.7.0_gg6` release object (none of the three phrases of `release_object_absent` occurs).
 
 2026-10-31T13:08:48Z
+
+Verdict: pass
+
+### E-08: Review round 1 of the release documents by a fresh gsd-code-reviewer
+
+Backs: RLS-04, ROADMAP Phase 38 criterion 3 (the operator documents are independently reviewed before any gate or approval: round 1 ran as a fresh-context `gsd-code-reviewer` spawned by the orchestrator, and its schema-valid `38-REVIEW.md` is committed before any fix).
+
+```sh
+python3 -I .planning/phases/38-release-publication/38-review-check.py round .planning/phases/38-release-publication/38-REVIEW.md --diff-base 3a3a15a9ae064ffe09c696b8bb87bce23419d463 --files docs/ROLLOUT-v1.7.0_gg6.md CHANGELOG.md docs/FORK-DELTA.md docs/ROLLOUT-v1.7.0_gg1.md docs/ROLLOUT-v1.7.0_gg5.md --tokens '29 rows' 'measured in research (not re-run)' 'pre-v1.7.0_gg6' 'custom_' 'additionalRetriableErrorCodes' 'errors.tolerance' 'src/main' 'FORK-DELTA' 'release object'
+git add .planning/phases/38-release-publication/38-REVIEW.md && git commit -m 'docs(38-03): review round 1 of the release documents (RLS-04)'
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict .planning/phases/38-release-publication/38-REVIEW.md
+```
+
+```text
+reviewer_agent: gsd-code-reviewer, spawned by the orchestrator with the Agent tool, fresh context, round 1
+brief_files: docs/ROLLOUT-v1.7.0_gg6.md; CHANGELOG.md; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg1.md; docs/ROLLOUT-v1.7.0_gg5.md
+brief_path: /tmp/gsd38/review/brief-r1.md
+round1_findings: 16
+review_commit: cdbdbbd75d6c44c980edacbbcecbbd7b3d176cbf
+schema_check: OK round: findings=16 rounds=1
+```
+
+The reviewer found 9 warnings and 7 info items and no critical or blocker finding; a round with findings is still a pass because the verdict is about the process. The review commit is the one that added `38-REVIEW.md` (the reviewer wrote the file and did not commit). Fixes are the next step and are recorded in E-09.
+
+2026-10-31T14:34:52Z
 
 Verdict: pass
