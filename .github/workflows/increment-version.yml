@@ -1,8 +1,9 @@
-# FORK MODIFICATION: hardening only, the behavior is upstream's. Every action is pinned to a full commit
-# SHA with a version comment, Node is the current LTS (24), semver is installed at an exact version
-# without install scripts, and the token scopes are granted on the job instead of the workflow.
-# Known and left unfixed: semver.inc returns null for a version such as v1.7.0_gg4, so a dispatch would
-# write the text vnull into VERSION. The fork bumps VERSION by hand.
+# FORK MODIFICATION: the bump is a script, not an inline expression. .github/scripts/bump_version.py reads
+# VERSION, validates it and its own result against vX.Y.Z or vX.Y.Z_ggN, and writes VERSION together with the
+# VERSION row of .planning/scripts/fork-anchors.txt. It refuses and writes nothing when either file is not as
+# expected, so a dispatch can no longer put a null version into VERSION. BumpVersionScriptUnitTest pins the
+# rules, and ReleaseWorkflowGuardUnitTest pins this file. Every action is pinned to a full commit SHA with a
+# version comment, and the token scopes are granted on the job instead of the workflow.
 name: Increment Version
 
 on:
@@ -10,12 +11,13 @@ on:
     inputs:
         version:
           type: choice
-          description: 'Version - patch, minor, or major'     
+          description: 'Version - patch, minor, major, or gg (the _ggN counter)'
           required: true
-          options: 
+          options:
           - patch
           - minor
           - major
+          - gg
 
 permissions:
   contents: read
@@ -38,27 +40,19 @@ jobs:
         git config --global user.email "actions@github.com"
         git config --global user.name "GitHub Action"
         git config --global --add --bool push.autoSetupRemote true
-    - name: Setup Node.js environment
-      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-      with:
-        node-version: '24'
-        package-manager-cache: false
-    - name: Install dependencies
-      run: npm install --no-save --ignore-scripts semver@7.8.5
     - name: Increment version
+      env:
+        BUMP: ${{ inputs.version }}
       run: |
-        echo "Incrementing version..."
-        VERSION=$(cat VERSION)
-        NEW_VERSION=$(node -p "require('semver').inc('$VERSION', '${{ github.event.inputs.version }}')")
-        echo "v$NEW_VERSION" > VERSION
-        echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
-        echo "New version is $NEW_VERSION"
+        NEW_VERSION="$(python3 -I .github/scripts/bump_version.py "$BUMP")"
+        echo "NEW_VERSION=${NEW_VERSION}" >> "$GITHUB_ENV"
+        echo "New version is ${NEW_VERSION}"
     - name: Commit and push
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        git checkout -b update-version-${{ env.NEW_VERSION }}
-        git add VERSION
-        git commit -m "Increment version to ${{ env.NEW_VERSION }}"
+        git checkout -b "update-version-${NEW_VERSION}"
+        git add VERSION .planning/scripts/fork-anchors.txt
+        git commit -m "Increment version to ${NEW_VERSION}"
         git push
-        gh pr create --title "Automatic version increment ${{ env.NEW_VERSION }}" --body "This is an automated PR to increment the version."
+        gh pr create --title "Automatic version increment ${NEW_VERSION}" --body "This is an automated PR to increment the version."
