@@ -194,7 +194,7 @@ A connector on client V1, which a connector runs when it does not set `client_ve
 The MBean name embeds the release version, and so does the client name that the connector sends on every request. Both read `v1.7.0_gg6` where they read `v1.7.0_gg5`:
 
 - MBean: `com.clickhouse:type=ClickHouseKafkaConnector,connector=<connector-name>,name=SinkTask<id>,version=v1.7.0_gg6`, plus `,topic=<topic>` for per-topic beans.
-- Client name: `clickhouse-kafka-connect/v1.7.0_gg6`, the prefix of the HTTP user agent. The rest of the user agent changes with client 0.11.0 (row D5).
+- Client name: `clickhouse-kafka-connect/v1.7.0_gg6`, the prefix of the HTTP user agent. On client V2 the rest of the user agent changes with client 0.11.0 (row D5); what the client V1 artifacts of 0.11.0 do to it was not audited.
 
 To list the client names that your server has seen, run this read-only query on it:
 
