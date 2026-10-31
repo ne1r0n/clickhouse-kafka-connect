@@ -13,10 +13,10 @@ files_reviewed_list:
 findings:
   critical: 0
   warning: 18
-  info: 10
-  total: 28
+  info: 11
+  total: 29
 status: issues_found
-rounds: 6
+rounds: 7
 ---
 
 # Phase 38: Code Review Report
@@ -394,4 +394,43 @@ Operator-eyes read of the five documents: the order a connector operator needs i
 Totals across the six rounds: 28 findings (18 warnings, 10 info, 0 critical): round 1 16, round 2 4, round 3 2, round 4 2, round 5 2, round 6 2. The checker's `rounds` command is expected to print FAIL only on the missing `round3_decision` (the last round has findings), which the orchestrator records later; the `round` command with the nine mandated tokens prints OK.
 
 _Round 6 reviewed: 2026-10-31_
+_Reviewer: Claude (gsd-code-reviewer), fresh context_
+
+## Round 7
+
+**Reviewed:** 2026-10-31
+**Scope:** the round-6 fix commits only (`git diff 3e007c51 HEAD -- . ':(exclude).planning'`, commits `3e27f23c` WR-18 and `667cfe21` IN-10; `66792125` changes only the review checker). They touch `docs/ROLLOUT-v1.7.0_gg6.md` only (13 lines: 9 inserted, 4 removed). `CHANGELOG.md`, `docs/FORK-DELTA.md` and `docs/ROLLOUT-v1.7.0_gg5.md` are unchanged in this range and were read at HEAD.
+**Status:** issues_found
+
+WR-18 and IN-10 are resolved and the fixes introduce no wrong fact, version, command or cross-reference. WR-18: the new sentences in row D6 (Effect, Label and How cells), step 5 and client step 3 say only what `/tmp/gsd38/review/reproofs-r5.txt` proves (the `0.9.6` text printed the remaining keys with their values as a map, the `0.11.0` text prints the key names, a client V1 connector that carries `ssl` or `sslmode` logs it once per insert batch on `v1.7.0_gg5` as well). I re-read the tree: `ClickHouseWriter.getMutationRequest` (line 1784, `chcTmp` at 1786, `setJdbcConnectionProperties(csc.getJdbcConnectionProperties())`) is called from the three client V1 insert methods (lines 1407/1409, 1537, 1692), and the `ClickHouseHelperClient` constructor builds both clients (lines 105 and 106) and passes every `jdbcConnectionProperties` pair to `Client.Builder.setOption` (lines 205 to 210) with `ignore_unknown_config_key=true` (line 203). The text claims nothing for a client V2 connector's per-insert WARN, the client V2 scoping of rows D3, D5, D6 in steps 5 and 3 is unchanged, and the D6 label cell is the exact defined token `read from the code` (twice) plus the two earlier ones. IN-10: I re-derived the comparison independently (whitespace split of line 114 at `3e27f23c` against the six list items now at lines 114 to 119): 500 tokens before and 500 after, identical stream, and the lines before and after that paragraph are byte-identical; only the six `- ` markers and the line breaks differ. The six items read in a sensible order for an operator (which client, which rows, what reaches V1, the history, the reason `custom_` is harmless on V1, the remaining rows). One cell that the round-2 scoping fix left behind remains (IN-11).
+
+## Info (round 7)
+
+### IN-11: The `Applies when` column is defined with three values, but row D14 uses a fourth, `client V1 insert path`
+
+**File:** `docs/ROLLOUT-v1.7.0_gg6.md:22`, `docs/ROLLOUT-v1.7.0_gg6.md:136`
+**Issue:** Line 22 defines the column: "The column `Applies when` reads `either client` (...), `client 0.11.0 ships` (...) or `this release`." Counting the cells of the 29 rows gives `this release` 15, `client 0.11.0 ships` 11, `either client` 2 and `client V1 insert path` 1 (row D14, added by the IN-08 fix of round 2, commit `266d157e`). The definition was not extended when the value was introduced, and the scoping list at line 119 describes the row in prose, so nothing is wrong about the row itself; but a reader who takes line 22 as the complete vocabulary meets an undefined value in the last row of the section.
+**Fix:** Add the value to the definition on line 22, for example "... `client 0.11.0 ships` (the row exists because the client moves to `0.11.0`), `client V1 insert path` (the row holds only on the client V1 insert methods of the connector) or `this release`."
+
+---
+
+round: 7 findings: 1
+
+## Mandated confirmations (RLS-04)
+
+- (1) fixes resolve their findings and introduce no new error of their own: confirmed for WR-18 and IN-10. The WR-18 sentences were checked against the tree and the round-5 proofs (see above); the note, the CHANGELOG bullet (already said it, untouched) and `FORK-DELTA` item 13 agree on the version `v1.7.0_gg6`, the change set (7 `src/main` files, 112 insertions, 31 deletions, re-run: `git diff --shortstat v1.7.0_gg5 HEAD -- src/main`), the rollback target `pre-v1.7.0_gg6` on `3a3a15a9` (tag and `v1.7.0_gg5` resolve to the same commit) and the client scoping (V1 default, V2 for any other `client_version`). The one defect found is the undefined `Applies when` value (IN-11), which pre-dates this range.
+- (2) labels: confirmed. `38-note-check.py all` prints `OK rows=29 measured=19 code=16 derived=3 research=7`, `OK labels: 4 of 4 defined`, `OK forbidden: 0 lines`, `OK claims: 0 hex strings outside the allowed set`; the table keeps its `29 rows` and the four labels verbatim. Every row's label is earned by its How cell: row D6's new label `unmapped-key WARN text: read from the code` is earned by "`ClientConfigProperties.parseConfigMap` of 0.9.6 and 0.11.0, read with `javap`; the 0.9.6 half was not run", and the `measured in research (not re-run)` label stays on the HTTP error text only.
+- (3) D7 against `src/main` and the evidence: confirmed, unchanged in this range. A connector on client V2 (any `client_version` other than `V1`, `ClickHouseWriter.start`) fails at start with the `custom_` key under every `errors.tolerance`, because `ClickHouseSinkTask.start` has no `errors.tolerance` branch, the ping failure makes `ClickHouseWriter.start` return false and `ProxySinkTask.start` throw `Connection to ClickHouse is not active.`; V1 and default connectors are unaffected because the per-insert and per-start V2 objects send no request. The forwarding, the doubled encoding and the `0.9.6` contrast carry `measured in research (not re-run)` and the rest of the row says what was run.
+- (4) rollback bullets: confirmed. I ran the rollback block unchanged in a throwaway worktree under `/tmp/gsd38/review/` (detached at HEAD, `git switch -c`, `git read-tree -u --reset pre-v1.7.0_gg6`, commit, `git diff --quiet HEAD pre-v1.7.0_gg6`): it printed `ok`, `VERSION` read `v1.7.0_gg5`, `docs/ROLLOUT-v1.7.0_gg6.md` was gone and ` M gradlew.bat` showed, as the note says; the worktree and its branch were removed afterwards. `lz4Java` is `1.12.0` in the tree of `pre-v1.7.0_gg6` and `1.12.1` at HEAD. The frozen-offset bullet carries `derived from Kafka consumer-group semantics (not measured)` and claims no run. The tag `pre-v1.7.0_gg6` is local and is described as published together with this release, a plan and not a fact about origin (`git ls-remote` for `v1.7.0_gg6*` and `pre-v1.7.0_gg6*` prints nothing).
+- (5) gg5 note lines 39 and 111: confirmed, unchanged. Line 39 dates the release (published 2026-10-28) and says what held when the note was written, line 111 says "as of 2026-10-28"; both agree with the release record (`gh api repos/ne1r0n/clickhouse-kafka-connect/releases`, read-only: one release, `v1.7.0_gg5`, not a draft, published 2026-10-28T13:16:09Z, one asset), and neither goes stale when `v1.7.0_gg6` is published.
+- (6) `FORK-DELTA` open items 12 to 23: confirmed, unchanged in this range. The file holds 12 `Owner:` lines for the 12 items, items 22 and 23 are marked condition, and the release paragraph says "the open items 12 to 23", which is the count.
+- (7) identifiers: confirmed. A grep of the note and of the CHANGELOG `1.7.0_gg6` section for finding identifiers (the only match of the pattern is the advisory number `GHSA-48mj-8f7c-7qfm`), `round:`, phase identifiers and `.planning` is empty; `38-hygiene-check.py --strict` over the added lines prints 0 hits and `git grep` for the three forbidden environment names is empty; no host, connector, cluster or production-system name appears, only angle-bracket placeholders.
+- (8) `release object` and the allow-list: confirmed. Neither the note nor the CHANGELOG states a digest, tag commit or URL of the `release object` of `v1.7.0_gg6`; the rollback paragraph says the workflow is "meant to create the release" and points at the open condition of `FORK-DELTA` item 22, and `FORK-DELTA` states the gg6 allow-list as a plan with its condition ("written from the final tree before the merge and does not exist before that"). The only digest in the note is the one of the published `v1.7.0_gg5` asset. `additionalRetriableErrorCodes` is described with its `errors.tolerance` bypass in rows C1 to C3 and in the CHANGELOG, unchanged.
+- (9) CHANGELOG: confirmed. Every section from `# 1.7.0_gg5` down is byte-identical to `git show v1.7.0_gg5:CHANGELOG.md` (`diff` prints nothing); the file is unchanged in this range; the new section is 92 lines and the changelog check prints `OK changelog: section_lines=92 required=13`.
+
+Operator-eyes read of the five documents (the note, `CHANGELOG.md`, `docs/FORK-DELTA.md`, `docs/ROLLOUT-v1.7.0_gg5.md` and `docs/ROLLOUT-v1.7.0_gg1.md`): the order is right for a connector operator (six steps, then rows by section, then rollback and carried limits), and the WARN text change now sits where an operator looks for it (step 5, row D6, client step 3), scoped as "on any client" with V2 scoping of the neighbouring rows kept. I found no statement presented as new that already held at `v1.7.0_gg5` or on `0.9.6` (the per-insert WARN is stated as old, only its text new; the unclosed-client, insert-timeout and retriable-`DataException` limits are stated as carried), and no unscoped client-V2-only statement: rows D2 to D8, D10 and D11 are scoped by the list at lines 114 to 119, rows D13 and D14 carry their own scope, and the clean-stop section, the carried limits and the CHANGELOG bullets say "client V2" where they hold only there. One small wording point that is not a finding: step 5 and client step 3 still say "client V1 was not audited" / "measured or read for client V2" for rows D3, D5, D6 and then add the V1-reaching WARN sentence as an exception, which reads correctly. The `docs/ROLLOUT-v1.7.0_gg1.md` sentence "on client V1 of any line it still fails" remains the deferred half of WR-08, not a new finding.
+
+Totals across the seven rounds: 29 findings (18 warnings, 11 info, 0 critical): round 1 16, round 2 4, round 3 2, round 4 2, round 5 2, round 6 2, round 7 1. The checker's `rounds` command is expected to print FAIL only on the missing `round3_decision` (the last round has a finding), which the orchestrator records later; the `round` command with the nine mandated tokens prints OK.
+
+_Round 7 reviewed: 2026-10-31_
 _Reviewer: Claude (gsd-code-reviewer), fresh context_
