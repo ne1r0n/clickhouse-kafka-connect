@@ -29,7 +29,7 @@
 - [ ] **CLT-04**: A `Client011BehaviourPinLiveTest` pins 159 as `RetriableException`, the 502/503 shapes with and without `retryOnSocketException`, `ClientException` as non-retriable, and ZSTD decoding on V2 with `setCompressionMethod=false` and `compress=true`.
 - [ ] **CLT-05**: The D-17 `network_compression_method=lz4` default stays; its rationale in the Javadoc, `docs/FORK-DELTA.md` (Recorded Fact 26, CMP rows) and the gg1 rollout warning is reworded to what was measured on 0.11.0.
 - [ ] **CLT-06**: Exactly-once safety is checked: a RowBinary byte comparison of 0.9.6 versus 0.11.0 on the type matrices (nested `Tuple`/`Map` nullable markers), and a `BEFORE_PROCESSING` batch replayed across the upgrade has either identical bytes or a documented clean-stop requirement.
-- [ ] **CLT-07**: The date/datetime live pins also pass on a non-UTC JVM, and the Connect-worker `integrationTest` plus one manual nightly dispatch pass on 0.11.0.
+- [x] **CLT-07**: The date/datetime live pins also pass on a non-UTC JVM, and the Connect-worker `integrationTest` plus one manual nightly dispatch pass on 0.11.0. Evidence: E-17 (green nightly, run 41152289179, on the harness-fixed commit `de8c685b`).
 - [ ] **CLT-08**: Before/after Confluent archive listings are captured, and the `zstd-jni` addition and the loss of the guava CVE override are recorded.
 - [ ] **CLT-09**: If the audit fails, gg6 ships on 0.9.6 by reverting the one catalog commit, with the two connector fixes and pins kept where safe.
 
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLT-04 | Phase 36 | Pending |
 | CLT-05 | Phase 36 | Pending |
 | CLT-06 | Phase 36 | Pending |
-| CLT-07 | Phase 36 | Pending |
+| CLT-07 | Phase 36 | Complete |
 | CLT-08 | Phase 36 | Pending |
 | CLT-09 | Phase 36 | Pending |
 | CIH-01 | Phase 37 | Pending |

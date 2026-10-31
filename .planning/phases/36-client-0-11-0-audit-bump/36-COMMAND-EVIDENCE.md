@@ -29,6 +29,7 @@
 | E-14 | CLT-09 | 36-04 | unmeasured (no-go branch not taken) |
 | E-15 | CLT-07 | 36-04 | fail |
 | E-16 | CLT-09, CLT-07 | 36-04 | go |
+| E-17 | CLT-07 | 36-04 | pass |
 
 ### E-01: Pre-flight: origin, pull request and upstream re-read, Phase 35 gated, baselines on the untouched tree
 
@@ -1250,3 +1251,70 @@ Decision: go, keep client 0.11.0. This is the user's own decision, given as thei
 Measured 2026-10-30T22:23:36Z (harness fix, local `stockGen*` run, Spotless check, anchors and merge gates, origin re-read).
 
 Verdict: go
+
+### E-17: CLT-07 nightly dispatch on the fixed commit, user-reported: green
+
+Backs: CLT-07, second half. This entry is the user-reported result of the third manual nightly dispatch (`36-USER-DISPATCH-FIX.md`), on the commit that carries the test-only harness fix of E-16. The run facts below were reported by the user and re-read by the orchestrator with read-only `gh` and `git ls-remote`; the JUnit XML totals were computed from the downloaded `integration-test-results` artifact. No agent pushed or dispatched anything. E-13 (pending, the first handoff) and E-15 (fail, the first red run) stay as they are.
+
+```sh
+git rev-parse HEAD
+gh run view 41152289179 -R ne1r0n/clickhouse-kafka-connect --json headSha,conclusion,event,headBranch,status,startedAt,updatedAt,attempt,workflowName,jobs
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'scratch/*'
+git diff --quiet de8c685b80d40b0a6e19338271e07b08ede84f3b -- src gradle build.gradle.kts
+git diff --name-only 0bb894a4b61a48f3f31cac38a5ee533f33eb11ad de8c685b80d40b0a6e19338271e07b08ede84f3b -- . ':(exclude).planning'
+python3 -I .planning/phases/36-client-0-11-0-audit-bump/36-evidence-check.py junit /tmp/gsd36/ci/41152289179/integration-test-results tests=63 failures=0 errors=0 skipped=9
+grep -h -o 'testcase name="stockGen[^"]*"' -r /tmp/gsd36/ci/41152289179/integration-test-results
+```
+
+```text
+reported_by: user-reported
+verified_by: read-only gh and git ls-remote by the orchestrator
+run_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/41152289179
+run_id: 41152289179
+workflow: Nightly Integration Tests (ClickHouse latest, client V2)
+event: workflow_dispatch
+head_branch: scratch/clt-07-client-0.11.0
+head_sha: de8c685b80d40b0a6e19338271e07b08ede84f3b
+head_sha_equals_local_head: yes
+head_sha_equals_scratch_branch_tip_on_origin: yes
+harness_fix_in_run: yes (0bb894a4b61a48f3f31cac38a5ee533f33eb11ad is an ancestor of the run SHA)
+non_planning_files_changed_since_harness_commit: none
+src_changed_since_harness_commit: none
+client_driver_in_run: 0.11.0 (gradle/libs.versions.toml clickHouseDriver at the run SHA)
+run_attempt: 1
+run_status: completed
+conclusion: success
+job_name: Integration tests, ClickHouse latest, client V2
+job_conclusion: success
+job_id: 124391327032
+job_started_at: 2026-10-31T00:50:05Z
+job_finished_at: 2026-10-31T01:23:46Z
+job_duration: 33m41s
+junit_totals: tests=63 failures=0 errors=0 skipped=9 files=3
+junit_skips: the 9 skips are the cloud tests that lack secrets, as in the earlier runs
+stockgen_tests_present: 7 of 7 (stockGenSingleTaskTest, stockGenSingleTaskSchemalessTest, stockGenSingleTaskInterruptTest, stockGenMultiTaskSchemalessTest, stockGenMultiTaskInterruptTest, stockGenWithJdbcPropSingleTaskTest, stockGenMultiTaskTopicTest)
+stockgen_tests_passed: 7 of 7
+earlier_reds: run 40971181887 (E-15), attempt 1 with 5 failures and attempt 2 with 2, all in the stockGen tests with the Datagen race pattern
+earlier_green_runs: 40474535605 (client 0.9.6 on custom_build), 41110577512 (client 0.9.6 on the pre-bump scratch commit)
+this_run_sample_size: one run, one attempt
+attribution_of_reds_to_harness_race: supported by this green run and by the local mechanism run of E-16 that reproduced the failure, not proven; the investigation's estimate stays about 85 percent
+attribution_of_reds_to_client: not supported (E-16, Fisher exact p about 0.17 on the earlier runs)
+clickhouse_version: 26.10.3.7 (the local pull of E-16; the run pulled `latest` on its own and its digest was not recorded)
+origin_custom_build_now: 3a3a15a9ae064ffe09c696b8bb87bce23419d463	refs/heads/custom_build
+scratch_branches_on_origin: scratch/clt-07-client-0.11.0 at de8c685b80d40b0a6e19338271e07b08ede84f3b; scratch/clt-07-prebump-0.9.6 at 939e899298c2f12dec2cfe1e69b1a6b53b4f511e
+clt_07_passed: yes (nightly half, with E-07 for the non-UTC and the local Connect-worker halves)
+scratch_sha_vs_closing_commit: the run SHA de8c685b differs from the tree of any later closing commit only by later commits
+nothing_pushed: yes
+hygiene_scan: clean
+```
+
+The nightly is green on client 0.11.0: one run, one attempt, `success`, with all seven `stockGen*` tests present and passing and the 9 cloud skips unchanged from the earlier runs. The run SHA is the commit that carries the harness fix, and `src` and the build files are identical between it and the harness commit, so the run tests the harness fix and the 0.11.0 catalog together. This closes the CLT-07 nightly requirement on its face.
+
+What this does and does not establish. The two earlier reds (E-15) had the Datagen race pattern: the Datagen source connector's first status poll saw task 0 already `FAILED` with `done`, and the leftover connector then inflated the completion count for every later `generateData`. That the reds came from this harness race and not from client 0.11.0 remains the investigation's hypothesis, at roughly 85 percent. A single green run after the test-only fix supports that hypothesis but does not prove it: the race rate on the CI runner was never measured, and one passing run is also what a lucky draw of the racy harness would give. No Connect-worker logs were captured on CI. The three follow-ups in `36-FOLLOWUPS.md` are unchanged and still open. The scratch commit `de8c685b` differs from any later closing commit's tree only by later commits (documentation under `.planning`, and any further commits the close adds); the nightly tests the tree of `de8c685b`, not of the future tip.
+
+E-13 is left as `pending (user-gated)` in the index: it is the record of the first handoff, the evidence rules forbid editing an entry, and this entry is the new record that resolves its open question.
+
+Measured 2026-10-31T01:23:46Z (user-reported run facts, re-read with read-only `gh` and `git ls-remote`, JUnit totals from the downloaded artifact).
+
+Verdict: pass
