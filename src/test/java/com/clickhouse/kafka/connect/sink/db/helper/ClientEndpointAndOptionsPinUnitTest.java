@@ -2,8 +2,10 @@ package com.clickhouse.kafka.connect.sink.db.helper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.clickhouse.client.api.ClientMisconfigurationException;
 import com.clickhouse.client.api.insert.InsertSettings;
 import com.clickhouse.client.config.ClickHouseProxyType;
 import com.clickhouse.data.ClickHouseFormat;
@@ -65,5 +67,13 @@ class ClientEndpointAndOptionsPinUnitTest {
     void otherV1OnlyKeysAreAccepted() throws Exception {
         StubClickHouseServer.Request request = insertOnce(OTHER_V1_ONLY_PROPERTIES);
         assertTrue(request.rawUri().startsWith("/?"), request.rawUri());
+    }
+
+    @Test
+    @DisplayName("CLT-03: an operator's ignore_unknown_config_key=false in jdbcConnectionProperties makes a V1-only key fail the build")
+    void operatorIgnoreFlagWins() {
+        ClientMisconfigurationException e = assertThrows(
+                ClientMisconfigurationException.class, () -> insertOnce("?" + IGNORE_KEY + "=false&ssl=true"));
+        assertTrue(e.getMessage().contains("ssl"), e.getMessage());
     }
 }
