@@ -21,7 +21,8 @@ If you are coming from an earlier release, start with the `1.7.0_gg5` note's poi
   changes in the client V1 artifacts was not audited beyond what the rollout note's section D states for client V1.
   What an operator can see:
   * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the client V2 transport; they are now ignored with
-    a WARN that names them. On client V1 they are read from the connection URL and must stay.
+    a WARN that names them. Every connector builds a client V2 object at start, so this reaches client V1 connectors
+    too; on client V1 they are also read from the connection URL and must stay.
   * On client V2, error 159 (`TIMEOUT_EXCEEDED`) is still retriable, but the client no longer retries it itself.
   * On client V2, a 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is
     `false`, so the task fails as before.
