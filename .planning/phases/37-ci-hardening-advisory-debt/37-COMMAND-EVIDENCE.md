@@ -25,7 +25,7 @@
 | E-10 | CIH-04, ADV-01, ADV-02 | 37-03 | pass |
 | E-11 | CIH-04 | 37-03 | pass |
 | E-12 | CIH-04 | 37-03 | pending (user-gated) |
-| E-13 | ADV-01 | 37-04 | pending (plan 37-04) |
+| E-13 | ADV-01 | 37-04 | pass |
 | E-14 | ADV-02 | 37-04 | pending (plan 37-04) |
 | E-15 | ADV-02 | 37-04 | pending (plan 37-04) |
 | E-16 | ADV-01, ADV-02 | 37-05 | pending (plan 37-05) |
@@ -816,3 +816,71 @@ The handoff `37-USER-DISPATCH-DRYRUN.md` gives the user the checks before the pu
 2026-10-31T09:28:36Z
 
 Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-13: The failed-test summary script and the line-ending attribute: five red-then-green executions, the attribute line, its guard and its anchors row
+
+Backs: ADV-01; 31-REVIEW WR-01, WR-02, WR-03, IN-01 and the script half of IN-03; threats T-37-14, T-37-15, T-37-16.
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*FailedTestsSummaryScriptUnitTest' --tests '*UpstreamIntegrationWorkflowBytesGuardUnitTest' > /tmp/gsd37/exec/t1-baseline.log 2>&1
+git worktree add --detach /tmp/gsd37/w/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd37/w/fmt --console=plain spotlessApply
+git -C /tmp/gsd37/w/fmt diff --numstat -- <the seven existing test files of plan 37-04>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*FailedTestsSummaryScriptUnitTest' > /tmp/gsd37/exec/t1-red.log 2>&1
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py failed build/test-results/testUnit
+cp .planning/phases/37-ci-hardening-advisory-debt/37-assets/failed_tests_summary.py.txt .github/scripts/failed_tests_summary.py
+cmp .github/scripts/failed_tests_summary.py .planning/phases/37-ci-hardening-advisory-debt/37-assets/failed_tests_summary.py.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*FailedTestsSummaryScriptUnitTest' > /tmp/gsd37/exec/t1-green.log 2>&1
+git commit -F /tmp/gsd37/exec/msg-p4-t1a.txt
+git check-attr text -- .github/workflows/integrationTests.yaml
+printf '.github/workflows/integrationTests.yaml -text\n' >> .gitattributes
+git check-attr text -- .github/workflows/integrationTests.yaml
+git status --porcelain -- .github/workflows/integrationTests.yaml
+git hash-object .github/workflows/integrationTests.yaml
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt bytes-guard-row docs/FORK-DELTA.md
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-assets/edit_lines.py.txt insert-after docs/FORK-DELTA.md .planning/phases/37-ci-hardening-advisory-debt/37-assets/fork-delta-row-5-summary-script.md.txt '| `UpstreamIntegrationWorkflowBytesGuardUnitTest` '
+cat .planning/phases/37-ci-hardening-advisory-debt/37-assets/anchors-rows-plan04.txt >> .planning/scripts/fork-anchors.txt
+python3 -I .planning/phases/37-ci-hardening-advisory-debt/37-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*FailedTestsSummaryScriptUnitTest' --tests '*UpstreamIntegrationWorkflowBytesGuardUnitTest' > /tmp/gsd37/exec/t1-final.log 2>&1
+git diff -w -U0 {L0} HEAD -- src/test src/integrationTest src/testFixtures
+git commit -F /tmp/gsd37/exec/msg-p4-t1b.txt
+git worktree remove --force /tmp/gsd37/w/fmt
+git worktree prune
+```
+
+```text
+summary_before: 8
+bytes_before: 9
+spotless_numstat_baseline: none
+red_exit: 1
+red_junit: OK junit build/test-results/testUnit class *FailedTestsSummaryScriptUnitTest: tests=13 failures=5 errors=0 skipped=0 files=1
+red_failed: FailedTestsSummaryScriptUnitTest#ADV-01: Markdown metacharacters in a name and a message are escaped, backslash first; FailedTestsSummaryScriptUnitTest#ADV-01: a directory whose reports all fail to parse is an unknown result, not a clean one; FailedTestsSummaryScriptUnitTest#ADV-01: an unreadable report beside a passing one is an unknown result; FailedTestsSummaryScriptUnitTest#ADV-01: glob characters in the directory name are literal; FailedTestsSummaryScriptUnitTest#ADV-01: reports without any testcase warn instead of noticing
+assets_identical: yes
+script_mode: 100755
+green_exit: 0
+green_junit: OK junit build/test-results/testUnit class *FailedTestsSummaryScriptUnitTest: tests=13 failures=0 errors=0 skipped=0 files=1
+spotless_numstat_edited: none
+assertion_diff: clean
+hygiene_scan: clean
+summary_commit: 46fcba8d97ded2f5243b31b4a147e962e7612ae7
+summary_commit_files: .github/scripts/failed_tests_summary.py; src/test/java/com/clickhouse/kafka/connect/ci/FailedTestsSummaryScriptUnitTest.java
+blob_before: 3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+check_attr_before: .github/workflows/integrationTests.yaml: text: unspecified
+check_attr: .github/workflows/integrationTests.yaml: text: unset
+workflow_status_clean: yes
+blob_after: 3e9b9be050fa05805227b2eee0d1fe8c72df56c0
+anchors_mirror: rows=172 bad=0
+final_exit: 0
+final_junit: OK junit build/test-results/testUnit: tests=24 failures=0 errors=0 skipped=0 files=2
+bytes_after: 11
+attributes_commit: b3446dc59348733d420add3e036e1a1f1582a103
+attributes_commit_files: .gitattributes; .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/test/java/com/clickhouse/kafka/connect/ci/UpstreamIntegrationWorkflowBytesGuardUnitTest.java
+fmt_worktree_removed: yes
+```
+
+The five new executions failed on the unedited script (13 executions, 5 failures, exactly the five new names and none of the eight existing ones) and passed on the plan asset (13 executions, 0 failures); the script is a byte copy of the asset and keeps mode 100755. The Spotless baseline run was done once on a pristine detached worktree for all seven existing test files that plan 37-04 edits (the numstat was empty for the five files of this task and the next task and 6/8 and 5/7 for `DescribeUnreadableEnumMockServerTest` and `ColumnTest`, recorded again in E-15); the edited copies of this task's two classes were staged in the worktree before Spotless ran, so the working-tree numstat shows only Spotless's own changes, and it was empty for both (the same method as plan 37-03). The attribute line was appended to `.gitattributes` (which already ended with a line feed); `git check-attr` moved from `text: unspecified` to `text: unset`, the workflow blob stays `3e9b9be0` and `git status` for the file prints nothing. The guard class `UpstreamIntegrationWorkflowBytesGuardUnitTest` went from 9 to 11 executions: a real-file test and one fixture test. The rule is slightly stricter than the plan's wording: it requires that the only line of `.gitattributes` that begins with the workflow path is exactly `.github/workflows/integrationTests.yaml -text`, so a later line that turns conversion back on is rejected too (the fixture covers a missing line, a commented-out line, `text`, `text eol=crlf`, a later `text` line and the accepted real shape). The anchors file holds the new row for the attribute line (`rows=172 bad=0`), and FORK-DELTA names the attribute in the byte-guard row and gains the summary-script row after it. The cumulative assertion diff from `local_head` printed nothing.
+
+2026-10-31T09:36:00Z
+
+Verdict: pass
