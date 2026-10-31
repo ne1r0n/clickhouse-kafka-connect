@@ -105,6 +105,7 @@ jobs:
 
       - name: Build the baseline archive from the previous tag
         run: |
+          set -o pipefail # defaults.run.shell is bash -e: without this the tee below hides a failing baseline build
           baseline_dir="$RUNNER_TEMP/baseline"
           git worktree add --detach "$baseline_dir" "refs/tags/${BASELINE_TAG}"
           baseline_version="$(tr -d '[:space:]' < "$baseline_dir/VERSION")"

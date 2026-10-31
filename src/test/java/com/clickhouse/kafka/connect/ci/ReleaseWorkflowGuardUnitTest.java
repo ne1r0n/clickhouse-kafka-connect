@@ -89,6 +89,7 @@ class ReleaseWorkflowGuardUnitTest {
     private static final String WORKTREE_ADD = "git worktree add --detach";
     private static final String TAG_REF = "refs/tags/";
     private static final String BASELINE_WRAPPER = "\"$baseline_dir/gradlew\"";
+    private static final String PIPEFAIL = "set -o pipefail";
 
     private static final String CHECKOUT_STEP = "Checkout code";
     private static final String ARCHIVE_CHECK_STEP = "Check archive";
@@ -124,6 +125,7 @@ class ReleaseWorkflowGuardUnitTest {
     private static final String RULE_CHAIN = "compare chain order";
     private static final String RULE_COMPARE = "compare strictness";
     private static final String RULE_STEPS = "compare chain steps";
+    private static final String RULE_PIPEFAIL = "baseline pipefail";
     private static final String RULE_ADVISORY = "no continue-on-error";
     private static final String RULE_CONCURRENCY = "concurrency";
     private static final String RULE_TWIN = "twin equality";
@@ -145,6 +147,10 @@ class ReleaseWorkflowGuardUnitTest {
     private static final String FETCH_LINE =
             "          fetch-depth: 0 # the baseline tag is built from its own worktree";
     private static final String PERSIST_LINE = "          persist-credentials: false";
+    private static final String PIPEFAIL_LINE =
+            "          " + PIPEFAIL + " # defaults.run.shell is bash -e: the tee would hide a failing build";
+    private static final String BASELINE_CALL_LINE =
+            "          " + BASELINE_WRAPPER + " -p \"$baseline_dir\" createConfluentArchive";
     private static final String COMPARE_LINE = "          " + COMPARE_CALL + COMPARE_REDIRECTION;
     private static final String EXIT_LINE = "            " + COMPARE_EXIT;
     private static final String GROUP_FULL_LINE = "  " + GROUP_LINE;
@@ -210,8 +216,9 @@ class ReleaseWorkflowGuardUnitTest {
                 "",
                 header(BASELINE_STEP),
                 "        run: |",
+                PIPEFAIL_LINE,
                 "          " + WORKTREE_ADD + " \"$baseline_dir\" \"" + TAG_REF + "${BASELINE_TAG}\"",
-                "          " + BASELINE_WRAPPER + " -p \"$baseline_dir\" createConfluentArchive",
+                BASELINE_CALL_LINE,
                 "",
                 header(COMPARE_STEP),
                 "        run: |",
@@ -481,6 +488,34 @@ class ReleaseWorkflowGuardUnitTest {
                         stepHoldsLine(lines, UPLOAD_STEP, REPORT_NAME, RULE_STEPS));
     }
 
+    /**
+     * The shell of the job is {@code bash -e {0}}, which has no {@code pipefail}: the baseline build is
+     * piped through {@code tee}, so without the option the step would carry on after a failed build.
+     * The option must be set as its own line before the first call of the baseline wrapper.
+     */
+    static Optional<String> baselinePipefailProblem(List<String> lines) {
+        Optional<List<String>> block = stepBlock(lines, BASELINE_STEP);
+        if (block.isEmpty()) {
+            return problem(RULE_PIPEFAIL, "no step named '" + BASELINE_STEP + "'");
+        }
+        List<String> code = codeOf(block.get()).stream().map(String::strip).toList();
+        int option = code.indexOf(PIPEFAIL);
+        int call = -1;
+        for (int i = 0; i < code.size(); i++) {
+            if (code.get(i).contains(BASELINE_WRAPPER)) {
+                call = i;
+                break;
+            }
+        }
+        if (option < 0 || call < 0 || option > call) {
+            return problem(
+                    RULE_PIPEFAIL,
+                    "the step '" + BASELINE_STEP + "' must hold the line '" + PIPEFAIL
+                            + "' before the call of " + BASELINE_WRAPPER);
+        }
+        return Optional.empty();
+    }
+
     @SafeVarargs
     private static Optional<String> firstProblem(Optional<String>... problems) {
         return Arrays.stream(problems).filter(Optional::isPresent).findFirst().orElse(Optional.empty());
@@ -669,6 +704,12 @@ class ReleaseWorkflowGuardUnitTest {
     @ValueSource(strings = {RELEASE, PRE_RELEASE})
     void workflowChainStepsHoldTheirCalls(String file) throws IOException {
         assertNoProblem(file, chainStepsProblem(read(file)));
+    }
+
+    @ParameterizedTest(name = "CIH-04: the baseline build step of {0} sets pipefail so the tee cannot hide a failed build")
+    @ValueSource(strings = {RELEASE, PRE_RELEASE})
+    void workflowBaselineBuildFailsTheStep(String file) throws IOException {
+        assertNoProblem(file, baselinePipefailProblem(read(file)));
     }
 
     @ParameterizedTest(name = "CIH-04: {0} has no continue-on-error")
@@ -868,6 +909,34 @@ class ReleaseWorkflowGuardUnitTest {
                         ReleaseWorkflowGuardUnitTest::chainStepsProblem,
                         replacingInStep(VALID, UPLOAD_STEP, REPORT_NAME, "          name: report"),
                         RULE_STEPS));
+    }
+
+    @Test
+    @DisplayName("CIH-04: fixture: the baseline pipefail rule accepts the valid step and rejects a missing option, one set after the call, one only in a comment and one switched off")
+    void fixtureBaselinePipefailRule() {
+        assertAll(
+                accepts(ReleaseWorkflowGuardUnitTest::baselinePipefailProblem, VALID),
+                accepts(ReleaseWorkflowGuardUnitTest::baselinePipefailProblem, VALID_PRE),
+                rejects(
+                        ReleaseWorkflowGuardUnitTest::baselinePipefailProblem,
+                        replacing(VALID, PIPEFAIL_LINE),
+                        RULE_PIPEFAIL),
+                rejects(
+                        ReleaseWorkflowGuardUnitTest::baselinePipefailProblem,
+                        replacing(VALID, PIPEFAIL_LINE, "          # " + PIPEFAIL),
+                        RULE_PIPEFAIL),
+                rejects(
+                        ReleaseWorkflowGuardUnitTest::baselinePipefailProblem,
+                        replacing(VALID, PIPEFAIL_LINE, "          set +o pipefail"),
+                        RULE_PIPEFAIL),
+                rejects(
+                        ReleaseWorkflowGuardUnitTest::baselinePipefailProblem,
+                        replacing(
+                                replacing(VALID, PIPEFAIL_LINE),
+                                BASELINE_CALL_LINE,
+                                BASELINE_CALL_LINE,
+                                PIPEFAIL_LINE),
+                        RULE_PIPEFAIL));
     }
 
     @Test
