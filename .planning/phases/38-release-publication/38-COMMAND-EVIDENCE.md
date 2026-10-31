@@ -23,7 +23,7 @@
 | E-07 | RLS-02 | 38-02 | pass |
 | E-08 | RLS-04 | 38-03 | pass |
 | E-09 | RLS-04 | 38-03 | pass |
-| E-10 | RLS-04 | 38-03 | pending (plan 38-03) |
+| E-10 | RLS-04 | 38-03 | pass |
 | E-11 | RLS-03 | 38-04 | pending (plan 38-04) |
 | E-12 | RLS-03, RLS-06 | 38-04 | pending (plan 38-04) |
 | E-13 | RLS-06 | 38-04 | pending (plan 38-04) |
@@ -579,5 +579,44 @@ rounds_check: OK rounds: [(1, 16), (2, 4), (3, 2), (4, 2), (5, 2), (6, 2), (7, 1
 Deviations, stated as they are. The plan capped the loop at three rounds unless the user authorised another; the user authorised each further round (nine decisions after round 3, quoted above as relayed) and the loop ran twelve rounds. The review checker's own cap had to follow: it allowed four rounds and was raised stepwise to twelve in the seven commits named in `review_checker_reproof`; the decision rules it applies were not touched. Phase 32 is the precedent for the final step: it ended with two info findings that the user chose to fix and accept unreviewed. Here round 12 reported two info findings (IN-14 and IN-15); both were fixed (fd8b8575 and 927ac07c) and no round 13 exists, so those two fixes were not reviewed by a fresh reviewer, on the user's decision. The `rounds_check` line was taken with the disposition file already written, because the check needs its `round3_decision` line; the disposition is committed right after this entry. The fix commits include sweep commits that carry no finding identifier.
 
 2026-10-31T17:27:13Z
+
+Verdict: pass
+
+### E-10: Every review finding is dispositioned and the release documents are frozen for the gate
+
+Backs: RLS-04, ROADMAP Phase 38 criterion 3 (no finding is open when the allow-list plan starts, and the documents are frozen: after the last fix the owning checks pass again, the non-planning change set is the five expected files, and every protected path is unchanged).
+
+```sh
+git rev-list eb8c163ab9cdc7951612931f7c49b23e3ec37d6b..HEAD > /tmp/gsd38/review/phase-commits.txt
+python3 -I .planning/phases/38-release-publication/38-review-check.py disposition .planning/phases/38-release-publication/38-REVIEW.md .planning/phases/38-release-publication/38-REVIEW-DISPOSITION.md --commits /tmp/gsd38/review/phase-commits.txt
+python3 -I .planning/phases/38-release-publication/38-review-check.py rounds .planning/phases/38-release-publication/38-REVIEW.md .planning/phases/38-release-publication/38-REVIEW-DISPOSITION.md
+bash /tmp/gsd38/review/fix/chk.sh
+git diff --name-only eb8c163ab9cdc7951612931f7c49b23e3ec37d6b HEAD -- . ':(exclude).planning'
+git diff --name-only eb8c163ab9cdc7951612931f7c49b23e3ec37d6b HEAD -- .planning/scripts
+grep -nE '(WR|IN|CR|BL)-[0-9]{2}|^round:' docs/ROLLOUT-v1.7.0_gg6.md
+git diff --quiet eb8c163ab9cdc7951612931f7c49b23e3ec37d6b HEAD -- src build.gradle.kts settings.gradle.kts gradle .github README.md LICENSE docs/ROLLOUT-v1.7.0_gg2.md docs/ROLLOUT-v1.7.0_gg3.md docs/ROLLOUT-v1.7.0_gg4.md .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh .planning/scripts/fork-anchor-exemptions.txt
+git commit -m 'docs(38-03): disposition every Phase 38 review finding (RLS-04)'
+python3 -I .planning/phases/38-release-publication/38-hygiene-check.py --strict .planning/phases/38-release-publication/38-COMMAND-EVIDENCE.md .planning/phases/38-release-publication/38-REVIEW-DISPOSITION.md
+```
+
+```text
+dispositions: fixed:42 rejected:0 deferred:1
+disposition_check: OK disposition: findings=43 rows=43
+disposition_commit: 5031bb0042570b978f789895dee34966c4194bb6
+docs_frozen: yes
+docs_frozen_scope: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg5.md; docs/ROLLOUT-v1.7.0_gg6.md
+scripts_scope: .planning/scripts/fork-anchors.txt
+review_text_in_note: none
+protected_paths_unchanged: yes
+owning_checks_at_tip: note check ok (OK rows=29 measured=19 code=18 derived=3 research=9, labels 4 of 4 defined); links ok (31 targets, 0 broken); changelog ok (section_lines=105 required=13); numbers ok; anchors mirror ok (rows=172 bad=0); hygiene strict over the added lines ok (0 hits)
+src_main_shortstat: 7 files changed, 112 insertions(+), 31 deletions(-)
+deferred_findings: WR-08 (the docs/ROLLOUT-v1.7.0_gg1.md half; owner: the user as fork maintainer; re-open trigger: the next edit of that file or the milestone close)
+pending_verdicts: none
+pending_index_rows: E-11; E-12; E-13; E-14; E-15; E-16; E-17; E-18; E-19 (entries of plans 38-04 and 38-05 that do not exist yet)
+```
+
+Every expectation held. Two clauses of the plan's wording do not hold literally at this tip and are recorded as deviations, not hidden. First, `pending_verdicts` reads `none` for evidence entries: no entry E-01 to E-10 has a pending verdict and E-11 to E-19 do not exist as entries; the index already lists rows E-11 to E-19 as `pending (plan ...)` since plan 38-01, so a count of pending index rows would not be none, and `pending_index_rows` names them. Second, the task verify blocks of plans 38-01 and 38-02 carry clauses fixed to the tip of their own time (the three-file or one-file non-planning change set, an unchanged `CHANGELOG.md` and `docs`, the one-line change count of `docs/ROLLOUT-v1.7.0_gg5.md`, the `--only B C` part-1 note check); they fail on this tip by construction, because the review fixes changed those files and the gg5 note by two lines instead of one. The owning checks that the plan 38-03 text names (the note, links, changelog, numbers, strict hygiene and anchors checks) were re-run as written and pass, which is what `owning_checks_at_tip` records. The E-01 `local_head` base is used for every scope check.
+
+2026-10-31T17:28:48Z
 
 Verdict: pass
