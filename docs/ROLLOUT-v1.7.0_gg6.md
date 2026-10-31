@@ -19,7 +19,7 @@ This note names no host, connector, cluster or production system. Every environm
 - `derived from Kafka consumer-group semantics (not measured)`: the claim follows from how Kafka and Kafka Connect define the behaviour; no broker and no Connect worker ran for it.
 - `measured in research (not re-run)`: the maintainers measured it while preparing the release, on throwaway clones and in the public `confluentinc/cp-kafka-connect-base:7.9.7` image, and did not repeat it on the release tip.
 
-A row that makes claims of different strength says which label each claim has. The column `Applies when` reads `either client` (the row holds on client library `0.9.6` and on `0.11.0`; it does not say client V1 or client V2), `client 0.11.0 ships` (the row exists because the client moves to `0.11.0`) or `this release`.
+A row that makes claims of different strength says which label each claim has. The column `Applies when` reads `either client` (the row holds on client library `0.9.6` and on `0.11.0`; it does not say client V1 or client V2), `client 0.11.0 ships` (the row exists because the client moves to `0.11.0`), `client V1 insert path` (the row holds only on the client V1 insert methods of the connector) or `this release`.
 
 ## Before you upgrade
 
