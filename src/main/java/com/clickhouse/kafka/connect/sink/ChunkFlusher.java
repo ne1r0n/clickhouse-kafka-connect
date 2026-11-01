@@ -9,9 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Shared insert path for the buffered delivery strategies. Pushes a chunk to
@@ -48,8 +50,9 @@ final class ChunkFlusher {
         }
         putDirect(chunk);
         for (SinkRecord record : chunk) {
-            TopicPartition tp = new TopicPartition(record.topic(), record.kafkaPartition());
-            long offset = record.kafkaOffset() + 1; // committed offset = next offset to consume
+            // Keyed by the consumer's position: Connect validates preCommit offsets against its assignment, while the table topic stays the transformed one.
+            TopicPartition tp = new TopicPartition(record.originalTopic(), record.originalKafkaPartition());
+            long offset = record.originalKafkaOffset() + 1; // committed offset = next offset to consume
             OffsetAndMetadata current = flushedOffsets.get(tp);
             if (current == null || offset > current.offset()) {
                 flushedOffsets.put(tp, new OffsetAndMetadata(offset));
@@ -69,7 +72,8 @@ final class ChunkFlusher {
             LOGGER.trace("Passing the exception to the exception handler.");
             boolean errorTolerance = clickHouseSinkConfig != null && clickHouseSinkConfig.isErrorsTolerance();
             boolean retryOnSocketException = clickHouseSinkConfig != null && clickHouseSinkConfig.isRetryOnSocketException();
-            Utils.handleException(e, errorTolerance, retryOnSocketException, records);
+            Set<Integer> additionalRetriableErrorCodes = clickHouseSinkConfig != null ? clickHouseSinkConfig.getAdditionalRetriableErrorCodes() : Collections.emptySet();
+            Utils.handleException(e, errorTolerance, retryOnSocketException, additionalRetriableErrorCodes, records);
             if (errorTolerance && errorReporter != null) {
                 LOGGER.warn("Sending [{}] records to DLQ for exception: {}", records.size(), e.getLocalizedMessage());
                 records.forEach(r -> Utils.sendTODlq(errorReporter, r, e));

@@ -65,8 +65,10 @@ class DescribeUnreadableEnumMockServerTest {
     }
 
     private void assertUnreadableTableIsSkippedAndTheNextOneIsMapped(ClickHouseHelperClient chc) {
-        assertNull(chc.describeTable(DATABASE, UNREADABLE_TABLE));
-        assertNotNull(chc.describeTable(DATABASE, READABLE_TABLE));
+        try (chc) {
+            assertNull(chc.describeTable(DATABASE, UNREADABLE_TABLE));
+            assertNotNull(chc.describeTable(DATABASE, READABLE_TABLE));
+        }
     }
 
     @Test

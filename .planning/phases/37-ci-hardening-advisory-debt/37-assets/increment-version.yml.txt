@@ -1,0 +1,58 @@
+# FORK MODIFICATION: the bump is a script, not an inline expression. .github/scripts/bump_version.py reads
+# VERSION, validates it and its own result against vX.Y.Z or vX.Y.Z_ggN, and writes VERSION together with the
+# VERSION row of .planning/scripts/fork-anchors.txt. It refuses and writes nothing when either file is not as
+# expected, so a dispatch can no longer put a null version into VERSION. BumpVersionScriptUnitTest pins the
+# rules, and ReleaseWorkflowGuardUnitTest pins this file. Every action is pinned to a full commit SHA with a
+# version comment, and the token scopes are granted on the job instead of the workflow.
+name: Increment Version
+
+on:
+  workflow_dispatch:
+    inputs:
+        version:
+          type: choice
+          description: 'Version - patch, minor, major, or gg (the _ggN counter)'
+          required: true
+          options:
+          - patch
+          - minor
+          - major
+          - gg
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+    - name: Check out code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+          # checkout keeps its default persisted credentials: "Commit and push" pushes a branch
+          fetch-depth: 0 # this is required to see all branches
+    - name: Configure Git
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Action"
+        git config --global --add --bool push.autoSetupRemote true
+    - name: Increment version
+      env:
+        BUMP: ${{ inputs.version }}
+      run: |
+        NEW_VERSION="$(python3 -I .github/scripts/bump_version.py "$BUMP")"
+        echo "NEW_VERSION=${NEW_VERSION}" >> "$GITHUB_ENV"
+        echo "New version is ${NEW_VERSION}"
+    - name: Commit and push
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git checkout -b "update-version-${NEW_VERSION}"
+        git add VERSION .planning/scripts/fork-anchors.txt
+        git commit -m "Increment version to ${NEW_VERSION}"
+        git push
+        gh pr create --title "Automatic version increment ${NEW_VERSION}" --body "This is an automated PR to increment the version."

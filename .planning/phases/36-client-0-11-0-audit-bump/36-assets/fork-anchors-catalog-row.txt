@@ -1,0 +1,1 @@
+gradle/libs.versions.toml	clickHouseDriver = "0.11.0"  # FORK OVERRIDE (upstream 0.9.6)	1	CLT-02

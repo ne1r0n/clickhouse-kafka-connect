@@ -223,4 +223,39 @@ class ConfluentArchiveCheckUnitTest {
                                 errLines.stream().skip(1).allMatch(line -> line.startsWith("nested jar: ")),
                                 "every listed line is a nested jar: " + errLines));
     }
+
+    @Test
+    @DisplayName("CI-20: an archive with two lib jars names both jars on stderr")
+    void twoLibJarsAreNamedOnStderr() throws IOException {
+        Path archive = archive("two-named.zip", List.of(HEALTHY_ENTRIES, HEALTHY_ENTRIES));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit =
+                ConfluentArchiveCheck.run(
+                        new String[] {archive.toString()},
+                        new PrintStream(out, true, StandardCharsets.UTF_8),
+                        new PrintStream(err, true, StandardCharsets.UTF_8));
+        List<String> errLines = err.toString(StandardCharsets.UTF_8).lines().toList();
+
+        assertAll(
+                () -> assertEquals(1, exit),
+                () ->
+                        assertEquals(
+                                "Confluent archive check failed (1 violations of 6 entries):",
+                                errLines.get(0)),
+                () ->
+                        assertTrue(
+                                errLines.contains(
+                                        "expected exactly one jar under lib/ in the archive, found 2"),
+                                errLines.toString()),
+                () -> {
+                    List<String> found =
+                            errLines.stream().filter(line -> line.startsWith("lib jars found: ")).toList();
+                    assertEquals(1, found.size(), errLines.toString());
+                    assertTrue(found.get(0).contains(LIB_JAR_PREFIX + "0-confluent.jar"), found.get(0));
+                    assertTrue(found.get(0).contains(LIB_JAR_PREFIX + "1-confluent.jar"), found.get(0));
+                    assertTrue(found.get(0).contains("clean"), found.get(0));
+                });
+    }
 }

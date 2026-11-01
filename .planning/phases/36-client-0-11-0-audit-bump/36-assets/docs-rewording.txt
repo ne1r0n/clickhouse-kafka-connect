@@ -1,0 +1,128 @@
+Phase 36 documentation rewording (CLT-05, CLT-02, CLT-08): exact edits for plan 36-03 task 3.
+
+Each edit is one block: a FILE line, an -----OLD----- part that matches the file exactly once, a -----NEW----- part
+that replaces it, and an -----END----- line. OLD and NEW keep their line breaks. Apply every block with the Edit
+tool (old_string = the OLD part, new_string = the NEW part); an OLD part that does not match exactly once means the
+tree moved: stop and record it.
+
+FILE: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinUnitTest.java
+-----OLD-----
+ * the V2 config, plus the {@code setCompressionMethod=false} case. ClickHouse 26.9 defaults the
+ * method to ZSTD, which client 0.9.6 cannot decode, so a sync that drops both controls breaks
+ * reads. An operator's {@code compress=true} in {@code jdbcConnectionProperties} re-enables
+ * response compression on V2 (Recorded Facts 25 and 26). Deliberately extends nothing -
+-----NEW-----
+ * the V2 config, plus the {@code setCompressionMethod=false} case. ClickHouse 26.9 and later
+ * default the method to ZSTD. Client 0.9.6 cannot decode it on V2 and client V1 cannot decode it
+ * on any client line, while V2 of client 0.11.0 can and then loads the zstd-jni native ({@code
+ * Client011BehaviourPinLiveTest} pins all three). The controls therefore stay: they keep V1 and
+ * 0.9.6 readable and keep the zstd native unloaded, and they are no longer what protects V2 reads
+ * on 0.11.0. An operator's {@code compress=true} in {@code jdbcConnectionProperties} re-enables
+ * response compression on V2 (Recorded Facts 25 and 26). Deliberately extends nothing -
+-----END-----
+
+FILE: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java
+-----OLD-----
+ * {@code network_compression_method=lz4} is in effect, and client 0.9.6 only decodes LZ4 ({@code
+ * Invalid LZ4 magic byte: '-112'}, surfacing as {@code Connection to ClickHouse is not active}).
+-----NEW-----
+ * {@code network_compression_method=lz4} is in effect, and client 0.9.6 only decodes LZ4 ({@code
+ * Invalid LZ4 magic byte: '-112'}, surfacing as {@code Connection to ClickHouse is not active}).
+ * Client V1 cannot decode ZSTD on any client line, and V2 of client 0.11.0 can (it loads the
+ * zstd-jni native), as {@code Client011BehaviourPinLiveTest} pins; the controls stay for V1, for
+ * 0.9.6 and to keep the native unloaded.
+-----END-----
+
+FILE: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/NetworkCompressionPinLiveTest.java
+-----OLD-----
+ * lz4 setting alone suffices on V2 when an operator re-enables response compression; removing both
+ * on V2 with {@code compress=true} fails with the magic-byte error above. An operator's {@code
+-----NEW-----
+ * lz4 setting alone suffices on V2 when an operator re-enables response compression; removing both
+ * on V2 with {@code compress=true} fails with the magic-byte error above on client 0.9.6 and
+ * decodes ZSTD on client 0.11.0. An operator's {@code
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+ClickHouse client `0.9.6` is upstream's own value since v1.7.0 and is no longer a fork override
+-----NEW-----
+ClickHouse client `0.11.0` is a fork override of upstream's `0.9.6`, marked `clickHouseDriver = "0.11.0"  # FORK OVERRIDE (upstream 0.9.6)` in one catalog commit that a `git revert` removes cleanly; the two `createClientV2` fixes it needs are the `ClickHouseHelperClient.java` row of the Connector source table and stay on a revert
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+whose first-parent diff is that one line | BLD-08, SYNC-04,
+-----NEW-----
+whose first-parent diff is that one line. The `0.11.0` client bump is such a commit: Dependabot PR #17 proposed the same line, failed at `compileTestJava` on the 10 three-argument `ServerException` constructions and, once those compile, breaks every V2 call at runtime without the two `createClientV2` fixes (`36-COMMAND-EVIDENCE.md` E-02, E-03, E-06); the archive, `zstd-jni` and guava effects of the bump are in E-09 | CLT-02, CLT-09, BLD-08, SYNC-04,
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+`Lz4RoundTripLiveTest`, `ConnectApiReferencesUnitTest` |
+-----NEW-----
+`Lz4RoundTripLiveTest`, `ConnectApiReferencesUnitTest`, `ClientCatalogPinUnitTest`, `RowBinaryClientParityLiveTest` |
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+so on V2 at least one of the two controls is required, while on V1 an operator's `?compress=true` did not reach the node options and the V1 stripped-both case was not observed (Recorded Fact 26).
+-----NEW-----
+so on V2 at least one of the two controls is required, while on V1 an operator's `?compress=true` did not reach the node options and the V1 stripped-both case was not observed (Recorded Fact 26). On client `0.11.0` (ClickHouse 26.10.3.7) V2 decodes ZSTD with `setCompressionMethod=false` and `compress=true`, loading the `zstd-jni` native, while client V1 still fails to decode ZSTD on both client lines with `Magic is not correct - expect [-126] but got [-112]`: measured on `0.9.6` in Recorded Fact 26 and on `0.11.0` in `36-COMMAND-EVIDENCE.md` E-06, pinned by `Client011BehaviourPinLiveTest`. D-17 therefore stays because V1 and client `0.9.6` still need it, and because with the lz4 setting on a worker whose operator set `compress=true` never loads a zstd native (measured in the public confluentinc/cp-kafka-connect-base:7.9.7 image during Phase 36 research, not pinned); it is no longer what protects V2 reads on `0.11.0`.
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+| CMP-01, CMP-02, CMP-03; `NetworkCompressionPinUnitTest`, `NetworkCompressionPinLiveTest`; Recorded Facts 25 and 26 |
+-----NEW-----
+| CMP-01, CMP-02, CMP-03, CLT-05; `NetworkCompressionPinUnitTest`, `NetworkCompressionPinLiveTest`, `Client011BehaviourPinLiveTest`; Recorded Facts 25 and 26 |
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+It overrides client-v2 0.9.6's transitive guava `33.4.6-jre` by conflict resolution:
+-----NEW-----
+On client-v2 `0.9.6` it overrides the transitive guava `33.4.6-jre` by conflict resolution; since client-v2 `0.11.0` requests `33.7.2-jre` itself, the catalog pin and the two `build.gradle.kts` lines are redundant, not lost: with both lines removed in a throwaway worktree `33.7.2-jre` still resolves on `runtimeClasspath` and `clickhouseDependencies` (`dependencyInsight` names `com.clickhouse:client-v2:0.11.0`), and the guava classes in the archive are byte-identical before and after the bump (`36-COMMAND-EVIDENCE.md` E-09). The pin and the stale `// temp to override client's with CVE` comment stay in place for a follow-up. On `0.9.6`:
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+| SYNC-11, SYNC-12; E-22 |
+-----NEW-----
+| SYNC-11, SYNC-12, CLT-08; E-22 |
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+Without the pin client-v2 0.9.6 requests httpclient5 `5.4.4`; with it `dependencyInsight` shows `5.4.4 -> 5.6.5` (E-22).
+-----NEW-----
+Without the pin client-v2 0.9.6 requests httpclient5 `5.4.4`; with it `dependencyInsight` shows `5.4.4 -> 5.6.5` (E-22). Client-v2 `0.11.0` requests `5.6.4`; the pin still wins there (`5.6.4 -> 5.6.5`, `36-COMMAND-EVIDENCE.md` E-09).
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+| SYNC-12; E-22 |
+-----NEW-----
+| SYNC-12, CLT-08; E-22 |
+-----END-----
+
+FILE: docs/FORK-DELTA.md
+-----OLD-----
+combined with `setCompressionMethod=false` against a 26.9+ server it fails reads with the LZ4 magic-byte error.
+-----NEW-----
+combined with `setCompressionMethod=false` against a 26.9+ server it fails reads with the LZ4 magic-byte error on client `0.9.6` and with `Magic is not correct` on client V1 of any line. On V2 of client `0.11.0` the same combination decodes ZSTD and loads the `zstd-jni` native (see the D-17 row above).
+-----END-----
+
+FILE: docs/ROLLOUT-v1.7.0_gg1.md
+-----OLD-----
+If you hold the tagged copy, read those two items here.
+-----NEW-----
+If you hold the tagged copy, read those two items here. The compression warning of item 6 is also qualified for client `0.11.0`; the qualification sits in that item.
+-----END-----
+
+FILE: docs/ROLLOUT-v1.7.0_gg1.md
+-----OLD-----
+Do not combine `compress=true` with `setCompressionMethod=false` on such a server.
+-----NEW-----
+Do not combine `compress=true` with `setCompressionMethod=false` on such a server. Correction for client `0.11.0`: on V2 of client `0.11.0` that combination decodes ZSTD and loads the `zstd-jni` native, which needs an executable temp folder (an executable `java.io.tmpdir`, or `-DZstdTempFolder`; measured in the public confluentinc/cp-kafka-connect-base:7.9.7 image); on client `0.9.6` and on client V1 of any line it still fails with `Invalid LZ4 magic byte` or `Magic is not correct`.
+-----END-----

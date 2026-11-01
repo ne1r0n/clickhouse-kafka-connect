@@ -36,7 +36,7 @@ verifyConfluentArchive: 7801 inner entries, no nested jar, no Kafka API class
 BUILD SUCCESSFUL in 8s
 ```
 
-Two earlier dry runs of the release workflows, one each for `pre-release.yaml` and `release.yaml` (runs `40296330498` and `40296481765`), ran green with the `Wrapper Gradle` annotation "Gradle 9.8.1 from the wrapper ran createConfluentArchive and verifyConfluentArchive", at a commit whose release-path inputs equal this release's apart from `VERSION`. No GitHub release is published for `v1.7.0_gg5`: the release is its two tags.
+Two earlier dry runs of the release workflows, one each for `pre-release.yaml` and `release.yaml` (runs `40296330498` and `40296481765`), ran green with the `Wrapper Gradle` annotation "Gradle 9.8.1 from the wrapper ran createConfluentArchive and verifyConfluentArchive", at a commit whose release-path inputs equal this release's apart from `VERSION`. When this note was written, no GitHub release was published for `v1.7.0_gg5` and the release was its two tags; a GitHub release for it, with one archive asset, was published on 2026-10-28.
 
 What to do: build the archive from tag `v1.7.0_gg5` with `./gradlew createConfluentArchive`, as before.
 
@@ -108,7 +108,7 @@ git diff --quiet HEAD pre-v1.7.0_gg5 && echo ok
 ok
 ```
 
-3. Redeploy the `v1.7.0_gg4` archive. If you kept the one you deployed before, use it. Otherwise check out tag `v1.7.0_gg4` in a clean worktree and run `./gradlew createConfluentArchive`; no release asset exists for any tag, so the archive is always your own build. It passes the archive check of section 2 and differs from the `v1.7.0_gg5` archive only in the release identity.
+3. Redeploy the `v1.7.0_gg4` archive. If you kept the one you deployed before, use it. Otherwise check out tag `v1.7.0_gg4` in a clean worktree and run `./gradlew createConfluentArchive`; the `v1.7.0_gg4` tag has no release asset (as of 2026-10-28 the only release asset belongs to `v1.7.0_gg5`), so the archive is your own build. It passes the archive check of section 2 and differs from the `v1.7.0_gg5` archive only in the release identity.
 4. Publish the rollback commit. Where `custom_build` accepts pushes, run `git push origin rollback-v1.7.0_gg5:custom_build`, which does not depend on which branch is checked out. Where it requires a pull request, run `git push origin rollback-v1.7.0_gg5`, open the pull request into `custom_build` and merge it with a merge commit, so the rollback commit keeps its SHA for the forward path below. Until the rollback commit is on `origin/custom_build`, GitHub keeps running the `v1.7.0_gg5` workflows there, the scheduled nightly included.
 
 Rehearsed on a dry-run merge of the release tip onto `21c51598`: after the rollback commit the rollback branch (and `custom_build` once step 4 has published it) has `VERSION` `v1.7.0_gg4` and no nightly workflow file, and `git revert <rollback-commit>` restores the tree you rolled back from. To go forward again, once the rollback commit is on `origin/custom_build`, update your local branch with `git switch custom_build` and `git pull --ff-only`, run `git revert <rollback-commit>` on it, and publish the revert as in step 4: push it, or put it on a new branch and open a pull request where `custom_build` requires one. The rollback removes this document from the branch, so read it with `git show <rollback-commit>^:docs/ROLLOUT-v1.7.0_gg5.md`.

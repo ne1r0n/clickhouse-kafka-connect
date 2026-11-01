@@ -40,7 +40,7 @@ final class ExactlyOnceBufferStrategy implements DeliveryStrategy {
     public void put(Collection<SinkRecord> records) {
         if (records != null && !records.isEmpty()) {
             for (SinkRecord r : records) {
-                TopicPartition tp = new TopicPartition(r.topic(), r.kafkaPartition());
+                TopicPartition tp = new TopicPartition(r.originalTopic(), r.originalKafkaPartition());
                 perPartitionBuffer.computeIfAbsent(tp, k -> new ArrayList<>()).add(r);
             }
             if (LOGGER.isDebugEnabled()) {

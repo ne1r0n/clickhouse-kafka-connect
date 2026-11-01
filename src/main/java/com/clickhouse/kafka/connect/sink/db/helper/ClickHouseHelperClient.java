@@ -80,6 +80,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
     public static final String REPLICA_TAG_HEADER = "X-ClickHouse-Replica-Tag";
     public static final String NETWORK_COMPRESSION_METHOD = "network_compression_method";
     public static final String LZ4 = "lz4";
+    public static final String IGNORE_UNKNOWN_CONFIG_KEY = "ignore_unknown_config_key";
 
     public ClickHouseHelperClient(ClickHouseClientBuilder builder) {
         this.hostname = builder.hostname;
@@ -181,9 +182,12 @@ public class ClickHouseHelperClient implements AutoCloseable {
 
         LOGGER.info("ClickHouse URL: {}", url);
 
+        // Client 0.11.0 keeps a path on the endpoint (0.9.6 dropped it), so the database and the
+        // jdbcConnectionProperties travel as client options instead of in the URL.
+        String endpoint = String.format("%s://%s:%d", protocol, hostname, port);
 
         Client.Builder clientBuilder = new Client.Builder()
-                .addEndpoint(url)
+                .addEndpoint(endpoint)
                 .setUsername(this.username)
                 .setPassword(this.password)
                 .setClientName(CONNECT_CLIENT_NAME)
@@ -193,6 +197,10 @@ public class ClickHouseHelperClient implements AutoCloseable {
         if (setCompressionMethod) {
             clientBuilder.serverSetting(NETWORK_COMPRESSION_METHOD, LZ4);
         }
+
+        // V1-only keys such as ssl and sslmode in jdbcConnectionProperties must not stop a V2 client
+        // from being built; a key the operator sets below still overrides this default.
+        clientBuilder.setOption(IGNORE_UNKNOWN_CONFIG_KEY, "true");
 
         if (jdbcConnectionProperties != null && !jdbcConnectionProperties.isEmpty()) {
             String props = jdbcConnectionProperties.startsWith("?") ? jdbcConnectionProperties.substring(1) : jdbcConnectionProperties;

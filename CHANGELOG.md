@@ -1,3 +1,107 @@
+# 1.7.0_gg6, 2026-10-31
+
+This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `9bed6f79` (the `1.7.0_gg4` and
+`1.7.0_gg5` sections name `a6f1df83`). It lists the fork's own changes since `v1.7.0_gg5` and absorbs the `Unreleased`
+entry that upstream left in this file. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on
+top of upstream, and read [docs/ROLLOUT-v1.7.0_gg6.md](docs/ROLLOUT-v1.7.0_gg6.md) before upgrading from `v1.7.0_gg5`.
+If you are coming from an earlier release, start with the `1.7.0_gg5` note's pointers.
+
+## Important Changes
+
+* Buffered connectors (`bufferCount > 0`) under an SMT that changes the record's topic, for example `RegexRouter`, now
+  commit offsets under the original topic and partition, at the last flushed offset plus one, and a revoked partition
+  now drops its buffered records under such an SMT, which before it kept (read from the code: an SMT that changes only
+  the partition or the offset also changes the offsets committed, and the rollout note lists what it does for
+  revocation). Before, `preCommit` returned keys named by the renamed topic, which Connect does not accept for the
+  group, so no offset advanced for the partitions of the renamed topics, for a rename whose target is not another
+  input topic (the rollout note lists what it does not characterise, a rename onto an input topic among it; the second
+  half follows from Connect's offset contract and was not measured). The first start after the upgrade resumes at the
+  group's committed offset, or at the position `auto.offset.reset` selects, and can reread a retained topic. With
+  `exactlyOnce=false` that loads what the table already holds a second time; with `exactlyOnce=true` the stored state
+  decides: a chunk inside the stored range is skipped, and when the retained log starts at offset 0 the first chunk
+  resets the state and every later chunk, the chunk of the stored range included, is inserted as new, so the whole
+  retained topic is loaded again without a failure, while a chunk below the stored range that does not start at offset 0
+  fails the task with `State MISMATCH` unless `tolerateStateMismatch=true`. The Kafka part is derived from Kafka
+  consumer-group semantics, not measured; the connector part was read from the code, not run (rollout note, section B).
+  Every buffered connector, renamed or not, now needs a Connect runtime whose `SinkRecord` has `originalTopic()`,
+  `originalKafkaPartition()` and `originalKafkaOffset()`; the offsets a buffered connector returns for records that keep
+  their topic, partition and offset are unchanged. The fix is fork-only while upstream issue 777 stays open
+  (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/777).
+* The ClickHouse Java client moves from `0.9.6` to `0.11.0`. A connector runs client V2 only when `client_version` is
+  set to a value other than `V1`; the bullets below say "client V2" where they hold only there, and what the move
+  changes in the client V1 artifacts was not audited beyond what the rollout note's section D states for client V1.
+  What an operator can see:
+  * `ssl` and `sslmode` in `jdbcConnectionProperties` never changed the client V2 transport; they are still ignored,
+    with a WARN that names them. Every connector builds a client V2 object at start and, on client V1, again for every
+    insert (read from the code: `ClickHouseWriter.getMutationRequest` builds a `ClickHouseHelperClient`, whose
+    constructor builds both clients), so a client V1 connector that carries `ssl` or `sslmode` logs that WARN once for
+    every insert batch. That held on `v1.7.0_gg5` with client `0.9.6` too, which already logged a WARN for them; only
+    the text changes, from the remaining keys with their values to the key names (read from the code and the client
+    bytecode, the `0.9.6` half not run). On client V1 they are also read from the connection URL and must stay.
+  * On client V2, error 159 (`TIMEOUT_EXCEEDED`) is still retriable, but the client no longer retries it itself.
+  * On client V2, a 502 or 503 from a proxy is retriable only with `retryOnSocketException=true`; the default is
+    `false`, so the task fails as before.
+  * On client V2, the `User-Agent` and some log texts change: update proxy rules and log alerts that match them.
+  * On client V2 (`client_version` set to a value other than `V1`), keys that start with `custom_` in
+    `jdbcConnectionProperties` are now forwarded to the server, which rejects them, so the task fails at start.
+    Client V1, which a connector runs when it does not set `client_version`, is not affected. Search every connector
+    for them before upgrading: this item breaks an upgrade on client V2.
+  * `zstd-jni` natives ship for linux/amd64, linux/aarch64 and darwin/aarch64 only. On client V2, only a connector that
+    takes the ZSTD path (`compress=true` with `setCompressionMethod=false`, or `decompress=true`) is affected; the
+    default configuration does not load the native (measured in the maintainers' research, not re-run). On client V1
+    that condition was not verified: the V1 artifacts contain their own ZSTD route behind the options
+    `compress_algorithm` and `decompress_algorithm` (read from the code, not run), so a client V1 connector that sets
+    either of them should check the platform and temp folder as well.
+  * On client V2, the client no longer sets 804800-byte socket buffers; the operating system auto-tunes them.
+  * On client V2, a batch replayed across the upgrade is byte-identical on the wire for the compared type matrix, so no
+    clean stop is needed for it. A client V1 connector with `exactlyOnce=true` is not covered by that comparison.
+* New `additionalRetriableErrorCodes` setting, from upstream's tail (see Improvements). A code listed there is
+  redelivered with no retry budget and outside `errors.tolerance` and the DLQ, so only transient codes belong in it.
+* `lz4-java` moves from `1.12.0` to `1.12.1`, a security release (`GHSA-48mj-8f7c-7qfm`), and `zstd-jni` `1.5.7-23` is
+  new in the archive.
+* The JMX MBean `version=` segment and the client name sent on every request now read `version=v1.7.0_gg6` and
+  `clickhouse-kafka-connect/v1.7.0_gg6`. Update dashboard, alert and exporter matchers that spell out the
+  `v1.7.0_gg5` value; matchers that do not spell out the version are unaffected.
+* The archive built from tag `v1.7.0_gg6` differs from the one built from tag `v1.7.0_gg5` in the client libraries, the
+  new natives, `lz4-java`, the connector classes changed above and the release identity. The release workflows compare
+  the two entry by entry; the rollout note carries the counts.
+
+## Improvements
+
+* New `additionalRetriableErrorCodes` setting (default empty). ClickHouse server error codes listed here are retried
+  like the built-in list, so a transient code the connector does not know about redelivers the batch instead of
+  failing the task. Redelivery follows the Connect framework's `RetriableException` semantics (no retry budget, bypasses
+  `errors.tolerance` and the DLQ). Motivating case: `216 QUERY_WITH_SAME_ID_IS_ALREADY_RUNNING` from the client's
+  same-query-id retry. (https://github.com/ClickHouse/clickhouse-kafka-connect/issues/847, https://github.com/ClickHouse/clickhouse-kafka-connect/issues/455)
+
+## Known Issues
+
+* The writer's `stop()` does not close its `ClickHouseHelperClient`, so at least one V2 client is left per task start,
+  on both client lines (`0.9.6` and `0.11.0`). Read from the code, not measured: an exactly-once connector builds one
+  more such helper in its state provider and a client V1 connector builds one with every insert, and none of them is
+  closed; whether the extra objects are released in some other way was not checked.
+* On client V2, the four-minute insert timeout has no effect while `async=false` and `socket_timeout` is `0`. A client
+  V1 insert has no such timeout: its three insert methods wait with `future.get()` and no timeout argument (read from
+  the code: `ClickHouseWriter`), so `clickhouseClientInsertTimeoutMs` does not bound it; the client V1 library's own
+  timeout options were not examined.
+* The fix has documented limits. The Direct path, which is the delivery path of an unbuffered connector
+  (`bufferCount` 0), with `reportInsertedOffsets=true` under a topic-changing SMT commits nothing for the partitions of
+  the renamed topics (unless `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`, where Connect's own offsets
+  are returned), and the fix does not reach it. A many-to-one rename shares one state record, a rename onto a topic that
+  another input topic already has is not characterised, and exactly-once buffering is claimed only for a rename that
+  maps each source topic to its own target; it was not probed under an SMT that changes the partition.
+* A `DataException` that wraps a retriable server error, and one whose root cause is a socket timeout or an unknown
+  host under `errors.tolerance=all`, stay retriable and are asserted by no test. A decision on changing them is open.
+* The nightly's Datagen completion counting spans all connectors outside the generating helper.
+
+## Build and CI
+
+* The release workflows rebuild the previous tag's archive in a separate worktree and compare the two entry by entry
+  under an allow-list keyed by `VERSION`, and publish the report as an artifact.
+* `increment-version.yml` bumps through `.github/scripts/bump_version.py` and no longer writes `vnull`.
+* Dependabot's `gradle` block ignores protobuf-java major versions 4 and above; protobuf-java stays on 3.x.
+* Bumped Gradle to `9.8.2`, `okhttp` to `5.5.1` (integration tests only) and `actions/setup-java` to `6.1.0` (CI only).
+
 # 1.7.0_gg5, 2026-10-26
 
 This is the fork release built on the same upstream base, `1.7.0` plus upstream's untagged tail `a6f1df83`, as

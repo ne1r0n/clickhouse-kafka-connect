@@ -1,0 +1,4 @@
+# Phase 36 (v1.7.0_gg6): the V2 client is built with protocol://host:port only and with ignore_unknown_config_key set before the jdbcConnectionProperties loop (CLT-03); the 0 row pins that the path-carrying endpoint stays gone.
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(endpoint)	1	CLT-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(url)	0	CLT-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setOption(IGNORE_UNKNOWN_CONFIG_KEY, "true");	1	CLT-03

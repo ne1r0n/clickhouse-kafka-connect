@@ -40,6 +40,16 @@ public final class ProxySinkTask {
     private final ErrorReporter errorReporter;
 
     public ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final String connectorName) {
+        this(clickHouseSinkConfig, errorReporter, connectorName, null);
+    }
+
+    ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final DBWriter dbWriter) {
+        this(clickHouseSinkConfig, errorReporter, null, dbWriter);
+    }
+
+    // Both three-argument constructors delegate here so no caller passes an untyped null third argument,
+    // which would be ambiguous between String and DBWriter.
+    ProxySinkTask(final ClickHouseSinkConfig clickHouseSinkConfig, final ErrorReporter errorReporter, final String connectorName, final DBWriter dbWriter) {
         this.clickHouseSinkConfig = clickHouseSinkConfig;
         this.errorReporter = errorReporter;
         LOGGER.info("Enable ExactlyOnce? {}", clickHouseSinkConfig.isExactlyOnce());
@@ -49,8 +59,8 @@ public final class ProxySinkTask {
             this.stateProvider = new InMemoryState();
         }
         this.statistics = new SinkTaskStatistics(connectorName, id);
-        this.dbWriter = new ClickHouseWriter(this.statistics);
-        processing = new Processing(stateProvider, dbWriter, errorReporter, clickHouseSinkConfig, statistics);
+        this.dbWriter = dbWriter != null ? dbWriter : new ClickHouseWriter(this.statistics);
+        processing = new Processing(stateProvider, this.dbWriter, errorReporter, clickHouseSinkConfig, statistics);
     }
 
     public void start() {
@@ -97,7 +107,7 @@ public final class ProxySinkTask {
                 processing.doLogic(rec);
             } catch (Exception e) {
                 boolean errorTolerance = clickHouseSinkConfig.isErrorsTolerance();
-                Utils.handleException(e, errorTolerance, clickHouseSinkConfig.isRetryOnSocketException(), records); // This will throw RetriableException and failed records will be retried. No need to continue with the next topic & partition
+                Utils.handleException(e, errorTolerance, clickHouseSinkConfig.isRetryOnSocketException(), clickHouseSinkConfig.getAdditionalRetriableErrorCodes(), records); // This will throw RetriableException and failed records will be retried. No need to continue with the next topic & partition
                 if (errorTolerance) {
                     failedMessages.add(new Utils.FailedRecords(rec, e));
                     statistics.sentToDLQ(rec.size());

@@ -1,6 +1,6 @@
 # Rollout checklist: `v1.6.0_gg1` to `v1.7.0_gg1`
 
-This copy corrects items 1 and 2 of the copy in tag `v1.7.0_gg1`: the key that the state table holds for a topic when `enableDbTopicSplit=true`. The earlier text told you to list the prefixed form in place of the topic, which misses the key of a topic that `dbTopicSplitChar` divides into exactly two parts. The correction is in `v1.7.0_gg4`. No query and no `DELETE` statement changed; item 1 now also says that its query was run, and item 2 that its examples were. If you hold the tagged copy, read those two items here.
+This copy corrects items 1 and 2 of the copy in tag `v1.7.0_gg1`: the key that the state table holds for a topic when `enableDbTopicSplit=true`. The earlier text told you to list the prefixed form in place of the topic, which misses the key of a topic that `dbTopicSplitChar` divides into exactly two parts. The correction is in `v1.7.0_gg4`. No query and no `DELETE` statement changed; item 1 now also says that its query was run, and item 2 that its examples were. If you hold the tagged copy, read those two items here. The compression warning of item 6 is also qualified for client `0.11.0`; the qualification sits in that item.
 
 This checklist is for anyone building or running the connector from this fork who is moving from `v1.6.0_gg1` to `v1.7.0_gg1`. Release `v1.7.0_gg1` builds on upstream `1.7.0`. The fork's own changes since `v1.6.0_gg1` are listed in [`../CHANGELOG.md`](../CHANGELOG.md), and the full list of what the fork patches on top of upstream is in [`FORK-DELTA.md`](FORK-DELTA.md).
 
@@ -239,7 +239,7 @@ The fork's forced `network_compression_method=lz4` setting is retired onto upstr
 
 - With `setCompressionMethod` at its default, `network_compression_method=lz4` is sent on every client the connector builds.
 - `compress=false` is sent unconditionally on every client.
-- A `compress=true` in `jdbcConnectionProperties` re-enables response compression on client V2 and wins over the connector's `compress=false`. Against a server whose default is ZSTD (ClickHouse 26.9 and later), at least one of the two controls (the lz4 setting or `compress=false`) must be in effect, otherwise reads fail with `Invalid LZ4 magic byte`. Do not combine `compress=true` with `setCompressionMethod=false` on such a server.
+- A `compress=true` in `jdbcConnectionProperties` re-enables response compression on client V2 and wins over the connector's `compress=false`. Against a server whose default is ZSTD (ClickHouse 26.9 and later), at least one of the two controls (the lz4 setting or `compress=false`) must be in effect, otherwise reads fail with `Invalid LZ4 magic byte`. Do not combine `compress=true` with `setCompressionMethod=false` on such a server. Correction for client `0.11.0`: on V2 of client `0.11.0` that combination decodes ZSTD and loads the `zstd-jni` native, which needs an executable temp folder (an executable `java.io.tmpdir`, or `-DZstdTempFolder`; measured in the public confluentinc/cp-kafka-connect-base:7.9.7 image); on client `0.9.6` and on client V1 of any line it still fails with `Invalid LZ4 magic byte` or `Magic is not correct`.
 
 The lz4 library is also updated; see the CHANGELOG. Stored values are unaffected by compression.
 

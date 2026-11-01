@@ -38,7 +38,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg5	1	BLD-07
+VERSION	v1.7.0_gg6	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
 gradle/libs.versions.toml	slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }	1	BLD-08
 build.gradle.kts	implementation(libs.slf4j.reload4j)	1	BLD-08
@@ -47,6 +47,7 @@ build.gradle.kts	register<Test>("testUnit")	1	BLD-04
 build.gradle.kts	withCapability("org.lz4:lz4-java")	1	BLD-09
 build.gradle.kts	clickhouse.jdbc	0	BLD-13
 gradle/libs.versions.toml	kafka = "4.4.0"	1	BLD-08
+gradle/libs.versions.toml	clickHouseDriver = "0.11.0"  # FORK OVERRIDE (upstream 0.9.6)	1	CLT-02
 gradle/libs.versions.toml	clickhouse-jdbc	0	BLD-13
 src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	@Tag("clickhouse")	1	HARN-01
 src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseBase.java	sharedContainerStarts()	2	HARN-03
@@ -128,7 +129,14 @@ build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.cla
 .github/workflows/release.yaml	gradle/actions/setup-gradle@	1	REL-03
 .github/workflows/release.yaml	./gradlew createConfluentArchive	1	REL-03
 .github/workflows/release.yaml	!inputs.dry_run && github.ref == 'refs/heads/custom_build'	3	REL-05
-.github/workflows/release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	5	REL-05
+.github/workflows/release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	6	REL-05
+.github/workflows/release.yaml	compare_confluent_archives.py	1	CIH-04
+.github/workflows/release.yaml	baseline_tag.py	1	CIH-04
+.github/workflows/release.yaml	git worktree add	1	CIH-04
+.github/workflows/release.yaml	actions/upload-artifact@	1	CIH-04
+.github/workflows/release.yaml	fetch-depth: 0	1	CIH-04
+.github/workflows/release.yaml	continue-on-error	0	CIH-04
+.github/workflows/release.yaml	.planning/scripts/confluent-archive-allowlist-	1	CIH-04
 .github/workflows/pre-release.yaml	actions/create-release	0	REL-04
 .github/workflows/pre-release.yaml	actions/upload-release-asset	0	REL-04
 .github/workflows/pre-release.yaml	gh release create	2	REL-04
@@ -141,8 +149,20 @@ build.gradle.kts	"com/clickhouse/kafka/connect/util/WithheldMessageException.cla
 .github/workflows/pre-release.yaml	gradle/actions/setup-gradle@	1	REL-03
 .github/workflows/pre-release.yaml	./gradlew createConfluentArchive	1	REL-01
 .github/workflows/pre-release.yaml	!inputs.dry_run && github.ref == 'refs/heads/custom_build'	3	REL-05
-.github/workflows/pre-release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	5	REL-05
-.github/workflows/increment-version.yml	node-version: '24'	1	REL-02
+.github/workflows/pre-release.yaml	inputs.dry_run || github.ref != 'refs/heads/custom_build'	6	REL-05
+.github/workflows/pre-release.yaml	compare_confluent_archives.py	1	CIH-04
+.github/workflows/pre-release.yaml	baseline_tag.py	1	CIH-04
+.github/workflows/pre-release.yaml	git worktree add	1	CIH-04
+.github/workflows/pre-release.yaml	actions/upload-artifact@	1	CIH-04
+.github/workflows/pre-release.yaml	fetch-depth: 0	1	CIH-04
+.github/workflows/pre-release.yaml	continue-on-error	0	CIH-04
+.github/workflows/pre-release.yaml	.planning/scripts/confluent-archive-allowlist-	1	CIH-04
+.github/workflows/increment-version.yml	node-version	0	CIH-02
+.github/workflows/increment-version.yml	setup-node	0	CIH-02
+.github/workflows/increment-version.yml	npm install	0	CIH-02
+.github/workflows/increment-version.yml	semver	0	CIH-02
+.github/workflows/increment-version.yml	python3 -I .github/scripts/bump_version.py	1	CIH-02
+.github/workflows/increment-version.yml	git add VERSION .planning/scripts/fork-anchors.txt	1	CIH-03
 .github/workflows/increment-version.yml	npm install fs	0	REL-02
 # Phase 31 (v1.7.0_gg5-ci): the integration harness's Connect worker runs on Java 17 (plan 31-06, E-06 fix-harness).
 src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java	confluentinc/cp-server-connect:	1	NIT-01
@@ -154,3 +174,28 @@ src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatf
 .github/workflows/nightly-integration-tests.yaml	persist-credentials: false	1	NIT-01
 .github/workflows/nightly-integration-tests.yaml	secrets.	0	NIT-01
 .github/workflows/nightly-integration-tests.yaml	--tests	0	NIT-01
+# Phase 34 (v1.7.0_gg6): ProxySinkTask keeps the connectorName constructor beside upstream's DBWriter seam through one four-argument core (TAL-02) and its ORCH-02 statistics plumbing; the two 0 rows pin that upstream's connector-less statistics call and two-argument constructor stay gone; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	new SinkTaskStatistics(connectorName, id)	1	ORCH-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	new SinkTaskStatistics(id)	0	ORCH-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	final String connectorName	2	ORCH-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	this(clickHouseSinkConfig, errorReporter, connectorName, null);	1	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	this(clickHouseSinkConfig, errorReporter, null, dbWriter);	1	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	dbWriter != null ? dbWriter : new ClickHouseWriter(this.statistics)	1	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	final ErrorReporter errorReporter) {	0	TAL-02
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	clickHouseSinkConfig.getAdditionalRetriableErrorCodes()	1	TAL-04
+# Phase 34 (v1.7.0_gg6): the DEFAULT_RETRIABLE_ERROR_CODES lookup that replaced the retriable-code switch (TAL-05) and the five-argument handleException signature (TAL-03).
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	DEFAULT_RETRIABLE_ERROR_CODES.contains(errorCode)	1	TAL-05
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	boolean retryOnSocketException, Set	1	TAL-03
+# Phase 35 (v1.7.0_gg6): buffered offsets are keyed by the consumer's original topic and partition (BUF-01, BUF-02, upstream #777); the three 0 rows pin that the transformed-topic accessor call stays gone from each file; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java	new TopicPartition(record.originalTopic(), record.originalKafkaPartition())	1	BUF-01
+src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java	record.originalKafkaOffset() + 1	1	BUF-01
+src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java	record.topic()	0	BUF-01
+src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java	new TopicPartition(record.originalTopic(), record.originalKafkaPartition())	1	BUF-02
+src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java	record.topic()	0	BUF-02
+src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java	new TopicPartition(r.originalTopic(), r.originalKafkaPartition())	1	BUF-02
+src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java	r.topic()	0	BUF-02
+# Phase 36 (v1.7.0_gg6): the V2 client is built with protocol://host:port only and with ignore_unknown_config_key set before the jdbcConnectionProperties loop (CLT-03); the 0 row pins that the path-carrying endpoint stays gone.
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(endpoint)	1	CLT-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(url)	0	CLT-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setOption(IGNORE_UNKNOWN_CONFIG_KEY, "true");	1	CLT-03
+.gitattributes	.github/workflows/integrationTests.yaml -text	1	ADV-01

@@ -1,0 +1,41 @@
+# Allow-list for compare-confluent-archives.py (RLS-03), plan 38-04.
+# Archive A is v1.7.0_gg5 rebuilt from the tag v1.7.0_gg5; archive B is the archive built at the v1.7.0_gg6 tip.
+# Format: glob<TAB>reason. A star matches across slashes (fnmatch). Paths of the outer zip carry the prefix "outer/".
+# Every row must match at least one difference (an unused row fails as STALE-ROW), and no row is a catch-all.
+# No glob starts with "*", "?" or "[": the loader refuses such a row, because it is not anchored to a path prefix.
+# The third-party rows are anchored literal-prefix globs, one per owning library; the three zstd-jni natives are exact paths.
+# A com/clickhouse/kafka/connect/ row is an exact path whose source file changed between v1.7.0_gg5 and the tip, or the release identity.
+# An inner class of a changed connector class is listed because its class file differs (javap -v -p of the six inner classes of ClickHouseSinkConfig and of ClickHouseClientBuilder shows only shifted line numbers).
+# The list was derived from the differences of the two archives rebuilt on the final tree and is valid for exactly one tree:
+# any later change of src, build.gradle.kts, gradle or README.md moves the archive and turns a row into STALE-ROW or a difference into UNALLOWED.
+com/clickhouse/client/*	clickhouse-client and client-v2 0.9.6 -> 0.11.0 (classes of client-v2 api and of the V1 config and http packages)
+com/clickhouse/data/*	clickhouse-data 0.9.6 -> 0.11.0 (classes)
+META-INF/versions/11/com/clickhouse/client/http/*	clickhouse-http-client 0.9.6 -> 0.11.0 (multi-release classes)
+META-INF/versions/11/module-info.class	clickhouse-http-client 0.9.6 -> 0.11.0 (module descriptor; this jar supplies the descriptor at this path)
+clickhouse-client-version.properties	clickhouse-client version properties 0.9.6 -> 0.11.0
+client-v2-version.properties	client-v2 0.9.6 ships this file, 0.11.0 does not
+com/github/luben/zstd/*	zstd-jni 1.5.7-23 (new in the archive: client 0.11.0 declares it; classes)
+META-INF/versions/22/com/github/luben/zstd/*	zstd-jni 1.5.7-23 (new in the archive; multi-release classes)
+darwin/aarch64/libzstd-jni-1.5.7-23.dylib	zstd-jni 1.5.7-23 native for darwin/aarch64 (new in the archive)
+linux/aarch64/libzstd-jni-1.5.7-23.so	zstd-jni 1.5.7-23 native for linux/aarch64 (new in the archive)
+linux/amd64/libzstd-jni-1.5.7-23.so	zstd-jni 1.5.7-23 native for linux/amd64 (new in the archive)
+net/jpountz/lz4/*	lz4-java 1.12.0 -> 1.12.1 (classes)
+META-INF/maven/at.yawk.lz4/lz4-java/*	lz4-java 1.12.0 -> 1.12.1 (pom.properties and pom.xml)
+com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.class	source changed: buffered offset-commit fix and the additional retriable error codes passed through
+com/clickhouse/kafka/connect/sink/ChunkFlusher.class	source changed: buffered offset-commit fix and the additional retriable error codes passed through
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$DbTopicSplitCharValidatorAndRecommender.class	inner class of ClickHouseSinkConfig, whose source changed (javap shows only shifted line numbers)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$ErrorCodeListValidator.class	new inner class of ClickHouseSinkConfig: validator of the new additionalRetriableErrorCodes setting
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$InsertFormatValidatorAndRecommender.class	inner class of ClickHouseSinkConfig, whose source changed (javap shows only shifted line numbers)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$InsertFormats.class	inner class of ClickHouseSinkConfig, whose source changed (javap shows only shifted line numbers)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$ProxyTypeValidatorAndRecommender.class	inner class of ClickHouseSinkConfig, whose source changed (javap shows only shifted line numbers)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$UTF8String.class	inner class of ClickHouseSinkConfig, whose source changed (javap shows only shifted line numbers)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig$ZKPathValidator.class	inner class of ClickHouseSinkConfig, whose source changed (javap shows only shifted line numbers)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.class	source changed: the new additionalRetriableErrorCodes setting and its validator
+com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.class	source changed: buffered offset-commit fix and the additional retriable error codes passed through
+com/clickhouse/kafka/connect/sink/ProxySinkTask.class	source changed: the additional retriable error codes passed through to the exception handling
+com/clickhouse/kafka/connect/sink/Version.class	release identity v1.7.0_gg5 -> v1.7.0_gg6 (generated class holding the inlined compile-time constant Version.ARTIFACT_VERSION)
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient$ClickHouseClientBuilder.class	inner class of ClickHouseHelperClient, whose source changed (javap shows only shifted line numbers)
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class	source changed: client V2 endpoint and options for client 0.11.0, and the release identity (CONNECT_CLIENT_NAME)
+com/clickhouse/kafka/connect/util/Utils.class	source changed: handleException takes the additional retriable error codes
+com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class	release identity v1.7.0_gg5 -> v1.7.0_gg6 (inlined compile-time constant Version.ARTIFACT_VERSION, MBean version segment)
+META-INF/MANIFEST.MF	release identity v1.7.0_gg5 -> v1.7.0_gg6 (Implementation-Version)

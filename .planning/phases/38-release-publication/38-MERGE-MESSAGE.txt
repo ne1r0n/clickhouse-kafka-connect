@@ -1,0 +1,37 @@
+Merge sync/v1.7.0: release v1.7.0_gg6
+
+VERSION v1.7.0_gg6. The connector source changes: seven src/main files
+differ from v1.7.0_gg5. Read docs/ROLLOUT-v1.7.0_gg6.md, the operator
+note, before upgrading a connector from v1.7.0_gg5. CHANGELOG.md carries
+the 1.7.0_gg6 section and docs/FORK-DELTA.md is refreshed.
+
+Shipped changes:
+- Buffered connectors (bufferCount > 0) under an SMT that changes the
+  topic commit offsets under the original topic and partition. The first
+  start after the upgrade resumes at the group's committed offset and
+  can reread a retained topic.
+- ClickHouse Java client 0.11.0, with two createClientV2 fixes. One
+  change breaks an upgrade on client V2: keys that start with custom_ in
+  jdbcConnectionProperties are now forwarded to the server, which
+  rejects them.
+- Upstream's second untagged tail up to 9bed6f79, with the new
+  additionalRetriableErrorCodes setting; a code listed there bypasses
+  errors.tolerance and the DLQ.
+- lz4-java 1.12.1 (a security release) and the new zstd-jni natives.
+- The release workflows compare the archive with the previous release's
+  under an allow-list, and the version bump has its own script.
+- Dependabot ignores protobuf-java major versions 4 and above.
+- The JMX MBean version= segment and the client name carry v1.7.0_gg6.
+
+This merge also publishes the .planning/ history since 3a3a15a9.
+
+The tag v1.7.0_gg6 and the GitHub release are created by the release
+workflow run that follows the green tests.yaml run on this commit; only
+the rollback tag pre-v1.7.0_gg6 is pushed by hand.
+
+Rollback: restore the tree of tag pre-v1.7.0_gg6 (commit 3a3a15a9) with
+git read-tree -u --reset plus one commit, as the Rollback section of
+docs/ROLLOUT-v1.7.0_gg6.md describes, and redeploy the v1.7.0_gg5
+archive.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>

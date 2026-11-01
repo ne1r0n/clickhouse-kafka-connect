@@ -2,17 +2,20 @@ package com.clickhouse.kafka.connect.sink.util;
 
 import com.clickhouse.client.ClickHouseException;
 import com.clickhouse.client.api.DataTransferException;
-import com.clickhouse.client.api.ServerException;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.util.Utils;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
 import java.util.List;
 
 import static com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers.newDescriptor;
@@ -52,7 +55,7 @@ public class UtilsTest {
     public void TestClickHouseClientTimeoutCause(){
         assertThrows(RetriableException.class, () -> {
             Exception timeout = new IOException("Write timed out after 30000 ms");
-            Utils.handleException(timeout, false, false, new ArrayList<>());
+            Utils.handleException(timeout, false, false, Collections.emptySet(), new ArrayList<>());
         });
     }
 
@@ -61,7 +64,7 @@ public class UtilsTest {
     public void TestSocketExceptionRetriedWhenEnabled() {
         assertThrows(RetriableException.class, () -> {
             Exception brokenPipe = new RuntimeException(new DataTransferException("Insert failed", new SocketException("Broken pipe")));
-            Utils.handleException(brokenPipe, false, true, new ArrayList<>());
+            Utils.handleException(brokenPipe, false, true, Collections.emptySet(), new ArrayList<>());
         });
     }
 
@@ -70,14 +73,14 @@ public class UtilsTest {
     public void TestSocketExceptionNotRetriedByDefault() {
         RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
             Exception brokenPipe = new RuntimeException(new DataTransferException("Insert failed", new SocketException("Broken pipe")));
-            Utils.handleException(brokenPipe, false, false, new ArrayList<>());
+            Utils.handleException(brokenPipe, false, false, Collections.emptySet(), new ArrayList<>());
         });
         assertFalse(thrown instanceof RetriableException);
     }
 
     @DisplayName("Test client V2 ServerException Root Cause")
     public void TestServerExceptionRootCause() {
-        Exception e1 = new ServerException(252, "Too many parts", 500);
+        Exception e1 = ServerExceptions.create(252, "Too many parts", 500);
         Exception e2 = new RuntimeException(new RuntimeException(e1));
         assertEquals(e1, Utils.getRootCause(e2, true));
     }
@@ -86,8 +89,8 @@ public class UtilsTest {
     @DisplayName("Test client V2 ServerException retriable code")
     public void TestServerExceptionRetriableCode() {
         assertThrows(RetriableException.class, () -> {
-            Exception e = new RuntimeException(new ServerException(252, "Too many parts", 500));
-            Utils.handleException(e, false, false, new ArrayList<>());
+            Exception e = new RuntimeException(ServerExceptions.create(252, "Too many parts", 500));
+            Utils.handleException(e, false, false, Collections.emptySet(), new ArrayList<>());
         });
     }
 
@@ -95,10 +98,73 @@ public class UtilsTest {
     @DisplayName("Test client V2 ServerException non-retriable code")
     public void TestServerExceptionNonRetriableCode() {
         RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
-            Exception e = new RuntimeException(new ServerException(60, "Table does not exist", 404));
-            Utils.handleException(e, false, false, new ArrayList<>());
+            Exception e = new RuntimeException(ServerExceptions.create(60, "Table does not exist", 404));
+            Utils.handleException(e, false, false, Collections.emptySet(), new ArrayList<>());
         });
         assertFalse(thrown instanceof RetriableException);
+    }
+
+    @Test
+    @DisplayName("Test additional error code retried through client V2 ServerException")
+    public void TestAdditionalCodeRetriedV2() {
+        assertThrows(RetriableException.class, () -> {
+            Exception e = new RuntimeException("query id", ServerExceptions.create(216, "Query with id = x is already running", 500));
+            Utils.handleException(e, false, false, Set.of(216), new ArrayList<>());
+        });
+    }
+
+    @Test
+    @DisplayName("Test additional error code retried through client V1 ClickHouseException")
+    public void TestAdditionalCodeRetriedV1() {
+        assertThrows(RetriableException.class, () -> {
+            Exception e = new RuntimeException("query id", new ClickHouseException(216, "Query with id = x is already running", null));
+            Utils.handleException(e, false, false, Set.of(216), new ArrayList<>());
+        });
+    }
+
+    @Test
+    @DisplayName("Test unconfigured error code fails the task when errors tolerance is disabled")
+    public void TestUnconfiguredCodeFailsWithoutTolerance() {
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+            Exception e = new RuntimeException(ServerExceptions.create(216, "Query with id = x is already running", 500));
+            Utils.handleException(e, false, false, Collections.emptySet(), new ArrayList<>());
+        });
+        assertFalse(thrown instanceof RetriableException);
+    }
+
+    @Test
+    @DisplayName("Test unconfigured error code is ignored when errors tolerance is enabled")
+    public void TestUnconfiguredCodeIgnoredWithTolerance() {
+        Exception e = new RuntimeException(ServerExceptions.create(216, "Query with id = x is already running", 500));
+        assertDoesNotThrow(() -> Utils.handleException(e, true, false, Collections.emptySet(), new ArrayList<>()));
+    }
+
+    @Test
+    @DisplayName("Test additional error code does not affect other codes")
+    public void TestAdditionalCodeDoesNotAffectOtherCodes() {
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
+            Exception e = new RuntimeException(ServerExceptions.create(60, "Table does not exist", 404));
+            Utils.handleException(e, false, false, Set.of(216), new ArrayList<>());
+        });
+        assertFalse(thrown instanceof RetriableException);
+    }
+
+    static Set<Integer> defaultRetriableErrorCodes() {
+        return Utils.DEFAULT_RETRIABLE_ERROR_CODES;
+    }
+
+    @ParameterizedTest(name = "code {0}")
+    @MethodSource("defaultRetriableErrorCodes")
+    @DisplayName("Test every default error code is still retried with no additional codes")
+    public void TestDefaultCodesStillRetried(int code) {
+        assertThrows(RetriableException.class, () -> {
+            Exception e = new RuntimeException(ServerExceptions.create(code, "server error", 500));
+            Utils.handleException(e, false, false, Collections.emptySet(), new ArrayList<>());
+        });
+        assertThrows(RetriableException.class, () -> {
+            Exception e = new RuntimeException(new ClickHouseException(code, "server error", null));
+            Utils.handleException(e, false, false, Collections.emptySet(), new ArrayList<>());
+        });
     }
 
     private static Table tableWith(String tableName, String[]... colSpecs) {

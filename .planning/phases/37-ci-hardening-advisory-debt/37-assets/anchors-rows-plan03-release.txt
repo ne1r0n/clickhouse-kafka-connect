@@ -1,0 +1,7 @@
+.github/workflows/release.yaml	compare_confluent_archives.py	1	CIH-04
+.github/workflows/release.yaml	baseline_tag.py	1	CIH-04
+.github/workflows/release.yaml	git worktree add	1	CIH-04
+.github/workflows/release.yaml	actions/upload-artifact@	1	CIH-04
+.github/workflows/release.yaml	fetch-depth: 0	1	CIH-04
+.github/workflows/release.yaml	continue-on-error	0	CIH-04
+.github/workflows/release.yaml	.planning/scripts/confluent-archive-allowlist-	1	CIH-04

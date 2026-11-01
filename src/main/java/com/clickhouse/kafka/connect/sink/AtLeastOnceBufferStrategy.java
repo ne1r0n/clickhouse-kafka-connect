@@ -83,7 +83,7 @@ final class AtLeastOnceBufferStrategy implements DeliveryStrategy {
         // Their offsets were never committed, so the new owner redelivers them.
         if (!buffer.isEmpty()) {
             int before = buffer.size();
-            buffer.removeIf(record -> partitions.contains(new TopicPartition(record.topic(), record.kafkaPartition())));
+            buffer.removeIf(record -> partitions.contains(new TopicPartition(record.originalTopic(), record.originalKafkaPartition())));
             int dropped = before - buffer.size();
             if (dropped > 0) {
                 LOGGER.info("Rebalance: removed {} buffered records for revoked partitions {}", dropped, partitions);

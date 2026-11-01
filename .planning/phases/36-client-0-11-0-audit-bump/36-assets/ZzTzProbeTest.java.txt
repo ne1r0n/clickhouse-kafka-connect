@@ -1,0 +1,13 @@
+package com.clickhouse.kafka.connect;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.time.ZoneId;
+import org.junit.jupiter.api.Test;
+
+class ZzTzProbeTest {
+    @Test
+    void jvmDefaultZoneIsTheRequestedOne() {
+        assertEquals(System.getenv("EXPECTED_ZONE"), ZoneId.systemDefault().getId());
+    }
+}

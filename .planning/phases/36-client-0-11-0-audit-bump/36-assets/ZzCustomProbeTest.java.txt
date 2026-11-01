@@ -1,0 +1,23 @@
+package com.clickhouse.kafka.connect.sink.db.helper;
+
+import com.clickhouse.client.api.insert.InsertSettings;
+import com.clickhouse.client.config.ClickHouseProxyType;
+import com.clickhouse.data.ClickHouseFormat;
+import java.io.ByteArrayInputStream;
+import org.junit.jupiter.api.Test;
+
+class ZzCustomProbeTest {
+    @Test
+    void probe() throws Exception {
+        try (StubClickHouseServer stub = new StubClickHouseServer(StubClickHouseServer.ok());
+                ClickHouseHelperClient chc = new ClickHouseHelperClient.ClickHouseClientBuilder(
+                                "127.0.0.1", stub.port(), ClickHouseProxyType.IGNORE, null, -1)
+                        .setDatabase("pin")
+                        .useClientV2(true)
+                        .setJdbcConnectionProperties("?custom_settings=max_threads%3D3&custom_myparam=7&ssl=true")
+                        .build()) {
+            chc.getClient().insert("t", new ByteArrayInputStream(new byte[] {1}), ClickHouseFormat.RowBinary, new InsertSettings()).get();
+            System.out.println("PROBE uri=" + stub.requests().get(0).rawUri());
+        }
+    }
+}

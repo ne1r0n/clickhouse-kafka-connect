@@ -86,6 +86,12 @@ class TestsWorkflowPinGuardUnitTest {
     private static final String ARCHIVE_STEP = "Build and verify Confluent archive";
     private static final String ARCHIVE_TASK = "createConfluentArchive";
     private static final String VERIFY_TASK = "verifyConfluentArchive";
+    private static final String TESTS_STEP = "Run tests";
+    private static final String STEP_CONDITION_PREFIX = "if:";
+    private static final List<String> ARCHIVE_CALL_SKIPPING_TEXT =
+            List.of(" -x ", "--exclude-task", "--dry-run", " -m ");
+    private static final List<String> ARCHIVE_CALL_SWALLOWING_TEXT =
+            List.of("|| true", "|| :", "|| exit 0");
     // Taken from the class itself, so renaming or moving it moves the pin with it (CI-20, D-09).
     private static final String ARCHIVE_CHECK_MAIN = ConfluentArchiveCheck.class.getName();
     private static final String TEST_TASK_READ = "tasks.named<Test>(\"test\")";
@@ -305,6 +311,66 @@ class TestsWorkflowPinGuardUnitTest {
         if (continuesOnError) {
             return Optional.of(
                     "Step '" + ARCHIVE_STEP + "' in " + WORKFLOW + " must not set continue-on-error");
+        }
+        return archiveStepStrictnessProblem(lines);
+    }
+
+    /**
+     * Rejects an archive step that still names the task but no longer builds and verifies the whole
+     * archive: a skipped task, a dry run, a swallowed exit status or a step condition (25-REVIEW WR-01).
+     */
+    private static Optional<String> archiveStepStrictnessProblem(List<String> lines) {
+        Pattern call = gradlewCall(ARCHIVE_TASK);
+        for (String line : stepBlock(lines, ARCHIVE_STEP).orElse(List.of())) {
+            String code = TRAILING_COMMENT.matcher(line).replaceFirst("");
+            if (code.strip().startsWith(STEP_CONDITION_PREFIX)) {
+                return Optional.of(
+                        "Step '" + ARCHIVE_STEP + "' in " + WORKFLOW + " must not carry a condition: '"
+                                + line.strip() + "'");
+            }
+            if (!call.matcher(code).matches()) {
+                continue;
+            }
+            for (String flag : ARCHIVE_CALL_SKIPPING_TEXT) {
+                if ((code + " ").contains(flag)) {
+                    return Optional.of(
+                            "Step '" + ARCHIVE_STEP + "' in " + WORKFLOW + " must build the whole archive, but the"
+                                    + " call holds '" + flag.strip() + "': '" + line.strip() + "'");
+                }
+            }
+            for (String swallow : ARCHIVE_CALL_SWALLOWING_TEXT) {
+                if (code.contains(swallow)) {
+                    return Optional.of(
+                            "Step '" + ARCHIVE_STEP + "' in " + WORKFLOW + " must fail when the build fails, but the"
+                                    + " call is followed by '" + swallow + "': '" + line.strip() + "'");
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static int stepHeaderIndex(List<String> lines, String stepName) {
+        Pattern header = stepHeader(stepName);
+        for (int i = 0; i < lines.size(); i++) {
+            if (header.matcher(lines.get(i)).matches()) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    static Optional<String> archiveBeforeTestsProblem(List<String> lines) {
+        int archive = stepHeaderIndex(lines, ARCHIVE_STEP);
+        int tests = stepHeaderIndex(lines, TESTS_STEP);
+        if (archive < 0 || tests < 0) {
+            return Optional.of(
+                    "Both the step '" + ARCHIVE_STEP + "' and the step '" + TESTS_STEP + "' must exist in "
+                            + WORKFLOW);
+        }
+        if (archive > tests) {
+            return Optional.of(
+                    "Step '" + ARCHIVE_STEP + "' must come before step '" + TESTS_STEP + "' in " + WORKFLOW
+                            + " so a broken archive fails before the long test run");
         }
         return Optional.empty();
     }
@@ -1266,6 +1332,88 @@ class TestsWorkflowPinGuardUnitTest {
                                 + "\n\n"
                                 + VERIFY_ARCHIVE_BLOCK),
                 archiveTasksReject(VERIFY_ARCHIVE_BLOCK));
+    }
+
+    private static final String TESTS_STEP_HEADER = "      - name: " + TESTS_STEP;
+    private static final List<String> TESTS_STEP_LINES =
+            List.of("", TESTS_STEP_HEADER, "        run: ./gradlew test");
+
+    @Test
+    @DisplayName("CI-20: the archive step runs before the tests in tests.yaml")
+    void archiveStepRunsBeforeTheTests() throws IOException {
+        assertNoProblem(archiveBeforeTestsProblem(nonCommentLines(WORKFLOW)));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: the stricter archive step rule still accepts every real shape, a comment that names"
+                    + " -x and a condition on the next step (CI-20, 25-REVIEW WR-01)")
+    void strictArchiveRuleAcceptsTheRealShapes() {
+        Function<List<String>, Optional<String>> rule =
+                TestsWorkflowPinGuardUnitTest::archiveStepProblem;
+        assertAll(
+                accepts(rule, archiveStep(ARCHIVE_CALL)),
+                accepts(rule, archiveStep("        run: ./gradlew createConfluentArchive # never -x test")),
+                accepts(rule, archiveStep("        run: ./gradlew --console=plain createConfluentArchive")),
+                accepts(
+                        rule,
+                        plus(
+                                archiveStep(ARCHIVE_CALL),
+                                "",
+                                TESTS_STEP_HEADER,
+                                "        if: always()",
+                                "        run: ./gradlew test")));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: the stricter archive step rule rejects a call that skips a task, excludes a task or"
+                    + " is a dry run (CI-20, 25-REVIEW WR-01)")
+    void strictArchiveRuleRejectsACallThatDoesNotBuildTheArchive() {
+        Function<List<String>, Optional<String>> rule =
+                TestsWorkflowPinGuardUnitTest::archiveStepProblem;
+        assertAll(
+                rejects(rule, archiveStep("        run: ./gradlew createConfluentArchive -x verifyConfluentArchive")),
+                rejects(rule, archiveStep("        run: ./gradlew -x verifyConfluentArchive createConfluentArchive")),
+                rejects(rule, archiveStep("        run: ./gradlew createConfluentArchive --exclude-task test")),
+                rejects(rule, archiveStep("        run: ./gradlew createConfluentArchive --dry-run")),
+                rejects(rule, archiveStep("        run: ./gradlew createConfluentArchive -m")),
+                rejects(rule, archiveStep("        run: |", "          ./gradlew createConfluentArchive -x test")));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: the stricter archive step rule rejects a call followed by a swallowed exit status and a"
+                    + " step condition (CI-20, 25-REVIEW WR-01)")
+    void strictArchiveRuleRejectsASwallowedStatusAndAStepCondition() {
+        Function<List<String>, Optional<String>> rule =
+                TestsWorkflowPinGuardUnitTest::archiveStepProblem;
+        assertAll(
+                rejects(rule, archiveStep("        run: ./gradlew createConfluentArchive || true")),
+                rejects(rule, archiveStep("        run: ./gradlew createConfluentArchive || :")),
+                rejects(rule, archiveStep("        run: ./gradlew createConfluentArchive || exit 0")),
+                rejects(rule, archiveStep(ARCHIVE_CALL, "        if: github.event_name == 'push'")),
+                rejects(rule, archiveStep("        if: always()", ARCHIVE_CALL)));
+    }
+
+    @Test
+    @DisplayName(
+            "fixture: the archive-before-tests rule accepts the real order and rejects tests first and a"
+                    + " missing step (CI-20)")
+    void archiveBeforeTestsRuleChecksTheOrder() {
+        Function<List<String>, Optional<String>> rule =
+                TestsWorkflowPinGuardUnitTest::archiveBeforeTestsProblem;
+        assertAll(
+                accepts(rule, plus(archiveStep(ARCHIVE_CALL), TESTS_STEP_LINES.toArray(String[]::new))),
+                rejects(
+                        rule,
+                        plus(
+                                plus(List.of("    steps:"), TESTS_STEP_LINES.toArray(String[]::new)),
+                                "",
+                                ARCHIVE_STEP_HEADER,
+                                ARCHIVE_CALL)),
+                rejects(rule, archiveStep(ARCHIVE_CALL)),
+                rejects(rule, "    steps:", TESTS_STEP_HEADER, "        run: ./gradlew test"));
     }
 
     private static final String ACTIONS_ENTRY = "  - package-ecosystem: \"github-actions\"";

@@ -8,7 +8,8 @@
 - ✅ **v1.7.0_gg2-hardening Follow-up Hardening & CI Hygiene** — Phases 16-20 (shipped 2026-10-14)
 - ✅ **v1.7.0_gg3-hardening Record-Data Exposure & Review Debt** — Phases 21-24 (shipped 2026-10-20)
 - ✅ **v1.7.0_gg4-hardening Dependency Absorption, Discovery Defects & Review Debt** — Phases 25-29 (shipped 2026-10-23)
-- 🚧 **v1.7.0_gg5-ci CI & Release Workflow Modernization** — Phases 30-32 (in progress)
+- ✅ **v1.7.0_gg5-ci CI & Release Workflow Modernization** — Phases 30-32 (shipped 2026-10-27)
+- 🚧 **v1.7.0_gg6-maintenance Dependency Absorption, Upstream Tail & Advisory Debt** — Phases 33-38 (in progress)
 
 ## Phases
 
@@ -105,200 +106,342 @@ Phase artifacts: `milestones/v1.7.0_gg4-hardening-phases/` · Research: `milesto
 
 </details>
 
-### 🚧 v1.7.0_gg5-ci CI & Release Workflow Modernization (In Progress)
+<details>
+<summary>✅ v1.7.0_gg5-ci CI & Release Workflow Modernization (Phases 30-32) — SHIPPED 2026-10-27</summary>
 
-**Milestone Goal:** Bring the fork's workflows current and get a trustworthy integration-test signal, without touching connector code or ClickHouse client `0.10.0`. The release-path workflows build with the project's Gradle wrapper and run only SHA-pinned actions, a dry run proves them, and a fork-owned nightly runs `integrationTest` on ClickHouse `latest` × client V2 in local Docker while upstream's `integrationTests.yaml` stays byte-identical and disabled. Publish `v1.7.0_gg5` with CI green on the published SHA.
+- [x] Phase 30: Release Workflows & Pin Guard (3/3 plans) — completed 2026-10-26
+- [x] Phase 31: Fork-Owned Nightly Integration Tests (6/6 plans) — completed 2026-10-26
+- [x] Phase 32: Release & Publication (7/7 plans) — completed 2026-10-27
+
+Full phase details: [`milestones/v1.7.0_gg5-ci-ROADMAP.md`](milestones/v1.7.0_gg5-ci-ROADMAP.md)
+Requirements as shipped: [`milestones/v1.7.0_gg5-ci-REQUIREMENTS.md`](milestones/v1.7.0_gg5-ci-REQUIREMENTS.md)
+Milestone audit: [`milestones/v1.7.0_gg5-ci-MILESTONE-AUDIT.md`](milestones/v1.7.0_gg5-ci-MILESTONE-AUDIT.md)
+Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
+
+</details>
+
+### 🚧 v1.7.0_gg6-maintenance Dependency Absorption, Upstream Tail & Advisory Debt (In Progress)
+
+**Milestone Goal:** Absorb the open Dependabot PRs, including the ClickHouse client jump `0.9.6` → `0.11.0`, and upstream's untagged tail. Fix the buffered offset commit under topic-renaming SMTs (upstream #777), which was found in production use. Clear the carried review advisories and CI loose ends. Publish `v1.7.0_gg6` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker stopped. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
-- [x] **Phase 30: Release Workflows & Pin Guard** - A guard fails on any unpinned action in a fork-owned workflow. `release.yaml`, `pre-release.yaml` and `increment-version.yml` pass it, both release paths build with the Gradle wrapper through `setup-gradle` and publish with `gh release create`, and a dry run proves both without creating a release or a tag (completed 2026-10-26)
-- [x] **Phase 31: Fork-Owned Nightly Integration Tests** - A measured local `integrationTest` run comes first. A new SHA-pinned nightly then runs `integrationTest` on `latest` × V2 in the runner's Docker with no cloud job, and its first manual run follows publication in Phase 32 (NIT-03). Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard (completed 2026-10-26)
-- [ ] **Phase 32: Release & Publication** - `v1.7.0_gg5` is published with FORK-DELTA, CHANGELOG, `VERSION` and a short reviewed rollout note, two green suite runs and one green CI run on the published SHA before the tags, then the nightly's first manual run (NIT-03)
+- [x] **Phase 33: Dependency Sweep & Protobuf Decision** - A rollback tag comes first. Then lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2 and `setup-java` 6.1.0 are absorbed from their PR heads on the scratch branch, one commit and one gate each. PR #10 (protobuf-java 4.x) is declined with a Dependabot `ignore` and a FORK-DELTA record (completed 2026-10-28)
+- [x] **Phase 34: Upstream Tail Merge** - Upstream's untagged tail is merged as one mechanical commit while the client is still 0.9.6. `ProxySinkTask` keeps both constructors without an ambiguous `null`, every `handleException` caller uses the 5-argument form, and `additionalRetriableErrorCodes` is pinned with a no-op default (completed 2026-10-29)
+- [x] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free and live, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump (completed 2026-10-29)
+- [x] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6 (completed 2026-10-31)
+- [x] **Phase 37: CI Hardening & Advisory Debt** - `increment-version.yml` stops writing `vnull`, through a script with a test. The release workflows compare the archive against a `VERSION`-keyed allow-list. Every Phase 25–31 review advisory is fixed or dispositioned, and the real `v1.7.0_gg5` release is on the record (completed 2026-10-31)
+- [ ] **Phase 38: Release & Publication** - `v1.7.0_gg6` is published with CHANGELOG, FORK-DELTA, an independently reviewed rollout note and the gg6 allow-list compare. The suite is green twice on one pinned `latest` build, and the published SHA has one green CI run before the tags
 
 ## Phase Details
 
-### Phase 30: Release Workflows & Pin Guard
+### Phase 33: Dependency Sweep & Protobuf Decision
 
-**Goal**: The fork's three release-path workflows run current, SHA-pinned actions only. `pre-release.yaml` and `release.yaml` build the Confluent archive with the project's own Gradle wrapper through `setup-gradle`, so the `verifyConfluentArchive` finalizer runs on the release path too, and both create the GitHub release with `gh release create`, attaching that archive. A dry run proves both release paths build and attach the archive without creating a release or a tag. A Docker-free guard fails whenever a fork-owned workflow uses an unpinned action, so the Phase 31 nightly is written under it. No connector code changes.
+**Goal**: Every later phase builds on a tree that already holds the four safe Dependabot bumps, each in its own commit, so a later red is attributable to one change. The lz4-java security release (GHSA-48mj-8f7c-7qfm) reaches the shipped jar first. PR #10 is settled by a decision rather than a merge: protobuf-java stays on 3.x, Dependabot stops proposing 4.x for the `gradle` block, and FORK-DELTA records why. Nothing is merged on `origin`, and a rollback tag marks the start. No connector behaviour changes.
 
-**Depends on**: Nothing in this milestone. Phase 29 shipped `v1.7.0_gg4` (`21c51598`). `release.yaml`, `pre-release.yaml` and `increment-version.yml` are byte-identical to upstream at both `v1.7.0` and `a6f1df83` (measured 2026-10-24). `pre-release.yaml` still runs `gradle/gradle-build-action@v2` with `gradle-version: '7.4.2'` (DEPS-F4). `release.yaml` already uses `gradle/actions/setup-gradle@v6`, by tag. Both release files use `actions/create-release@v1` and `actions/upload-release-asset@v1`, and all three use `@v3`-era actions.
+**Depends on**: Nothing in this milestone. Phase 32 shipped `v1.7.0_gg5` (`3a3a15a9`). The open Dependabot PRs on `origin` are #10, #16, #17, #18, #19 and #20 (checked 2026-10-28). Local `sync/v1.7.0` differs from `origin/custom_build` only by the gg4 and gg5 release merge commits.
 
-**Requirements**: CIG-01, REL-01, REL-02, REL-03, REL-04, REL-05
+**Requirements**: SWP-01, SWP-02, SWP-03, SWP-04
 
 **Success Criteria** (what must be TRUE):
 
-  1. *[Docker-free]* A guard test reads every file under `.github/workflows/` except the upstream-identical `integrationTests.yaml`. It fails, naming the file and the line, on any `uses:` that is not a full 40-hex commit SHA with a version comment: a tag, a branch, a short SHA, or a missing comment. It discovers the workflow files from the directory, so a new workflow is covered without editing the guard. Each unpinned form was seen red on a fixture, and the guard was seen red on the unchanged release workflows before they were pinned (CIG-01).
-  2. *[Docker-free]* `release.yaml`, `pre-release.yaml` and `increment-version.yml` pin every action by full SHA with a `# vX.Y.Z` comment, and they pass the guard (REL-02). Neither release workflow contains `gradle-build-action`, a `gradle-version:` input or `7.4.2`. Both set up Gradle with `gradle/actions/setup-gradle` and build with `./gradlew createConfluentArchive` (REL-01, REL-03).
-  3. *[Docker-free]* No workflow uses `actions/create-release` or `actions/upload-release-asset`. Both release workflows create the release with `gh release create` and attach `build/confluent/clickhouse-kafka-connect-<VERSION>.zip`. `pre-release.yaml` marks the release a prerelease, and `release.yaml` does not (REL-04).
-  4. *[CI, operator]* The user dispatches `pre-release.yaml` and `release.yaml` in dry-run mode on the pushed scratch branch. Each run is green: it builds the archive with the wrapper's Gradle, passes `verifyConfluentArchive`, and exercises the attach step on the archive it built without publishing. Afterwards origin has no new published release and no new tag, read from the REST API and `git ls-remote --tags` before and after the runs (REL-05).
+  1. *[record]* Before the first change, `git ls-remote origin custom_build` was re-read and a local `pre-v1.7.0_gg6` rollback tag exists. Each absorbed bump is a fetched Dependabot PR head, merged on the scratch branch with its head SHA recorded. At the phase gate, a re-read shows that no PR was merged on `origin` during the phase, or that any such merge was absorbed before gating (SWP-04).
+  2. *[live]* lz4-java 1.12.1 (PR #19) lands first, in its own commit. `dependencyInsight` shows `at.yawk.lz4:lz4-java:1.12.1` on `runtimeClasspath`. The archive from `createConfluentArchive`, checked by its `verifyConfluentArchive` finalizer, carries 1.12.1. The full suite on `latest` × V2 is green with the 18 named skips (SWP-01).
+  3. *[Docker-free, live]* okhttp 5.5.1 (PR #18), Gradle wrapper 9.8.2 (PR #20) and `actions/setup-java` 6.1.0 (PR #16) each land in their own commit, with their own gate (SWP-02):
+     - okhttp: `compileIntegrationTestJava` passes.
+     - Wrapper: the commit changes only `gradle/wrapper/gradle-wrapper.properties`, `./gradlew --version` reads 9.8.2, and `gradlew.bat` keeps its CRLF line endings.
+     - setup-java: every workflow that uses it pins a full 40-hex SHA with a `# v6.1.0` comment, and the pin-guard tests pass under `testUnit`.
+     Any anchor row that a bump moves changes in the same commit, and the full suite is green on the sweep tip.
+  4. *[Docker-free, record]* PR #10 is not merged. `dependabot.yml` ignores protobuf-java major versions 4 and above, in the `gradle` block only, and the pin guard still passes. `docs/FORK-DELTA.md` records the decision with its measured cause and its re-open trigger. The cause is that `ProtobufIngestTest` fails with `VerifyError` against the Confluent 7.9.1 test stack (PR #10 run 39501799049). The trigger is FUT-03, a move to a Confluent 8.x test stack. PR #10 is either closed by the user, confirmed in their own words, or recorded as closing once the `ignore` reaches `custom_build` at publication (SWP-03).
 
 **Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
-- [x] 30-01-PLAN.md — Wave 1: the CIG-01 guard seen red on the unchanged files, then the three workflows pinned (setup-gradle, `gh release create`, `dry_run`), the Dependabot and `UPSTREAM_WORKFLOWS` edit and 29 anchor rows in one green commit; cumulative anchors gate
+- [x] 33-01-PLAN.md — Wave 1: origin re-read and the local `pre-v1.7.0_gg6` tag first, a baseline full suite on the untouched tip, then the tracer: PR #19 (lz4-java 1.12.1) fetched by ref and merged as its own commit, proven by `dependencyInsight`, in the archive and by the full suite; cumulative anchors gate (SWP-01, SWP-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [x] 30-02-PLAN.md — Wave 2: the D-08 `vnull` defect measured and recorded; FORK-DELTA's workflow paragraph and Dependabot row corrected
+- [x] 33-02-PLAN.md — Wave 2: PR #18 (okhttp 5.5.1), PR #20 (Gradle 9.8.2, `gradlew.bat` CRLF intact) and PR #16 (setup-java 6.1.0), each fetched, merged as its own commit and gated, the full suite on the sweep tip, then the FORK-DELTA rows the sweep made stale (SWP-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [x] 30-03-PLAN.md — Wave 3 (operator): readiness and before-snapshots, one blocking-human decision to push `sync/v1.7.0`, the user's two dry-run dispatches, REST proof of no release and no tag
+- [x] 33-03-PLAN.md — Wave 3: the protobuf guard seen red, the `gradle`-entry `ignore` making it green, the FORK-DELTA protobuf row and open item with the `VerifyError` cause and the FUT-03 trigger, PR #10 recorded as closing at publication; the phase gate (SWP-03, SWP-04)
 
-**Research flag**: Settle these before planning:
-- **The dry-run mechanism.** Either a dispatch input that stops before the publish step, or `gh release create --draft` with the asset, deleted after the run. A draft release should create no tag until it is published; confirm that before relying on it.
-- **Dispatch on a scratch branch.** Both release files already exist on `custom_build` with `workflow_dispatch`, so they can be dispatched on the scratch branch, and the run uses that branch's file. Confirm that the dispatch reads a new input from the selected branch's file, not from the default branch's.
-- **Action versions.** Reuse `tests.yaml`'s pins for checkout (v7.0.1), setup-java (v6.0.1, with `temurin` in place of the deprecated `adopt`) and setup-gradle (v6.4.0, by its peeled commit). Pick a current `setup-node` major and a supported Node version: the file asks for Node 16.
-- **Who creates the tag.** `release.yaml`'s last step tags `VERSION` and pushes the tag itself, and `gh release create` also creates the tag when it is absent. Decide which one creates it, under the standing rule that tags reach origin only after the published SHA's own CI run is green. Decide `permissions:` and `persist-credentials` for each job to match.
+**Research flag**: Standard. Each bump is one line with green PR CI, and the protobuf decision is already made. At plan time, confirm whether Dependabot closes PR #10 by itself once the `ignore` is on the default branch, or whether the user has to close it.
 
 **Note**:
-- Before the first workflow edit, re-read `git ls-remote origin custom_build`. If a Dependabot merge has landed there, absorb it first with a DEPS-01-shaped merge.
-- Order: the guard first, seen red, then the pins and the `setup-gradle` and `gh release` changes. The guard goes green in the same commit as the pins.
-- Dispatch is an operator action. There is no local `gh` and no token (D-11), so the user starts each run from GitHub's `Run workflow` control and reports the result directly. A relayed answer is not accepted.
-- Pushing the scratch branch publishes the local `.planning` tail one way, so it needs the user's direct approval (Phase 17 D-11 precedent). Push it at a SHA that no other pushed branch holds. The push also runs `tests.yaml` once.
-- `dependabot.yml`'s `exclude-paths` lists all four upstream workflows, and `TestsWorkflowPinGuardUnitTest` pins that list through `UPSTREAM_WORKFLOWS`. Once the three release-path files are pinned, their pins go stale unless Dependabot covers them. The fix is to drop them from the list and keep `integrationTests.yaml`. That changes an existing pinned assertion, so it needs the user's sign-off.
-- `increment-version.yml` runs `semver.inc` on `VERSION`. By semver's grammar, a `vX.Y.Z_ggN` value is not a version, so the step would write `vnull`. This was read from the grammar, not run. REL-02 only pins the file; decide at discuss time whether to record the defect or fix it.
-- Both release files are named `Release`, so their runs look the same in the Actions list.
-- Any new anchor row for a workflow edit (for example `gradle-version` with count 0 in `pre-release.yaml`) lands in the same commit as the edit.
-- `.github/actions/use-clickhouse-java` is an upstream composite action that no fork workflow calls. It is not a workflow, so CIG-01 does not cover it. Record whether the guard reads it.
+- At the start of the phase, ask the user not to merge Dependabot PRs on `origin` until publication. A merge there diverges the scratch branch again, as it did before gg4 and gg5.
+- Decide at plan time what `pre-v1.7.0_gg6` marks. Following `pre-v1.7.0_gg5`, it should be the `origin/custom_build` tip that publication rolls back to. Phase 38 pushes it only after the published SHA's run is green.
+- PR #17 (client 0.11.0) is not absorbed here. It lands in Phase 36, after its pins.
+- Dependabot rebases its PR heads. Fetch each head by `refs/pull/<N>/head` right before merging it, and record the SHA.
+- This phase pushes nothing.
 
-Phase gate: cache-busted `testUnit`, the anchors invariant, and an empty `src/main` diff.
+Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2 with `SELECT version()` recorded, and the anchors invariant.
 
-### Phase 31: Fork-Owned Nightly Integration Tests
+### Phase 34: Upstream Tail Merge
 
-**Goal**: The fork has a nightly integration-test signal it can trust. A fork-owned workflow runs the `integrationTest` task on ClickHouse `latest` × client V2 in the runner's own Docker, with no cloud job and no cloud secrets. Its first manual run happens after publication, in Phase 32 (NIT-03, moved by D-02). Upstream's `integrationTests.yaml` stays byte-identical to upstream and disabled, and a guard pins its bytes. No connector code changes.
+**Goal**: The working tree holds upstream's untagged tail: `9bed6f79`, or whatever `upstream/main` reads immediately before the merge. It is merged in the fork's sync shape while the client is still 0.9.6, so every compile break is attributable to the tail. `additionalRetriableErrorCodes` is a supported, pinned setting, and leaving it unset changes nothing. In `ProxySinkTask`, the fork's JMX `connectorName` plumbing and upstream's `DBWriter` test seam coexist without an ambiguous constructor, and new anchor rows protect both. The BUF fix in Phase 35 edits `ChunkFlusher` again, and it starts from this tree.
 
-**Depends on**: Phase 30 (the CIG-01 guard, which the new workflow must pass unchanged, and the action pins it reuses)
+**Depends on**: Phase 33 (the sweep tip)
 
-**Requirements**: NIT-01, NIT-02
+**Requirements**: TAL-01, TAL-02, TAL-03, TAL-04, TAL-05
 
 **Success Criteria** (what must be TRUE):
 
-  1. *[live, record]* Before the workflow is written, `integrationTest` has been run locally on `latest` × V2 with Docker (colima, profile `vz`). The record states `SELECT version()` and lists every test class that ran or skipped. It gives each failure a cause: environment, test harness, cloud-only, or connector defect. It also says why upstream's standalone `latest` × V2 job fails (run 38881153720).
-  2. *[Docker-free]* The new workflow runs `integrationTest` with ClickHouse `latest` and client V2 on `ubuntu-24.04`. It has a timeout, a top-level `permissions: contents: read`, `persist-credentials: false`, and it uploads the test reports on failure. It passes the CIG-01 guard with no guard edit. No step references a cloud secret or variable, and no job targets ClickHouse Cloud. Its triggers are `workflow_dispatch` and a schedule that cannot fire before the NIT-03 run is recorded (NIT-01).
-  3. *[Docker-free, CI]* A Docker-free guard fails when `integrationTests.yaml` differs by a single byte from upstream's copy, which is identical at `v1.7.0` and `a6f1df83`, and it was seen red on a one-byte edit. The Actions API reports that workflow as disabled, with no scheduled run since 2026-10-16 (NIT-02).
-  4. *[record]* The schedule is gated by the repository variable `NIGHTLY_ENABLED`, which stays unset, so no scheduled run executes a job before the dispatch run. The dispatch run itself moved to Phase 32 with NIT-03 on 2026-10-26 (D-02), because GitHub dispatches a workflow only from the default branch. Every failure of the measured run is named in the skip list with its cause, or the run was green.
+  1. *[record]* Immediately before the merge, `git ls-remote upstream main` and `git merge-tree` were re-run, and their output is recorded. The merge is one mechanical commit with no authored lines. The unedited `verify-merge-invariants.sh` passes on it, with `UPSTREAM_REF` set to the full upstream SHA and `PRE_TAG=pre-v1.7.0-tail-2`. `.planning/MERGE-CHECKLIST-v1.7.0-tail-2.md` lists every conflicted path and its resolution. The measured set is `CHANGELOG.md`, `Utils.java`, `ClickHouseSinkTaskMappingTest.java`, `ClickHouseWriterTest.java` and `ProxySinkTask.java` (TAL-01).
+  2. *[Docker-free]* After the merge, separate commits leave `ProxySinkTask` with two constructors: the fork's `connectorName` constructor and upstream's `DBWriter` test-seam constructor. Both delegate to one 4-argument package-private constructor, and no call site passes an ambiguous `null` (TAL-02). Every fork caller and test of `Utils.handleException` uses the 5-argument form. `compileJava`, `compileTestJava` and `compileIntegrationTestJava` pass after upstream's `CreateTableStatement` refactor (TAL-03).
+  3. *[Docker-free]* Tests pin `additionalRetriableErrorCodes` (TAL-04):
+     - Parsing trims values, removes duplicates, and rejects non-integers and values <= 0. This holds on both the `ConfigDef` validator and the constructor path.
+     - The default retriable set holds exactly 15 codes, including 159.
+     - With the key unset, classification is the same as before the merge.
+     - A `DataException` is never reclassified as retriable.
+  4. *[Docker-free, live]* `fork-anchors.txt` has new rows for the `ProxySinkTask` statistics and `connectorName` plumbing (ORCH-02) and for the `DEFAULT_RETRIABLE_ERROR_CODES` lookup. The anchors gate passes on the phase tip (TAL-05). Two full `--rerun` suite runs on that tip are green on `latest` × V2 with the 18 named skips. That tip is the baseline for Phases 35–37.
 
-**Plans**: 6/6 plans complete (31-01 tasks 1-3 done, E-06 disposition `fix-harness`; gap plan 31-06 fixes the harness and re-measures before 31-02)
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
-- [x] 31-01-PLAN.md — Wave 1 (tasks 1-3 done, E-06: `fix-harness`): tracer slice (latest pulled, `SELECT version()`, the cloud class skips), the cold local `integrationTest` run on `latest` × V2 and the criterion-1 record with the derived timeouts, then one blocking-human disposition of every failure (D-04, D-05, D-06, D-09)
+- [x] 34-01-PLAN.md — Wave 1: upstream and origin re-read, the conflict set re-measured and a baseline suite on the untouched tip, then the tracer: the `pre-v1.7.0-tail-2` tag, one mechanical merge M3 (STOP on a release tag past v1.7.0), the conflicted-paths record and `MERGE-CHECKLIST-v1.7.0-tail-2.md` in the next commit, the unedited tail gate passing; the post-merge break inventory (TAL-01, TAL-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [x] 31-06-PLAN.md — Wave 2 (gap closure): the harness's Connect worker on Java 17 (Confluent's CP 7.9.6 Connect image plus the pinned datagen plugin), proven broker-free and by one connector test, the whole `integrationTest` re-measured on `latest` × V2, then the user's disposition E-06b (D-05, D-06, D-08, D-09)
+- [x] 34-02-PLAN.md — Wave 2: separate repair commits: `ProxySinkTask` with the `connectorName` constructor and the `DBWriter` seam on one four-argument core plus 8 anchor rows, the stale `handleException` caller on the five-argument form plus the `DEFAULT_RETRIABLE_ERROR_CODES` rows, all four compile tasks, the BLD-16 re-bless from the worker jars; the `ProxySinkTaskConstructorUnitTest` pins with a mutation run (TAL-02, TAL-03, TAL-05)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [x] 31-02-PLAN.md — Wave 3: the name-only skip list in the build from the user's disposition, its Docker-free guard and the green live re-run on `latest` × V2; or "not needed" recorded (D-07, D-08)
+- [x] 34-03-PLAN.md — Wave 3: the `AdditionalRetriableErrorCodesPinUnitTest` pins (parse matrix on both paths, 15-code literal, unset-key sweep, DataException) with a mutation run, the Phase 36/38 handoff record, and the phase gate: origin and upstream re-read, cache-busted `testUnit`, two `--rerun` full suites with the 18 named skips, anchors mirror, tail and cumulative gates (TAL-04, TAL-05, TAL-01)
 
-**Wave 4** *(blocked on Wave 3 completion)*
-- [x] 31-03-PLAN.md — Wave 4: the NIT-02 byte guard seen red on a one-byte edit of `integrationTests.yaml`, and its disabled state read from the Actions API
-
-**Wave 5** *(blocked on Wave 4 completion)*
-- [x] 31-04-PLAN.md — Wave 5: the gated, SHA-pinned nightly with its failed-test summary, a 58-case Docker-free shape guard, the script's tests and five anchor rows (NIT-01, D-01, D-05, D-10)
-
-**Wave 6** *(blocked on Wave 5 completion)*
-- [x] 31-05-PLAN.md — Wave 6: the phase gate on the final tree and both workflows' GitHub state, then the user's NIT-03 decision applied to ROADMAP and REQUIREMENTS (D-02)
-
-**Research flag**: Settle these before planning:
-- **Dispatching a new workflow.** GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. The new file reaches `custom_build` only at publication. Confirm that behaviour first, then settle how the NIT-03 dispatch runs before any schedule can fire. The candidates are a scheduled job gated on a repository variable that the user sets after the dispatch, or an early CI-only `--no-ff` publication of the workflow (the Phase 16 precedent). Phase 32 edits no `.github/` file, so anything that turns the schedule on after Phase 32 must be an operator setting, not a file edit. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
-- **What `integrationTest` needs on a runner.** List the images it pulls (Confluent platform, ClickHouse), whether it needs the built connector archive, and its run time against `tests.yaml`'s 45-minute budget. Upstream's standalone job filters to `ClickHouseSinkConnectorIntegrationTest`, and it runs `ExactlyOnceTest` only in the cloud and cluster jobs. Decide whether the nightly runs the whole task or upstream's standalone filter, and record why.
-- **Where the skip list lives.** Either the workflow's Gradle test filters or a fork-owned exclude in the build. Also decide how each entry is named and given its reason.
+**Research flag**: Standard. The fork has a rehearsed recipe: the gg1, gg4 and earlier tail merges, the gate script and the checklist. The conflict set was measured with `git merge-tree` against both `sync/v1.7.0` and `origin/custom_build`. If `upstream/main` has moved past `9bed6f79`, re-measure the conflict set before planning. If upstream has tagged a release past `v1.7.0`, stop, because that makes this a tagged sync (FUT-01) and the user decides the scope.
 
 **Note**:
-- Measurement precedes the workflow (criterion 1). A failure whose fix needs a `src/main` change stops for a user decision, because the milestone excludes connector source changes. A test-harness fix under `src/integrationTest` or `src/testFixtures` is allowed with its reason recorded. An existing assertion is never weakened.
-- `ClickHouseCloudTest` skips itself without cloud properties. The record confirms it skips rather than fails.
-- The nightly reuses Phase 30's action pins. It is not in `dependabot.yml`'s `exclude-paths`, so Dependabot keeps its pins current.
-- `custom_build` is the default branch, so once the nightly is merged there its schedule is live unless something gates it. The gate chosen in research must already hold at the Phase 32 merge.
-- The dispatch run is an operator action in Phase 32 (NIT-03): the user starts it from GitHub's `Run workflow` control and reports the result directly.
+- `ClickHouseSinkConfig` is a high-risk file (AGENTS.md). The mechanical merge takes the fork side of `ProxySinkTask`, and the dual-constructor shape is a separate re-expression commit. Never hand-edit anchors inside the merge commit.
+- Two breaks merge without a conflict marker. `UtilsNullMessageClassificationUnitTest` auto-merges with a stale 4-argument call, and about 20 test files must follow the `CreateTableStatement` refactor. Only the compile gates catch these, so those gates matter more than conflict markers.
+- Record this for Phase 38: Connect redelivers a code listed in `additionalRetriableErrorCodes`, which bypasses `errors.tolerance` and the DLQ and has no retry budget (FUT-05).
+- The tail adds five more 3-argument `ServerException` sites to `UtilsTest`. They compile on 0.9.6, and Phase 36 fixes all eight for 0.11.0 at once.
+- This phase pushes nothing.
 
-Phase gate: cache-busted `testUnit`, one local `integrationTest` run on `latest` × V2, the anchors invariant, and an empty `src/main` diff.
+Phase gate: cache-busted `testUnit`, two `--rerun` full suites on `latest` × V2, and the anchors invariant.
 
-### Phase 32: Release & Publication
+### Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs
 
-**Goal**: `v1.7.0_gg5` is published on `custom_build`. Operators get a short, independently reviewed rollout note that says what changed in the workflows and that no connector code changed. FORK-DELTA records the newly fork-owned workflows and the nightly. The suite is green twice on `latest` × V2, and the published SHA has exactly one green `tests.yaml` run before the tags are pushed.
+**Goal**: With `bufferCount > 0` and a topic-renaming SMT such as `RegexRouter`, the connector commits consumer offsets for the partitions it was assigned. A restart or rebalance then resumes from the last flushed offset instead of rereading from `auto.offset.reset`. Revoked partitions drop their buffered records, and the exactly-once buffer groups records by their original partition. The non-buffered path and the non-renamed case behave exactly as before. `Processing.doLogic` is checked for the same defect, and the outcome is recorded. This fixes upstream #777 on the fork, since upstream PR #786 was closed unmerged.
 
-**Depends on**: Phases 30 and 31 (it documents and publishes their outcome)
+The fix lands on client 0.9.6, before the client bump, so it can be released independently of that bump. The CLT-09 fallback reverts only the one catalog commit, which leaves this fix intact.
 
-**Requirements**: CIG-02, CIG-03, NIT-03
+**Depends on**: Phase 34 (the tail edits `ChunkFlusher`, so the fix lands on the merged shape)
+
+**Requirements**: BUF-01, BUF-02, BUF-03, BUF-04, BUF-05, BUF-06, BUF-07
 
 **Success Criteria** (what must be TRUE):
 
-  1. *[Docker-free]* After `clean`, `VERSION` reads `v1.7.0_gg5` and the generated version agrees. The `VERSION` anchor row changes in the same commit. `CHANGELOG.md` has a complete `1.7.0_gg5` section. `docs/FORK-DELTA.md` no longer says the release workflows are left as upstream ships them (DEPS-F4). It has rows for the pinned release-path workflows and `gh release`, the nightly, the CIG-01 and NIT-02 guards, and any `dependabot.yml` change, and its raw numbers are refreshed once (CIG-02).
-  2. *[record]* `docs/ROLLOUT-v1.7.0_gg5.md` is short. Each claim in it is measured, and it states:
-     - that `git diff v1.7.0_gg4 -- src/main` is empty;
-     - that the release archive is built by the wrapper's Gradle and verified on the release path;
-     - that the MBean `version=` segment and the client name read `v1.7.0_gg5`;
-     - how the nightly is turned on and off;
-     - the rollback.
-     Before the publication gate, an orchestrator-spawned, fresh-context `gsd-code-reviewer` reviewed the note with `CHANGELOG.md` and `docs/FORK-DELTA.md`. Rounds repeated until one found nothing, at most three, and every finding's disposition is recorded (CIG-02).
-  3. *[live, CI]* On the release tip, two full `--rerun` suite runs are green on `latest` × V2 with the same 18 named skips. `testUnit` is green with Docker stopped, and the anchors gate passes. A re-fetch shows `origin/custom_build` unchanged, or any change there was absorbed before gating. After the user's own direct approval:
-     - `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip;
-     - the published SHA has exactly one `tests.yaml` run, and it is green;
-     - the tags `v1.7.0_gg5` and `pre-v1.7.0_gg5` reach origin only after that run;
-     - the scratch branch is deleted from origin (CIG-03).
-  4. *[CI]* After publication, the Actions API still reports `integrationTests.yaml` as disabled, and the nightly is in the state Phase 31 recorded. No workflow run created a release or a tag that the plan did not intend.
-  5. *[CI, operator]* After the `--no-ff` merge to `custom_build`, the user dispatches the nightly from GitHub's `Run workflow` control and reports the result directly. The run finishes green, or every failing test is listed by name in the skip list with its cause from Phase 31's measurement; the list names tests, not patterns, and deletes or weakens no existing test. `NIGHTLY_ENABLED` is set only after that run is recorded, and no scheduled run with a conclusion other than `skipped` precedes it. A fix the run needs is a Phase 31 gap, because this phase edits no build, `gradle/` or `.github/` file (NIT-03).
+  1. *[Docker-free]* Unit tests build a `SinkRecord` through `newRecord` with a different topic, and they fail on the unchanged code. After the fix, they pin four behaviours (BUF-01, BUF-02, BUF-04):
+     - `preCommit` returns offsets keyed by `originalTopic()` and `originalKafkaPartition()`, at `originalKafkaOffset() + 1`.
+     - `AtLeastOnceBufferStrategy.close()` drops the buffered records of a revoked partition, matched by original topic and partition.
+     - `ExactlyOnceBufferStrategy.put` keys `perPartitionBuffer` by original topic and partition.
+     - A record whose topic was not renamed behaves exactly as before.
+     `ConnectApiReferencesUnitTest` passes with the three new `SinkRecord` accessors listed. Each accessor is shown to be present in the production worker's 7.9.7 Connect jars.
+  2. *[record]* `Processing.doLogic` was checked. Its exactly-once state record is keyed by the transformed topic, `getRecordOffsetContainer().getTopic()`. Its `originalTopic` variable also reads the transformed name, from `getSinkRecord().topic()`. The record states the result with evidence: either a fix with pins that were seen red first, or a measured non-issue. Any fix must keep the `BEFORE`/`AFTER` sequence intact in three cases: a crash before the insert, a crash after it, and a crash during the flag write. It must also say what happens to KeeperMap state rows stored under the old key. The operator runs `exactlyOnce=false`, so this result does not gate the at-least-once fix (BUF-03).
+  3. *[live]* On `latest` × V2, a live pin with `bufferCount > 0` and a `RegexRouter` shows committed offsets equal to the end offsets. The non-buffered `DirectDeliveryStrategy` path and the `bufferCount`/`bufferFlushTime` contract are unchanged, and the existing buffer tests pass unedited (BUF-05).
+  4. *[record]* The real-environment rerun of the fixed jar is performed and recorded outside this repository and is not gated by this phase (BUF-06).
+  5. *[record]* The fix commit carries a `docs/FORK-DELTA.md` row and a `fork-anchors.txt` anchor. FORK-DELTA states that the fix is fork-only until upstream resolves #777 (PR #786 was closed unmerged). A rollout item for Phase 38 is recorded with its evidence label. It says that offsets are now committed, so the group no longer rereads from `auto.offset.reset` after a restart or rebalance. It also says where the first start after the upgrade resumes (BUF-07).
 
-**Plans**: 5/7 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
-- [x] 32-01-PLAN.md — Wave 1: tracer `VERSION` bump with its anchor row and the live MBean and client-name probe gg4 versus gg5; the archive compare under a new Phase 32 allow-list and the release path since Phase 30's dry runs; origin, the merge shape and GitHub's state measured (CIG-02, D-01, D-02, D-03)
+- [x] 35-01-PLAN.md — Wave 1: pre-flight and baselines, the red-first Docker-free `BufferedOffsetCommitUnitTest` built through `newRecord` (8 of 13 executions red on the unchanged tree), then one fix commit: the three offset sites keyed by `originalTopic()`, `originalKafkaPartition()` and `originalKafkaOffset() + 1`, the BLD-16 re-bless from the 7.9.7 worker jars, 7 anchor rows and the FORK-DELTA row, with a mutation proof (BUF-01, BUF-02, BUF-04, BUF-07)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [x] 32-02-PLAN.md — Wave 2: the one-page `docs/ROLLOUT-v1.7.0_gg5.md`, five measured claims, the rollback rehearsed on a dry-run merge with the local tag `pre-v1.7.0_gg5` (CIG-02, D-02, D-03, D-04)
+- [x] 35-02-PLAN.md — Wave 2: the ClickHouse-backed live pin written red in a worktree on the unchanged tree, with the harness decision recorded, then the BUF-03 probes on `Processing.doLogic` in a worktree, a Docker-free state-key tripwire and `35-BUF03-RECORD.md` with the open items for the milestone close (BUF-02, BUF-03, BUF-05)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [x] 32-03-PLAN.md — Wave 3: the `1.7.0_gg5` CHANGELOG section and FORK-DELTA's CI workflows group, harness row and raw numbers refreshed once (CIG-02, D-05, D-06)
+- [x] 35-03-PLAN.md — Wave 3: the labelled rollout item for Phase 38 with the first-start derivation, and the phase gate: cache-busted `testUnit`, one full `--rerun` suite on `latest` with client V2, the anchors mirror, the tail and cumulative merge gates and the scope facts (BUF-07, BUF-01 to BUF-05)
+
+**Research flag**: Settle these before planning:
+- **Where the live pin lives.** One option is the `test` suite, which has ClickHouse only and drives `preCommit` directly. The other is the `integrationTest` Connect-worker harness, which has a real consumer group and real committed offsets. BUF-05 asks for committed offsets, so record why the chosen harness observes them.
+- **`Processing.doLogic`.** A renaming SMT can map two source topics to one target. If their partition numbers are equal, can they share one exactly-once state record? If so, what does the state machine do with the interleaved ranges? Measure this with `InMemoryState` and `ProcessingTest`-style pins before any edit.
+- **First start after the upgrade.** Before the fix, the group committed nothing for these partitions. Derive where the first start on the fixed jar resumes from Kafka consumer-group semantics and, if cheap, measure it in the repo's own test harness, so the rollout item can state it.
+
+**Note**:
+- The fix is written against the post-tail `ChunkFlusher`, after its tests are seen red.
+- `ChunkFlusher` and both buffer strategies are on the hot path (AGENTS.md). Add no per-record allocation beyond the `TopicPartition` the code already builds.
+- A change to `Processing.java` or `KeeperStateProvider` is high-risk. Changing the state key would orphan the stored state of existing exactly-once deployments, so such a change stops for a user decision before it lands.
+
+Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anchors invariant.
+
+### Phase 36: Client 0.11.0 Audit & Bump
+
+**Goal**: The connector runs on ClickHouse Java client 0.11.0, and every behaviour change is recorded. Each classification, endpoint, config-key and compression behaviour that operators rely on is pinned first on 0.9.6 and then on 0.11.0. The two required `createClientV2` fixes land. An exactly-once retry across the upgrade either sends identical bytes or needs a documented clean stop. The archive's change is recorded. The bump is one catalog commit, so if the audit fails, gg6 ships on 0.9.6 by reverting it (CLT-09).
+
+**Depends on**: Phase 35. The pins target the final 5-argument `handleException`, the tail's 15-code default set and the post-BUF tree. If CLT-09 fires, the revert leaves Phases 33–35 intact.
+
+**Requirements**: CLT-01, CLT-02, CLT-03, CLT-04, CLT-05, CLT-06, CLT-07, CLT-08, CLT-09
+
+**Success Criteria** (what must be TRUE):
+
+  1. *[live, Docker-free]* Before the bump, pins on 0.9.6 are committed green (CLT-01):
+     - Error 159 is a `RetriableException`.
+     - A 502 or 503, and a `ClientException` with an unexpected status, are classified as they are today.
+     - The timeout-message prefixes are produced.
+     The endpoint pin and the `jdbcConnectionProperties` pin are also green on 0.9.6. The first checks that the endpoint has no path. The second checks that `?ssl=true&sslmode=strict` still connects. On 0.11.0 without the two fixes, both pins were seen red.
+  2. *[Docker-free, live]* `clickHouseDriver` moves to 0.11.0 as a single catalog change marked `# FORK OVERRIDE (upstream 0.9.6)`, with an anchor row and a Docker-free catalog pin test (CLT-02). `ClickHouseHelperClient.createClientV2` passes only `protocol://host:port` to `addEndpoint`. It sets `ignore_unknown_config_key=true` before the `jdbcConnectionProperties` loop. Both pins are green on 0.11.0 (CLT-03).
+  3. *[live]* `Client011BehaviourPinLiveTest` pins four behaviours on 0.11.0 (CLT-04):
+     - Error 159 is a `RetriableException`.
+     - The 502 and 503 shapes are classified, both with and without `retryOnSocketException`.
+     - A `ClientException` is non-retriable.
+     - V2 decodes a ZSTD response with `setCompressionMethod=false` and `compress=true`.
+     The date and datetime live pins also pass on a non-UTC JVM. The Connect-worker `integrationTest` passes on 0.11.0, and so does one manual nightly dispatch, which the user starts and reports directly (CLT-07).
+  4. *[live, record]* Exactly-once safety is recorded (CLT-06). A RowBinary byte comparison of 0.9.6 against 0.11.0 covers the type matrices, including the nested `Tuple` and `Map` nullable markers. A `BEFORE_PROCESSING` batch replayed across the upgrade either has identical bytes, or the rollout item for Phase 38 states the clean-stop requirement.
+  5. *[record, live]* The D-17 `network_compression_method=lz4` default stays. Its rationale is reworded to what was measured on 0.11.0, in three places: the Javadoc, `docs/FORK-DELTA.md` (Recorded Fact 26 and the CMP rows), and the warning in `docs/ROLLOUT-v1.7.0_gg1.md` (CLT-05). The Confluent archive listings are captured before and after the bump, and the `zstd-jni` addition and the lost guava CVE override are recorded (CLT-08). A go or no-go decision is recorded with its evidence (CLT-09):
+     - On go, two full `--rerun` suite runs are green on 0.11.0.
+     - On no-go, the catalog commit is reverted, the record lists which fixes and pins were kept, and the suite is green on 0.9.6.
+
+**Plans**: 4/4 plans complete
+
+Plans:
+**Wave 1**
+- [x] 36-01-PLAN.md — Wave 1: pre-flight and re-measured baselines, the `ServerExceptions` factory commit for the 10 three-argument `ServerException` sites (proven on a bare 0.11.0 worktree), the stub server and the error-shape, timeout-prefix, endpoint-and-options and insert-wire pins and the live `Client011BehaviourPinLiveTest` green on 0.9.6, the exact red set on a bare 0.11.0 worktree, and the RowBinary golden blessed on 0.9.6 with a mutation proof (CLT-01, CLT-03, CLT-04, CLT-06)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 36-02-PLAN.md — Wave 2: the `createClientV2` fix commit on 0.9.6 (endpoint of `protocol://host:port`, `ignore_unknown_config_key` before the property loop, 3 anchor rows, one FORK-DELTA row), the one revertable catalog commit (the marked line, `ClientCatalogPinUnitTest` seen red first, a mid-file anchor row) with the pins, BLD-16 and the golden green on 0.11.0, then the non-UTC date pins, the V1-mode run and the Connect-worker `integrationTest` on 0.11.0 (CLT-02, CLT-03, CLT-04, CLT-07)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 36-03-PLAN.md — Wave 3: the byte comparison of the 0.9.6 golden on 0.11.0 under four zones with the replay statement, the before and after Confluent archive listings with the `zstd-jni` and guava findings, and the D-17 rewording in three places plus the client-override wording in one documentation commit (CLT-05, CLT-06, CLT-08, CLT-02)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [x] 32-04-PLAN.md — Wave 4 (orchestrator inline): fresh-context `gsd-code-reviewer` rounds on the note, CHANGELOG and FORK-DELTA, at most three, every finding dispositioned, documents frozen (CIG-02, D-04)
+- [x] 36-04-PLAN.md — Wave 4: the 14 labelled rollout items for Phase 38 with the `custom_` probe and the CLT-09 revert rehearsed on the final history, the phase gate and go or no-go decision (cache-busted `testUnit`, two `--rerun` full suites on `latest` with client V2, the anchors mirror, the tail and cumulative gates), and the user-gated CLT-07 nightly handoff, with the plan ending before the user's push and dispatch (CLT-09, CLT-07)
 
-**Wave 5** *(blocked on Wave 4 completion)*
-- [x] 32-05-PLAN.md — Wave 5 (orchestrator inline): the gate on the release tip: freeze and re-fetch, Docker-stopped `testUnit`, two `--rerun` suite runs on `latest` x V2, the anchors gate, push readiness, `SELECT version()` (CIG-03, D-07)
+**Research flag**: Settle these before planning:
+- **503 and `ConnectException`.** This classification is derived from source and was never exercised against a real proxy. Decide whether a fault-injection pin is feasible, or label the rollout wording "read from the code".
+- **zstd-jni.** Check native loading inside a Connect plugin classloader and under a noexec `/tmp`, and list the platforms the bundled natives cover.
+- **V1 client path.** Beyond the existing live tests, only compilation gates it.
+- **Socket buffers.** Their throughput effect is unmeasured, and changing them is out of scope. Record what the rollout note can claim.
+- **What the CLT-09 revert keeps.** For each `createClientV2` fix, confirm whether it is safe on 0.9.6. In particular, check whether 0.9.6 accepts `ignore_unknown_config_key` or forwards it to the server.
 
-**Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 32-06-PLAN.md — Wave 6 (orchestrator inline): publication dry run, one direct approval, then scratch push and its green run, `--no-ff` merge, `custom_build` push and its green run, tags by name, scratch deletion (CIG-03, D-01, D-02, D-07)
+**Note**:
+- Order inside the phase: the 0.9.6 pins first, then the bump with the two fixes. Next come the pin class, the byte comparison, the doc rewording and the archive listings. The two runs come last.
+- Arrange the commits so that the CLT-09 revert really is one commit. The `ServerException` constructor in 0.11.0 takes four arguments. So the eight `UtilsTest` sites either ride in the catalog commit or are written to compile on both clients.
+- Do not trust PR #17's green CI. It never reached the `Test` task, and `testUnit` hides both runtime breaks.
+- Out of scope, per REQUIREMENTS: adding `ServerTimeoutExceeded` to the client retry list, setting `socket_rcvbuf`/`socket_sndbuf`, and removing D-17.
+- The nightly dispatch needs the scratch branch on `origin`, at a SHA that no other pushed branch holds. That push publishes the local `.planning` tail one way and runs `tests.yaml` once. It needs the user's direct approval, as in Phase 30.
+- Record `SELECT version()` in every evidence block, because `latest` drifts.
 
-**Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 32-07-PLAN.md — Wave 7 (orchestrator inline): GitHub's state after publication, the user's first manual nightly dispatch recorded, then `NIGHTLY_ENABLED` handed to the operator on green or the D-08 route on red (NIT-03, CIG-03, D-08)
+Phase gate: cache-busted `testUnit`, two `--rerun` full suites on `latest` × V2 on whichever client ships, and the anchors invariant.
 
-**Research flag**: Standard; this phase follows Phase 29. Decide at plan time where the `v1.7.0_gg5` tag and any GitHub release come from: the hand-pushed tags of the Phase 29 recipe, or a real `release.yaml` dispatch after the green run. The requirements ask only for the Phase 30 dry run.
+### Phase 37: CI Hardening & Advisory Debt
 
-**Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (the Phase 29 D-05 standing rule). A workflow defect found here goes back to Phase 30 or 31 as a fix, or is deferred with a reason, an owner and a re-open trigger in the milestone close record. It follows the Phase 29 recipe (rehearse, measure, approve, publish):
-1. Push the scratch branch once, at a SHA no other pushed branch holds, and wait for green.
+**Goal**: The fork's release tooling stops carrying known defects. `increment-version.yml` can bump a `_ggN` version without writing `vnull`, because its logic is a script with a test. The release workflows compare the built Confluent archive entry by entry against the previous release, under an allow-list keyed by `VERSION`. An archive change such as the zstd-jni native jar can then no longer ship unseen. Every review advisory carried from Phases 25–31 is fixed, or dispositioned with an owner and a re-open trigger. The real `v1.7.0_gg5` release is on the record. No connector behaviour changes.
+
+**Depends on**: Phase 36. The compare consumer is written against the real post-bump archive, and it shares the pin-guard test files with the version workflow.
+
+**Requirements**: CIH-01, CIH-02, CIH-03, CIH-04, CIH-05, ADV-01, ADV-02, ADV-03
+
+**Success Criteria** (what must be TRUE):
+
+  1. *[Docker-free]* The version logic is a script with a table-driven test that runs with Docker stopped (CIH-01, CIH-02). The test covers four rules:
+     - Input and output are validated against `^v\d+\.\d+\.\d+(_gg[1-9]\d*)?$`.
+     - `gg` bumps the counter (`v1.7.0_gg5` → `v1.7.0_gg6`), and turns a suffix-less `vX.Y.Z` into `vX.Y.Z_gg1`.
+     - `patch`, `minor` and `major` reset the suffix to `_gg1`.
+     - Invalid input fails, and nothing is written.
+     No case writes `vnull`. `increment-version.yml` calls the script and installs no npm `semver`. It keeps its SHA pins and permissions, and it passes the pin guard. Its "known and left unfixed" header note is gone, and FORK-DELTA's row for the file no longer calls the defect open.
+  2. *[Docker-free]* The version bump also edits the `VERSION` row of `fork-anchors.txt`, or the script fails when that row does not match. The failure was seen red on a fixture (CIH-03).
+  3. *[Docker-free]* The compare script lives under `.github/scripts/`. Its synthetic-archive self-test covers the UNALLOWED and STALE-ROW failures and the exit codes 0, 1 and 2 (CIH-05). `release.yaml` and `pre-release.yaml` run it against an allow-list keyed by `VERSION`, and they publish the report as an artifact. The baseline is rebuilt from the previous tag in a separate worktree. The `REL-xx` anchor counts and `TestsWorkflowPinGuardUnitTest` are updated, and both pass (CIH-04).
+  4. *[record]* The Phase 30 review rows (WR-01..WR-03, IN-01..IN-04) and the Phase 31 rows (WR-01..WR-03, IN-01..IN-03) are each closed. A row is either fixed, with a commit pointer, or dispositioned with an owner and a re-open trigger (ADV-01). The same holds for the 16 unfixed findings in `29-MILESTONE-CLOSE-RECORD.md` (ADV-02). A diff check shows that no existing assertion was deleted or weakened, and an assertion changes only with the user's sign-off.
+  5. *[record, CI]* The real `v1.7.0_gg5` GitHub release of 2026-10-28 is recorded as evidence, read from the REST API. The record gives the release, its tag commit, the attached archive's name, size and SHA-256, and what the REST API shows about how the release was created. Measured: no workflow run created it (the publish-mode run was cancelled and the asset was uploaded by the repository owner's account), so the "no run exercised the publish path" caveat stays open until the Phase 38 publication (ADV-03, reworded by the user's decision of 2026-10-31).
+
+**Plans**: 5 plans (37-01 to 37-05)
+
+**Research flag**: Settle these before planning:
+- **The compare before `VERSION` moves.** Phase 38 owns the `VERSION` bump and the gg6 allow-list, which is generated last (RLS-03). Decide what this phase's step runs against. One option is a dry-run dispatch against a provisional allow-list. The other is to prove here only that the step runs and reports, and to leave the passing compare to RLS-03 and RLS-05.
+- **The tag rebuild.** The real gg5 release asset (ADV-03) is the first chance to check that a rebuild from the tag reproduces the published archive under Shadow 9. Record the result before the compare relies on a rebuilt baseline.
+- **Allow-list naming.** The allow-list is keyed by `VERSION` (CIH-04). Settle how it relates to the existing `confluent-archive-allowlist-25/29/32.txt` under `.planning/scripts/`.
+
+**Note**:
+- Phase 38 cannot edit `.github/`, by the Phase 29 D-05 standing rule. Every workflow fix belongs here, including a fix for a defect found in a Phase 38 dry run. Phase 30 put its dry run in the workflow phase for the same reason. Decide at plan time whether a dry-run dispatch here proves the compare step before Phase 38 relies on it. That dispatch needs the user's approval for the push, and the user starts the run and reports it.
+- Phase 30 WR-01 (the shared `release-publish` concurrency group) and IN-01..IN-04 (about 180 duplicated lines) touch the same release files as CIH-04. Sequence them with it.
+- Some gg4 findings sit in `src/main`. For example, 26-REVIEW IN-13 notes that the fork-owned `allColumnsMap.merge` has no anchor row. A `src/main` change outside this phase's scope stops for a user decision.
+
+Phase gate: cache-busted `testUnit` with the pin-guard and script self-tests, a full suite on `latest` × V2, the anchors invariant, and an empty `src/main` diff unless the user approved a fix.
+
+### Phase 38: Release & Publication
+
+**Goal**: `v1.7.0_gg6` is published on `custom_build`. Operators get an independently reviewed rollout note that labels every operator-visible effect with its evidence. That covers the buffered-offset fix, the client 0.11.0 shifts (or the fact that the client stayed 0.9.6), `additionalRetriableErrorCodes` and the clean-stop requirement. The gg6 allow-list compare passes on the final tree. The suite is green twice on one pinned `latest` build, and the published SHA has one green `tests.yaml` run before the user's publish run, which creates `v1.7.0_gg6`.
+
+**Depends on**: Phases 33–37 (it documents and publishes their outcome)
+
+**Requirements**: RLS-01, RLS-02, RLS-03, RLS-04, RLS-05, RLS-06
+
+**Success Criteria** (what must be TRUE):
+
+  1. *[Docker-free]* After `clean`, `VERSION` reads `v1.7.0_gg6` and the generated version agrees. The `VERSION` anchor row changes in the same commit. `CHANGELOG.md` has a complete `1.7.0_gg6` section that absorbs upstream's `Unreleased` entries. `docs/FORK-DELTA.md` is final, with its raw numbers refreshed once (RLS-01).
+  2. *[record]* `docs/ROLLOUT-v1.7.0_gg6.md` states each operator-visible effect, labelled with one of four defined labels: "measured", "read from the code", "derived from Kafka consumer-group semantics (not measured)" or "measured in research (not re-run)" (RLS-02):
+     - `ssl` and `sslmode` were never honoured on V2.
+     - The 159 retry cadence and the 502/503 shape.
+     - The `User-Agent` tail.
+     - The socket-buffer opt-back keys and the zstd native platforms.
+     - `additionalRetriableErrorCodes`, including its bypass of `errors.tolerance`.
+     - The clean-stop requirement.
+     - The buffered offset-commit change that Phase 35 recorded (BUF-07).
+     If CLT-09 fired, the note says the client stayed 0.9.6 and keeps only the items that hold on 0.9.6.
+  3. *[record]* Before the push gate, an orchestrator-spawned, fresh-context `gsd-code-reviewer` checked the note together with `CHANGELOG.md` and `docs/FORK-DELTA.md`. Rounds repeated until one found nothing, at most three unless the user authorised another. Every finding's disposition is recorded (RLS-04). The gg6 allow-list was generated last, from the final tree, and the compare passes against it (RLS-03).
+  4. *[live]* On the release tip, two full `--rerun` suite runs pass on one pinned `latest` build with client V2, with `SELECT version()` recorded and the named skips. `testUnit` passes with Docker unreachable (`DOCKER_HOST` pointing at a socket that does not exist, the VM left running, as in Phases 36 and 37), and the anchors gate passes (RLS-06).
+  5. *[CI, operator]* The release dry run (a `release.yaml` run from the scratch branch, launched by the user) passes. `git log sync/v1.7.0..origin/custom_build` was checked for divergence (expected empty; measured 0), and any change there was absorbed before gating. After the user's own direct approval (RLS-05):
+     - `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip.
+     - The published SHA has exactly one `tests.yaml` run, and it is green before the user launches the publish run (`release.yaml`, `dry_run` not ticked). That run creates the tag `v1.7.0_gg6` and the GitHub release (it must not be hand-pushed). Only `pre-v1.7.0_gg6` is pushed by hand, after the publish run.
+     - The scratch branch is deleted from `origin`.
+
+**Plans**: 5 plans (38-01 to 38-05). Closure shape: local-complete; RLS-05 and criterion 5 stay pending and human-gated until the user-run steps are recorded.
+
+**Research flag**: Resolved by the user's decision of 2026-10-31: the tag `v1.7.0_gg6` and the GitHub release come from a real `release.yaml` dispatch launched by the user after the green run (the path taken for gg5); this also exercises the publish path (ADV-03). Agents prepare locally only.
+
+**Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (the Phase 29 D-05 standing rule). A defect found here goes back to its phase as a gap. Otherwise it is deferred with a reason, an owner and a re-open trigger in the milestone close record. The phase follows the Phase 29 and Phase 32 recipe (rehearse, measure, approve, publish):
+1. Push the scratch branch once, at a SHA that no other pushed branch holds, and wait for green.
 2. Merge with `--no-ff` from a throwaway worktree, so the merged tree equals the rehearsed tip.
 3. Push `custom_build` only, and wait for its single run.
-4. Push the tags by name, only after that run is green.
+4. The user launches the publish run (`release.yaml`, `dry_run` not ticked) from `custom_build` after that run is green; it creates `v1.7.0_gg6` and the GitHub release. Then push `pre-v1.7.0_gg6` by name.
 5. Delete the scratch branch.
 
-The approval gates run orchestrator-inline, because executors refuse relayed approvals and `custom_build` is GSD's protected base branch. Record `SELECT version()` at each gate.
+The approval gates run orchestrator-inline, because executors refuse relayed approvals and `custom_build` is GSD's protected base branch. The divergence check's left side measures 0 (the gg5 merge is already an ancestor of `sync/v1.7.0`); a count above 0 means origin moved, and the contingency in the research applies. After publication, re-read the state of the absorbed Dependabot PRs and of PR #10 (SWP-03).
 
 ## Structure Notes
 
-**Why three phases under `coarse` granularity.** The 11 requirements fall into three delivery boundaries: the release-path workflows (30), the nightly (31) and publication (32). The release must come last, which is a hard constraint. Phases 30 and 31 share the pin guard, but they are proven differently. Phase 30 is proven by a dispatch dry run. Phase 31 is proven by a measured integration run with failure classification, and that measurement may surface test-harness work. One gate for both would hold the release-path files hostage to the nightly. Neither can fold into Phase 32, because the release phase edits no `.github/` file.
+**Why six phases under `coarse` granularity.** The 39 requirements fall into six delivery boundaries, and each is proven differently:
+- the sweep, by one gate per bump;
+- the tail, by the merge-invariant script and the compile gates;
+- the BUF fix, by red-first unit pins, and a live commit check;
+- the client, by pins on two client versions and a byte comparison;
+- the CI and advisory work, by Docker-free guards and ledgers;
+- the release, by the publication recipe.
+
+The order is the user's (2026-10-28). Phases 33 and 34 could share a phase under `coarse`, as Phase 25 did. They stay separate so that the tail's merge gate runs on a tree whose only other change is four one-line bumps.
 
 **Placement choices worth recording:**
 
-- **CIG-01 is Phase 30's first plan, not release hygiene.** The guard is seen red on the unpinned release files before they are pinned, and the nightly is then written under it.
-- **REL-05 sits in Phase 30, not Phase 32.** Fixing a dry-run defect needs a `.github/` edit, which the release phase cannot make.
-- **NIT-02's byte guard sits in Phase 31, with the nightly that replaces upstream's job.** The disabled state is re-read in Phase 32.
-- **NIT-03 moved to Phase 32 on 2026-10-26 (D-02).** GitHub dispatches a workflow only from the default branch, and the nightly reaches `custom_build` only at publication. Phase 31 delivered everything before the dispatch: the measurement, the gated workflow, the guards and any skip list.
-- **CIG-02 is entirely in Phase 32.** FORK-DELTA, CHANGELOG, `VERSION` and the note are written once, on the final tree. Anchor rows for the workflow edits still land with the edits in Phases 30 and 31.
+- **SWP-04's rollback tag comes before the first change.** It is the milestone's first act.
+- **The tail comes before BUF.** The tail edits `ChunkFlusher` to pass the extra retriable set. The fix therefore lands on the merged shape and does not have to be re-resolved.
+- **BUF comes before the client.** The fix is production-relevant and must be releasable on 0.9.6. Landing it first means CLT-09's one-commit revert cannot touch it. Its live pin then runs on 0.11.0 in the gates of Phases 36 and 38.
+- **The client comes last among the code changes.** It is the only optional change that alters behaviour, so descoping it costs one revert.
+- **CIH comes after the client.** The archive compare is written against the real post-bump archive, which adds zstd-jni. The gg6 allow-list itself is generated last, in Phase 38 (RLS-03), because STALE-ROW makes an allow-list valid for exactly one tree.
+- **ADV sits with CIH.** Most carried advisories are in the same release workflows and pin-guard files, and the release phase cannot edit `.github/`. ADV-03's record of the real gg5 release also checks the compare's tag-rebuilt baseline.
+- **Phase 35 owns BUF-07.** Its FORK-DELTA row and anchor land with the fix, and its rollout item is recorded there with evidence. Phase 38 places that item in the note, and RLS-02's criterion checks it.
+- **CLT-05 edits a published rollout note.** Phase 36 rewords the D-17 warning in the gg1 note. This follows the gg4 precedent, which corrected the published gg1 and gg2 notes.
 
-**Execution model.** Phases run sequentially on one working tree. No phase touches `src/main`.
+**Execution model.** Phases run sequentially on one working tree (`sync/v1.7.0`). Phases 34, 35 and 36 change `src/main`. Phase 37 changes it only with the user's approval, and Phases 33 and 38 do not change it.
 
 **Files shared across phases:**
 
 | File | Phases | Rule |
 |------|--------|------|
-| `TestsWorkflowPinGuardUnitTest` or a new guard class | 30 (CIG-01, any `UPSTREAM_WORKFLOWS` change), 31 (NIT-02 byte guard) | Each new rule is seen red first; an existing assertion changes only with the user's sign-off |
-| `.github/dependabot.yml` | 30 only, if the user signs off | — |
-| `release.yaml`, `pre-release.yaml`, `increment-version.yml` | 30 only | — |
-| The new nightly workflow | 31 only | — |
-| `integrationTests.yaml` | none | Byte-identical to upstream throughout |
-| `.planning/scripts/fork-anchors.txt` | 30 and 31 (workflow anchors), 32 (`VERSION` row) | Anchor rows change in the same commit as the code |
-| `docs/FORK-DELTA.md`, `CHANGELOG.md`, `VERSION`, `docs/ROLLOUT-v1.7.0_gg5.md` | 32 only | FORK-DELTA raw numbers are refreshed once |
+| `gradle/libs.versions.toml` | 33 (lz4, okhttp), 34 (merge only), 36 (`clickHouseDriver`) | One bump per commit; the client bump is one revertible commit |
+| `.github/workflows/*` | 33 (setup-java SHA), 37 (version script, archive compare, advisories) | Each edit passes the pin guard; Phase 38 edits none |
+| `.github/dependabot.yml` | 33 (protobuf `ignore`), 37 (Phase 30 WR-03 comment, if fixed) | — |
+| `TestsWorkflowPinGuardUnitTest` and the other pin-guard tests | 33, 37 | A new rule is seen red first; an existing assertion changes only with the user's sign-off |
+| `ProxySinkTask`, `ChunkFlusher` | 34 (tail, dual constructor), 35 (BUF) | BUF lands after the tail |
+| `Utils.handleException`, `ClickHouseSinkConfig` | 34 | High-risk; Phase 36 leaves D-17 unchanged |
+| `ClickHouseHelperClient` | 36 | The bump's only production-code change |
+| `Processing.java`, `KeeperStateProvider` | 35, only if BUF-03 finds a fix | High-risk; a state-key change stops for a user decision |
+| `src/test/resources/connect-api-references.txt` | 35 | Updated only with evidence from the production worker's jars |
+| `.planning/scripts/fork-anchors.txt` | 33–38 | Anchor rows change in the same commit as the code |
+| `docs/FORK-DELTA.md` | 33 (protobuf), 35 (BUF row), 36 (D-17 rewording, client override), 37 (`increment-version.yml` row), 38 (final) | Raw numbers are refreshed once, in Phase 38 |
+| `docs/ROLLOUT-v1.7.0_gg1.md` | 36 (CLT-05) | — |
+| `CHANGELOG.md`, `VERSION`, `docs/ROLLOUT-v1.7.0_gg6.md` | 38 | Phase 34's merge resolves the `CHANGELOG.md` conflict mechanically; the `1.7.0_gg6` section is written in Phase 38 |
 
 ## Sync Mechanics (applies to every upstream sync)
 
@@ -354,13 +497,16 @@ The approval gates run orchestrator-inline, because executors refuse relayed app
 
 ## Progress
 
-**Execution Order:** 30 → 31 → 32, sequential on one working tree.
+**Execution Order:** 33 → 34 → 35 → 36 → 37 → 38, sequential on one working tree.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 30. Release Workflows & Pin Guard | v1.7.0_gg5-ci | 3/3 | Complete    | 2026-10-26 |
-| 31. Fork-Owned Nightly Integration Tests | v1.7.0_gg5-ci | 6/6 | Complete    | 2026-10-26 |
-| 32. Release & Publication | v1.7.0_gg5-ci | 5/7 | In Progress | - |
+| 33. Dependency Sweep & Protobuf Decision | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-28 |
+| 34. Upstream Tail Merge | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-29 |
+| 35. Buffered Offset Commit Under Topic-Renaming SMTs | v1.7.0_gg6-maintenance | 3/3 | Complete    | 2026-10-29 |
+| 36. Client 0.11.0 Audit & Bump | v1.7.0_gg6-maintenance | 4/4 | Complete    | 2026-10-31 |
+| 37. CI Hardening & Advisory Debt | v1.7.0_gg6-maintenance | 5/5 | Complete    | 2026-10-31 |
+| 38. Release & Publication | v1.7.0_gg6-maintenance | 0/TBD | Not started | - |
 
 ---
-*Roadmap reorganized at the `v1.7.0_gg4-hardening` close: 2026-10-24. Roadmap for milestone `v1.7.0_gg5-ci` created: 2026-10-24.*
+*Roadmap reorganized at the `v1.7.0_gg5-ci` close: 2026-10-28. Roadmap for milestone `v1.7.0_gg6-maintenance` created: 2026-10-28.*

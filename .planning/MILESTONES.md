@@ -1,5 +1,45 @@
 # Milestones
 
+## v1.7.0_gg5-ci CI & Release Workflow Modernization (Shipped: 2026-10-27)
+
+**Phases completed:** 3 phases (30–32), 16 plans, 26 tasks
+
+**Delivered:** The fork's three release-path workflows now run only SHA-pinned actions, build the Confluent archive with the project's Gradle wrapper through `setup-gradle` (so `verifyConfluentArchive` runs on the release path too) and create the GitHub release with `gh release create`. A Docker-free guard fails on any unpinned, local or `docker://` action in a fork-owned workflow. The fork also has a nightly integration-test signal it can trust: a variable-gated, read-only, SHA-pinned workflow runs the whole `integrationTest` task on ClickHouse `latest` × client V2 in the runner's Docker, after the harness moved to a Java 17 Connect worker (54 of 54 connector tests went from failing to passing). Upstream's `integrationTests.yaml` stays byte-identical and disabled, pinned by a guard. No connector code changed. It shipped as `v1.7.0_gg5` with a reviewed rollout note.
+
+**Stats:**
+
+- **Git range:** `c1e2bbd6` (milestone start, 2026-10-24) → `f71468bc` (close, 2026-10-28), 133 commits on `sync/v1.7.0`.
+- **Timeline:** 2026-10-24 → 2026-10-28 (4 days). Published 2026-10-27, closed 2026-10-28.
+- **Files changed:** 214 in total since `2325b3ef` (+15,632 / −857), mostly `.planning/`. 12 files are in `src/`, the build, `gradle/` and `.github/` (+2,125 / −118). `src/main` is unchanged between `v1.7.0_gg4` and `v1.7.0_gg5`.
+- **Fork delta over upstream** (`docs/FORK-DELTA.md` raw numbers), wider scope then `src/main`: files 287 and 37; insertions 31,774 and 2,877; deletions 731 and 241.
+- **Suite:** `testUnit` runs 1,374 tests with Docker stopped. Two full runs on ClickHouse `latest` (26.10.3.7) × client V2 ran 1,961 tests each, with 0 failures and 18 named skips. The nightly's first manual run ([`40474535605`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40474535605)) passed 63 integration tests, 0 failures, 9 skipped, in about 33 minutes.
+- **Requirements:** 11/11 complete. The milestone audit is `tech_debt` with no gaps: requirements 11/11, phases 3/3, integration 11/11, flows 3/3.
+- **Published:** `v1.7.0_gg5` is the `--no-ff` merge `3a3a15a9` (parents `21c51598` and `41e7d546`) on `custom_build`. Its tags `v1.7.0_gg5` and `pre-v1.7.0_gg5` (rollback → `21c51598`) are on `origin`. The merge has one green `tests.yaml` run, [`40416215635`](https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/40416215635).
+
+**Closeout type:** `verified_closeout`
+
+**Known verification overrides:** 0 newly acknowledged, 0 carried forward from a prior close. The open-artifact audit was clear and `init.manager` read all three phases as complete and verified. One override predates the close and was accepted by the user in Phase 32: the review of the rollout note hit the three-round cap with IN-09 and IN-10 still open, and both were fixed without a fourth round (`32-REVIEW-DISPOSITION.md`).
+
+**Known gaps:** none against requirements. The follow-ups below are carried into `PROJECT.md` → Requirements → Active.
+
+- **Phase 30 review advisories (open):** WR-01 (`release.yaml` and `pre-release.yaml` share the `release-publish` concurrency group, so a third dispatch can cancel a queued real publish), WR-02 (the pin guard tests only `uses:` lines), WR-03 (the `dependabot.yml` comment overstates the guard) and IN-01..IN-04, including about 180 duplicated lines between the two release files.
+- **Phase 31 review advisories (open):** WR-01 (`failed_tests_summary.py` prints "No failed tests." when every report is unreadable), WR-02 (Markdown escaping misses `<`, `&`, `[`, `*`, `\`), WR-03 (the byte guard can fail on autocrlf Windows clones) and IN-01..IN-03.
+- **Real publish path not exercised:** no GitHub release exists for gg5, only tags. Both dry runs were green. The user's account dispatched `release.yaml` run `40474419526` and cancelled it during the archive build, which created no release or tag.
+- **`increment-version.yml`** writes `vnull` for `_ggN` versions (CHANGELOG Known Issues).
+- **`NIGHTLY_ENABLED`** was set by the operator at 2026-10-27T09:15:07Z, after the green manual run. The REST API cannot read repository variables, so that ordering rests on the operator's report.
+- **Stale reads:** Phases 30 and 31 read `verification=stale` in the audit because Phase 32's release docs and anchors edited files they cover. `init.manager` now reads them as passed.
+
+**Key accomplishments:**
+
+1. A Docker-free pin guard fails on any unpinned, local or `docker://` action in every fork workflow. It was seen red on the unchanged release files, and the three workflows were then rewritten under it: SHA pins, the wrapper's Gradle via `setup-gradle`, and `gh release create`.
+2. A ref-derived dry run builds and attaches the Confluent archive to a throwaway draft on both release paths and creates no release and no tag. The `semver.inc` defect of `increment-version.yml` was measured on the real `v1.7.0_gg4`.
+3. The integration harness builds its Connect worker from Confluent's Java 17 `cp-server-connect:7.9.6` plus the pinned datagen plugin, taking the whole `integrationTest` task from 54 of 54 connector tests failing to 54 of 54 passing on `latest` × V2. The user's disposition means no skip list exists.
+4. A variable-gated, read-only, SHA-pinned nightly reports failures through a stdlib JUnit-XML summary script. A 58-case workflow guard and an 8-case script test pin it Docker-free, and a SHA-256 plus length guard pins upstream's `integrationTests.yaml` byte for byte.
+5. `v1.7.0_gg5` is published with a CHANGELOG section that leads with "no connector code changes", a FORK-DELTA with one CI workflows group, and `docs/ROLLOUT-v1.7.0_gg5.md` with five measured claims and a rollback run as written on a dry-run merge.
+6. The release gate held: two equal green suite runs, a Docker-stopped `testUnit`, one green `tests.yaml` run on the published SHA before the tags, and the nightly's first manual run green before the operator enabled the schedule.
+
+---
+
 ## v1.7.0_gg4-hardening Dependency Absorption, Discovery Defects & Review Debt (Shipped: 2026-10-23)
 
 **Phases completed:** 5 phases (25–29), 32 plans, 81 tasks

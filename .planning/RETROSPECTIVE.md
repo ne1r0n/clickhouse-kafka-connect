@@ -345,6 +345,61 @@
 
 ---
 
+## Milestone: v1.7.0_gg5-ci — CI & Release Workflow Modernization
+
+**Shipped:** 2026-10-27 (closed 2026-10-28)
+**Phases:** 3 | **Plans:** 16 | **Tasks:** 26 | **Commits:** 133 | **Timeline:** 4 days (2026-10-24 → 2026-10-28)
+
+### What Was Built
+
+- **The release path is pinned and modern.** `release.yaml`, `pre-release.yaml` and `increment-version.yml` run only SHA-pinned actions. Both release files build with the Gradle wrapper through `setup-gradle`, so `verifyConfluentArchive` runs on the release path, and publish with `gh release create`.
+- **A pin guard came first.** CIG-01 was seen red on the unchanged files before they were pinned, and the nightly was then written under it.
+- **A ref-derived dry run** builds and attaches the archive to a throwaway draft and creates no release and no tag.
+- **The integration harness was repaired.** A Java 17 connector jar against a Java 11 Connect worker failed 54 of 54 tests; moving the worker to `cp-server-connect:7.9.6` made all 54 pass, with no skip list.
+- **A fork-owned nightly** runs `integrationTest` on `latest` × V2 in the runner's Docker, variable-gated and read-only, while upstream's `integrationTests.yaml` stays byte-identical and disabled under a SHA-256 guard.
+- **`v1.7.0_gg5` was published (`3a3a15a9`)** with no connector code change, a rollout note whose rollback ran as written, and the nightly's first manual run green before the operator enabled it.
+
+### What Worked
+
+- **Seen-red guards.** The pin guard, the NIT-02 byte guard and the workflow guard were each shown failing on the real or a one-byte-edited file before they were trusted.
+- **Measure before deciding.** A full local `integrationTest` run came before any nightly design, and it found the single root cause (Java 11 worker) behind 54 failures.
+- **The release phase kept its scope.** `git diff v1.7.0_gg4 v1.7.0_gg5 -- src/main` is empty, and the publication gates (two equal suite runs, one green CI run before the tags) held.
+- **Orchestrator-inline approval gates.** Dispatches and variable changes were the operator's own acts, recorded in the evidence file.
+
+### What Was Inefficient
+
+- **NIT-03 had to move from Phase 31 to Phase 32** (D-02): GitHub dispatches a workflow only from the default branch, so the nightly could not run before publication. The roadmap assumed otherwise.
+- **The review budget capped again.** The rollout note hit the three-round cap with two Info findings fixed and not re-reviewed.
+- **Phase 30 and 31 review advisories stay open**, including about 180 duplicated lines between the two release workflows.
+- **Bookkeeping drift.** 32-04..07 SUMMARY `requirements-completed` are empty, and 31-02's frontmatter still claims NIT-03 after it moved.
+- **The real publish path was never exercised.** An accidental `release.yaml` dispatch was cancelled mid-build.
+
+### Patterns Established
+
+- **A workflow guard enumerates `.github/workflows` and exempts upstream files by name,** so a new fork workflow is covered without editing the guard.
+- **A byte-pinned upstream file** is guarded by SHA-256 plus length, and its disabled state is re-read from the Actions API after publication.
+- **A schedule is enabled by a repository variable** only after the first green manual run.
+
+### Key Lessons
+
+1. **Check how the platform dispatches before planning a verification step.** The default-branch rule for `workflow_dispatch` moved a requirement across phases.
+2. **A red suite with one cause is cheaper to fix than to skip.** Fixing the worker image beat building a 54-entry skip list.
+3. **Dry runs do not prove the real publish.** Plan for one real publish to be the first live test, or exercise it on a scratch repository.
+4. **Fix `requirements-completed` frontmatter in the same plan that moves a requirement,** so the audit's three-source check does not rest on VERIFICATION prose.
+
+### Quality Observations
+
+- **Code review** ran on all three phases; the 6 warnings and 7 Info findings left open in Phases 30 and 31 are listed in `MILESTONES.md`.
+- **Security audits:** Phase 31 `SECURED 36/36`, Phase 32 `SECURED 38/38`.
+- **The final suite** ran 1,961 tests twice with 0 failures and 18 named skips on `latest` 26.10.3.7 × V2. `testUnit` ran 1,374 tests with Docker stopped. CI was green on `3a3a15a9` (40416215635).
+- **`src/main` did not change.**
+
+### Cost Observations
+
+- Model mix and session counts were not recorded for this milestone.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -357,6 +412,7 @@
 | v1.7.0_gg2-hardening | 5 | 29 | First milestone without a sync. Docs-only early publication with release docs reviewed before the gate, a spike-first go/no-go that could not hold the release, operator claims pinned by live tests, and the first close with a passed milestone audit. |
 | v1.7.0_gg3-hardening | 4 | 23 | Second milestone without a sync. The classification pin landed before the fix, the gg2/gg3 encoding diff was measured before the rollout note, and the Dependabot merge went first with a pinned gate exemption. A post-publication docs fix ran independent review rounds until one came back clean. |
 | v1.7.0_gg4-hardening | 5 | 32 | Third milestone without a full sync (a tagless mini-sync only). Spike-then-pin-then-fix for both discovery defects, a build-failing check on the shipped archive, and a release phase that edits no code and carries unfixed findings in a close record. |
+| v1.7.0_gg5-ci | 3 | 16 | First CI-only milestone, with no connector code change. Guards seen red before the files they protect, a measured full integration run before the nightly design, and a manual-dispatch gate that had to move to the release phase. |
 
 ### Cumulative Quality
 
@@ -368,10 +424,11 @@
 | v1.7.0_gg2-hardening | 830 → 988 | 1 (CR-01, fixed) | 999.1 Nullable Enum/Tuple mis-storage, empty-CDC rows on 3 routes, message-less NPE, nameless missing-value error, raw DateTime in logs | 10 (all 11 carried closed) |
 | v1.7.0_gg3-hardening | 988 → 1281 | 0 | 999.3 record values in writer errors, `DeclaredNullability` null/escape/unpaired cases, pin-guard false failures, four operator-doc rollback hazards (step order, `exactlyOnce=false`, 3+ topics, `enableDbTopicSplit` keys) | 11 (all 10 carried closed) |
 | v1.7.0_gg4-hardening | 1281 → 1865 | 0 | 999.4 size-named Tuple element dropped at discovery, 999.5 doubled backslash in names and Enum labels, Jackson Map key in the JSON-as-string failure text, Enum-label NPE, Shadow 9 nested-jar archive | 16 unfixed review findings carried (all gg3 carried items closed) |
+| v1.7.0_gg5-ci | 1865 → 1961 | 0 | Integration harness Java 11 worker (54 of 54 connector tests failing), `pre-release.yaml` Gradle `7.4.2`, archived release actions; no connector code change | 13 review advisories open in Phases 30 and 31 (6 WR, 7 IN) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. **Verification goes stale in sequential phases.** All six milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. That held even when the milestone audit passed. Re-verify at close, or plan for the override.
+1. **Verification goes stale in sequential phases.** Six of seven milestones closed as `override_closeout` because later phases edited files that earlier verifications covered. That held even when the milestone audit passed. Re-verify at close, or plan for the override.
 2. **Blocking-human checkpoints on irreversible or production-affecting calls pay off.** They fired at least twice in every milestone and were right each time. Examples: R-01 pinned rather than fixed, KEEP over DROP, and every one-way publication.
 3. **Check the environment and the gate before trusting a result.** In v1.2.9_gg4-tests a red baseline turned out to be an environment artifact (`TESTCONTAINERS_HOST_OVERRIDE`). In v1.6.0_gg1-sync a green run turned out to be against the wrong server (`CLICKHOUSE_VERSION_DEFAULT`).
 4. **Reuse compounds.** Each milestone's tools made the next one cheaper: the suite (v1.2.9) gated the first sync, and the first sync's invariant script and checklist made the second take 4 days. Keep those tools current at every close.

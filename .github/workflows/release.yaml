@@ -5,6 +5,11 @@
 # from the runner. A real publish runs only from custom_build, after a successful tests.yaml run on the
 # SHA and only when the tag is absent. Every other dispatch, including any from another branch, is a dry
 # run: a throwaway draft release is created, checked and deleted, and nothing is created for VERSION.
+# Before the tag gate, the archive is compared entry by entry with the one built from the previous release
+# tag in a separate worktree, under the allow-list named by VERSION under .planning/scripts. A difference the
+# list does not name, and a list row that matches nothing, fail the run before anything is published, and the
+# report is uploaded as an artifact. This file and its prerelease twin differ only in the names and the
+# prerelease flag, which ReleaseWorkflowGuardUnitTest pins.
 name: Release
 run-name: Release ${{ github.ref_name }} (${{ (inputs.dry_run || github.ref != 'refs/heads/custom_build') && 'dry run' || 'publish' }})
 
@@ -20,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-publish
+  group: ${{ (inputs.dry_run || github.ref != 'refs/heads/custom_build') && format('release-dry-run-{0}', github.run_id) || 'release-publish' }}
   cancel-in-progress: false
 
 jobs:
@@ -41,9 +46,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # the baseline tag is built from its own worktree
 
       - name: Set up JDK 17
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -81,6 +87,61 @@ jobs:
           echo "### Archive" >> "$GITHUB_STEP_SUMMARY"
           echo "$message" >> "$GITHUB_STEP_SUMMARY"
           echo "::notice title=Archive::${message}"
+
+      - name: Select the baseline tag
+        run: |
+          baseline="$(git tag --merged HEAD --list 'v*' | python3 -I .github/scripts/baseline_tag.py "$RELEASE_VERSION")" || {
+            echo "::error title=Baseline tag::no release tag below ${RELEASE_VERSION} is reachable from this commit"
+            exit 1
+          }
+          allowlist=".planning/scripts/confluent-archive-allowlist-${RELEASE_VERSION}.txt"
+          if [ ! -f "$allowlist" ]; then
+            echo "::error title=Allow-list::${allowlist} does not exist; the archive compare needs the allow-list named by VERSION"
+            exit 1
+          fi
+          echo "BASELINE_TAG=${baseline}" >> "$GITHUB_ENV"
+          echo "ALLOWLIST=${allowlist}" >> "$GITHUB_ENV"
+          echo "::notice title=Baseline::${RELEASE_VERSION} is compared with ${baseline} under ${allowlist}"
+
+      - name: Build the baseline archive from the previous tag
+        run: |
+          set -o pipefail # the runner's bash already runs with -o pipefail (measured in a runner log); explicit so the tee below cannot hide a failing build under any shell
+          baseline_dir="$RUNNER_TEMP/baseline"
+          git worktree add --detach "$baseline_dir" "refs/tags/${BASELINE_TAG}"
+          baseline_version="$(tr -d '[:space:]' < "$baseline_dir/VERSION")"
+          if [ "$baseline_version" != "$BASELINE_TAG" ]; then
+            echo "::error title=Baseline tag::VERSION at ${BASELINE_TAG} reads ${baseline_version}"
+            exit 1
+          fi
+          "$baseline_dir/gradlew" -p "$baseline_dir" --console=plain createConfluentArchive | tee "$RUNNER_TEMP/baseline-build.log"
+          baseline_archive="$baseline_dir/build/confluent/clickhouse-kafka-connect-${baseline_version}.zip"
+          test -s "$baseline_archive"
+          echo "BASELINE_ARCHIVE=${baseline_archive}" >> "$GITHUB_ENV"
+
+      - name: Compare the archive with the previous release
+        run: |
+          report="$RUNNER_TEMP/archive-compare-report.txt"
+          status=0
+          python3 -I .github/scripts/compare_confluent_archives.py "$BASELINE_ARCHIVE" "$ARCHIVE" "$ALLOWLIST" > "$report" 2>&1 || status=$?
+          cat "$report"
+          unallowed="$(grep -c '^UNALLOWED ' "$report" || true)"
+          stale="$(grep -c '^STALE-ROW ' "$report" || true)"
+          summary="exit ${status}, ${unallowed} unallowed, ${stale} stale rows, baseline ${BASELINE_TAG}, allow-list ${ALLOWLIST}"
+          echo "### Archive compare" >> "$GITHUB_STEP_SUMMARY"
+          echo "$summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Archive compare::${summary}; the report is the archive-compare-report artifact"
+            exit "$status"
+          fi
+          echo "::notice title=Archive compare::${summary}"
+
+      - name: Upload the archive compare report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: archive-compare-report
+          path: ${{ runner.temp }}/archive-compare-report.txt
+          retention-days: 14
 
       - name: Check tests.yaml is green on this SHA
         env:

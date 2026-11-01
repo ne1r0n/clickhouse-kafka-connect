@@ -1,46 +1,46 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg5-ci
-milestone_name: CI & Release Workflow Modernization
-current_phase: 32
+milestone: v1.7.0_gg6-maintenance
+milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
+current_phase: 38
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 32-03-PLAN.md
-last_updated: "2026-10-26T22:31:29.679Z"
-last_activity: 2026-10-26
-last_activity_desc: Phase 32 execution started
-state_head: e1a532ed68cb2f262e580d234babb560627b7f71
+stopped_at: Phase 37 complete, ready to plan Phase 38
+last_updated: "2026-10-31T12:42:02.843Z"
+last_activity: 2026-10-31
+last_activity_desc: Phase 38 execution started
+state_head: 0d4763ee73d56fba499f3e8d7d3963400dcc4a51
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 16
-  completed_plans: 14
-  percent: 67
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 23
+  completed_plans: 18
+  percent: 78
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-24 after starting milestone v1.7.0_gg5-ci)
+See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 32 — Release & Publication
+**Current focus:** Phase 38 — Release & Publication
 
 ## Current Position
 
-Phase: 32 (Release & Publication) — EXECUTING
-Plan: 6 of 7
-Status: Ready to execute
-Last activity: 2026-10-26 — Phase 32 execution started
+Phase: 38 (Release & Publication) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 38
+Last activity: 2026-10-31 — Phase 38 execution started
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
+- Total plans completed: `v1.7.0_gg5-ci`: 16; `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -68,6 +68,12 @@ Progress: [███████░░░] 67%
 | 29 | 8 | - | - |
 | 30 | 3 | - | - |
 | 31 | 6 | - | - |
+| 32 | 7 | - | - |
+| 33 | 3 | - | - |
+| 34 | 3 | - | - |
+| 35 | 3 | - | - |
+| 36 | 4 | - | - |
+| 37 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -209,6 +215,13 @@ Progress: [███████░░░] 67%
 | Phase 32 P01 | 20 min | 3 tasks | 5 files |
 | Phase 32 P02 | 8 min | 3 tasks | 2 files |
 | Phase 32 P03 | 9 min | 3 tasks | 3 files |
+| Phase 33 P01 | 27 min | 2 tasks | 2 files |
+| Phase 33 P02 | 15 min | 3 tasks | 8 files |
+| Phase 33 P03 | 52 min | 3 tasks | 5 files |
+| Phase 34 P01 | 12 min | 2 tasks | 30 files |
+| Phase 34 P02 | 38 min | 3 tasks | 6 files |
+| Phase 34 P03 | 55 min | 3 tasks | 2 files |
+| Phase 35 P01 | 14 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -258,6 +271,27 @@ The per-phase decision logs of `v1.7.0_gg1-sync` and `v1.7.0_gg2-hardening` are 
 - [Phase 32]: Four-row archive wording (32-AMENDMENT-01) used in CHANGELOG, FORK-DELTA and E-20: the gg5 archive differs from gg4 only in the release identity (Version constant, the two classes that inline it, manifest Implementation-Version)
 - [Phase 32]: The nightly is described as running the whole integrationTest task when dispatched or scheduled; its green run is stated as local (E-18) because no GitHub run exists before plan 32-07
 
+**`v1.7.0_gg6-maintenance` roadmap (2026-10-28):** six phases under `coarse` granularity, in the user's order:
+1. the dependency sweep (33);
+2. the upstream tail (34);
+3. the buffered offset-commit fix, upstream #777 (35);
+4. client 0.11.0 (36);
+5. CI hardening and the advisory debt (37);
+6. the release (38).
+
+The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands before the client bump, so it is releasable on 0.9.6, and the CLT-09 one-commit revert cannot touch it. The client bump is the last code change. The archive-compare consumer and every workflow fix sit in Phase 37, because the release phase cannot edit `.github/`. The gg6 allow-list, `VERSION`, CHANGELOG and the rollout note are written in Phase 38. Phase 35 records the BUF rollout item, and Phase 38 places it in the note.
+- [Phase 33]: 33-01: PR #19 (lz4-java 1.12.1, GHSA-48mj-8f7c-7qfm) absorbed from its fetched head 2a806038 as own --no-ff merge 6bf1c43b; local pre-v1.7.0_gg6 tag on origin tip 3a3a15a9, not pushed
+- [Phase 33]: 33-02: PRs #18 (okhttp 5.5.1), #20 (Gradle 9.8.2) and #16 (setup-java v6.1.0) absorbed unchanged from fetched heads, each as its own --no-ff merge; full suite green on the sweep tip 79f56a5e (1961 tests, 18 skipped)
+- [Phase 33]: Phase 33 plan 03: protobuf-java and protoc stay on 3.x via exact-name semver-major ignores in the gradle Dependabot entry only (the protobuf Gradle plugin stays updatable); cause is the ProtobufIngestTest VerifyError against the Confluent 7.9.1 test stack (run 39501799049); re-open trigger FUT-03
+- [Phase 33]: Phase 33 plan 03: PR #10 is recorded as closing-at-publication (ROADMAP criterion 4); no user words received and no agent touched the PR; REQUIREMENTS.md SWP-03 wording is slightly stricter and is flagged for the user to align
+- [Phase 34]: Plan 34-01: M3 adaf8c4e merges upstream 9bed6f79 mechanically with ProxySinkTask on the fork side; the DBWriter seam is deferred to 34-02 so the bare merge's 5 javac errors are exactly the predicted set
+- [Phase 34]: ProxySinkTask: both three-argument constructors delegate to one package-private four-argument core, so no caller passes an ambiguous null; fields processing and dbWriter keep their names (34-02)
+- [Phase 34]: BLD-16 list re-blessed only from the worker image jars plus 4.1.1 and 4.4.0; the diff was the date line plus one M line for ConfigException(String, Object, String) (34-02)
+- [Phase 34]: TAL-04 DataException clause pinned narrowly: adding codes never makes a DataException with no server error and no network root cause retriable; the wrapped retriable-server-error and wrapped socket-timeout (tolerance=all) cases are retriable today and not asserted (user decision on upstream behavior)
+- [Phase 34]: Phase 36 inherits 10 three-argument new ServerException( sites in 3 files (UtilsTest 8, AdditionalRetriableErrorCodesTest 1, AdditionalRetriableErrorCodesPinUnitTest 1), not the ROADMAP eight; Phase 38 carries the FUT-05 rollout item
+- [Phase 35]: Buffered offsets are keyed by originalTopic()/originalKafkaPartition()/originalKafkaOffset() + 1 in ChunkFlusher and both buffer strategies; Processing.java, state keys and table routing untouched — Connect validates preCommit offsets against its assignment; fork-only until upstream resolves #777 (PR #786 closed unmerged)
+- [Phase 35]: The Phase 35 fix commit carries six paths by design (three main files, BLD-16 re-bless, anchors, FORK-DELTA) — BLD-16 goes red the instant the edit lands without the re-bless, and anchors may not precede or lag the code they pin
+
 ### Pending Todos
 
 None.
@@ -279,11 +313,16 @@ None.
 - [Phase 26]: 26-REVIEW has 2 open info items after the `--fix` pass (commits `a58c66da..0a1c79f8`: 9 fixed, IN-02 and IN-06 skipped by decision) and the 2026-10-22 re-review (`4271be66`): IN-12 `DescribeTableBuilder.columnsByName` stays last-wins, reachable only by a declared JSON or Dynamic element named `size<digits>` at Array depth 2 or more, not reproduced; IN-13 the fork-owned `allColumnsMap.merge` in upstream `Table.registerValidColumn` has no `fork-anchors.txt` row, so an upstream sync could revert it unnoticed by the merge gate. Ledger `26-REVIEW-DISPOSITION.md`; `26-SECURITY.md` is `threats_open: 0`; `26-VERIFICATION.md` regenerated 2026-10-22 (passed, 5/5) after the fixes; `26-UAT.md` complete (24 passed, 0 issues).
 - [Env]: the full suite crashed the OpenJ9 (Semeru 17) test JVM five times on 2026-10-21/22 at the known `Mockito.spy` frame, with host swap at about 97%; `-PjavaVersion=21` (HotSpot) passes, and a plain re-run passed once swap pressure eased. Expect the crash whenever the host is swapping; it is not a test failure.
 - [Release] 2026-10-23: `VERSION` reads `v1.7.0_gg4` and the CHANGELOG has its `1.7.0_gg4` section; both are published at `21c51598`.
+- [Publish] 2026-10-26: `v1.7.0_gg5` is on `origin/custom_build` at `3a3a15a9`, published by Phase 32's `--no-ff` merge of X0 (`41e7d546`) onto `21c51598` after the user's direct `publish`, with `tests.yaml` run 40416215635 green on the merge and run 40414210750 green on X0; tags `v1.7.0_gg5` (`3a3a15a9`) and `pre-v1.7.0_gg5` (`21c51598`) are on origin, `sync/v1.7.0` was deleted from origin, and the nightly is on `custom_build` with `NIGHTLY_ENABLED` unset; its first manual run is next in plan 32-07. Later `.planning` commits are a local tail.
+- [Release] 2026-10-26: `VERSION` reads `v1.7.0_gg5` and the CHANGELOG has its `1.7.0_gg5` section; both are published at `3a3a15a9`.
+- [CI] 2026-10-27: the nightly's first manual run 40474535605 on `custom_build` (`3a3a15a9`) ended success (63 tests, 0 failures, 9 skipped, 33 min; NIT-03); its one scheduled run so far was skipped; `NIGHTLY_ENABLED` was set by the operator after the run (their report, E-82). An accidental `release.yaml` dispatch (run 40474419526) was cancelled by the user before publishing; no release or tag resulted.
 - [Roadmap] 2026-10-24: GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. Phase 30's dry runs can use the existing `release.yaml` and `pre-release.yaml` on the scratch branch, but the new Phase 31 nightly reaches `custom_build` only at publication. Phase 31 research confirms the behaviour and settles how the NIT-03 dispatch runs before any schedule can fire. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
 - [Roadmap] 2026-10-24: `TestsWorkflowPinGuardUnitTest` pins `dependabot.yml`'s `exclude-paths` list of the four upstream workflows (`UPSTREAM_WORKFLOWS`). Letting Dependabot keep the three newly pinned release-path files current changes that assertion, which needs the user's sign-off (Phase 30).
-- [CI] 2026-10-26: Phase 30 dry runs: sync/v1.7.0 was pushed at b847fbdb (tests.yaml run 40103794037 green); pre-release.yaml run 40296330498 and release.yaml run 40296481765 finished green as dry runs (draft attached, checked and deleted, Publish release skipped); origin's tags and published releases are unchanged and sync/v1.7.0 was deleted from origin. Later .planning commits are a local tail, unpushed.
 - Phase 31-01: all 54 connector integration tests fail (Java 17 connector jar vs Java 11 Connect worker in cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0); Task 3 blocking-human decision (E-06) pending before 31-02
 - [Roadmap] 2026-10-26: NIT-03 moved to Phase 32 by the user's decision (D-02, 31-COMMAND-EVIDENCE.md E-16). Phase 31 delivered the measurement, the gated nightly, the NIT-02 byte guard and any skip list. The nightly reaches custom_build only with Phase 32's publication, and NIGHTLY_ENABLED stays unset until the dispatch run is recorded.
+- [Roadmap] 2026-10-28: Dependabot PRs #10 and #16–#20 are open on `origin`, and PR #4 is gone (superseded by #17). This replaces the PR lists in the older `[Publish]` and `[Dependabot]` lines above. Phase 33 absorbs #16, #18, #19 and #20 from their PR heads on the scratch branch, Phase 36 absorbs #17, and #10 is declined. Ask the user not to merge any of them on `origin` until publication, because a merge there diverges the scratch branch again.
+- [Roadmap] 2026-10-28: BUF-03 (Phase 35). `Processing.doLogic` keys exactly-once state by the transformed topic. A fix that changes the state key would orphan the KeeperMap state of existing exactly-once deployments, so it stops for a user decision before it lands. The operator's production connectors run `exactlyOnce=false`.
+- [Roadmap] 2026-10-28: Pushes. CLT-07's manual nightly dispatch (Phase 36) needs the scratch branch on `origin`, and so does any Phase 37 dry run of the archive-compare step. Each push publishes the local `.planning` tail one way and runs `tests.yaml` once, so it needs the user's direct approval and a SHA that no other pushed branch holds.
 
 ### Quick Tasks Completed
 
@@ -308,11 +347,13 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T21:29:57.833Z
-Stopped at: Completed 32-03-PLAN.md
+Last session: 2026-10-29T09:34:10.618Z
+Stopped at: Phase 37 complete, ready to plan Phase 38
 Resume file: None
 
 ## Operator Next Steps
 
-- Discuss and plan Phase 30 with /gsd-discuss-phase 30, then /gsd-plan-phase 30
-- Phase 30's dry runs need you to approve one push of the scratch branch and to dispatch `pre-release.yaml` and `release.yaml` from GitHub's `Run workflow` control
+- Discuss and plan Phase 33 with /gsd-discuss-phase 33, then /gsd-plan-phase 33
+- Do not merge Dependabot PRs on `origin` until `v1.7.0_gg6` is published. The milestone absorbs them from their PR heads on the scratch branch.
+- Phase 33 asks you to close PR #10 (protobuf-java 4.x), or to confirm that it may stay open until the `ignore` reaches `custom_build`
+- Phase 36's manual nightly dispatch, and any Phase 37 dry run, need you to approve a push of the scratch branch and to start the runs from GitHub's `Run workflow` control

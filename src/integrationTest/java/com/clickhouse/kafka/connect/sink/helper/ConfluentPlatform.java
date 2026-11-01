@@ -364,6 +364,18 @@ public class ConfluentPlatform {
     }
 
     public void createConnectorAndWaitUntilRunning(String connectorName, String payload) throws IOException {
+        createConnector(connectorName, payload);
+        Awaitility.await("connector running")
+                .atMost(Duration.ofMinutes(CONNECTOR_RUNNING_TIMEOUT_MINS))
+                .pollDelay(Duration.ofSeconds(CONNECTOR_STATUS_POLL_INTERVAL_SECONDS))
+                .pollInterval(FixedPollInterval.fixed(CONNECTOR_STATUS_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS))
+                .until(() -> {
+                    Optional<Object> taskObj = StreamSupport.stream(getConnectorTasksStatus(connectorName).spliterator(), false).findFirst();
+                    return taskObj.filter(o -> "RUNNING".equals(String.valueOf(((JSONObject) o).get(CONNECTORS_ENDPOINT_RESPONSE_TASKS_STATE_KEY)))).isPresent();
+                });
+    }
+
+    private void createConnector(String connectorName, String payload) throws IOException {
         String connectRestEndpoint = getConnectRestEndPoint();
         OkHttpClient client = new OkHttpClient();
         String connectorsEndpoint = String.format("%s/connectors", connectRestEndpoint);
@@ -381,14 +393,6 @@ public class ConfluentPlatform {
             LOGGER.debug("Create connectors response body: {}", responseBodyString);
             Assertions.assertTrue(code >= 200 && code < 300);
         }
-        Awaitility.await("connector running")
-                .atMost(Duration.ofMinutes(CONNECTOR_RUNNING_TIMEOUT_MINS))
-                .pollDelay(Duration.ofSeconds(CONNECTOR_STATUS_POLL_INTERVAL_SECONDS))
-                .pollInterval(FixedPollInterval.fixed(CONNECTOR_STATUS_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS))
-                .until(() -> {
-                    Optional<Object> taskObj = StreamSupport.stream(getConnectorTasksStatus(connectorName).spliterator(), false).findFirst();
-                    return taskObj.filter(o -> "RUNNING".equals(String.valueOf(((JSONObject) o).get(CONNECTORS_ENDPOINT_RESPONSE_TASKS_STATE_KEY)))).isPresent();
-                });
     }
 
 
@@ -498,25 +502,31 @@ public class ConfluentPlatform {
         int totalWorkers = numberOfPartitions * 10;
 
         String payloadDataGen = String.join("", Files.readAllLines(Paths.get(templateFileName)));
-        createConnectorAndWaitUntilRunning(connectorName, String.format(payloadDataGen, connectorName, connectorName, totalWorkers, topicName, numberOfRecords));
-        String currentState = "";
-        int loopCount = 0;
-        do {
-            Thread.sleep(2 * 1000);
-            if (loopCount % 4 == 0) {
-                LOGGER.info("Generating...");
+        // Datagen tasks generate 100 records in about 5 s, the same as the first status poll of
+        // createConnectorAndWaitUntilRunning, so a task can already be FAILED ("generated the configured")
+        // before it is ever seen RUNNING. Wait for completion of this connector's own tasks instead, and
+        // always delete the connector so a failure cannot leak finished tasks into the next test's count.
+        try {
+            createConnector(connectorName, String.format(payloadDataGen, connectorName, connectorName, totalWorkers, topicName, numberOfRecords));
+            long finished = 0;
+            int loopCount = 0;
+            do {
+                Thread.sleep(2 * 1000);
+                if (loopCount % 4 == 0) {
+                    LOGGER.info("Generating...");
+                }
+                finished = Pattern.compile("Stopping connector: generated the configured")
+                        .matcher(getConnectorTasksStatus(connectorName).toString()).results().count();
+                loopCount++;
+            } while (finished != totalWorkers && loopCount < 120);
+
+            if (finished != totalWorkers) {
+                LOGGER.error("Data generation failed: {} of {} datagen tasks finished", finished, totalWorkers);
+                throw new RuntimeException("Data generation failed");
             }
-            currentState = getConnectors();
-            LOGGER.debug(currentState);
-            loopCount++;
-        } while (Pattern.compile("Stopping connector: generated the configured").matcher(currentState).results().count() != totalWorkers && loopCount < 120);//We have to track multiple
-
-        if (loopCount >= 120) {
-            LOGGER.error("Data generation failed");
-            throw new RuntimeException("Data generation failed");
+        } finally {
+            deleteConnectors(connectorName);
         }
-
-        deleteConnectors(connectorName);
         Thread.sleep(3 * 1000);//Wait for the connector to be deleted
         long offsetTotal = 0;
         for (int i=0; i < numberOfPartitions; i++) {

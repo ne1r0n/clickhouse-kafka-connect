@@ -1,0 +1,6 @@
+.github/workflows/increment-version.yml	node-version	0	CIH-02
+.github/workflows/increment-version.yml	setup-node	0	CIH-02
+.github/workflows/increment-version.yml	npm install	0	CIH-02
+.github/workflows/increment-version.yml	semver	0	CIH-02
+.github/workflows/increment-version.yml	python3 -I .github/scripts/bump_version.py	1	CIH-02
+.github/workflows/increment-version.yml	git add VERSION .planning/scripts/fork-anchors.txt	1	CIH-03
