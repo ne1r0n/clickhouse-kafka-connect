@@ -15,7 +15,7 @@
 |-------|-------------|------|---------|
 | E-01 | DEP-01, DEP-02 | 39-01 | pass |
 | E-02 | DEP-01 | 39-01 | pass |
-| E-03 | DEP-01 | 39-01 | pending (plan 39-01) |
+| E-03 | DEP-01 | 39-01 | pass |
 | E-04 | DEP-02 | 39-02 | pending (plan 39-02) |
 | E-05 | DEP-02 | 39-02 | pending (plan 39-02) |
 | E-06 | PIN-02 | 39-03 | pending (plan 39-03) |
@@ -133,5 +133,88 @@ divergence_after_merge: 0 21
 The source was fetched at 2026-11-01T17:52:47Z. It has one parent equal to the re-read origin tip `72e8ccff`, is authored by `dependabot[bot]`, changes only `gradle/libs.versions.toml`, and the changed lines are exactly the removal of `gson = "2.14.0"` and the addition of `gson = "2.15.0"`; the REST `head.sha` of PR #22 equals the fetched head. The research recorded the same head `b5cccbd3`, so it was not rebased. The dry-run merge printed one tree OID line (`7a0d9d6a4f98617ae9ab19726d571a08205793a1`) with exit 0. Only `gradle/libs.versions.toml` was staged after `git merge --no-ff --no-commit`; the FORK-DELTA edit is one removed and one added line (the gson value `2.14.0` to `2.15.0`, the Phase 39 absorption sentence, and `DEP-01` in the last cell of the version-catalog row). The merge's second parent equals `gson_head`, and `72e8ccff` is now an ancestor of HEAD, hence the divergence `0 21`. Both resolved classpaths carry one gson version, 2.15.0.
 
 2026-11-01T17:53:28Z
+
+Verdict: pass
+
+### E-03: gson gate: cumulative merge-invariant gate, testUnit and the full suite twice each on the gson tip (DEP-01)
+
+Backs: DEP-01, ROADMAP Phase 39 criterion 1 (on the gson commit, `testUnit` with Docker unreachable and the full suite on ClickHouse `latest` x client V2 each pass twice, the second run with `--rerun`, with the 18 named skips; the cumulative merge-invariant gate passes on the merge commit; no new test exists yet, so a red here would be attributable to gson).
+
+```sh
+git rev-parse HEAD
+git diff --quiet ac216401a1efef629dd543fdabe49f3144b9af39 HEAD -- . ':!.planning'
+git ls-remote origin refs/heads/custom_build
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 ac216401a1efef629dd543fdabe49f3144b9af39 > /tmp/gsd39/exec/invariants-39-01.log 2>&1
+"$(/usr/libexec/java_home -v 21)/bin/java" -version
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 > /tmp/gsd39/exec/gson-testunit-1.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit tests>=1
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd39/exec/gson-testunit-2.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit tests>=1
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+./gradlew --stop
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 > /tmp/gsd39/exec/gson-full-1.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/test tests>=1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py skips build/test-results/test
+./gradlew --stop
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd39/exec/gson-full-2.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/test tests>=1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py skips build/test-results/test
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+```
+
+```text
+gated_head: f2d541752f7ec36611731a549dc7174c6b136a38
+gated_tree_equals_merge: yes
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1)
+docker_unreachable: unix:///nonexistent/docker.sock
+testunit_run1_exit: 0
+testunit_run1_tests: 1672
+testunit_run1_failures: 0
+testunit_run1_errors: 0
+testunit_run1_skipped: 2
+testunit_run2_exit: 0
+testunit_run2_tests: 1672
+testunit_run2_failures: 0
+testunit_run2_errors: 0
+testunit_run2_skipped: 2
+testunit_run2_rerun: yes
+full_run1_exit: 0
+full_run1_tests: 2270
+full_run1_failures: 0
+full_run1_errors: 0
+full_run1_skipped: 18
+full_run1_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_run2_exit: 0
+full_run2_tests: 2270
+full_run2_failures: 0
+full_run2_errors: 0
+full_run2_skipped: 18
+full_run2_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_run2_rerun: yes
+clickhouse_version_before: 26.10.3.7
+clickhouse_version_after: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+matches_research_totals: yes
+docker_only_delta: 598
+jvm_crash: none
+anchors_mirror: rows=172 bad=0
+origin_reread: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+invariants_head: ac216401a1efef629dd543fdabe49f3144b9af39
+invariants_start_utc: 2026-11-01T17:53:59Z
+invariants_end_utc: 2026-11-01T18:31:16Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=1302 anchor_rows=172 marker_commits=1368 anchor_exempt=19 result=PASS
+invariants_exit: 0
+```
+
+The gated head is the evidence commit on top of the gson merge `ac216401`, and its non-planning tree equals the merge's tree. The cumulative gate was started in the background on the merge commit's explicit SHA, right after the E-02 evidence commit and before the first test run, and no commit was made until it ended. Both testUnit runs and both full-suite runs exited 0 on one HotSpot 21 JVM line with no crash file in the repository root. Totals equal the research's (testUnit 1672 tests, 2 skipped; full 2270 tests, 18 skipped; Docker-only delta 2270 - 1672 = 598), and the ClickHouse image digest equals the research run's `sha256:739e099abd11...30b1ce`, so a later difference cannot come from a moved `latest` tag. The second run of each pair used `--rerun` after the results directory was cleared, and the totals were tallied from the JUnit XML. The gate took about 37 minutes against the 17 to 23 the research expected, because it overlapped four Gradle runs on a swap-pressured host; it ended `result=PASS` with exit 0 and no `VIOLATION` line, so the range `pre-v1.7.0-sync..HEAD` with a Dependabot merge and the gg6 publication merge `72e8ccff` is shape-clean.
+
+2026-11-01T18:31:30Z
 
 Verdict: pass
