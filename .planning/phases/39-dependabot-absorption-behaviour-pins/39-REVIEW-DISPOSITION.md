@@ -5,11 +5,11 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Diagnostic log lines in two integration tests now fail the test on a non-200 status response"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`ROLLOUT-v1.7.0_gg6.md` row D7 now states the opposite of the repository"
   - id: IN-01
     severity: info
@@ -23,17 +23,17 @@ findings:
     severity: info
     disposition: open
     title: "Misleading `_CONTROL` name and an unmeasured branch in the PIN tests"
-open: 5
+open: 3
 total: 5
-recorded: 2026-11-01T20:52:47.664Z
+recorded: 2026-11-01T20:56:42.217Z
 ---
 
 # Phase 39: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
+| WR-01 | warning | fixed | 39-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 39-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
