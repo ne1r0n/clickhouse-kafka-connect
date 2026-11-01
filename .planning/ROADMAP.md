@@ -131,7 +131,7 @@ Phase artifacts: `milestones/v1.7.0_gg5-ci-phases/`
 - [x] **Phase 35: Buffered Offset Commit Under Topic-Renaming SMTs** - With `bufferCount > 0` and a `RegexRouter`-style SMT, offsets are committed under the original topic and partition, so a restart stops rereading from `auto.offset.reset` (upstream #777). The fix is pinned Docker-free and live, and `Processing.doLogic` is checked for the same defect. It is releasable without the client bump (completed 2026-10-29)
 - [x] **Phase 36: Client 0.11.0 Audit & Bump** - Pins on 0.9.6 come first. Then one revertible catalog commit moves to 0.11.0, with the two `createClientV2` fixes, a behaviour pin class, an exactly-once byte comparison, the reworded D-17 rationale and the archive change recorded. If the audit fails, gg6 ships on 0.9.6 (completed 2026-10-31)
 - [x] **Phase 37: CI Hardening & Advisory Debt** - `increment-version.yml` stops writing `vnull`, through a script with a test. The release workflows compare the archive against a `VERSION`-keyed allow-list. Every Phase 25–31 review advisory is fixed or dispositioned, and the real `v1.7.0_gg5` release is on the record (completed 2026-10-31)
-- [ ] **Phase 38: Release & Publication** - `v1.7.0_gg6` is published with CHANGELOG, FORK-DELTA, an independently reviewed rollout note and the gg6 allow-list compare. The suite is green twice on one pinned `latest` build, and the published SHA has one green CI run before the tags
+- [ ] **Phase 38: Release & Publication** - `v1.7.0_gg6` is published with CHANGELOG, FORK-DELTA, an independently reviewed rollout note and the gg6 allow-list compare. The suite is green twice on one pinned `latest` build, and the published SHA has one green CI run before the publish run creates the tag
 
 ## Phase Details
 
@@ -170,7 +170,7 @@ Plans:
 
 **Note**:
 - At the start of the phase, ask the user not to merge Dependabot PRs on `origin` until publication. A merge there diverges the scratch branch again, as it did before gg4 and gg5.
-- Decide at plan time what `pre-v1.7.0_gg6` marks. Following `pre-v1.7.0_gg5`, it should be the `origin/custom_build` tip that publication rolls back to. Phase 38 pushes it only after the published SHA's run is green.
+- Decide at plan time what `pre-v1.7.0_gg6` marks. Following `pre-v1.7.0_gg5`, it should be the `origin/custom_build` tip that publication rolls back to. The user's publish run creates `v1.7.0_gg6`, and `pre-v1.7.0_gg6` is hand-pushed after that run (done in Phase 38).
 - PR #17 (client 0.11.0) is not absorbed here. It lands in Phase 36, after its pins.
 - Dependabot rebases its PR heads. Fetch each head by `refs/pull/<N>/head` right before merging it, and record the SHA.
 - This phase pushes nothing.
@@ -387,7 +387,14 @@ Phase gate: cache-busted `testUnit` with the pin-guard and script self-tests, a 
      - The published SHA has exactly one `tests.yaml` run, and it is green before the user launches the publish run (`release.yaml`, `dry_run` not ticked). That run creates the tag `v1.7.0_gg6` and the GitHub release (it must not be hand-pushed). Only `pre-v1.7.0_gg6` is pushed by hand, after the publish run.
      - The scratch branch is deleted from `origin`.
 
-**Plans**: 5 plans (38-01 to 38-05). Closure shape: local-complete; RLS-05 and criterion 5 stay pending and human-gated until the user-run steps are recorded.
+**Plans**: 5 plans (38-01 to 38-05). The publication ran on 2026-11-01 (UTC) and is recorded in `38-COMMAND-EVIDENCE.md` E-20 to E-27 and `38-RELEASE-RECORD.md`.
+
+Plans:
+- [x] 38-01-PLAN.md — Wave 1: the `v1.7.0_gg6` version, the CHANGELOG section and the final FORK-DELTA pass (RLS-01)
+- [x] 38-02-PLAN.md — Wave 2: the operator rollout note with four evidence labels (RLS-02)
+- [x] 38-03-PLAN.md — Wave 3: independent fresh-context review of the release documents, twelve rounds, every finding dispositioned (RLS-04)
+- [x] 38-04-PLAN.md — Wave 4: the gg6 allow-list generated last and the release gates, two full suites on one pinned `latest` build (RLS-03, RLS-06)
+- [x] 38-05-PLAN.md — Wave 5: the publication (dry run, `--no-ff` merge, one green `tests.yaml`, the publish run, the rollback tag) and the close (RLS-05)
 
 **Research flag**: Resolved by the user's decision of 2026-10-31: the tag `v1.7.0_gg6` and the GitHub release come from a real `release.yaml` dispatch launched by the user after the green run (the path taken for gg5); this also exercises the publish path (ADV-03). Agents prepare locally only.
 
