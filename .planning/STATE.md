@@ -4,16 +4,16 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 40
 current_phase_name: Helper Client Closing
-status: planning
+status: executing
 stopped_at: Phase 39 complete, ready to plan Phase 40
-last_updated: "2026-11-01T20:56:46.097Z"
+last_updated: "2026-11-01T21:56:32.456Z"
 last_activity: 2026-11-01
-last_activity_desc: Phase 39 complete, transitioned to Phase 40
-state_head: 17f79fc7b8732e826af24abfdcee4c0ae27cc7b9
+last_activity_desc: Phase 40 execution started
+state_head: 8b33b5e0d61cf21607d71bea55fb55b060e24aae
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 4
+  total_plans: 7
   completed_plans: 4
   percent: 17
 ---
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 39 — Dependabot Absorption & Behaviour Pins
+**Current focus:** Phase 40 — Helper Client Closing
 
 ## Current Position
 
-Phase: 40 — Helper Client Closing
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-01 — Phase 39 complete, transitioned to Phase 40
+Phase: 40 (Helper Client Closing) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 40
+Last activity: 2026-11-01 — Phase 40 execution started
 
 Progress: [██░░░░░░░░] 17%
 
