@@ -10,15 +10,15 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Dependabot (DEP)
 
-- [ ] **DEP-01**: gson `2.15.0` is absorbed in its own commit, with the full suite on ClickHouse `latest` × client V2 and `testUnit` green twice; the gson row in `docs/FORK-DELTA.md` is updated.
-- [ ] **DEP-02**: `setup-gradle` `6.4.1` is pinned to commit `8da46b539cd8fe6ab27ca75128919a18d757604c` with a `# v6.4.1` comment in all four fork workflows; `release.yaml` and `pre-release.yaml` keep their existing mutual diff unchanged (the bump touches only the setup-gradle pin line in each); `integrationTests.yaml` is untouched; the four guard classes are green; the FORK-DELTA rows are updated.
+- [x] **DEP-01**: gson `2.15.0` is absorbed in its own commit, with the full suite on ClickHouse `latest` × client V2 and `testUnit` green twice; the gson row in `docs/FORK-DELTA.md` is updated.
+- [x] **DEP-02**: `setup-gradle` `6.4.1` is pinned to commit `8da46b539cd8fe6ab27ca75128919a18d757604c` with a `# v6.4.1` comment in all four fork workflows; `release.yaml` and `pre-release.yaml` keep their existing mutual diff unchanged (the bump touches only the setup-gradle pin line in each); `integrationTests.yaml` is untouched; the four guard classes are green; the FORK-DELTA rows are updated.
 
 ### Test Pins (PIN)
 
 - [ ] **PIN-01**: `StubClickHouseServer` has a stall responder, and a red F-2 pin uses `assertTimeoutPreemptively`, so unfixed code fails instead of hanging the suite.
-- [ ] **PIN-02**: The wrapped `DataException` behaviour is pinned by Docker-free tests through `ProxySinkTask.put` under both `errors.tolerance` values; no code change.
-- [ ] **PIN-03**: Forwarding of a `custom_*` key on client `0.11.0` is pinned by a Docker-free test (IN-04), labelled a client-version tripwire.
-- [ ] **PIN-04**: F-3 is fixed: the integration harness counts only its own connector; verified by one `integrationTest` run.
+- [x] **PIN-02**: The wrapped `DataException` behaviour is pinned by Docker-free tests through `ProxySinkTask.put` under both `errors.tolerance` values; no code change.
+- [x] **PIN-03**: Forwarding of a `custom_*` key on client `0.11.0` is pinned by a Docker-free test (IN-04), labelled a client-version tripwire.
+- [x] **PIN-04**: F-3 is fixed: the integration harness counts only its own connector; verified by one `integrationTest` run.
 
 ### Client Closing (CLS)
 
@@ -76,12 +76,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | Phase 39 | Pending |
-| DEP-02 | Phase 39 | Pending |
+| DEP-01 | Phase 39 | Complete |
+| DEP-02 | Phase 39 | Complete |
 | PIN-01 | Phase 41 | Pending |
-| PIN-02 | Phase 39 | Pending |
-| PIN-03 | Phase 39 | Pending |
-| PIN-04 | Phase 39 | Pending |
+| PIN-02 | Phase 39 | Complete |
+| PIN-03 | Phase 39 | Complete |
+| PIN-04 | Phase 39 | Complete |
 | CLS-01 | Phase 40 | Pending |
 | CLS-02 | Phase 40 | Pending |
 | CLS-03 | Phase 40 | Pending |

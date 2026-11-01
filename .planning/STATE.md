@@ -4,17 +4,17 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 39
 current_phase_name: Dependabot Absorption & Behaviour Pins
-status: executing
-stopped_at: Completed 39-03-PLAN.md
-last_updated: "2026-11-01T19:24:51.566Z"
+status: verifying
+stopped_at: Completed 39-04-PLAN.md
+last_updated: "2026-11-01T20:50:20.077Z"
 last_activity: 2026-11-01
 last_activity_desc: Phase 39 execution started
-state_head: ada90a6d6d4e1e2d6c5cdecef2fb7b853709bb47
+state_head: dd619868f23df0d35961ac36b67f1df6327c63d4
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 
 Phase: 39 (Dependabot Absorption & Behaviour Pins) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-01 — Phase 39 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -226,6 +226,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 39 P01 | 40 min | 3 tasks | 4 files |
 | Phase 39 P02 | 45 min | 2 tasks | 6 files |
 | Phase 39 P03 | 5 min | 2 tasks | 4 files |
+| Phase 39 P04 | 84 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -317,6 +318,9 @@ Placement:
 - [Phase 39]: Phase 39-01: absorption mode pr-heads (origin custom_build 72e8ccff, PRs #21 and #22 open); gson 2.15.0 merged from PR #22 head as ac216401 with its FORK-DELTA row, gated green twice on testUnit and full suite plus cumulative invariants PASS
 - [Phase 39]: setup-gradle pinned to the peeled commit 8da46b53 of v6.4.1 (not the tag object 7296c772); no vulnerability claim written — The pin must be the commit GitHub Actions executes; the 6.4.1 security fix concerns dependency-submission, unused by any fork workflow
 - [Phase 39]: 39-03: PIN-02 expectations are literal rows from research F6 (14 cases through ProxySinkTask.put, conversion-time DataException a labelled control); PIN-03 is a client-version tripwire on custom_* forwarding, with the 0.9.6 branch taken from Phase 36 E-11 and not re-measured
+- [Phase 39]: 39-04: F-3 deliverable is the leftover-connector pin, the removal of getConnectors() and the IN-06 hygiene, not a change of the counting key (generateData already counted by connector name)
+- [Phase 39]: 39-04: the recorded integrationTest run is the ClickHouseSinkConnectorIntegrationTest class, since every executing caller of the changed helpers is in it
+- [Phase 39]: 39-04: ClickHouseSinkConnectorIntegrationTest.java keeps its pre-existing import order (waiver in E-08); ConfluentPlatform.java is formatter-clean with an unchanged import set
 
 ### Pending Todos
 
@@ -376,8 +380,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-01T19:24:51.541Z
-Stopped at: Completed 39-03-PLAN.md
+Last session: 2026-11-01T20:50:20.051Z
+Stopped at: Completed 39-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
