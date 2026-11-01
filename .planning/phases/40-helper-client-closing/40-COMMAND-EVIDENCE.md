@@ -19,7 +19,7 @@
 | E-03 | CLS-01, CLS-02, CLS-04 | 40-01 | pass |
 | E-04 | CLS-03, CLS-04 | 40-01 | pass |
 | E-05 | CLS-01, CLS-04 | 40-02 | pass |
-| E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pending (plan 40-02) |
+| E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pass |
 | E-07 | CLS-01, CLS-02 | 40-02 | pending (plan 40-02) |
 | E-08 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 | E-09 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
@@ -265,5 +265,58 @@ spotless_clickhouse_writer_diff_import_only: yes
 The patch SHA-256 equals E-03's `e1aa8499...1419`, and `git apply` re-created exactly the three writer paths. The re-run reproduced E-03 (22 tests, 19 failing cases over the same ten methods, every failure an `AssertionFailedError` with `close count`). With `closeHelperClient()` appended to `stop()` the class shows 22 tests and 13 failures: the three stop-path methods (`successfulStartThenStopClosesTheHelperClientOnce`, `secondStopNeitherThrowsNorClosesAgain`, `stopClosesTheHelperClientOnlyAfterTheTableSyncExecutorTerminated`) are green on client V1 and V2, and the seven remaining methods (the five failed-start exits, the table-mapping exception and the V1 per-batch case) stay red, each an `AssertionFailedError` naming `close count`. The scoped Spotless hook's stdout for `ClickHouseWriter.java` differs from the file in the same 21 import and blank lines as at the phase baseline, with equal import sets, so the import-only rule holds and the file was not rewritten.
 
 2026-11-01T22:08:40Z
+
+Verdict: pass
+
+### E-06: Writer-half commit: start wrapper, per-batch close, 22 cases and guards green, FORK-DELTA and anchors
+
+Backs: CLS-01 (start() closes the client on every exit that does not start the writer, stop() closes it once), CLS-02 (the client V1 per-batch helper is closed in try-with-resources and the node still serves the insert) and CLS-04 (all 22 writer cases and the guards green with Docker unreachable); the FORK-DELTA rows and the four anchors rows land with the code.
+
+```sh
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*WriterHelperClientClosingUnitTest' --tests '*SourcePlanningIdGuardUnitTest' --tests '*ProxySinkTaskConstructorUnitTest' --tests '*ConnectApiReferencesUnitTest' --tests '*WriterFailureClassificationUnitTest' --tests '*ValueFreeDlqHeadersUnitTest' --tests '*ClickHouseWriterNullMessageUnitTest' --tests '*WriterValueFreeFailureUnitTest' > /tmp/gsd40/exec/writer-green.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-writer-green
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-writer-green --class WriterHelperClientClosingUnitTest tests=22 failures=0 errors=0 skipped=0
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-writer-green
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java" -PspotlessIdeHookUseStdOut
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java" -PspotlessIdeHookUseStdOut
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java" -PspotlessIdeHookUseStdOut
+git diff 52ce1cd4c1501f1c4a332f42c64295be43f0f53c -- src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+grep -cF -e <each of the four anchored strings> src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 176
+git add <the five files> && git commit -m "fix(40-02): close the writer's helper clients on stop, on a failed start and per client V1 batch (CLS-01, CLS-02, CLS-04)"
+git diff --name-only 52ce1cd4c1501f1c4a332f42c64295be43f0f53c HEAD -- src/main
+git diff --quiet 52ce1cd4c1501f1c4a332f42c64295be43f0f53c HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/state src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+```
+
+```text
+green_run_exit: 0
+class_tests: 22
+class_failures: 0
+guards_failed: none
+spotless_clickhouse_writer: IS DIRTY
+spotless_clickhouse_writer_import_lines_changed: 0
+spotless_clickhouse_writer_diff_import_only: yes
+spotless_counting_helper: IS CLEAN
+spotless_test_class: IS CLEAN
+documented_limit_stop_timeout: accepted; stop() waits at most 5 s for the table-sync executor and then closes chc, so a refresh still running can run on a closed client and fails into TableMappingRefresher.run's catch; recorded in FORK-DELTA Known cost 13; owner: a future phase if observed
+anchor_counts: createHelperClient(=3; closeHelperClient()=3; try (ClickHouseHelperClient chcTmp = createHelperClient(=1; ClickHouseHelperClient chcTmp = new=0
+anchors_mirror: rows=176 bad=0
+fork_delta_writer_row: added
+fork_delta_harness_row: updated
+fork_delta_known_cost_13: writer half
+chc_field_kept: yes
+writer_commit: de3faf775b424e54a8625959cce9c9648cbd40ec
+writer_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+src_main_files_vs_phase_start: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+keeper_files_untouched: yes
+```
+
+The green run exited 0: the writer class ran 22 tests with 0 failures, errors and skips, and the seven guard and `CountingHelperClient` classes (`SourcePlanningIdGuardUnitTest`, `ProxySinkTaskConstructorUnitTest`, `ConnectApiReferencesUnitTest`, `WriterFailureClassificationUnitTest`, `ValueFreeDlqHeadersUnitTest`, `ClickHouseWriterNullMessageUnitTest`, `WriterValueFreeFailureUnitTest`) report no failing testcase. The `ClickHouseWriter.java` diff against phase start changes no import line; the scoped hook still prints `IS DIRTY` for it, with the same 21 import and blank lines as at the baseline and equal import sets (the import-only rule), so the file was never rewritten. `start()` is now a wrapper over `startInternal` whose `finally` closes the client when the start did not return true; `getMutationRequest` reads the node inside `try (ClickHouseHelperClient chcTmp = createHelperClient(` and the old `ClickHouseHelperClient chcTmp = new` line is gone. All four anchors counts equal the planned ones; the anchors mirror reads `rows=176 bad=0` (172 existing rows unchanged plus four). The commit holds exactly the five planned files.
+
+Documented limit (accepted by the user, Known cost 13 and threat T-40-10): `stop()` waits at most 5 s for the table-sync executor and then closes `chc` regardless. A refresh still running after a timed-out wait can run on a closed client and fails into `TableMappingRefresher.run`'s catch, not into the task. On the normal path the executor has terminated at the close, pinned by `stopClosesTheHelperClientOnlyAfterTheTableSyncExecutorTerminated`.
+
+2026-11-01T22:10:35Z
 
 Verdict: pass
