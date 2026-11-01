@@ -169,7 +169,7 @@ public class ClickHouseSinkConnectorIntegrationTest {
         int dataCount = generateData(topicName, parCount, 200);
         setupConnector(topicName, parCount);
         ClickHouseTestHelpers.waitWhileCounting(chcNoProxy, topicName, 3);
-        LOGGER.info("Sink connector task status: {}", confluentPlatform.getConnectorTasksStatus(SINK_CONNECTOR_NAME));
+        LOGGER.info("Sink connector task status: {}", sinkTaskStatusForLog());
         assertTrue(dataCount <= ClickHouseTestHelpers.countRows(chcNoProxy, topicName));
     }
 
@@ -181,7 +181,7 @@ public class ClickHouseSinkConnectorIntegrationTest {
         int dataCount = generateSchemalessData(topicName, parCount, 200);
         setupSchemalessConnector(topicName, parCount);
         ClickHouseTestHelpers.waitWhileCounting(chcNoProxy, topicName, 3);
-        LOGGER.info("Sink connector task status: {}", confluentPlatform.getConnectorTasksStatus(SINK_CONNECTOR_NAME));
+        LOGGER.info("Sink connector task status: {}", sinkTaskStatusForLog());
         assertTrue(dataCount <= ClickHouseTestHelpers.countRows(chcNoProxy, topicName));
     }
 
@@ -219,6 +219,14 @@ public class ClickHouseSinkConnectorIntegrationTest {
             } finally {
                 confluentPlatform.deleteConnectors(leftoverConnector);
             }
+        }
+    }
+
+    private String sinkTaskStatusForLog() {
+        try {
+            return String.valueOf(confluentPlatform.getConnectorTasksStatus(SINK_CONNECTOR_NAME));
+        } catch (IOException e) {
+            return "unavailable: " + e.getMessage();
         }
     }
 
