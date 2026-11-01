@@ -1,0 +1,309 @@
+diff --git a/src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java b/src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java
+index 9fbb87b6..8a354a96 100644
+--- a/src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java
++++ b/src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java
+@@ -33,4 +33,7 @@ public interface StateProvider {
+      * @param removedPartitions list of removed partitions.
+      */
+     void onPartitionRemoved(Collection<TopicPartition> removedPartitions);
++
++    /** Releases what the provider created itself; the default holds nothing. */
++    default void close() {}
+ }
+diff --git a/src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java b/src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+index e0daaf01..b8b005fc 100644
+--- a/src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
++++ b/src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.ConcurrentHashMap;
++import java.util.function.Function;
+ import java.util.stream.Collectors;
+ 
+ public class KeeperStateProvider extends BaseStateProviderImpl {
+@@ -32,6 +33,10 @@ public class KeeperStateProvider extends BaseStateProviderImpl {
+     private Map<String, StateRecord> stateMap = null;
+ 
+     public KeeperStateProvider(ClickHouseSinkConfig csc) {
++        this(csc, ClickHouseHelperClient.ClickHouseClientBuilder::build);
++    }
++
++    KeeperStateProvider(ClickHouseSinkConfig csc, Function<ClickHouseHelperClient.ClickHouseClientBuilder, ClickHouseHelperClient> helperClientFactory) {
+         this.csc = csc;
+         this.stateMap = new ConcurrentHashMap<>();
+ 
+@@ -47,7 +52,7 @@ public class KeeperStateProvider extends BaseStateProviderImpl {
+         boolean useClientV2 = clientVersion.equals("V1") ? false : true;
+         LOGGER.info(String.format("hostname: [%s] port [%d] database [%s] username [%s] password [%s] sslEnabled [%s] timeout [%d]", hostname, port, database, username, Mask.passwordMask(password), sslEnabled, timeout));
+ 
+-        chc = new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
++        chc = helperClientFactory.apply(new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+                 .setDatabase(database)
+                 .setUsername(username)
+                 .setPassword(password)
+@@ -56,8 +61,7 @@ public class KeeperStateProvider extends BaseStateProviderImpl {
+                 .setTimeout(timeout)
+                 .setRetry(csc.getRetry())
+                 .useClientV2(useClientV2)
+-                .setCompressionMethod(csc.isSetCompressionMethod())
+-                .build();
++                .setCompressionMethod(csc.isSetCompressionMethod()));
+ 
+         if (!chc.ping()) {
+             LOGGER.error("Unable to ping Clickhouse server.");
+diff --git a/src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java b/src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java
+new file mode 100644
+index 00000000..a45d6356
+--- /dev/null
++++ b/src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java
+@@ -0,0 +1,137 @@
++package com.clickhouse.kafka.connect.sink;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertSame;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++
++import com.clickhouse.kafka.connect.sink.db.InMemoryDBWriter;
++import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
++import com.clickhouse.kafka.connect.sink.state.provider.InMemoryState;
++import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
++import java.lang.management.ManagementFactory;
++import java.lang.reflect.Field;
++import java.util.HashMap;
++import java.util.function.BooleanSupplier;
++import java.util.function.IntSupplier;
++import javax.management.MalformedObjectNameException;
++import javax.management.ObjectName;
++import org.junit.jupiter.api.Test;
++
++/**
++ * Pins what {@link ProxySinkTask#stop()} does when a step fails and in which order its steps run: the
++ * writer stops first, then the task MBean goes away, then the state provider is closed. The provider
++ * is swapped in by reflection, so no constructor is added and the class stays in the Docker-free
++ * {@code testUnit} loop.
++ */
++class ProxySinkTaskStopUnitTest {
++
++    private static final String WRITER_STOP_FAILURE = "scripted writer stop failure";
++    private static final String STOP_FAILURE_CONNECTOR = "proxy-stop-writer-failure";
++    private static final String STOP_ORDER_CONNECTOR = "proxy-stop-order";
++    private static final String STATE_PROVIDER_FIELD = "stateProvider";
++    private static final String CLOSE_COUNT = "close count of the state provider";
++    private static final String MBEAN_GONE = "the task MBean must be unregistered after stop";
++    private static final String WRITER_STOPPED_FIRST = "the writer must have stopped before the state provider closed";
++    private static final ErrorReporter NO_ERROR_REPORTER = null;
++
++    private static final class StopFailingDBWriter extends InMemoryDBWriter {
++
++        private IllegalStateException lastThrown;
++
++        @Override
++        public void stop() {
++            lastThrown = new IllegalStateException(WRITER_STOP_FAILURE);
++            throw lastThrown;
++        }
++    }
++
++    private static final class RecordingDBWriter extends InMemoryDBWriter {
++
++        private int stopCalls = 0;
++
++        @Override
++        public void stop() {
++            stopCalls++;
++        }
++    }
++
++    private static final class CountingStateProvider extends InMemoryState {
++
++        private int closeCalls = 0;
++        private int writerStopsAtClose = -1;
++        private boolean mBeanRegisteredAtClose = true;
++        private IntSupplier writerStops = () -> -1;
++        private BooleanSupplier mBeanRegistered = () -> true;
++
++        void observe(IntSupplier writerStops, BooleanSupplier mBeanRegistered) {
++            this.writerStops = writerStops;
++            this.mBeanRegistered = mBeanRegistered;
++        }
++
++        @Override
++        public void close() {
++            closeCalls++;
++            writerStopsAtClose = writerStops.getAsInt();
++            mBeanRegisteredAtClose = mBeanRegistered.getAsBoolean();
++        }
++    }
++
++    private static ProxySinkTask taskWith(String connectorName, InMemoryDBWriter writer, CountingStateProvider provider)
++            throws ReflectiveOperationException {
++        ProxySinkTask task =
++                new ProxySinkTask(new ClickHouseSinkConfig(new HashMap<>()), NO_ERROR_REPORTER, connectorName, writer);
++        Field field = ProxySinkTask.class.getDeclaredField(STATE_PROVIDER_FIELD);
++        field.setAccessible(true);
++        field.set(task, provider);
++        return task;
++    }
++
++    private static SinkTaskStatistics statisticsOf(String connectorName, ProxySinkTask task) {
++        return new SinkTaskStatistics(connectorName, task.getId());
++    }
++
++    private static boolean isRegistered(SinkTaskStatistics statistics) {
++        try {
++            return ManagementFactory.getPlatformMBeanServer().isRegistered(new ObjectName(statistics.getMBeanName()));
++        } catch (MalformedObjectNameException e) {
++            throw new IllegalStateException(e);
++        }
++    }
++
++    @Test
++    void writerStopFailureStillUnregistersTheMBeanAndClosesTheStateProvider() throws Exception {
++        StopFailingDBWriter writer = new StopFailingDBWriter();
++        CountingStateProvider provider = new CountingStateProvider();
++        ProxySinkTask task = taskWith(STOP_FAILURE_CONNECTOR, writer, provider);
++        SinkTaskStatistics statistics = statisticsOf(STOP_FAILURE_CONNECTOR, task);
++        try {
++            task.start();
++            IllegalStateException thrown = assertThrows(IllegalStateException.class, task::stop);
++            assertEquals(1, provider.closeCalls, CLOSE_COUNT);
++            assertSame(writer.lastThrown, thrown);
++            assertFalse(isRegistered(statistics), MBEAN_GONE);
++        } finally {
++            statistics.unregisterMBean();
++        }
++    }
++
++    @Test
++    void stopClosesTheStateProviderOnceAfterTheWriterAndTheMBean() throws Exception {
++        RecordingDBWriter writer = new RecordingDBWriter();
++        CountingStateProvider provider = new CountingStateProvider();
++        ProxySinkTask task = taskWith(STOP_ORDER_CONNECTOR, writer, provider);
++        SinkTaskStatistics statistics = statisticsOf(STOP_ORDER_CONNECTOR, task);
++        provider.observe(() -> writer.stopCalls, () -> isRegistered(statistics));
++        try {
++            task.start();
++            task.stop();
++            assertEquals(1, provider.closeCalls, CLOSE_COUNT);
++            assertEquals(1, provider.writerStopsAtClose, WRITER_STOPPED_FIRST);
++            assertFalse(provider.mBeanRegisteredAtClose, MBEAN_GONE);
++            assertFalse(isRegistered(statistics), MBEAN_GONE);
++        } finally {
++            statistics.unregisterMBean();
++        }
++    }
++}
+diff --git a/src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java b/src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java
+new file mode 100644
+index 00000000..96b8e66c
+--- /dev/null
++++ b/src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java
+@@ -0,0 +1,106 @@
++package com.clickhouse.kafka.connect.sink.state.provider;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++
++import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
++import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
++import com.clickhouse.kafka.connect.sink.db.CountingHelperClient;
++import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.ValueSource;
++
++/**
++ * Counts the helper client {@link KeeperStateProvider} builds through its factory constructor, on
++ * client V1 and V2, with the KeeperMap table creation scripted so no server is needed. Each helper
++ * is a {@link CountingHelperClient}, so no Mockito is involved and the class stays in the
++ * Docker-free {@code testUnit} loop.
++ */
++class KeeperStateProviderClosingUnitTest {
++
++    private static final String PARAMETERIZED_NAME = "{displayName}[{index}] client_version={0}";
++    private static final String LOOPBACK = "127.0.0.1";
++    private static final String UNUSED_PORT = "8123";
++    private static final int UNUSED_PORT_NUMBER = 8123;
++    private static final String KEEPER_TABLE_FAILURE = "scripted keeper table creation failure";
++    private static final String OPEN_COUNT = "open count of helper clients";
++    private static final String CLOSE_COUNT = "close count of the state provider's helper client";
++    private static final String TRIPWIRE = "the injected-client constructor still throws before an instance exists;"
++            + " if it is ever repaired, add a case asserting that close() leaves an injected client open";
++    private static final String CLIENT_V2 = "V2";
++
++    private static ClickHouseSinkConfig config(String clientVersion) {
++        Map<String, String> props = new HashMap<>();
++        props.put(ClickHouseSinkConnector.HOSTNAME, LOOPBACK);
++        props.put(ClickHouseSinkConnector.PORT, UNUSED_PORT);
++        props.put(ClickHouseSinkConnector.CLIENT_VERSION, clientVersion);
++        return new ClickHouseSinkConfig(props);
++    }
++
++    private static KeeperStateProvider provider(String clientVersion, List<CountingHelperClient> created) {
++        return new KeeperStateProvider(config(clientVersion), builder -> {
++            CountingHelperClient helper = new CountingHelperClient(builder)
++                    .pingReturns(true)
++                    .queryV2Throws(new IllegalStateException(KEEPER_TABLE_FAILURE))
++                    .queryV1ReturnsEmptyResponse();
++            created.add(helper);
++            return helper;
++        });
++    }
++
++    private static void closeLeftoverHelpers(List<CountingHelperClient> created) {
++        for (CountingHelperClient helper : created) {
++            if (helper.closeCalls() == 0) {
++                helper.close();
++            }
++        }
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {"V1", CLIENT_V2})
++    void closeClosesTheHelperClientTheProviderCreated(String clientVersion) {
++        List<CountingHelperClient> created = new ArrayList<>();
++        try {
++            KeeperStateProvider provider = provider(clientVersion, created);
++            assertEquals(1, created.size(), OPEN_COUNT);
++            assertEquals(CLIENT_V2.equals(clientVersion), created.get(0).isUseClientV2());
++            provider.close();
++            assertEquals(1, created.get(0).closeCalls(), CLOSE_COUNT);
++        } finally {
++            closeLeftoverHelpers(created);
++        }
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {"V1", CLIENT_V2})
++    void secondCloseDoesNotCloseAgain(String clientVersion) {
++        List<CountingHelperClient> created = new ArrayList<>();
++        try {
++            KeeperStateProvider provider = provider(clientVersion, created);
++            provider.close();
++            provider.close();
++            assertEquals(1, created.size(), OPEN_COUNT);
++            assertEquals(1, created.get(0).closeCalls(), CLOSE_COUNT);
++        } finally {
++            closeLeftoverHelpers(created);
++        }
++    }
++
++    @Test
++    void injectedClientConstructorStillFailsBeforeAnyInstanceExistsTripwire() {
++        CountingHelperClient helper = new CountingHelperClient(
++                        new ClickHouseHelperClient.ClickHouseClientBuilder(LOOPBACK, UNUSED_PORT_NUMBER, null, null, -1))
++                .pingReturns(true);
++        try {
++            assertThrows(NullPointerException.class, () -> new KeeperStateProvider(helper), TRIPWIRE);
++            assertEquals(0, helper.closeCalls(), TRIPWIRE);
++        } finally {
++            helper.close();
++        }
++    }
++}

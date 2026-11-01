@@ -17,7 +17,7 @@
 | E-01 | CLS-04 | 40-01 | pass |
 | E-02 | CLS-01, CLS-04 | 40-01 | pass |
 | E-03 | CLS-01, CLS-02, CLS-04 | 40-01 | pass |
-| E-04 | CLS-03, CLS-04 | 40-01 | pending (plan 40-01) |
+| E-04 | CLS-03, CLS-04 | 40-01 | pass |
 | E-05 | CLS-01, CLS-04 | 40-02 | pending (plan 40-02) |
 | E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pending (plan 40-02) |
 | E-07 | CLS-01, CLS-02 | 40-02 | pending (plan 40-02) |
@@ -166,5 +166,58 @@ The run exited non-zero (`22 tests, 3 succeeded, 19 failed`) and produced the cl
 A first run of this class (attempt 1, log `/tmp/gsd40/exec/writer-red-attempt1.log`) was not recorded: 20 cases failed because the control `clientV2BatchBuildsNoPerBatchHelperClient` threw `InstanceAlreadyExistsException` from the topic MBean that the V1 batch case's writer statistics had left registered under the same topic. That is a test-isolation defect in the new class itself (the plan requires MBeans an unchanged tree leaves registered to be unregistered in `finally`), not a behaviour of the unchanged tree: the test class now unregisters its writer statistics in the `finally` of both batch cases, and the run recorded here is a fresh run on the corrected class. No production line and no assertion about closing changed between the two runs.
 
 2026-11-01T22:03:23Z
+
+Verdict: pass
+
+### E-04: Keeper red matrix (7 cases), the Keeper red tree saved as a patch, src restored
+
+Backs: CLS-04 (the Keeper site and `ProxySinkTask.stop` run red on the unchanged lifecycle, on client V1 and V2, with the injected-client tripwire green) and CLS-03 (the state provider's own helper client and the state provider are never closed on `stop()` today).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java" -PspotlessIdeHookUseStdOut
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java" -PspotlessIdeHookUseStdOut
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*KeeperStateProviderClosingUnitTest' --tests '*ProxySinkTaskStopUnitTest' > /tmp/gsd40/exec/keeper-red.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-keeper-red
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-keeper-red --class KeeperStateProviderClosingUnitTest tests=5 failures=4
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-keeper-red --class ProxySinkTaskStopUnitTest tests=2 failures=2
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-keeper-red --expect KeeperStateProviderClosingUnitTest#closeClosesTheHelperClientTheProviderCreated KeeperStateProviderClosingUnitTest#secondCloseDoesNotCloseAgain ProxySinkTaskStopUnitTest#writerStopFailureStillUnregistersTheMBeanAndClosesTheStateProvider ProxySinkTaskStopUnitTest#stopClosesTheStateProviderOnceAfterTheWriterAndTheMBean
+git add -N src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+git diff --no-color --no-ext-diff -- src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java > .planning/phases/40-helper-client-closing/40-red-keeper.patch
+git diff --no-color --no-ext-diff -- src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java > /tmp/gsd40/exec/writer-recheck.patch
+shasum -a 256 .planning/phases/40-helper-client-closing/40-red-keeper.patch /tmp/gsd40/exec/writer-recheck.patch
+git reset -q -- src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+git checkout -- src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+rm src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java
+git status --porcelain -- src
+git diff --quiet HEAD -- src
+git apply --check .planning/phases/40-helper-client-closing/40-red-writer.patch
+git apply --check .planning/phases/40-helper-client-closing/40-red-keeper.patch
+```
+
+```text
+keeper_red_run_exit: 1
+keeper_class_tests: 5
+keeper_class_failures: 4
+proxy_class_tests: 2
+proxy_class_failures: 2
+keeper_red_failed_count: 4
+red_failed_set: KeeperStateProviderClosingUnitTest#closeClosesTheHelperClientTheProviderCreated; KeeperStateProviderClosingUnitTest#secondCloseDoesNotCloseAgain; ProxySinkTaskStopUnitTest#writerStopFailureStillUnregistersTheMBeanAndClosesTheStateProvider; ProxySinkTaskStopUnitTest#stopClosesTheStateProviderOnceAfterTheWriterAndTheMBean
+red_reason_close_count: yes
+tripwire_passed: yes
+spotless_keeper_test: IS CLEAN
+spotless_proxy_stop_test: IS CLEAN
+keeper_patch_paths: src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java; src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java; src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java
+keeper_patch_sha256: bdc2533ca2baef3434d779add6b13c00cd71e8d4d19a230eff904f1c2d19ea9c
+writer_patch_unchanged: yes
+tree_restored: yes
+writer_patch_applies_on_head: yes
+keeper_patch_applies_on_head: yes
+```
+
+The run exited non-zero (`7 tests, 1 succeeded, 6 failed`) and produced both class XMLs, so the sources compiled. The six failing cases are the two Keeper methods on client V1 and V2 (four cases) and the two `ProxySinkTask.stop` cases; each is an `AssertionFailedError` whose message begins `close count of the state provider`. The one passing case is the tripwire `injectedClientConstructorStillFailsBeforeAnyInstanceExistsTripwire`: the injected-client constructor throws `NullPointerException` before an instance exists (`init()` dereferences the null config) and the injected helper's close count stays 0, so the clause that an injected client stays open has no behavioural pin; plan 40-03 pins it by source identity plus this tripwire. The writer patch, regenerated with the three writer-side paths before `src` was restored, has the same SHA-256 as E-03. `src` was then restored: `git status --porcelain -- src` is empty, `git diff --quiet HEAD -- src` exits 0, the three new test classes are removed, and each patch passes `git apply --check` on this clean tree.
+
+2026-11-01T22:05:13Z
 
 Verdict: pass
