@@ -20,7 +20,7 @@
 | E-04 | CLS-03, CLS-04 | 40-01 | pass |
 | E-05 | CLS-01, CLS-04 | 40-02 | pass |
 | E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pass |
-| E-07 | CLS-01, CLS-02 | 40-02 | pending (plan 40-02) |
+| E-07 | CLS-01, CLS-02 | 40-02 | fail |
 | E-08 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 | E-09 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 | E-10 | CLS-03 | 40-03 | pending (plan 40-03) |
@@ -320,3 +320,63 @@ Documented limit (accepted by the user, Known cost 13 and threat T-40-10): `stop
 2026-11-01T22:10:35Z
 
 Verdict: pass
+
+### E-07: Gate A on the writer-half commit: testUnit with Docker unreachable and the full suite on latest x V2
+
+Backs: CLS-01 and CLS-02 (success criterion 2: `testUnit` and a full suite pass on the writer-half commit before the Keeper half starts). The testUnit half passed; the full-suite half is red on three existing `ClickHouseWriterTest` cases, so the gate fails.
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-parse HEAD
+git diff --quiet <E-06 writer_commit> HEAD -- . ':!.planning'
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd40/exec/gateA-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-gateA-testunit
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd40/exec/gateA-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd40/exec/xml-gateA-full
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-gateA-full
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py skips /tmp/gsd40/exec/xml-gateA-full
+```
+
+```text
+origin_reread: equal
+gate_head: 1659e9bece45860ad73842074a499aec0ea53ef0
+gated_tree_equals_writer_commit: yes
+keeper_half_absent: yes
+jvm_line: HotSpot 21 (OpenJDK 64-Bit Server VM, -PjavaVersion=21); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1709
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 22
+clickhouse_version_before: 26.10.3.7
+clickhouse_digest: sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+full_exit: 1
+full_tests: 2307
+full_failures: 3
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK (named=7 state_mismatch_cases=11 unexpected=0)
+full_delta_vs_baseline: 22
+clickhouse_version_after: 26.10.3.7
+jvm_crash: none
+v1_live_cases_passed: no
+full_failed_set: ClickHouseWriterTest#getTableReturnsNullWhenMissingAndSuppressionEnabled; ClickHouseWriterTest#getTableThrowsWhenMissingAndSuppressionDisabled; ClickHouseWriterTest#updateMapping
+failure_touches_writer_lifecycle: yes
+```
+
+The testUnit run with Docker unreachable passed: 1709 tests (1687 baseline plus 22), 0 failures, 0 errors, 2 skipped, the gated head's non-planning tree equal to the writer-half commit, the Keeper files untouched, origin equal to E-01.
+
+The full suite on ClickHouse `latest` (`26.10.3.7`, digest unchanged before and after) x client V2 ran 2307 tests (2285 baseline plus 22), 18 skipped (the named skips, helper OK), and 3 failed, all in `ClickHouseWriterTest`: `updateMapping` and `getTableReturnsNullWhenMissingAndSuppressionEnabled` fail with a `NullPointerException` at `ClickHouseWriter.updateMapping` (`this.chc` is null), and `getTableThrowsWhenMissingAndSuppressionDisabled` fails its `assertTrue(ex.getMessage().contains("does not exist"))` because the message is now that `NullPointerException`'s. The three `[1] V1` cases and the JSON comparison case of that class passed, but the class XML carries the three failures, so `v1_live_cases_passed` is recorded `no`.
+
+Cause, read from the stack traces and the test log. The three failing cases call the private helper `runWithWriter`, which does `writer.start(config)`, ignores the returned boolean and then uses the writer (`updateMapping`, `getTable`). Each of them starts against a destination database that holds no tables (the test drops its own table first; the class log shows exactly three `Did not find any tables in destination` lines, one per failing case), so `start()` returns false on the "no tables without db-topic split" exit. On the previous code that exit left `chc` open and the test went on using it; the writer-half commit closes and nulls `chc` on that exit, as CLS-01 requires ("every exit of `start()` that does not start the writer ... closes the client it opened"), so the writer is unusable afterwards. In production this is correct: `ProxySinkTask.start` throws `Connection to ClickHouse is not active.` when `start()` returns false and never uses the writer again. The plan's research did not list `ClickHouseWriterTest` as a user of a writer after a failed `start()`, and the plan forbids changing existing assertions, so no test or production line was changed after the run. The gate fails (not adjusted to pass); plan 40-03 must not start until a decision is made on how the three cases should obtain a started writer.
+
+2026-11-01T22:15:19Z
+
+Verdict: fail
