@@ -1,5 +1,43 @@
 # Milestones
 
+## v1.7.0_gg6-maintenance Maintenance: Dependency, Upstream Tail, Client 0.11.0 & Release (Shipped: 2026-11-01)
+
+**Phases completed:** 6 phases (33–38), 23 plans, 57 tasks
+
+**Delivered:** `v1.7.0_gg6` is published on `custom_build`. It carries every Dependabot update that was open (lz4-java 1.12.1, okhttp 5.5.1, Gradle 9.8.2, setup-java v6.1.0, and the ClickHouse client jump `0.9.6` → `0.11.0`), upstream's untagged tail with `additionalRetriableErrorCodes`, a fork-only fix so a buffered connector under a topic-renaming SMT commits the offsets Connect assigned, protobuf-java 4 declined with a guarded Dependabot ignore, and the CI loose ends (version bump script, archive compare wired into both release workflows, 36-row advisory ledger). The operator note `docs/ROLLOUT-v1.7.0_gg6.md` labels 29 effects with their evidence, flags `custom_` keys in `jdbcConnectionProperties` as the one upgrade-breaking item, and went through twelve fresh-context review rounds.
+
+**Stats:**
+
+- **Git range:** `28d1235d` (milestone start, 2026-10-28) → close (2026-11-01), 319 commits on `sync/v1.7.0`.
+- **Timeline:** 2026-10-28 → 2026-11-01 (4 days). Published 2026-11-01 UTC, closed the same day.
+- **Files changed:** 338 in total since `3a3a15a9` (+60,163 / −1,126), mostly `.planning/`. 79 files are in `src/`, the build, `gradle/` and `.github/` (+7,939 / −478); 7 files are in `src/main`.
+- **Suite:** `testUnit` runs 1,672 tests with Docker unreachable. Two full runs on one pinned ClickHouse `latest` (26.10.3.7) × client V2 ran 2,270 tests each, 0 failures, 18 named skips, on JDK 21. The nightly integration run on the client-bump scratch tip passed 63 tests, 0 failures, 9 cloud skips.
+- **Requirements:** 37/38 complete; BUF-06 (the real-environment rerun) is tracked outside this repository by the user's decision. The milestone audit is `tech_debt`: requirements 37/38, phases 6/6, integration 5/5, flows 3/3.
+- **Published:** `v1.7.0_gg6` is the `--no-ff` merge `72e8ccff` (parents `3a3a15a9` and `a46be37f`) on `custom_build`, with one green `tests.yaml` run (`41297502026`). The tag and the GitHub release (id 430511927, author `github-actions[bot]`, one asset of 13,558,692 bytes) were created by the publish run `41298074815`; `pre-v1.7.0_gg6` (rollback → `3a3a15a9`) was pushed by hand afterwards.
+
+**Closeout type:** `override_closeout`
+
+**Known verification overrides:** 0 newly acknowledged, 0 carried forward from a prior close. The open-artifact audit was clear. Decisions the user took that count as overrides: JDK 21 as the record of the two full suites (the default JDK 17 build crashed twice in Mockito), the twelve-round review loop closed on the user's decision with the last two Info fixes (IN-14, IN-15) not re-read, the CHANGELOG heading date `2026-10-31` kept although the merge was on 2026-11-01 UTC, and the Phase 36 and Phase 37 verification items accepted at their closes.
+
+**Known gaps:** none against requirements. Follow-ups are carried into `PROJECT.md` → Requirements → Active:
+
+- **Code (next release):** Phase 36 F-1 (the writer never closes its helper client), F-2 (the insert timeout has no effect with `async=false`), F-3; the `custom_` forwarding has no Docker-free pin (IN-04); `Processing.doLogic` wrapped-`DataException` case and FUT-05 (list only transient codes in `additionalRetriableErrorCodes`) from Phases 34–35; OI-35-1..3.
+- **Documents (next release that edits them):** the gg1 half of WR-08 in `docs/ROLLOUT-v1.7.0_gg1.md`; FORK-DELTA lines 6, 139 and 286 still use the future tense for the publish run; FUT-05 is not named by ID in the rollout note.
+- **Phase 37 dispositions (owner: user):** the `increment-version.yml` header comment names the wrong guard class; the `src/main` advisory rows 26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01 and 28 IN-05(b); broad glob rows in allow-lists (UF-37-3); review Infos.
+- **Repository state:** the scratch branches `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` are still on `origin` (the user deletes them); Dependabot PRs #21 and #22 are open; `NIGHTLY_ENABLED` is unset, so the nightly stays skipped.
+- **Authorization note:** the dependency bump rested on the ROADMAP plus the user's `/gsd-autonomous` request, not on a separate AGENTS.md approval; the user ran no publication step themselves: the orchestrator ran U1–U5 at the user's direct "делай".
+
+**Key accomplishments:**
+
+1. The dependency sweep landed lz4-java 1.12.1 (a CVE fix), okhttp, Gradle 9.8.2 and setup-java each as its own merge with its own gate, and protobuf-java 4 was declined by an exact-name Dependabot ignore guarded Docker-free, with the measured `VerifyError` cause recorded.
+2. Upstream's untagged tail merged as one mechanical, gated commit; `additionalRetriableErrorCodes` is pinned end to end by a 19-execution Docker-free class proven to bite by a mutation run.
+3. A buffered connector under a RegexRouter-style SMT now commits offsets for the partitions Connect assigned (three one-line sites), pinned red-first Docker-free and on ClickHouse `latest`, with the first-start effect labelled as derived, not measured.
+4. The connector ships ClickHouse client 0.11.0 behind a revertable catalog commit: the 0.9.6 RowBinary golden holds byte for byte under four time zones, the archive grows by 131 entries (zstd-jni), and 14 rollout items were recorded and rehearsed.
+5. CI hardening: `bump_version.py` replaced the npm call that wrote `vnull`, both release workflows now compare the archive with one rebuilt from the previous tag before publishing, and 29 carried review findings were closed in a 36-row ledger.
+6. The release gate held and the publish path was exercised for real: two equal green suites, one green `tests.yaml` on the published SHA, a green dry run from a scratch branch, then a publish run that created the tag and the release under the workflow token.
+
+---
+
 ## v1.7.0_gg5-ci CI & Release Workflow Modernization (Shipped: 2026-10-27)
 
 **Phases completed:** 3 phases (30–32), 16 plans, 26 tasks

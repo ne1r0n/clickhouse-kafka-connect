@@ -400,6 +400,60 @@
 
 ---
 
+## Milestone: v1.7.0_gg6-maintenance — Maintenance: Dependency, Upstream Tail, Client 0.11.0 & Release
+
+**Shipped:** 2026-11-01 (closed the same day)
+**Phases:** 6 | **Plans:** 23 | **Tasks:** 57 | **Commits:** 319 | **Timeline:** 4 days (2026-10-28 → 2026-11-01)
+
+### What Was Built
+
+- **The dependency sweep went in one gated merge per update** (lz4-java 1.12.1, okhttp, Gradle 9.8.2, setup-java), and protobuf-java 4 was declined by an exact-name Dependabot ignore with the measured `VerifyError` recorded.
+- **Upstream's untagged tail** merged as one mechanical commit; `additionalRetriableErrorCodes` is pinned end to end.
+- **A buffered connector under a RegexRouter-style SMT commits the offsets Connect assigned** (three one-line sites), pinned red-first.
+- **Client 0.11.0 shipped** behind one revertable commit after pins on 0.9.6; the RowBinary golden held byte for byte.
+- **CI hardening:** `bump_version.py`, the archive compare in both release workflows, a 36-row advisory ledger.
+- **`v1.7.0_gg6` was published (`72e8ccff`)** with the tag and the release created by the publish run under the workflow token, after a green dry run from a scratch branch.
+
+### What Worked
+
+- **Pins before the bump.** The 0.9.6 behaviour was pinned and a bare 0.11.0 worktree turned exactly the expected pins red before any code changed.
+- **Dry run on the runner before the publish.** The first run of the compare chain on a runner was the dry run, and it was green, so the publish run only had the tag and release steps to prove.
+- **Gates kept their shape under a long review.** Twelve review rounds still ended with 42 of 43 findings fixed and the documents frozen before the allow-list was generated last.
+- **Read-back after every user-visible step** (release, tag, asset digest, PR states) found no surprise.
+
+### What Was Inefficient
+
+- **The review loop ran 12 rounds against a plan cap of 3**, each extension a user decision, and the last two Info fixes were never re-read.
+- **Both full suites needed JDK 21** after the default OpenJ9 JDK 17 crashed twice in Mockito, plus ~8 GB core dumps to clean up.
+- **A date gate fired at publication:** the CHANGELOG heading carried the planning date, and the merge landed a day later.
+- **Plan scope vs approval scope drifted:** the plan said the user runs the publication, the user later asked the orchestrator to run it; evidence entries had to say so.
+- **Evidence said "not read" where one read-only call would have answered** (who closed #10 and #17).
+
+### Patterns Established
+
+- **A user-run handoff file per irreversible step** (U1–U5) with preconditions, expected output and failure rules, and an orchestrator runbook that re-checks origin before each step.
+- **Push by SHA to an explicit ref, never by branch name,** and a merge commit built detached on the published tip so the local branch is never moved.
+- **The tag is created by the publish run, and the tag-absent gate refuses a hand-pushed tag.**
+
+### Key Lessons
+
+1. **Put the date into the release gate, not the document.** Either write the CHANGELOG date at merge time or make the heading date a checked precondition one step earlier.
+2. **Decide who runs the publication when planning, and write it into the handoff.** Switching executor late costs a deviation record in every entry.
+3. **Cap the review loop by findings severity, not by rounds.** Late rounds found Info-level wording; a severity threshold would have closed it earlier.
+4. **A dry run on the runner is worth doing even when local gates pass.** It is the only proof of the compare chain's CI wiring.
+
+### Quality Observations
+
+- **Code review** ran per phase; the release documents had the 12-round independent review. **Security audits:** Phase 38 `SECURED 16/16`.
+- **The final suite** ran 2,270 tests twice with 0 failures and 18 named skips on `latest` 26.10.3.7 × V2 (JDK 21); `testUnit` ran 1,672 with Docker unreachable.
+- **7 files changed in `src/main`** since `v1.7.0_gg5`.
+
+### Cost Observations
+
+- Model mix and session counts were not recorded for this milestone.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -413,6 +467,7 @@
 | v1.7.0_gg3-hardening | 4 | 23 | Second milestone without a sync. The classification pin landed before the fix, the gg2/gg3 encoding diff was measured before the rollout note, and the Dependabot merge went first with a pinned gate exemption. A post-publication docs fix ran independent review rounds until one came back clean. |
 | v1.7.0_gg4-hardening | 5 | 32 | Third milestone without a full sync (a tagless mini-sync only). Spike-then-pin-then-fix for both discovery defects, a build-failing check on the shipped archive, and a release phase that edits no code and carries unfixed findings in a close record. |
 | v1.7.0_gg5-ci | 3 | 16 | First CI-only milestone, with no connector code change. Guards seen red before the files they protect, a measured full integration run before the nightly design, and a manual-dispatch gate that had to move to the release phase. |
+| v1.7.0_gg6-maintenance | 6 | 23 | Dependency sweep, tail merge, one fork-only offset fix and the client 0.11.0 jump in one milestone. Pins on the old client first, a revertable bump, a runner dry run before the publish, and a publish run that created the tag and release for the first time. |
 
 ### Cumulative Quality
 
@@ -425,6 +480,7 @@
 | v1.7.0_gg3-hardening | 988 → 1281 | 0 | 999.3 record values in writer errors, `DeclaredNullability` null/escape/unpaired cases, pin-guard false failures, four operator-doc rollback hazards (step order, `exactlyOnce=false`, 3+ topics, `enableDbTopicSplit` keys) | 11 (all 10 carried closed) |
 | v1.7.0_gg4-hardening | 1281 → 1865 | 0 | 999.4 size-named Tuple element dropped at discovery, 999.5 doubled backslash in names and Enum labels, Jackson Map key in the JSON-as-string failure text, Enum-label NPE, Shadow 9 nested-jar archive | 16 unfixed review findings carried (all gg3 carried items closed) |
 | v1.7.0_gg5-ci | 1865 → 1961 | 0 | Integration harness Java 11 worker (54 of 54 connector tests failing), `pre-release.yaml` Gradle `7.4.2`, archived release actions; no connector code change | 13 review advisories open in Phases 30 and 31 (6 WR, 7 IN) |
+| v1.7.0_gg6-maintenance | 1961 → 2270 | 0 | Buffered offsets under topic-renaming SMTs committed for the wrong partitions, `vnull` version bump, the first-start reread documented in the rollout note, 7 files in `src/main` | 11 open follow-ups carried |
 
 ### Top Lessons (Verified Across Milestones)
 

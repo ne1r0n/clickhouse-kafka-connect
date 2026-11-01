@@ -2,7 +2,7 @@
 
 ## What This Is
 
-The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg5`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
+The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg6`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
 
 The second milestone (`v1.6.0_gg1-sync`) cashed that in: 581 commits of upstream (`v1.2.9` → `v1.6.0`) merged into `custom_build` with the suite as the acceptance gate, every fork feature either re-applied onto upstream's rewritten code or consciously retired in favour of upstream, and the result published as `v1.6.0_gg1`. What the fork still patches, and what it gave up, is recorded in `docs/FORK-DELTA.md`.
 
@@ -16,11 +16,31 @@ The sixth milestone (`v1.7.0_gg4-hardening`) absorbed nine Dependabot merges and
 
 The seventh milestone (`v1.7.0_gg5-ci`) brought the fork's workflows current without touching connector code. The release-path workflows run only SHA-pinned actions behind a Docker-free pin guard, build with the Gradle wrapper through `setup-gradle` (so `verifyConfluentArchive` runs on the release path) and publish with `gh release create`. The integration harness moved to a Java 17 Connect worker (54 of 54 connector tests went from failing to passing), and a fork-owned, variable-gated nightly now runs `integrationTest` on ClickHouse `latest` × client V2 while upstream's `integrationTests.yaml` stays byte-identical and disabled. The result is published as `v1.7.0_gg5` (merge `3a3a15a9`, 2026-10-27), with its operator note in `docs/ROLLOUT-v1.7.0_gg5.md`.
 
+The eighth milestone (`v1.7.0_gg6-maintenance`) absorbed every open Dependabot update including the ClickHouse client `0.11.0`, took upstream's untagged tail (`additionalRetriableErrorCodes`), fixed the offsets a buffered connector commits under a topic-renaming SMT, hardened CI (version bump script, archive compare in both release workflows) and published `v1.7.0_gg6` with an independently reviewed operator note. The publish run created the tag and the release for the first time.
+
 ## Core Value
 
 Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
 ## Current State
+
+**Shipped:** `v1.7.0_gg6-maintenance` (published 2026-11-01, closed the same day). It covered 6 phases (33–38), 23 plans, 57 tasks and 37/38 requirements (BUF-06, the real-environment rerun, is tracked outside this repository). The milestone audit is `tech_debt` with no gaps: requirements 37/38, phases 6/6, integration 5/5, flows 3/3. It closed as an `override_closeout`.
+
+`v1.7.0_gg6` is on `origin/custom_build` as the `--no-ff` merge `72e8ccff` (parents `3a3a15a9` and `a46be37f`), with one green `tests.yaml` run (41297502026). The tag `v1.7.0_gg6` and the GitHub release (id 430511927, one asset of 13,558,692 bytes, sha256 `e745e7d5…`) were created by the publish run `41298074815` under the workflow token, which closed the earlier caveat that no run had exercised the publish path. The rollback tag `pre-v1.7.0_gg6` points at `3a3a15a9` and is on `origin`.
+
+The suite runs 2,270 tests on ClickHouse `latest` (26.10.3.7) × client V2 and passed twice on JDK 21 (the default JDK 17 build crashed twice in Mockito), with 0 failures and 18 named skips. `testUnit` runs 1,672 tests with Docker unreachable. The ClickHouse client is `0.11.0`.
+
+Code: 7 files changed in `src/main` since `v1.7.0_gg5`; the milestone changed 79 files in `src/`, the build, `gradle/` and `.github/` (+7,939/−478). The fork delta against upstream is 331 files at the wide scope and 40 in `src/main` (`docs/FORK-DELTA.md` raw numbers).
+
+**What operators will see** (each in `docs/ROLLOUT-v1.7.0_gg6.md`, 29 labelled effects):
+- A buffered connector under a RegexRouter-style SMT commits offsets for the partitions Connect assigned; the first start after the upgrade is derived from Kafka semantics, not measured.
+- Client 0.11.0: `custom_*` keys in `jdbcConnectionProperties` fail the start-up ping on client V2 (the one upgrade-breaking item); retry cadence, 502/503 shape, user agent and zstd natives shift as the note labels them.
+- `additionalRetriableErrorCodes` is new; a listed code bypasses `errors.tolerance` and the DLQ and has no retry budget.
+
+**Knowingly open in the published `v1.7.0_gg6`:** see the Known gaps list of the `v1.7.0_gg6-maintenance` entry in `MILESTONES.md` (F-1..F-3, the `custom_` forwarding pin, the wrapped-`DataException` case, FUT-05, the gg1 half of WR-08, Phase 37 dispositions, scratch branches on `origin`, Dependabot PRs #21 and #22, `NIGHTLY_ENABLED` unset).
+
+<details>
+<summary>Previous state — <code>v1.7.0_gg5-ci</code> (shipped 2026-10-27)</summary>
 
 **Shipped:** `v1.7.0_gg5-ci` (published 2026-10-27, closed 2026-10-28). It covered 3 phases (30–32), 16 plans, 26 tasks and 11/11 requirements. The milestone audit is `tech_debt` with no gaps: requirements 11/11, phases 3/3, integration 11/11, flows 3/3. It closed as a `verified_closeout`: the open-artifact audit was clear and all three phases read as complete and verified. The Phase 32 review hit its three-round cap with two Info findings fixed and not re-reviewed, accepted by the user.
 
@@ -36,6 +56,8 @@ Code: **`src/main` did not change** between `v1.7.0_gg4` and `v1.7.0_gg5`. The m
 - A nightly integration run exists on `custom_build` and is enabled by the repository variable `NIGHTLY_ENABLED`.
 
 **Knowingly open in the published `v1.7.0_gg5`:** the Phase 30 and 31 review advisories (WR-01..WR-03 and IN-01..IN-04 in Phase 30, WR-01..WR-03 and IN-01..IN-03 in Phase 31), `increment-version.yml` writing `vnull` for `_ggN` versions, and a real publish path that no run has exercised. See the milestone-close note under Requirements → Active.
+
+</details>
 
 <details>
 <summary>Previous state — <code>v1.7.0_gg4-hardening</code> (shipped 2026-10-23)</summary>
@@ -170,7 +192,8 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 </details>
 
-## Current Milestone: v1.7.0_gg6-maintenance Dependency Absorption, Upstream Tail & Advisory Debt
+<details>
+<summary>Milestone scope as planned — <code>v1.7.0_gg6-maintenance</code> Dependency Absorption, Upstream Tail &amp; Advisory Debt (shipped 2026-11-01)</summary>
 
 **Goal:** Absorb everything Dependabot has open (including the ClickHouse client jump `0.9.6` → `0.11.0`) and upstream's untagged tail, clear the carried review advisories and CI loose ends, and publish `v1.7.0_gg6` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
@@ -188,9 +211,11 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 **Baseline at milestone start (2026-10-28):** `origin/custom_build` = `3a3a15a9` (`v1.7.0_gg5`); local `sync/v1.7.0` carries the bookkeeping and differs from origin only by the gg4/gg5 release merge commits. Open Dependabot PRs: #10, #16–#20. Dependabot PR #4 is gone (superseded by #17).
 
+</details>
+
 ## Next Milestone Goals
 
-Superseded by the current milestone above. Still Future Requirements after it: the next *tagged* upstream sync and the upstream workflows still on `@v3`-era actions.
+No milestone is active. Candidates: the Known gaps of `v1.7.0_gg6-maintenance` (code follow-ups F-1..F-3, the `custom_` pin, the wrapped-`DataException` case, FUT-05), the next *tagged* upstream sync and the upstream workflows still on `@v3`-era actions. Still Future Requirements: the next *tagged* upstream sync and the upstream workflows still on `@v3`-era actions.
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg5-ci</code> CI &amp; Release Workflow Modernization (shipped 2026-10-27)</summary>
@@ -554,6 +579,15 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ `VERSION=v1.7.0_gg5`, CHANGELOG, FORK-DELTA and a reviewed rollout note are updated (CIG-02) — Phase 32
 - ✓ `v1.7.0_gg5` is published: `custom_build` = `3a3a15a9`, tags `v1.7.0_gg5` and `pre-v1.7.0_gg5` on `origin`, one green `tests.yaml` run (CIG-03), and `docs/ROLLOUT-v1.7.0_gg5.md` — Phase 32
 
+**v1.7.0_gg6-maintenance milestone (shipped 2026-11-01, 37/38 requirements; BUF-06 tracked outside this repository):**
+
+- ✓ lz4-java 1.12.1 (GHSA-48mj-8f7c-7qfm), okhttp 5.5.1, Gradle 9.8.2 and setup-java v6.1.0 are absorbed from their Dependabot heads, one merge and one gate each, and protobuf-java 4 is declined by guarded Dependabot ignores with the measured `VerifyError` cause in FORK-DELTA (SWP-01..SWP-03) — Phase 33
+- ✓ Upstream's untagged tail `9bed6f79` is merged as one mechanical gated commit and `additionalRetriableErrorCodes` is pinned end to end (UPS and tail items) — Phase 34
+- ✓ A buffered connector under a topic-renaming SMT commits offsets keyed by the original topic, partition and offset, pinned Docker-free and on ClickHouse `latest`, with the rollout item labelled (BUF-01..BUF-05, BUF-07) — Phase 35
+- ✓ The ClickHouse client moves to `0.11.0` in one revertable commit after pins on 0.9.6; the RowBinary golden holds byte for byte; CLT-07 nightly green on the scratch tip (CLT-01..CLT-09) — Phase 36
+- ✓ `bump_version.py`, the archive compare wired into both release workflows and the 36-row advisory ledger (CIH and advisory requirements) — Phase 37
+- ✓ `v1.7.0_gg6` is published: VERSION, CHANGELOG, FORK-DELTA, a twelve-round reviewed rollout note, the gg6 allow-list, two full suites and a runner-proven dry run, `--no-ff` merge `72e8ccff`, tag and release created by the publish run (RLS-01..RLS-06) — Phase 38
+
 ### Active
 
 <!-- No milestone is active. Open `[ ]` items below are candidates for the next one. Struck-through items are history. -->
@@ -567,6 +601,14 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 **v1.7.0_gg3-hardening:** all 20 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg3-hardening-REQUIREMENTS.md`). All ten follow-ups carried in are closed. The open items below emerged during this milestone.
 
 **v1.7.0_gg4-hardening:** all 36 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg4-hardening-REQUIREMENTS.md`). The ten follow-ups carried in are closed except the review advisories listed in the close note below.
+
+**v1.7.0_gg6-maintenance:** 37 of 38 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg6-maintenance-REQUIREMENTS.md`); BUF-06 stays outside this repository. Open items carried in:
+
+- [ ] F-1 the writer never closes its helper client; F-2 the insert timeout has no effect with `async=false`; F-3 (`milestones/v1.7.0_gg6-maintenance-phases/36-client-0-11-0-audit-bump/36-FOLLOWUPS.md`).
+- [ ] No Docker-free test pins the forwarding of a `custom_` key on client 0.11.0 (IN-04, wording fixed only).
+- [ ] `Processing.doLogic` wrapped-`DataException` case and FUT-05 (list only transient codes in `additionalRetriableErrorCodes`); OI-35-1..3.
+- [ ] The gg1 half of WR-08 (`docs/ROLLOUT-v1.7.0_gg1.md`); FORK-DELTA lines 6, 139 and 286 still use the future tense for the publish run.
+- [ ] Phase 37 dispositions (owner: user): the `increment-version.yml` header comment, the `src/main` advisory rows, broad allow-list glob rows.
 
 **Publication & client follow-ups (emerged in Phase 11, not yet scheduled):**
 
@@ -927,6 +969,8 @@ None is an unmet requirement and none touches connector code.
 | Phase 26: the classifier keeps a size-named row only when the parsed parent Tuple declares that key and the row is not an offsets row by type and depth, and fails closed (old behaviour plus one metadata-only WARN) when the parent type cannot be parsed (D-03/D-04) | A wrong Column list writes wrong RowBinary bytes for every row of an affected table, so an unparseable parent must not guess; 26-REVIEW WR-01 notes the name "fail closed" understates that the declared element is then still dropped | ✓ 120-row unit table, 46/46 live round-trip with zero WARN, pre-fix tree fails exactly the 25 measured keys |
 | Phase 26: the phase gate's full suite counts a HotSpot 21 run (`-PjavaVersion=21`) after three consecutive OpenJ9 `Mockito.spy` crashes on the default Semeru 17 under host memory pressure; the orchestrator's own Semeru gate passed on re-run | The crash is an environment fault at a known frame, not a test failure, and the tree was already green twice on Semeru 17 on the same code; all four runs are recorded in E-12 | ✓ 1709 tests, 0 failed, 18 skipped on `1f2f1561` (Semeru twice, HotSpot once) |
 | Phase 25: `connect-api` 4.4.0 is proven compile-time only by an offline bytecode check of the connector's 176 Kafka references against the `cp-kafka-connect-base:7.9.7` worker jars, pinned by `ConnectApiReferencesUnitTest`; wording states only what E-12 measured (the Kafka 3.9 worker still declares `onPartitionsRevoked`) | The production worker supplies the Connect API at runtime; an operator-facing claim needs a transcript behind it (D-14) | ✓ `REFERENCE worker classes-missing 0 members-missing 0`; 25-REVIEW WR-02/WR-03 note the unit test is a weaker pin than the bless run (open) |
+| Phase 38: the orchestrator ran the publication steps (push, `--no-ff` merge, publish dispatch, rollback tag) at the user's direct "делай" instead of handing them over | The user asked for it after the handoff files were presented; the gates (green dry run, one green `tests.yaml`, tag-absent check) were unchanged | ✓ Release published 2026-11-01, E-20..E-27 |
+| Phase 38: keep the CHANGELOG heading date `2026-10-31` although the merge was on 2026-11-01 UTC | User choice at the date gate; a date fix would have needed a new review and gates | ✓ Recorded deviation |
 
 ## Evolution
 
@@ -946,4 +990,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-28 after starting milestone v1.7.0_gg6-maintenance*
+*Last updated: 2026-11-01 after the v1.7.0_gg6-maintenance milestone close*

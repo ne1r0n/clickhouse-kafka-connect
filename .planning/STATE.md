@@ -2,20 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg6-maintenance
 milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
-current_phase: 38
-current_phase_name: Release & Publication
-status: executing
-stopped_at: Phase 37 complete, ready to plan Phase 38
-last_updated: "2026-10-31T12:42:02.843Z"
-last_activity: 2026-10-31
-last_activity_desc: Phase 38 execution started
-state_head: 0d4763ee73d56fba499f3e8d7d3963400dcc4a51
+status: Awaiting next milestone
+stopped_at: Phase 38 complete — all phases complete
+last_updated: "2026-11-01T11:41:06.859Z"
+last_activity: 2026-11-01
+last_activity_desc: Milestone v1.7.0_gg6-maintenance completed and archived
+state_head: ce449dbdaaa2d76ee57db81aef8da450646b7309
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 23
-  completed_plans: 18
-  percent: 78
+  completed_plans: 23
+  percent: 100
+current_phase: 38
 ---
 
 # Project State
@@ -29,12 +28,10 @@ See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg
 
 ## Current Position
 
-Phase: 38 (Release & Publication) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 38
-Last activity: 2026-10-31 — Phase 38 execution started
-
-Progress: [████████░░] 78%
+Phase: Milestone v1.7.0_gg6-maintenance complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-01 — Milestone v1.7.0_gg6-maintenance completed and archived
 
 ## Performance Metrics
 
@@ -74,6 +71,7 @@ Progress: [████████░░] 78%
 | 35 | 3 | - | - |
 | 36 | 4 | - | - |
 | 37 | 5 | - | - |
+| 38 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -348,12 +346,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-29T09:34:10.618Z
-Stopped at: Phase 37 complete, ready to plan Phase 38
+Stopped at: Phase 38 complete — all phases complete
 Resume file: None
 
 ## Operator Next Steps
 
-- Discuss and plan Phase 33 with /gsd-discuss-phase 33, then /gsd-plan-phase 33
-- Do not merge Dependabot PRs on `origin` until `v1.7.0_gg6` is published. The milestone absorbs them from their PR heads on the scratch branch.
-- Phase 33 asks you to close PR #10 (protobuf-java 4.x), or to confirm that it may stay open until the `ignore` reaches `custom_build`
-- Phase 36's manual nightly dispatch, and any Phase 37 dry run, need you to approve a push of the scratch branch and to start the runs from GitHub's `Run workflow` control
+
+- Start the next milestone with /gsd-new-milestone
