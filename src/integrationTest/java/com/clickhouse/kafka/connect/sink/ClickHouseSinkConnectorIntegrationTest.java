@@ -62,6 +62,7 @@ public class ClickHouseSinkConnectorIntegrationTest {
             .column("insertTime", "DateTime DEFAULT now()")
             .orderByColumn("symbol");
     private static final Path RESOURCES_ROOT = Path.of("src", "integrationTest", "resources");
+    private static final String STOCK_GEN_TEMPLATE = RESOURCES_ROOT.resolve("stock_gen.json").toString();
 
     @BeforeAll
     public static void setup() throws IOException {
@@ -168,7 +169,7 @@ public class ClickHouseSinkConnectorIntegrationTest {
         int dataCount = generateData(topicName, parCount, 200);
         setupConnector(topicName, parCount);
         ClickHouseTestHelpers.waitWhileCounting(chcNoProxy, topicName, 3);
-        LOGGER.info(confluentPlatform.getConnectors());
+        LOGGER.info("Sink connector task status: {}", confluentPlatform.getConnectorTasksStatus(SINK_CONNECTOR_NAME));
         assertTrue(dataCount <= ClickHouseTestHelpers.countRows(chcNoProxy, topicName));
     }
 
@@ -180,8 +181,51 @@ public class ClickHouseSinkConnectorIntegrationTest {
         int dataCount = generateSchemalessData(topicName, parCount, 200);
         setupSchemalessConnector(topicName, parCount);
         ClickHouseTestHelpers.waitWhileCounting(chcNoProxy, topicName, 3);
-        LOGGER.info(confluentPlatform.getConnectors());
+        LOGGER.info("Sink connector task status: {}", confluentPlatform.getConnectorTasksStatus(SINK_CONNECTOR_NAME));
         assertTrue(dataCount <= ClickHouseTestHelpers.countRows(chcNoProxy, topicName));
+    }
+
+    @Test
+    public void datagenCompletionCountIgnoresLeftoverConnectorTest() throws IOException, InterruptedException {
+        String leftoverTopic = "datagenLeftoverConnectorTopic";
+        String secondTopic = "datagenSecondConnectorTopic";
+        String afterTopic = "datagenAfterLeftoverTopic";
+        int leftoverPartitions = 1;
+        int secondPartitions = 2;
+        int recordsPerTask = 100;
+        confluentPlatform.createTopic(leftoverTopic, leftoverPartitions);
+        confluentPlatform.createTopic(secondTopic, secondPartitions);
+        confluentPlatform.createTopic(afterTopic, 1);
+
+        String leftoverConnector = ConfluentPlatform.newDatagenConnectorName(leftoverTopic);
+        String secondConnector = ConfluentPlatform.newDatagenConnectorName(secondTopic);
+        int leftoverTasks = ConfluentPlatform.datagenTaskCount(leftoverPartitions);
+        int secondTasks = ConfluentPlatform.datagenTaskCount(secondPartitions);
+        try {
+            confluentPlatform.startDatagenConnector(leftoverConnector, STOCK_GEN_TEMPLATE, leftoverTopic, leftoverPartitions, recordsPerTask);
+            confluentPlatform.startDatagenConnector(secondConnector, STOCK_GEN_TEMPLATE, secondTopic, secondPartitions, recordsPerTask);
+            confluentPlatform.awaitAllTasksFailed(leftoverConnector, leftoverTasks);
+            confluentPlatform.awaitAllTasksFailed(secondConnector, secondTasks);
+
+            assertOwnDatagenTaskCount(leftoverConnector, leftoverTasks);
+            assertOwnDatagenTaskCount(secondConnector, secondTasks);
+
+            int generated = generateData("datagenAfterLeftoverTopic", 1, recordsPerTask);
+            assertTrue(generated > 0);
+            assertOwnDatagenTaskCount(leftoverConnector, leftoverTasks);
+        } finally {
+            try {
+                confluentPlatform.deleteConnectors(secondConnector);
+            } finally {
+                confluentPlatform.deleteConnectors(leftoverConnector);
+            }
+        }
+    }
+
+    private void assertOwnDatagenTaskCount(String connectorName, int expectedTasks) throws IOException {
+        Assertions.assertEquals(expectedTasks, confluentPlatform.countFinishedDatagenTasks(connectorName),
+                "A scoped count must not include the other finished connector's tasks; with both connectors present, a count across connectors would read " +
+                        (ConfluentPlatform.datagenTaskCount(1) + ConfluentPlatform.datagenTaskCount(2)) + " for each");
     }
 
     private static Map<String, String> getTestProperties() {
@@ -203,7 +247,7 @@ public class ClickHouseSinkConnectorIntegrationTest {
     }
 
     private int generateData(String topicName, int numberOfPartitions, int numberOfRecords) throws IOException, InterruptedException {
-        return confluentPlatform.generateData(Path.of(RESOURCES_ROOT.toString(), "stock_gen.json").toString(), topicName, numberOfPartitions, numberOfRecords);
+        return confluentPlatform.generateData(STOCK_GEN_TEMPLATE, topicName, numberOfPartitions, numberOfRecords);
     }
 
     private int generateSchemalessData(String topicName, int numberOfPartitions, int numberOfRecords) throws IOException, InterruptedException {
