@@ -5,16 +5,16 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 40
 current_phase_name: Helper Client Closing
 status: executing
-stopped_at: Phase 39 complete, ready to plan Phase 40
-last_updated: "2026-11-01T21:56:32.456Z"
+stopped_at: Completed 40-01-PLAN.md
+last_updated: "2026-11-01T22:06:40.374Z"
 last_activity: 2026-11-01
 last_activity_desc: Phase 40 execution started
-state_head: 8b33b5e0d61cf21607d71bea55fb55b060e24aae
+state_head: 6341d7de3950f8e2c2716f2255f5bfd7ee69cfbe
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 17
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 40 (Helper Client Closing) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 40
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-11-01 — Phase 40 execution started
 
 Progress: [██░░░░░░░░] 17%
@@ -228,6 +228,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 39 P02 | 45 min | 2 tasks | 6 files |
 | Phase 39 P03 | 5 min | 2 tasks | 4 files |
 | Phase 39 P04 | 84 min | 3 tasks | 4 files |
+| Phase 40 P01 | 8 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -322,6 +323,7 @@ Placement:
 - [Phase 39]: 39-04: F-3 deliverable is the leftover-connector pin, the removal of getConnectors() and the IN-06 hygiene, not a change of the counting key (generateData already counted by connector name)
 - [Phase 39]: 39-04: the recorded integrationTest run is the ClickHouseSinkConnectorIntegrationTest class, since every executing caller of the changed helpers is in it
 - [Phase 39]: 39-04: ClickHouseSinkConnectorIntegrationTest.java keeps its pre-existing import order (waiver in E-08); ConfluentPlatform.java is formatter-clean with an unchanged import set
+- [Phase 40]: 40-01: red trees live only in 40-red-writer.patch and 40-red-keeper.patch (strict red-first); no src change committed; injected-client Keeper clause pinned by the K3 NPE tripwire plus plan 40-03 source identity
 
 ### Pending Todos
 
@@ -381,8 +383,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-01T20:50:20.051Z
-Stopped at: Phase 39 complete, ready to plan Phase 40
+Last session: 2026-11-01T22:06:40.341Z
+Stopped at: Completed 40-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
