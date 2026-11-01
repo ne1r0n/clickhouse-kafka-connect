@@ -16,7 +16,7 @@
 | E-01 | DEP-01, DEP-02 | 39-01 | pass |
 | E-02 | DEP-01 | 39-01 | pass |
 | E-03 | DEP-01 | 39-01 | pass |
-| E-04 | DEP-02 | 39-02 | pending (plan 39-02) |
+| E-04 | DEP-02 | 39-02 | pass |
 | E-05 | DEP-02 | 39-02 | pending (plan 39-02) |
 | E-06 | PIN-02 | 39-03 | pending (plan 39-03) |
 | E-07 | PIN-03 | 39-03 | pending (plan 39-03) |
@@ -216,5 +216,72 @@ invariants_exit: 0
 The gated head is the evidence commit on top of the gson merge `ac216401`, and its non-planning tree equals the merge's tree. The cumulative gate was started in the background on the merge commit's explicit SHA, right after the E-02 evidence commit and before the first test run, and no commit was made until it ended. Both testUnit runs and both full-suite runs exited 0 on one HotSpot 21 JVM line with no crash file in the repository root. Totals equal the research's (testUnit 1672 tests, 2 skipped; full 2270 tests, 18 skipped; Docker-only delta 2270 - 1672 = 598), and the ClickHouse image digest equals the research run's `sha256:739e099abd11...30b1ce`, so a later difference cannot come from a moved `latest` tag. The second run of each pair used `--rerun` after the results directory was cleared, and the totals were tallied from the JUnit XML. The gate took about 37 minutes against the 17 to 23 the research expected, because it overlapped four Gradle runs on a swap-pressured host; it ended `result=PASS` with exit 0 and no `VIOLATION` line, so the range `pre-v1.7.0-sync..HEAD` with a Dependabot merge and the gg6 publication merge `72e8ccff` is shape-clean.
 
 2026-11-01T18:31:30Z
+
+Verdict: pass
+
+### E-04: setup-gradle source merged as its own commit with the FORK-DELTA tests.yaml row; pins, peeled commit and guard classes (DEP-02)
+
+Backs: DEP-02, ROADMAP Phase 39 criterion 2 (setup-gradle 6.4.1 arrives from the fetched Dependabot PR #21 head as its own `--no-ff` merge commit, pinned in the four fork workflows by the peeled commit of `refs/tags/v6.4.1`, with `integrationTests.yaml` untouched, the release/pre-release mutual diff unchanged, the FORK-DELTA `tests.yaml` row changed in the same commit, and the pin-guard classes green).
+
+```sh
+git ls-remote origin refs/heads/custom_build refs/pull/21/head
+grep -n 'gradle/actions/setup-gradle@' .github/workflows/tests.yaml .github/workflows/nightly-integration-tests.yaml .github/workflows/release.yaml .github/workflows/pre-release.yaml
+git fetch origin refs/pull/21/head
+git rev-parse FETCH_HEAD
+git log -1 --format='author=%an parents=%P' 14be67ce7b4e97682bdf54cda89b73d45978a2b1
+git diff --name-only 14be67ce7b4e97682bdf54cda89b73d45978a2b1^1 14be67ce7b4e97682bdf54cda89b73d45978a2b1
+git diff -U0 14be67ce7b4e97682bdf54cda89b73d45978a2b1^1 14be67ce7b4e97682bdf54cda89b73d45978a2b1
+curl -sS --fail https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/pulls/21
+git ls-remote https://github.com/gradle/actions.git refs/tags/v6.4.1 'refs/tags/v6.4.1^{}'
+git merge-tree --write-tree --name-only HEAD 14be67ce7b4e97682bdf54cda89b73d45978a2b1
+git merge --no-ff --no-commit 14be67ce7b4e97682bdf54cda89b73d45978a2b1
+git add docs/FORK-DELTA.md
+git commit -F /tmp/gsd39/exec/msg-21.txt
+git diff --name-only 82202f7da7e8c842cc97543c6cc02c89de620caf^1 82202f7da7e8c842cc97543c6cc02c89de620caf
+git diff --numstat 82202f7da7e8c842cc97543c6cc02c89de620caf^1 82202f7da7e8c842cc97543c6cc02c89de620caf
+grep -c 'gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1' <four workflows>
+grep -rl 3f5f9adaf7d9fecd50b5935e54106014257a94e6 .github
+shasum -a 256 .github/workflows/integrationTests.yaml
+diff .github/workflows/release.yaml .github/workflows/pre-release.yaml | shasum -a 256
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun -PjavaVersion=21 --tests '*ReleaseWorkflowGuardUnitTest' --tests '*TestsWorkflowPinGuardUnitTest' --tests '*WorkflowActionPinGuardUnitTest' --tests '*DependabotProtobufIgnoreGuardUnitTest' --tests '*NightlyWorkflowGuardUnitTest' --tests '*UpstreamIntegrationWorkflowBytesGuardUnitTest' > /tmp/gsd39/exec/guards.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit
+curl -sS --fail 'https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/actions/runs?head_sha=14be67ce7b4e97682bdf54cda89b73d45978a2b1&per_page=20'
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+```
+
+```text
+origin_reread_before_merge: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+setup_gradle_head: 14be67ce7b4e97682bdf54cda89b73d45978a2b1
+setup_gradle_head_research: 14be67ce7b4e97682bdf54cda89b73d45978a2b1
+rebased_since_research: no
+setup_gradle_author: dependabot[bot]
+setup_gradle_parent: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+setup_gradle_files: .github/workflows/nightly-integration-tests.yaml .github/workflows/pre-release.yaml .github/workflows/release.yaml .github/workflows/tests.yaml
+setup_gradle_change: setup-gradle 3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0 -> 8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1, one line per file, same indentation
+action_tag_object: 7296c772c13d12d9871528814b51fb2143c138ef
+action_peeled_commit: 8da46b539cd8fe6ab27ca75128919a18d757604c
+pinned_is_peeled_commit: yes
+merge_tree: clean
+merge_commit: 82202f7da7e8c842cc97543c6cc02c89de620caf
+first_parent_diff_files: .github/workflows/nightly-integration-tests.yaml .github/workflows/pre-release.yaml .github/workflows/release.yaml .github/workflows/tests.yaml docs/FORK-DELTA.md
+pin_counts: tests=1 nightly=1 release=1 pre-release=1
+old_pin_files: none
+integration_tests_yaml_sha256: 07dff3d0973ae821a259544632d161a270126ff8054b45adbf64849edd2d5109
+release_prerelease_diff_sha256: ac7dce11e09bbe30ca41a0f0c65ebaeb6c8a69c5dec6fa0f1bf5cb1147ae8d44
+release_prerelease_pin_line_only: yes
+guard_classes_exit: 0
+guard_classes_files: 6
+guard_classes_tests: 184
+guard_classes_failures: 0
+guard_classes_errors: 0
+guard_classes_skipped: 0
+github_tests_run_on_head: 41297596686 .github/workflows/tests.yaml success
+anchors_mirror: rows=172 bad=0
+```
+
+The source was fetched at 2026-11-01T18:33:37Z. It has one parent equal to the re-read origin tip `72e8ccff`, is authored by `dependabot[bot]`, changes only the four fork workflows, and in each the changed lines are exactly the removal of the v6.4.0 `uses:` line and the addition of the same line with the v6.4.1 peeled commit and a `# v6.4.1` comment at identical indentation; the REST `head.sha` of PR #21 equals the fetched head, and the PR was still open and unmerged. The research recorded the same head `14be67ce`, so it was not rebased. The live `ls-remote` shows the plain tag line (the tag object `7296c772...`) and the `^{}` line (the commit `8da46b53...`); the pinned 40-hex is the peeled commit and differs from the tag object. The dry-run merge printed one tree OID line (`68e39ca263fbd5783469e641a2f658b4accd43d8`) with exit 0. Only the four workflows were staged after `git merge --no-ff --no-commit`; the FORK-DELTA edit is one removed and one added line (setup-gradle `v6.4.0` to `v6.4.1` in the `tests.yaml` row, and `DEP-02` after `SWP-02` in its last cell). The merge's second parent equals `setup_gradle_head`. Each workflow changes by one added and one removed line, `integrationTests.yaml` has its planning-time SHA-256, and the release/pre-release diff signature is unchanged, which is the measured form of the reworded criterion 2. The six guard classes ran under `testUnit --rerun` with Docker unreachable on one HotSpot 21 JVM line: 6 XML files, 184 tests, no failure, error or skip, and no test file was edited. The GitHub `tests.yaml` run on the PR head was read only for information. No text in the merge message or the FORK-DELTA row claims a closed vulnerability.
+
+2026-11-01T18:36:00Z
 
 Verdict: pass
