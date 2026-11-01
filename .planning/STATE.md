@@ -21,7 +21,7 @@ current_phase: 38
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
+See: .planning/PROJECT.md (updated 2026-11-01 after the v1.7.0_gg6-maintenance close)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 **Current focus:** Phase 38 — Release & Publication
