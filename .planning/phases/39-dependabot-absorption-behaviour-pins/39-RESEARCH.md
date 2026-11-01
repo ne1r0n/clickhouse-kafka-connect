@@ -421,18 +421,21 @@ git ls-remote https://github.com/gradle/actions.git refs/tags/v6.4.1 'refs/tags/
 | A6 | "The four pin-guard classes" are `ReleaseWorkflowGuardUnitTest`, `TestsWorkflowPinGuardUnitTest`, `WorkflowActionPinGuardUnitTest`, `DependabotProtobufIgnoreGuardUnitTest` (the set Phase 37 ran together) | F4 | Low: running six covers any other reading |
 | A7 | The cumulative `verify-merge-invariants.sh` gate still passes with `72e8ccff` and the two Dependabot head commits inside `pre-v1.7.0-sync..HEAD`; its 17 to 23 minute runtime is from Phase 38's record. Not run here | Pitfall 9 | If it fails on the merge commit's shape, the phase gate stops late. Recommended mitigation: start it in the background right after the first merge |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **What does PIN-04 / F-3 mean when the counter is already scoped?**
    - What we know: F8. `generateData` counts by connector name; `getConnectors()` is only logged.
    - What's unclear: whether the user expects more than the pin, accessor removal and hygiene (A1).
    - Recommendation: plan the Pattern 3 scope; surface A1 and A2 at the plan checkpoint so the user can redirect before the 33-minute run.
+   - RESOLVED: Pattern 3 scope, recorded run = ClickHouseSinkConnectorIntegrationTest class (plan 39-04 Task 1 and Task 2).
 2. **Should the PIN-02 table include the conversion-time `DataException` row (F6 note 3)?**
    - What we know: it escapes `put` raw under both tolerances with no DLQ record.
    - What's unclear: whether the user regards that as intended behaviour or a defect to record.
    - Recommendation: pin it as a labelled control row (no code change), and let Phase 43/44 decide how the rollout note words it.
+   - RESOLVED: included as a labelled control row (plan 39-03 Task 1).
 3. **Does the user merge #21 or #22 on origin before execution?**
    - Recommendation: re-read `refs/pull/*/head` and `origin/custom_build` at the start of plan execution; STATE already asks the user not to merge them.
+   - RESOLVED: re-read at execution start, absorption mode recorded as E-01 (plan 39-01 Task 1).
 
 ## Environment Availability
 

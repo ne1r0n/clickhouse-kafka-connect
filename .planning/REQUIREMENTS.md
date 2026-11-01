@@ -11,7 +11,7 @@ Requirements for this milestone. Each maps to a roadmap phase.
 ### Dependabot (DEP)
 
 - [ ] **DEP-01**: gson `2.15.0` is absorbed in its own commit, with the full suite on ClickHouse `latest` × client V2 and `testUnit` green twice; the gson row in `docs/FORK-DELTA.md` is updated.
-- [ ] **DEP-02**: `setup-gradle` `6.4.1` is pinned to commit `8da46b539cd8fe6ab27ca75128919a18d757604c` with a `# v6.4.1` comment in all four fork workflows; `release.yaml` and `pre-release.yaml` stay byte-equal; `integrationTests.yaml` is untouched; the four guard classes are green; the FORK-DELTA rows are updated.
+- [ ] **DEP-02**: `setup-gradle` `6.4.1` is pinned to commit `8da46b539cd8fe6ab27ca75128919a18d757604c` with a `# v6.4.1` comment in all four fork workflows; `release.yaml` and `pre-release.yaml` keep their existing mutual diff unchanged (the bump touches only the setup-gradle pin line in each); `integrationTests.yaml` is untouched; the four guard classes are green; the FORK-DELTA rows are updated.
 
 ### Test Pins (PIN)
 

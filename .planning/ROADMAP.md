@@ -164,12 +164,18 @@ Phase artifacts: `milestones/v1.7.0_gg6-maintenance-phases/`
 **Success Criteria** (what must be TRUE):
 
   1. *[Docker-free, live]* gson 2.15.0 is on `runtimeClasspath` (by `dependencyInsight`) from its own commit, which also updates the gson row of `docs/FORK-DELTA.md`. On that commit `testUnit` and the full suite on `latest` × V2 each pass twice, the second run with `--rerun`, with the 18 named skips (DEP-01).
-  2. *[Docker-free]* `tests.yaml`, `nightly-integration-tests.yaml`, `release.yaml` and `pre-release.yaml` each pin `gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1`, the commit and not the tag object `7296c772…`. `release.yaml` and `pre-release.yaml` stay byte-equal, `integrationTests.yaml` is untouched, and the four pin-guard classes pass under `testUnit --rerun`. The FORK-DELTA rows change in the same commit (DEP-02).
+  2. *[Docker-free]* `tests.yaml`, `nightly-integration-tests.yaml`, `release.yaml` and `pre-release.yaml` each pin `gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1`, the commit and not the tag object `7296c772…`. `release.yaml` and `pre-release.yaml` keep their existing mutual diff unchanged (the bump touches only the setup-gradle pin line in each), `integrationTests.yaml` is untouched, and the four pin-guard classes pass under `testUnit --rerun`. The FORK-DELTA rows change in the same commit (DEP-02).
   3. *[Docker-free]* With Docker unreachable, tests drive `ProxySinkTask.put` under `errors.tolerance=none` and `errors.tolerance=all`. They assert today's outcome for each wrapped-`DataException` shape the research named: the `RuntimeException(queryId, DataException)` wrapper, a retriable server code in the chain, and a `SocketTimeoutException` root. For each shape and each tolerance value, the test asserts whether `put` throws a `RetriableException`, fails the task or routes the record to the DLQ. The tests pass on the unchanged code (PIN-02).
   4. *[Docker-free]* A test shows how client 0.11.0 forwards a `custom_*` key from `jdbcConnectionProperties` (the doubled encoding), with no Docker. Its name and failure message call it a client-version tripwire, to be re-read when the client changes (PIN-03).
   5. *[live, record]* One recorded `integrationTest` run shows the harness counting only the connector it started (F-3). The fix touches only `src/integrationTest` (PIN-04).
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 39-01-PLAN.md — execution-start re-read of origin and PRs #21/#22 (absorption mode), then gson 2.15.0 as its own merge with its FORK-DELTA row, gated by the cumulative invariant gate started right after the merge and by testUnit and the full suite twice each (DEP-01)
+- [ ] 39-02-PLAN.md — `setup-gradle` 6.4.1 as its own merge pinned by the peeled commit in four workflows, guard classes, testUnit and the cumulative invariant gate (DEP-02)
+- [ ] 39-03-PLAN.md — Docker-free pins: the wrapped-`DataException` matrix through `ProxySinkTask.put` under both tolerances, and the `custom_*` client-version tripwire, both formatter-clean under a scoped Spotless check (PIN-02, PIN-03)
+- [ ] 39-04-PLAN.md — F-3 harness fix in `src/integrationTest` with a leftover-connector pin seen red against a scratch cross-connector count, scoped Spotless on the touched files, one recorded `integrationTest` class run, and the phase gate (PIN-04)
 
 **Research flag**: Standard. Confirm at plan time:
 - whether PRs #21 and #22 are still open and unmerged on `origin`. If the user merged either there, absorb it by merging `origin/custom_build` instead of the PR head, and re-run the anchors gate. The left count of `origin/custom_build...sync/v1.7.0` is then above 1;
@@ -439,7 +445,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 0/TBD | Not started | - |
+| 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 0/4 | Planned | - |
 | 40. Helper Client Closing | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 0/TBD | Not started | - |
