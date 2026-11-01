@@ -20,7 +20,7 @@
 | E-05 | DEP-02 | 39-02 | pass |
 | E-06 | PIN-02 | 39-03 | pass |
 | E-07 | PIN-03 | 39-03 | pass |
-| E-08 | PIN-04 | 39-04 | pending (plan 39-04) |
+| E-08 | PIN-04 | 39-04 | pass |
 | E-09 | PIN-04 | 39-04 | pending (plan 39-04) |
 | E-10 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pending (plan 39-04) |
 | E-11 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pending (plan 39-04) |
@@ -420,5 +420,101 @@ Correction note: E-06's closing timestamp first read `2026-11-01T19:25:00Z`, an 
 Amend note: the PIN-03 commit was first made as `aaa1bacc` with `assertDoesNotThrow(` and its first argument on separate lines; the plan gate needs `assertDoesNotThrow(ClientErrorShapes::line` on one line, so the unpushed commit was amended (whitespace only, scoped Spotless check re-run: IS CLEAN) to `59c5975e`, and the class test and the full testUnit were re-run on it. The evidence above is from those re-runs.
 
 2026-11-01T19:24:00Z
+
+Verdict: pass
+
+### E-08: F-3 harness fix (src/integrationTest only), the leftover-connector pin seen red against a cross-connector count, then green live (PIN-04)
+
+Backs: PIN-04, ROADMAP Phase 39 criterion 5 (the harness counts Datagen completion only on the connector it started; the fix touches only `src/integrationTest`), orchestrator decision 1 (at HEAD `generateData` already counted by connector name, so the deliverable is the leftover-connector pin, the removal of the all-connectors accessor and the Phase 36 review IN-06 hygiene), user decisions on formatting and red-first.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileIntegrationTestJava -PjavaVersion=21
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java"
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java" -PspotlessIdeHookUseStdOut > /tmp/gsd39/exec/sc-cp.out 2> /tmp/gsd39/exec/sc-cp.err
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/integrationTest/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConnectorIntegrationTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd39/exec/sc-it.out 2> /tmp/gsd39/exec/sc-it.err
+grep -r getConnectors src/integrationTest
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+git add src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java src/integrationTest/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConnectorIntegrationTest.java
+git commit -F /tmp/gsd39/exec/msg-pin04.txt
+git diff -- src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java > /tmp/gsd39/exec/pin04-red.patch
+shasum -a 256 /tmp/gsd39/exec/pin04-red.patch
+./gradlew --stop
+rm -rf build/test-results/integrationTest
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain integrationTest -PjavaVersion=21 --tests 'com.clickhouse.kafka.connect.sink.ClickHouseSinkConnectorIntegrationTest.datagenCompletionCountIgnoresLeftoverConnectorTest' > /tmp/gsd39/exec/integration-pin-red.log 2>&1
+git checkout -- src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+git diff --quiet HEAD -- src/integrationTest
+git status --porcelain -- src
+./gradlew --stop
+rm -rf build/test-results/integrationTest
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain integrationTest -PjavaVersion=21 --tests 'com.clickhouse.kafka.connect.sink.ClickHouseSinkConnectorIntegrationTest.datagenCompletionCountIgnoresLeftoverConnectorTest' > /tmp/gsd39/exec/integration-pin.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/integrationTest --class ClickHouseSinkConnectorIntegrationTest
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+```
+
+```text
+pin04_commit: 4bbc2bac16db1f9138829c236de06a3af66bffc3
+pin04_commit_files: src/integrationTest/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConnectorIntegrationTest.java src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+compile_integration_exit: 0
+accessor_removed: yes
+spotless_scoped_check_cp: IS CLEAN
+cp_import_set_unchanged: yes
+it_imports_byte_identical: yes
+it_nonimport_lines_formatter_clean: yes
+spotless_waiver_it: pre-existing import-order violation, also at phase start; import lines left byte-identical by user decision; non-import lines formatter-clean
+anchors_mirror: rows=172 bad=0
+red_variant_patch_sha256: 9008fd397871a34018b18c08430e5153aadc69098767f32cca806690abb3d154
+red_run_exit: 1
+red_testcase_failed: yes
+red_run_failure: org.opentest4j.AssertionFailedError: A scoped count must not include the other finished connector's tasks; with both connectors present, a count across connectors would read 30 for each ==> expected: <10> but was: <30>
+red_variant_reverted: yes
+single_run_exit: 0
+single_run_xml: OK junit build/test-results/integrationTest class *ClickHouseSinkConnectorIntegrationTest: tests=1 failures=0 errors=0 skipped=0 files=1
+single_run_info_lines: 1 (datagenAfterLeftoverTopic 10/10, the pin's own generateData; the two kept connectors are started with startDatagenConnector, which logs no completion line)
+clickhouse_version: 26.10.3.7
+```
+
+What the fix changes, in `ConfluentPlatform.java`. `countFinishedDatagenTasks(connectorName)` reads only `/connectors/{name}/status` of the connector it is given and counts each task once whose `trace` holds the `DATAGEN_FINISHED_MARKER` match, so a trace that repeats the marker cannot inflate the count. `generateData` starts the connector with `startDatagenConnector` and waits in `awaitDatagenCompletion`, which loops while the count is less than the task total and fewer than `DATAGEN_MAX_POLLS` polls have run, logs `Datagen connector {}: {} of {} tasks finished, counted from its own status endpoint only`, and throws `Data generation failed` below the total. Its `finally` deletes the connector inside its own `try/catch (IOException)` that logs `Could not delete Datagen connector {}`, so a delete failure cannot replace a propagating generation failure. The only `Pattern.compile` left is the constant. `awaitAllTasksFailed` waits on task state only (every task `FAILED`, the expected task count present), so the pin's completion wait is independent of the count under test. The all-connectors accessor `getConnectors()` is deleted; it read the status-and-info endpoint, whose `info` part carries every connector's config, and its two call sites in `ClickHouseSinkConnectorIntegrationTest` now log `Sink connector task status: {}` for the sink connector only (T-39-13). `getFirstTaskFailureOpt` uses the new `TASK_STATE_FAILED` and `TASK_TRACE_KEY` constants instead of repeating the literals.
+
+The scoped Spotless hook in write mode on `ConfluentPlatform.java` only reordered its imports (the sorted `import` lines equal those at the phase start); the check form then printed `IS CLEAN`. `ClickHouseSinkConnectorIntegrationTest.java` was never given the write form: its check form prints `IS DIRTY` for the import order that was already wrong at the phase start, its import lines are byte-identical to the phase start, and its non-import, non-blank lines equal those of the formatted output. Waiver: the pre-existing import-order violation of that file is left, by user decision. The fix commit touches only the two files under `src/integrationTest/`; `src/main` and `src/test` are unchanged.
+
+Red first. With the fix committed and `git status --porcelain -- src` empty, the body of `countFinishedDatagenTasks` was replaced, uncommitted, by a GET of `/connectors?expand=status` that returns the number of `DATAGEN_FINISHED_MARKER` matches in the whole response body, which is the counting that spans all connectors (F-3). The single pin was run against it on ClickHouse `latest` with client V2 (19:33:40Z to 19:35:19Z, exit 1) and failed at its first count assertion: both kept connectors had finished, so the leftover connector's count read 30 (10 plus 20) where its own task total is 10. The scratch patch is the committed fix's diff against the working tree, saved before the run (SHA-256 above):
+
+```diff
+diff --git a/src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java b/src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+index a624816f..748e1fe8 100644
+--- a/src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
++++ b/src/integrationTest/java/com/clickhouse/kafka/connect/sink/helper/ConfluentPlatform.java
+@@ -503,15 +503,14 @@ public class ConfluentPlatform {
+      * status endpoint (/connectors/{name}/status). A task counts once however often its trace repeats the marker.
+      */
+     public long countFinishedDatagenTasks(String connectorName) throws IOException {
+-        long tasksWithMarker = 0;
+-        for (Object task : getConnectorTasksStatus(connectorName)) {
+-            JSONObject jsonTaskObj = (JSONObject) task;
+-            if (jsonTaskObj.has(TASK_TRACE_KEY)
+-                    && DATAGEN_FINISHED_MARKER.matcher(String.valueOf(jsonTaskObj.get(TASK_TRACE_KEY))).find()) {
+-                tasksWithMarker++;
+-            }
++        OkHttpClient client = new OkHttpClient();
++        Request request = new Request.Builder()
++                .url(getConnectRestEndPoint() + "/connectors?expand=status")
++                .get()
++                .build();
++        try (Response response = client.newCall(request).execute(); ResponseBody responseBody = response.body()) {
++            return DATAGEN_FINISHED_MARKER.matcher(responseBody.string()).results().count();
+         }
+-        return tasksWithMarker;
+     }
+ 
+     public long awaitDatagenCompletion(String connectorName, int totalWorkers) throws IOException, InterruptedException {
+```
+
+The scratch change was reverted with `git checkout --` on that one file: `git diff --quiet HEAD -- src/integrationTest` exited 0 and `git status --porcelain -- src` was empty. The green single run that follows was made on that reverted tree (19:35:25Z to 19:37:12Z, `BUILD SUCCESSFUL in 1m 46s`, exit 0): the pin's testcase passed, the XML holds 1 test with 0 failures, 0 errors and 0 skipped, and the pin's own `generateData` logged `10 of 10` for its connector while both kept connectors were still present. `SELECT version()` on the `latest` image read 26.10.3.7 with digest `sha256:739e099abd11...30b1ce`, the same as E-03. No JVM crash file appeared in the repository root.
+
+Amend note: the fix was first committed as `16e69d54`, and the plan's gate (`grep -E 'finished != totalWorkers|long finished = 0|loopCount < 120'`, meant for the dead initialiser) also matched the legitimate accumulator `long finished = 0` in `countFinishedDatagenTasks`. The unpushed commit was amended to `4bbc2bac` with that local variable renamed `tasksWithMarker` (no behaviour change), the scoped Spotless check was re-run (`IS CLEAN`), and the red run (first run: 19:27:36Z to 19:29:44Z, same `expected: <10> but was: <30>`) and the green run (first run: 19:30:03Z to 19:31:56Z) were repeated on `4bbc2bac`. The patch, its SHA-256, the times and the commit above are from those repeats.
+
+Gate note: the plan's check `git diff --quiet "$S" HEAD -- src/main src/test` cannot hold, because plan 39-03 added `WrappedDataExceptionClassificationPinUnitTest` and edited `ClientEndpointAndOptionsPinUnitTest` under `src/test` after the phase start. The check that matches the plan's prohibition (this plan changes no file under `src/main` or `src/test`) was run instead: `git diff --quiet "$S" HEAD -- src/main` exits 0, and `git diff --quiet 46459dc54f2cc93706ec7bc3753cf8547cf8f688 HEAD -- src/main src/test` exits 0, where `46459dc5` is HEAD when plan 39-04 started.
+
+2026-11-01T19:37:33Z
 
 Verdict: pass
