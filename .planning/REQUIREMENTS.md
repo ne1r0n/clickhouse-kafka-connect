@@ -76,35 +76,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | TBD | Pending |
-| DEP-02 | TBD | Pending |
-| PIN-01 | TBD | Pending |
-| PIN-02 | TBD | Pending |
-| PIN-03 | TBD | Pending |
-| PIN-04 | TBD | Pending |
-| CLS-01 | TBD | Pending |
-| CLS-02 | TBD | Pending |
-| CLS-03 | TBD | Pending |
-| CLS-04 | TBD | Pending |
-| TMO-01 | TBD | Pending |
-| TMO-02 | TBD | Pending |
-| TMO-03 | TBD | Pending |
-| RSK-01 | TBD | Pending |
-| RSK-02 | TBD | Pending |
-| RSK-03 | TBD | Pending |
-| RSK-04 | TBD | Pending |
-| DOC-01 | TBD | Pending |
-| DOC-02 | TBD | Pending |
-| RLS-01 | TBD | Pending |
-| RLS-02 | TBD | Pending |
-| RLS-03 | TBD | Pending |
-| RLS-04 | TBD | Pending |
+| DEP-01 | Phase 39 | Pending |
+| DEP-02 | Phase 39 | Pending |
+| PIN-01 | Phase 41 | Pending |
+| PIN-02 | Phase 39 | Pending |
+| PIN-03 | Phase 39 | Pending |
+| PIN-04 | Phase 39 | Pending |
+| CLS-01 | Phase 40 | Pending |
+| CLS-02 | Phase 40 | Pending |
+| CLS-03 | Phase 40 | Pending |
+| CLS-04 | Phase 40 | Pending |
+| TMO-01 | Phase 41 | Pending |
+| TMO-02 | Phase 41 | Pending |
+| TMO-03 | Phase 41 | Pending |
+| RSK-01 | Phase 42 | Pending |
+| RSK-02 | Phase 42 | Pending |
+| RSK-03 | Phase 42 | Pending |
+| RSK-04 | Phase 42 | Pending |
+| DOC-01 | Phase 43 | Pending |
+| DOC-02 | Phase 43 | Pending |
+| RLS-01 | Phase 44 | Pending |
+| RLS-02 | Phase 44 | Pending |
+| RLS-03 | Phase 44 | Pending |
+| RLS-04 | Phase 44 | Pending |
 
 **Coverage:**
 - v1 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23 ⚠️
+- Mapped to phases: 23
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-01*
-*Last updated: 2026-11-01 after initial definition*
+*Last updated: 2026-11-01 after roadmap creation (Phases 39-44)*

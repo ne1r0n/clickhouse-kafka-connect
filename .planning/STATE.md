@@ -3,10 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 status: planning
-last_updated: "2026-11-01T12:58:49.654Z"
+current_phase: "39"
+current_phase_name: "Dependabot Absorption & Behaviour Pins"
+last_updated: "2026-11-01T14:18:25.000Z"
 last_activity: 2026-11-01
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,24 +19,25 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-01 after the v1.7.0_gg6-maintenance close)
+See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 38 — Release & Publication
+**Current focus:** Phase 39 — Dependabot Absorption & Behaviour Pins. gson 2.15.0 and `setup-gradle` 6.4.1 land first, one commit and one gate each. Then Docker-free pins fix today's wrapped-`DataException` classification and `custom_*` forwarding on client 0.11.0, and the integration harness counts only its own connector (F-3).
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-11-01 — Milestone v1.7.0_gg7 started
+Phase: 39 of 44 (Dependabot Absorption & Behaviour Pins) — not started (ready to plan)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-01 — Roadmap created for v1.7.0_gg7 (Phases 39-44, 23/23 requirements mapped)
 
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: `v1.7.0_gg5-ci`: 16; `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
+- Total plans completed: `v1.7.0_gg6-maintenance`: 23; `v1.7.0_gg5-ci`: 16; `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -287,6 +290,25 @@ The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands befo
 - [Phase 35]: Buffered offsets are keyed by originalTopic()/originalKafkaPartition()/originalKafkaOffset() + 1 in ChunkFlusher and both buffer strategies; Processing.java, state keys and table routing untouched — Connect validates preCommit offsets against its assignment; fork-only until upstream resolves #777 (PR #786 closed unmerged)
 - [Phase 35]: The Phase 35 fix commit carries six paths by design (three main files, BLD-16 re-bless, anchors, FORK-DELTA) — BLD-16 goes red the instant the edit lands without the re-bless, and anchors may not precede or lag the code they pin
 
+**`v1.7.0_gg7` roadmap (2026-11-01):** six phases under `coarse` granularity:
+1. Dependabot absorption and behaviour pins (39);
+2. helper client closing, F-1 (40);
+3. bounded insert timeout, F-2 (41);
+4. isolated high-risk edits, RSK-01..04 (42);
+5. document fixes and Phase 37 dispositions (43);
+6. the release (44).
+
+The user decided these before the roadmap:
+- F-2 uses a per-insert `socket_timeout` on the V2 insert sites, and an operator's `socket_timeout` in `jdbcConnectionProperties` still wins.
+- F-1 covers all three sites: the writer's `chc`, the V1 `chcTmp`, and `KeeperStateProvider` through `StateProvider.close()`. The Keeper half is its own commit and gate.
+- OI-35-1, the `Utils` `RetriableException` pass-through and the FUT-05 start-up WARN are in scope, each in its own commit.
+
+Placement:
+- The research's Dependabot and pins phases are merged, because neither changes `src/main`. The bumps still land first.
+- PIN-01's red stall pin sits in Phase 41, so no gate between phases runs red.
+- The F-1 halves share Phase 40, because CLS-04 pins all three sites.
+- The documents phase stays separate, because DOC-02 edits `.github/` and may edit `src/main`, and the release phase can edit neither.
+
 ### Pending Todos
 
 None.
@@ -318,6 +340,9 @@ None.
 - [Roadmap] 2026-10-28: Dependabot PRs #10 and #16–#20 are open on `origin`, and PR #4 is gone (superseded by #17). This replaces the PR lists in the older `[Publish]` and `[Dependabot]` lines above. Phase 33 absorbs #16, #18, #19 and #20 from their PR heads on the scratch branch, Phase 36 absorbs #17, and #10 is declined. Ask the user not to merge any of them on `origin` until publication, because a merge there diverges the scratch branch again.
 - [Roadmap] 2026-10-28: BUF-03 (Phase 35). `Processing.doLogic` keys exactly-once state by the transformed topic. A fix that changes the state key would orphan the KeeperMap state of existing exactly-once deployments, so it stops for a user decision before it lands. The operator's production connectors run `exactlyOnce=false`.
 - [Roadmap] 2026-10-28: Pushes. CLT-07's manual nightly dispatch (Phase 36) needs the scratch branch on `origin`, and so does any Phase 37 dry run of the archive-compare step. Each push publishes the local `.planning` tail one way and runs `tests.yaml` once, so it needs the user's direct approval and a SHA that no other pushed branch holds.
+- [Roadmap] 2026-11-01: Dependabot PRs #21 (`setup-gradle` 6.4.1) and #22 (gson 2.15.0) are open on `origin`, and Phase 39 absorbs both on the scratch branch. Ask the user not to merge them on `origin` until publication. If they do, Phase 39 absorbs `origin/custom_build` by merge instead. Measured 2026-11-01: `origin/custom_build...sync/v1.7.0` counts 1 and 13, and the 1 is the gg6 merge `72e8ccff`.
+- [Roadmap] 2026-11-01: `config.json` has `mode: yolo`, `auto_advance: true` and `skip_discuss: true`. None of them passes a user-owned gate (ROADMAP.md → User-Owned Gates): pushes, out-of-scope `src/main` changes, DOC-02 `src/main` rows, the `--no-ff` merge, the publish run and a fourth review round. Each stays a blocking-human checkpoint that the user answers directly.
+- [Roadmap] 2026-11-01: upstream PRs #861, #855 and #857 touch the files that Phases 40–42 edit. Re-read them before planning Phase 40 and again before the Phase 44 gate. An upstream tag past `v1.7.0` would make the next sync FUT-01, which stops for the user.
 
 ### Quick Tasks Completed
 
@@ -342,11 +367,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T09:34:10.618Z
-Stopped at: Phase 38 complete — all phases complete
+Last session: 2026-11-01
+Stopped at: Roadmap created for milestone `v1.7.0_gg7` (Phases 39-44, 23/23 requirements mapped); Phase 39 ready to plan
 Resume file: None
 
 ## Operator Next Steps
 
 
-- Start the next milestone with /gsd-new-milestone
+- Plan Phase 39 with `/gsd-plan-phase 39`. `skip_discuss` is on, so planning reads the phase's research flags in ROADMAP.md directly.
