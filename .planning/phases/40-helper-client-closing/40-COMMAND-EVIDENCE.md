@@ -16,7 +16,7 @@
 |-------|-------------|------|---------|
 | E-01 | CLS-04 | 40-01 | pass |
 | E-02 | CLS-01, CLS-04 | 40-01 | pass |
-| E-03 | CLS-01, CLS-02, CLS-04 | 40-01 | pending (plan 40-01) |
+| E-03 | CLS-01, CLS-02, CLS-04 | 40-01 | pass |
 | E-04 | CLS-03, CLS-04 | 40-01 | pending (plan 40-01) |
 | E-05 | CLS-01, CLS-04 | 40-02 | pending (plan 40-02) |
 | E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pending (plan 40-02) |
@@ -119,5 +119,52 @@ compile_exit: 0
 The run exited non-zero (`254 tests, 252 succeeded, 2 failed`) and produced the class XML, which proves the sources compiled. The two failures are the tracer case on client V1 and on client V2, both `org.opentest4j.AssertionFailedError` with a message beginning `close count of the writer's helper client`; the other 252 tests, which include the four existing `CountingHelperClient` users (`WriterFailureClassificationUnitTest`, `ValueFreeDlqHeadersUnitTest`, `ClickHouseWriterNullMessageUnitTest`, `WriterValueFreeFailureUnitTest`), pass. The `ClickHouseWriter.java` seam removes exactly six lines (the two builder starts, the two compression lines and the two `.build();` lines) and changes no import line; the hook's stdout differs from the file in the same 21 import and blank lines as at the baseline, with equal import sets.
 
 2026-11-01T22:00:05Z
+
+Verdict: pass
+
+### E-03: Writer red matrix (22 cases) and the writer red tree saved as a patch
+
+Backs: CLS-04 (every writer-site case run red on the unchanged lifecycle, success, double stop, each of the six failed-start exits, the executor order and the V1 per-batch helper, with the two controls green), CLS-01 and CLS-02 (the writer's helper and the V1 per-batch helper are never closed today).
+
+```sh
+git diff -U0 -- src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+git diff -U0 -- src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java" -PspotlessIdeHookUseStdOut
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java" -PspotlessIdeHookUseStdOut
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java" -PspotlessIdeHookUseStdOut
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*WriterHelperClientClosingUnitTest' > /tmp/gsd40/exec/writer-red.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-writer-red
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-writer-red --class WriterHelperClientClosingUnitTest tests=22 failures=19
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-writer-red --expect WriterHelperClientClosingUnitTest#successfulStartThenStopClosesTheHelperClientOnce WriterHelperClientClosingUnitTest#secondStopNeitherThrowsNorClosesAgain WriterHelperClientClosingUnitTest#failedPingClosesTheHelperClientAndALaterStopClosesNothingMore WriterHelperClientClosingUnitTest#unreadableServerVersionClosesTheHelperClient WriterHelperClientClosingUnitTest#serverOlderThanTheMinimumVersionClosesTheHelperClient WriterHelperClientClosingUnitTest#versionLookupFailureClosesTheHelperClient WriterHelperClientClosingUnitTest#noTablesWithoutDbTopicSplitClosesTheHelperClient WriterHelperClientClosingUnitTest#tableMappingFailureClosesTheHelperClientAndPropagatesTheSameException WriterHelperClientClosingUnitTest#stopClosesTheHelperClientOnlyAfterTheTableSyncExecutorTerminated WriterHelperClientClosingUnitTest#clientV1BatchesCloseTheirPerBatchHelperClientAndTheNodeStillServesTheInsert
+git add -N src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+git diff --no-color --no-ext-diff -- src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java > .planning/phases/40-helper-client-closing/40-red-writer.patch
+git reset -q -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+shasum -a 256 .planning/phases/40-helper-client-closing/40-red-writer.patch
+```
+
+```text
+writer_red_run_exit: 1
+class_tests: 22
+class_failures: 19
+red_failed_count: 10
+red_failed_set: WriterHelperClientClosingUnitTest#successfulStartThenStopClosesTheHelperClientOnce; WriterHelperClientClosingUnitTest#secondStopNeitherThrowsNorClosesAgain; WriterHelperClientClosingUnitTest#failedPingClosesTheHelperClientAndALaterStopClosesNothingMore; WriterHelperClientClosingUnitTest#unreadableServerVersionClosesTheHelperClient; WriterHelperClientClosingUnitTest#serverOlderThanTheMinimumVersionClosesTheHelperClient; WriterHelperClientClosingUnitTest#versionLookupFailureClosesTheHelperClient; WriterHelperClientClosingUnitTest#noTablesWithoutDbTopicSplitClosesTheHelperClient; WriterHelperClientClosingUnitTest#tableMappingFailureClosesTheHelperClientAndPropagatesTheSameException; WriterHelperClientClosingUnitTest#stopClosesTheHelperClientOnlyAfterTheTableSyncExecutorTerminated; WriterHelperClientClosingUnitTest#clientV1BatchesCloseTheirPerBatchHelperClientAndTheNodeStillServesTheInsert
+red_reason_close_count: yes
+controls_passed: stopWithoutStartCreatesNoHelperClient; clientV2BatchBuildsNoPerBatchHelperClient
+keeper_seam_import_lines: +import java.util.function.Function;
+state_provider_import_lines_changed: 0
+spotless_test_class: IS CLEAN
+spotless_state_provider_diff_import_only: yes
+spotless_keeper_state_provider_diff_import_only: yes
+writer_patch_paths: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+writer_patch_sha256: e1aa8499cc63f2e937325115b5bd7d615e50d0e93a80889b29f7c82e98581419
+```
+
+The run exited non-zero (`22 tests, 3 succeeded, 19 failed`) and produced the class XML, so the sources compiled. The 19 failing cases are the ten named methods (nine run on both client versions, the V1 batch case once); each failure is an `AssertionFailedError` whose message begins `close count of the writer's helper client` (nine methods) or `close count of a per-batch helper client` (the V1 batch case, which first passes its open-count assertion of 3). The three passing cases are the two controls: `stopWithoutStartCreatesNoHelperClient` on V1 and V2, and `clientV2BatchBuildsNoPerBatchHelperClient`. The Keeper seams are behaviour-neutral and sit in the tree but outside this patch: `StateProvider.java` gains a default no-op `close()` and no import change, `KeeperStateProvider.java` gains a package-private factory constructor and exactly the import `java.util.function.Function`; neither contains `ownedClient`, and `ClickHouseWriter.java` contains no `closeHelperClient()`.
+
+A first run of this class (attempt 1, log `/tmp/gsd40/exec/writer-red-attempt1.log`) was not recorded: 20 cases failed because the control `clientV2BatchBuildsNoPerBatchHelperClient` threw `InstanceAlreadyExistsException` from the topic MBean that the V1 batch case's writer statistics had left registered under the same topic. That is a test-isolation defect in the new class itself (the plan requires MBeans an unchanged tree leaves registered to be unregistered in `finally`), not a behaviour of the unchanged tree: the test class now unregisters its writer statistics in the `finally` of both batch cases, and the run recorded here is a fresh run on the corrected class. No production line and no assertion about closing changed between the two runs.
+
+2026-11-01T22:03:23Z
 
 Verdict: pass
