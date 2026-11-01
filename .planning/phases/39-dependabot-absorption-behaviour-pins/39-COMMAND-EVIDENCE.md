@@ -18,8 +18,8 @@
 | E-03 | DEP-01 | 39-01 | pass |
 | E-04 | DEP-02 | 39-02 | pass |
 | E-05 | DEP-02 | 39-02 | pass |
-| E-06 | PIN-02 | 39-03 | pending (plan 39-03) |
-| E-07 | PIN-03 | 39-03 | pending (plan 39-03) |
+| E-06 | PIN-02 | 39-03 | pass |
+| E-07 | PIN-03 | 39-03 | pass |
 | E-08 | PIN-04 | 39-04 | pending (plan 39-04) |
 | E-09 | PIN-04 | 39-04 | pending (plan 39-04) |
 | E-10 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pending (plan 39-04) |
@@ -371,6 +371,54 @@ All 14 cases passed on the first run against unchanged `src/main`; no expectatio
 
 `FORK-DELTA` Known cost 17 now states these put-layer outcomes and names the class in the same commit; the clause that said no test asserts the cases is gone. The sibling `AdditionalRetriableErrorCodesPinUnitTest` is byte-unchanged since the phase start.
 
-2026-11-01T19:25:00Z
+2026-11-01T19:21:00Z
+
+Verdict: pass
+
+### E-07: PIN-03 client-version tripwire and the full testUnit with both pins (Docker unreachable)
+
+Backs: PIN-03, ROADMAP Phase 39 criterion 4 (a Docker-free test shows the doubled-encoding `custom_*` forwarding of client 0.11.0 and its name and failure message call it a client-version tripwire), and the testUnit baseline with both pins.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd39/exec/sc-pin03.out 2> /tmp/gsd39/exec/sc-pin03.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun -PjavaVersion=21 --tests '*ClientEndpointAndOptionsPinUnitTest' > /tmp/gsd39/exec/pin03.log 2>&1
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java
+git commit -F /tmp/gsd39/exec/msg-pin03.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --dependency com.clickhouse:client-v2 --configuration testRuntimeClasspath
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun -PjavaVersion=21 > /tmp/gsd39/exec/pins-testunit.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit --class ClientEndpointAndOptionsPinUnitTest
+git diff --quiet 8d9d1a17cb729efba591f7470776a68a6e9edf5a HEAD -- src/main
+```
+
+```text
+pin03_commit: 59c5975e30d36d2221d8c0aece0e36dd07da59be
+pin03_commit_files: src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java
+client_v2_version: com.clickhouse:client-v2:0.11.0
+client_line: V0_11_0
+tripwire_class_line: OK junit build/test-results/testUnit class *ClientEndpointAndOptionsPinUnitTest: tests=5 failures=0 errors=0 skipped=0 files=1
+testunit_exit: 0
+testunit_tests: 1687
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_e05: 15
+src_main_diff_vs_phase_start: 0
+spotless_scoped_check: IS CLEAN
+```
+
+The test is additive: the diff of `ClientEndpointAndOptionsPinUnitTest.java` against the phase start has no removed line (three imports, four constants, `rawQueryMap` and the new test were added). On client 0.11.0 it asserts from parsed raw query values, never the raw URI: `custom_myparam` is `7`, `custom_settings` is `max_threads%253D3`, `custom_a` is `b%2520c`, the keys request has no `ssl` key and has a `query` key; the 0.9.6 branch (measured in Phase 36 E-11, not re-measured) asserts that no `custom_` key is forwarded. The client line is read inside `assertDoesNotThrow`, so an unknown client fails with the `client-version tripwire` text that names `docs/ROLLOUT-v1.7.0_gg6.md` row D7. All 5 tests of the class passed on the first run, with no expectation edited.
+
+The full `testUnit` with `--rerun` and Docker unreachable ran 1687 tests in 81 XML files: 0 failures, 0 errors, 2 skipped. That is E-05's 1672 plus 15 (14 PIN-02 cases and 1 PIN-03 test). No JVM crash file appeared in the repository root. Nothing was pushed.
+
+Correction note: E-06's closing timestamp first read `2026-11-01T19:25:00Z`, an estimate that is later than its own commit `a30e7c9a` (19:21:35Z); it was corrected to the `date -u` reading `19:21:00Z` in this commit. No result, key or verdict of E-06 changed.
+
+Amend note: the PIN-03 commit was first made as `aaa1bacc` with `assertDoesNotThrow(` and its first argument on separate lines; the plan gate needs `assertDoesNotThrow(ClientErrorShapes::line` on one line, so the unpushed commit was amended (whitespace only, scoped Spotless check re-run: IS CLEAN) to `59c5975e`, and the class test and the full testUnit were re-run on it. The evidence above is from those re-runs.
+
+2026-11-01T19:24:00Z
 
 Verdict: pass
