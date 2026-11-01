@@ -17,7 +17,7 @@
 | E-02 | DEP-01 | 39-01 | pass |
 | E-03 | DEP-01 | 39-01 | pass |
 | E-04 | DEP-02 | 39-02 | pass |
-| E-05 | DEP-02 | 39-02 | pending (plan 39-02) |
+| E-05 | DEP-02 | 39-02 | pass |
 | E-06 | PIN-02 | 39-03 | pending (plan 39-03) |
 | E-07 | PIN-03 | 39-03 | pending (plan 39-03) |
 | E-08 | PIN-04 | 39-04 | pending (plan 39-04) |
@@ -283,5 +283,47 @@ anchors_mirror: rows=172 bad=0
 The source was fetched at 2026-11-01T18:33:37Z. It has one parent equal to the re-read origin tip `72e8ccff`, is authored by `dependabot[bot]`, changes only the four fork workflows, and in each the changed lines are exactly the removal of the v6.4.0 `uses:` line and the addition of the same line with the v6.4.1 peeled commit and a `# v6.4.1` comment at identical indentation; the REST `head.sha` of PR #21 equals the fetched head, and the PR was still open and unmerged. The research recorded the same head `14be67ce`, so it was not rebased. The live `ls-remote` shows the plain tag line (the tag object `7296c772...`) and the `^{}` line (the commit `8da46b53...`); the pinned 40-hex is the peeled commit and differs from the tag object. The dry-run merge printed one tree OID line (`68e39ca263fbd5783469e641a2f658b4accd43d8`) with exit 0. Only the four workflows were staged after `git merge --no-ff --no-commit`; the FORK-DELTA edit is one removed and one added line (setup-gradle `v6.4.0` to `v6.4.1` in the `tests.yaml` row, and `DEP-02` after `SWP-02` in its last cell). The merge's second parent equals `setup_gradle_head`. Each workflow changes by one added and one removed line, `integrationTests.yaml` has its planning-time SHA-256, and the release/pre-release diff signature is unchanged, which is the measured form of the reworded criterion 2. The six guard classes ran under `testUnit --rerun` with Docker unreachable on one HotSpot 21 JVM line: 6 XML files, 184 tests, no failure, error or skip, and no test file was edited. The GitHub `tests.yaml` run on the PR head was read only for information. No text in the merge message or the FORK-DELTA row claims a closed vulnerability.
 
 2026-11-01T18:36:00Z
+
+Verdict: pass
+
+### E-05: setup-gradle gate: testUnit with --rerun, anchors mirror and the cumulative merge-invariant gate across both Dependabot merges (DEP-02)
+
+Backs: DEP-02, research Pitfall 9 / A7 (the full `testUnit` with Docker unreachable passes with `--rerun` on the setup-gradle tip, and the cumulative merge-invariant gate passes on an explicit SHA that holds both Dependabot merges, so a merge-shape failure of the setup-gradle merge surfaces before any pin-guard or behaviour test lands).
+
+```sh
+git rev-parse HEAD
+git merge-base --is-ancestor ac216401a1efef629dd543fdabe49f3144b9af39 686cc49725de8fdbd9d62d1273d07d2442ca9213
+git merge-base --is-ancestor 82202f7da7e8c842cc97543c6cc02c89de620caf 686cc49725de8fdbd9d62d1273d07d2442ca9213
+git ls-remote origin refs/heads/custom_build
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 686cc49725de8fdbd9d62d1273d07d2442ca9213 > /tmp/gsd39/exec/invariants-39-02.log 2>&1
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun -PjavaVersion=21 > /tmp/gsd39/exec/setup-gradle-testunit.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+gated_head: 686cc49725de8fdbd9d62d1273d07d2442ca9213
+testunit_exit: 0
+testunit_tests: 1672
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_rerun: yes
+invariants_head: 686cc49725de8fdbd9d62d1273d07d2442ca9213
+invariants_start_utc: 2026-11-01T18:34:51Z
+invariants_end_utc: 2026-11-01T19:12:51Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=1309 anchor_rows=172 marker_commits=1375 anchor_exempt=19 result=PASS
+invariants_exit: 0
+anchors_mirror: rows=172 bad=0
+origin_reread: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+scratch_push: none (the first GitHub run of the combined tree and of the dispatch-only workflows nightly-integration-tests.yaml, release.yaml and pre-release.yaml is the Phase 44 rehearsal push)
+```
+
+The gated head is the E-04 evidence commit on top of the setup-gradle merge `82202f7d`; the gson merge `ac216401` and the setup-gradle merge are both its ancestors. The cumulative gate was started in the background on that explicit SHA before the test run, with the default environment (`PRE_TAG=pre-v1.7.0-sync`, `UPSTREAM_REF=refs/tags/v1.7.0`), and no commit was made until it ended. The full `testUnit` ran with Docker unreachable and `--rerun` after the results directory was cleared: 1672 tests in 80 XML files, 0 failures, 0 errors, 2 skipped, the same total as E-03's second testUnit run, since no test changed. The gate took 38 minutes and ended `result=PASS` with exit 0 and no `VIOLATION` line, so the range `pre-v1.7.0-sync..HEAD` holding both Dependabot merges and the gg6 publication merge is shape-clean. No JVM crash file appeared in the repository root. Origin still reads `72e8ccff`. Nothing was pushed.
+
+2026-11-01T19:14:00Z
 
 Verdict: pass
