@@ -21,7 +21,7 @@
 | E-06 | PIN-02 | 39-03 | pass |
 | E-07 | PIN-03 | 39-03 | pass |
 | E-08 | PIN-04 | 39-04 | pass |
-| E-09 | PIN-04 | 39-04 | pending (plan 39-04) |
+| E-09 | PIN-04 | 39-04 | pass |
 | E-10 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pending (plan 39-04) |
 | E-11 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pending (plan 39-04) |
 
@@ -516,5 +516,50 @@ Amend note: the fix was first committed as `16e69d54`, and the plan's gate (`gre
 Gate note: the plan's check `git diff --quiet "$S" HEAD -- src/main src/test` cannot hold, because plan 39-03 added `WrappedDataExceptionClassificationPinUnitTest` and edited `ClientEndpointAndOptionsPinUnitTest` under `src/test` after the phase start. The check that matches the plan's prohibition (this plan changes no file under `src/main` or `src/test`) was run instead: `git diff --quiet "$S" HEAD -- src/main` exits 0, and `git diff --quiet 46459dc54f2cc93706ec7bc3753cf8547cf8f688 HEAD -- src/main src/test` exits 0, where `46459dc5` is HEAD when plan 39-04 started.
 
 2026-11-01T19:37:33Z
+
+Verdict: pass
+
+### E-09: Recorded integrationTest run of ClickHouseSinkConnectorIntegrationTest on latest x V2 (PIN-04)
+
+Backs: PIN-04, ROADMAP Phase 39 criterion 5 (one recorded `integrationTest` run shows the harness counting only the connector it started), orchestrator decision 1 (the run is the `ClickHouseSinkConnectorIntegrationTest` class, not the whole `integrationTest` task).
+
+```sh
+git rev-parse HEAD
+grep -rln 'generateData\|ConfluentPlatform' src/integrationTest
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+./gradlew --stop
+rm -rf build/test-results/integrationTest
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain integrationTest -PjavaVersion=21 --tests 'com.clickhouse.kafka.connect.sink.ClickHouseSinkConnectorIntegrationTest' > /tmp/gsd39/exec/integration-class.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/integrationTest --class ClickHouseSinkConnectorIntegrationTest
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+```
+
+```text
+run_head: 31b1721427915576bb631e59a6c75812725fd8b0
+run_command: CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain integrationTest -PjavaVersion=21 --tests 'com.clickhouse.kafka.connect.sink.ClickHouseSinkConnectorIntegrationTest'
+run_exit: 0
+run_duration: BUILD SUCCESSFUL in 29m 49s
+class_tests: 55
+class_failures: 0
+class_errors: 0
+class_skipped: 0
+pin_test_result: passed
+datagen_info_lines: 8
+datagen_info_all_equal: yes
+datagen_info_counts: datagenAfterLeftoverTopic 10/10; stockGenMultiTaskInterruptTest 30/30; stockGenMultiTaskSchemalessTest 30/30; stockGenMultiTaskTopicTest 30/30; stockGenSingleTaskInterruptTest 10/10; stockGenSingleTaskSchemalessTest 10/10; stockGenSingleTaskTest 10/10; stockGenWithJdbcPropSingleTaskTest 10/10
+scope_decision: class run of ClickHouseSinkConnectorIntegrationTest; every executing caller of the changed helpers is in it: ExactlyOnceTest calls generateData but its @BeforeAll assumeTrue(isCluster || isCloud) skips it on standalone latest; ClickHouseCloudTest (@BeforeAll assumeFalse(isCluster)) runs on standalone but never calls generateData or the removed accessor; no whole-task fallback
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+fork_delta_known_cost_15: updated
+```
+
+Scope reading, as the plan states it: `grep -rln 'generateData\|ConfluentPlatform' src/integrationTest` names only `ClickHouseSinkConnectorIntegrationTest.java`, `ExactlyOnceTest.java` and `ConfluentPlatform.java` itself; `ExactlyOnceTest`'s `@BeforeAll` holds `Assumptions.assumeTrue(isCluster || isCloud, ...)`, `ClickHouseCloudTest`'s holds `Assumptions.assumeFalse(isCluster, ...)`, and `ClickHouseCloudTest` contains no `generateData`, `ConfluentPlatform`, `countFinishedDatagenTasks` or `getConnectors` reference. The reading held, so the run was not widened.
+
+The class ran 55 tests (the 7 stockGen tests, the leftover-connector pin, and the schema and ingest tests of the class) in `1779.9` s of test time, from 19:38:22Z to 20:08:12Z: 0 failures, 0 errors, 0 skipped, the pin's testcase without a `failure`, `error` or `skipped` child. The XML holds 8 distinct `Datagen connector ...: N of N tasks finished, counted from its own status endpoint only` lines, one per `generateData` call (the 7 stockGen tests and the pin's own call), each with equal numbers: 10 of 10 for a one-partition topic, 30 of 30 for a three-partition one. The two connectors the pin keeps are started with `startDatagenConnector` and asserted through `countFinishedDatagenTasks`, so they log no completion line. Connector names carry a UUID that is dropped from the counts above. `SELECT version()` on the `latest` image read 26.10.3.7 before and after the run, with the digest of E-03, so the image did not move. No JVM crash file appeared in the repository root. Nothing was pushed.
+
+`docs/FORK-DELTA.md` Known cost 15 is rewritten in the same commit as this entry: titled `The nightly's Datagen completion counting is scoped to its own connector (closed)`, it states the scoped counting, names `datagenCompletionCountIgnoresLeftoverConnectorTest`, cites E-08 for the red run and this entry for the green one, and keeps the owner and a re-open trigger.
+
+2026-11-01T20:08:40Z
 
 Verdict: pass
