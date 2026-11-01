@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg6-maintenance
-milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
-status: Awaiting next milestone
-stopped_at: Phase 38 complete — all phases complete
-last_updated: "2026-11-01T11:41:06.859Z"
+milestone: v1.7.0_gg7
+milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
+status: planning
+last_updated: "2026-11-01T12:58:49.654Z"
 last_activity: 2026-11-01
-last_activity_desc: Milestone v1.7.0_gg6-maintenance completed and archived
-state_head: ce449dbdaaa2d76ee57db81aef8da450646b7309
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
-current_phase: 38
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,11 @@ See: .planning/PROJECT.md (updated 2026-11-01 after the v1.7.0_gg6-maintenance c
 
 ## Current Position
 
-Phase: Milestone v1.7.0_gg6-maintenance complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-01 — Milestone v1.7.0_gg6-maintenance completed and archived
+Status: Defining requirements
+Last activity: 2026-11-01 — Milestone v1.7.0_gg7 started
+
 
 ## Performance Metrics
 

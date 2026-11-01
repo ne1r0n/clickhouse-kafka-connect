@@ -22,6 +22,19 @@ The eighth milestone (`v1.7.0_gg6-maintenance`) absorbed every open Dependabot u
 
 Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
+## Current Milestone: v1.7.0_gg7-maintenance Follow-up Debt, Dependency Sweep & Document Cleanup
+
+**Goal:** Close every follow-up carried out of `v1.7.0_gg6-maintenance`, absorb the open Dependabot PRs and publish `v1.7.0_gg7` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
+
+**Target features:**
+- **Code follow-ups** (tests first): F-1 (the writer never closes its helper client), F-2 (the insert timeout has no effect with `async=false`), F-3, IN-04 (Docker-free pin for `custom_*` forwarding), the `Processing.doLogic` wrapped-`DataException` case, FUT-05 (list only transient codes in `additionalRetriableErrorCodes`), OI-35-1..3.
+- **Documents:** the gg1 half of WR-08 in `docs/ROLLOUT-v1.7.0_gg1.md`; FORK-DELTA lines 6, 139 and 286 to past tense; FUT-05 named by ID in the rollout note.
+- **Phase 37 dispositions:** the `increment-version.yml` header comment (wrong guard class), advisory rows 26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01, 28 IN-05(b), broad allow-list glob rows (UF-37-3), review Infos.
+- **Dependabot:** PR #22 (gson 2.14.0 → 2.15.0) and PR #21 (`setup-gradle` 6.4.0 → 6.4.1, SHA re-pin behind the pin guard), each with a suite gate.
+- **Release:** `VERSION=v1.7.0_gg7`, CHANGELOG, FORK-DELTA, rollout note with independent review, `--no-ff` merge after human approval, CI green on the published SHA.
+
+**Out of scope:** new connector features, client upgrades beyond `0.11.0`, running the upgrade on production connectors. No upstream sync: upstream has no tag past `v1.7.0` and `upstream/main` has no commits the working branch lacks. The `scratch/clt-07-*` branches and `NIGHTLY_ENABLED` stay with the user.
+
 ## Current State
 
 **Shipped:** `v1.7.0_gg6-maintenance` (published 2026-11-01, closed the same day). It covered 6 phases (33–38), 23 plans, 57 tasks and 37/38 requirements (BUF-06, the real-environment rerun, is tracked outside this repository). The milestone audit is `tech_debt` with no gaps: requirements 37/38, phases 6/6, integration 5/5, flows 3/3. It closed as an `override_closeout`.
@@ -990,4 +1003,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-01 after the v1.7.0_gg6-maintenance milestone close*
+*Last updated: 2026-11-01 after starting milestone v1.7.0_gg7-maintenance*
