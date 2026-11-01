@@ -12,3 +12,7 @@ Measured facts, read back with read-only calls after the publish run (E-24, E-25
 ADV-03 caveat ("no run exercised the publish path"): closed. The step `Publish release` ran to the end under a workflow token, created the tag and the release, and E-24 and E-25 hold the read-back.
 
 Recorded deviations: the CHANGELOG heading date is 2026-10-31 while the merge and publication happened on 2026-11-01 (UTC); the user chose to keep it. The two branches `scratch/clt-07-*` remain on origin for the user to delete. Pull requests were not touched by any agent; #10, #16 to #20 read as in E-27.
+
+## Addendum (2026-11-01, read after the entries above): who closed the pull requests
+
+Read-only `gh api repos/ne1r0n/clickhouse-kafka-connect/issues/<N>/events`: pull requests #10 and #17 were closed by `dependabot[bot]` (A2 confirmed). E-27 recorded `actor_of_closures: not read` at its time and is not edited; this addendum is the later reading.
