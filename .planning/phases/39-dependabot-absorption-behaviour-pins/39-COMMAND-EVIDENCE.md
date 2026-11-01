@@ -22,8 +22,8 @@
 | E-07 | PIN-03 | 39-03 | pass |
 | E-08 | PIN-04 | 39-04 | pass |
 | E-09 | PIN-04 | 39-04 | pass |
-| E-10 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pending (plan 39-04) |
-| E-11 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pending (plan 39-04) |
+| E-10 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pass |
+| E-11 | DEP-01, DEP-02, PIN-02, PIN-03, PIN-04 | 39-04 | pass |
 
 ### E-01: Execution-start re-read, absorption mode and environment
 
@@ -561,5 +561,94 @@ The class ran 55 tests (the 7 stockGen tests, the leftover-connector pin, and th
 `docs/FORK-DELTA.md` Known cost 15 is rewritten in the same commit as this entry: titled `The nightly's Datagen completion counting is scoped to its own connector (closed)`, it states the scoped counting, names `datagenCompletionCountIgnoresLeftoverConnectorTest`, cites E-08 for the red run and this entry for the green one, and keeps the owner and a re-open trigger.
 
 2026-11-01T20:08:40Z
+
+Verdict: pass
+
+### E-10: Phase gate suites: testUnit with Docker unreachable and the full suite on latest x V2
+
+Backs: ROADMAP Phase 39 phase gate (cache-busted `testUnit` with Docker unreachable, and a full suite on ClickHouse `latest` x client V2 with `SELECT version()` recorded, on the final tip), and all five requirements.
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+"$(/usr/libexec/java_home -v 21)/bin/java" -version
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun -PjavaVersion=21 > /tmp/gsd39/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+./gradlew --stop
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd39/exec/gate-full.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py skips build/test-results/test
+/opt/homebrew/Cellar/docker/29.8.2/bin/docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+```
+
+```text
+gate_head: bcf4276365c6a12017be27e8a613d545ebf796eb
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1)
+docker_unreachable: unix:///nonexistent/docker.sock
+testunit_exit: 0
+testunit_tests: 1687
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_equals_e07: yes
+full_exit: 0
+full_tests: 2285
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_delta_vs_e03: 15
+docker_only_delta: 598
+clickhouse_version_before: 26.10.3.7
+clickhouse_version_after: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_crash: none
+```
+
+Both runs were made on `gate_head`, the tip after the plan 39-04 evidence commit `bcf42763`, with the results directories cleared first and `--rerun` on the task. The `testUnit` run (Docker unreachable, 20:09:06Z, 81 XML files) ran 1687 tests with 0 failures, 0 errors and 2 skipped, which is E-07's total: plan 39-04 adds no unit test. The full suite (20:09:31Z to 20:12:27Z, `BUILD SUCCESSFUL in 2m 55s`, 128 XML files) ran 2285 tests with 0 failures, 0 errors and 18 skipped, and the skips helper reports exactly the 7 named `@Disabled` methods and the 11 `exactlyOnceStateMismatchTest` cases. 2285 is E-03's second full run (2270) plus the 15 tests that plans 39-03 added (14 PIN-02 cases and 1 PIN-03 test), and 2285 minus 1687 is 598, the Docker-only delta of E-03. The `latest` image read 26.10.3.7 before and after with the digest of E-03, so a difference from E-03 cannot come from a moved tag. No JVM crash file appeared in the repository root. The `integrationTest` task is not part of this gate; its class run is E-09.
+
+2026-11-01T20:13:09Z
+
+Verdict: pass
+
+### E-11: Phase gate: cumulative merge-invariant gate, anchors mirror, src/main and origin
+
+Backs: ROADMAP Phase 39 phase gate (the anchors invariant as mirror and as cumulative gate, an empty `src/main` diff against the phase start and against `origin/custom_build`, origin unmoved), and all five requirements.
+
+```sh
+git ls-remote origin refs/heads/custom_build
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 bcf4276365c6a12017be27e8a613d545ebf796eb > /tmp/gsd39/exec/invariants-39-04.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+git diff --quiet 8d9d1a17cb729efba591f7470776a68a6e9edf5a HEAD -- src/main
+git fetch origin refs/heads/custom_build:refs/remotes/origin/custom_build
+git diff --quiet origin/custom_build HEAD -- src/main
+git diff --numstat 8d9d1a17cb729efba591f7470776a68a6e9edf5a HEAD -- gradle/libs.versions.toml
+git diff --numstat 8d9d1a17cb729efba591f7470776a68a6e9edf5a HEAD -- .github
+git diff --name-only 8d9d1a17cb729efba591f7470776a68a6e9edf5a HEAD -- .github/workflows/integrationTests.yaml .github/workflows/increment-version.yml build.gradle.kts gradle/wrapper src/main
+```
+
+```text
+invariants_head: bcf4276365c6a12017be27e8a613d545ebf796eb
+invariants_start_utc: 2026-11-01T20:09:01Z
+invariants_end_utc: 2026-11-01T20:48:31Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=1321 anchor_rows=172 marker_commits=1387 anchor_exempt=19 result=PASS
+invariants_exit: 0
+anchors_mirror: rows=172 bad=0
+src_main_diff_vs_phase_start: 0
+src_main_diff_vs_origin: 0
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+catalog_diff_vs_phase_start: gson only
+workflow_diff_vs_phase_start: setup-gradle only
+pushes: none
+```
+
+The cumulative gate ran in its default environment on the explicit SHA `bcf42763...`, which equals E-10's `gate_head`, in the background while the E-10 suites ran, and no commit was made until it ended; it exited 0 with `result=PASS` and no `VIOLATION` line. Origin was read with `git ls-remote` before the gate started and again after it ended: `refs/heads/custom_build` stayed at `72e8ccff...`, the value of E-01, so origin did not move. `src/main` is byte-identical to the phase start and to `origin/custom_build` (both `git diff --quiet` exit 0). Against the phase start, `gradle/libs.versions.toml` changes one line removed and one added, `gson = "2.14.0"` to `gson = "2.15.0"`; `.github` changes only the four fork workflows (`nightly-integration-tests.yaml`, `pre-release.yaml`, `release.yaml`, `tests.yaml`), one line each, the `gradle/actions/setup-gradle` pin from `v6.4.0` (`3f5f9ada...`) to `v6.4.1` (`8da46b53...`); `integrationTests.yaml`, `increment-version.yml`, `build.gradle.kts`, the wrapper and `src/main` have no changed file. Nothing was pushed in Phase 39: every read of origin was `git ls-remote` or a `git fetch` of one named ref. The gate ran for about 39 minutes, against the 17 to 23 minutes the research expected, because the range now holds 1321 anchor commits.
+
+2026-11-01T20:49:09Z
 
 Verdict: pass
