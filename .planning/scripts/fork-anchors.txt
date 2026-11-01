@@ -199,3 +199,8 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(url)	0	CLT-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setOption(IGNORE_UNKNOWN_CONFIG_KEY, "true");	1	CLT-03
 .gitattributes	.github/workflows/integrationTests.yaml -text	1	ADV-01
+# Phase 40 (v1.7.0_gg7): the writer builds its helper clients through one factory and closes them on stop, on a failed start and per client V1 batch (CLS-01, CLS-02); the 0 row pins that the unclosed per-batch construction stays gone; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	createHelperClient(	3	CLS-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	closeHelperClient()	3	CLS-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	try (ClickHouseHelperClient chcTmp = createHelperClient(	1	CLS-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	ClickHouseHelperClient chcTmp = new	0	CLS-02
