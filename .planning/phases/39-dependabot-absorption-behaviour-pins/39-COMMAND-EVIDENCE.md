@@ -327,3 +327,50 @@ The gated head is the E-04 evidence commit on top of the setup-gradle merge `822
 2026-11-01T19:14:00Z
 
 Verdict: pass
+
+### E-06: PIN-02 wrapped-DataException matrix through ProxySinkTask.put (14 cases, Docker unreachable)
+
+Backs: PIN-02, ROADMAP Phase 39 criterion 3 (tests drive the real `ProxySinkTask.put` under both `errors.tolerance` values and assert, per named shape, whether `put` throws a `RetriableException`, fails the task or routes the records to the DLQ, passing on unchanged code; the conversion-time row is pinned as a control), orchestrator decision 2.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/WrappedDataExceptionClassificationPinUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd39/exec/sc-pin02.out 2> /tmp/gsd39/exec/sc-pin02.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun -PjavaVersion=21 --tests '*WrappedDataExceptionClassificationPinUnitTest' > /tmp/gsd39/exec/pin02.log 2>&1
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py junit build/test-results/testUnit --class WrappedDataExceptionClassificationPinUnitTest
+git add src/test/java/com/clickhouse/kafka/connect/sink/WrappedDataExceptionClassificationPinUnitTest.java docs/FORK-DELTA.md
+git commit -F /tmp/gsd39/exec/msg-pin02.txt
+git diff --quiet 8d9d1a17cb729efba591f7470776a68a6e9edf5a HEAD -- src/main
+git diff --quiet 8d9d1a17cb729efba591f7470776a68a6e9edf5a HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java
+```
+
+```text
+pin02_commit: 6f067dbae6e88e8c19f2adc3c5801f9be8240906
+pin02_commit_files: docs/FORK-DELTA.md src/test/java/com/clickhouse/kafka/connect/sink/WrappedDataExceptionClassificationPinUnitTest.java
+test_class: com.clickhouse.kafka.connect.sink.WrappedDataExceptionClassificationPinUnitTest
+cases: 14
+junit_class_line: OK junit build/test-results/testUnit class *WrappedDataExceptionClassificationPinUnitTest: tests=14 failures=0 errors=0 skipped=0 files=1
+docker_unreachable: yes (DOCKER_HOST=unix:///nonexistent/docker.sock)
+src_main_diff_vs_phase_start: 0
+additional_retriable_pin_unchanged: yes
+fork_delta_known_cost_17: updated
+spotless_scoped_check: IS CLEAN
+```
+
+All 14 cases passed on the first run against unchanged `src/main`; no expectation was edited. The class has one parameterized test, extends nothing, carries no tag and uses no mocking framework (a `FailingDBWriter` subclass of `InMemoryDBWriter` injects the failure, `InMemoryDLQ` captures the reports). Outcome table, as measured (research F6) and as asserted literally:
+
+| Shape | errors.tolerance=none | errors.tolerance=all |
+|-------|-----------------------|----------------------|
+| WRAPPED_DATA_EXCEPTION (plain writer DataException) | FAILS_TASK (`Number of records: 3`, cause chain holds the injected DataException under the exact-RuntimeException queryId wrapper, DLQ empty) | DLQ (all 3 records reported, chains hold the injected DataException) |
+| RETRIABLE_SERVER_CODE_IN_CHAIN (DataException caused by server code 241) | RETRIABLE (DLQ empty) | RETRIABLE (DLQ empty) |
+| SOCKET_TIMEOUT_ROOT (DataException caused by SocketTimeoutException) | RETRIABLE | RETRIABLE |
+| NON_RETRIABLE_SERVER_CODE_CONTROL (server code 60) | FAILS_TASK | DLQ |
+| UNKNOWN_HOST_ROOT_CONTROL (UnknownHostException root) | RETRIABLE | RETRIABLE |
+| RUNTIME_EXCEPTION_SOCKET_TIMEOUT_CONTROL (RuntimeException with SocketTimeoutException root) | RETRIABLE | RETRIABLE |
+| CONVERSION_DATA_EXCEPTION_CONTROL (Integer value rejected by `Record.convert` before Processing) | ESCAPES_RAW (raw DataException, writer never called, DLQ empty) | ESCAPES_RAW |
+
+`FORK-DELTA` Known cost 17 now states these put-layer outcomes and names the class in the same commit; the clause that said no test asserts the cases is gone. The sibling `AdditionalRetriableErrorCodesPinUnitTest` is byte-unchanged since the phase start.
+
+2026-11-01T19:25:00Z
+
+Verdict: pass
