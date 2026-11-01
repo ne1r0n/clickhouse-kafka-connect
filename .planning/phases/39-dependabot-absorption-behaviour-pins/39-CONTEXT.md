@@ -1,4 +1,4 @@
-# Phase 39: Dependabot Absorption {Phase Name} Behaviour Pins - Context
+# Phase 39: Dependabot Absorption & Behaviour Pins - Context
 
 **Gathered:** 2026-11-01
 **Status:** Ready for planning
