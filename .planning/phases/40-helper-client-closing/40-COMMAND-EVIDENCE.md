@@ -18,7 +18,7 @@
 | E-02 | CLS-01, CLS-04 | 40-01 | pass |
 | E-03 | CLS-01, CLS-02, CLS-04 | 40-01 | pass |
 | E-04 | CLS-03, CLS-04 | 40-01 | pass |
-| E-05 | CLS-01, CLS-04 | 40-02 | pending (plan 40-02) |
+| E-05 | CLS-01, CLS-04 | 40-02 | pass |
 | E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pending (plan 40-02) |
 | E-07 | CLS-01, CLS-02 | 40-02 | pending (plan 40-02) |
 | E-08 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
@@ -219,5 +219,51 @@ keeper_patch_applies_on_head: yes
 The run exited non-zero (`7 tests, 1 succeeded, 6 failed`) and produced both class XMLs, so the sources compiled. The six failing cases are the two Keeper methods on client V1 and V2 (four cases) and the two `ProxySinkTask.stop` cases; each is an `AssertionFailedError` whose message begins `close count of the state provider`. The one passing case is the tripwire `injectedClientConstructorStillFailsBeforeAnyInstanceExistsTripwire`: the injected-client constructor throws `NullPointerException` before an instance exists (`init()` dereferences the null config) and the injected helper's close count stays 0, so the clause that an injected client stays open has no behavioural pin; plan 40-03 pins it by source identity plus this tripwire. The writer patch, regenerated with the three writer-side paths before `src` was restored, has the same SHA-256 as E-03. `src` was then restored: `git status --porcelain -- src` is empty, `git diff --quiet HEAD -- src` exits 0, the three new test classes are removed, and each patch passes `git apply --check` on this clean tree.
 
 2026-11-01T22:05:13Z
+
+Verdict: pass
+
+### E-05: Writer red tree re-applied and re-confirmed; the stop slice turns three cases green
+
+Backs: CLS-01 (stop() closes the writer's helper client once, after the table-sync executor, null-safe and idempotent) and CLS-04 (the writer red tree from 40-red-writer.patch re-confirmed red, then the thinnest fix that reaches every layer turns exactly the stop-path cases green while the failed-start and per-batch cases stay red for the right reason).
+
+```sh
+shasum -a 256 .planning/phases/40-helper-client-closing/40-red-writer.patch
+git apply --check .planning/phases/40-helper-client-closing/40-red-writer.patch
+git apply .planning/phases/40-helper-client-closing/40-red-writer.patch
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*WriterHelperClientClosingUnitTest' > /tmp/gsd40/exec/writer-reconfirm.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-writer-reconfirm
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-writer-reconfirm --class WriterHelperClientClosingUnitTest tests=22 failures=19
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-writer-reconfirm --expect <the ten E-03 names>
+# edit ClickHouseWriter.java: HELPER_CLIENT_CLOSE_FAILURE_LOG, private void closeHelperClient(), closeHelperClient(); as the last statement of stop()
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*WriterHelperClientClosingUnitTest' > /tmp/gsd40/exec/writer-intermediate.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-writer-intermediate
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-writer-intermediate --class WriterHelperClientClosingUnitTest tests=22 failures=13
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-writer-intermediate --expect <the seven names below>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java" -PspotlessIdeHookUseStdOut
+```
+
+```text
+writer_patch_sha256_matches: yes
+writer_patch_applied: yes
+reconfirm_run_exit: 1
+reconfirm_failed_count: 10
+reconfirm_matches_e03: yes
+intermediate_run_exit: 1
+intermediate_class_tests: 22
+intermediate_class_failures: 13
+intermediate_failed_count: 7
+intermediate_failed_set: WriterHelperClientClosingUnitTest#failedPingClosesTheHelperClientAndALaterStopClosesNothingMore; WriterHelperClientClosingUnitTest#unreadableServerVersionClosesTheHelperClient; WriterHelperClientClosingUnitTest#serverOlderThanTheMinimumVersionClosesTheHelperClient; WriterHelperClientClosingUnitTest#versionLookupFailureClosesTheHelperClient; WriterHelperClientClosingUnitTest#noTablesWithoutDbTopicSplitClosesTheHelperClient; WriterHelperClientClosingUnitTest#tableMappingFailureClosesTheHelperClientAndPropagatesTheSameException; WriterHelperClientClosingUnitTest#clientV1BatchesCloseTheirPerBatchHelperClientAndTheNodeStillServesTheInsert
+now_green: WriterHelperClientClosingUnitTest#successfulStartThenStopClosesTheHelperClientOnce; WriterHelperClientClosingUnitTest#secondStopNeitherThrowsNorClosesAgain; WriterHelperClientClosingUnitTest#stopClosesTheHelperClientOnlyAfterTheTableSyncExecutorTerminated
+red_reason_close_count: yes
+spotless_clickhouse_writer_diff_import_only: yes
+```
+
+The patch SHA-256 equals E-03's `e1aa8499...1419`, and `git apply` re-created exactly the three writer paths. The re-run reproduced E-03 (22 tests, 19 failing cases over the same ten methods, every failure an `AssertionFailedError` with `close count`). With `closeHelperClient()` appended to `stop()` the class shows 22 tests and 13 failures: the three stop-path methods (`successfulStartThenStopClosesTheHelperClientOnce`, `secondStopNeitherThrowsNorClosesAgain`, `stopClosesTheHelperClientOnlyAfterTheTableSyncExecutorTerminated`) are green on client V1 and V2, and the seven remaining methods (the five failed-start exits, the table-mapping exception and the V1 per-batch case) stay red, each an `AssertionFailedError` naming `close count`. The scoped Spotless hook's stdout for `ClickHouseWriter.java` differs from the file in the same 21 import and blank lines as at the phase baseline, with equal import sets, so the import-only rule holds and the file was not rewritten.
+
+2026-11-01T22:08:40Z
 
 Verdict: pass
