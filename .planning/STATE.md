@@ -2,16 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
-status: planning
-current_phase: "39"
-current_phase_name: "Dependabot Absorption & Behaviour Pins"
-last_updated: "2026-11-01T14:18:25.000Z"
+current_phase: 39
+current_phase_name: Dependabot Absorption & Behaviour Pins
+status: executing
+stopped_at: Completed 39-01-PLAN.md
+last_updated: "2026-11-01T18:32:49.951Z"
 last_activity: 2026-11-01
+last_activity_desc: Phase 39 execution started
+state_head: 4a4bc8279e2550758f758f9544e24c277bbf912a
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 4
+  completed_plans: 1
   percent: 0
 ---
 
@@ -22,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 39 — Dependabot Absorption & Behaviour Pins. gson 2.15.0 and `setup-gradle` 6.4.1 land first, one commit and one gate each. Then Docker-free pins fix today's wrapped-`DataException` classification and `custom_*` forwarding on client 0.11.0, and the integration harness counts only its own connector (F-3).
+**Current focus:** Phase 39 — Dependabot Absorption & Behaviour Pins
 
 ## Current Position
 
-Phase: 39 of 44 (Dependabot Absorption & Behaviour Pins) — not started (ready to plan)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-01 — Roadmap created for v1.7.0_gg7 (Phases 39-44, 23/23 requirements mapped)
+Phase: 39 (Dependabot Absorption & Behaviour Pins) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-11-01 — Phase 39 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -220,6 +223,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 34 P02 | 38 min | 3 tasks | 6 files |
 | Phase 34 P03 | 55 min | 3 tasks | 2 files |
 | Phase 35 P01 | 14 min | 3 tasks | 10 files |
+| Phase 39 P01 | 40 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -308,6 +312,7 @@ Placement:
 - PIN-01's red stall pin sits in Phase 41, so no gate between phases runs red.
 - The F-1 halves share Phase 40, because CLS-04 pins all three sites.
 - The documents phase stays separate, because DOC-02 edits `.github/` and may edit `src/main`, and the release phase can edit neither.
+- [Phase 39]: Phase 39-01: absorption mode pr-heads (origin custom_build 72e8ccff, PRs #21 and #22 open); gson 2.15.0 merged from PR #22 head as ac216401 with its FORK-DELTA row, gated green twice on testUnit and full suite plus cumulative invariants PASS
 
 ### Pending Todos
 
@@ -367,8 +372,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-01
-Stopped at: Roadmap created for milestone `v1.7.0_gg7` (Phases 39-44, 23/23 requirements mapped); Phase 39 ready to plan
+Last session: 2026-11-01T18:32:49.927Z
+Stopped at: Completed 39-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
