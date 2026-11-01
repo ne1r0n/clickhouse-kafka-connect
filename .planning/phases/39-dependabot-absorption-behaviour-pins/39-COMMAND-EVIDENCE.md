@@ -14,7 +14,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | DEP-01, DEP-02 | 39-01 | pass |
-| E-02 | DEP-01 | 39-01 | pending (plan 39-01) |
+| E-02 | DEP-01 | 39-01 | pass |
 | E-03 | DEP-01 | 39-01 | pending (plan 39-01) |
 | E-04 | DEP-02 | 39-02 | pending (plan 39-02) |
 | E-05 | DEP-02 | 39-02 | pending (plan 39-02) |
@@ -83,5 +83,55 @@ helper_copy: cmp-equal
 The re-read matches the research: `origin/custom_build` still reads the expected tip `72e8ccff`, `refs/heads/custom_build` on origin equals it, both Dependabot PRs are open with `merged_at` null and are the only open PRs, and their heads are the ones the research recorded, so the mode is `pr-heads` and nothing on origin was merged in the meantime. `.planning/STATE.md` is dirty in addition to the two files the plan expected; all three paths sit under `.planning/` and are orchestrator-managed, so the dirty-path rule holds. The divergence reads `1 18` against the research's `1 16` and the planning's `1 17`, the growth being local planning commits; the left `1` is the published gg6 merge `72e8ccff`, which is not yet an ancestor of HEAD and enters this branch's history with the first merge. `testcontainers_host_override` is recorded as set only: this shell sets it to a literal that breaks Ryuk, which is why every Gradle run unsets it.
 
 2026-11-01T17:52:01Z
+
+Verdict: pass
+
+### E-02: gson source fetched and merged as its own commit with the FORK-DELTA version-catalog row (DEP-01)
+
+Backs: DEP-01, ROADMAP Phase 39 criterion 1 (gson 2.15.0 arrives from the fetched Dependabot PR #22 head as its own `--no-ff` merge commit, whose first-parent diff is the catalog line plus the gson value of the FORK-DELTA version-catalog row, and `dependencyInsight` resolves 2.15.0 on the runtime classpath).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git fetch origin refs/pull/22/head
+git rev-parse FETCH_HEAD
+git log -1 --format=%an b5cccbd324635d2fb19fc225e09bb59f7fe81590
+git rev-parse b5cccbd324635d2fb19fc225e09bb59f7fe81590^1
+git diff --name-only b5cccbd324635d2fb19fc225e09bb59f7fe81590^1 b5cccbd324635d2fb19fc225e09bb59f7fe81590
+git diff -U0 b5cccbd324635d2fb19fc225e09bb59f7fe81590^1 b5cccbd324635d2fb19fc225e09bb59f7fe81590
+curl -sS --fail https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/pulls/22
+git merge-tree --write-tree --name-only HEAD b5cccbd324635d2fb19fc225e09bb59f7fe81590
+git merge --no-ff --no-commit b5cccbd324635d2fb19fc225e09bb59f7fe81590
+git add docs/FORK-DELTA.md
+git commit -F /tmp/gsd39/exec/msg-22.txt
+git rev-parse HEAD^1 HEAD^2
+git diff --name-only HEAD^1 HEAD
+git rev-list --left-right --count origin/custom_build...HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --dependency com.google.code.gson:gson --configuration runtimeClasspath
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q dependencyInsight --dependency com.google.code.gson:gson --configuration clickhouseDependencies
+python3 -I .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 172
+```
+
+```text
+gson_head: b5cccbd324635d2fb19fc225e09bb59f7fe81590
+gson_head_research: b5cccbd324635d2fb19fc225e09bb59f7fe81590
+rebased_since_research: no
+gson_author: dependabot[bot]
+gson_parent: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+gson_files: gradle/libs.versions.toml
+gson_change: gson 2.14.0 -> 2.15.0
+origin_reread_before_merge: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+merge_tree: clean
+merge_commit: ac216401a1efef629dd543fdabe49f3144b9af39
+merge_first_parent: 4c463a872385d1776bd37bcbc2f497f2768a4159
+first_parent_diff_files: docs/FORK-DELTA.md gradle/libs.versions.toml
+dependencyinsight_runtimeclasspath: com.google.code.gson:gson:2.15.0
+dependencyinsight_clickhousedependencies: com.google.code.gson:gson:2.15.0
+anchors_mirror: rows=172 bad=0
+divergence_after_merge: 0 21
+```
+
+The source was fetched at 2026-11-01T17:52:47Z. It has one parent equal to the re-read origin tip `72e8ccff`, is authored by `dependabot[bot]`, changes only `gradle/libs.versions.toml`, and the changed lines are exactly the removal of `gson = "2.14.0"` and the addition of `gson = "2.15.0"`; the REST `head.sha` of PR #22 equals the fetched head. The research recorded the same head `b5cccbd3`, so it was not rebased. The dry-run merge printed one tree OID line (`7a0d9d6a4f98617ae9ab19726d571a08205793a1`) with exit 0. Only `gradle/libs.versions.toml` was staged after `git merge --no-ff --no-commit`; the FORK-DELTA edit is one removed and one added line (the gson value `2.14.0` to `2.15.0`, the Phase 39 absorption sentence, and `DEP-01` in the last cell of the version-catalog row). The merge's second parent equals `gson_head`, and `72e8ccff` is now an ancestor of HEAD, hence the divergence `0 21`. Both resolved classpaths carry one gson version, 2.15.0.
+
+2026-11-01T17:53:28Z
 
 Verdict: pass
