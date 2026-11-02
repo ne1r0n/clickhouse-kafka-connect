@@ -9,11 +9,11 @@ findings:
     title: "Insert-timeout documentation now describes a mechanism that is a no-op while `async=false`"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`setInsertSocketTimeoutV2` is public and only clamps the upper bound"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The operator-override guard's parse edge cases are mostly unpinned"
   - id: IN-01
     severity: info
@@ -27,9 +27,9 @@ findings:
     severity: info
     disposition: open
     title: "Stall-pin `POST` count assertion depends on the stub having recorded the request"
-open: 6
+open: 4
 total: 6
-recorded: 2026-11-02T10:08:05.066Z
+recorded: 2026-11-02T10:14:30.494Z
 ---
 
 # Phase 41: Code Review Disposition
@@ -37,8 +37,8 @@ recorded: 2026-11-02T10:08:05.066Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
+| WR-02 | warning | fixed | 41-REVIEW-FIX.md |
+| WR-03 | warning | fixed | 41-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
