@@ -15,7 +15,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | RLS-01 | 44-01 | pass |
-| E-02 | RLS-01 | 44-01 | pending (plan 44-01) |
+| E-02 | RLS-01 | 44-01 | pass |
 | E-03 | RLS-01 | 44-01 | pending (plan 44-01) |
 | E-04 | RLS-01 | 44-01 | pending (plan 44-01) |
 | E-05 | RLS-03 | 44-02 | pending (plan 44-02) |
@@ -127,5 +127,67 @@ testunit_baseline: not run here: plan 44-04 gates the tip; expected 1826 tests a
 The premise holds on the untouched tree: origin `custom_build` still reads the gg6 release commit, the left count is 0 (the right count of 201 is the unpublished `sync/v1.7.0` history, which already contains the gg6 merge), no gg7 or pre-gg7 tag exists locally or on origin, and `sync/v1.7.0` has no head on origin. The two open pull requests on origin (21 and 22) point at commits that are ancestors of `HEAD`. The first upstream recheck found nothing new: upstream `main` is the planning value, the newest tag is `v1.7.0`, and upstream pull requests 861, 855 and 857 are open and unmerged with their planning heads. The swap figure is high, which is the condition under which the OpenJ9 inline-mock crash was seen before; the crash rule applies to every Gradle run of this plan. The helper `44-review-check.py` was verified against the stated derivation (file minus the marked block equals the replaced source, block directly after the `COMMANDS` line) and its `agents` subcommand against five synthetic cases.
 
 2026-11-02T21:01:17Z
+
+Verdict: pass
+
+### E-02: Tracer: VERSION bumped through the script with its anchors row; the generated constant, the baseline tag, the anchors mirror, the guards and the local rollback tag agree
+
+Backs: RLS-01 (the release identity moves to `v1.7.0_gg7` in `VERSION`, in its row of `fork-anchors.txt` and in the generated constant, in one two-file commit, with the baseline choice and the local rollback tag proven on the real files and no Docker).
+
+```sh
+TG=$(git tag --merged HEAD --list 'v*') && printf '%s\n' "${TG}" | python3 -I .github/scripts/baseline_tag.py v1.7.0_gg7
+python3 -I .github/scripts/bump_version.py gg --version-file /tmp/gsd44/w/bump/VERSION --anchors-file /tmp/gsd44/w/bump/fork-anchors.txt
+git diff --no-index --numstat <original> <copy>
+python3 -I .github/scripts/bump_version.py gg
+git diff --name-only
+git diff --numstat -- VERSION
+git diff --numstat -- .planning/scripts/fork-anchors.txt
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean generateVersionFile > /tmp/gsd44/exec/version-clean.log 2>&1
+grep ARTIFACT_VERSION build/generated/sources/version/java/main/com/clickhouse/kafka/connect/sink/Version.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*MBeanNameUnitTest' --tests '*BumpVersionScriptUnitTest' --tests '*BaselineTagScriptUnitTest' > /tmp/gsd44/exec/bump-guards.log 2>&1
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py junit build/test-results/testUnit --class <name>
+git add VERSION .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd44/exec/msg-bump.txt
+git tag pre-v1.7.0_gg7 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+git rev-parse 'pre-v1.7.0_gg7^{commit}'
+git cat-file -t pre-v1.7.0_gg7
+git tag -l 'v1.7.0_gg7'
+```
+
+```text
+baseline_for_gg7: v1.7.0_gg6
+scratch_bump_stdout: v1.7.0_gg7
+scratch_bump_numstat: 1/1; 1/1
+bump_stdout: v1.7.0_gg7
+bump_version_file: v1.7.0_gg7
+bump_changed_files: .planning/scripts/fork-anchors.txt; VERSION
+bump_numstat: 1/1; 1/1
+version_rows_in_anchors: 1
+anchors_mirror_after: rows=190 bad=0
+version_clean_exit: 0
+generated_version_line: public static final String ARTIFACT_VERSION = "v1.7.0_gg7";
+bump_guard_exit: 0
+bump_guard_failed: OK failed: 0 failing testcases, 0 expected
+bump_xml: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=52 failures=0 errors=0 skipped=0 files=1
+mbean_xml: OK junit build/test-results/testUnit class *MBeanNameUnitTest: tests=11 failures=0 errors=0 skipped=0 files=1
+baseline_xml: OK junit build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+bump_commit: 1d7383b9f21101c800c96a61fea714d999d6b092
+bump_commit_files: .planning/scripts/fork-anchors.txt; VERSION
+pre_tag_target: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+pre_tag_type: commit
+baseline_after_bump: v1.7.0_gg6
+allowlist_gg7_present: no
+note_gg7_present: no
+release_tag_absent: yes
+src_unchanged: yes
+hygiene_scan: clean
+```
+
+The three guard classes ran together (82 tests, none failed or skipped) with the Docker socket pointed at a path that does not exist, so none of them needs Docker. Neither Gradle run produced a JVM crash file, so the crash rule did not apply. The scratch rehearsal on copies and the real bump agree: both change one line in each of the two files. The rollback tag is a lightweight tag on the gg6 release commit, kept local; only the user's push step publishes it.
+
+2026-11-02T21:02:50Z
 
 Verdict: pass
