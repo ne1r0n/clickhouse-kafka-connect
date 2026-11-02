@@ -25,7 +25,7 @@
 | E-09 | RLS-03 | 44-03 | pass |
 | E-10 | RLS-03 | 44-03 | pass |
 | E-11 | RLS-02 | 44-04 | pass |
-| E-12 | RLS-04 | 44-04 | pending (plan 44-04) |
+| E-12 | RLS-04 | 44-04 | fail |
 | E-13 | RLS-04 | 44-04 | pending (plan 44-04) |
 | E-14 | RLS-04 | 44-05 | pending (plan 44-05) |
 | E-15 | RLS-04 | 44-05 | pending (plan 44-05) |
@@ -678,3 +678,102 @@ Both archives were rebuilt on the final tree and match the figures of E-05 (the 
 2026-11-02T22:36:30Z
 
 Verdict: pass
+
+### E-12: Docker-free gates on one head: the invariant script started on it, testUnit with Docker unreachable, the anchors mirror, scope and numbers
+
+Backs: RLS-04 (Docker-free half: the gated head and origin facts, the cumulative merge-invariant script started once on that explicit SHA, testUnit with the Docker daemon proven unreachable, the anchors mirror, the scope and number facts and the scans).
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git rev-list --left-right --count origin/custom_build...HEAD
+git ls-remote --heads origin 'sync/*'
+git ls-remote --tags origin 'v1.7.0_gg7*'
+git log -1 --format=%H -- . ':(exclude).planning'
+git log -1 --format=%H -- .planning/scripts
+/bin/bash -c 'bash .planning/scripts/verify-merge-invariants.sh 54e63648 b265f5a45a0752f314bb95315e3cdfbeaa2b78cd > /tmp/gsd44/exec/invariants.log 2>&1; echo $? > /tmp/gsd44/exec/invariants.exit'   # once, in the background
+DOCKER_HOST=unix:///nonexistent/docker.sock docker info
+./gradlew --stop; sysctl vm.swapusage; rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd44/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py junit|failed build/test-results/testUnit ...
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe b265f5a45a0752f314bb95315e3cdfbeaa2b78cd -- . ':(exclude).planning'
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe b265f5a45a0752f314bb95315e3cdfbeaa2b78cd -- .planning/scripts
+git diff --shortstat v1.7.0 b265f5a45a0752f314bb95315e3cdfbeaa2b78cd -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 b265f5a45a0752f314bb95315e3cdfbeaa2b78cd -- src/main
+git diff --shortstat v1.7.0_gg6 b265f5a45a0752f314bb95315e3cdfbeaa2b78cd -- src/main
+git log --format=%h 31b1721427915576bb631e59a6c75812725fd8b0..b265f5a45a0752f314bb95315e3cdfbeaa2b78cd -- src/integrationTest
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py [--strict] <every file added since the phase start, the added lines of the modified documents>
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets <evidence, review, disposition, note>
+git worktree list
+```
+
+```text
+gated_head: b265f5a45a0752f314bb95315e3cdfbeaa2b78cd
+utc_start: 2026-11-02T22:36:45Z
+dirty_paths_at_gate: M .planning/config.json; M .planning/state.json
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+origin_unchanged: yes
+left_count_at_gate: 0
+origin_sync_ref: none
+origin_gg7_tags: none
+local_release_tag: none
+last_non_planning_commit: a43ff32f39647dfc3afb9849f6729b251f2619d2
+last_scripts_commit: 402b6e2ea99a65e80c42f710e2b93277c6f78c64
+invariants_started_on: b265f5a45a0752f314bb95315e3cdfbeaa2b78cd
+invariants_started_utc: 2026-11-02T22:37:10Z
+invariants_exit_seen: 0
+invariants_line_seen: invariants: provenance_paths=21 anchor_commits=1534 anchor_rows=190 marker_commits=1600 anchor_exempt=19 result=PASS
+invariants_finished_utc: 2026-11-02T23:25:44Z
+invariants_overlap: none (no Gradle build ran between the start and the finish of the script, by the operator's instruction)
+docker_unreachable_proof: exit=1 failed to connect to the docker API at unix:///nonexistent/docker.sock; check if the path is correct and if the daemon is running: dial unix /nonexistent/docker.sock: connect: no such file or directory
+swap_before_testunit: vm.swapusage: total = 28672.00M  used = 28044.94M  free = 627.06M  (encrypted)
+testunit_exit: 0
+testunit_tests: 1826
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_expected_tests: 1826
+testunit_count_matches: yes
+testunit_jdk: the default test JDK line (defaultJdkVersion 17, no -PjavaVersion; the installed JDK 17 entries are IBM Semeru 17.0.9)
+testunit_jvm_crash: none
+failed_ok: yes
+compare_xml: OK junit build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=58 failures=0 errors=0 skipped=0 files=1
+bump_xml: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=52 failures=0 errors=0 skipped=0 files=1
+baseline_xml: OK junit build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+relguard_xml: OK junit build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=38 failures=0 errors=0 skipped=0 files=1
+mbean_xml: OK junit build/test-results/testUnit class *MBeanNameUnitTest: tests=11 failures=0 errors=0 skipped=0 files=1
+closing_writer_xml: OK junit build/test-results/testUnit class *WriterHelperClientClosingUnitTest: tests=23 failures=0 errors=0 skipped=0 files=1
+closing_keeper_xml: OK junit build/test-results/testUnit class *KeeperStateProviderClosingUnitTest: tests=5 failures=0 errors=0 skipped=0 files=1
+stop_xml: OK junit build/test-results/testUnit class *ProxySinkTaskStopUnitTest: tests=4 failures=0 errors=0 skipped=0 files=1
+stall_xml: OK junit build/test-results/testUnit class *InsertStallBoundPinUnitTest: tests=15 failures=0 errors=0 skipped=0 files=1
+sockopt_xml: OK junit build/test-results/testUnit class *InsertSocketTimeoutOptionUnitTest: tests=23 failures=0 errors=0 skipped=0 files=1
+origtopic_xml: OK junit build/test-results/testUnit class *OriginalTopicInsertedOffsetsUnitTest: tests=6 failures=0 errors=0 skipped=0 files=1
+passthrough_xml: OK junit build/test-results/testUnit class *RetriableExceptionPassThroughUnitTest: tests=38 failures=0 errors=0 skipped=0 files=1
+cycle_xml: OK junit build/test-results/testUnit class *HandleExceptionCauseCycleUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+warn_unit_xml: OK junit build/test-results/testUnit class *UnvettedRetriableCodesWarnUnitTest: tests=21 failures=0 errors=0 skipped=0 files=1
+wrapped_xml: OK junit build/test-results/testUnit class *WrappedDataExceptionClassificationPinUnitTest: tests=14 failures=0 errors=0 skipped=0 files=1
+anchors_mirror: rows=190 bad=0
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg7.md
+scope_planning_scripts: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt; .planning/scripts/fork-anchors.txt
+no_java_change: yes
+src_main_vs_gg6_equals_forkdelta: yes
+forkdelta_numbers_equal: yes
+note_archive_numbers_match: yes
+archive_size_delta_cause: the outer manifest.json of each archive holds the build date (release_date 2026-11-02 in the E-05 builds, 2026-11-03 in the E-11 builds, local time); the one-digit change alters its compressed size by one byte, so the two sizes in the note's row D4 (the E-05 figures) are each one byte below a rebuild made on a later date; the entry counts in that row match
+integration_test: not re-run: it needs a Connect stack; the recorded run is the one of the Phase 39 harness fix, and src/integrationTest changed after it only as git log shows in integration_sources_after_run
+integration_sources_after_run: 51200928 (fix(39): WR-01, the sink task status log line kept purely diagnostic in the integration test)
+hygiene_scan_all: not clean: default and strict scans of every other added file and of the added lines of the modified documents report 0 hits, but 44-REVIEW.md has 3 hits at lines 116, 204 and 244 (the helper's fifth default pattern, a bare four-letter verb beginning with st, in the reviewers' sentences)
+secrets_scan: clean
+nothing_pushed: yes
+worktrees_clean: yes
+docker_free_decision: no-go
+gate_failures: hygiene_scan_all (3 hits in 44-REVIEW.md, a file plan 44-03 never scanned; this plan does not edit a document)
+utc_end: 2026-11-02T23:27:31Z
+```
+
+Every Docker-free gate other than the hygiene scan holds on the gated head: testUnit with the daemon proven unreachable read 1826 tests with 0 failures, 0 errors and 2 skipped and every pin class green; the invariant script, started once on this SHA with no Gradle build overlapping it, ended `result=PASS` with `anchor_rows=190`; the anchors mirror reads `rows=190 bad=0`; the non-planning scope is the four document paths and the scripts scope the allow-list and the anchors file; the FORK-DELTA figures and the note's entry counts agree with fresh runs; origin `custom_build` still reads the gg6 commit and nothing was pushed. The one red is a hygiene hit that the plan's own scope (strict over the review file) makes a gate: the independent reviewers' round text uses a verb the helper's pattern for an outside-system name also matches, so the file fails although it names no outside system. A wording change in that planning file is outside this plan (it never edits a document) and is the orchestrator's decision. Plan 44-04 Task 3 is not started: its precondition needs E-12 to read pass. The invariant result is kept in `/tmp/gsd44/exec/invariants.exit` and `invariants.log` for it.
+
+2026-11-02T23:27:31Z
+
+Verdict: fail
