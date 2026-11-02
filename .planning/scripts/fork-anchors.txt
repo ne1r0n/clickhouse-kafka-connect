@@ -209,3 +209,8 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	public void close()	1	CLS-03
 src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java	default void close()	1	CLS-03
 src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	stateProvider.close()	1	CLS-03
+# Phase 41 (v1.7.0_gg7): client V2 inserts carry a per-insert socket_timeout from clickhouseClientInsertTimeoutMs unless the operator named socket_timeout (TMO-01); the 0 row pins that the client-level alternative stays out; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());	3	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	settings.setNetworkTimeout(	1	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	operatorSetSocketTimeout	3	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setSocketTimeout(	0	TMO-01

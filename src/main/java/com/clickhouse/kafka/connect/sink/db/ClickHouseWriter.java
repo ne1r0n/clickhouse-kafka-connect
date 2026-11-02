@@ -1337,6 +1337,7 @@ public class ClickHouseWriter implements DBWriter {
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
         chc.setReplicaTagHeaderV2(insertSettings);
+        chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());
 
         String deduplicationToken = queryId.getDeduplicationToken();
         if (deduplicationToken != null) {
@@ -1613,6 +1614,7 @@ public class ClickHouseWriter implements DBWriter {
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
         chc.setReplicaTagHeaderV2(insertSettings);
+        chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());
         String deduplicationToken = queryId.getDeduplicationToken();
         if (deduplicationToken != null) {
             insertSettings.setDeduplicationToken(deduplicationToken);
@@ -1761,6 +1763,7 @@ public class ClickHouseWriter implements DBWriter {
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
         chc.setReplicaTagHeaderV2(insertSettings);
+        chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());
         String deduplicationToken = queryId.getDeduplicationToken();
         if (deduplicationToken != null) {
             insertSettings.setDeduplicationToken(deduplicationToken);
