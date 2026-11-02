@@ -22,7 +22,7 @@
 | E-05 | DOC-02 | 43-01 | pass |
 | E-06 | DOC-01, DOC-02 | 43-02 | pass |
 | E-07 | DOC-01 | 43-02 | pass |
-| E-08 | DOC-01 | 43-02 | pending |
+| E-08 | DOC-01 | 43-02 | pass |
 | E-09 | DOC-02 | 43-03 | pending |
 | E-10 | DOC-01, DOC-02 | 43-03 | pending |
 
@@ -408,5 +408,46 @@ notes_commit_files: docs/ROLLOUT-v1.7.0_gg1.md docs/ROLLOUT-v1.7.0_gg6.md
 The C2 sentence rests on three greps of the code at this tree (evidence kind: read from the code). `getRetry()` is called at three places, each `.setRetry(csc.getRetry())` (`ClickHouseWriter` lines 109 and 1840, `KeeperStateProvider` line 64), so `retryCount` reaches only the helper client builder; the helper's `retry` field is read only inside `pingV1`, `pingV2`, `queryV1` and `queryV2`; `CONNECTOR_RETRY_TIMEOUT` occurs only in `ClickHouseSinkConfig.java`. In the gg1 note, "of any line" occurred once before and 0 times after; item 6 holds `decodes ZSTD (measured)`, `measured by the maintainers in research`, `not re-run on the release tip`, the link to rows D9 and D13 and both client lines. In the gg6 note the notice paragraph sits at line 3, above the summary paragraph at line 5; FUT-05 occurs twice (the notice and row C2); only row C2 changed (one removed, one added line) plus the notice and its blank line. The 9 relative targets of the two notes resolve. The correction notice's claim about row D7 rests on `git diff v1.7.0_gg6 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md`, which shows that row D7 was the one row changed since the tag (read from git).
 
 2026-11-02T19:36:25Z
+
+Verdict: pass
+
+### E-08: FORK-DELTA: the gg6 publication in the past tense, tag-based commands, items 12, 22 and 23
+
+Backs: DOC-01 (ROADMAP Phase 43 success criterion 1: the FORK-DELTA paragraphs the gg6 close numbered 6, 139 and 286 describe the publication in the past tense; the gg6 reproduction commands name the tags and reproduce the published rows; items 12, 22 and 23 and the protobuf row state the closed facts).
+
+```sh
+git rev-parse --verify refs/tags/v1.7.0 refs/tags/v1.7.0_gg5 refs/tags/v1.7.0_gg6
+grep -oF <each of the fourteen old phrases> docs/FORK-DELTA.md | wc -l
+grep -oF <each new phrase> docs/FORK-DELTA.md | wc -l
+git diff --shortstat v1.7.0 v1.7.0_gg6 -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 v1.7.0_gg6 -- src/main
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-doc-check.py numbers docs/FORK-DELTA.md 'after gg6: `v1.7.0` to `v1.7.0_gg6`' --wider <wider> --narrow <narrow>
+git diff --shortstat v1.7.0_gg5 v1.7.0_gg6 -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0_gg5 v1.7.0_gg6 -- src/main
+git diff -U0 -- docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md
+git commit -F /tmp/gsd43/exec/msg-d2.txt
+git show 870fe9d8f918d67516666e8272960ab1df628621^:docs/FORK-DELTA.md
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-doc-check.py links docs/FORK-DELTA.md
+```
+
+```text
+old_phrases_absent: 14
+new_phrases_present: yes
+run_id_count: 3
+pr10_closed_count: 2
+tag_commands: 2
+table_matches_tag: yes
+gg5_gg6_paragraph_reproduces: yes
+raw_table_rows_unchanged: yes
+scope: removed=10 added=10
+links: OK
+forkdelta_commit: 870fe9d8f918d67516666e8272960ab1df628621
+forkdelta_commit_files: docs/FORK-DELTA.md
+```
+
+Each of the fourteen old phrases of the task occurred at least once before the edit (the eleven old strings of the text specification each exactly once) and occurs 0 times now. The new text is present: the run id `41298074815` occurs 3 times (the intro paragraph, item 22 and the syncer paragraph), the closure of PR #10 occurs twice (the protobuf row and item 12), and each of the two tag-based gg6 commands occurs once. The tag-to-tag shortstats print 331 files, 39665 insertions and 1161 deletions at the wider scope and 40, 2989 and 272 for `src/main`, which equal the after-gg6 rows (the rows themselves are byte-identical before and after: all 14 rows of the two scopes unchanged); the gg5-to-gg6 paragraph states 79 files, 7939 insertions and 478 deletions (wider) and 7, 112 and 31 (`src/main`), which the tag-to-tag command prints. The compare result in the syncer paragraph (0 unallowed, 0 stale rows, baseline `v1.7.0_gg5`) and the rollback tag pushed by hand after the publish run are read from `38-RELEASE-RECORD.md`; the run, release and PR facts are those of E-06 (read from the GitHub REST API). The commit changes exactly ten physical lines (ten removed, ten added; adjacent lines share hunks). Item 22 names the two moved release-record paths under `.planning/milestones/v1.7.0_gg6-maintenance-phases/`, and the 11 relative targets of the file resolve.
+
+2026-11-02T19:38:30Z
 
 Verdict: pass
