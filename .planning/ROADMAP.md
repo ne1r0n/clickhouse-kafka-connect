@@ -284,11 +284,11 @@ The OI-35 cases that the edit does not fix are written down as limits.
   3. *[Docker-free]* In the RSK-03 commit, a task started with a non-transient code in `additionalRetriableErrorCodes` logs one WARN that names the code and carries no record data, and a transient code logs none. Start-up still succeeds. Nothing validates the codes or budgets retries, the `ClickHouseSinkConfig` diff is empty, and the existing `additionalRetriableErrorCodes` pins are unchanged (RSK-03).
   4. *[record]* FORK-DELTA states OI-35-2 and OI-35-3 as limits: exactly-once under a topic-renaming SMT needs an injective rename and a partition-preserving SMT. The state key does not change (RSK-04). Each of the three code commits touches only its production file, its tests and its record rows. Each is followed by cache-busted `testUnit` and a full suite.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 - [x] 42-01-PLAN.md — measured start baseline with per-testcase status dumps, then RSK-01 as one commit: a 6-case Docker-free pin class (direct preCommit and close under a rename, two `limit...` characterization pins, a state-key and BEFORE/AFTER trace guard, a no-SMT guard) seen red, the one-line `originalTopic()` edit at `Processing.doLogic` line 137, the FORK-DELTA row, Known cost 16 rewritten with the OI-35-2/OI-35-3 limits, two anchor rows; gated by cache-busted testUnit and the full suite with a status delta of exactly the added rows (RSK-01, RSK-04)
-- [ ] 42-02-PLAN.md — RSK-02 as one commit: the expected changed-row list (none of the 216-execution matrix, PIN-02 or TMO-02; 38 added rows) committed before the change, a 38-case pass-through pin class seen red, the chain-form `RetriableException` pass-through in `Utils.handleException`, the FORK-DELTA row, one Known cost 17 sentence, two anchor rows; gated, with the actual status delta equal to the list (RSK-02)
+- [x] 42-02-PLAN.md — RSK-02 as one commit: the expected changed-row list (none of the 216-execution matrix, PIN-02 or TMO-02; 38 added rows) committed before the change, a 38-case pass-through pin class seen red, the chain-form `RetriableException` pass-through in `Utils.handleException`, the FORK-DELTA row, one Known cost 17 sentence, two anchor rows; gated, with the actual status delta equal to the list (RSK-02)
 - [ ] 42-03-PLAN.md — RSK-03 as one commit: a 21-case Docker-free start-up class and one live class seen red, the start-up WARN for `additionalRetriableErrorCodes` outside `Utils.DEFAULT_RETRIABLE_ERROR_CODES` plus 216 in `ClickHouseSinkTask.start`, `ClickHouseSinkConfig` byte-identical, the FORK-DELTA row, Known cost 24, two anchor rows; gated with a status delta of exactly the added rows (RSK-03)
 - [ ] 42-04-PLAN.md — phase gate: each code commit reverted alone in a throwaway worktree (clean, exactly inverse, green testUnit), then the merge-invariant script once on an explicit SHA (anchor_rows=190) and the phase facts (three src/main files, no existing test modified, origin unchanged) (RSK-01, RSK-02, RSK-03, RSK-04)
 
@@ -464,7 +464,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-01 |
 | 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 42. Isolated High-Risk Edits | v1.7.0_gg7 | 1/4 | In Progress | - |
+| 42. Isolated High-Risk Edits | v1.7.0_gg7 | 2/4 | In Progress | - |
 | 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 44. Release & Publication | v1.7.0_gg7 | 0/TBD | Not started | - |
 
