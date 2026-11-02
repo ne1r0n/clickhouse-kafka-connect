@@ -24,7 +24,7 @@
 | E-08 | CLS-03, CLS-04 | 40-03 | pass |
 | E-09 | CLS-03, CLS-04 | 40-03 | pass |
 | E-10 | CLS-03 | 40-03 | pass |
-| E-11 | CLS-01, CLS-02, CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
+| E-11 | CLS-01, CLS-02, CLS-03, CLS-04 | 40-03 | pass |
 
 ### E-01: Execution-start facts, baselines and environment
 
@@ -614,5 +614,41 @@ origin_reread_after: equal
 Both runs are green on the Keeper-half commit: `testUnit` with Docker unreachable ran 1716 tests (1687 plus 29: 22 writer cases and 7 Keeper-side cases), 0 failures, 0 errors, 2 skipped; the full suite on ClickHouse `latest` (`26.10.3.7`, digest equal to E-07's and unchanged before and after) with client V2 ran 2314 tests (2285 plus 29), 0 failures, 0 errors, 18 skipped (the named inventory, helper OK; 13 of them sit in `ClickHouseSinkTaskWithSchemaTest`). Full-suite wall time was 2 m 49 s (06:41:34Z to 06:44:24Z). Each of the six exactly-once classes ran with at least one test and no failure or error; `KeeperStateProviderRestartLiveTest` and `DedupTokenRetryLiveTest` exercise a real KeeperMap table, so the provider's constructor, `init()` and the state read and write paths ran against real ClickHouse with this commit. The `ClickHouseWriterTest` XML has three passed `[1] V1` cases and the passed JSON comparison case, so the client V1 per-batch close is exercised against real ClickHouse and read back. The gated head `19e5cf75` is the E-09 evidence commit on top of the Keeper-half commit and its non-planning tree equals the Keeper-half commit's. Origin `custom_build` still equals E-01's tip, before and after both runs; nothing was pushed. No `hs_err_pid*.log`, `javacore.*` or `Snap.*.trc` appeared; the runs used HotSpot 21 through `-PjavaVersion=21`.
 
 2026-11-02T06:44:50Z
+
+Verdict: pass
+
+### E-11: Phase gate: cumulative merge-invariant gate, anchors, src/main file list, origin
+
+Backs: CLS-01, CLS-02, CLS-03 and CLS-04 (ROADMAP Phase 40 success criteria 3 and 4 and the phase gate sentence: the per-half gates, then the anchors invariant over every commit of the range, with `src/main` limited to the four declared files and nothing pushed).
+
+```sh
+git rev-parse HEAD
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 6775cd934e105a9fc251874cdb1f96b8f35dab03 > /tmp/gsd40/exec/invariants-40.log 2>&1
+tail -1 /tmp/gsd40/exec/invariants-40.log
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 180
+git diff --name-only 52ce1cd4c1501f1c4a332f42c64295be43f0f53c HEAD -- src/main
+git diff --quiet 52ce1cd4c1501f1c4a332f42c64295be43f0f53c HEAD -- VERSION CHANGELOG.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+invariants_head: 6775cd934e105a9fc251874cdb1f96b8f35dab03
+invariants_start_utc: 2026-11-02T06:45:20Z
+invariants_end_utc: 2026-11-02T07:26:22Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=1356 anchor_rows=180 marker_commits=1422 anchor_exempt=19 result=PASS
+invariants_exit: 0
+invariants_scope: run once, alone, on the E-10 commit: the script evaluates the anchor inventory at every commit of the range, so one run on the final SHA covers both code commits, each of which already passed the anchors mirror before it was made (rows=176 at the writer-half commit, rows=180 at the Keeper-half commit); a second run would cost about 40 minutes and add nothing; no Gradle run, Docker run or commit happened while it ran
+anchors_mirror: rows=180 bad=0
+src_main_files_vs_phase_start: src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java; src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+version_changelog_untouched: yes
+injected_client_clause: pinned by source identity (ownedClient is assigned only in the factory constructor, once, before the injected-client constructor; the injected-client constructor and init() are byte-identical to phase start) plus the K3 NullPointerException tripwire; there is no behavioural pin, because the injected-client constructor cannot complete today
+documented_limits: stop() timeout race accepted (Known cost 13, E-06); ClickHouseSinkTask.stop() calls deliveryStrategy.stop() before proxySinkTask.stop() without try/finally, outside scope (Known cost 13); a Keeper constructor that fails on client V1 leaks its client, out of scope by research OQ-1 (Known cost 13)
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+pushes: none
+```
+
+The cumulative gate ended `result=PASS` with exit 0 after 41 minutes on an explicit SHA, `6775cd93`, the E-10 commit, whose non-planning tree equals the Keeper-half commit's (E-10 `gated_tree_equals_keeper_commit` held for its parent and only planning files changed since). It evaluated 1356 anchor commits against 180 rows and 21 provenance paths, with the 19 SHA-pinned exemptions unchanged. Against phase start `src/main` differs in exactly four files (`ProxySinkTask.java`, `ClickHouseWriter.java`, `StateProvider.java`, `KeeperStateProvider.java`); `VERSION` and `CHANGELOG.md` are untouched (the release phase owns them); origin `custom_build` still equals E-01's tip `72e8ccff`, and no push, `gh` write or tag push was made in this phase. The documented limits are those of Known cost 13 and threats T-40-10, T-40-13 and T-40-17.
+
+2026-11-02T07:26:30Z
 
 Verdict: pass
