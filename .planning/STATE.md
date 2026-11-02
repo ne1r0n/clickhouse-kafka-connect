@@ -5,16 +5,16 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 42
 current_phase_name: Isolated High-Risk Edits
 status: executing
-stopped_at: Completed 42-01-PLAN.md
-last_updated: "2026-11-02T12:13:25.915Z"
+stopped_at: Completed 42-02-PLAN.md
+last_updated: "2026-11-02T12:23:39.957Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 42 execution started
-state_head: d4603452a7fef783e372dbbee52886ffb7acbee1
+state_head: a2db35354d8dfa9185af388c191e28bce2044627
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 42 (Isolated High-Risk Edits) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-11-02 — Phase 42 execution started
 
@@ -237,6 +237,7 @@ Progress: [█████░░░░░] 50%
 | Phase 41 P02 | 11 min | 3 tasks | 8 files |
 | Phase 41 P03 | 46 min | 2 tasks | 1 files |
 | Phase 42 P01 | 11 min | 3 tasks | 8 files |
+| Phase 42 P02 | 9 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -340,6 +341,7 @@ Placement:
 - [Phase 41]: 41-03: the exactly-once half of the duplicate risk is labelled read from the code (token reuse) and derived (server deduplication), never measured
 - [Phase 42]: Processing.doLogic reads SinkRecord.originalTopic() at line 137 so the Direct path keys inserted offsets by the consumer topic; the exactly-once state key stays on the transformed topic
 - [Phase 42]: Many-to-one rename and partition-changing SMT are pinned as limit cases so Known cost 16 labels them measured
+- [Phase 42]: RSK-02 chain form: a RetriableException anywhere in the cause chain stays retriable in Utils.handleException (after the server-error rule, before the DataException rule); it overrides a non-retriable server code and a DataException holding one no longer fails the task under errors.tolerance=none — The user chose the chain form because Processing.doInsert wraps every writer failure, so a bare-only rule would never see the async insert timeout or the DDL-propagation timeout; the changed-row list was committed before the edit and the actual status delta equals it (38 added, none changed)
 
 ### Pending Todos
 
@@ -399,8 +401,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T12:13:25.303Z
-Stopped at: Completed 42-01-PLAN.md
+Last session: 2026-11-02T12:23:39.325Z
+Stopped at: Completed 42-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
