@@ -74,8 +74,15 @@ public final class ProxySinkTask {
     }
 
     public void stop() {
-        dbWriter.stop();
-        statistics.unregisterMBean();
+        try {
+            dbWriter.stop();
+        } finally {
+            try {
+                statistics.unregisterMBean();
+            } finally {
+                stateProvider.close();
+            }
+        }
     }
 
     public void put(final Collection<SinkRecord> records) throws IOException, ExecutionException, InterruptedException {
