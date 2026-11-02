@@ -22,7 +22,7 @@
 | E-04 | RSK-01, RSK-04 | 42-01 | pass |
 | E-05 | RSK-02 | 42-02 | pass |
 | E-06 | RSK-02 | 42-02 | pass |
-| E-07 | RSK-02 | 42-02 | pending (plan 42-02) |
+| E-07 | RSK-02 | 42-02 | pass |
 | E-08 | RSK-03 | 42-03 | pending (plan 42-03) |
 | E-09 | RSK-03 | 42-03 | pending (plan 42-03) |
 | E-10 | RSK-03 | 42-03 | pending (plan 42-03) |
@@ -408,5 +408,69 @@ revert_unit: one commit (tests, code and record rows together): c857489081e27133
 The green run exited 0: the class is 38/0 with the test file byte-identical to the red run (the SHA-256 `aaca2de4...` of the committed blob equals `red_test_sha256` of E-05), and every existing classification class keeps its red-run count with 0 failures (216, 14, 15, 19, 34, 6, 14). `ConnectApiReferencesUnitTest` (3) and `SourcePlanningIdGuardUnitTest` (18) pass. The `Utils.java` diff is one hunk of 7 added lines and 0 removed (a comment, the `for` loop over the cause chain, the `if`, the `throw`, two braces and a blank line), with no import and no log line; it sits after the server block's `wasn't in the acceptable list.` line and directly before `//High-Level Explicit Exception Checking`. The expected-list commit `b34d0280` is a strict ancestor of the code commit and has `Utils.java` equal to the phase start. `Processing.java` is unchanged since the RSK-01 commit `cba0909b`, and `ClickHouseSinkConfig.java`, `sink/state` and `sink/kafka` equal the phase start. The FORK-DELTA row sits directly after the Four Single Message Transforms row and before the IOException-branch row, and states both consequences in the plan's exact words; Known cost 17 carries the two new sentences on its one physical line and still names FUT-05 and "no retry budget" (FUT-05 is not claimed closed). The two anchor rows and their comment sit between the TAL-03 row and the `# Phase 35` comment.
 
 2026-11-02T12:18:19Z
+
+Verdict: pass
+
+### E-07: Gate on the RSK-02 commit and the actual classification diff against the list written before the change
+
+Backs: RSK-02 (success criterion 2: the actual per-testcase status diff equals the list committed before the change; success criterion 4 for the RSK-02 commit: a cache-busted `testUnit` with Docker unreachable and a full suite on ClickHouse `latest` x client V2 on the tree of the code commit, totals equal to the E-04 totals plus 38).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-parse HEAD
+git diff --quiet c8574890 HEAD -- . ':!.planning'
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd42/exec/gate2-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-gate2-testunit
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-gate2-testunit /tmp/gsd42/exec/status-gate2-testunit.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py delta /tmp/gsd42/exec/status-gate1-testunit.tsv /tmp/gsd42/exec/status-gate2-testunit.tsv .planning/phases/42-isolated-high-risk-edits/42-rsk02-expected-added.tsv
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd42/exec/gate2-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd42/exec/xml-gate2-full
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-gate2-full /tmp/gsd42/exec/status-gate2-full.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py skips /tmp/gsd42/exec/xml-gate2-full
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py delta /tmp/gsd42/exec/status-gate1-full.tsv /tmp/gsd42/exec/status-gate2-full.tsv .planning/phases/42-isolated-high-risk-edits/42-rsk02-expected-added.tsv --by-class
+```
+
+```text
+gate_head: 391742460349cf9424eb4d7e388078d629209d9d
+gated_tree_equals_code_commit: yes
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1801
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_rsk01_gate: 38
+full_exit: 0
+full_tests: 2399
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_delta_vs_rsk01_gate: 38
+new_class_testunit: 38/0
+new_class_full: 38/0
+matrix_testunit: 216/0
+matrix_full: 216/0
+pin02_testunit: 14/0
+tmo02_testunit: 15/0
+status_delta_testunit: delta: removed=0 added=38 expected=38 match=yes
+status_delta_full: delta: removed=0 added=38 expected=38 match=yes
+actual_diff_equals_list: yes
+clickhouse_version_before: 26.10.3.7
+clickhouse_version_after: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_crash: none
+origin_reread: equal
+```
+
+The gated head descends from the RSK-02 code commit `c8574890` and its non-planning tree is equal to it. Both runs exited 0 with 0 failures and 0 errors: `testUnit` with Docker unreachable ran 1801 tests (the E-04 total 1763 plus 38, 2 skipped) and the full suite on `latest` x V2 ran 2399 tests (2361 plus 38, the 18 named skips). Both status deltas against the E-04 dumps removed nothing and added exactly the 38 `RetriableExceptionPassThroughUnitTest` rows written down in E-05, so the actual diff equals the list: every pre-existing testcase, including all 216 `WriterFailureClassificationUnitTest` executions, the 14 PIN-02 rows and the 15 TMO-02 rows, kept its status. The ClickHouse version and the image digest equal E-01's and read the same before and after the full run. No crash file appeared in the repository root, and `origin/custom_build` still equals the E-01 value.
+
+2026-11-02T12:22:14Z
 
 Verdict: pass
