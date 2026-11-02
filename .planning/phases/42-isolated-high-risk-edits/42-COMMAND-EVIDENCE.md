@@ -1,0 +1,150 @@
+# Phase 42: Command evidence
+
+- **Base commit:** `phase_start_sha` = `1c808c02728e4f9344c46015f63fe4f6cf52a6d9` (HEAD when plan 42-01 started, branch `sync/v1.7.0`).
+- **Shell:** macOS zsh, multi-line logic under `/bin/bash` or `python3 -I`. Gradle is run as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain ... -PjavaVersion=21`, so every run shares one HotSpot 21 JVM line and the OpenJ9 crash is avoided.
+- **Docker:** colima profile `vz` (aarch64, 8 CPU, 16 GiB, 256 GiB disk), docker CLI from `/opt/homebrew/Cellar/docker/29.8.2/bin/docker`.
+- **Date (UTC):** 2026-11-02.
+- **Entry format:** each entry has a `### E-NN: {title}` heading, a `Backs:` line, an `sh` fence with the commands as run, a `text` fence of `key: value` lines (keys match `[a-z0-9_]+`, one fact per line, no key twice) with free text allowed after the fence, a UTC timestamp line, and a final line `Verdict: pass`, `Verdict: fail`, `Verdict: pending ({reason})` or `Verdict: unmeasured ({reason})`.
+- **Rule:** a fail or pending verdict is fixed by re-measuring in a new run, never by editing the evidence.
+- **Helpers:** `42-evidence-check.py` in this directory is a byte copy of Phase 41's `41-evidence-check.py` (get, expect, index, rows, secrets, junit, anchors, skips, failed) and is never edited. `42-testcase-status.py` (dump, select, delta, count over JUnit XML) is read-only and is never edited after E-01.
+- **Red-reason rule:** a red counts only when the new class's XML exists, every failing testcase carries a `failure` element (no `error`) of type `org.opentest4j.AssertionFailedError`, no failing testcase took more than 30 s, the failing set by name equals the plan's list, and every other case of the class passes.
+- **Red freeze rule:** the SHA-256 of each new test file is recorded at its red run, and the file committed in the code commit has the same SHA-256.
+- **Status-delta rule:** a gate compares the per-testcase status dump of the previous gate with the new one against the committed expected-added file; no removed line and no unexpected added line is allowed (the existing-test stop rule).
+- **No push happens in Phase 42.** Reads use `git ls-remote` only.
+
+## Index
+
+| Entry | Requirement | Plan | Verdict |
+|-------|-------------|------|---------|
+| E-01 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-01 | pass |
+| E-02 | RSK-01 | 42-01 | pass |
+| E-03 | RSK-01, RSK-04 | 42-01 | pending (plan 42-01) |
+| E-04 | RSK-01, RSK-04 | 42-01 | pending (plan 42-01) |
+| E-05 | RSK-02 | 42-02 | pending (plan 42-02) |
+| E-06 | RSK-02 | 42-02 | pending (plan 42-02) |
+| E-07 | RSK-02 | 42-02 | pending (plan 42-02) |
+| E-08 | RSK-03 | 42-03 | pending (plan 42-03) |
+| E-09 | RSK-03 | 42-03 | pending (plan 42-03) |
+| E-10 | RSK-03 | 42-03 | pending (plan 42-03) |
+| E-11 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
+| E-12 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
+
+### E-01: Execution-start facts, measured baseline and environment
+
+Backs: RSK-01, RSK-02, RSK-03, RSK-04 (execution-start facts: base commit, origin re-read, the helper copies, the anchors mirror, the environment, the Spotless baselines of the three files the phase touches, and the start baseline measured on the unchanged tree instead of taken from the Phase 41 record).
+
+```sh
+mkdir -p /tmp/gsd42/exec
+git rev-parse HEAD
+git rev-parse --abbrev-ref HEAD
+git status --porcelain
+git ls-remote origin refs/heads/custom_build
+cp .planning/phases/41-bounded-insert-timeout/41-evidence-check.py .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py
+cmp .planning/phases/41-bounded-insert-timeout/41-evidence-check.py .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py
+shasum -a 256 .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 184
+git diff --quiet refs/tags/v1.7.0 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java
+git rev-parse HEAD:src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+git rev-parse HEAD:src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+colima list
+ls -d /opt/homebrew/Cellar/docker/*/bin/docker
+/usr/libexec/java_home -v 21
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<file>" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-base-<name>.out 2> /tmp/gsd42/exec/sc-base-<name>.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd42/exec/base-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-base-testunit
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-base-testunit /tmp/gsd42/exec/status-base-testunit.tsv
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd42/exec/base-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd42/exec/xml-base-full
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-base-full /tmp/gsd42/exec/status-base-full.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py skips /tmp/gsd42/exec/xml-base-full
+```
+
+```text
+phase_start_sha: 1c808c02728e4f9344c46015f63fe4f6cf52a6d9
+branch: sync/v1.7.0
+dirty_paths: M .planning/config.json; M .planning/state.json
+origin_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+origin_custom_build_expected: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+helper_copy: cmp-equal
+status_helper_sha256: 0e5662aab7cf6925f8491fda1e10304803f5167e837cb79a0c9bdb96393a2762
+anchors_mirror: rows=184 bad=0
+processing_identical_to_v1_7_0: yes
+sink_config_blob: 7ab06b3c2eebe131c06f4c1087b2c73295b443d7
+keeper_state_provider_blob: a10abb3b1839eaf5e9b40341e3f38e2fc9411af6
+colima_vz: Running
+docker_cli: /opt/homebrew/Cellar/docker/29.8.2/bin/docker
+jdk21_home: /opt/homebrew/Cellar/openjdk@21/21.0.12.1/libexec/openjdk.jdk/Contents/Home
+testcontainers_host_override: set
+spotless_baseline_processing: IS DIRTY
+spotless_baseline_processing_import_only: yes
+spotless_baseline_utils: IS CLEAN
+spotless_baseline_sink_task: IS CLEAN
+baseline_testunit_exit: 0
+baseline_testunit_tests: 1757
+baseline_testunit_failures: 0
+baseline_testunit_errors: 0
+baseline_testunit_skipped: 2
+baseline_full_exit: 0
+baseline_full_tests: 2355
+baseline_full_failures: 0
+baseline_full_errors: 0
+baseline_full_skipped: 18
+baseline_full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+baseline_recorded_testunit: 1757
+baseline_recorded_full: 2355
+baseline_matches_record: yes
+clickhouse_version_baseline: 26.10.3.7
+clickhouse_digest_baseline: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1); no OpenJ9 launcher
+base_dump_testunit: 1757
+base_dump_full: 2355
+matrix_executions_baseline: 216
+processing_test_baseline: 14/0
+```
+
+The only dirty paths are the two orchestrator-managed `.planning/` files, so the dirty-path rule holds. `origin/custom_build` equals the expected tip. The three Spotless verdicts equal the planning measurement: `Processing.java` differs from the hook's output in 11 lines, every one an import or blank line with equal import sets, so the file is never rewritten by the hook; `Utils.java` and `ClickHouseSinkTask.java` are clean. The measured `testUnit` totals (1757 tests, 2 skipped) and the measured full-suite totals on ClickHouse `latest` x client V2 (2355 tests, the 18 named skips) both equal the recorded Phase 41 totals, and both runs exited 0 with 0 failures and 0 errors; those measured totals are the phase baseline, and each dump's line count equals its run total. The ClickHouse version and image digest read the same before the `testUnit` run and after the full run. No crash file (`hs_err_pid*`, `javacore.*`, `core*`, `Snap.*`) appeared in the repository root. `testcontainers_host_override` is recorded as set only; this shell sets it to a literal that breaks Ryuk, which is why every Gradle run unsets it.
+
+2026-11-02T12:05:50Z
+
+Verdict: pass
+
+### E-02: RSK-01 red run on the unchanged tree: four behaviour and limit pins fail by assertion, the two guards pass
+
+Backs: RSK-01 (the Docker-free `OriginalTopicInsertedOffsetsUnitTest`, run before any production change: two behaviour pins and two limit pins fail by assertion, the trace guard and the no-SMT control pass; the existing classes of the path pass).
+
+```sh
+git diff --quiet HEAD -- src/main
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/OriginalTopicInsertedOffsetsUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-r1.out 2> /tmp/gsd42/exec/sc-r1.err
+shasum -a 256 src/test/java/com/clickhouse/kafka/connect/sink/OriginalTopicInsertedOffsetsUnitTest.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*OriginalTopicInsertedOffsetsUnitTest' --tests '*.ProcessingTest' --tests '*ProcessingRenamedTopicStateKeyUnitTest' --tests '*BufferedOffsetCommitUnitTest' > /tmp/gsd42/exec/rsk01-red.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-rsk01-red
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk01-red --class .OriginalTopicInsertedOffsetsUnitTest tests=6 failures=4
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py failed /tmp/gsd42/exec/xml-rsk01-red --expect 'OriginalTopicInsertedOffsetsUnitTest#directDeliveryReportsTheConsumersTopicUnderAnInjectiveRename' 'OriginalTopicInsertedOffsetsUnitTest#closeClearsTheInsertedOffsetOfTheRevokedConsumerPartition' 'OriginalTopicInsertedOffsetsUnitTest#limitManyToOneRenameReportsTheSharedMaximumForTheFirstSourceTopic' 'OriginalTopicInsertedOffsetsUnitTest#limitPartitionChangingSmtKeepsTheTransformedPartitionInTheKey'
+```
+
+```text
+spotless_test_class: IS CLEAN
+red_run_exit: 1
+red_class_tests: 6
+red_class_failures: 4
+red_failed_count: 4
+red_failed_set: OriginalTopicInsertedOffsetsUnitTest#directDeliveryReportsTheConsumersTopicUnderAnInjectiveRename; OriginalTopicInsertedOffsetsUnitTest#closeClearsTheInsertedOffsetOfTheRevokedConsumerPartition; OriginalTopicInsertedOffsetsUnitTest#limitManyToOneRenameReportsTheSharedMaximumForTheFirstSourceTopic; OriginalTopicInsertedOffsetsUnitTest#limitPartitionChangingSmtKeepsTheTransformedPartitionInTheKey
+red_reason_assertion: yes
+guards_green_on_unchanged: yes
+existing_classes_green: yes
+red_test_sha256: 137ddbbcf23e9b544bd01564715253e0ba1d9595dbb148bd54b215eea4204fb1
+src_main_untouched: yes
+```
+
+The four failures are all `org.opentest4j.AssertionFailedError` failure elements (no `error` element) and none took more than 30 s. The failure messages show the unchanged tree's behaviour: `directDeliveryReportsTheConsumersTopicUnderAnInjectiveRename` expected `{orig-dev-0=10}` from `preCommit` and got an empty map, `closeClearsTheInsertedOffsetOfTheRevokedConsumerPartition` expected an empty snapshot and found the stale `{orig-0=10}`, and the two `limit...` pins saw an empty `preCommit` result where the consumer's topic key is expected. The trace guard `stateKeyAndFlagSequenceStayOnTheTransformedTopicUnderAnInjectiveRename` and the control `noSmtRecordsKeepTheirTopicAndAreClearedOnClose` passed on the unchanged tree with the literal written from the research trace, so no guard literal needed a correction. `ProcessingTest` (14), `ProcessingRenamedTopicStateKeyUnitTest` (2) and `BufferedOffsetCommitUnitTest` (15) passed in the same run.
+
+2026-11-02T12:06:26Z
+
+Verdict: pass
