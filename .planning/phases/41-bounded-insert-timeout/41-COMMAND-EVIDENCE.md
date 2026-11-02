@@ -20,7 +20,7 @@
 | E-04 | PIN-01 | 41-02 | pass |
 | E-05 | TMO-01 | 41-02 | pass |
 | E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pass |
-| E-07 | TMO-01 | 41-02 | pending (plan 41-02) |
+| E-07 | TMO-01 | 41-02 | pass |
 | E-08 | TMO-01, TMO-02 | 41-03 | pending (plan 41-03) |
 | E-09 | TMO-03 | 41-03 | pending (plan 41-03) |
 | E-10 | PIN-01, TMO-01, TMO-02, TMO-03 | 41-03 | pending (plan 41-03) |
@@ -340,5 +340,38 @@ wire, raw socket, INSERT INTO p41_progress (id) SELECT number FROM numbers(2000)
 The per-insert timeout through `setInsertSocketTimeoutV2` ended the 3000 ms insert at 3030 ms with a `SocketTimeoutException` root, the 8000 ms control succeeded at 4110 ms, and the count of 4000 rows after both runs shows the timed-out insert was still committed by the server, as in Probe 8. The plan's rule for `bounded` also needs progress headers about every 0.2 s on the wire; they were not there: a connector-shaped insert (rows in the request body) sent no progress header while the server worked, only one at the end, with and without `wait_end_of_query`, so this run did not exercise a header-streaming insert and the outcome is recorded `unmeasured` with label `inferred`, not adjusted. This differs from the planning-time note (headers every 0.2 s on a 2000-row body insert); the 0.2 s cadence reproduces only for an `INSERT ... SELECT`, and for that shape the extra datum shows the opposite of the planning-time note: a 1000 ms `socket_timeout` did not end the request (it finished at 2056 ms), so streamed progress headers do reset the client's read timer. The consequence recorded in Known cost 14: a connector body insert is bounded on 26.10.3.7, and an insert shape or server version that streams progress headers during a body insert would escape the bound (inferred). The scratch container was removed (`docker ps -a` lists none, port 18124 is free).
 
 2026-11-02T09:13:43Z
+
+Verdict: pass
+
+### E-07: The operator guards discriminate: the unconditional per-insert set fails exactly the operator cases
+
+Backs: TMO-01 (an operator `socket_timeout` still wins, pinned by a test that is shown to fail against the naive unconditional per-insert set).
+
+```sh
+python3 -I - # replace "settings == null || operatorSetSocketTimeout" by "settings == null" in ClickHouseHelperClient.java (asserted to occur once)
+bash /tmp/gsd41/exec/run-filtered.sh mutation '*InsertStallBoundPinUnitTest' '*InsertSocketTimeoutOptionUnitTest'
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-mutation --class InsertStallBoundPinUnitTest tests=15 failures=6
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-mutation --class InsertSocketTimeoutOptionUnitTest tests=11 failures=4
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-mutation --expect 'InsertStallBoundPinUnitTest#operatorSocketTimeoutLongerThanTheInsertTimeoutStillApplies' 'InsertStallBoundPinUnitTest#operatorSocketTimeoutShorterThanTheInsertTimeoutStillApplies' 'InsertSocketTimeoutOptionUnitTest#insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne'
+git checkout -- src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+git diff --quiet HEAD -- src
+```
+
+```text
+mutation_applied: yes
+mutation_run_exit: 1
+mutation_bound_tests: 15
+mutation_bound_failures: 6
+mutation_option_tests: 11
+mutation_option_failures: 4
+mutation_failed_set: InsertSocketTimeoutOptionUnitTest#insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne; InsertStallBoundPinUnitTest#operatorSocketTimeoutLongerThanTheInsertTimeoutStillApplies; InsertStallBoundPinUnitTest#operatorSocketTimeoutShorterThanTheInsertTimeoutStillApplies
+mutation_reason_assertion: yes
+restored: yes
+discriminating: yes
+```
+
+The operator guards were green on the unfixed tree by design (E-03) and fail here, so they would catch a fix that overrides the operator. With the operator skip removed (the naive unconditional per-insert set), the pin class ran 15 tests with 6 failures (the longer-value guard and the shorter-value guard on JSON, String and RowBinary) and the helper class ran 11 tests with 4 failures (the four `insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne` rows); all 10 failures are `org.opentest4j.AssertionFailedError`. The 9 stall pins stay green, and so do the four other helper methods, including the null-or-blank case, which expects the per-insert value either way. The helper was restored with `git checkout -- <file>` (the guard expression counts 1 again and `git diff --quiet HEAD -- src` exits 0).
+
+2026-11-02T09:14:48Z
 
 Verdict: pass
