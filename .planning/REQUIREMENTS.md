@@ -22,8 +22,8 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Client Closing (CLS)
 
-- [ ] **CLS-01**: `ClickHouseWriter.stop()` closes `chc` after the table-sync executor stops, idempotently and null-safe; `chc` is also closed on the failure paths of `start()`.
-- [ ] **CLS-02**: The V1 `getMutationRequest` path closes its throwaway helper client on every batch; the returned node stays usable.
+- [x] **CLS-01**: `ClickHouseWriter.stop()` closes `chc` after the table-sync executor stops, idempotently and null-safe; `chc` is also closed on the failure paths of `start()`.
+- [x] **CLS-02**: The V1 `getMutationRequest` path closes its throwaway helper client on every batch; the returned node stays usable.
 - [ ] **CLS-03**: `StateProvider` gets a default `close()`, `KeeperStateProvider` overrides it and closes only a client it created, and `ProxySinkTask.stop()` calls it in `try/finally` together with the writer and MBean. `getStateRecord` and `setStateRecord` are unchanged.
 - [ ] **CLS-04**: A counting seam (`CountingHelperClient`, no Mockito) pins all three sites on V1 and V2, including a failed `start()` and a double `stop()`.
 
@@ -82,8 +82,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PIN-02 | Phase 39 | Complete |
 | PIN-03 | Phase 39 | Complete |
 | PIN-04 | Phase 39 | Complete |
-| CLS-01 | Phase 40 | Pending |
-| CLS-02 | Phase 40 | Pending |
+| CLS-01 | Phase 40 | Complete |
+| CLS-02 | Phase 40 | Complete |
 | CLS-03 | Phase 40 | Pending |
 | CLS-04 | Phase 40 | Pending |
 | TMO-01 | Phase 41 | Pending |

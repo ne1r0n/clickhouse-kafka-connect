@@ -5,11 +5,11 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 40
 current_phase_name: Helper Client Closing
 status: executing
-stopped_at: "Halted 40-02-PLAN.md at gate A (E-07 fail: 3 ClickHouseWriterTest cases red)"
-last_updated: "2026-11-01T22:16:04.973Z"
+stopped_at: Completed 40-02-PLAN.md
+last_updated: "2026-11-02T06:36:00.310Z"
 last_activity: 2026-11-01
 last_activity_desc: Phase 40 execution started
-state_head: 9e06a548127a839b9caa924b20ecaec471ec4bb7
+state_head: 9550ce2735d399a6cad4f6a6c4080cd44b0a4f8c
 progress:
   total_phases: 6
   completed_phases: 1
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 40 (Helper Client Closing) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-11-01 — Phase 40 execution started
 
@@ -229,6 +229,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 39 P03 | 5 min | 2 tasks | 4 files |
 | Phase 39 P04 | 84 min | 3 tasks | 4 files |
 | Phase 40 P01 | 8 min | 3 tasks | 4 files |
+| Phase 40 P02 | 25 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -324,6 +325,7 @@ Placement:
 - [Phase 39]: 39-04: the recorded integrationTest run is the ClickHouseSinkConnectorIntegrationTest class, since every executing caller of the changed helpers is in it
 - [Phase 39]: 39-04: ClickHouseSinkConnectorIntegrationTest.java keeps its pre-existing import order (waiver in E-08); ConfluentPlatform.java is formatter-clean with an unchanged import set
 - [Phase 40]: 40-01: red trees live only in 40-red-writer.patch and 40-red-keeper.patch (strict red-first); no src change committed; injected-client Keeper clause pinned by the K3 NPE tripwire plus plan 40-03 source identity
+- [Phase 40]: 40-02: gate A red on three ClickHouseWriterTest cases using a writer after a false start(); user chose to seed a table in runWithWriter (test-only commit fae1fcb1) and keep production closing chc on every failed start
 
 ### Pending Todos
 
@@ -383,9 +385,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-01T22:16:04.413Z
-Stopped at: Halted 40-02-PLAN.md at gate A (E-07 fail: 3 ClickHouseWriterTest cases red)
-Resume file: .planning/phases/40-helper-client-closing/40-02-SUMMARY.md
+Last session: 2026-11-02T06:36:00.088Z
+Stopped at: Completed 40-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
