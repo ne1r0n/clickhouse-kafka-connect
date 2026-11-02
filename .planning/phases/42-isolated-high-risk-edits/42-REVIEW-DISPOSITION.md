@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "New cause-chain loop in `handleException` does not terminate on a cyclic cause chain that contains a ClickHouse server error"
   - id: IN-01
     severity: info
@@ -23,16 +23,16 @@ findings:
     severity: info
     disposition: open
     title: "`RetriableExceptionPassThroughUnitTest` carries an unused outcome and has no DataException control"
-open: 5
+open: 4
 total: 5
-recorded: 2026-11-02T13:58:32.931Z
+recorded: 2026-11-02T15:18:43.814Z
 ---
 
 # Phase 42: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
+| WR-01 | warning | fixed | 42-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
