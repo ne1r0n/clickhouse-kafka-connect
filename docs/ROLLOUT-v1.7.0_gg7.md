@@ -178,7 +178,7 @@ Rolling back brings back:
 
 - the `v1.7.0_gg6` MBean `version=` segment and client name, once the `v1.7.0_gg6` archive is deployed (row D3);
 - rows F1 to F4 reversed: a stopped task leaves its helper clients open again (section A);
-- the insert bound of rows T2 to T5 reversed: on client V2 with `async=false`, an insert can again wait for ever on a server that stops answering (section B);
+- the insert bound of rows T2 to T5 reversed: on client V2 with `async=false`, an insert has again no bound from the connector on a server that stops answering, and the client's default `socket_timeout` is 0 (section B; row T2 shows the insert still blocked at the probe's guard before this release);
 - rows R1 and R4 to R7 reversed: the inserted-offset map reads the renamed topic again, a `RetriableException` below the top of a cause chain is no longer retriable, and the start-up WARN is gone (sections C, E and F);
 - row D1 reversed: `gson` goes back to `2.14.0`;
 - on the branch, the `v1.7.0_gg7` documents are gone, this note included.
