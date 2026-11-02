@@ -148,7 +148,7 @@ Phase artifacts: `milestones/v1.7.0_gg6-maintenance-phases/`
 - [x] **Phase 40: Helper Client Closing** - F-1: a stopping task closes every helper client it created (the writer's `chc`, the V1 per-batch client, the exactly-once Keeper client), pinned by a Mockito-free counting seam seen red first. The Keeper half is its own commit behind its own gate (completed 2026-11-02)
 - [x] **Phase 41: Bounded Insert Timeout** - F-2: a red stall pin comes first. Then a stalled `async=false` insert fails after `clickhouseClientInsertTimeoutMs` as a retriable error, through a per-insert `socket_timeout`; an operator's `socket_timeout` still wins, and the cases that stay unbounded are written down (completed 2026-11-02)
 - [x] **Phase 42: Isolated High-Risk Edits** - OI-35-1 (`originalTopic()` at `Processing.doLogic` line 137), the `Utils.handleException` `RetriableException` pass-through and the FUT-05 start-up WARN land one commit and one gate each, tests first. The state key does not move, and OI-35-2/3 are recorded as limits (completed 2026-11-02)
-- [ ] **Phase 43: Document Fixes & Phase 37 Dispositions** - The gg1 half of WR-08, FORK-DELTA's future-tense lines and FUT-05 by ID are fixed, and every Phase 37 row has a disposition with an owner. A row that touches `src/main` is fixed only on the user's approval
+- [x] **Phase 43: Document Fixes & Phase 37 Dispositions** - The gg1 half of WR-08, FORK-DELTA's future-tense lines and FUT-05 by ID are fixed, and every Phase 37 row has a disposition with an owner. A row that touches `src/main` is fixed only on the user's approval (completed 2026-11-02)
 - [ ] **Phase 44: Release & Publication** - `v1.7.0_gg7` is published with CHANGELOG, FORK-DELTA, the gg7 allow-list compare and an independently reviewed rollout note. Two green suites, the `--no-ff` merge only on the user's direct approval, one green `tests.yaml` on the published SHA, and the publish run creates the tag
 
 ## Phase Details
@@ -316,7 +316,7 @@ Phase gate: the per-commit gates above, then the anchors invariant.
   3. *[operator]* Each row that would change `src/main` shows the user's approval, in their own words, before its fix. The fix lands tests first, in its own commit. A row without approval is deferred.
   4. *[Docker-free]* The `increment-version.yml` header comment names the guard class that actually guards the file, and the pin guard passes. No existing assertion is deleted or weakened. Phase gate: cache-busted `testUnit`, the anchors invariant, and a full suite on `latest` × V2 if `src/main` changed.
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 - [x] 43-01-PLAN.md — measured start baseline (cache-busted testUnit, anchors rows=190, origin, Spotless), then the four "fixed" Phase 37 rows, one commit and one cache-busted gate each: the increment-version.yml header comment (tracer, six workflow guard classes), the approved CHAIN tag-gate step of 37 IN-04 and the zero-jar hint of 37 IN-06 (each tests first, red recorded), the gg4 and gg5 allow-list headers of 37 IN-05 (the 25 and gg6 lists untouched, the gg6 list stays equal to its tag copy); full testUnit delta of exactly the two new testcases (DOC-02)
@@ -470,7 +470,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-02 |
-| 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 3/3 | In Progress | - |
+| 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 44. Release & Publication | v1.7.0_gg7 | 0/TBD | Not started | - |
 
 ---
