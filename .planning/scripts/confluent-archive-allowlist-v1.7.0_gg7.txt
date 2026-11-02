@@ -1,0 +1,28 @@
+# Allow-list for .github/scripts/compare_confluent_archives.py (RLS-02), plan 44-04.
+# Archive A is v1.7.0_gg6 rebuilt from the tag v1.7.0_gg6; archive B is the archive built at the v1.7.0_gg7 tip.
+# Format: glob<TAB>reason. A star matches across slashes (fnmatch). Paths of the outer zip carry the prefix "outer/".
+# Every row must match at least one difference (an unused row fails as STALE-ROW), and no row is a catch-all.
+# No glob starts with "*", "?" or "[": the loader refuses such a row, because it is not anchored to a path prefix.
+# The third-party rows are anchored literal-prefix globs after at least two literal path segments (gson classes and gson metadata) plus the exact path of gson's module descriptor.
+# A com/clickhouse/kafka/connect/ row is an exact path whose source file changed between v1.7.0_gg6 and the tip, or the release identity.
+# An inner class of a changed connector class is listed because its class file differs (the eight changed src/main files and the release identity inlined from Version.ARTIFACT_VERSION account for all fourteen).
+# The list was derived from the differences of the two archives rebuilt on the final tree and is valid for exactly one tree:
+# any later change of src, build.gradle.kts, gradle or README.md moves the archive and turns a row into STALE-ROW or a difference into UNALLOWED.
+com/google/gson/*	gson 2.14.0 -> 2.15.0 (classes; LinkedTreeMap$1 exists only in 2.14.0)
+META-INF/maven/com.google.code.gson/gson/*	gson 2.14.0 -> 2.15.0 (pom.properties and pom.xml)
+META-INF/versions/9/module-info.class	gson 2.14.0 -> 2.15.0 (gson's module descriptor, exact path)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.class	source changed: start-up WARN for additionalRetriableErrorCodes outside the vetted set
+com/clickhouse/kafka/connect/sink/ProxySinkTask.class	source changed: stop() closes the writer, the MBean and the state provider in try/finally
+com/clickhouse/kafka/connect/sink/Version.class	release identity v1.7.0_gg6 -> v1.7.0_gg7 (inlined compile-time constant Version.ARTIFACT_VERSION, generated class)
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class	source changed: helper clients closed, per-insert socket_timeout
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$1.class	inner class of ClickHouseWriter, class file differs with its source change
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$2.class	inner class of ClickHouseWriter, class file differs with its source change
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class	source changed: client creation and closing in ClickHouseHelperClient, plus the release identity (CONNECT_CLIENT_NAME)
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient$ClickHouseClientBuilder.class	inner class of ClickHouseHelperClient, class file differs with its source change
+com/clickhouse/kafka/connect/sink/processing/Processing.class	source changed: doLogic reads originalTopic()
+com/clickhouse/kafka/connect/sink/state/StateProvider.class	source changed: default no-op close()
+com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.class	source changed: close()
+com/clickhouse/kafka/connect/util/Utils.class	source changed: RetriableException pass-through
+com/clickhouse/kafka/connect/util/Utils$FailedRecords.class	inner class of Utils, class file differs with its source change
+com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class	release identity v1.7.0_gg6 -> v1.7.0_gg7 (inlined compile-time constant Version.ARTIFACT_VERSION, MBean version segment)
+META-INF/MANIFEST.MF	release identity v1.7.0_gg6 -> v1.7.0_gg7 (Implementation-Version)
