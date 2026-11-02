@@ -18,7 +18,7 @@
 | E-02 | RLS-01 | 44-01 | pass |
 | E-03 | RLS-01 | 44-01 | pass |
 | E-04 | RLS-01 | 44-01 | pass |
-| E-05 | RLS-03 | 44-02 | pending (plan 44-02) |
+| E-05 | RLS-03 | 44-02 | pass |
 | E-06 | RLS-03 | 44-02 | pending (plan 44-02) |
 | E-07 | RLS-03 | 44-02 | pending (plan 44-02) |
 | E-08 | RLS-03 | 44-03 | pending (plan 44-03) |
@@ -287,5 +287,92 @@ forkdelta_commit_files: docs/FORK-DELTA.md
 All figures equal the planning values, so nothing was forced. The method check holds: the same recount at `v1.7.0_gg6` prints 33 14 16 10, the published figures. The raw numbers were measured once, on this tip, and no path in their scopes (`src`, `build.gradle.kts`, `gradle`, `.github`) changes in the rest of the phase. The empty by-directory diffs (`src/testFixtures`, `build.gradle.kts`) make the shortstat helper exit with a usage error, so they are recorded as `0 0 0` after the empty output was confirmed. The five byte-identical claims that name a file or a file set were checked: `integrationTests.yaml` against upstream `v1.7.0` (true), `KeyToValue.java` against upstream (true), `Processing.java` against upstream at `v1.7.0_gg6`, the state before the one-line change (true), the `KeeperStateProvider` injected-client constructor and `init()` against `v1.7.0_gg6` (the diff touches only the factory constructor, `close()` and the owned-client field; true), and `getStateRecord` and `setStateRecord` against `v1.7.0_gg6` (not in the diff; true). The row counting 128 of 143 upstream test-tree files as byte-identical could not be re-derived here with any scope tried, so it is not a checked claim; every scope tried gives the same counts at `v1.7.0_gg6` and at this tip, so this release does not move it. The `Processing.java` row now reads as a one-line difference, which the diff of the file against `v1.7.0` confirms (the line at `doLogic` 137, `topic()` to `originalTopic()`). The gson row already names `2.15.0` with upstream's `2.13.1`, so it needed no edit. The two broken relative links are the pointers to `docs/ROLLOUT-v1.7.0_gg7.md`, the note that plan 44-02 creates.
 
 2026-11-02T21:09:09Z
+
+Verdict: pass
+
+### E-05: Note tracer: re-measured archives and source facts, preamble and section G, rollback block rehearsed on a dry-run merge
+
+Backs: RLS-03 (the note skeleton exists end to end before any effect section: both archives rebuilt and compared, the source facts read, the preamble with the four label forms, section G rows D1 to D5, and the rollback block of the note extracted and run unchanged on a dry-run merge of the committed tip onto the gg6 commit).
+
+```sh
+git archive v1.7.0_gg6 | tar -x -C /tmp/gsd44/w/arch-base-src
+git archive HEAD | tar -x -C /tmp/gsd44/w/arch-tip-src
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive   # in each export, with its own wrapper
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd44/w/arch/base.zip /tmp/gsd44/w/arch/tip.zip /tmp/gsd44/w/arch/empty.txt > /tmp/gsd44/exec/cmp-empty-e05.out
+python3 -I /tmp/gsd44/exec/classify.py /tmp/gsd44/exec/cmp-empty-e05.out
+python3 -I /tmp/gsd44/exec/srcfacts.py "$PWD"
+git diff --shortstat v1.7.0_gg6 HEAD -- src/main
+curl -s https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect/releases/430511927
+curl -sL -o /tmp/gsd44/w/gg6asset/asset.zip https://github.com/ne1r0n/clickhouse-kafka-connect/releases/download/v1.7.0_gg6/clickhouse-kafka-connect-v1.7.0_gg6.zip
+shasum -a 256 /tmp/gsd44/w/gg6asset/asset.zip
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd44/w/gg6asset/asset.zip /tmp/gsd44/w/arch/base.zip /tmp/gsd44/w/gg6asset/empty.txt
+javap -c -p -v <StateRecord.class and ExtractTopic.class of the asset and of the rebuild>
+python3 -I .planning/phases/44-release-publication/44-note-check.py rows docs/ROLLOUT-v1.7.0_gg7.md --only D
+python3 -I .planning/phases/44-release-publication/44-note-check.py labels|forbidden|claims docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I /tmp/gsd44/exec/extract-rb.py docs/ROLLOUT-v1.7.0_gg7.md /tmp/gsd44/exec/rollback-block.sh
+git add .planning/phases/44-release-publication/44-note-check.py docs/ROLLOUT-v1.7.0_gg7.md && git commit -F /tmp/gsd44/exec/msg-n1.txt
+/tmp/gsd44/exec/rehearse.sh <note commit> /tmp/gsd44/exec/rollback-block.sh /tmp/gsd44/w/rb
+MODE=plain /tmp/gsd44/exec/rehearse.sh <note commit> /tmp/gsd44/exec/rollback-block.sh /tmp/gsd44/w/rb-plain
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets docs/ROLLOUT-v1.7.0_gg7.md
+```
+
+```text
+base_verify_line: verifyConfluentArchive: 7933 inner entries, no nested jar, no Kafka API class
+tip_verify_line: verifyConfluentArchive: 7932 inner entries, no nested jar, no Kafka API class
+base_entries: 7933
+tip_entries: 7932
+base_bytes: 13558633
+tip_bytes: 13564144
+compare_exit: 1
+compare_totals: totals files-a 7513 files-b 7512 only-a 1 only-b 0 changed 119 same 7393
+compare_unallowed: 120
+compare_owner_split: gson classes changed 101; gson classes only in the base 1; gson metadata 3; connector classes 14; manifest 1; anything else 0
+compare_version_lines: 18
+compare_version_table: com.google.code.gson:gson 2.14.0 -> 2.15.0
+compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+src_main_shortstat: 8 files changed, 194 insertions(+), 22 deletions(-)
+client_version_default: V1
+insert_timeout_default: TimeUnit.MINUTES.toMillis(4)
+insert_timeout_min: atLeast(100)
+originaltopic_line: line 137: String originalTopic = record.getSinkRecord().originalTopic();
+warn_text: additionalRetriableErrorCodes lists {}, which the connector does not treat as transient. A batch that fails with such a code is redelivered with no retry budget and outside errors.tolerance and the dead letter queue, so a permanent error blocks the partition until the setting is changed.
+vetted_codes: 15 + 216
+writer_stop_wait: 5 seconds
+gg6_asset_digest: sha256:e745e7d5363fca8067ddfcc80f3ebea034b93abb4f2912e514492201a729c2af
+gg6_asset_bytes: 13558692
+gg6_asset_download_digest_equal: yes
+gg6_asset_vs_rebuild_totals: totals files-a 7513 files-b 7513 only-a 0 only-b 0 changed 6 same 7507
+gg6_asset_vs_rebuild_changed: ClickHouseWriter; Column; Column$ColumnBuilder; StateRecord; ConvertToMapOrJson; ExtractTopic (all under com/clickhouse/kafka/connect)
+gg6_asset_vs_rebuild_size_delta: 59
+gg6_asset_vs_rebuild_javap: StateRecord and ExtractTopic examined; both differ in the compiled string concatenation (the asset calls String.valueOf before the invokedynamic concat); the other four not examined; the compiler that built the asset was not established
+rehearsal_tip: 7ef33b4feae0759c17a77e171e4d53e36b924b3a
+rehearsal_parents: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 7ef33b4feae0759c17a77e171e4d53e36b924b3a
+rehearsal_tree_equal: yes
+d0_status_before_block: clean
+rollback_exit: 0
+rollback_output: ok
+gradlew_bat_trap: no
+rollback_status_after: clean
+rollback_version: v1.7.0_gg6
+rollback_note_absent: yes
+rollback_tree_equals_tag: yes
+revert_restores_tree: yes
+plain_switch_exit: 0
+plain_revert_restores_tree: yes
+rehearsal_cleaned: yes
+nc_selftest: 4 of 4 failed as expected
+nc_rows_d: OK rows=5 measured=4 code=3 derived=0 mechanism=0
+nc_labels: OK labels: 4 of 4 defined
+nc_forbidden: OK forbidden: 0 lines
+nc_claims: OK claims: 0 hex strings outside the allowed set
+hygiene_note: clean
+secrets_scan: clean
+note_commit_1: 7ef33b4feae0759c17a77e171e4d53e36b924b3a
+```
+
+The two archives were rebuilt from clean exports and compared with a comment-only list: every one of the 120 differences is a gson entry, a connector class or the manifest, and the version table differs for `gson` only. The planning figures held (7933 and 7932 entries, the two sizes, 120 differences). One planning statement did not hold: the research and the plan said that a rebuild of tag `v1.7.0_gg6` compares equal entry by entry to the published gg6 asset. Measured here, the local rebuild is 59 bytes smaller than the asset and six connector class files differ; the two that were disassembled differ in the compiled form of a string concatenation, which points at a different compiler, not a different source, but that cause was not established. The note therefore tells operators to download the asset and does not claim the rebuild is equal to it. The rehearsal ran on the committed note (the note is present in the merged tip and absent after the block) with git 2.50.1; the first run switched git's attributes off for the revert, the second ran plain `git switch` and `git revert` and also restored the merged tree, and `gradlew.bat` was not listed after the block, so the note carries no sentence about it. A scratch rebuild on another JDK may differ again; the runner dry run of plan 44-05 is the check that counts for the gg7 allow-list.
+
+2026-11-02T21:19:25Z
 
 Verdict: pass
