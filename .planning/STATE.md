@@ -5,16 +5,16 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 43
 current_phase_name: Document Fixes & Phase 37 Dispositions
 status: executing
-stopped_at: Phase 42 complete, ready to plan Phase 43
-last_updated: "2026-11-02T19:24:53.853Z"
+stopped_at: Completed 43-01-PLAN.md
+last_updated: "2026-11-02T19:34:30.225Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 43 execution started
-state_head: 412859dde00fd9001924f8ca2b69c7d4d12ae083
+state_head: a925bac99a6d02a50f7d1cd6dcfb46a43590ac0e
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
   percent: 67
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 43 (Document Fixes & Phase 37 Dispositions) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 43
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-11-02 — Phase 43 execution started
 
 Progress: [███████░░░] 67%
@@ -241,6 +241,7 @@ Progress: [███████░░░] 67%
 | Phase 42 P02 | 9 min | 3 tasks | 6 files |
 | Phase 42 P03 | 43 min | 3 tasks | 8 files |
 | Phase 42 P04 | 45 min | 2 tasks | 1 files |
+| Phase 43 P01 | 9 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -346,6 +347,7 @@ Placement:
 - [Phase 42]: Many-to-one rename and partition-changing SMT are pinned as limit cases so Known cost 16 labels them measured
 - [Phase 42]: RSK-02 chain form: a RetriableException anywhere in the cause chain stays retriable in Utils.handleException (after the server-error rule, before the DataException rule); it overrides a non-retriable server code and a DataException holding one no longer fails the task under errors.tolerance=none — The user chose the chain form because Processing.doInsert wraps every writer failure, so a bare-only rule would never see the async insert timeout or the DDL-propagation timeout; the changed-row list was committed before the edit and the actual status delta equals it (38 added, none changed)
 - [Phase 42]: RSK-03: unvetted additionalRetriableErrorCodes are named in one start-up WARN (vetted set = Utils.DEFAULT_RETRIABLE_ERROR_CODES plus 216); the definition of transient is the connector judgment, FUT-05 stays open
+- [Phase 43]: 37-IN-04 landed on the user's recorded approval; 37-IN-05 limited to the gg4 and gg5 allow-lists (gg6 list belongs to published tag, row 37-IN-05(b) deferred)
 
 ### Pending Todos
 
@@ -405,8 +407,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T13:55:20.721Z
-Stopped at: Phase 42 complete, ready to plan Phase 43
+Last session: 2026-11-02T19:34:29.083Z
+Stopped at: Completed 43-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
