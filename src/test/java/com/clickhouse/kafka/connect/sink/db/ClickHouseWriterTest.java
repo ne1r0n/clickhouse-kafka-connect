@@ -128,16 +128,17 @@ public class ClickHouseWriterTest extends ClickHouseBase {
     private void runWithWriter(Map<String, String> props, Consumer<ClickHouseWriter> test) {
         // start() returns false, and releases its client, when the database holds no table at all,
         // so a table other than the ones under test is seeded to get a started writer.
-        ClickHouseHelperClient seedClient = ClickHouseTestHelpers.createClient(props);
-        String seedTable = createTopicName("writer_start_seed");
-        SINGLE_INT16_TABLE.get().tableName(seedTable).execute(seedClient);
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
-        try {
-            assertTrue(writer.start(new ClickHouseSinkConfig(props)));
-            test.accept(writer);
-        } finally {
-            writer.stop();
-            ClickHouseTestHelpers.dropTable(seedClient, seedTable);
+        try (ClickHouseHelperClient seedClient = ClickHouseTestHelpers.createClient(props)) {
+            String seedTable = createTopicName("writer_start_seed");
+            SINGLE_INT16_TABLE.get().tableName(seedTable).execute(seedClient);
+            ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
+            try {
+                assertTrue(writer.start(new ClickHouseSinkConfig(props)));
+                test.accept(writer);
+            } finally {
+                writer.stop();
+                ClickHouseTestHelpers.dropTable(seedClient, seedTable);
+            }
         }
     }
 
