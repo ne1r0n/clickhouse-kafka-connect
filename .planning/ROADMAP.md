@@ -248,7 +248,12 @@ Phase gate: the per-half gates above, then the anchors invariant.
   3. *[Docker-free]* Through `ProxySinkTask.put`, the stalled insert is pinned under `errors.tolerance=none` and `errors.tolerance=all`. Under both it surfaces as retriable: the task is not failed and no DLQ record is written. If either outcome is not retriable on the fixed tree, the phase stops for the user, because classification changes belong to RSK-02 (TMO-02).
   4. *[record]* FORK-DELTA records two limits: a write-side stall (the peer stops reading the request body) is not bounded, and the three V1 `future.get()` sites stay unbounded. The F-2 rollout item is recorded with its evidence for Phase 44. It states the retriable failure after the timeout, the duplicate risk with `exactlyOnce=false` and the `socket_timeout` override (TMO-03).
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 41-01-PLAN.md — start baseline measured on the unchanged tree (cache-busted testUnit and the full suite on latest x V2), the stall responder in `StubClickHouseServer` and the 15-case stall pin run red before any fix (the writer-level pin and the `ProxySinkTask.put` pin under both tolerances fail by `assertTimeoutPreemptively`, the two operator guards pass), red tree saved as a committed patch, src restored (PIN-01)
+- [ ] 41-02-PLAN.md — pin/seam commit (stub, pins, harness row) apart from the fix commit: a per-insert `socket_timeout` from `clickhouseClientInsertTimeoutMs` at the three V2 insert sites through `ClickHouseHelperClient.setInsertSocketTimeoutV2`, left unset when `jdbcConnectionProperties` names `socket_timeout`; JSON-site tracer, all 25 new cases green, FORK-DELTA row, Known cost 14 with the limits and four anchor rows in the fix commit, then a recorded mutation proving the operator guards discriminate (PIN-01, TMO-01, TMO-02, TMO-03)
+- [ ] 41-03-PLAN.md — gate on the fix commit (testUnit and the full suite at the measured baseline plus 25), the F-2 rollout item with labelled evidence recorded for Phase 44, then the merge-invariant script once on an explicit SHA (TMO-01, TMO-02, TMO-03)
 
 **Research flag**: Settle these before planning:
 - Verify on client 0.11.0 that a per-insert `socket_timeout` (through `InsertSettings`) reaches the socket on the insert path, and list every V2 insert site. If it does not reach the socket, stop for the user: the client-level alternative bounds every request, and the user did not choose it.
@@ -452,7 +457,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 |-------|-----------|----------------|--------|-----------|
 | 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-01 |
 | 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 41. Bounded Insert Timeout | v1.7.0_gg7 | 0/TBD | Not started | - |
+| 41. Bounded Insert Timeout | v1.7.0_gg7 | 0/3 | Not started | - |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 44. Release & Publication | v1.7.0_gg7 | 0/TBD | Not started | - |
