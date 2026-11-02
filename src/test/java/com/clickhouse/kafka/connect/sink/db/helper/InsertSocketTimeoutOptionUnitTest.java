@@ -28,6 +28,7 @@ class InsertSocketTimeoutOptionUnitTest {
     private static final String PER_INSERT_ABSENT =
             "no per-insert socket_timeout when the operator named one";
     private static final String OPERATOR_VALUE = "the operator's client-level socket_timeout";
+    private static final String NON_POSITIVE = "a non-positive timeout adds no per-insert value";
     private static final String CLAMPED = "a timeout above the int range is clamped";
 
     private static ClickHouseHelperClient helper(String jdbcConnectionProperties) {
@@ -69,6 +70,16 @@ class InsertSocketTimeoutOptionUnitTest {
                     clientValue,
                     chc.getClient().getConfiguration().get(SOCKET_TIMEOUT_KEY),
                     OPERATOR_VALUE);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0L, -1L, Long.MIN_VALUE})
+    void aNonPositiveInsertTimeoutAddsNoPerInsertSocketTimeout(long timeoutMs) {
+        try (ClickHouseHelperClient chc = helper("")) {
+            InsertSettings settings = new InsertSettings();
+            chc.setInsertSocketTimeoutV2(settings, timeoutMs);
+            assertFalse(settings.getAllSettings().containsKey(SOCKET_TIMEOUT_KEY), NON_POSITIVE);
         }
     }
 

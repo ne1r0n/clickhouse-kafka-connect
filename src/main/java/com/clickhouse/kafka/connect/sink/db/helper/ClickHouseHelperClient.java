@@ -723,13 +723,14 @@ public class ClickHouseHelperClient implements AutoCloseable {
     }
 
     public void setInsertSocketTimeoutV2(InsertSettings settings, long timeoutMs) {
-        if (settings == null || operatorSetSocketTimeout) {
+        if (settings == null || operatorSetSocketTimeout || timeoutMs <= 0) {
             return;
         }
         // A per-insert value replaces the client-level one, so it stays unset when the operator's
-        // connection properties name the key; an explicit 0 there keeps inserts unbounded. The value
-        // is clamped to the int range of the client's socket option. It is a client setting and does
-        // not reach the server.
+        // connection properties name the key; an explicit 0 there keeps inserts unbounded. A
+        // non-positive timeout is ignored, because 0 would mean unbounded and a negative value is not
+        // a timeout. The value is clamped to the int range of the client's socket option. It is a
+        // client setting and does not reach the server.
         settings.setNetworkTimeout(Math.min(timeoutMs, Integer.MAX_VALUE), ChronoUnit.MILLIS);
     }
 
