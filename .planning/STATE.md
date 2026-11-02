@@ -4,18 +4,18 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 44
 current_phase_name: Release & Publication
-status: planning
+status: executing
 stopped_at: Phase 43 complete, ready to plan Phase 44
-last_updated: "2026-11-02T19:54:58.310Z"
+last_updated: "2026-11-02T20:59:20.551Z"
 last_activity: 2026-11-02
-last_activity_desc: Phase 43 complete, transitioned to Phase 44
-state_head: d689886d5ca61eb510e0763c7b86bc6406fedac9
+last_activity_desc: Phase 44 execution started
+state_head: 5fd6a710d53d8d33fc84f3b3fa276bbf1ca15edd
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 17
+  total_plans: 22
   completed_plans: 17
-  percent: 83
+  percent: 77
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 43 — Document Fixes & Phase 37 Dispositions
+**Current focus:** Phase 44 — Release & Publication
 
 ## Current Position
 
-Phase: 44 — Release & Publication
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-02 — Phase 43 complete, transitioned to Phase 44
+Phase: 44 (Release & Publication) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 44
+Last activity: 2026-11-02 — Phase 44 execution started
 
-Progress: [████████░░] 83%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
