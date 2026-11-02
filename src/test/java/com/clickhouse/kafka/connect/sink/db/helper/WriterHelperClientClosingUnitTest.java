@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -47,6 +48,7 @@ class WriterHelperClientClosingUnitTest {
     private static final String TOO_OLD_VERSION = "23.2";
     private static final String VERSION_FAILURE = "scripted version lookup failure";
     private static final String MAPPING_FAILURE = "scripted table mapping failure";
+    private static final String CLOSE_FAILURE = "scripted helper client close failure";
     private static final String TABLE_REFRESH_SECONDS = "1";
     private static final String SCHEDULED_EXECUTOR_FIELD = "scheduledExecutor";
     private static final String OPEN_COUNT = "open count of helper clients";
@@ -304,6 +306,39 @@ class WriterHelperClientClosingUnitTest {
                 assertTrue(body(posts.get(1)).contains("{\"id\":2}"));
             } finally {
                 writer.stop();
+                writer.closeLeftoverHelpers();
+                writer.unregisterStatistics();
+            }
+        }
+    }
+
+    @Test
+    void clientV1BatchStillInsertsWhenClosingItsPerBatchHelperClientThrows() throws Exception {
+        try (StubClickHouseServer stub = new StubClickHouseServer(StubClickHouseServer.ok())) {
+            AtomicInteger built = new AtomicInteger();
+            AtomicInteger closeAttempts = new AtomicInteger();
+            CountingWriter writer = new CountingWriter(helper -> {
+                if (built.getAndIncrement() == 0) {
+                    return startsCleanly().apply(helper);
+                }
+                return helper.onClose(() -> {
+                    if (closeAttempts.getAndIncrement() == 0) {
+                        throw new IllegalStateException(CLOSE_FAILURE);
+                    }
+                });
+            });
+            try {
+                assertTrue(writer.start(stubConfig(CLIENT_V1, stub)));
+                writer.insertJsonV1(List.of(schemalessRecord(1)), batchTable(), new QueryIdentifier(TOPIC, QUERY_ID_FIRST));
+                assertEquals(2, writer.created().size(), OPEN_COUNT);
+                assertEquals(1, writer.created().get(1).closeCalls(), PER_BATCH_CLOSE_COUNT);
+                List<StubClickHouseServer.Request> posts = posts(stub);
+                assertEquals(1, posts.size());
+                assertTrue(body(posts.get(0)).contains("{\"id\":1}"));
+            } finally {
+                writer.stop();
+                // The scripted failure skipped the real close of the per-batch client, so close it again here.
+                writer.created().get(1).close();
                 writer.closeLeftoverHelpers();
                 writer.unregisterStatistics();
             }

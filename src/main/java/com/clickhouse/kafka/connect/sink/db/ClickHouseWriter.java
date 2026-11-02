@@ -218,8 +218,12 @@ public class ClickHouseWriter implements DBWriter {
         if (toClose == null) {
             return;
         }
+        closeQuietly(toClose);
+    }
+
+    private static void closeQuietly(ClickHouseHelperClient helperClient) {
         try {
-            toClose.close();
+            helperClient.close();
         } catch (Exception e) {
             LOGGER.warn(HELPER_CLIENT_CLOSE_FAILURE_LOG, e);
         }
@@ -1817,8 +1821,7 @@ public class ClickHouseWriter implements DBWriter {
     private ClickHouseRequest.Mutation getMutationRequest(ClickHouseClient client, ClickHouseFormat format, String tableName, String database, QueryIdentifier queryId) {
 
         ClickHouseNode server;
-        // The node is a value object and stays usable after its helper client is closed.
-        try (ClickHouseHelperClient chcTmp = createHelperClient(new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+        ClickHouseHelperClient chcTmp = createHelperClient(new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
                 .setDatabase(database)
                 .setUsername(csc.getUsername())
                 .setPassword(csc.getPassword())
@@ -1829,8 +1832,12 @@ public class ClickHouseWriter implements DBWriter {
                 .setSslSocketSni(csc.getSslSocketSni())
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
-                .setCompressionMethod(csc.isSetCompressionMethod()))) {
+                .setCompressionMethod(csc.isSetCompressionMethod()));
+        try {
             server = chcTmp.getServer();
+        } finally {
+            // The node is a value object and stays usable after its helper client is closed; a failed close must not fail the batch.
+            closeQuietly(chcTmp);
         }
         ClickHouseRequest.Mutation request = client.read(server)
                 .write()
