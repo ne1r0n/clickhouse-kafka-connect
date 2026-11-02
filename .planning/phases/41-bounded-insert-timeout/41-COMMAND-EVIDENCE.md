@@ -17,8 +17,8 @@
 | E-01 | PIN-01 | 41-01 | pass |
 | E-02 | PIN-01 | 41-01 | pass |
 | E-03 | PIN-01, TMO-01, TMO-02 | 41-01 | pass |
-| E-04 | PIN-01 | 41-02 | pending (plan 41-02) |
-| E-05 | TMO-01 | 41-02 | pending (plan 41-02) |
+| E-04 | PIN-01 | 41-02 | pass |
+| E-05 | TMO-01 | 41-02 | pass |
 | E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pending (plan 41-02) |
 | E-07 | TMO-01 | 41-02 | pending (plan 41-02) |
 | E-08 | TMO-01, TMO-02 | 41-03 | pending (plan 41-03) |
@@ -179,5 +179,77 @@ patch_applies_on_head: yes
 The run exited non-zero (`52 tests completed, 9 failed`) and produced the class XML. `InsertStallBoundPinUnitTest` ran 15 cases: the writer-level pin on the JSON, String and RowBinary routes (3 cases) and the `ProxySinkTask.put` pin over the same routes under `errors.tolerance` none and all (6 cases) all failed, every one an `org.opentest4j.AssertionFailedError` whose message contains `execution timed out after`, the slowest at 10.691 s (the 10 s preemptive bound plus teardown). The six operator `socket_timeout` cases (a longer value than the insert timeout against a 1 s delayed answer, a shorter value than the insert timeout against a stall) passed on the unfixed tree, as designed: the operator path already works today because `createClientV2` forwards `socket_timeout` as a client-level option, so these cases are guards against a naive fix that sets the per-insert value unconditionally (per-insert settings override the client-level option), not red pins; plan 41-02 proves they discriminate by a recorded mutation. The four existing stub users (2, 7, 5 and 23 tests) pass. The red tree (the stub and the pin class) was saved with `git add -N`, `git diff` and `git reset -q`, the stub restored with `git checkout --` on that one file and the pin class removed by name, leaving `src` equal to HEAD; the patch names exactly those two paths and applies on HEAD. A first attempt of this run stopped at test compilation (the `ProxySinkTask.put` case lacked `throws Exception` because `StubClickHouseServer.stalling()` throws `IOException`); that was a compile error in the new test, fixed before any recorded red, and the red run above is the first that compiled.
 
 2026-11-02T08:59:54Z
+
+Verdict: pass
+
+### E-04: Red tree re-applied and re-confirmed; the pin/seam commit
+
+Backs: PIN-01 (the red tree from `41-red-pins.patch` is re-applied byte-identical and re-run with the same red set as E-03, then committed apart from the fix as the pin/seam commit with the stub's FORK-DELTA harness row).
+
+```sh
+shasum -a 256 .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git apply --check .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git apply .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+bash /tmp/gsd41/exec/run-filtered.sh reconfirm '*InsertStallBoundPinUnitTest' '*ClientInsertWirePinUnitTest' '*ClientErrorShapePinUnitTest' '*ClientEndpointAndOptionsPinUnitTest' '*WriterHelperClientClosingUnitTest'
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-reconfirm --class InsertStallBoundPinUnitTest tests=15 failures=9
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-reconfirm --expect 'InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause' 'InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord'
+python3 -I /tmp/gsd41/exec/insert-harness-row.py
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java docs/FORK-DELTA.md
+git commit -F /tmp/gsd41/exec/msg-pin.txt
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main
+```
+
+```text
+patch_sha256_matches: yes
+patch_applied: yes
+reconfirm_run_exit: 1
+reconfirm_class_tests: 15
+reconfirm_class_failures: 9
+reconfirm_matches_e03: yes
+red_reason_timeout: yes
+harness_row_added: yes
+pin_commit: 0a8e1e53698fca30efcfcc3051c46d59894a3c65
+pin_commit_files: docs/FORK-DELTA.md; src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+pin_commit_src_main_untouched: yes
+```
+
+The patch SHA-256 equals E-03's `10c738b2...e9ffc`, `git apply --check` and `git apply` succeeded on the branch tip. The re-run exited non-zero with the pin class at 15 tests and 9 failures; the failing set is E-03's two names and every failure is an `AssertionFailedError` containing `execution timed out after`, none above 30 s. The FORK-DELTA harness row for `StubClickHouseServer` sits directly after the "Hand-written test doubles" row (a one-line insertion). The pin/seam commit holds exactly the stub, the pin class and FORK-DELTA, and no `src/main` file; it is red by design until the fix commit and the two commits are one revert unit.
+
+2026-11-02T09:07:54Z
+
+Verdict: pass
+
+### E-05: Tracer: the per-insert timeout at the JSON site turns the JSON cases green
+
+Backs: TMO-01 (the thinnest fix that reaches every layer: `ClickHouseHelperClient.setInsertSocketTimeoutV2` with its operator skip, called at the JSON insert site only; the JSON cases pass while the String and RowBinary cases stay red by timeout).
+
+```sh
+python3 -I /tmp/gsd41/exec/edit-helper.py
+python3 -I /tmp/gsd41/exec/edit-writer.py json
+bash /tmp/gsd41/exec/spot.sh imports src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java writer
+bash /tmp/gsd41/exec/spot.sh imports src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java helper
+bash /tmp/gsd41/exec/run-filtered.sh intermediate '*InsertStallBoundPinUnitTest' '*NetworkCompressionPinUnitTest' '*ClientEndpointAndOptionsPinUnitTest'
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-intermediate --class InsertStallBoundPinUnitTest tests=15 failures=6
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-intermediate --expect 'InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause' 'InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord'
+git diff -- src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java | grep -E '^[-+]import '
+```
+
+```text
+intermediate_run_exit: 1
+intermediate_class_tests: 15
+intermediate_class_failures: 6
+intermediate_failed_set: InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause; InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord
+json_cases_failing: 0
+red_reason_timeout: yes
+parser_guards_green: yes
+helper_import_lines: +import com.clickhouse.client.api.ClientConfigProperties; and +import java.time.temporal.ChronoUnit;
+writer_call_lines: 1
+spotless_helper_diff_import_only: yes
+spotless_writer_diff_import_only: yes
+```
+
+The run exited non-zero with the pin class at 15 tests and 6 failures: the String and RowBinary cases of the two stall pins (writer-level 2, `ProxySinkTask.put` under `none` and `all` 4), every one an `AssertionFailedError` containing `execution timed out after`, none above 30 s. No failing testcase name contains `route=JSON`, so the writer-level JSON case and the JSON `put` cases under both tolerances pass, and the 6 operator guards pass. `NetworkCompressionPinUnitTest` (9 tests) and `ClientEndpointAndOptionsPinUnitTest` (5 tests), the two parser guards, pass with 0 failures. The helper's import lines changed by exactly the two planned additions, the writer's import lines did not change, and the live scoped hook reports both files import-only dirty as at phase start. The helper and writer edits stay uncommitted for the fix commit.
+
+2026-11-02T09:07:54Z
 
 Verdict: pass
