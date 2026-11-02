@@ -2,7 +2,7 @@
 
 **The connector source changes in this release.** `git diff --shortstat v1.7.0_gg6 HEAD -- src/main` on the release tip reports 8 files changed, 194 insertions and 22 deletions. The five changes at a glance:
 
-1. Every helper client the connector opens is now closed when a task stops (section A).
+1. The helper clients that a started task holds are now closed when it stops or when its start fails; row F5 lists the paths that still leave one open (section A).
 2. On client V2, an insert that gets no answer from the server now ends with a retriable error after `clickhouseClientInsertTimeoutMs`; this can produce a duplicate, and it does not reach client V1 (section B).
 3. The in-memory map of inserted offsets reads the consumer's topic, which changes what `reportInsertedOffsets=true` reports under a topic-renaming SMT, and its limits under other topic-changing SMTs are stated (sections C and D).
 4. A `RetriableException` anywhere in the cause chain of a failure is now retriable, and the connector logs one WARN at task start for a code in `additionalRetriableErrorCodes` that it does not treat as transient (sections E and F).

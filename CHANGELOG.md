@@ -1,10 +1,11 @@
 # 1.7.0_gg7, 2026-11-02
 
 This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `9bed6f79` (the same base as
-`1.7.0_gg6`). It lists the fork's own changes since `v1.7.0_gg6`: a bounded client V2 insert, the closing of every helper
-client a task creates, a `RetriableException` pass-through, the inserted-offset topic fix, a start-up WARN for unvetted
-retriable codes, and a `gson` and a `setup-gradle` bump. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the
-fork patches on top of upstream, and read [docs/ROLLOUT-v1.7.0_gg7.md](docs/ROLLOUT-v1.7.0_gg7.md) before upgrading from
+`1.7.0_gg6`). It lists the fork's own changes since `v1.7.0_gg6`: a bounded client V2 insert, the closing of the helper
+clients that a started task holds (with residuals, listed below), a `RetriableException` pass-through, the
+inserted-offset topic fix, a start-up WARN for unvetted retriable codes, and a `gson` and a `setup-gradle` bump. See
+[docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on top of upstream, and read
+[docs/ROLLOUT-v1.7.0_gg7.md](docs/ROLLOUT-v1.7.0_gg7.md) before upgrading from
 `v1.7.0_gg6`. If you are coming from an earlier release, start with the `1.7.0_gg6` note's pointers.
 
 ## Important Changes
