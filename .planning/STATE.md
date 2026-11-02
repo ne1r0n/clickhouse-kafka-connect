@@ -4,17 +4,17 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 40
 current_phase_name: Helper Client Closing
-status: executing
-stopped_at: Completed 40-02-PLAN.md
-last_updated: "2026-11-02T06:36:00.310Z"
+status: verifying
+stopped_at: Completed 40-03-PLAN.md
+last_updated: "2026-11-02T07:28:04.387Z"
 last_activity: 2026-11-01
 last_activity_desc: Phase 40 execution started
-state_head: 9550ce2735d399a6cad4f6a6c4080cd44b0a4f8c
+state_head: a75f8cc391f8f11225f854b226e8792ab07ac62f
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 17
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 
 Phase: 40 (Helper Client Closing) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-01 — Phase 40 execution started
 
 Progress: [██░░░░░░░░] 17%
@@ -230,6 +230,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 39 P04 | 84 min | 3 tasks | 4 files |
 | Phase 40 P01 | 8 min | 3 tasks | 4 files |
 | Phase 40 P02 | 25 min | 3 tasks | 7 files |
+| Phase 40 P03 | 50 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -326,6 +327,7 @@ Placement:
 - [Phase 39]: 39-04: ClickHouseSinkConnectorIntegrationTest.java keeps its pre-existing import order (waiver in E-08); ConfluentPlatform.java is formatter-clean with an unchanged import set
 - [Phase 40]: 40-01: red trees live only in 40-red-writer.patch and 40-red-keeper.patch (strict red-first); no src change committed; injected-client Keeper clause pinned by the K3 NPE tripwire plus plan 40-03 source identity
 - [Phase 40]: 40-02: gate A red on three ClickHouseWriterTest cases using a writer after a false start(); user chose to seed a table in runWithWriter (test-only commit fae1fcb1) and keep production closing chc on every failed start
+- [Phase 40]: 40-03: the writer-files untouched check is taken against fae1fcb1 (the test-only seed), not de3faf77; the invariants gate ran once on the E-10 commit and covers both code commits
 
 ### Pending Todos
 
@@ -385,8 +387,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T06:36:00.088Z
-Stopped at: Completed 40-02-PLAN.md
+Last session: 2026-11-02T07:28:04.165Z
+Stopped at: Completed 40-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

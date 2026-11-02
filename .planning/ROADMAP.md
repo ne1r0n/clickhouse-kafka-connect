@@ -216,12 +216,12 @@ A failed `start()` and a second `stop()` are both safe. The writer half and the 
   3. *[Docker-free, live]* The Keeper half is its own later commit. `StateProvider` has a default no-op `close()`. `KeeperStateProvider.close()` closes a client it created and leaves an injected one open. `ProxySinkTask.stop()` stops the writer, unregisters the MBean and closes the state provider in `try/finally`, so a throw in one step still runs the others. The diff of `getStateRecord` and `setStateRecord` is empty. `testUnit` and a full suite, including the exactly-once tests, pass on this commit (CLS-03).
   4. *[record, Docker-free]* The FORK-DELTA rows and `fork-anchors.txt` rows land in the same commits as the code they describe, and the anchors gate passes.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 - [x] 40-01-PLAN.md — red baseline before any fix: the counting seam (`CountingHelperClient` plus the writer's `createHelperClient` factory and the Keeper factory constructor), the 22 writer cases and the 7 Keeper and `ProxySinkTask.stop` cases run red on V1 and V2 for the right reason, both red trees saved as committed patches, src restored (CLS-04)
 - [x] 40-02-PLAN.md — writer half as one commit: stop-close tracer, then the `start()` wrapper and the per-batch try-with-resources, FORK-DELTA writer, harness and Known cost 13 rows and four anchor rows in the same commit, then gate A (testUnit and the full suite) with the Keeper half absent (CLS-01, CLS-02, CLS-04)
-- [ ] 40-03-PLAN.md — Keeper half as its own later commit: `KeeperStateProvider.close()` closing only its own client, `ProxySinkTask.stop()` in nested try/finally, state paths byte-identical, rows in the same commit, gate B with the exactly-once classes, then the phase gate with the invariant script once on an explicit SHA (CLS-03, CLS-04)
+- [x] 40-03-PLAN.md — Keeper half as its own later commit: `KeeperStateProvider.close()` closing only its own client, `ProxySinkTask.stop()` in nested try/finally, state paths byte-identical, rows in the same commit, gate B with the exactly-once classes, then the phase gate with the invariant script once on an explicit SHA (CLS-03, CLS-04)
 
 **Research flag**: Settle these before planning:
 - whether `Client.close()` on client 0.11.0 is idempotent (the research did not probe it). The null guard and the double-`stop()` pin hold either way;
@@ -451,7 +451,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-01 |
-| 40. Helper Client Closing | v1.7.0_gg7 | 2/3 | In Progress | - |
+| 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | In Progress | - |
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 0/TBD | Not started | - |
