@@ -112,6 +112,7 @@ class ReleaseWorkflowGuardUnitTest {
                     COMPARE_STEP,
                     UPLOAD_STEP,
                     TESTS_GATE_STEP,
+                    TAG_GATE_STEP,
                     PUBLISH_STEP,
                     DRAFT_STEP);
     private static final List<String> DRY_RUN_STEPS =
@@ -840,6 +841,20 @@ class ReleaseWorkflowGuardUnitTest {
                 rejects(
                         ReleaseWorkflowGuardUnitTest::chainOrderProblem,
                         replacing(VALID, header(UPLOAD_STEP), "      - name: Keep the report"),
+                        RULE_CHAIN));
+    }
+
+    @Test
+    @DisplayName("CIH-04: fixture: the chain rule requires the tag gate after the tests gate")
+    void fixtureChainOrderRuleRequiresTheTagGateAfterTheTestsGate() {
+        assertAll(
+                rejects(
+                        ReleaseWorkflowGuardUnitTest::chainOrderProblem,
+                        swappedHeaders(VALID, TESTS_GATE_STEP, TAG_GATE_STEP),
+                        RULE_CHAIN),
+                rejects(
+                        ReleaseWorkflowGuardUnitTest::chainOrderProblem,
+                        replacing(VALID, header(TAG_GATE_STEP), "      - name: Keep the tag"),
                         RULE_CHAIN));
     }
 
