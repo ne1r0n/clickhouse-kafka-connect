@@ -13,7 +13,7 @@ findings:
     title: "FORK-DELTA's closing sentence for the gg6 paragraph, and the status labels of items 12 and 19, disagree with the items Phase 43 closed"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: skipped
     title: "The repointing in FORK-DELTA is partial, so two published reproduction commands still give different numbers than the document states"
   - id: IN-01
     severity: info
@@ -23,9 +23,9 @@ findings:
     severity: info
     disposition: open
     title: "gg1 notice sentence names \"the release\" without saying which tree the measurements are from"
-open: 5
+open: 4
 total: 5
-recorded: 2026-11-02T19:50:53.382Z
+recorded: 2026-11-02T19:52:43.744Z
 ---
 
 # Phase 43: Code Review Disposition
@@ -34,7 +34,7 @@ recorded: 2026-11-02T19:50:53.382Z
 |---------|----------|-------------|--------|
 | WR-01 | warning | open | - |
 | WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
+| WR-03 | warning | skipped | 43-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 
