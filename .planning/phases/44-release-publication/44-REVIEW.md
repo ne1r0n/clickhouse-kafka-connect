@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 4
-  info: 10
-  total: 14
+  warning: 5
+  info: 11
+  total: 16
 status: issues_found
-rounds: 1
+rounds: 2
 ---
 
 ## Round 1
@@ -129,4 +129,44 @@ round: 1 findings: 14
 
 _Reviewed: 2026-11-02T22:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
+_Depth: standard_
+
+## Round 2
+
+reviewer_agent_id: a752798ab528d2b1f
+
+Scope: `git diff e02adb0c7ab638b171e6768a525da537dc3a38fd HEAD -- docs CHANGELOG.md` (CHANGELOG, FORK-DELTA and the gg7 note changed; the gg6 and gg1 notes did not). Each round-1 fix was re-read against `src/main` and the Phase 41 and 44 evidence. Fixes confirmed correct: WR-01 (T5 split; the 4000 count and the 2000 control figure match E-06), WR-02 (R1 and R4 labels), WR-03 (exclusion verified in `DirectDeliveryStrategy.preCommit` and `Processing.doLogic`), IN-01 to IN-02, IN-04 to IN-10. WR-04 is fixed in the note, the CHANGELOG intro and the FORK-DELTA item 13 title, but one FORK-DELTA row still carries the universal (WR-05). IN-03 stays deferred to the user (published gg6 note) and is not re-reported.
+
+### WR-05: FORK-DELTA writer row still says the writer "releases each one" of "every helper client"
+
+**File:** `docs/FORK-DELTA.md:39` (the `ClickHouseWriter` row of the table)
+**Issue:** The row opens "`ClickHouseWriter` builds every helper client through the protected factory `createHelperClient(builder)` and releases each one". The round-1 fix for WR-04 retitled item 13 and removed the universal from the note and the CHANGELOG, but this row keeps it. It contradicts item 13 of the same file: a second `start()` on one writer assigns a new `chc` without closing the earlier one (`ClickHouseWriter.startInternal` does `chc = createHelperClient(...)` with no prior close), and after the five-second wait `stop()` closes `chc` while a table refresh may still be running on it. A reader of the table sees no leak path.
+**Fix:** Write "builds every helper client through the protected factory `createHelperClient(builder)` and releases the ones named below (the residuals are in Known cost 13)", or end the first clause with "and releases each one on the paths below; a second `start()` on one writer is not one of them (Known cost 13)".
+
+### IN-11: Section C "What to do" negates the exclusion in a way that can be read as two separate exclusions
+
+**File:** `docs/ROLLOUT-v1.7.0_gg7.md:93`
+**Issue:** "nothing, unless you enabled `reportInsertedOffsets=true` under a topic-renaming SMT and do not run `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`, where Connect's own offsets are returned and nothing changes". "do not run A and B" can be read as "run neither", so an operator with `exactlyOnce=false` alone (the default `ignorePartitionsWhenBatching` keeps the inserted-offset map filled) may think this section does not concern them. It also omits `bufferCount` 0, which the section lead and the Applies-when of R1 carry. The code excludes only the combination (`!isExactlyOnce() && isIgnorePartitionsWhenBatching()` in `DirectDeliveryStrategy.preCommit` and `Processing.doLogic`).
+**Fix:** "nothing, unless you enabled `reportInsertedOffsets=true` with `bufferCount` 0 under a topic-renaming SMT. The one combination where nothing changes is `exactlyOnce=false` together with `ignorePartitionsWhenBatching=true`, where Connect's own offsets are returned; in every other case expect offsets under the consumer's topic, and read section D if the rename or the SMT is of another kind."
+
+round: 2 findings: 2
+
+## Mandated confirmations (RLS-03)
+
+- (a) 33 rows: still F1 to F5, T1 to T15, R1 to R8 and D1 to D5 = 33 labelled rows. The 13 E-09 claims remain T1 to T13 in order. The T5 label split (`first run, the failure and the commit: measured; second run, the rows the failed insert committed: derived`) is not stronger than E-06: the table held 4000 rows after the failed 3000 ms run and an 8000 ms control run that wrote 2000 (the difference, 2000, is correctly marked derived; that the table began empty is an assumption the evidence does not state, but the label already carries it). Row T6 stays `derived (mechanism, not measured)` by design and its new wording (a connector default in `ClickHouseSinkConfig.addClickHouseSetting(..., false)` that a `clickhouseSettings` value replaces) matches the code. R1 and R4 now label each claim and no row is stronger than its source.
+- (b) Verified again: `git diff --shortstat v1.7.0_gg6 HEAD -- src/main` reads 8 files, 194 insertions, 22 deletions; FORK-DELTA raw numbers recomputed (`v1.7.0` to `HEAD`: 345/42439/1221 for the wide scope and 43/3183/294 for `src/main`), unchanged because no `src`, `gradle`, `build` or `.github` file changed since round 1 (`git diff --stat e02adb0c HEAD` lists only docs and the evidence file). The archive figures were not touched by the fixes. The commands that name `v1.7.0_gg7` in the note (line 3, F3, R2, D5) give the quoted results when run with `HEAD` in place of the tag: the `Processing.java` diff is the one `originalTopic()` line at 137 and the `KeeperStateProvider.java` diff leaves `getStateRecord` and `setStateRecord` untouched. The line-3 sentence that every such command was measured that way is accurate.
+- (c) Applies-when: the `exactlyOnce=false` plus `ignorePartitionsWhenBatching=true` exclusion in R1, section C, the CHANGELOG bullet, the label legend (line 28) and the gg6-supersession row is right against the code (`preCommit` returns Connect's offsets before it reads `reportInsertedOffsets`, `doLogic` calls `doInsert(records)` and keeps no state). `exactlyOnce=true` with `ignorePartitionsWhenBatching=true` is correctly not excluded. The client V2 rows still match the three `setInsertSocketTimeoutV2` sites; the new `async` sentence is right (no `src/main` code sets `async`, `createClientV2` forwards the operator's keys, and the `wait_for_async_insert` in `KeeperStateProvider` is a different ClickHouse setting). The only wording defect is IN-11.
+- (d) Rollback: steps 1 to 4 run in order and `git read-tree -u --reset` does overwrite an untracked file at a path the tag contains (reproduced in a scratch repository), so the added warning is correct. Target `pre-v1.7.0_gg7` is a local tag on `72e8ccff` (same commit as `v1.7.0_gg6`); the new intro sentence states that step 2 needs it on origin and what to do if `git fetch --tags origin` does not bring it. `pre-v1.7.0_gg7` is absent on origin at this commit, which the sentence now covers. No `gradlew.bat` sentence is carried, as measured (`gradlew_bat_trap: no`). The gg6 asset facts (13558692 bytes, SHA-256 `e745e7d5...c2af`, 59 bytes, six classes) match E-05. "Wait for ever" is gone; the replacement (client default `socket_timeout` of 0) matches Probe 2. One unchanged phrase in step 1, "the merge of the release tip printed nothing", is loosely worded (E-05 records `git status --porcelain` clean after the merge, not the output of `git merge`); not reported as a finding.
+- (e) No fact about the `release object` of `v1.7.0_gg7`: the note, the CHANGELOG and FORK-DELTA state no release URL, asset, size or digest for it. The sentences that the tag or the release "is created" or "is published" are conditional process statements, as in round 1, and the CHANGELOG makes no promise beyond the pointer to the rollout note.
+- (f) No advice that empties or destroys data: no TRUNCATE, DELETE, DROP, force-push or `reset --hard`; the discard effect of `read-tree -u --reset` is stated before the block and "Never force-push" stands.
+- (g) `FUT-05 stays open.` appears once, in section F (line 130); `grep -n "FUT-0" docs/ROLLOUT-v1.7.0_gg7.md` prints only that line.
+- (h) The WARN text in section F equals `UNVETTED_RETRIABLE_CODES_WARNING` in `ClickHouseSinkTask.java` joined from its four literals, character for character; the check runs in `start` after config parsing and before the proxy task is built, the vetted set is the 15 codes of `Utils.DEFAULT_RETRIABLE_ERROR_CODES` plus 216, and the format check is `ClickHouseSinkConfig.parseErrorCodes` (positive integers), so the new "format check still applies" wording in R7, the CHANGELOG and FORK-DELTA item 24 is accurate.
+- (i) FORK-DELTA: the `Processing.java` row (one line at 137) and the `KeyToValue.java` row (byte-identical) are unchanged and correct; the recounts and the tag-pair commands are unchanged since round 1; the two remaining `HEAD` descriptions in the measured-figure paragraph (line 147) describe how the figures were once measured and sit beside `v1.7.0_gg7` commands, so they are history. Items 12, 19, 22, 23 are unchanged. The rewritten item 13 matches the code in each residual (checked `KeeperStateProvider.init`, `ClickHouseSinkTask.start` and `stop`, the strategies' `stop()` bodies, `ClickHouseWriter.startInternal`), item 14's T5 wording matches E-06, item 24's format-check clause matches `parseErrorCodes`, and the gg7 paragraph's allow-list sentence ("generated in the release process") no longer states the file exists. One false present-tense universal remains in the writer table row (WR-05).
+- (j) CHANGELOG `1.7.0_gg7`: each bullet matches the code or behaviour change in `git diff v1.7.0_gg6 HEAD -- src/main .github`; the intro and the Bug Fixes bullet now carry the residuals and the exclusion; "no timeout is added to client V1 inserts" is accurate; the Build and CI statement that the release workflows change only by the `setup-gradle` pin holds for `release.yaml` and `pre-release.yaml` (the only other `.github` change is a comment in `increment-version.yml`). The heading `# 1.7.0_gg7, 2026-11-02` has the same format as `# 1.7.0_gg6, 2026-10-31`; the date-against-UTC-at-merge check stays with the orchestrator. No promise of a release beyond the pointer to the rollout note.
+- Specific tokens: `socket_timeout` rows T9, T10 and T13 and the CHANGELOG sentence are unchanged and still match `ClickHouseHelperClient`; every `client V1` insert claim is still scoped to client V1 (default `client_version` is V1); the T5 and R1 label splits, the `exactlyOnce=false` plus `ignorePartitionsWhenBatching=true` exclusion and the `pre-v1.7.0_gg7` target on `72e8ccff` are consistent between the note, the CHANGELOG and FORK-DELTA.
+
+---
+
+_Reviewed: 2026-11-02T23:30:00Z_
+_Reviewer: Claude (gsd-code-reviewer), round 2_
 _Depth: standard_
