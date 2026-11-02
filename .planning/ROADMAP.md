@@ -316,10 +316,10 @@ Phase gate: the per-commit gates above, then the anchors invariant.
   3. *[operator]* Each row that would change `src/main` shows the user's approval, in their own words, before its fix. The fix lands tests first, in its own commit. A row without approval is deferred.
   4. *[Docker-free]* The `increment-version.yml` header comment names the guard class that actually guards the file, and the pin guard passes. No existing assertion is deleted or weakened. Phase gate: cache-busted `testUnit`, the anchors invariant, and a full suite on `latest` × V2 if `src/main` changed.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
-- [ ] 43-01-PLAN.md — measured start baseline (cache-busted testUnit, anchors rows=190, origin, Spotless), then the four "fixed" Phase 37 rows, one commit and one cache-busted gate each: the increment-version.yml header comment (tracer, six workflow guard classes), the approved CHAIN tag-gate step of 37 IN-04 and the zero-jar hint of 37 IN-06 (each tests first, red recorded), the gg4 and gg5 allow-list headers of 37 IN-05 (the 25 and gg6 lists untouched, the gg6 list stays equal to its tag copy); full testUnit delta of exactly the two new testcases (DOC-02)
+- [x] 43-01-PLAN.md — measured start baseline (cache-busted testUnit, anchors rows=190, origin, Spotless), then the four "fixed" Phase 37 rows, one commit and one cache-busted gate each: the increment-version.yml header comment (tracer, six workflow guard classes), the approved CHAIN tag-gate step of 37 IN-04 and the zero-jar hint of 37 IN-06 (each tests first, red recorded), the gg4 and gg5 allow-list headers of 37 IN-05 (the 25 and gg6 lists untouched, the gg6 list stays equal to its tag copy); full testUnit delta of exactly the two new testcases (DOC-02)
 - [ ] 43-02-PLAN.md — publication facts re-read from the GitHub REST API, then the gg1 half of WR-08 in item 6, FUT-05 in gg6 row C2 with a correction notice (the user's "gg6 note C2 + gg7 handoff"), and FORK-DELTA's gg6 paragraphs (lines 6, 139, 286 at the gg6 close, located by content) in the past tense with tag-based reproduction commands and the closed facts of items 12, 22, 23 (DOC-01)
 - [ ] 43-03-PLAN.md — the disposition ledger (17 findings, 18 rows) with a phase-local checker (fixed rows resolved to their commits, the four src/main rows and 28 IN-05(b) deferred in the user's words, 37 IN-05(b) deferring the 25 and gg6 lists, 30-IN-04 re-owned, the 12 carried rows one line each checked against the Phase 37 ledger, the Phase 44 handoff "FUT-05 stays open"), FORK-DELTA items 19-21, then the phase gate: testUnit delta, anchors with no anchored line moved, no assertion weakened, full suite and invariant script not required because src/main is unchanged (DOC-02, DOC-01)
 
@@ -470,7 +470,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-02 |
-| 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 0/3 | Planned | - |
+| 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 1/3 | In Progress | - |
 | 44. Release & Publication | v1.7.0_gg7 | 0/TBD | Not started | - |
 
 ---
