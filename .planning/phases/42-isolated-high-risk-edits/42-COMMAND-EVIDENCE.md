@@ -24,7 +24,7 @@
 | E-06 | RSK-02 | 42-02 | pass |
 | E-07 | RSK-02 | 42-02 | pass |
 | E-08 | RSK-03 | 42-03 | pass |
-| E-09 | RSK-03 | 42-03 | pending (plan 42-03) |
+| E-09 | RSK-03 | 42-03 | pass |
 | E-10 | RSK-03 | 42-03 | pending (plan 42-03) |
 | E-11 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
 | E-12 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
@@ -523,5 +523,74 @@ src_main_untouched: yes
 The before dumps `status-gate2-testunit.tsv` (1801 lines) and `status-gate2-full.tsv` (2399 lines) already existed and their line counts equal E-07 `testunit_tests` and `full_tests`. The unit red run exited 1 with the class at 21 tests and 3 failures; the failing set is exactly the three unvetted rows of `unvettedCodesLogOneWarnNamingThemAtStartup` (`60`, `62, 60,159`, `2147483647`), each an `org.opentest4j.AssertionFailedError` failure element (no `error` element) and none over 30 s, so the unchanged tree logs no WARN for them. The unset case, the 15 built-in codes, `216` and `216,159,3` pass: for each, `start()` reached the connection step and threw `Connection to ClickHouse is not active.` as asserted. `AdditionalRetriableErrorCodesPinUnitTest` is 19/0 in the same run. The live red run exited 1 with the class at 1 test and 1 failure, an `AssertionFailedError` whose message starts `unvetted-code WARN count at start-up ==> expected: <1> but was: <0>`: start, put and read-back all passed and only the WARN is missing. No guard literal needed a correction before the red was recorded, and `git status --porcelain -- src` lists only the two untracked test classes.
 
 2026-11-02T12:26:40Z
+
+Verdict: pass
+
+### E-09: RSK-03 code commit: the start-up WARN green with its pins, the FORK-DELTA row, Known cost 24, two anchor rows
+
+Backs: RSK-03 (the start-up WARN in `ClickHouseSinkTask.start` green together with its 21 Docker-free pins, the one live pin and the existing `additionalRetriableErrorCodes` pins, the FORK-DELTA Connector source row, Known cost 24, the two anchor rows, the two expected-added lists and the code commit that holds them as one revert unit).
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*UnvettedRetriableCodesWarnUnitTest' --tests '*AdditionalRetriableErrorCodesPinUnitTest' --tests '*ConnectApiReferencesUnitTest' --tests '*SourcePlanningIdGuardUnitTest' > /tmp/gsd42/exec/rsk03-green-unit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-rsk03-green-unit
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk03-green-unit --class .UnvettedRetriableCodesWarnUnitTest tests=21 failures=0 errors=0
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun --tests '*UnvettedRetriableCodesWarnLiveTest' > /tmp/gsd42/exec/rsk03-green-live.log 2>&1
+cp -R build/test-results/test /tmp/gsd42/exec/xml-rsk03-green-live
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk03-green-live --class .UnvettedRetriableCodesWarnLiveTest tests=1 failures=0 errors=0
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-rsk03-red-unit /tmp/gsd42/exec/status-rsk03-red-unit.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-rsk03-red-live /tmp/gsd42/exec/status-rsk03-red-live.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py select .planning/phases/42-isolated-high-risk-edits/42-rsk03-expected-added-testunit.tsv PASS /tmp/gsd42/exec/status-rsk03-red-unit.tsv .UnvettedRetriableCodesWarnUnitTest
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py select .planning/phases/42-isolated-high-risk-edits/42-rsk03-expected-added-full.tsv PASS /tmp/gsd42/exec/status-rsk03-red-unit.tsv .UnvettedRetriableCodesWarnUnitTest /tmp/gsd42/exec/status-rsk03-red-live.tsv .UnvettedRetriableCodesWarnLiveTest
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<file>" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-<name>.out 2> /tmp/gsd42/exec/sc-<name>.err
+git diff --numstat -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+git diff -U0 -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+git add src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnLiveTest.java docs/FORK-DELTA.md .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd42/exec/msg-code3.txt
+git diff --name-only 4935e9c5^ 4935e9c5
+git diff --quiet 1c808c02 4935e9c5 -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+git diff --quiet 1c808c02 4935e9c5 -- src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesTest.java
+git diff --quiet c8574890 4935e9c5 -- src/main/java/com/clickhouse/kafka/connect/util/Utils.java src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java
+git show 4935e9c5:src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java | shasum -a 256
+git show 4935e9c5:src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnLiveTest.java | shasum -a 256
+```
+
+```text
+green_unit_run_exit: 0
+green_unit_class: 21/0
+codes_pin: 19/0
+connect_api_refs_green: yes
+planning_id_guard_green: yes
+green_live_run_exit: 0
+green_live_class: 1/0
+spotless_sink_task: IS CLEAN
+spotless_unit_class: IS CLEAN
+spotless_live_class: IS CLEAN
+sink_task_numstat: 21/0
+sink_task_import_lines_added: +import com.clickhouse.kafka.connect.util.Utils;; +import java.util.Set;; +import java.util.TreeSet;
+call_line_position: ok
+fork_delta_row_position: ok
+item24_statements: ok
+anchors_block_position: ok
+anchors_mirror: rows=190 bad=0
+expected_added_testunit_rows: 21
+expected_added_testunit_sha256: dd7de679e90ec19326ec523c80ec87c30c0e6089d05d6d7f3865695431712a49
+expected_added_full_rows: 22
+expected_added_full_sha256: b3693c3d54e2071358e1073a437effd4eddb772b344b6dc45f62100c3c754a42
+code_commit: 4935e9c50402283ec5ac8625415ad38eade5c762
+code_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java; src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java
+committed_tests_sha256_equal_red: yes
+sink_config_unchanged: yes
+codes_pins_unchanged: yes
+utils_unchanged_since_rsk02: yes
+revert_unit: one commit (tests, code and record rows together): 4935e9c50402283ec5ac8625415ad38eade5c762
+```
+
+The green unit run exited 0: the class is 21/0 with both test files byte-identical to the red runs (the committed blobs hash to `09b19f33...` and `0ababbde...`, equal to `red_unit_test_sha256` and `red_live_test_sha256` of E-08), the existing `additionalRetriableErrorCodes` pin class is 19/0, `ConnectApiReferencesUnitTest` (3) and `SourcePlanningIdGuardUnitTest` (18) pass. The live green run on ClickHouse `latest` x V2 exited 0 with the class at 1/0: the task started with code 60, inserted five records, they read back equal, and then the one WARN was asserted. The `ClickHouseSinkTask.java` diff is 21 added lines and 0 removed: three imports (`Utils`, `Set`, `TreeSet`), the comment and the two constants, the helper, and the call on the line directly after `validateBufferConfig(clickHouseSinkConfig);` and before the `ProxySinkTask` construction. `ClickHouseSinkConfig.java` and both existing codes pin classes equal the phase start, and `Utils.java` and `Processing.java` equal the RSK-02 commit `c8574890`. The FORK-DELTA row sits directly after the connector-name row and before the `onPartitionsRevoked` row; Known cost 24 sits between item 23 and `## Named skip inventory`, names the vetted set, 216, the judgment, FUT-05 still open, the owner and the re-open trigger, and Known cost 17 is untouched. The comment and two rows at the end of `fork-anchors.txt` follow the last TMO-01 row. The two expected-added files hold 21 and 22 `PASS` rows, written from the red-run status dumps.
+
+2026-11-02T13:03:04Z
 
 Verdict: pass
