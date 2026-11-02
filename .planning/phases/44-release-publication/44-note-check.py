@@ -15,7 +15,8 @@ are `measured`, `read from the code`, `derived` and `derived (mechanism, not mea
 
 Subcommands (exit 0 = every check holds, 1 = a check failed, 2 = usage or unreadable input):
   rows NOTE [--only L ...]    the 33 inventory IDs occur exactly once (with --only F T: only the IDs whose
-                              letter is listed must occur, the others must be absent), no other ID of that shape
+                              letter is listed are checked and rows of the other letters are ignored, so a
+                              partial note and the finished note both pass), no other ID of that shape
                               occurs, every label cell is made of the four forms, every other cell is non-empty,
                               the T6 and F4 rows (when present) carry exactly `derived (mechanism, not measured)`,
                               every T row (when present) names `client V` in its Applies-when cell;
@@ -108,6 +109,8 @@ def cmd_rows(text, only=None):
         if not cells or not ID_SHAPE.match(cells[0]):
             continue
         rid = cells[0]
+        if only is not None and rid[0] not in only:
+            continue
         if rid not in expected:
             problems.append("line %d: %s is not an expected inventory ID" % (number, rid))
             continue
