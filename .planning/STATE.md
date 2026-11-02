@@ -4,17 +4,17 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 44
 current_phase_name: Release & Publication
-status: executing
-stopped_at: Completed 44-04-PLAN.md
-last_updated: "2026-11-02T23:38:17.982Z"
+status: verifying
+stopped_at: Completed 44-05-PLAN.md (READY-FOR-USER-APPROVAL)
+last_updated: "2026-11-02T23:50:43.696Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 44 execution started
-state_head: 05912f366cd7fd17c570e3c205d9868ad168f3b2
+state_head: 185d29687394f9fc82c56539454ff9bf7f7139dd
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 22
-  completed_plans: 21
+  completed_plans: 22
   percent: 83
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 
 Phase: 44 (Release & Publication) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-02 — Phase 44 execution started
 
 Progress: [████████░░] 83%
@@ -249,6 +249,7 @@ Progress: [████████░░] 83%
 | Phase 44 P02 | 18 min | 3 tasks | 3 files |
 | Phase 44 P03 | 9 min | 3 tasks | 6 files |
 | Phase 44 P04 | 66 min | 3 tasks | 2 files |
+| Phase 44 P05 | 12 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -362,6 +363,8 @@ Placement:
 - [Phase 44]: 44-02: the gg6 rollback step 3 points at the published asset, since a local rebuild of the tag differs from it in six connector classes
 - [Phase 44]: 44-02: the note carries no gradlew.bat sentence (git status empty after the rollback block, git 2.50.1); the forward path uses plain git switch and revert
 - [Phase 44]: 44-02: 44-note-check.py --only ignores rows of the other sections so the partial-note verify blocks pass on the finished note
+- [Phase 44]: Plan 44-05: the CHANGELOG heading date 2026-11-02 was not edited; the bundle (question 5) and the runbook (C-7) put keep versus date-fix to the user, recommending keep as the freeze date
+- [Phase 44]: Plan 44-05: the publication tail evidence numbers start at E-21 because E-20 is the plan 44-04 hygiene re-run; RLS-04 stays pending until E-21 to E-29 show the publication
 
 ### Pending Todos
 
@@ -421,8 +424,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T23:38:16.194Z
-Stopped at: Completed 44-04-PLAN.md
+Last session: 2026-11-02T23:50:41.961Z
+Stopped at: Completed 44-05-PLAN.md (READY-FOR-USER-APPROVAL)
 Resume file: None
 
 ## Operator Next Steps
