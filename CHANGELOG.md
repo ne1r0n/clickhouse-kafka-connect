@@ -69,7 +69,9 @@ inserted-offset topic fix, a start-up WARN for unvetted retriable codes, and a `
 * `gson` moves from `2.14.0` to `2.15.0` in the shipped archive.
 * `gradle/actions/setup-gradle` is pinned to `6.4.1` in the four fork workflows (CI only; no vulnerability is claimed
   closed by it).
-* The release workflows compare the archive with the one rebuilt from `v1.7.0_gg6` under the allow-list for this release.
+* The release workflows' comparison of the archive with the one rebuilt from the previous release tag, `v1.7.0_gg6`, is
+  unchanged; their only change is the `setup-gradle` pin above. The allow-list they read for this release is generated in
+  the release process.
 
 # 1.7.0_gg6, 2026-10-31
 
