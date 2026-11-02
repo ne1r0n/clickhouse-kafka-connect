@@ -24,7 +24,7 @@
 | E-07 | DOC-01 | 43-02 | pass |
 | E-08 | DOC-01 | 43-02 | pass |
 | E-09 | DOC-02 | 43-03 | pass |
-| E-10 | DOC-01, DOC-02 | 43-03 | pending |
+| E-10 | DOC-01, DOC-02 | 43-03 | pass |
 
 ### E-01: Phase start facts and the cache-busted testUnit baseline
 
@@ -497,5 +497,76 @@ ledger_commit_files: .planning/phases/43-document-fixes-phase-37-dispositions/43
 The ledger holds 18 rows for 17 findings: 4 `fixed` (37-HDR at E-02, 37-IN-04 at E-03, 37-IN-05(a) at E-05, 37-IN-06 at E-04) and 14 `dispositioned`, each with the owner `fork maintainer (the user)` and a re-open trigger. Every fixed row's 40-hex pointer equals its code commit in E-02..E-05, and each of those commits touches exactly the files of its row (C4: the gg4 and gg5 allow-lists only). The four `src/main` rows (26-IN-02, 27-WR-01, 27-IN-01, 28-IN-01) each quote "Defer all four (Recommended)", and rows 37-IN-04 and 28-IN-05(b) each quote "Approve 37 IN-04, defer 28 IN-05(b) (Recommended)"; the three answers are read from `43-RESEARCH.md` at `f8ff8fc3`. The checker discriminates: it rejects the Phase 37 ledger (old statuses, IDs and owners), a copy of the ledger with a blank owner on row 26-IN-02, a copy with the 37-HDR pointer cut to 7 hex digits, and (for `carried`) a copy with the trigger of the 25-WR-03 line altered. The twelve carried lines equal the Phase 37 rows in owner and trigger. The handoff section holds "FUT-05 stays open" and RSK-03. D3 changed exactly three physical lines of `docs/FORK-DELTA.md` (items 19, 20 and 21): item 19 is closed and cites `566f92e4`, item 20 names `43-DISPOSITION-LEDGER.md`, item 21 names run `41297502026`; the old item-19 wording and the moved Phase 37 phase path occur 0 times. No file under `src/` changed and nothing was pushed.
 
 2026-11-02T19:42:05Z
+
+Verdict: pass
+
+### E-10: Phase gate: testUnit delta, anchors, scope, decisions, origin
+
+Backs: DOC-01, DOC-02 (ROADMAP Phase 43 success criterion 4: cache-busted `testUnit` whose status delta against the E-01 baseline is exactly the two new testcases, the anchors invariant with the anchored-line proof, the scope facts against the phase start, the recorded decisions not to run the full suite or the cumulative invariant script, the DOC-01 re-checks, the ledger re-check and origin).
+
+```sh
+git rev-parse HEAD
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd43/exec/gate-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd43/exec/xml-gate-testunit
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-testcase-status.py dump /tmp/gsd43/exec/xml-gate-testunit /tmp/gsd43/exec/status-gate-testunit.tsv
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-testcase-status.py delta /tmp/gsd43/exec/status-base-testunit.tsv /tmp/gsd43/exec/status-gate-testunit.tsv .planning/phases/43-document-fixes-phase-37-dispositions/43-expected-added.tsv
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py junit /tmp/gsd43/exec/xml-gate-testunit tests=1826 failures=0 errors=0 skipped=2
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git diff --name-only <phase_start_sha> HEAD
+git diff -U0 <phase_start_sha> HEAD -- .github/workflows/increment-version.yml
+git diff --quiet <phase_start_sha> HEAD -- src/main
+git diff --quiet <phase_start_sha> HEAD -- src/testFixtures src/integrationTest build.gradle.kts gradle VERSION CHANGELOG.md .planning/scripts/fork-anchors.txt
+git diff --name-only --diff-filter=M <phase_start_sha> HEAD -- src/test
+git diff --name-only --diff-filter=ADR <phase_start_sha> HEAD -- src/test src/testFixtures src/integrationTest
+git diff -U0 <phase_start_sha> HEAD -- src/test src/testFixtures src/integrationTest
+git log --format=%H <phase_start_sha>..HEAD -- . ':!.planning'
+git diff --quiet v1.7.0_gg6 HEAD -- .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<file>" -PspotlessIdeHookUseStdOut > /tmp/gsd43/exec/sc-<name>.out 2> /tmp/gsd43/exec/sc-<name>.err
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py check .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+gate_head: c55ff51da96ad49a4047f916e0ef71318dc9b3a6
+testunit_exit: 0
+testunit_tests: 1826
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 2
+status_delta: removed=0 added=2 equals_expected=yes
+anchors_mirror: rows=190 bad=0
+anchored_paths_changed: .github/workflows/increment-version.yml
+anchored_strings_in_diff: 0
+invariants_script: not run
+invariants_reason: no anchored line and no fork-anchors.txt row changed in this phase (the only anchored path changed is increment-version.yml and no changed line of it holds an anchored string), the mirror reads rows=190 bad=0, and the cumulative script needs a re-run only when a commit changes an anchored line or fork-anchors.txt (42-04-SUMMARY); Phase 44's release gate runs the anchors gate again
+full_suite: not run
+full_suite_reason: src/main did not change (no src/main row was approved), and the Java changes are Docker-free classes of package com.clickhouse.kafka.connect.ci that testUnit runs; Phase 44 runs two full suites on the release tip
+src_main_unchanged: yes
+unchanged_paths: yes
+test_files_modified: src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheck.java src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheckUnitTest.java src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java
+test_files_added_deleted_renamed: none
+removed_test_lines: 1
+non_planning_commits: e72447b574ee822c5a8404ea28d3d22e2642f8d0 870fe9d8f918d67516666e8272960ab1df628621 965e646f934cded3a1d1a855edc19c8a0cdfe145 7796ad0ab338ca623f41901dcb36935c49226a40 33d079a986b04ade5c878caa0d3aa392915c38a8 566f92e4f612dc4a33eebd3683ea04643e15daa9
+allowlist_commit: yes
+allowlists_25_gg6_untouched: yes
+docs_changed: docs/FORK-DELTA.md docs/ROLLOUT-v1.7.0_gg1.md docs/ROLLOUT-v1.7.0_gg6.md
+github_changed: .github/workflows/increment-version.yml
+spotless_release_guard: IS CLEAN
+spotless_archive_check: IS CLEAN
+spotless_archive_check_test: IS CLEAN
+doc01_rechecks: pass
+ledger_recheck: OK ledger: 18 rows, 0 problems
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+pushes: none
+post_review_recheck: pending the orchestrator's code review: after it and any review fix, re-run the scoped Spotless hook and the filtered testUnit of each class a fix touches, the anchors mirror at rows=190 and the ledger check; a review fix is its own commit and is recorded in the review disposition, not in the ledger
+jvm_crash: none
+```
+
+The gate `testUnit` ran cache-busted (`--rerun`) with Docker unreachable on HotSpot 21: 1826 testcases (the E-01 baseline 1824 plus 2), 0 failures, 0 errors, 2 skipped, exit 0; its dump holds 1826 lines and the status delta against the baseline reads removed=0 added=2 with the added set equal to `43-expected-added.tsv`. The removed-test-lines fact is the old size condition `if (result.libJarNames().size() != 1) {` of `ConfluentArchiveCheck.run` and nothing else. `src/main`, `src/testFixtures`, `src/integrationTest`, `build.gradle.kts`, `gradle/`, `VERSION`, `CHANGELOG.md` and `fork-anchors.txt` are byte-identical to the phase start; the 25 and gg6 allow-lists are unchanged since the phase start and the gg6 list equals its copy in tag `v1.7.0_gg6`. The non-planning commits since the phase start are exactly D3, D2, D1, C3, C2 and C1. The DOC-01 re-checks hold: the gg1 note holds "of any line" 0 times, row C2 of the gg6 note names FUT-05, and FORK-DELTA holds the publish run id `41298074815` 3 times. Both decisions not to run the cumulative invariant script and the full suite carry their reasons above. `origin/custom_build` still equals the E-01 value and nothing was pushed.
+
+2026-11-02T19:43:43Z
 
 Verdict: pass
