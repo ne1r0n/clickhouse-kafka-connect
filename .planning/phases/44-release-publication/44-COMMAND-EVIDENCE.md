@@ -16,7 +16,7 @@
 |-------|-------------|------|---------|
 | E-01 | RLS-01 | 44-01 | pass |
 | E-02 | RLS-01 | 44-01 | pass |
-| E-03 | RLS-01 | 44-01 | pending (plan 44-01) |
+| E-03 | RLS-01 | 44-01 | pass |
 | E-04 | RLS-01 | 44-01 | pending (plan 44-01) |
 | E-05 | RLS-03 | 44-02 | pending (plan 44-02) |
 | E-06 | RLS-03 | 44-02 | pending (plan 44-02) |
@@ -189,5 +189,42 @@ hygiene_scan: clean
 The three guard classes ran together (82 tests, none failed or skipped) with the Docker socket pointed at a path that does not exist, so none of them needs Docker. Neither Gradle run produced a JVM crash file, so the crash rule did not apply. The scratch rehearsal on copies and the real bump agree: both change one line in each of the two files. The rollback tag is a lightweight tag on the gg6 release commit, kept local; only the user's push step publishes it.
 
 2026-11-02T21:02:50Z
+
+Verdict: pass
+
+### E-03: The 1.7.0_gg7 CHANGELOG section, released sections untouched
+
+Backs: RLS-01 (the release carries a dated `1.7.0_gg7` section in operator terms, each client-V2-only effect scoped to client V2, and every released section is byte-identical to the phase-start file).
+
+```sh
+date -u +%F
+git show 9a5209c17e5380ec1f675cd8b3225250d3ff41fe:CHANGELOG.md > /tmp/gsd44/exec/changelog-old.md
+python3 -I <assemble: new section, one blank line, the unchanged phase-start file> > CHANGELOG.md
+python3 -I <tail check: the new file ends with the phase-start file byte for byte>
+python3 -I <section check: five headings in order, no planning identifier, no line over 125 columns without a URL, 17 required tokens>
+python3 -I .planning/phases/44-release-publication/44-doc-check.py links CHANGELOG.md
+git diff -U0 9a5209c17e5380ec1f675cd8b3225250d3ff41fe -- CHANGELOG.md   # the added lines, prefix removed, to /tmp/gsd44/exec/changelog-added.txt
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict /tmp/gsd44/exec/changelog-added.txt
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets .planning/phases/44-release-publication/44-COMMAND-EVIDENCE.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git add CHANGELOG.md
+git commit -F /tmp/gsd44/exec/msg-cl.txt
+```
+
+```text
+changelog_date: 2026-11-02
+changelog_tail_identical: yes
+changelog_section_check: OK changelog-section
+links_ok: yes
+hygiene_scan_added_lines: clean
+secrets_scan: clean
+anchors_mirror: rows=190 bad=0
+changelog_commit: 9c30e3ba08aa32141e1c9965e2c130870b60e8fa
+changelog_commit_files: CHANGELOG.md
+```
+
+The section adds 69 lines above the unchanged `1.7.0_gg6` heading. The one broken relative link is the pointer to `docs/ROLLOUT-v1.7.0_gg7.md`, the note that plan 44-02 creates. The section carries one bullet beyond the plan's list, the JMX `version=` segment and client-name change, because the release identity moves and gg6 documented the same change in the same place. The heading date is the UTC date at writing; the orchestrator compares it with the UTC date at the merge.
+
+2026-11-02T21:04:53Z
 
 Verdict: pass
