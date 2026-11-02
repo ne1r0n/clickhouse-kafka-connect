@@ -42,7 +42,8 @@ inserted-offset topic fix, a start-up WARN for unvetted retriable codes, and a `
 ## Improvements
 
 * One WARN at task start names every code in `additionalRetriableErrorCodes` that is outside the connector's vetted
-  transient set. Start-up still succeeds, the connector does not judge whether a listed code is transient beyond that
+  transient set. The WARN never fails the start-up (with ClickHouse down the task still fails at the connection step,
+  after it), the connector does not judge whether a listed code is transient beyond that
   set and does not budget retries, and the format check of the setting still applies.
 
 ## Known Issues
