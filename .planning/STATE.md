@@ -4,16 +4,16 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 41
 current_phase_name: Bounded Insert Timeout
-status: planning
+status: executing
 stopped_at: Phase 40 complete, ready to plan Phase 41
-last_updated: "2026-11-02T07:41:09.892Z"
+last_updated: "2026-11-02T08:44:40.486Z"
 last_activity: 2026-11-02
-last_activity_desc: Phase 40 complete, transitioned to Phase 41
-state_head: 388a3141a63b45d28689e1c8c18f109b577fa926
+last_activity_desc: Phase 41 execution started
+state_head: e6313127aa29318a30f88b50e77345c0240597d6
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 7
+  total_plans: 10
   completed_plans: 7
   percent: 33
 ---
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 40 — Helper Client Closing
+**Current focus:** Phase 41 — Bounded Insert Timeout
 
 ## Current Position
 
-Phase: 41 — Bounded Insert Timeout
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-02 — Phase 40 complete, transitioned to Phase 41
+Phase: 41 (Bounded Insert Timeout) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 41
+Last activity: 2026-11-02 — Phase 41 execution started
 
 Progress: [███░░░░░░░] 33%
 
