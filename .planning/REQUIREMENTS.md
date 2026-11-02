@@ -35,10 +35,10 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Risky Edits (RSK)
 
-- [ ] **RSK-01**: `Processing.doLogic` line 137 reads `originalTopic()` (OI-35-1); the state key and KeeperMap rows do not change, all 14 `ProcessingTest` cases are unchanged, and the remaining `onPartitionRemoved` mismatch is recorded.
-- [ ] **RSK-02**: `Utils.handleException` passes a `RetriableException` through as retriable; the set of changed rows in the 184-case classification matrix is named and equals the actual diff.
-- [ ] **RSK-03**: Start-up logs a WARN for non-transient codes in `additionalRetriableErrorCodes`; no validator and no retry budget; `ClickHouseSinkConfig` is unchanged.
-- [ ] **RSK-04**: OI-35-2 and OI-35-3 are documented as limits (injective rename, partition-preserving SMT); the state key does not change.
+- [x] **RSK-01**: `Processing.doLogic` line 137 reads `originalTopic()` (OI-35-1); the state key and KeeperMap rows do not change, all 14 `ProcessingTest` cases are unchanged, and the remaining `onPartitionRemoved` mismatch is recorded.
+- [x] **RSK-02**: `Utils.handleException` passes a `RetriableException` through as retriable; the set of changed rows in the 184-case classification matrix is named and equals the actual diff.
+- [x] **RSK-03**: Start-up logs a WARN for non-transient codes in `additionalRetriableErrorCodes`; no validator and no retry budget; `ClickHouseSinkConfig` is unchanged.
+- [x] **RSK-04**: OI-35-2 and OI-35-3 are documented as limits (injective rename, partition-preserving SMT); the state key does not change.
 
 ### Documents and Dispositions (DOC)
 
@@ -89,10 +89,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TMO-01 | Phase 41 | Complete |
 | TMO-02 | Phase 41 | Complete |
 | TMO-03 | Phase 41 | Complete |
-| RSK-01 | Phase 42 | Pending |
-| RSK-02 | Phase 42 | Pending |
-| RSK-03 | Phase 42 | Pending |
-| RSK-04 | Phase 42 | Pending |
+| RSK-01 | Phase 42 | Complete |
+| RSK-02 | Phase 42 | Complete |
+| RSK-03 | Phase 42 | Complete |
+| RSK-04 | Phase 42 | Complete |
 | DOC-01 | Phase 43 | Pending |
 | DOC-02 | Phase 43 | Pending |
 | RLS-01 | Phase 44 | Pending |
