@@ -33,6 +33,7 @@
 | E-17 | RLS-04 | 44-05 | pending (plan 44-05) |
 | E-18 | RLS-04 | 44-05 | pending (plan 44-05) |
 | E-19 | RLS-01 to RLS-04 | 44-05 | pending (plan 44-05) |
+| E-20 | RLS-04 | 44-04 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -777,3 +778,48 @@ Every Docker-free gate other than the hygiene scan holds on the gated head: test
 2026-11-02T23:27:31Z
 
 Verdict: fail
+
+### E-20: Re-run of the E-12 hygiene scan after the neutral rewording of three review sentences; the Docker-free decision is go
+
+Backs: RLS-04 (E-12 read verdict fail on one gate, the strict hygiene scan of 44-REVIEW.md; this entry re-runs that scan and re-confirms the freeze rule against the current tip, and so supersedes the E-12 decision without editing it). The id E-20 is the next free number after the plan's E-19 (the Freeze rule's re-run text); the publication tail of the orchestrator continues after it.
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py [--strict] <the same files as E-12>
+python3 -I .planning/phases/44-release-publication/44-review-check.py agents .planning/phases/44-release-publication/44-REVIEW.md --expect-ids a37f170dc8cc7a801,a752798ab528d2b1f,a401c814e0b118957,a32f740ad20019e8a
+git show 4c1f600b -U0
+git diff --quiet b265f5a45a0752f314bb95315e3cdfbeaa2b78cd HEAD -- . ':(exclude).planning'
+git diff --quiet b265f5a45a0752f314bb95315e3cdfbeaa2b78cd HEAD -- .planning/scripts
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets <evidence, review>
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+supersedes: E-12 (docker_free_decision: no-go, gate_failures: hygiene_scan_all)
+reviewer_hits_before: 3 hits in 44-REVIEW.md at lines 116, 204 and 244 (the helper's fifth default pattern, a bare four-letter verb beginning with st)
+wording_change_commit: 4c1f600b870d6b2912d6d7ed7f8c6d4fbf3dcb68
+wording_change_by: the orchestrator, by option (a) of the plan 44-04 halt; the executor did not edit the review file
+wording_change_scope: three insertions and three deletions in 44-REVIEW.md, the verb replaced by a synonym; no finding, count, id or attestation line changed
+reviewer_hits_after: 0 default, 0 strict
+agents_check: OK agents: rounds=4 distinct=4 ids=a37f170dc8cc7a801,a752798ab528d2b1f,a401c814e0b118957,a32f740ad20019e8a
+gated_head: b265f5a45a0752f314bb95315e3cdfbeaa2b78cd
+tip_at_rerun: 4c1f600b870d6b2912d6d7ed7f8c6d4fbf3dcb68
+tip_equals_gate_outside_planning: yes
+tip_equals_gate_planning_scripts: yes
+anchors_mirror: rows=190 bad=0
+hygiene_scan_all: clean
+hygiene_default_files: 12 files, 0 hits
+hygiene_strict_files: 10 files, 0 hits
+secrets_scan: clean
+origin_unchanged: yes
+nothing_pushed: yes
+testunit_and_invariants_valid: yes (the gated head, the tree outside .planning and the tree under .planning/scripts are unchanged; E-12 keeps the testUnit totals and the invariant start, and the invariant result is read in E-13)
+docker_free_decision: go
+utc_end: 2026-11-02T23:29:54Z
+```
+
+The only red of E-12 is gone: the three reviewer sentences use a synonym now, both hygiene modes read 0 hits on 44-REVIEW.md and on every other scanned file, and the reviewer attestation still reads four distinct agent ids. The gated head is unchanged outside `.planning` and under `.planning/scripts`, so the testUnit result (1826 tests, 0 failures, 2 skipped), the anchors mirror and the invariant run of E-12 hold for the head the user pushes. Plan 44-04's own verify blocks name E-12 with verdict pass; they are run with E-20 read in place of E-12 for the decision and the hygiene fact, and every other E-12 key is read from E-12 unchanged.
+
+2026-11-02T23:29:54Z
+
+Verdict: pass
