@@ -5,17 +5,17 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 44
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Completed 44-01-PLAN.md
-last_updated: "2026-11-02T21:11:13.398Z"
+stopped_at: Completed 44-02-PLAN.md
+last_updated: "2026-11-02T21:30:14.948Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 44 execution started
-state_head: fe69c58ec43465cd3d3cb30583fe9b19cccd91f3
+state_head: 885ef13b15c07f99eee86453e026ed63b85a8d54
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 22
-  completed_plans: 18
-  percent: 82
+  completed_plans: 19
+  percent: 83
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 44 (Release & Publication) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-11-02 — Phase 44 execution started
 
-Progress: [████████░░] 82%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -246,6 +246,7 @@ Progress: [████████░░] 82%
 | Phase 43 P02 | 3 min | 2 tasks | 4 files |
 | Phase 43 P03 | 13 min | 2 tasks | 4 files |
 | Phase 44 P01 | 11 min | 3 tasks | 10 files |
+| Phase 44 P02 | 18 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -355,6 +356,10 @@ Placement:
 - [Phase 43]: 43-03: Phase 44 handoff: the gg7 rollout note states 'FUT-05 stays open' in its RSK-03 section, and the RLS-03 reviewer brief covers docs/ROLLOUT-v1.7.0_gg1.md, docs/ROLLOUT-v1.7.0_gg6.md and docs/FORK-DELTA.md as edited in Phase 43, with FUT-05 in the gg6 note deliberate (43-DISPOSITION-LEDGER.md, Handoff to Phase 44) — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
 - [Phase 43]: 43-03: no src/main row approved; 26-IN-02, 27-WR-01, 27-IN-01, 28-IN-01 and 28-IN-05(b) dispositioned with the fork maintainer as owner (user answers "Defer all four (Recommended)" and "Approve 37 IN-04, defer 28 IN-05(b) (Recommended)"); 37-IN-05 split so the gg6 allow-list stays identical to tag v1.7.0_gg6 — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
 - [Phase 44]: Phase 44 plan 01: VERSION is bumped only through bump_version.py with its fork-anchors.txt row in one two-file commit; FORK-DELTA raw numbers are measured once on the release tip and written as tag-pair commands — The generated Version.java and the baseline picker were proven after a clean build; the 128-of-143 test-tree count in FORK-DELTA is left as written because no scope re-derives it and none moves between gg6 and the tip
+- [Phase 44]: 44-02: row T7 says the duplicate with exactlyOnce=false but not that no deduplication token is sent without exactlyOnce; the code sends the same token on each attempt on the default path
+- [Phase 44]: 44-02: the gg6 rollback step 3 points at the published asset, since a local rebuild of the tag differs from it in six connector classes
+- [Phase 44]: 44-02: the note carries no gradlew.bat sentence (git status empty after the rollback block, git 2.50.1); the forward path uses plain git switch and revert
+- [Phase 44]: 44-02: 44-note-check.py --only ignores rows of the other sections so the partial-note verify blocks pass on the finished note
 
 ### Pending Todos
 
@@ -414,8 +419,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T21:11:12.320Z
-Stopped at: Completed 44-01-PLAN.md
+Last session: 2026-11-02T21:30:13.278Z
+Stopped at: Completed 44-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
