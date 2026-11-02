@@ -81,6 +81,56 @@ What to do:
 2. With `exactlyOnce=false`, expect a possible duplicate after an insert that timed out and that the server committed anyway, unless the table deduplicates the repeat (rows T5 and T7). With `exactlyOnce=true` the retry reuses its deduplication token (row T8).
 3. Do not read the bound as a cap on the total insert time or as covering a write-side stall, a client V1 insert or a request other than an insert (rows T6, T11 to T14).
 
+## C. The consumer's topic in the inserted-offset map
+
+A topic-renaming SMT is a single message transform, such as `RegexRouter`, that changes the record's topic. An injective rename maps each source topic to its own target topic. The unbuffered delivery path, the default with `bufferCount` 0, is called the Direct path in this note; with `reportInsertedOffsets=true` it commits the offsets that the connector recorded for its inserts.
+
+| ID | Effect | Label | Applies when | How it is known |
+|----|--------|-------|--------------|-----------------|
+| R1 | `Processing.doLogic` reads the consumer's topic from `SinkRecord.originalTopic()` (line 137 of `Processing.java`). Only the in-memory inserted-offset map reads it, so with `reportInsertedOffsets=true` under an injective topic rename the Direct path now reports offsets under the consumer's topic, and `onPartitionRemoved` clears them. Before, it reported nothing for the renamed topic. With no topic-changing SMT nothing changes. | measured | reportInsertedOffsets=true, bufferCount 0, injective topic-renaming SMT | `OriginalTopicInsertedOffsetsUnitTest`, which needs no ClickHouse server: on the tree before the change four of its six cases failed by assertion (among them `directDeliveryReportsTheConsumersTopicUnderAnInjectiveRename` and `closeClearsTheInsertedOffsetOfTheRevokedConsumerPartition`); on the changed tree all six pass. The change is one line in `Processing.java`, and `StateRecord.getOriginalTopic` is read only in `BaseStateProviderImpl.onStateUpdate`. `FORK-DELTA.md`, Known costs and open items, item 16. |
+| R2 | Not changed by row R1: the exactly-once state key `<transformed topic>-<partition>`, the KeeperMap row `(key, minOffset, maxOffset, state)`, table routing, and the BEFORE and AFTER flag sequence. | unchanged: read from the code; pinned by a test: measured | exactlyOnce=true | `git diff v1.7.0_gg6 HEAD` of `Processing.java` is that one line; `KeeperStateProvider.setStateRecord` writes the key, the two offsets and the state, and no original topic. `OriginalTopicInsertedOffsetsUnitTest.stateKeyAndFlagSequenceStayOnTheTransformedTopicUnderAnInjectiveRename` pins the key and the flag order. |
+
+What to do: nothing, unless you enabled `reportInsertedOffsets=true` under a topic-renaming SMT; then expect offsets under the consumer's topic, and read section D if the rename or the SMT is of another kind.
+
+## D. Limits under topic-changing SMTs
+
+| ID | Effect | Label | Applies when | How it is known |
+|----|--------|-------|--------------|-----------------|
+| R3 | Limits: exactly-once, the in-memory state machine and `reportInsertedOffsets` are supported only for an injective rename and a partition-preserving SMT. A many-to-one rename shares one state record, and the Direct path then reports the shared maximum offset plus one for the first record's topic (a topic at offset 10 was reported at 110). A partition-changing SMT keeps the transformed partition in the state key, and `onPartitionRemoved` does not clear it. Do not enable `reportInsertedOffsets` with them. | the two limit cases: measured; Connect's handling of an offset above the consumer position: derived | many-to-one rename or partition-changing SMT | `OriginalTopicInsertedOffsetsUnitTest.limitManyToOneRenameReportsTheSharedMaximumForTheFirstSourceTopic` and `limitPartitionChangingSmtKeepsTheTransformedPartitionInTheKey`. That Kafka Connect may commit an offset above the consumer's position follows from consumer-group semantics; no broker ran. `FORK-DELTA.md`, item 16. |
+
+What to do: do not enable `reportInsertedOffsets` with a many-to-one rename or a partition-changing SMT, and do not rely on exactly-once or the in-memory state machine with them.
+
+## E. RetriableException passes through as retriable
+
+| ID | Effect | Label | Applies when | How it is known |
+|----|--------|-------|--------------|-----------------|
+| R4 | `Utils.handleException` treats a `RetriableException` that is the exception, or anywhere in its cause chain, as retriable. The rule comes after the server-error rule and before the `DataException` rule, and the walk of the chain stops at the first repeated cause. A `RetriableException` thrown by the writer (the insert timeout with `async=true`, the DDL-propagation timeout, or a `DataException` wrapping one) is therefore retriable under both `errors.tolerance` values. Under `all`, a batch that went to the dead letter queue is now redelivered with no retry budget; under `none`, the task no longer fails on it. | measured | either client | `RetriableExceptionPassThroughUnitTest` and `HandleExceptionCauseCycleUnitTest`, which need no ClickHouse server; 30 of the 38 cases of the first failed on the tree before the change, and all of them pass after it. The writer sites are `ClickHouseWriter.awaitInsertResponse` and `ClickHouseWriter.refreshTableAfterDDL`. `FORK-DELTA.md`, item 17. |
+| R5 | A `RetriableException` anywhere in the chain overrides the server-code classification: a `RetriableException` over a non-retriable ClickHouse code, for example 60, is now retriable. | measured | either client | The two cases of `RetriableExceptionPassThroughUnitTest` named for a retriable exception over a non-retriable server code, each under both tolerance values. |
+| R6 | Updates row C3 of the `v1.7.0_gg6` note: the two retriable `DataException` behaviours it names are now pinned by `WrappedDataExceptionClassificationPinUnitTest`. A decision on changing either is still open. | measured | either client | `WrappedDataExceptionClassificationPinUnitTest`; `FORK-DELTA.md`, item 17. |
+
+Under `errors.tolerance=all`, a batch whose failure carries a `RetriableException` no longer reaches the dead letter queue: Kafka Connect redelivers it, with no retry budget. Under `errors.tolerance=none`, the task does not fail on it.
+
+What to do: if you rely on the dead letter queue to take such a batch out of the way, expect it to be redelivered instead, and look at the cause of a batch that keeps failing (rows R4 and R5).
+
+## F. A start-up warning for additionalRetriableErrorCodes
+
+When a task starts, the connector logs this WARN once if `additionalRetriableErrorCodes` names a code outside the vetted set; `{}` is replaced by the unvetted codes in ascending order, written as a list in square brackets:
+
+```text
+additionalRetriableErrorCodes lists {}, which the connector does not treat as transient. A batch that fails with such a code is redelivered with no retry budget and outside errors.tolerance and the dead letter queue, so a permanent error blocks the partition until the setting is changed.
+```
+
+| ID | Effect | Label | Applies when | How it is known |
+|----|--------|-------|--------------|-----------------|
+| R7 | One WARN at task start, with the text above, naming the codes of `additionalRetriableErrorCodes` that are outside the vetted set, which is `Utils.DEFAULT_RETRIABLE_ERROR_CODES` (15 codes) plus 216. It is logged before the connection step, so also when ClickHouse is down. Start-up still succeeds. It carries no record data, a transient code logs nothing, and nothing validates the codes or budgets retries. | text and vetted set: read from the code; behaviour: measured | any connector that sets additionalRetriableErrorCodes | `ClickHouseSinkTask.java`: the text is a string constant, `start` calls the check before it builds the proxy task, and the codes are sorted in a `TreeSet`. `UnvettedRetriableCodesWarnUnitTest` and `UnvettedRetriableCodesWarnLiveTest` assert the behaviour, including the sorted list form, for example `[60, 62]`; `FORK-DELTA.md`, item 24. |
+| R8 | There is no retry budget for a redelivered batch, and no setting removes a code from the built-in set. | read from the code | any connector that sets additionalRetriableErrorCodes | `Utils.handleException` throws a `RetriableException` for a listed code and Kafka Connect redelivers the batch; `ClickHouseSinkConfig` defines `additionalRetriableErrorCodes` as the only setting of this kind, and `retryCount` only repeats the pings and queries of the helper client. `FORK-DELTA.md`, item 24. |
+
+What to do: list only codes that are transient, such as an overloaded server or a table that is briefly read-only. A permanent code makes the task loop on the same batch.
+
+FUT-05 stays open.
+
+It is the open follow-up for a retry budget, or for a setting that removes a built-in code, and [`FORK-DELTA.md`](FORK-DELTA.md) tracks it under Known costs and open items.
+
 ## G. Dependencies, release identity and rollback
 
 | ID | Effect | Label | Applies when | How it is known |
@@ -150,3 +200,13 @@ The `v1.7.0_gg6` note is not edited. The rows of this note supersede the stateme
 | Known limits, third bullet: the unbuffered Direct path with `reportInsertedOffsets=true` under a rename commits nothing for the renamed topics, and the call that clears a revoked partition's entry removes nothing for a renamed topic. | Changed for an injective rename, where the Direct path now reports offsets under the consumer's topic and clears them on revocation; the other limits of that bullet remain. | R1, R3 |
 | Row C3: two retriable `DataException` behaviours that no test asserts, with a decision on changing them open. | Both are now pinned by a test; the decision on changing them is still open. | R6 |
 | The nightly's Datagen completion counting, in the known issues of the `v1.7.0_gg6` section of the changelog. | Fixed in the integration test harness; it is not visible to an operator, so no row states it. | none |
+
+## Known limits carried into this release
+
+These limits exist in this release; none is fixed here. Each bullet points at its rows.
+
+- The closing of helper clients has residuals: a Keeper state provider constructor that fails on client V1, a helper-client constructor that fails after it built its client V2 instance, a second `start()` on one writer, a task-level `stop()` without `try`/`finally` around the delivery strategy's `stop()`, and a five-second wait that can end with a table refresh still running on a closed client (row F5).
+- The bounded insert has limits: a write-side stall, a client V1 insert and a request other than a client V2 insert are not bounded by it, an insert that streams progress headers may escape it, and the help text of `clickhouseClientInsertTimeoutMs` still describes a single insert response (rows T6 and T11 to T14).
+- A many-to-one rename and a partition-changing SMT are not supported for exactly-once, the in-memory state machine or `reportInsertedOffsets` (row R3).
+- A code in `additionalRetriableErrorCodes` is redelivered with no retry budget, and no setting removes a code from the built-in set; the end of section F says where this stays open (rows R7 and R8).
+- Carried from the `v1.7.0_gg6` note as information: that note does not state what a first chunk with exactly the stored range does after the upgrade (the `SAME` state of `Processing.doLogic`), and its section B lists configurations it does not characterise. `Processing.doLogic` changed in this release only at the line of row R1, and this note adds no statement about either.
