@@ -20,7 +20,7 @@
 | E-04 | CLS-03, CLS-04 | 40-01 | pass |
 | E-05 | CLS-01, CLS-04 | 40-02 | pass |
 | E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pass |
-| E-07 | CLS-01, CLS-02 | 40-02 | fail |
+| E-07 | CLS-01, CLS-02 | 40-02 | pass |
 | E-08 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 | E-09 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 | E-10 | CLS-03 | 40-03 | pending (plan 40-03) |
@@ -323,6 +323,65 @@ Verdict: pass
 
 ### E-07: Gate A on the writer-half commit: testUnit with Docker unreachable and the full suite on latest x V2
 
+Backs: CLS-01 and CLS-02 (success criterion 2: `testUnit` and a full suite pass on the writer-half commit before the Keeper half starts). Re-measured after a user-authorised, test-only deviation; the failed first attempt is kept below.
+
+Deviation (recorded): attempt 1 was red on three existing `ClickHouseWriterTest` cases that used a writer after `start()` returned false on an empty database. The user chose to seed a table in the test helper rather than change production code: commit `fae1fcb1` edits only `ClickHouseWriterTest.runWithWriter` (it creates a uniquely named seed table through the test helper before `start()`, asserts that `start()` returned true, and drops the seed table in `finally`). No assertion of any existing case changed, no test was weakened or deleted, and the three cases still query a table that does not exist (or that the case creates itself) while another table is present. The plan's rule against editing existing tests was waived for this one fix only. The gated tree is therefore the writer-half commit plus `fae1fcb1`.
+
+```sh
+git rev-parse HEAD
+git diff --name-only de3faf77 HEAD -- . ':!.planning'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterTest.java" -PspotlessIdeHookUseStdOut
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun --tests '*sink.db.ClickHouseWriterTest' > /tmp/gsd40/exec/cwt-fix.log 2>&1
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd40/exec/gateA2-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-gateA2-testunit
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd40/exec/gateA2-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd40/exec/xml-gateA2-full
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-gateA2-full tests=2307 failures=0 errors=0 skipped=18
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py skips /tmp/gsd40/exec/xml-gateA2-full
+```
+
+```text
+origin_reread: equal
+gate_head: fae1fcb17dc580436108aa50a994d0c5204fbbc5
+gated_tree_equals_writer_commit: no
+gated_tree_delta_vs_writer_commit: src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterTest.java only (commit fae1fcb1, test-only, no assertion changed)
+keeper_half_absent: yes
+test_fix_commit: fae1fcb17dc580436108aa50a994d0c5204fbbc5
+test_fix_spotless: IS DIRTY, import-only (3 lines, same as before the edit), no import line changed
+test_fix_class_run: 16 tests, 0 failures, 0 skipped
+jvm_line: HotSpot 21 (OpenJDK 64-Bit Server VM, -PjavaVersion=21); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1709
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 22
+clickhouse_version_before: 26.10.3.7
+clickhouse_digest: sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+full_exit: 0
+full_tests: 2307
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK
+full_delta_vs_baseline: 22
+clickhouse_version_after: 26.10.3.7
+jvm_crash: none
+v1_live_cases_passed: yes
+v1_live_cases_rationale: the three [1] V1 testcases are the client V1 invocations of the only three V1/V2-parameterized methods of ClickHouseWriterTest (@ParameterizedTest at lines 299, 403 and 524: testSchemaRefreshedAfterCode131, staleDescribeTableIsNotCachedAsCurrentSchema, doInsertSupportsSpecialCharactersInTableNames); the only other parameterized method (line 577) names its cases [1] json to [3] tsv, so no other testcase is named [1] V1
+attempt_1_verdict: fail (three ClickHouseWriterTest cases, kept below)
+```
+
+Both runs are green on the writer-half commit plus the test-only fix: `testUnit` with Docker unreachable ran 1709 tests (1687 plus 22), 0 failures, 2 skipped; the full suite on ClickHouse `latest` (`26.10.3.7`, same digest before and after) with client V2 ran 2307 tests (2285 plus 22), 0 failures, 0 errors, 18 skipped (the named inventory, helper OK). The class XML of `ClickHouseWriterTest` has no failing or skipped case, with three passed `[1] V1` cases and the passed JSON comparison case, so every `getMutationRequest` call site was inserted through on client V1 against real ClickHouse and read back. Origin `custom_build` still equals E-01's tip and nothing was pushed.
+
+#### Attempt 1 (superseded, kept; gate head 1659e9be): gate A on the writer-half commit
+
 Backs: CLS-01 and CLS-02 (success criterion 2: `testUnit` and a full suite pass on the writer-half commit before the Keeper half starts). The testUnit half passed; the full-suite half is red on three existing `ClickHouseWriterTest` cases, so the gate fails.
 
 ```sh
@@ -343,7 +402,7 @@ python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed
 python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py skips /tmp/gsd40/exec/xml-gateA-full
 ```
 
-```text
+```txt
 origin_reread: equal
 gate_head: 1659e9bece45860ad73842074a499aec0ea53ef0
 gated_tree_equals_writer_commit: yes
@@ -379,4 +438,8 @@ Cause, read from the stack traces and the test log. The three failing cases call
 
 2026-11-01T22:15:19Z
 
-Verdict: fail
+Attempt 1 verdict: fail
+
+2026-11-02T06:35:09Z
+
+Verdict: pass
