@@ -21,7 +21,7 @@
 | E-05 | TMO-01 | 41-02 | pass |
 | E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pass |
 | E-07 | TMO-01 | 41-02 | pass |
-| E-08 | TMO-01, TMO-02 | 41-03 | pending (plan 41-03) |
+| E-08 | TMO-01, TMO-02 | 41-03 | pass |
 | E-09 | TMO-03 | 41-03 | pending (plan 41-03) |
 | E-10 | PIN-01, TMO-01, TMO-02, TMO-03 | 41-03 | pending (plan 41-03) |
 
@@ -373,5 +373,64 @@ discriminating: yes
 The operator guards were green on the unfixed tree by design (E-03) and fail here, so they would catch a fix that overrides the operator. With the operator skip removed (the naive unconditional per-insert set), the pin class ran 15 tests with 6 failures (the longer-value guard and the shorter-value guard on JSON, String and RowBinary) and the helper class ran 11 tests with 4 failures (the four `insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne` rows); all 10 failures are `org.opentest4j.AssertionFailedError`. The 9 stall pins stay green, and so do the four other helper methods, including the null-or-blank case, which expects the per-insert value either way. The helper was restored with `git checkout -- <file>` (the guard expression counts 1 again and `git diff --quiet HEAD -- src` exits 0).
 
 2026-11-02T09:14:48Z
+
+Verdict: pass
+
+### E-08: Gate on the fix commit: testUnit with Docker unreachable and the full suite on latest x V2
+
+Backs: TMO-01 and TMO-02 (the cache-busted `testUnit` with Docker unreachable and the full suite on ClickHouse `latest` x client V2 run on a head whose non-planning tree equals the fix commit; totals compared live with E-01's measured baseline plus the 26 cases the phase added).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-parse HEAD
+git diff --quiet 14952562ed2cdbc8307a65357a136d2d63b69c62 HEAD -- . ':!.planning'
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd41/exec/gate-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd41/exec/xml-gate-testunit
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd41/exec/gate-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd41/exec/xml-gate-full
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-testunit tests=1745 failures=0 errors=0 skipped=2
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-full tests=2343 failures=0 errors=0 skipped=18
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py skips /tmp/gsd41/exec/xml-gate-full
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-full --class InsertStallBoundPinUnitTest tests=15 failures=0 errors=0
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-full --class InsertSocketTimeoutOptionUnitTest tests=11 failures=0 errors=0
+```
+
+```text
+origin_reread: equal
+gate_head: 8ba2c6f1a6276101f4f870fa3f3f514392bfd985
+gated_tree_equals_fix_commit: yes
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1745
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 26
+full_exit: 0
+full_tests: 2343
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_delta_vs_baseline: 26
+new_classes: InsertStallBoundPinUnitTest 15/0; InsertSocketTimeoutOptionUnitTest 11/0
+new_classes_green: yes
+clickhouse_version_before: 26.10.3.7
+clickhouse_version_after: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_crash: none
+```
+
+The gated head descends from the fix commit `14952562` and differs from it only under `.planning`, so every non-planning file is the fix commit's. The `testUnit` run with Docker unreachable (colima profile `vz` untouched, the daemon socket pointed at a missing path) was cache-busted by deleting the results directory and passing `--rerun`; it ran 1745 tests, exactly the measured baseline of 1719 plus the 26 new cases (15 stall-pin cases and 11 helper cases), with 0 failures, 0 errors and the 2 baseline skips. The full suite on ClickHouse `latest` x client V2 ran 2343 tests, the measured full baseline of 2317 plus 26, with 0 failures, 0 errors and exactly the 18 named skips (the helper reports 7 named skips and 11 state-mismatch cases, none unexpected). Both new classes read 15/0 and 11/0 in both runs. `SELECT version()` read 26.10.3.7 before the `testUnit` run and after the full suite and the image digest is unchanged from E-01, so no image drift. Every Gradle run used HotSpot 21 (`-PjavaVersion=21`), so the OpenJ9 crash did not apply; no `hs_err_pid*`, `javacore.*`, `core.*` or `Snap.*` file appeared in the repository root. Origin `custom_build` still reads the tip recorded in E-01. Nothing was pushed.
+
+2026-11-02T09:21:02Z
 
 Verdict: pass
