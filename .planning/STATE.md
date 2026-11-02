@@ -5,16 +5,16 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 42
 current_phase_name: Isolated High-Risk Edits
 status: executing
-stopped_at: Phase 41 complete, ready to plan Phase 42
-last_updated: "2026-11-02T12:00:19.189Z"
+stopped_at: Completed 42-01-PLAN.md
+last_updated: "2026-11-02T12:13:25.915Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 42 execution started
-state_head: 0740bfca8cc0cc6de54859793e6cee19faff2e2c
+state_head: d4603452a7fef783e372dbbee52886ffb7acbee1
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
   percent: 50
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 42 (Isolated High-Risk Edits) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 42
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-11-02 — Phase 42 execution started
 
 Progress: [█████░░░░░] 50%
@@ -236,6 +236,7 @@ Progress: [█████░░░░░] 50%
 | Phase 41 P01 | 21 min | 2 tasks | 3 files |
 | Phase 41 P02 | 11 min | 3 tasks | 8 files |
 | Phase 41 P03 | 46 min | 2 tasks | 1 files |
+| Phase 42 P01 | 11 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -337,6 +338,8 @@ Placement:
 - [Phase 41]: Phase 41 plan 02: per-insert socket_timeout at all three V2 insert sites via setInsertSocketTimeoutV2, skipped when jdbcConnectionProperties names socket_timeout (0 included); progress-header probe recorded unmeasured/inferred (a connector body insert streams no progress header on 26.10.3.7)
 - [Phase 41]: 41-03: the progress-header claim in the F-2 rollout item carries label inferred / outcome unmeasured exactly as E-06 recorded it; Phase 44 states it as derived (mechanism, not measured) or measures it first
 - [Phase 41]: 41-03: the exactly-once half of the duplicate risk is labelled read from the code (token reuse) and derived (server deduplication), never measured
+- [Phase 42]: Processing.doLogic reads SinkRecord.originalTopic() at line 137 so the Direct path keys inserted offsets by the consumer topic; the exactly-once state key stays on the transformed topic
+- [Phase 42]: Many-to-one rename and partition-changing SMT are pinned as limit cases so Known cost 16 labels them measured
 
 ### Pending Todos
 
@@ -396,8 +399,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T10:03:47.450Z
-Stopped at: Phase 41 complete, ready to plan Phase 42
+Last session: 2026-11-02T12:13:25.303Z
+Stopped at: Completed 42-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
