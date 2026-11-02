@@ -23,7 +23,7 @@
 | E-05 | RSK-02 | 42-02 | pass |
 | E-06 | RSK-02 | 42-02 | pass |
 | E-07 | RSK-02 | 42-02 | pass |
-| E-08 | RSK-03 | 42-03 | pending (plan 42-03) |
+| E-08 | RSK-03 | 42-03 | pass |
 | E-09 | RSK-03 | 42-03 | pending (plan 42-03) |
 | E-10 | RSK-03 | 42-03 | pending (plan 42-03) |
 | E-11 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
@@ -472,5 +472,56 @@ origin_reread: equal
 The gated head descends from the RSK-02 code commit `c8574890` and its non-planning tree is equal to it. Both runs exited 0 with 0 failures and 0 errors: `testUnit` with Docker unreachable ran 1801 tests (the E-04 total 1763 plus 38, 2 skipped) and the full suite on `latest` x V2 ran 2399 tests (2361 plus 38, the 18 named skips). Both status deltas against the E-04 dumps removed nothing and added exactly the 38 `RetriableExceptionPassThroughUnitTest` rows written down in E-05, so the actual diff equals the list: every pre-existing testcase, including all 216 `WriterFailureClassificationUnitTest` executions, the 14 PIN-02 rows and the 15 TMO-02 rows, kept its status. The ClickHouse version and the image digest equal E-01's and read the same before and after the full run. No crash file appeared in the repository root, and `origin/custom_build` still equals the E-01 value.
 
 2026-11-02T12:22:14Z
+
+Verdict: pass
+
+### E-08: RSK-03 red runs on the unchanged tree: the three unvetted start-up cases and the live WARN count fail by assertion
+
+Backs: RSK-03 (the Docker-free `UnvettedRetriableCodesWarnUnitTest` and the live `UnvettedRetriableCodesWarnLiveTest`, run before any production change: the three unvetted start-up cases fail because no WARN is logged, while the unset, the 15 built-in, 216 and `216,159,3` cases pass; the live case starts, inserts and reads back, then fails on its WARN-count assertion).
+
+```sh
+test -f /tmp/gsd42/exec/status-gate2-testunit.tsv && test -f /tmp/gsd42/exec/status-gate2-full.tsv
+wc -l /tmp/gsd42/exec/status-gate2-testunit.tsv /tmp/gsd42/exec/status-gate2-full.tsv
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-r3.out 2> /tmp/gsd42/exec/sc-r3.err
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnLiveTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-r3l.out 2> /tmp/gsd42/exec/sc-r3l.err
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*UnvettedRetriableCodesWarnUnitTest' --tests '*AdditionalRetriableErrorCodesPinUnitTest' > /tmp/gsd42/exec/rsk03-red-unit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-rsk03-red-unit
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk03-red-unit --class .UnvettedRetriableCodesWarnUnitTest tests=21 failures=3
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py failed /tmp/gsd42/exec/xml-rsk03-red-unit --expect 'UnvettedRetriableCodesWarnUnitTest#unvettedCodesLogOneWarnNamingThemAtStartup'
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk03-red-unit --class AdditionalRetriableErrorCodesPinUnitTest tests=19 failures=0 errors=0
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun --tests '*UnvettedRetriableCodesWarnLiveTest' > /tmp/gsd42/exec/rsk03-red-live.log 2>&1
+cp -R build/test-results/test /tmp/gsd42/exec/xml-rsk03-red-live
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk03-red-live --class .UnvettedRetriableCodesWarnLiveTest tests=1 failures=1
+shasum -a 256 src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnLiveTest.java
+git status --porcelain -- src
+```
+
+```text
+before_dumps: from E-07
+spotless_unit_class: IS CLEAN
+spotless_live_class: IS CLEAN
+red_unit_run_exit: 1
+red_unit_class_tests: 21
+red_unit_class_failures: 3
+red_unit_failed_set: UnvettedRetriableCodesWarnUnitTest#unvettedCodesLogOneWarnNamingThemAtStartup
+red_unit_reason_assertion: yes
+codes_pin: 19/0
+red_live_run_exit: 1
+red_live_class_tests: 1
+red_live_class_failures: 1
+red_live_reason_warn_count: yes
+red_live_clickhouse_version: 26.10.3.7
+red_unit_test_sha256: 09b19f333b6d6ad6cc05548bcdb8f1a6ed93df46c8f79c5123b4fe90d4730f89
+red_live_test_sha256: 0ababbde25dbc6b4c7f820aa5cc44486b6911c5f0708ccca214c936417a87029
+src_main_untouched: yes
+```
+
+The before dumps `status-gate2-testunit.tsv` (1801 lines) and `status-gate2-full.tsv` (2399 lines) already existed and their line counts equal E-07 `testunit_tests` and `full_tests`. The unit red run exited 1 with the class at 21 tests and 3 failures; the failing set is exactly the three unvetted rows of `unvettedCodesLogOneWarnNamingThemAtStartup` (`60`, `62, 60,159`, `2147483647`), each an `org.opentest4j.AssertionFailedError` failure element (no `error` element) and none over 30 s, so the unchanged tree logs no WARN for them. The unset case, the 15 built-in codes, `216` and `216,159,3` pass: for each, `start()` reached the connection step and threw `Connection to ClickHouse is not active.` as asserted. `AdditionalRetriableErrorCodesPinUnitTest` is 19/0 in the same run. The live red run exited 1 with the class at 1 test and 1 failure, an `AssertionFailedError` whose message starts `unvetted-code WARN count at start-up ==> expected: <1> but was: <0>`: start, put and read-back all passed and only the WARN is missing. No guard literal needed a correction before the red was recorded, and `git status --porcelain -- src` lists only the two untracked test classes.
+
+2026-11-02T12:26:40Z
 
 Verdict: pass
