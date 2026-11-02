@@ -32,7 +32,7 @@
 | E-16 | RLS-04 | 44-05 | pending (user-gated) |
 | E-17 | RLS-04 | 44-05 | pending (user-gated) |
 | E-18 | RLS-04 | 44-05 | pending (user-gated) |
-| E-19 | RLS-01 to RLS-04 | 44-05 | pending (plan 44-05) |
+| E-19 | RLS-01 to RLS-04 | 44-05 | pass |
 | E-20 | RLS-04 | 44-04 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
@@ -1134,3 +1134,53 @@ The handoff is a document only. Its step is the user's (or, under the user's ans
 2026-11-02T23:47:32Z
 
 Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-19: The phase closes locally and stops: RLS-01 to RLS-03 satisfied, RLS-04 gated and pending the user's direct approval, nothing pushed
+
+Backs: RLS-01 to RLS-04 (the local close of Phase 44: the requirement status, the deferred must-haves of ROADMAP criterion 5, the wording changes for the orchestrator, the carried items, and the final no-push and Freeze-rule facts at the close).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*'; git ls-remote --tags origin 'v1.7.0_gg7*' 'pre-v1.7.0_gg7*'
+git tag -l 'v1.7.0_gg7'; git rev-parse 'pre-v1.7.0_gg7^{commit}'
+git diff --quiet b265f5a45a0752f314bb95315e3cdfbeaa2b78cd HEAD -- . ':(exclude).planning'
+git diff --quiet b265f5a45a0752f314bb95315e3cdfbeaa2b78cd HEAD -- .planning/scripts
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe HEAD -- . ':(exclude).planning'
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe HEAD -- .planning/scripts
+git show-ref refs/gsd/release-m-v1.7.0_gg7
+git worktree list
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict .planning/phases/44-release-publication/44-LOCAL-CLOSE-RECORD.md .planning/phases/44-release-publication/44-COMMAND-EVIDENCE.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets .planning/phases/44-release-publication/44-COMMAND-EVIDENCE.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+```
+
+```text
+local_complete: yes
+requirements_status: RLS-01=satisfied; RLS-02=satisfied; RLS-03=satisfied; RLS-04=pending
+pending_user_steps: G3; U1; U2; G4; U3; G5; U4; U5
+deferred_must_haves_listed: 6
+wording_changes_listed: 5
+carried_items_listed: 16
+origin_custom_build_final: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+nothing_pushed: yes
+no_gg7_tag_anywhere: yes
+pre_tag_local_only: yes
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg7.md
+scope_planning_scripts: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt; .planning/scripts/fork-anchors.txt
+no_protected_change: yes
+tip_equals_gate_outside_planning: yes
+index_rows: E-01..E-19 present; E-15..E-18 pending
+index_note: E-20 (the plan 44-04 hygiene re-run that supersedes E-12) is also present, so the index helper's contiguous check up to E-19 reads one row more; the publication tail is recorded from E-21
+hygiene_scan_all: clean
+secrets_scan: clean
+worktrees_clean: yes
+final_head: 9d5c8d0de54db1043eb846d82cbcd9e0293f0d18
+ready_for_approval: yes
+close_commit: 9d5c8d0de54db1043eb846d82cbcd9e0293f0d18
+```
+
+The phase is complete locally and stops here. The bundle, the four handoffs and the runbook exist; the merge, the runs and the tag are the user's and the orchestrator's after the user's direct approval. The verdict is pass for the local gate only.
+
+2026-11-02T23:48:57Z
+
+Verdict: pass
