@@ -5,16 +5,16 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 41
 current_phase_name: Bounded Insert Timeout
 status: executing
-stopped_at: Completed 41-01-PLAN.md
-last_updated: "2026-11-02T09:02:03.367Z"
+stopped_at: Completed 41-02-PLAN.md
+last_updated: "2026-11-02T09:15:51.549Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 41 execution started
-state_head: d8e34742b7a28d6485fc61387351e0ecc8270199
+state_head: 3bef5f94245fea483c9e33aaab6502bcc865f4ff
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 33
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 41 (Bounded Insert Timeout) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-11-02 — Phase 41 execution started
 
@@ -233,6 +233,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 40 P02 | 25 min | 3 tasks | 7 files |
 | Phase 40 P03 | 50 min | 3 tasks | 8 files |
 | Phase 41 P01 | 21 min | 2 tasks | 3 files |
+| Phase 41 P02 | 11 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -331,6 +332,7 @@ Placement:
 - [Phase 40]: 40-02: gate A red on three ClickHouseWriterTest cases using a writer after a false start(); user chose to seed a table in runWithWriter (test-only commit fae1fcb1) and keep production closing chc on every failed start
 - [Phase 40]: 40-03: the writer-files untouched check is taken against fae1fcb1 (the test-only seed), not de3faf77; the invariants gate ran once on the E-10 commit and covers both code commits
 - [Phase 41]: Operator socket_timeout cases are guards against a naive fix, not red pins — They pass on the unfixed tree because createClientV2 already forwards socket_timeout as a client-level option; plan 41-02 proves they discriminate by a recorded mutation
+- [Phase 41]: Phase 41 plan 02: per-insert socket_timeout at all three V2 insert sites via setInsertSocketTimeoutV2, skipped when jdbcConnectionProperties names socket_timeout (0 included); progress-header probe recorded unmeasured/inferred (a connector body insert streams no progress header on 26.10.3.7)
 
 ### Pending Todos
 
@@ -390,8 +392,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T09:01:58.323Z
-Stopped at: Completed 41-01-PLAN.md
+Last session: 2026-11-02T09:15:50.900Z
+Stopped at: Completed 41-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
