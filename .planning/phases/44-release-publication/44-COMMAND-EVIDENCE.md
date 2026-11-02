@@ -23,7 +23,7 @@
 | E-07 | RLS-03 | 44-02 | pass |
 | E-08 | RLS-03 | 44-03 | pass |
 | E-09 | RLS-03 | 44-03 | pass |
-| E-10 | RLS-03 | 44-03 | pending (plan 44-03) |
+| E-10 | RLS-03 | 44-03 | pass |
 | E-11 | RLS-02 | 44-04 | pending (plan 44-04) |
 | E-12 | RLS-04 | 44-04 | pending (plan 44-04) |
 | E-13 | RLS-04 | 44-04 | pending (plan 44-04) |
@@ -559,5 +559,42 @@ rehearsal_cleaned: yes
 ```
 
 2026-11-02T22:30:18Z
+
+Verdict: pass
+
+### E-10: Every review finding is dispositioned and the release documents are frozen for the allow-list and the gates
+
+Backs: RLS-03 (the disposition of all 20 findings of the four review rounds, with open 0; the frozen documents after the last fix: the non-planning path set since the phase start, the scripts scope, the absence of review text in the note, the unchanged protected paths and published notes, and the green owning checks).
+
+```sh
+git rev-list 9a5209c17e5380ec1f675cd8b3225250d3ff41fe..HEAD > /tmp/gsd44/review/phase-commits.txt
+python3 -I .planning/phases/44-release-publication/44-review-check.py disposition .planning/phases/44-release-publication/44-REVIEW.md .planning/phases/44-release-publication/44-REVIEW-DISPOSITION.md --commits /tmp/gsd44/review/phase-commits.txt
+python3 -I .planning/phases/44-release-publication/44-review-check.py rounds .planning/phases/44-release-publication/44-REVIEW.md .planning/phases/44-release-publication/44-REVIEW-DISPOSITION.md
+git add .planning/phases/44-release-publication/44-REVIEW-DISPOSITION.md && git commit -m "docs(44-03): disposition every Phase 44 review finding (RLS-03)"
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe c2bf5f0d21ea7f9ae09578941bc4b81e629b290e -- . ':(exclude).planning'
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe c2bf5f0d21ea7f9ae09578941bc4b81e629b290e -- .planning/scripts
+grep -cE '(WR|IN|CR|BL)-[0-9]{2}|^round:' docs/ROLLOUT-v1.7.0_gg7.md
+git diff --quiet 9a5209c17e5380ec1f675cd8b3225250d3ff41fe HEAD -- src build.gradle.kts settings.gradle.kts gradle .github README.md LICENSE docs/ROLLOUT-v1.7.0_gg2.md docs/ROLLOUT-v1.7.0_gg3.md docs/ROLLOUT-v1.7.0_gg4.md docs/ROLLOUT-v1.7.0_gg5.md .planning/scripts/verify-merge-invariants.sh .planning/scripts/fork-anchor-exemptions.txt
+git diff --quiet 9a5209c17e5380ec1f675cd8b3225250d3ff41fe HEAD -- docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md
+bash <the verify block of plan 44-03 Task 3>
+```
+
+```text
+docs_frozen_scope: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg7.md
+scripts_scope: .planning/scripts/fork-anchors.txt
+review_text_in_note: none
+dispositions: fixed:19 rejected:0 deferred:1
+disposition_check: OK disposition: findings=20 rows=20
+docs_frozen: yes
+pending_verdicts: none
+disposition_commit: c2bf5f0d21ea7f9ae09578941bc4b81e629b290e
+published_notes_changed: none
+protected_paths_changed: none
+deferred_finding: IN-03 (the planning identifier that Phase 43 added to the published gg6 note; owner: fork maintainer (the user); re-open trigger: the next edit of the published gg6 note; carried to the milestone close)
+```
+
+The documents are frozen at the disposition commit above. The one deferred finding is carried to the milestone close and is not a gap in the release documents. The fixes after round 4 (IN-13 and IN-14) were not re-reviewed, by the user's answer at gate G1; the owning checks were re-run after them (E-09).
+
+2026-11-02T22:31:15Z
 
 Verdict: pass
