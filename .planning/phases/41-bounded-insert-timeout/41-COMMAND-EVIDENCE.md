@@ -22,7 +22,7 @@
 | E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pass |
 | E-07 | TMO-01 | 41-02 | pass |
 | E-08 | TMO-01, TMO-02 | 41-03 | pass |
-| E-09 | TMO-03 | 41-03 | pending (plan 41-03) |
+| E-09 | TMO-03 | 41-03 | pass |
 | E-10 | PIN-01, TMO-01, TMO-02, TMO-03 | 41-03 | pending (plan 41-03) |
 
 ### E-01: Execution-start facts, measured baseline and environment
@@ -432,5 +432,53 @@ jvm_crash: none
 The gated head descends from the fix commit `14952562` and differs from it only under `.planning`, so every non-planning file is the fix commit's. The `testUnit` run with Docker unreachable (colima profile `vz` untouched, the daemon socket pointed at a missing path) was cache-busted by deleting the results directory and passing `--rerun`; it ran 1745 tests, exactly the measured baseline of 1719 plus the 26 new cases (15 stall-pin cases and 11 helper cases), with 0 failures, 0 errors and the 2 baseline skips. The full suite on ClickHouse `latest` x client V2 ran 2343 tests, the measured full baseline of 2317 plus 26, with 0 failures, 0 errors and exactly the 18 named skips (the helper reports 7 named skips and 11 state-mismatch cases, none unexpected). Both new classes read 15/0 and 11/0 in both runs. `SELECT version()` read 26.10.3.7 before the `testUnit` run and after the full suite and the image digest is unchanged from E-01, so no image drift. Every Gradle run used HotSpot 21 (`-PjavaVersion=21`), so the OpenJ9 crash did not apply; no `hs_err_pid*`, `javacore.*`, `core.*` or `Snap.*` file appeared in the repository root. Origin `custom_build` still reads the tip recorded in E-01. Nothing was pushed.
 
 2026-11-02T09:21:02Z
+
+Verdict: pass
+
+### E-09: The F-2 rollout item for Phase 44, each claim labelled with its evidence
+
+Backs: TMO-03 (the F-2 rollout item recorded with its evidence for Phase 44's gg7 note: the client V2 scope first, then the retriable failure after `clickhouseClientInsertTimeoutMs`, the behaviour change for a quiet slow insert, the progress-header outcome as E-06 recorded it, the duplicate risk with `exactlyOnce=false`, the `socket_timeout` override and the unbounded cases).
+
+```sh
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md CHANGELOG.md VERSION
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py get .planning/phases/41-bounded-insert-timeout/41-COMMAND-EVIDENCE.md E-06 progress_probe_outcome
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py get .planning/phases/41-bounded-insert-timeout/41-COMMAND-EVIDENCE.md E-06 progress_probe_label
+```
+
+```text
+rollout_claims: 13
+rollout_labels: measured; read from the code; derived; inferred
+scope_first: yes
+progress_claim_outcome: unmeasured
+progress_claim_label: inferred
+retriable_failure_stated: yes
+behaviour_change_stated: yes
+duplicate_risk_stated: yes
+override_stated: yes
+unbounded_cases_stated: yes
+default_v1_stated: yes
+published_notes_untouched: yes
+published_statement_correction_owner: Phase 44 (the gg7 note corrects the published gg6 sentence that the four-minute insert timeout has no effect while async=false; the published text is not edited)
+```
+
+The 13 claims below are in the order Phase 44's note states them, the client V2 scope first. Each carries one of the labels RLS-03 allows, except the progress-header row: E-06 recorded its outcome as `unmeasured` with the label `inferred` (a connector body insert sent one progress header, at its end, so the header-streaming case was not exercised; the streaming case reproduced only for `INSERT ... SELECT`, where a 1000 ms `socket_timeout` did not end the request), so the row carries `inferred` exactly as E-06 wrote it and Phase 44 states it as `derived (mechanism, not measured)` or measures it first. The not-measured server half of exactly-once deduplication is labelled `derived`/`read from the code`, not `measured`. Nothing published was edited: `docs/ROLLOUT-v1.7.0_gg6.md`, `docs/ROLLOUT-v1.7.0_gg1.md`, `CHANGELOG.md` and `VERSION` are byte-identical to phase start, so the published gg6 sentence that the four-minute insert timeout has no effect while `async=false` stays as history and its correction is Phase 44's.
+
+| Claim | Label | Evidence |
+|-------|-------|----------|
+| Scope: client V2 only. A connector that does not set `client_version` runs client V1 (the default is `V1`): nothing in this change applies to it, and the client V1 library's own default `socket_timeout` of 30000 ms stays its only read bound. | read from the code | `ClickHouseSinkConfig` reads `client_version` with default `V1`; `ClickHouseWriter.startInternal` selects client V2 only for other values. The 30 s bound is measured: `41-RESEARCH.md` Probes 4 (V1) and 5. |
+| On client V2 with `async=false`, an insert into a server that stops answering now fails after `clickhouseClientInsertTimeoutMs` (default 4 minutes) with a retriable error (`RetriableException` out of `put`); before, it blocked the task forever. | measured | E-03 (red on the unfixed tree), E-06 and E-08 (green); `41-RESEARCH.md` Probe 4. |
+| The failure is retriable under `errors.tolerance=none` and `all`; the task is not failed and no DLQ record is written. | measured | E-06 and E-08 (`stalledV2InsertThroughPutIsRetriableWithNoDlqRecord`, six cases). |
+| One request per stalled insert (no client-side retry), and the option is not sent to the server. | measured | E-06 (one POST at the stub, request URI without `socket_timeout`). |
+| A quiet insert (the server sends nothing while it works) that legitimately runs longer than `clickhouseClientInsertTimeoutMs` now fails and is redelivered, and the server may still commit it. | measured | `41-RESEARCH.md` Probe 8 on ClickHouse 26.10.3.7 (failed at 1003 ms, the row landed); E-06 repeated it (3000 ms value failed at 3030 ms, 4000 rows committed). |
+| An insert during which the server keeps sending progress headers (`send_progress_in_http_headers=1` is a default client setting): on ClickHouse 26.10.3.7 a connector-shaped insert (rows in the request body) sent no progress header while the server worked and one at its end, so the per-insert timeout bounded it (a 3000 ms value failed at 3030 ms, an 8000 ms control succeeded at 4110 ms, and the timed-out rows were committed); a request that does stream progress headers (`INSERT ... SELECT` through the query path, one about every 0.2 s) was not ended by a 1000 ms `socket_timeout` and finished at 2056 ms, so a server version or an insert shape that streams progress headers during a body insert would reset the timer and escape the bound. Whether progress headers extend the bound was not measured on a connector insert in this phase. | inferred | E-06 `progress_probe_outcome: unmeasured`, `progress_probe_label: inferred`, with its RESULT lines and header timings; the planning-time scratch run in `41-02-PLAN.md` "Verification" saw headers on a body insert and E-06 did not. Phase 44 carries it as `derived (mechanism, not measured)` or measures it. |
+| With `exactlyOnce=false` that redelivery inserts the batch again, a duplicate. | derived | Probe 8 (the timed-out insert still commits) plus the redelivery path read from the code (`put` raises a `RetriableException`, Kafka Connect redelivers, no deduplication token without `exactlyOnce`). |
+| With `exactlyOnce=true` the retry reuses the `insert_deduplication_token`; whether the server drops the repeat depends on the target table's deduplication settings, which this phase did not measure. | read from the code | the token is set in each V2 insert method of `ClickHouseWriter`; the server half is derived (assumption A3 of `41-RESEARCH.md`, not probed). |
+| An operator `socket_timeout` in `jdbcConnectionProperties` keeps its value: it bounds every request, inserts included, and the per-insert value is not set; an explicit `socket_timeout=0` keeps inserts unbounded. | measured | E-06 (the two operator guards in `InsertStallBoundPinUnitTest` and the helper cases in `InsertSocketTimeoutOptionUnitTest`), E-07 (the guards fail against the unconditional per-insert set). |
+| Remedies for a legitimately slow insert: raise `clickhouseClientInsertTimeoutMs` (minimum 100) or set `socket_timeout` in `jdbcConnectionProperties`. | read from the code | `ConfigDef.Range.atLeast(100)` on the option in `ClickHouseSinkConfig`; the helper's skip when the operator names `socket_timeout`. |
+| A write-side stall (the peer stops reading the request body) is not bounded. | measured | `41-RESEARCH.md` Probe 6 (64 MiB body, still blocked after 15 s with a 500 ms per-insert value). |
+| Client V1 inserts have no connector timeout (three `future.get()` sites); the client V1 library's own default `socket_timeout` of 30000 ms ended a read-side stall after about 30.1 s; a write-side stall on client V1 was not measured. | measured | `41-RESEARCH.md` Probes 4 (V1, 30140 ms) and 5 (library default 30000). |
+| Requests other than client V2 inserts (`DESCRIBE`, the version query, the table refresh, the `KeeperStateProvider` state queries) stay unbounded unless the operator sets `socket_timeout`; ping has its own timeout; before this change an operator could already bound a stalled insert the same way. | read from the code | one client per helper, the per-insert option set only on the inserts; the last half is measured: `41-RESEARCH.md` Probes D3 and D4 (jdbc `socket_timeout=400` ended a stall at 407 ms and 403 ms). |
+
+2026-11-02T09:21:50Z
 
 Verdict: pass
