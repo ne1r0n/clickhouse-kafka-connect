@@ -5,17 +5,17 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 44
 current_phase_name: Release & Publication
 status: executing
-stopped_at: Phase 43 complete, ready to plan Phase 44
-last_updated: "2026-11-02T20:59:20.551Z"
+stopped_at: Completed 44-01-PLAN.md
+last_updated: "2026-11-02T21:11:13.398Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 44 execution started
-state_head: 5fd6a710d53d8d33fc84f3b3fa276bbf1ca15edd
+state_head: fe69c58ec43465cd3d3cb30583fe9b19cccd91f3
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 22
-  completed_plans: 17
-  percent: 77
+  completed_plans: 18
+  percent: 82
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 44 (Release & Publication) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 44
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-11-02 — Phase 44 execution started
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -245,6 +245,7 @@ Progress: [████████░░] 77%
 | Phase 43 P01 | 9 min | 3 tasks | 11 files |
 | Phase 43 P02 | 3 min | 2 tasks | 4 files |
 | Phase 43 P03 | 13 min | 2 tasks | 4 files |
+| Phase 44 P01 | 11 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -353,6 +354,7 @@ Placement:
 - [Phase 43]: 37-IN-04 landed on the user's recorded approval; 37-IN-05 limited to the gg4 and gg5 allow-lists (gg6 list belongs to published tag, row 37-IN-05(b) deferred)
 - [Phase 43]: 43-03: Phase 44 handoff: the gg7 rollout note states 'FUT-05 stays open' in its RSK-03 section, and the RLS-03 reviewer brief covers docs/ROLLOUT-v1.7.0_gg1.md, docs/ROLLOUT-v1.7.0_gg6.md and docs/FORK-DELTA.md as edited in Phase 43, with FUT-05 in the gg6 note deliberate (43-DISPOSITION-LEDGER.md, Handoff to Phase 44) — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
 - [Phase 43]: 43-03: no src/main row approved; 26-IN-02, 27-WR-01, 27-IN-01, 28-IN-01 and 28-IN-05(b) dispositioned with the fork maintainer as owner (user answers "Defer all four (Recommended)" and "Approve 37 IN-04, defer 28 IN-05(b) (Recommended)"); 37-IN-05 split so the gg6 allow-list stays identical to tag v1.7.0_gg6 — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
+- [Phase 44]: Phase 44 plan 01: VERSION is bumped only through bump_version.py with its fork-anchors.txt row in one two-file commit; FORK-DELTA raw numbers are measured once on the release tip and written as tag-pair commands — The generated Version.java and the baseline picker were proven after a clean build; the 128-of-143 test-tree count in FORK-DELTA is left as written because no scope re-derives it and none moves between gg6 and the tip
 
 ### Pending Todos
 
@@ -412,8 +414,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T19:44:57.836Z
-Stopped at: Phase 43 complete, ready to plan Phase 44
+Last session: 2026-11-02T21:11:12.320Z
+Stopped at: Completed 44-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
