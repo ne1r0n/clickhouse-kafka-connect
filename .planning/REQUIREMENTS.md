@@ -42,8 +42,8 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Documents and Dispositions (DOC)
 
-- [ ] **DOC-01**: The gg1 half of WR-08 is fixed in `docs/ROLLOUT-v1.7.0_gg1.md`; FORK-DELTA lines 6, 139 and 286 are in past tense; FUT-05 is named by ID in the rollout note.
-- [ ] **DOC-02**: Every Phase 37 row has a disposition with an owner: the `increment-version.yml` header comment, advisory rows 26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01 and 28 IN-05(b), broad allow-list globs (UF-37-3) and review Infos. `src/main` rows need the user's approval.
+- [x] **DOC-01**: The gg1 half of WR-08 is fixed in `docs/ROLLOUT-v1.7.0_gg1.md`; FORK-DELTA lines 6, 139 and 286 are in past tense; FUT-05 is named by ID in the rollout note.
+- [x] **DOC-02**: Every Phase 37 row has a disposition with an owner: the `increment-version.yml` header comment, advisory rows 26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01 and 28 IN-05(b), broad allow-list globs (UF-37-3) and review Infos. `src/main` rows need the user's approval.
 
 ### Release (RLS)
 
@@ -93,8 +93,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RSK-02 | Phase 42 | Complete |
 | RSK-03 | Phase 42 | Complete |
 | RSK-04 | Phase 42 | Complete |
-| DOC-01 | Phase 43 | Pending |
-| DOC-02 | Phase 43 | Pending |
+| DOC-01 | Phase 43 | Complete |
+| DOC-02 | Phase 43 | Complete |
 | RLS-01 | Phase 44 | Pending |
 | RLS-02 | Phase 44 | Pending |
 | RLS-03 | Phase 44 | Pending |
