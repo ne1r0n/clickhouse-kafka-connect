@@ -15,7 +15,7 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Test Pins (PIN)
 
-- [ ] **PIN-01**: `StubClickHouseServer` has a stall responder, and a red F-2 pin uses `assertTimeoutPreemptively`, so unfixed code fails instead of hanging the suite.
+- [x] **PIN-01**: `StubClickHouseServer` has a stall responder, and a red F-2 pin uses `assertTimeoutPreemptively`, so unfixed code fails instead of hanging the suite.
 - [x] **PIN-02**: The wrapped `DataException` behaviour is pinned by Docker-free tests through `ProxySinkTask.put` under both `errors.tolerance` values; no code change.
 - [x] **PIN-03**: Forwarding of a `custom_*` key on client `0.11.0` is pinned by a Docker-free test (IN-04), labelled a client-version tripwire.
 - [x] **PIN-04**: F-3 is fixed: the integration harness counts only its own connector; verified by one `integrationTest` run.
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | DEP-01 | Phase 39 | Complete |
 | DEP-02 | Phase 39 | Complete |
-| PIN-01 | Phase 41 | Pending |
+| PIN-01 | Phase 41 | Complete |
 | PIN-02 | Phase 39 | Complete |
 | PIN-03 | Phase 39 | Complete |
 | PIN-04 | Phase 39 | Complete |
