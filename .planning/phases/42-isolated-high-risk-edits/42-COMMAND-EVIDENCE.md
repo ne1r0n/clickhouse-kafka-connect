@@ -26,7 +26,7 @@
 | E-08 | RSK-03 | 42-03 | pass |
 | E-09 | RSK-03 | 42-03 | pass |
 | E-10 | RSK-03 | 42-03 | pass |
-| E-11 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
+| E-11 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pass |
 | E-12 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
 
 ### E-01: Execution-start facts, measured baseline and environment
@@ -659,5 +659,82 @@ origin_reread: equal
 The gated head descends from the RSK-03 code commit `4935e9c5` and its non-planning tree is equal to it. Both runs exited 0 with 0 failures and 0 errors: `testUnit` with Docker unreachable ran 1822 tests (the E-07 total 1801 plus 21, which is the E-01 total 1757 plus 65; 2 skipped) and the full suite on `latest` x V2 ran 2421 tests (2399 plus 22, which is 2355 plus 66; the 18 named skips). Both status deltas against the E-07 dumps removed nothing and added exactly the rows of the committed expected-added files (21 for `testUnit`, 22 by class for the full suite), so every pre-existing testcase kept its status, including the 19 `AdditionalRetriableErrorCodesPinUnitTest` cases and the 3 `AdditionalRetriableErrorCodesTest` cases. The new unit class is 21/0 in both runs and the live class is 1/0. The ClickHouse version and the image digest equal E-01's and read the same before and after the full run. No crash file appeared in the repository root, and `origin/custom_build` still equals the E-01 value.
 
 2026-11-02T13:07:18Z
+
+Verdict: pass
+
+### E-11: Revert independence: each RSK code commit reverts alone, cleanly and exactly, with a green testUnit
+
+Backs: RSK-01, RSK-02, RSK-03, RSK-04 (the phase goal "any one can be reverted alone" and success criterion 4: each of the three code commits is reverted on its own in a throwaway detached worktree at the final head; the revert applies without conflict, is exactly the inverse of the commit, restores the production file to the phase start, removes the commit's new tests, leaves the anchors mirror at 188 rows, and leaves a green cache-busted `testUnit` with Docker unreachable at the E-10 total minus the commit's new cases).
+
+```sh
+git rev-parse HEAD
+git diff --quiet 4935e9c5 HEAD -- . ':!.planning'
+git status --porcelain -- . ':!.planning' > /tmp/gsd42/exec/main-status-before.txt
+git worktree add --detach /tmp/gsd42/exec/revert-wt 7fdfdaff339b12e567ee8b1dadbc0d4acfb062ec
+# for each Ci in cba0909b (RSK-01), c8574890 (RSK-02), 4935e9c5 (RSK-03), inside the worktree only:
+git -C /tmp/gsd42/exec/revert-wt revert --no-commit <Ci>
+git -C /tmp/gsd42/exec/revert-wt diff --cached --name-only HEAD
+git diff --name-only <Ci>^ <Ci>
+git -C /tmp/gsd42/exec/revert-wt diff --cached -U0 HEAD > /tmp/gsd42/exec/revert-c<i>.diff
+git diff -U0 <Ci> <Ci>^
+git -C /tmp/gsd42/exec/revert-wt diff --cached --quiet 1c808c02 -- <production file>
+git -C /tmp/gsd42/exec/revert-wt ls-files -- <the commit's new test files>
+(cd /tmp/gsd42/exec/revert-wt && python3 -I <abs>/42-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 188)
+(cd /tmp/gsd42/exec/revert-wt && rm -rf build/test-results/testUnit && DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd42/exec/revert-c<i>-testunit.log 2>&1)
+cp -R /tmp/gsd42/exec/revert-wt/build/test-results/testUnit /tmp/gsd42/exec/xml-revert-c<i>
+git -C /tmp/gsd42/exec/revert-wt reset -q --hard 7fdfdaff339b12e567ee8b1dadbc0d4acfb062ec
+git worktree remove --force /tmp/gsd42/exec/revert-wt
+git worktree prune
+git worktree list
+git status --porcelain -- . ':!.planning' > /tmp/gsd42/exec/main-status-after.txt
+cmp /tmp/gsd42/exec/main-status-before.txt /tmp/gsd42/exec/main-status-after.txt
+```
+
+```text
+revert_base: 7fdfdaff339b12e567ee8b1dadbc0d4acfb062ec
+revert_base_tree_equals_c3: yes
+worktree_path: /tmp/gsd42/exec/revert-wt
+main_status_before_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+revert_c1_clean: yes
+revert_c1_paths: equal
+revert_c1_diff_is_inverse: yes
+revert_c1_prod_equals_start: yes
+revert_c1_tests_absent: yes
+revert_c1_anchors: rows=188 bad=0
+revert_c1_testunit_exit: 0
+revert_c1_testunit_tests: 1816
+revert_c1_testunit_failures: 0
+revert_c1_testunit_skipped: 2
+revert_c1_testunit_delta: -6
+revert_c2_clean: yes
+revert_c2_paths: equal
+revert_c2_diff_is_inverse: yes
+revert_c2_prod_equals_start: yes
+revert_c2_tests_absent: yes
+revert_c2_anchors: rows=188 bad=0
+revert_c2_testunit_exit: 0
+revert_c2_testunit_tests: 1784
+revert_c2_testunit_failures: 0
+revert_c2_testunit_skipped: 2
+revert_c2_testunit_delta: -38
+revert_c3_clean: yes
+revert_c3_paths: equal
+revert_c3_diff_is_inverse: yes
+revert_c3_prod_equals_start: yes
+revert_c3_tests_absent: yes
+revert_c3_anchors: rows=188 bad=0
+revert_c3_testunit_exit: 0
+revert_c3_testunit_tests: 1801
+revert_c3_testunit_failures: 0
+revert_c3_testunit_skipped: 2
+revert_c3_testunit_delta: -21
+worktree_removed: yes
+main_tree_untouched: yes
+jvm_crash: none
+```
+
+The base is the head after plan 42-03 (`7fdfdaff`); its non-planning tree equals the RSK-03 code commit. Each revert ran in the detached worktree through `git -C`, so the main tree was never reverted or reset. Every revert applied without conflict, touched exactly the four or five paths of its commit, and produced the exact inverse of the commit's `+`/`-` lines. The production file of each reverted tree equals the phase start (`Processing.java` for RSK-01, `Utils.java` for RSK-02, `ClickHouseSinkTask.java` for RSK-03), the commit's new test files were absent from the index, and the anchors mirror read `rows=188 bad=0` (the head's 190 rows less the commit's two). The cache-busted `testUnit` (`--rerun`, Docker unreachable) exited 0 on each reverted tree with 0 failures, 0 errors and 2 skipped, at the E-10 total of 1822 minus 6, 38 and 21 (1816, 1784, 1801). The reverts are independent because no two Phase 42 insertions are adjacent in `docs/FORK-DELTA.md` or `.planning/scripts/fork-anchors.txt`: each code commit's rows are separated from the next by at least one line that no other Phase 42 commit touches, so git applies each inverse hunk without context overlap. The worktree was removed and pruned, the main tree outside `.planning/` was empty before and after (byte-identical, the SHA-256 of an empty file), and no crash file appeared in the repository root.
+
+2026-11-02T13:11:30Z
 
 Verdict: pass
