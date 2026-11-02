@@ -34,7 +34,8 @@ fork patches on top of upstream, and read [docs/ROLLOUT-v1.7.0_gg7.md](docs/ROLL
   below.
 * With `reportInsertedOffsets=true` under a topic-renaming SMT that renames each source topic to its own target, the
   unbuffered Direct path (`bufferCount` 0) now reports inserted offsets under the consumer's topic, read from
-  `originalTopic()`, and clears them on revocation. The exactly-once state key and the KeeperMap rows do not change.
+  `originalTopic()`, and clears them on revocation; with `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`
+  Connect's own offsets are returned and nothing changes. The exactly-once state key and the KeeperMap rows do not change.
 * The integration test harness counts only its own connector when it waits for the Datagen source (test harness only).
 
 ## Improvements
