@@ -5,16 +5,16 @@ milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 41
 current_phase_name: Bounded Insert Timeout
 status: executing
-stopped_at: Phase 40 complete, ready to plan Phase 41
-last_updated: "2026-11-02T08:44:40.486Z"
+stopped_at: Completed 41-01-PLAN.md
+last_updated: "2026-11-02T09:02:03.367Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 41 execution started
-state_head: e6313127aa29318a30f88b50e77345c0240597d6
+state_head: d8e34742b7a28d6485fc61387351e0ecc8270199
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 33
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 ## Current Position
 
 Phase: 41 (Bounded Insert Timeout) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 41
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-11-02 — Phase 41 execution started
 
 Progress: [███░░░░░░░] 33%
@@ -232,6 +232,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 40 P01 | 8 min | 3 tasks | 4 files |
 | Phase 40 P02 | 25 min | 3 tasks | 7 files |
 | Phase 40 P03 | 50 min | 3 tasks | 8 files |
+| Phase 41 P01 | 21 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -329,6 +330,7 @@ Placement:
 - [Phase 40]: 40-01: red trees live only in 40-red-writer.patch and 40-red-keeper.patch (strict red-first); no src change committed; injected-client Keeper clause pinned by the K3 NPE tripwire plus plan 40-03 source identity
 - [Phase 40]: 40-02: gate A red on three ClickHouseWriterTest cases using a writer after a false start(); user chose to seed a table in runWithWriter (test-only commit fae1fcb1) and keep production closing chc on every failed start
 - [Phase 40]: 40-03: the writer-files untouched check is taken against fae1fcb1 (the test-only seed), not de3faf77; the invariants gate ran once on the E-10 commit and covers both code commits
+- [Phase 41]: Operator socket_timeout cases are guards against a naive fix, not red pins — They pass on the unfixed tree because createClientV2 already forwards socket_timeout as a client-level option; plan 41-02 proves they discriminate by a recorded mutation
 
 ### Pending Todos
 
@@ -388,8 +390,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T07:28:04.165Z
-Stopped at: Phase 40 complete, ready to plan Phase 41
+Last session: 2026-11-02T09:01:58.323Z
+Stopped at: Completed 41-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
