@@ -23,7 +23,7 @@
 | E-06 | DOC-01, DOC-02 | 43-02 | pass |
 | E-07 | DOC-01 | 43-02 | pass |
 | E-08 | DOC-01 | 43-02 | pass |
-| E-09 | DOC-02 | 43-03 | pending |
+| E-09 | DOC-02 | 43-03 | pass |
 | E-10 | DOC-01, DOC-02 | 43-03 | pending |
 
 ### E-01: Phase start facts and the cache-busted testUnit baseline
@@ -449,5 +449,53 @@ forkdelta_commit_files: docs/FORK-DELTA.md
 Each of the fourteen old phrases of the task occurred at least once before the edit (the eleven old strings of the text specification each exactly once) and occurs 0 times now. The new text is present: the run id `41298074815` occurs 3 times (the intro paragraph, item 22 and the syncer paragraph), the closure of PR #10 occurs twice (the protobuf row and item 12), and each of the two tag-based gg6 commands occurs once. The tag-to-tag shortstats print 331 files, 39665 insertions and 1161 deletions at the wider scope and 40, 2989 and 272 for `src/main`, which equal the after-gg6 rows (the rows themselves are byte-identical before and after: all 14 rows of the two scopes unchanged); the gg5-to-gg6 paragraph states 79 files, 7939 insertions and 478 deletions (wider) and 7, 112 and 31 (`src/main`), which the tag-to-tag command prints. The compare result in the syncer paragraph (0 unallowed, 0 stale rows, baseline `v1.7.0_gg5`) and the rollback tag pushed by hand after the publish run are read from `38-RELEASE-RECORD.md`; the run, release and PR facts are those of E-06 (read from the GitHub REST API). The commit changes exactly ten physical lines (ten removed, ten added; adjacent lines share hunks). Item 22 names the two moved release-record paths under `.planning/milestones/v1.7.0_gg6-maintenance-phases/`, and the 11 relative targets of the file resolve.
 
 2026-11-02T19:38:30Z
+
+Verdict: pass
+
+### E-09: The disposition ledger, its checker and FORK-DELTA items 19 to 21
+
+Backs: DOC-02 (ROADMAP Phase 43 success criteria 2 and 3: one ledger row for each Phase 37 item with 37-IN-05 split into a fixed and a deferred part, each fixed row pointing at its Phase 43 code commit, the four `src/main` rows deferred in the user's own words, the twelve other dispositioned rows carried, the Phase 44 handoff; FORK-DELTA items 19, 20 and 21 agree with the ledger).
+
+```sh
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py check .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py counts .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py pointer .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md <37-HDR|37-IN-04|37-IN-06|37-IN-05(a)>
+git diff-tree --no-commit-id --name-only -r <C1|C2|C3|C4>
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py check .planning/milestones/v1.7.0_gg6-maintenance-phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py check /tmp/gsd43/exec/v-ledger-bad-owner.md
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py check /tmp/gsd43/exec/v-ledger-short-pointer.md
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py status .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md 37-IN-05
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py carried .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md .planning/milestones/v1.7.0_gg6-maintenance-phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py carried /tmp/gsd43/exec/v-ledger-bad-carried.md .planning/milestones/v1.7.0_gg6-maintenance-phases/37-ci-hardening-advisory-debt/37-ADVISORY-LEDGER.md
+git diff -U0 HEAD^ HEAD -- docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py
+git commit -F /tmp/gsd43/exec/msg-d3.txt
+```
+
+```text
+ledger_head: 5f32e312000dbaa058bc8331c46694c545cd7686
+ledger_check: OK ledger: 18 rows, 0 problems
+ledger_counts: rows=18 bases=17 fixed=4 dispositioned=14
+pointers_match_evidence: yes
+pointer_files_ok: yes
+checker_rejects_37_ledger: yes
+checker_rejects_blank_owner: yes
+checker_rejects_short_pointer: yes
+status_37_in_05: 37-IN-05=fixed,dispositioned
+carried_ids: 12
+carried_check: OK carried: 12 rows, 0 problems
+checker_rejects_bad_carried: yes
+user_quotes_rows: yes
+handoff_fut05: yes
+forkdelta_items_scope: removed=3 added=3
+item19_cites_c1: yes
+old_ledger_path_absent: yes
+ledger_commit: e72447b574ee822c5a8404ea28d3d22e2642f8d0
+ledger_commit_files: .planning/phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md .planning/phases/43-document-fixes-phase-37-dispositions/43-ledger-check.py docs/FORK-DELTA.md
+```
+
+The ledger holds 18 rows for 17 findings: 4 `fixed` (37-HDR at E-02, 37-IN-04 at E-03, 37-IN-05(a) at E-05, 37-IN-06 at E-04) and 14 `dispositioned`, each with the owner `fork maintainer (the user)` and a re-open trigger. Every fixed row's 40-hex pointer equals its code commit in E-02..E-05, and each of those commits touches exactly the files of its row (C4: the gg4 and gg5 allow-lists only). The four `src/main` rows (26-IN-02, 27-WR-01, 27-IN-01, 28-IN-01) each quote "Defer all four (Recommended)", and rows 37-IN-04 and 28-IN-05(b) each quote "Approve 37 IN-04, defer 28 IN-05(b) (Recommended)"; the three answers are read from `43-RESEARCH.md` at `f8ff8fc3`. The checker discriminates: it rejects the Phase 37 ledger (old statuses, IDs and owners), a copy of the ledger with a blank owner on row 26-IN-02, a copy with the 37-HDR pointer cut to 7 hex digits, and (for `carried`) a copy with the trigger of the 25-WR-03 line altered. The twelve carried lines equal the Phase 37 rows in owner and trigger. The handoff section holds "FUT-05 stays open" and RSK-03. D3 changed exactly three physical lines of `docs/FORK-DELTA.md` (items 19, 20 and 21): item 19 is closed and cites `566f92e4`, item 20 names `43-DISPOSITION-LEDGER.md`, item 21 names run `41297502026`; the old item-19 wording and the moved Phase 37 phase path occur 0 times. No file under `src/` changed and nothing was pushed.
+
+2026-11-02T19:42:05Z
 
 Verdict: pass
