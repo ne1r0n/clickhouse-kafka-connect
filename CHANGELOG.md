@@ -42,7 +42,8 @@ inserted-offset topic fix, a start-up WARN for unvetted retriable codes, and a `
 ## Improvements
 
 * One WARN at task start names every code in `additionalRetriableErrorCodes` that is outside the connector's vetted
-  transient set. Start-up still succeeds, nothing validates the codes, and nothing budgets retries.
+  transient set. Start-up still succeeds, the connector does not judge whether a listed code is transient beyond that
+  set and does not budget retries, and the format check of the setting still applies.
 
 ## Known Issues
 
