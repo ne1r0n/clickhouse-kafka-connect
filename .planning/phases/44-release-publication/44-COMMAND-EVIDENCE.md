@@ -17,7 +17,7 @@
 | E-01 | RLS-01 | 44-01 | pass |
 | E-02 | RLS-01 | 44-01 | pass |
 | E-03 | RLS-01 | 44-01 | pass |
-| E-04 | RLS-01 | 44-01 | pending (plan 44-01) |
+| E-04 | RLS-01 | 44-01 | pass |
 | E-05 | RLS-03 | 44-02 | pending (plan 44-02) |
 | E-06 | RLS-03 | 44-02 | pending (plan 44-02) |
 | E-07 | RLS-03 | 44-02 | pending (plan 44-02) |
@@ -226,5 +226,66 @@ changelog_commit_files: CHANGELOG.md
 The section adds 69 lines above the unchanged `1.7.0_gg6` heading. The one broken relative link is the pointer to `docs/ROLLOUT-v1.7.0_gg7.md`, the note that plan 44-02 creates. The section carries one bullet beyond the plan's list, the JMX `version=` segment and client-name change, because the release identity moves and gg6 documented the same change in the same place. The heading date is the UTC date at writing; the orchestrator compares it with the UTC date at the merge.
 
 2026-11-02T21:04:53Z
+
+Verdict: pass
+
+### E-04: docs/FORK-DELTA.md is final for gg7: false claim fixed, recounted, raw numbers refreshed once
+
+Backs: RLS-01 (the false `Processing.java` byte-identical claim and the stale 33/14/16 and 40/14/26 recounts are replaced by a recount with the file's own method, the `HEAD`-relative commands are tag-pair commands, the raw numbers are measured once on the release tip with an after-gg7 row per scope equal to the command output, and the gg7 intro, pointer and next-syncer paragraphs are written).
+
+```sh
+python3 -I /tmp/gsd44/exec/recount.py   # every src/main file at v1.7.0 against HEAD (identical, import-only after dropping import and blank lines, fork logic), new and deleted files, and the same recount at v1.7.0_gg6
+git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 HEAD -- src/main
+git diff --shortstat v1.7.0_gg6 HEAD -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0_gg6 HEAD -- src/main
+git diff --shortstat v1.7.0_gg6 HEAD -- <path>   # src/test, src/integrationTest, src/testFixtures, .github, gradle, build.gradle.kts
+git diff --name-only v1.7.0_gg6 HEAD -- src/main
+git diff --shortstat v1.7.0_gg4 v1.7.0_gg5 -- <path>   # .github, src/test, src/integrationTest
+git diff --quiet v1.7.0 HEAD -- <each file named by a byte-identical claim>
+git diff v1.7.0 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java
+python3 -I .planning/phases/44-release-publication/44-doc-check.py numbers docs/FORK-DELTA.md 'after gg7: `v1.7.0` to `v1.7.0_gg7`' --wider "345 42439 1221" --narrow "43 3183 294"
+python3 -I <head span check: backticked git diff spans that still name HEAD, Processing.java byte-identical lines, split rows>
+python3 -I .planning/phases/44-release-publication/44-doc-check.py links docs/FORK-DELTA.md
+git diff -U0 9a5209c17e5380ec1f675cd8b3225250d3ff41fe -- docs/FORK-DELTA.md   # the added lines, prefix removed, to /tmp/gsd44/exec/fd-added.txt
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict /tmp/gsd44/exec/fd-added.txt
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets .planning/phases/44-release-publication/44-COMMAND-EVIDENCE.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git add docs/FORK-DELTA.md
+git commit -F /tmp/gsd44/exec/msg-fd.txt
+```
+
+```text
+files_at_v170: 63
+identical_files_now: 30
+import_only_now: 14
+fork_logic_modified_now: 19
+new_files_now: 10
+deleted_since_v170: 0
+differ_now: 43
+fork_logic_total_now: 29
+gg6_recount: 33 14 16 10
+moved_since_gg6: KeeperStateProvider.java; Processing.java; StateProvider.java
+wider_now: 345 42439 1221
+narrow_now: 43 3183 294
+wider_since_gg6: 34 2826 112
+narrow_since_gg6: 8 194 22
+by_dir_since_gg6: src/test=18 2470 28; src/integrationTest=2 155 55; src/testFixtures=0 0 0; .github=5 6 6; gradle=1 1 1; build.gradle.kts=0 0 0
+src_main_files_since_gg6: ClickHouseHelperClient.java; ClickHouseSinkTask.java; ClickHouseWriter.java; KeeperStateProvider.java; Processing.java; ProxySinkTask.java; StateProvider.java; Utils.java
+gg4_gg5_tagpair: .github=6 616 92; src/test=5 1486 25; src/integrationTest=1 23 1
+byte_identical_claims_checked: 5 claims, 5 true
+numbers_check: OK numbers: label 'after gg7: `v1.7.0` to `v1.7.0_gg7`'
+head_command_check: head_spans=['git diff --shortstat v1.7.0 HEAD'] processing_identical_lines=[] processing_rows=1 keytovalue_rows=1
+links_ok: yes
+hygiene_scan_added_lines: clean
+secrets_scan: clean
+anchors_mirror: rows=190 bad=0
+forkdelta_commit: e979004e91a4f84fa9223b9d957ab3216fa37e00
+forkdelta_commit_files: docs/FORK-DELTA.md
+```
+
+All figures equal the planning values, so nothing was forced. The method check holds: the same recount at `v1.7.0_gg6` prints 33 14 16 10, the published figures. The raw numbers were measured once, on this tip, and no path in their scopes (`src`, `build.gradle.kts`, `gradle`, `.github`) changes in the rest of the phase. The empty by-directory diffs (`src/testFixtures`, `build.gradle.kts`) make the shortstat helper exit with a usage error, so they are recorded as `0 0 0` after the empty output was confirmed. The five byte-identical claims that name a file or a file set were checked: `integrationTests.yaml` against upstream `v1.7.0` (true), `KeyToValue.java` against upstream (true), `Processing.java` against upstream at `v1.7.0_gg6`, the state before the one-line change (true), the `KeeperStateProvider` injected-client constructor and `init()` against `v1.7.0_gg6` (the diff touches only the factory constructor, `close()` and the owned-client field; true), and `getStateRecord` and `setStateRecord` against `v1.7.0_gg6` (not in the diff; true). The row counting 128 of 143 upstream test-tree files as byte-identical could not be re-derived here with any scope tried, so it is not a checked claim; every scope tried gives the same counts at `v1.7.0_gg6` and at this tip, so this release does not move it. The `Processing.java` row now reads as a one-line difference, which the diff of the file against `v1.7.0` confirms (the line at `doLogic` 137, `topic()` to `originalTopic()`). The gson row already names `2.15.0` with upstream's `2.13.1`, so it needed no edit. The two broken relative links are the pointers to `docs/ROLLOUT-v1.7.0_gg7.md`, the note that plan 44-02 creates.
+
+2026-11-02T21:09:09Z
 
 Verdict: pass
