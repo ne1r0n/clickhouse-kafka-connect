@@ -4,17 +4,17 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 41
 current_phase_name: Bounded Insert Timeout
-status: executing
-stopped_at: Completed 41-02-PLAN.md
-last_updated: "2026-11-02T09:15:51.549Z"
+status: verifying
+stopped_at: Completed 41-03-PLAN.md
+last_updated: "2026-11-02T10:03:47.874Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 41 execution started
-state_head: 3bef5f94245fea483c9e33aaab6502bcc865f4ff
+state_head: c3b5eb30c68415f78e8b3c9e9f1ff46df60799bf
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 33
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 
 Phase: 41 (Bounded Insert Timeout) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-02 — Phase 41 execution started
 
 Progress: [███░░░░░░░] 33%
@@ -234,6 +234,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 40 P03 | 50 min | 3 tasks | 8 files |
 | Phase 41 P01 | 21 min | 2 tasks | 3 files |
 | Phase 41 P02 | 11 min | 3 tasks | 8 files |
+| Phase 41 P03 | 46 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -333,6 +334,8 @@ Placement:
 - [Phase 40]: 40-03: the writer-files untouched check is taken against fae1fcb1 (the test-only seed), not de3faf77; the invariants gate ran once on the E-10 commit and covers both code commits
 - [Phase 41]: Operator socket_timeout cases are guards against a naive fix, not red pins — They pass on the unfixed tree because createClientV2 already forwards socket_timeout as a client-level option; plan 41-02 proves they discriminate by a recorded mutation
 - [Phase 41]: Phase 41 plan 02: per-insert socket_timeout at all three V2 insert sites via setInsertSocketTimeoutV2, skipped when jdbcConnectionProperties names socket_timeout (0 included); progress-header probe recorded unmeasured/inferred (a connector body insert streams no progress header on 26.10.3.7)
+- [Phase 41]: 41-03: the progress-header claim in the F-2 rollout item carries label inferred / outcome unmeasured exactly as E-06 recorded it; Phase 44 states it as derived (mechanism, not measured) or measures it first
+- [Phase 41]: 41-03: the exactly-once half of the duplicate risk is labelled read from the code (token reuse) and derived (server deduplication), never measured
 
 ### Pending Todos
 
@@ -392,8 +395,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T09:15:50.900Z
-Stopped at: Completed 41-02-PLAN.md
+Last session: 2026-11-02T10:03:47.450Z
+Stopped at: Completed 41-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
