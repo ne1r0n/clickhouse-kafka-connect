@@ -28,10 +28,10 @@
 | E-12 | RLS-04 | 44-04 | fail |
 | E-13 | RLS-04 | 44-04 | pass |
 | E-14 | RLS-04 | 44-05 | pass |
-| E-15 | RLS-04 | 44-05 | pending (plan 44-05) |
-| E-16 | RLS-04 | 44-05 | pending (plan 44-05) |
-| E-17 | RLS-04 | 44-05 | pending (plan 44-05) |
-| E-18 | RLS-04 | 44-05 | pending (plan 44-05) |
+| E-15 | RLS-04 | 44-05 | pending (user-gated) |
+| E-16 | RLS-04 | 44-05 | pending (user-gated) |
+| E-17 | RLS-04 | 44-05 | pending (user-gated) |
+| E-18 | RLS-04 | 44-05 | pending (user-gated) |
 | E-19 | RLS-01 to RLS-04 | 44-05 | pending (plan 44-05) |
 | E-20 | RLS-04 | 44-04 | pass |
 
@@ -1010,3 +1010,127 @@ D was built from the committed merge message, with parents 72e8ccff and the tip,
 2026-11-02T23:44:09Z
 
 Verdict: pass
+
+### E-15: Handoff U1 and U2 (scratch push and release dry run) is a user-gated handoff
+
+Backs: RLS-04 (the user-run origin step, as a document: numbered pre-checks with expected values, the exact command, the expected result, the fields to report, abort and contingency rules, a clean-up and a resume path; the step itself is the user's and has not happened).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict .planning/phases/44-release-publication/44-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+grep -E 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/44-release-publication/44-USER-DISPATCH-1-SCRATCH-DRYRUN.md    # no match outside a never sentence
+grep -E '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg7' .planning/phases/44-release-publication/44-USER-DISPATCH-1-SCRATCH-DRYRUN.md      # no match
+grep -E '^[[:space:]]*gh (release|pr|issue|run)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/44-release-publication/44-USER-DISPATCH-1-SCRATCH-DRYRUN.md    # no match
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/44-release-publication/44-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+handoff_hygiene: clean
+pre_checks_listed: 9
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+user_report: not yet received
+```
+
+The handoff is a document only. Its step is the user's (or, under the user's answer to bundle question (1), the orchestrator's on the user's direct word), and this record stays pending and is never edited.
+
+2026-11-02T23:47:32Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-16: Handoff U3 (push of M to custom_build) is a user-gated handoff
+
+Backs: RLS-04 (the user-run origin step, as a document: numbered pre-checks with expected values, the exact command, the expected result, the fields to report, abort and contingency rules, a clean-up and a resume path; the step itself is the user's and has not happened).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict .planning/phases/44-release-publication/44-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+grep -E 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/44-release-publication/44-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md    # no match outside a never sentence
+grep -E '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg7' .planning/phases/44-release-publication/44-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md      # no match
+grep -E '^[[:space:]]*gh (release|pr|issue|run)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/44-release-publication/44-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md    # no match
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/44-release-publication/44-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+handoff_hygiene: clean
+pre_checks_listed: 7
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+user_report: not yet received
+```
+
+The handoff is a document only. Its step is the user's (or, under the user's answer to bundle question (1), the orchestrator's on the user's direct word), and this record stays pending and is never edited.
+
+2026-11-02T23:47:32Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-17: Handoff U4 (the publish dispatch) is a user-gated handoff
+
+Backs: RLS-04 (the user-run origin step, as a document: numbered pre-checks with expected values, the exact command, the expected result, the fields to report, abort and contingency rules, a clean-up and a resume path; the step itself is the user's and has not happened).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict .planning/phases/44-release-publication/44-USER-DISPATCH-3-PUBLISH.md
+grep -E 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/44-release-publication/44-USER-DISPATCH-3-PUBLISH.md    # no match outside a never sentence
+grep -E '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg7' .planning/phases/44-release-publication/44-USER-DISPATCH-3-PUBLISH.md      # no match
+grep -E '^[[:space:]]*gh (release|pr|issue|run)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/44-release-publication/44-USER-DISPATCH-3-PUBLISH.md    # no match
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/44-release-publication/44-USER-DISPATCH-3-PUBLISH.md
+handoff_hygiene: clean
+pre_checks_listed: 4
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+user_report: not yet received
+```
+
+The handoff is a document only. Its step is the user's (or, under the user's answer to bundle question (1), the orchestrator's on the user's direct word), and this record stays pending and is never edited.
+
+2026-11-02T23:47:32Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
+
+### E-18: Handoff U5 (rollback tag, scratch deletion, pull requests) is a user-gated handoff
+
+Backs: RLS-04 (the user-run origin step, as a document: numbered pre-checks with expected values, the exact command, the expected result, the fields to report, abort and contingency rules, a clean-up and a resume path; the step itself is the user's and has not happened).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict .planning/phases/44-release-publication/44-USER-DISPATCH-4-PRETAG-CLEANUP.md
+grep -E 'git push[^#]*(--force|--tags|--all|--mirror)' .planning/phases/44-release-publication/44-USER-DISPATCH-4-PRETAG-CLEANUP.md    # no match outside a never sentence
+grep -E '^[[:space:]]*git push[^#]*[^-]v1\.7\.0_gg7' .planning/phases/44-release-publication/44-USER-DISPATCH-4-PRETAG-CLEANUP.md      # no match
+grep -E '^[[:space:]]*gh (release|pr|issue|run)[[:space:]]+(create|delete|edit|merge|close|comment|review|cancel|rerun)' .planning/phases/44-release-publication/44-USER-DISPATCH-4-PRETAG-CLEANUP.md    # no match
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+handoff_file: .planning/phases/44-release-publication/44-USER-DISPATCH-4-PRETAG-CLEANUP.md
+handoff_hygiene: clean
+pre_checks_listed: 5
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+user_report: not yet received
+```
+
+The handoff is a document only. Its step is the user's (or, under the user's answer to bundle question (1), the orchestrator's on the user's direct word), and this record stays pending and is never edited.
+
+2026-11-02T23:47:32Z
+
+Verdict: pending (user-gated: the push and the dispatch are the user's)
