@@ -23,7 +23,7 @@
 | E-07 | CLS-01, CLS-02 | 40-02 | pass |
 | E-08 | CLS-03, CLS-04 | 40-03 | pass |
 | E-09 | CLS-03, CLS-04 | 40-03 | pass |
-| E-10 | CLS-03 | 40-03 | pending (plan 40-03) |
+| E-10 | CLS-03 | 40-03 | pass |
 | E-11 | CLS-01, CLS-02, CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 
 ### E-01: Execution-start facts, baselines and environment
@@ -552,5 +552,67 @@ The green run exited 0: the Keeper class ran 5 tests, the stop class 2 and the w
 Adjustment against plan 40-02 (recorded here, no earlier record edited): the plan's `writer_files_untouched` check compares against the writer-half commit `de3faf77`, but the user-authorised test-only seed `fae1fcb1` changed `ClickHouseWriterTest.java` (under `src/test/.../sink/db`) after it. The check is therefore taken against `fae1fcb1`, the tip that holds the seed: `git diff --quiet fae1fcb1 HEAD -- src/main/.../sink/db src/test/.../sink/db` exits 0, and `fae1fcb1` is an ancestor of the Keeper-half commit. The `src/main` comparison against `de3faf77` is unaffected, because the seed changed no `src/main` file.
 
 2026-11-02T06:40:40Z
+
+Verdict: pass
+
+### E-10: Gate B on the Keeper-half commit: testUnit with Docker unreachable and the full suite with the exactly-once classes
+
+Backs: CLS-03 (success criterion 3: `testUnit` and a full suite, including the exactly-once tests, pass on the Keeper-half commit) and CLS-04 (every case of the matrix green under both gates, with the exactly-once classes unharmed).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-parse HEAD
+git diff --quiet b55f108a74bcadf25a21174302e20a0ca729cfda HEAD -- . ':!.planning'
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd40/exec/gateB-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-gateB-testunit
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-gateB-testunit tests=1716 failures=0 errors=0 skipped=2
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd40/exec/gateB-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd40/exec/xml-gateB-full
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-gateB-full tests=2314 failures=0 errors=0 skipped=18
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py skips /tmp/gsd40/exec/xml-gateB-full
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-gateB-full --class <each exactly-once class> 'tests>=1' failures=0 errors=0
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+origin_reread: equal
+gate_head: 19e5cf75d7885dee809252da90fac8ecc29ee61a
+gated_tree_equals_keeper_commit: yes
+jvm_line: HotSpot 21 (OpenJDK 64-Bit Server VM, -PjavaVersion=21); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1716
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 29
+clickhouse_version_before: 26.10.3.7
+clickhouse_digest: sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+full_exit: 0
+full_tests: 2314
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK (named=7 state_mismatch_cases=11 unexpected=0)
+full_delta_vs_baseline: 29
+exactly_once_classes: DedupTokenRetryLiveTest 8/0; KeeperStateProviderRestartLiveTest 6/0; ClickHouseSinkTaskBufferTest 35/0; ClickHouseSinkTaskWithSchemaTest 97/0; BufferedOffsetCommitUnitTest 15/0; ProcessingTest 14/0
+exactly_once_classes_green: yes
+v1_live_cases_passed: yes
+v1_live_cases_rationale: the three [1] V1 testcases are the client V1 invocations of the only three V1/V2-parameterized methods of ClickHouseWriterTest (@ParameterizedTest at lines 299, 403 and 524: testSchemaRefreshedAfterCode131, staleDescribeTableIsNotCachedAsCurrentSchema, doInsertSupportsSpecialCharactersInTableNames); the only other parameterized method (line 577) names its cases [1] json to [3] tsv, so no other testcase is named [1] V1
+clickhouse_version_after: 26.10.3.7
+jvm_crash: none
+origin_reread_after: equal
+```
+
+Both runs are green on the Keeper-half commit: `testUnit` with Docker unreachable ran 1716 tests (1687 plus 29: 22 writer cases and 7 Keeper-side cases), 0 failures, 0 errors, 2 skipped; the full suite on ClickHouse `latest` (`26.10.3.7`, digest equal to E-07's and unchanged before and after) with client V2 ran 2314 tests (2285 plus 29), 0 failures, 0 errors, 18 skipped (the named inventory, helper OK; 13 of them sit in `ClickHouseSinkTaskWithSchemaTest`). Full-suite wall time was 2 m 49 s (06:41:34Z to 06:44:24Z). Each of the six exactly-once classes ran with at least one test and no failure or error; `KeeperStateProviderRestartLiveTest` and `DedupTokenRetryLiveTest` exercise a real KeeperMap table, so the provider's constructor, `init()` and the state read and write paths ran against real ClickHouse with this commit. The `ClickHouseWriterTest` XML has three passed `[1] V1` cases and the passed JSON comparison case, so the client V1 per-batch close is exercised against real ClickHouse and read back. The gated head `19e5cf75` is the E-09 evidence commit on top of the Keeper-half commit and its non-planning tree equals the Keeper-half commit's. Origin `custom_build` still equals E-01's tip, before and after both runs; nothing was pushed. No `hs_err_pid*.log`, `javacore.*` or `Snap.*.trc` appeared; the runs used HotSpot 21 through `-PjavaVersion=21`.
+
+2026-11-02T06:44:50Z
 
 Verdict: pass
