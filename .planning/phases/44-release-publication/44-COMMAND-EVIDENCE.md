@@ -22,7 +22,7 @@
 | E-06 | RLS-03 | 44-02 | pass |
 | E-07 | RLS-03 | 44-02 | pass |
 | E-08 | RLS-03 | 44-03 | pass |
-| E-09 | RLS-03 | 44-03 | pending (plan 44-03) |
+| E-09 | RLS-03 | 44-03 | pass |
 | E-10 | RLS-03 | 44-03 | pending (plan 44-03) |
 | E-11 | RLS-02 | 44-04 | pending (plan 44-04) |
 | E-12 | RLS-04 | 44-04 | pending (plan 44-04) |
@@ -476,5 +476,88 @@ schema_check: OK round: findings=14 rounds=1
 The round has 4 warnings and 10 info findings, no critical one. The orchestrator spawned the reviewer and copied the returned agentId into the round section; the executor that recorded this entry did not review. A round with findings is a pass here: the verdict is about the process.
 
 2026-11-02T21:43:34Z
+
+Verdict: pass
+
+### E-09: Review rounds and fixes until a round found nothing
+
+Backs: RLS-03 (rounds 2 to 4 of the independent review, each by a fresh gsd-code-reviewer spawned by the orchestrator over the previous round's fix commits; every fix commit of the four rounds; the re-proofs of the fixes that touched a command, number, label or rollback step; the two user answers at gate G1; the owning checks after the last fix). The round did not end clean: the fourth round had two info findings, and the user chose to fix them and accept without a fifth round.
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-review-check.py agents .planning/phases/44-release-publication/44-REVIEW.md --expect-ids a37f170dc8cc7a801,a752798ab528d2b1f,a401c814e0b118957,a32f740ad20019e8a
+python3 -I .planning/phases/44-release-publication/44-review-check.py rounds .planning/phases/44-release-publication/44-REVIEW.md .planning/phases/44-release-publication/44-REVIEW-DISPOSITION.md
+git branch --contains f95f9e9c
+git log --first-parent --merges --oneline custom_build -4
+# IN-14: three edits of docs/ROLLOUT-v1.7.0_gg7.md, then
+python3 -I .planning/phases/44-release-publication/44-note-check.py all docs/ROLLOUT-v1.7.0_gg7.md --allow 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 e745e7d5363fca8067ddfcc80f3ebea034b93abb4f2912e514492201a729c2af
+python3 -I .planning/phases/44-release-publication/44-doc-check.py links docs/ROLLOUT-v1.7.0_gg7.md CHANGELOG.md docs/FORK-DELTA.md
+bash <the verify block of plan 44-01 Task 2>   # prints P44-01-T2-OK
+bash <the verify block of plan 44-01 Task 3>   # prints P44-01-T3-OK
+bash <the verify block of plan 44-02 Task 3>   # prints P44-02-T3-OK
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git add docs/ROLLOUT-v1.7.0_gg7.md && git commit   # a43ff32f, IN-14
+```
+
+```text
+rounds: 4
+reviewer_agent: round 2 agentId=a752798ab528d2b1f; round 3 agentId=a401c814e0b118957; round 4 agentId=a32f740ad20019e8a
+agents_check: OK agents: rounds=4 distinct=4 ids=a37f170dc8cc7a801,a752798ab528d2b1f,a401c814e0b118957,a32f740ad20019e8a
+round_findings: 1:14; 2:2; 3:2; 4:2
+fix_commits: 4bdc105b; 01eddcd0; 8b28fa55; fa57386f; 733ac3ab; f5498829; 277334e3; 15716dd2; 5b7cc337; 6390da76; fdcd96cd; f014c329; f88fa7a5; e7be1edd; c5362ecd; 71fe00e9; f95f9e9c; 06be77ce; a43ff32f
+fix_wr_01_reproof: the T5 label split was re-read against 41-COMMAND-EVIDENCE.md E-06: the table held 4000 rows after both runs, and the 8000 ms control run wrote 2000, so the failed 3000 ms insert's share (2000) is derived, not measured
+fix_wr_02_reproof: the R1 and R4 labels were split by claim; the tests assert that Utils.handleException throws a RetriableException and do not run Kafka Connect, so the redelivery and the writer sites are labelled read from the code
+fix_wr_03_reproof: the exclusion exactlyOnce=false together with ignorePartitionsWhenBatching=true was read in DirectDeliveryStrategy.preCommit and in Processing.doLogic (both return Connect's own offsets or insert without state before reportInsertedOffsets is looked at)
+fix_wr_04_reproof: the universal about every helper client was reworded to the clients a started task holds, with row F5 listing the residuals; the CHANGELOG line length check (125 columns) was re-run on the reworded intro
+fix_in_04_reproof: the tag-pair commands were re-run for src/main between v1.7.0_gg6 and HEAD and print 8 files changed, 194 insertions, 22 deletions, the figure the note quotes
+fix_in_10_reproof: the rollback block was rehearsed on a dry-run merge based on 7ef33b4f (E-05) and re-run later on a dry-run merge of f95f9e9c (see fix_in_12_reproof): merge exit 0, tree equal, clean tree, block output ok, VERSION v1.7.0_gg6, note absent, tree equal to the tag, revert restores the tree
+fix_wr_05_reproof: read in the code, not measured: ClickHouseWriter.java line 102 (the writer builds its helper client through the protected factory) and the awaitTermination wait at line 198
+fix_in_11_reproof: read in the code: DirectDeliveryStrategy.java line 39 and Processing.java line 143 (the exclusion is the combination only, bufferCount 0 carried)
+fix_rollback_step1_reproof: commit 71fe00e9 reworded rollback step 1 to say the dry run measured a clean tree and does not run git fetch or the fast-forward merge; the wording was checked against the clean-tree figure of E-05 (d0_status_before_block: clean) and against the same code reads as fix_in_11_reproof
+fix_wr_06_reproof: read in the code: ClickHouseHelperClient lines 110 and 111 (client V2 is assigned before client V1, so a throw from the second leaves a V2 client open) and ClickHouseWriter lines 102 and 1833; the row now says three of the five residuals of Known cost 13
+fix_in_12_reproof: the rollback rehearsal was re-run on a dry-run merge of f95f9e9c onto 72e8ccff after the note named that commit; the key lines of both runs follow the fence (attr run: merge_exit 0, rehearsal_parents 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 f95f9e9cb5859f7a77cc7cfc32d72d67686ec64c, rehearsal_tree_equal yes, d0_status_before_block clean, rollback_exit 0, rollback_output ok, gradlew_bat_trap no, rollback_status_after empty, rollback_version v1.7.0_gg6, rollback_note_absent yes, rollback_tree_equals_tag yes, revert_restores_tree yes, rehearsal_cleaned yes; plain run: the same keys with revert_plain_restores_tree yes and plain_switch_exit 0)
+fix_in_13_reproof: IN-13 is closed by this record: E-05's rehearsal of 7ef33b4f is superseded for the wording of the note, which names f95f9e9c, and the rehearsal on f95f9e9c is recorded in fix_in_12_reproof and in the two raw outputs below the fence; branch facts: git branch --contains f95f9e9c prints only sync/v1.7.0
+fix_in_14_reproof: the note now names the release branch sync/v1.7.0 where it points at f95f9e9c; the claim that the commit stays reachable from custom_build after the release rests on the earlier releases being merge commits of that branch (git log --first-parent --merges custom_build lists 3a3a15a9 and 21c51598, both Merge sync/v1.7.0: release v1.7.0_gg5 and v1.7.0_gg4), which is the release process of this phase too; the owning checks were re-run on the edited note
+last_round_clean: no
+round3_decision: G1 after round 3: "Fix both, then one more round (Recommended)"; G1 after round 4: "Fix both, accept without round 5 (Recommended)"
+owning_checks_after_last_fix: note all ok; links ok (32 relative targets, 0 broken); CHANGELOG checks of plan 44-01 Task 2 ok (P44-01-T2-OK); FORK-DELTA checks of plan 44-01 Task 3 ok (P44-01-T3-OK); note checks of plan 44-02 Task 3 ok (P44-02-T3-OK); hygiene strict ok; anchors mirror ok (rows=190 bad=0)
+rounds_check: OK rounds: [(1, 14), (2, 2), (3, 2), (4, 2)] last_clean=False decision=True
+```
+
+The orchestrator spawned the four reviewers and supplied their agentIds; the executor that wrote this entry and the disposition did not review, and it copied the ids and the two G1 answers from the orchestrator's dispatch without being able to verify them. The two answers were given by the user directly to the orchestrator on 2026-11-02. The keys use lowercase ids (`fix_in_12_reproof`) because the evidence checker's key pattern is lowercase. The rehearsal outputs of the two runs on f95f9e9c, as printed by the rehearsal script (scratch files rehearse-attr.out and rehearse-plain.out of the fix executor, copied here because scratch is not durable):
+
+```out
+# attr run
+merge_exit: 0
+rehearsal_parents: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 f95f9e9cb5859f7a77cc7cfc32d72d67686ec64c
+rehearsal_tree_equal: yes
+d0_status_before_block: clean
+rollback_exit: 0
+rollback_output: ok
+gradlew_bat_trap: no
+rollback_status_after: 
+rollback_version: v1.7.0_gg6
+rollback_note_absent: yes
+rollback_tree_equals_tag: yes
+revert_restores_tree: yes
+rehearsal_cleaned: yes
+# plain run
+merge_exit: 0
+rehearsal_parents: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 f95f9e9cb5859f7a77cc7cfc32d72d67686ec64c
+rehearsal_tree_equal: yes
+d0_status_before_block: clean
+rollback_exit: 0
+rollback_output: ok
+gradlew_bat_trap: no
+rollback_status_after: 
+rollback_version: v1.7.0_gg6
+rollback_note_absent: yes
+rollback_tree_equals_tag: yes
+plain_switch_exit: 0
+revert_plain_restores_tree: yes
+rehearsal_cleaned: yes
+```
+
+2026-11-02T22:30:18Z
 
 Verdict: pass
