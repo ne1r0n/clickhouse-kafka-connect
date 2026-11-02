@@ -258,4 +258,39 @@ class ConfluentArchiveCheckUnitTest {
                     assertTrue(found.get(0).contains("clean"), found.get(0));
                 });
     }
+
+    @Test
+    @DisplayName("CI-20: an archive with no lib jar gets no stale directory hint on stderr")
+    void zeroLibJarsGetNoStaleDirectoryHint() throws IOException {
+        Path archive = archive("zero-jars.zip", List.of());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit =
+                ConfluentArchiveCheck.run(
+                        new String[] {archive.toString()},
+                        new PrintStream(out, true, StandardCharsets.UTF_8),
+                        new PrintStream(err, true, StandardCharsets.UTF_8));
+        List<String> errLines = err.toString(StandardCharsets.UTF_8).lines().toList();
+
+        assertAll(
+                () -> assertEquals(1, exit),
+                () ->
+                        assertTrue(
+                                errLines.contains(
+                                        "expected exactly one jar under lib/ in the archive, found 0"),
+                                errLines.toString()),
+                () ->
+                        assertTrue(
+                                errLines.stream()
+                                        .noneMatch(
+                                                line -> line.startsWith(ConfluentArchiveCheck.LIB_JARS_FOUND_PREFIX)),
+                                errLines.toString()),
+                () ->
+                        assertTrue(
+                                errLines.stream()
+                                        .noneMatch(
+                                                line -> line.endsWith(ConfluentArchiveCheck.STALE_DIRECTORY_HINT)),
+                                errLines.toString()));
+    }
 }
