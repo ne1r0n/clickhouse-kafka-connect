@@ -5,11 +5,11 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "gg1 item 6 still overclaims that client V1 fails on the connector's `compress=true` plus `setCompressionMethod=false` combination, and contradicts FORK-DELTA"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "FORK-DELTA's closing sentence for the gg6 paragraph, and the status labels of items 12 and 19, disagree with the items Phase 43 closed"
   - id: WR-03
     severity: warning
@@ -32,8 +32,8 @@ recorded: 2026-11-02T19:52:43.744Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
+| WR-01 | warning | fixed | 43-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 43-REVIEW-FIX.md |
 | WR-03 | warning | skipped | 43-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
