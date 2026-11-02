@@ -20,8 +20,8 @@
 | E-03 | DOC-02 | 43-01 | pass |
 | E-04 | DOC-02 | 43-01 | pass |
 | E-05 | DOC-02 | 43-01 | pass |
-| E-06 | DOC-01, DOC-02 | 43-02 | pending |
-| E-07 | DOC-01 | 43-02 | pending |
+| E-06 | DOC-01, DOC-02 | 43-02 | pass |
+| E-07 | DOC-01 | 43-02 | pass |
 | E-08 | DOC-01 | 43-02 | pending |
 | E-09 | DOC-02 | 43-03 | pending |
 | E-10 | DOC-01, DOC-02 | 43-03 | pending |
@@ -310,5 +310,103 @@ jvm_crash: none
 Before the edit, line 1 of each of the gg4 and gg5 lists named the hyphenated `compare-confluent-archives.py` once (count 2 over the two files, 0 after); after it, both lines start `# Allow-list for .github/scripts/compare_confluent_archives.py (`, and each C4 hunk is `@@ -1 +1 @@`. `confluent-archive-allowlist-25.txt` and `-v1.7.0_gg6.txt` are unchanged since the phase start, and the gg6 list is identical to its copy in tag `v1.7.0_gg6`; both stay with row 37-IN-05(b), deferred by plan 43-03. `CompareConfluentArchivesScriptUnitTest` ran 58 testcases (its E-01 count) with 0 failures, including `WR-02: every allow-list shipped under .planning/scripts loads` (`everyShippedAllowListStillLoads`). The full cache-busted `testUnit` ran 1826 tests (the E-01 total 1824 plus 2) with 0 failures, 0 errors and 2 skipped; its dump holds 1826 lines and `43-testcase-status.py delta` against `43-expected-added.tsv` reports removed=0 added=2 with the added set equal to the expected file. The only line removed under `src/test`, `src/testFixtures` and `src/integrationTest` since `cb1ccb66` is the old size condition `if (result.libJarNames().size() != 1) {` of `ConfluentArchiveCheck.run`; `src/main` is byte-identical to the phase start. The full ClickHouse-backed suite is not run in this phase (decision and reason recorded in the plan's Execution environment and re-stated in E-10).
 
 2026-11-02T19:32:31Z
+
+Verdict: pass
+
+### E-06: The gg6 publication facts, re-read from the GitHub REST API
+
+Backs: DOC-01 (the facts the corrections state: the publish run, the release, the closed Dependabot pull requests, the one tests run on the merge, the two tags and the equal trees of the merge and its second parent; read live before any text is written).
+
+```sh
+R=https://api.github.com/repos/ne1r0n/clickhouse-kafka-connect
+curl -fsS -H 'Accept: application/vnd.github+json' "$R/actions/runs/41298074815" -o /tmp/gsd43/exec/gh-run.json
+curl -fsS -H 'Accept: application/vnd.github+json' "$R/releases/tags/v1.7.0_gg6" -o /tmp/gsd43/exec/gh-release.json
+curl -fsS -H 'Accept: application/vnd.github+json' "$R/pulls/10" -o /tmp/gsd43/exec/gh-pr10.json
+curl -fsS -H 'Accept: application/vnd.github+json' "$R/issues/10" -o /tmp/gsd43/exec/gh-issue10.json
+curl -fsS -H 'Accept: application/vnd.github+json' "$R/pulls/17" -o /tmp/gsd43/exec/gh-pr17.json
+curl -fsS -H 'Accept: application/vnd.github+json' "$R/issues/17" -o /tmp/gsd43/exec/gh-issue17.json
+curl -fsS -H 'Accept: application/vnd.github+json' "$R/actions/workflows/tests.yaml/runs?head_sha=72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236" -o /tmp/gsd43/exec/gh-tests-runs.json
+python3 -I <parse the seven saved responses and print the keys below>
+git ls-remote origin refs/tags/v1.7.0_gg6 refs/tags/pre-v1.7.0_gg6 refs/heads/custom_build
+git diff --quiet 72e8ccff a46be37f -- src build.gradle.kts gradle .github
+```
+
+```text
+run_name: Release custom_build (publish)
+run_event: workflow_dispatch
+run_head_sha: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+run_conclusion: success
+release_id: 430511927
+release_author: github-actions[bot]
+release_draft: false
+release_prerelease: false
+release_asset_name: clickhouse-kafka-connect-v1.7.0_gg6.zip
+release_asset_size: 13558692
+pr10_state: closed
+pr10_merged: false
+pr10_closed_at: 2026-11-01T10:26:38Z
+pr10_closed_by: dependabot[bot]
+pr17_state: closed
+pr17_merged: false
+pr17_closed_at: 2026-11-01T10:28:35Z
+pr17_closed_by: dependabot[bot]
+tests_runs_on_merge_sha: 1
+tests_run_id: 41297502026
+tests_run_event: push
+tests_run_branch: custom_build
+tests_run_conclusion: success
+tag_v1_7_0_gg6: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+tag_pre_v1_7_0_gg6: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+merge_tip_trees_equal: yes
+facts_match_release_record: yes
+api_auth: none
+requests: 7
+```
+
+Every value equals the expectation taken from `38-RELEASE-RECORD.md`, `MILESTONES.md` and the research (read from the GitHub REST API; the two tag ids from `git ls-remote origin`; the tree equality from `git diff --quiet`). The release holds exactly one asset. The tests-run list for the merge SHA holds one run, the push run on `custom_build`. `origin/custom_build` still equals `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236`. The seven requests carried no token and no `Authorization` header; the responses are saved under the scratch directory only.
+
+2026-11-02T19:36:25Z
+
+Verdict: pass
+
+### E-07: The gg1 half of WR-08 and FUT-05 in gg6 row C2
+
+Backs: DOC-01 (ROADMAP Phase 43 success criterion 1: item 6 of the gg1 note carries the gg6 evidence labels and both client lines; FUT-05 is named in row C2 of the gg6 note with a correction notice; the C2 basis read from the code).
+
+```sh
+grep -rn 'getRetry()' src/main/java
+grep -rln 'CONNECTOR_RETRY_TIMEOUT' src/main/java
+python3 -I <list the methods of ClickHouseHelperClient.java that read the retry field, outside its field, constructor and builder>
+grep -oF 'of any line' docs/ROLLOUT-v1.7.0_gg1.md | wc -l
+grep -oF 'FUT-05' docs/ROLLOUT-v1.7.0_gg6.md | wc -l
+git add docs/ROLLOUT-v1.7.0_gg1.md docs/ROLLOUT-v1.7.0_gg6.md
+git commit -F /tmp/gsd43/exec/msg-d1.txt
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-doc-check.py links docs/ROLLOUT-v1.7.0_gg1.md docs/ROLLOUT-v1.7.0_gg6.md
+git diff -U0 965e646f934cded3a1d1a855edc19c8a0cdfe145^ 965e646f934cded3a1d1a855edc19c8a0cdfe145 -- <each note>
+```
+
+```text
+gg1_any_line_before: 1
+gg1_any_line_after: 0
+gg1_measured_public_after: 0
+gg1_item6_labels: yes
+gg6_fut05_before: 0
+gg6_fut05_count: 2
+gg6_c2_label: read from the code
+gg6_c2_scoped: yes
+retry_keys_set_retry_sites: 3
+retry_keys_helper_loops: pingV1 pingV2 queryV1 queryV2
+retry_keys_retry_timeout_reads: ClickHouseSinkConfig.java only
+gg6_notice_before_summary: yes
+links: OK
+gg1_scope: removed=2 added=2
+gg6_scope: removed=1 added=3
+notes_commit: 965e646f934cded3a1d1a855edc19c8a0cdfe145
+notes_commit_files: docs/ROLLOUT-v1.7.0_gg1.md docs/ROLLOUT-v1.7.0_gg6.md
+```
+
+The C2 sentence rests on three greps of the code at this tree (evidence kind: read from the code). `getRetry()` is called at three places, each `.setRetry(csc.getRetry())` (`ClickHouseWriter` lines 109 and 1840, `KeeperStateProvider` line 64), so `retryCount` reaches only the helper client builder; the helper's `retry` field is read only inside `pingV1`, `pingV2`, `queryV1` and `queryV2`; `CONNECTOR_RETRY_TIMEOUT` occurs only in `ClickHouseSinkConfig.java`. In the gg1 note, "of any line" occurred once before and 0 times after; item 6 holds `decodes ZSTD (measured)`, `measured by the maintainers in research`, `not re-run on the release tip`, the link to rows D9 and D13 and both client lines. In the gg6 note the notice paragraph sits at line 3, above the summary paragraph at line 5; FUT-05 occurs twice (the notice and row C2); only row C2 changed (one removed, one added line) plus the notice and its blank line. The 9 relative targets of the two notes resolve. The correction notice's claim about row D7 rests on `git diff v1.7.0_gg6 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md`, which shows that row D7 was the one row changed since the tag (read from git).
+
+2026-11-02T19:36:25Z
 
 Verdict: pass
