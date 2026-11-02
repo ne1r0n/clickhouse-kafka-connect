@@ -4,17 +4,17 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 43
 current_phase_name: Document Fixes & Phase 37 Dispositions
-status: executing
-stopped_at: Completed 43-02-PLAN.md
-last_updated: "2026-11-02T19:39:13.202Z"
+status: verifying
+stopped_at: Completed 43-03-PLAN.md
+last_updated: "2026-11-02T19:44:58.694Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 43 execution started
-state_head: 8b72117c9e136a0e06cb6c62a7e4b5da8b94c49f
+state_head: a93e1eda26a7b96efc36ed7058954934f1ed0f5a
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
   percent: 67
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg
 
 Phase: 43 (Document Fixes & Phase 37 Dispositions) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-02 — Phase 43 execution started
 
 Progress: [███████░░░] 67%
@@ -243,6 +243,7 @@ Progress: [███████░░░] 67%
 | Phase 42 P04 | 45 min | 2 tasks | 1 files |
 | Phase 43 P01 | 9 min | 3 tasks | 11 files |
 | Phase 43 P02 | 3 min | 2 tasks | 4 files |
+| Phase 43 P03 | 13 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -349,6 +350,8 @@ Placement:
 - [Phase 42]: RSK-02 chain form: a RetriableException anywhere in the cause chain stays retriable in Utils.handleException (after the server-error rule, before the DataException rule); it overrides a non-retriable server code and a DataException holding one no longer fails the task under errors.tolerance=none — The user chose the chain form because Processing.doInsert wraps every writer failure, so a bare-only rule would never see the async insert timeout or the DDL-propagation timeout; the changed-row list was committed before the edit and the actual status delta equals it (38 added, none changed)
 - [Phase 42]: RSK-03: unvetted additionalRetriableErrorCodes are named in one start-up WARN (vetted set = Utils.DEFAULT_RETRIABLE_ERROR_CODES plus 216); the definition of transient is the connector judgment, FUT-05 stays open
 - [Phase 43]: 37-IN-04 landed on the user's recorded approval; 37-IN-05 limited to the gg4 and gg5 allow-lists (gg6 list belongs to published tag, row 37-IN-05(b) deferred)
+- [Phase 43]: 43-03: Phase 44 handoff: the gg7 rollout note states 'FUT-05 stays open' in its RSK-03 section, and the RLS-03 reviewer brief covers docs/ROLLOUT-v1.7.0_gg1.md, docs/ROLLOUT-v1.7.0_gg6.md and docs/FORK-DELTA.md as edited in Phase 43, with FUT-05 in the gg6 note deliberate (43-DISPOSITION-LEDGER.md, Handoff to Phase 44) — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
+- [Phase 43]: 43-03: no src/main row approved; 26-IN-02, 27-WR-01, 27-IN-01, 28-IN-01 and 28-IN-05(b) dispositioned with the fork maintainer as owner (user answers "Defer all four (Recommended)" and "Approve 37 IN-04, defer 28 IN-05(b) (Recommended)"); 37-IN-05 split so the gg6 allow-list stays identical to tag v1.7.0_gg6 — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
 
 ### Pending Todos
 
@@ -408,8 +411,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T19:39:11.861Z
-Stopped at: Completed 43-02-PLAN.md
+Last session: 2026-11-02T19:44:57.836Z
+Stopped at: Completed 43-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
