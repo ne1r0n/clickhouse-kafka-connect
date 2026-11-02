@@ -3,6 +3,7 @@ package com.clickhouse.kafka.connect.sink.db.helper;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.clickhouse.client.api.ClientConfigProperties;
 import com.clickhouse.client.api.insert.InsertSettings;
@@ -28,6 +29,10 @@ class InsertSocketTimeoutOptionUnitTest {
     private static final String PER_INSERT_ABSENT =
             "no per-insert socket_timeout when the operator named one";
     private static final String OPERATOR_VALUE = "the operator's client-level socket_timeout";
+    private static final String CLIENT_DEFAULT =
+            "an upper-case key leaves the client-level socket_timeout at its default";
+    private static final String NOT_BUILT =
+            "a socket_timeout pair the client cannot read fails at construction, not later";
     private static final String NON_POSITIVE = "a non-positive timeout adds no per-insert value";
     private static final String CLAMPED = "a timeout above the int range is clamped";
 
@@ -38,7 +43,16 @@ class InsertSocketTimeoutOptionUnitTest {
     }
 
     @ParameterizedTest(name = PARAMETERIZED_NAME)
-    @ValueSource(strings = {"", "ssl=true&sslmode=strict", "SOCKET_TIMEOUT=5", "=5"})
+    @ValueSource(
+            strings = {
+                "",
+                "ssl=true&sslmode=strict",
+                "SOCKET_TIMEOUT=5",
+                "=5",
+                "socket_timeout_x=5",
+                "x_socket_timeout=5",
+                "socket%5Ftimeout=0"
+            })
     void insertCarriesTheInsertTimeoutWhenTheOperatorNamedNoSocketTimeout(
             String jdbcConnectionProperties) {
         try (ClickHouseHelperClient chc = helper(jdbcConnectionProperties)) {
@@ -58,7 +72,9 @@ class InsertSocketTimeoutOptionUnitTest {
                 "socket_timeout=1500|1500",
                 "?socket_timeout=1500|1500",
                 "ssl=true&socket_timeout=1500&sslmode=strict|1500",
-                "socket_timeout=0|0"
+                "socket_timeout=0|0",
+                "&socket_timeout=0|0",
+                "socket_timeout=0&socket_timeout=5|5"
             })
     void insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne(
             String jdbcConnectionProperties, String clientValue) {
@@ -70,6 +86,31 @@ class InsertSocketTimeoutOptionUnitTest {
                     clientValue,
                     chc.getClient().getConfiguration().get(SOCKET_TIMEOUT_KEY),
                     OPERATOR_VALUE);
+        }
+    }
+
+    @ParameterizedTest(name = PARAMETERIZED_NAME)
+    @ValueSource(strings = {"socket_timeout", "socket_timeout="})
+    void aSocketTimeoutPairWithoutANumberFailsHelperConstruction(String jdbcConnectionProperties) {
+        assertThrows(NumberFormatException.class, () -> helper(jdbcConnectionProperties), NOT_BUILT);
+    }
+
+    @Test
+    void aKeyWithSurroundingWhitespaceFailsHelperConstruction() {
+        assertThrows(IllegalArgumentException.class, () -> helper(" socket_timeout=5"), NOT_BUILT);
+    }
+
+    @Test
+    void anUpperCaseSocketTimeoutKeyIsNotAClientSocketTimeout() {
+        String clientDefault;
+        try (ClickHouseHelperClient chc = helper("")) {
+            clientDefault = chc.getClient().getConfiguration().get(SOCKET_TIMEOUT_KEY);
+        }
+        try (ClickHouseHelperClient chc = helper("SOCKET_TIMEOUT=5")) {
+            assertEquals(
+                    clientDefault,
+                    chc.getClient().getConfiguration().get(SOCKET_TIMEOUT_KEY),
+                    CLIENT_DEFAULT);
         }
     }
 
