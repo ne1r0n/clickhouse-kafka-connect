@@ -1809,6 +1809,12 @@ public class ClickHouseWriter implements DBWriter {
      * socket timeouts are treated in {@link com.clickhouse.kafka.connect.util.Utils#handleException}).
      * In exactly-once mode the retry reconstructs the same block (deterministic offsets +
      * insert_deduplication_token), so ClickHouse drops duplicates.
+     *
+     * <p>With the client's default {@code async=false} the insert has already run synchronously and the
+     * future is complete, so the timeout here only applies when the operator sets {@code async=true}. On
+     * the default path the bound is the per-insert {@code socket_timeout} set by
+     * {@link ClickHouseHelperClient#setInsertSocketTimeoutV2}, which is a read-inactivity timeout, not a
+     * cap on total insert time.
      */
     private InsertResponse awaitInsertResponse(Future<InsertResponse> future, QueryIdentifier queryId)
             throws ExecutionException, InterruptedException {
