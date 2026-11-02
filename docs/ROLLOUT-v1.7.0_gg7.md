@@ -55,7 +55,7 @@ What to do: nothing to configure. The residuals of row F5 remain.
 
 ## B. A bounded insert on client V2
 
-This section concerns client V2 only. A connector that does not set `client_version` runs client V1, the default, and nothing in this section applies to it except rows T1 and T12. The rows describe an insert that gets no answer from the server; `async=false` is the client's default (read from the code: the comment on `ClickHouseWriter.awaitInsertResponse`).
+This section concerns client V2 only. A connector that does not set `client_version` runs client V1, the default, and nothing in this section applies to it except rows T1 and T12. The rows describe an insert that gets no answer from the server; `async=false` is the client's default (read from the code: the comment on `ClickHouseWriter.awaitInsertResponse`). `async` is a client V2 option that only a key an operator puts in `jdbcConnectionProperties` can set; the connector sets none (read from the code: `ClickHouseHelperClient.createClientV2` forwards the operator's keys, and nothing in `src/main` sets `async`). It is not the ClickHouse `async_insert` setting, which this release does not touch.
 
 | ID | Effect | Label | Applies when | How it is known |
 |----|--------|-------|--------------|-----------------|
