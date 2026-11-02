@@ -18,7 +18,7 @@
 |-------|-------------|------|---------|
 | E-01 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-01 | pass |
 | E-02 | RSK-01 | 42-01 | pass |
-| E-03 | RSK-01, RSK-04 | 42-01 | pending (plan 42-01) |
+| E-03 | RSK-01, RSK-04 | 42-01 | pass |
 | E-04 | RSK-01, RSK-04 | 42-01 | pending (plan 42-01) |
 | E-05 | RSK-02 | 42-02 | pending (plan 42-02) |
 | E-06 | RSK-02 | 42-02 | pending (plan 42-02) |
@@ -146,5 +146,61 @@ src_main_untouched: yes
 The four failures are all `org.opentest4j.AssertionFailedError` failure elements (no `error` element) and none took more than 30 s. The failure messages show the unchanged tree's behaviour: `directDeliveryReportsTheConsumersTopicUnderAnInjectiveRename` expected `{orig-dev-0=10}` from `preCommit` and got an empty map, `closeClearsTheInsertedOffsetOfTheRevokedConsumerPartition` expected an empty snapshot and found the stale `{orig-0=10}`, and the two `limit...` pins saw an empty `preCommit` result where the consumer's topic key is expected. The trace guard `stateKeyAndFlagSequenceStayOnTheTransformedTopicUnderAnInjectiveRename` and the control `noSmtRecordsKeepTheirTopicAndAreClearedOnClose` passed on the unchanged tree with the literal written from the research trace, so no guard literal needed a correction. `ProcessingTest` (14), `ProcessingRenamedTopicStateKeyUnitTest` (2) and `BufferedOffsetCommitUnitTest` (15) passed in the same run.
 
 2026-11-02T12:06:26Z
+
+Verdict: pass
+
+### E-03: RSK-01 code commit: the line-137 edit green with its pins, the FORK-DELTA row, Known cost 16 with the OI-35 limits, two anchor rows
+
+Backs: RSK-01, RSK-04 (the one-line edit of `Processing.doLogic` line 137 green together with its six pins and the existing classes of the path, the Processing.java Connector source row, Known cost 16 rewritten with the OI-35-2 and OI-35-3 limits, the two anchor rows, and the code commit that holds them as one revert unit).
+
+```sh
+sed -n 137p src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*OriginalTopicInsertedOffsetsUnitTest' --tests '*.ProcessingTest' --tests '*ProcessingRenamedTopicStateKeyUnitTest' --tests '*BufferedOffsetCommitUnitTest' --tests '*ConnectApiReferencesUnitTest' --tests '*SourcePlanningIdGuardUnitTest' > /tmp/gsd42/exec/rsk01-green.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-rsk01-green
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-rsk01-red /tmp/gsd42/exec/status-rsk01-red.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py select .planning/phases/42-isolated-high-risk-edits/42-rsk01-expected-added.tsv PASS /tmp/gsd42/exec/status-rsk01-red.tsv .OriginalTopicInsertedOffsetsUnitTest
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 186
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<file>" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-<name>.out 2> /tmp/gsd42/exec/sc-<name>.err
+git add src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java src/test/java/com/clickhouse/kafka/connect/sink/OriginalTopicInsertedOffsetsUnitTest.java docs/FORK-DELTA.md .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd42/exec/msg-code1.txt
+git diff --numstat cba0909b^ cba0909b -- src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java
+git diff --quiet 1c808c02 cba0909b -- src/main/java/com/clickhouse/kafka/connect/sink/state src/main/java/com/clickhouse/kafka/connect/sink/kafka src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingTest.java src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingRenamedTopicStateKeyUnitTest.java
+git show cba0909b:src/test/java/com/clickhouse/kafka/connect/sink/OriginalTopicInsertedOffsetsUnitTest.java | shasum -a 256
+```
+
+```text
+green_run_exit: 0
+green_class_tests: 6
+green_class_failures: 0
+green_failed: none
+processing_test: 14/0
+renamed_state_key_test: 2/0
+buffered_offset_test: 15/0
+connect_api_refs_green: yes
+planning_id_guard_green: yes
+spotless_test_class: IS CLEAN
+spotless_processing_import_only: yes
+expected_added_rows: 6
+expected_added_sha256: 13540b05e5790d60f4d4ce8deb09e8dbb26127f2a2fc3bdb76338bb85446a879
+fork_delta_row_position: ok
+item16_statements: ok
+anchors_block_position: ok
+anchors_mirror: rows=186 bad=0
+code_commit: cba0909bc15fb83305e1b539c257b2e7b95842d9
+code_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java; src/test/java/com/clickhouse/kafka/connect/sink/OriginalTopicInsertedOffsetsUnitTest.java
+committed_test_sha256_equals_red: yes
+processing_numstat: 1/1
+line_137_reads_original_topic: yes
+state_key_line_count: 1
+state_paths_diff_empty: yes
+processing_test_unchanged: yes
+sink_config_unchanged: yes
+revert_unit: one commit (tests, code and record rows together): cba0909bc15fb83305e1b539c257b2e7b95842d9
+```
+
+Why the state key cannot move: the value read at line 137 is the sixth argument of every `StateRecord` that `doLogic` builds and is set on the record read back from the provider, but its only reader in `src/main` is `BaseStateProviderImpl.onStateUpdate`, which uses it as the topic half of the key of the in-memory `lastInsertedOffsets` map, while the state key `<transformed topic>-<partition>` comes from `TopicPartitionContainer` and the KeeperMap row `(key, minOffset, maxOffset, state)` never reads it. The trace guard `stateKeyAndFlagSequenceStayOnTheTransformedTopicUnderAnInjectiveRename` passed on both trees with the key `orig-0` and `BEFORE_PROCESSING` before `AFTER_PROCESSING` for every inserted range, and `sink/state` and `sink/kafka` have an empty diff against the phase start. The test file committed in the code commit has the SHA-256 recorded at the red run. `ProcessingTest` and `ProcessingRenamedTopicStateKeyUnitTest` are byte-unchanged.
+
+2026-11-02T12:07:54Z
 
 Verdict: pass
