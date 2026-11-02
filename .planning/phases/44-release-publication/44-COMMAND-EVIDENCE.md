@@ -26,7 +26,7 @@
 | E-10 | RLS-03 | 44-03 | pass |
 | E-11 | RLS-02 | 44-04 | pass |
 | E-12 | RLS-04 | 44-04 | fail |
-| E-13 | RLS-04 | 44-04 | pending (plan 44-04) |
+| E-13 | RLS-04 | 44-04 | pass |
 | E-14 | RLS-04 | 44-05 | pending (plan 44-05) |
 | E-15 | RLS-04 | 44-05 | pending (plan 44-05) |
 | E-16 | RLS-04 | 44-05 | pending (plan 44-05) |
@@ -821,5 +821,86 @@ utc_end: 2026-11-02T23:29:54Z
 The only red of E-12 is gone: the three reviewer sentences use a synonym now, both hygiene modes read 0 hits on 44-REVIEW.md and on every other scanned file, and the reviewer attestation still reads four distinct agent ids. The gated head is unchanged outside `.planning` and under `.planning/scripts`, so the testUnit result (1826 tests, 0 failures, 2 skipped), the anchors mirror and the invariant run of E-12 hold for the head the user pushes. Plan 44-04's own verify blocks name E-12 with verdict pass; they are run with E-20 read in place of E-12 for the decision and the hygiene fact, and every other E-12 key is read from E-12 unchanged.
 
 2026-11-02T23:29:54Z
+
+Verdict: pass
+
+### E-13: Two full suites on one pinned ClickHouse latest with client V2, the invariant script's result, and the go decision
+
+Backs: RLS-04 (live half: two full `--rerun` suites on ClickHouse `latest` with client V2 on one pinned image, the digest and `SELECT version()` read before run 1, after run 1 and after run 2, the invariant script's result on the gated head, and the go decision).
+
+```sh
+git diff --quiet b265f5a45a0752f314bb95315e3cdfbeaa2b78cd HEAD -- . ':(exclude).planning'
+git diff --quiet b265f5a45a0752f314bb95315e3cdfbeaa2b78cd HEAD -- .planning/scripts
+./gradlew --stop; sysctl vm.swapusage; colima list
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd44/exec/suite1.log 2>&1
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py junit|skips|failed build/test-results/test ...
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd44/exec/suite2.log 2>&1
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py junit|skips|failed build/test-results/test ...
+cat /tmp/gsd44/exec/invariants.exit; grep '^invariants:' /tmp/gsd44/exec/invariants.log
+```
+
+```text
+gate_head_same: yes
+swap_before: vm.swapusage: total = 28672.00M  used = 27932.94M  free = 739.06M  (encrypted)
+colima_vz: Running
+digest_before_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_before_run1: 26.10.3.7
+digest_same_as_e01: yes
+suite1_utc_start: 2026-11-02T23:30:07Z
+suite1_exit: 0
+suite1_tests: 2425
+suite1_failures: 0
+suite1_errors: 0
+suite1_skipped: 18
+suite1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite1_failed_ok: yes
+suite1_duration: BUILD SUCCESSFUL in 2m 53s
+suite1_jdk: the default test JDK line (defaultJdkVersion 17, no -PjavaVersion)
+suite1_jvm_crash: none
+suite1_warn_live_xml: OK junit build/test-results/test class *UnvettedRetriableCodesWarnLiveTest: tests=1 failures=0 errors=0 skipped=0 files=1
+suite1_processing_xml: OK junit build/test-results/test class *ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+digest_after_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run1: 26.10.3.7
+suite2_utc_start: 2026-11-02T23:33:19Z
+suite2_exit: 0
+suite2_tests: 2425
+suite2_failures: 0
+suite2_errors: 0
+suite2_skipped: 18
+suite2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite2_failed_ok: yes
+suite2_duration: BUILD SUCCESSFUL in 2m 45s
+suite2_jdk: the default test JDK line (defaultJdkVersion 17, no -PjavaVersion)
+suite2_jvm_crash: none
+suite2_warn_live_xml: OK junit build/test-results/test class *UnvettedRetriableCodesWarnLiveTest: tests=1 failures=0 errors=0 skipped=0 files=1
+suite2_processing_xml: OK junit build/test-results/test class *ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+digest_after_run2: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run2: 26.10.3.7
+suites_jdk: the default test JDK line (defaultJdkVersion 17, no -PjavaVersion)
+suites_same_jvm: yes
+suite_expected_tests: 2425
+suite_count_matches: yes
+suite_tests_equal: yes
+docker_only_delta: 599
+pinned_image_same: yes
+crash_files_left: none
+invariants_exit: 0
+invariants_line: invariants: provenance_paths=21 anchor_commits=1534 anchor_rows=190 marker_commits=1600 anchor_exempt=19 result=PASS
+invariants_head: b265f5a45a0752f314bb95315e3cdfbeaa2b78cd
+invariants_finished_utc: 2026-11-02T23:25:44Z
+docker_free_decision_source: E-20 (supersedes E-12, whose only red was the hygiene scan of the review file)
+gate_decision: go
+gate_note: The CI side (the scratch dry run, the single tests.yaml run on the merged SHA and the publish run) is the user's and not part of this gate, and integrationTest was not re-run (E-12 integration_test).
+utc_start: 2026-11-02T23:30:07Z
+utc_end: 2026-11-02T23:36:45Z
+```
+
+Both full suites read 2425 tests with 0 failures, 0 errors and the 18 named skips (7 disabled methods and the 11 `exactlyOnceStateMismatchTest` cases), on one build of `latest` (`26.10.3.7`, one digest at all three reads) with client V2 and the default JDK 17 line; the Docker-only delta over `testUnit` is 599, as in the research. The invariant script ran alone, before the suites, on the gated head and ended `result=PASS`. The runner-side checks are the user's.
+
+2026-11-02T23:36:45Z
 
 Verdict: pass
