@@ -145,7 +145,7 @@ Phase artifacts: `milestones/v1.7.0_gg6-maintenance-phases/`
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker unreachable. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action or decision, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
 - [x] **Phase 39: Dependabot Absorption & Behaviour Pins** - gson 2.15.0 and `setup-gradle` 6.4.1 land first, one commit and one gate each. Then Docker-free pins fix today's wrapped-`DataException` classification and today's `custom_*` forwarding on client 0.11.0, and the integration harness counts only its own connector (F-3). No `src/main` change (completed 2026-11-01)
-- [ ] **Phase 40: Helper Client Closing** - F-1: a stopping task closes every helper client it created (the writer's `chc`, the V1 per-batch client, the exactly-once Keeper client), pinned by a Mockito-free counting seam seen red first. The Keeper half is its own commit behind its own gate
+- [x] **Phase 40: Helper Client Closing** - F-1: a stopping task closes every helper client it created (the writer's `chc`, the V1 per-batch client, the exactly-once Keeper client), pinned by a Mockito-free counting seam seen red first. The Keeper half is its own commit behind its own gate (completed 2026-11-02)
 - [ ] **Phase 41: Bounded Insert Timeout** - F-2: a red stall pin comes first. Then a stalled `async=false` insert fails after `clickhouseClientInsertTimeoutMs` as a retriable error, through a per-insert `socket_timeout`; an operator's `socket_timeout` still wins, and the cases that stay unbounded are written down
 - [ ] **Phase 42: Isolated High-Risk Edits** - OI-35-1 (`originalTopic()` at `Processing.doLogic` line 137), the `Utils.handleException` `RetriableException` pass-through and the FUT-05 start-up WARN land one commit and one gate each, tests first. The state key does not move, and OI-35-2/3 are recorded as limits
 - [ ] **Phase 43: Document Fixes & Phase 37 Dispositions** - The gg1 half of WR-08, FORK-DELTA's future-tense lines and FUT-05 by ID are fixed, and every Phase 37 row has a disposition with an owner. A row that touches `src/main` is fixed only on the user's approval
@@ -216,7 +216,7 @@ A failed `start()` and a second `stop()` are both safe. The writer half and the 
   3. *[Docker-free, live]* The Keeper half is its own later commit. `StateProvider` has a default no-op `close()`. `KeeperStateProvider.close()` closes a client it created and leaves an injected one open. `ProxySinkTask.stop()` stops the writer, unregisters the MBean and closes the state provider in `try/finally`, so a throw in one step still runs the others. The diff of `getStateRecord` and `setStateRecord` is empty. `testUnit` and a full suite, including the exactly-once tests, pass on this commit (CLS-03).
   4. *[record, Docker-free]* The FORK-DELTA rows and `fork-anchors.txt` rows land in the same commits as the code they describe, and the anchors gate passes.
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 - [x] 40-01-PLAN.md — red baseline before any fix: the counting seam (`CountingHelperClient` plus the writer's `createHelperClient` factory and the Keeper factory constructor), the 22 writer cases and the 7 Keeper and `ProxySinkTask.stop` cases run red on V1 and V2 for the right reason, both red trees saved as committed patches, src restored (CLS-04)
@@ -451,7 +451,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-01 |
-| 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | In Progress | - |
+| 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 0/TBD | Not started | - |
