@@ -22,7 +22,7 @@
 | E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pass |
 | E-07 | CLS-01, CLS-02 | 40-02 | pass |
 | E-08 | CLS-03, CLS-04 | 40-03 | pass |
-| E-09 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
+| E-09 | CLS-03, CLS-04 | 40-03 | pass |
 | E-10 | CLS-03 | 40-03 | pending (plan 40-03) |
 | E-11 | CLS-01, CLS-02, CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 
@@ -485,5 +485,72 @@ red_reason_close_count: yes
 The patch SHA-256 equals E-04's `bdc2533c...ea9c` and `git apply` re-created exactly the four Keeper paths on the plan-40-02 tip (HEAD `e8e0318b`, which contains the writer-half commit `de3faf77` and the test-only seed `fae1fcb1`; the patch applied cleanly, so no regeneration was needed). The re-run reproduced E-04: 7 tests, 4 failing cases over the same four methods, the tripwire `injectedClientConstructorStillFailsBeforeAnyInstanceExistsTripwire` passing, every failure an `AssertionFailedError` with `close count`. With `ownedClient` (four occurrences), `ownedClient = chc;` in the factory constructor only and `close()` between `init()` and `getStateRecord`, `KeeperStateProviderClosingUnitTest` shows 5 tests and 0 failures on V1 and V2, and both `ProxySinkTaskStopUnitTest` cases stay red on `close count` because `ProxySinkTask.stop()` does not call the provider yet. The scoped Spotless hook's stdout for `KeeperStateProvider.java` differs from the file in the same 5 import and blank lines as at the phase baseline, with equal import sets, and the file's only import change against HEAD is `+import java.util.function.Function;`; the file was not rewritten.
 
 2026-11-02T06:38:18Z
+
+Verdict: pass
+
+### E-09: Keeper-half commit: provider close, nested stop, 7 cases and guards green, state paths byte-identical, FORK-DELTA and anchors
+
+Backs: CLS-03 (StateProvider default close, KeeperStateProvider.close() for the client it built, ProxySinkTask.stop() in nested try/finally, the state read and write paths byte-identical) and CLS-04 (all 7 Keeper-side cases and the guards green with Docker unreachable, with the 22 writer cases); the FORK-DELTA rows and the four anchors rows land with the code.
+
+```sh
+# edit ProxySinkTask.java: stop() as try { dbWriter.stop(); } finally { try { statistics.unregisterMBean(); } finally { stateProvider.close(); } }
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*KeeperStateProviderClosingUnitTest' --tests '*ProxySinkTaskStopUnitTest' --tests '*ProxySinkTaskConstructorUnitTest' --tests '*SourcePlanningIdGuardUnitTest' --tests '*ConnectApiReferencesUnitTest' --tests '*WrappedDataExceptionClassificationPinUnitTest' --tests '*WriterHelperClientClosingUnitTest' > /tmp/gsd40/exec/keeper-green.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-keeper-green
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-keeper-green --class KeeperStateProviderClosingUnitTest tests=5 failures=0 errors=0 skipped=0
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-keeper-green --class ProxySinkTaskStopUnitTest tests=2 failures=0 errors=0 skipped=0
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-keeper-green --class WriterHelperClientClosingUnitTest tests=22 failures=0
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-keeper-green
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<each of the five Java files>" -PspotlessIdeHookUseStdOut
+git diff 52ce1cd4c1501f1c4a332f42c64295be43f0f53c -- <KeeperStateProvider.java, StateProvider.java> | grep -E '^[-+]import '
+git show <phase_start_sha | writer_commit>:KeeperStateProvider.java; compare from getStateRecord to the end, the injected constructor through init(), and ProxySinkTask.java outside stop()
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 176
+grep -cF -e <each of the four anchored strings> <the three Keeper src/main files>
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 180
+git add <the seven files> && git commit -F /tmp/gsd40/exec/msg-keeper.txt
+git diff --name-only "<keeper_commit>^1" "<keeper_commit>"
+git diff --name-only de3faf775b424e54a8625959cce9c9648cbd40ec HEAD -- src/main
+git diff --quiet fae1fcb17dc580436108aa50a994d0c5204fbbc5 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/db src/test/java/com/clickhouse/kafka/connect/sink/db
+```
+
+```text
+green_run_exit: 0
+keeper_class_tests: 5
+proxy_class_tests: 2
+writer_class_tests: 22
+green_failures: 0
+guards_failed: none
+spotless_keeper_state_provider: IS DIRTY
+spotless_keeper_state_provider_import_lines: +import java.util.function.Function;
+spotless_keeper_state_provider_diff_import_only: yes
+spotless_state_provider: IS DIRTY
+spotless_state_provider_import_lines_changed: 0
+spotless_state_provider_diff_import_only: yes
+injected_client_clause_pin: source identity (ownedClient is assigned only in the factory constructor, once, before the injected-client constructor; the injected-client constructor and init() are byte-identical to phase start) plus the K3 NullPointerException tripwire; there is no behavioural pin, because the injected-client constructor cannot complete today
+spotless_proxy_sink_task: IS CLEAN
+spotless_keeper_test: IS CLEAN
+spotless_proxy_stop_test: IS CLEAN
+state_record_methods_identical_vs_writer_commit: yes
+state_record_methods_identical_vs_phase_start: yes
+injected_constructor_and_init_identical: yes
+proxy_outside_stop_identical: yes
+anchor_counts: ownedClient=4; public void close()=1; default void close()=1; stateProvider.close()=1
+anchors_mirror: rows=180 bad=0
+fork_delta_keeper_row: added
+fork_delta_harness_row: updated
+fork_delta_known_cost_13: closed
+keeper_commit: b55f108a74bcadf25a21174302e20a0ca729cfda
+keeper_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java; src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java; src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java; src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProviderClosingUnitTest.java
+src_main_files_vs_writer_commit: src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java; src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java; src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java
+writer_files_baseline: fae1fcb17dc580436108aa50a994d0c5204fbbc5 (the writer-half commit plus the user-authorised test-only seed)
+writer_files_untouched: yes
+```
+
+The green run exited 0: the Keeper class ran 5 tests, the stop class 2 and the writer class 22, all with 0 failures, errors and skips, and the guard classes (`ProxySinkTaskConstructorUnitTest`, `SourcePlanningIdGuardUnitTest`, `ConnectApiReferencesUnitTest`, `WrappedDataExceptionClassificationPinUnitTest`) report no failing testcase. `ProxySinkTask.stop()` stops the writer, unregisters the MBean and closes the provider in the innermost `finally`, so the writer failure case still unregisters and closes. The text of `getStateRecord` and `setStateRecord` (from `getStateRecord` to the end of the file) equals both phase start and the writer-half commit, the injected-client constructor and `init()` equal phase start, and `ProxySinkTask.java` equals the writer-half commit outside `stop()`; `ownedClient = chc;` occurs once, inside the factory constructor and before the injected-client constructor. `KeeperStateProvider.java` and `StateProvider.java` print `IS DIRTY` at the baseline and still do, with the hook's stdout differing in the same 5 import and blank lines and equal import sets (import-only rule); the only import change against phase start is the `Function` import, and `StateProvider.java` changes no import line. The anchors mirror read `rows=176 bad=0` before the rows were added and reads `rows=180 bad=0` after; all four counts equal the planned ones.
+
+Adjustment against plan 40-02 (recorded here, no earlier record edited): the plan's `writer_files_untouched` check compares against the writer-half commit `de3faf77`, but the user-authorised test-only seed `fae1fcb1` changed `ClickHouseWriterTest.java` (under `src/test/.../sink/db`) after it. The check is therefore taken against `fae1fcb1`, the tip that holds the seed: `git diff --quiet fae1fcb1 HEAD -- src/main/.../sink/db src/test/.../sink/db` exits 0, and `fae1fcb1` is an ancestor of the Keeper-half commit. The `src/main` comparison against `de3faf77` is unaffected, because the seed changed no `src/main` file.
+
+2026-11-02T06:40:40Z
 
 Verdict: pass
