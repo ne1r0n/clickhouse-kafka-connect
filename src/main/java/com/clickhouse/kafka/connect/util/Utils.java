@@ -12,6 +12,8 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -103,7 +105,12 @@ public class Utils {
         }
 
         // A RetriableException below the top stays retriable: Processing wraps every writer failure.
+        // The identity set stops the walk on a cyclic cause chain.
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Throwable t = e; t != null; t = t.getCause()) {
+            if (!visited.add(t)) {
+                break;
+            }
             if (t instanceof RetriableException) {
                 throw t == e ? (RetriableException) e : new RetriableException(e);
             }
