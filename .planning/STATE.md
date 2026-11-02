@@ -4,16 +4,16 @@ milestone: v1.7.0_gg7
 milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
 current_phase: 43
 current_phase_name: Document Fixes & Phase 37 Dispositions
-status: planning
+status: executing
 stopped_at: Phase 42 complete, ready to plan Phase 43
-last_updated: "2026-11-02T15:20:50.177Z"
+last_updated: "2026-11-02T19:24:53.853Z"
 last_activity: 2026-11-02
-last_activity_desc: Phase 42 complete, transitioned to Phase 43
-state_head: 1ddb0e605e1c748d004cf06e0042f032a098564f
+last_activity_desc: Phase 43 execution started
+state_head: 412859dde00fd9001924f8ca2b69c7d4d12ae083
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 14
+  total_plans: 17
   completed_plans: 14
   percent: 67
 ---
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 42 — Isolated High-Risk Edits
+**Current focus:** Phase 43 — Document Fixes & Phase 37 Dispositions
 
 ## Current Position
 
-Phase: 43 — Document Fixes & Phase 37 Dispositions
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-02 — Phase 42 complete, transitioned to Phase 43
+Phase: 43 (Document Fixes & Phase 37 Dispositions) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 43
+Last activity: 2026-11-02 — Phase 43 execution started
 
 Progress: [███████░░░] 67%
 
