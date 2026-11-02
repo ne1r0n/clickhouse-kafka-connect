@@ -25,7 +25,7 @@
 | E-07 | RSK-02 | 42-02 | pass |
 | E-08 | RSK-03 | 42-03 | pass |
 | E-09 | RSK-03 | 42-03 | pass |
-| E-10 | RSK-03 | 42-03 | pending (plan 42-03) |
+| E-10 | RSK-03 | 42-03 | pass |
 | E-11 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
 | E-12 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
 
@@ -592,5 +592,72 @@ revert_unit: one commit (tests, code and record rows together): 4935e9c50402283e
 The green unit run exited 0: the class is 21/0 with both test files byte-identical to the red runs (the committed blobs hash to `09b19f33...` and `0ababbde...`, equal to `red_unit_test_sha256` and `red_live_test_sha256` of E-08), the existing `additionalRetriableErrorCodes` pin class is 19/0, `ConnectApiReferencesUnitTest` (3) and `SourcePlanningIdGuardUnitTest` (18) pass. The live green run on ClickHouse `latest` x V2 exited 0 with the class at 1/0: the task started with code 60, inserted five records, they read back equal, and then the one WARN was asserted. The `ClickHouseSinkTask.java` diff is 21 added lines and 0 removed: three imports (`Utils`, `Set`, `TreeSet`), the comment and the two constants, the helper, and the call on the line directly after `validateBufferConfig(clickHouseSinkConfig);` and before the `ProxySinkTask` construction. `ClickHouseSinkConfig.java` and both existing codes pin classes equal the phase start, and `Utils.java` and `Processing.java` equal the RSK-02 commit `c8574890`. The FORK-DELTA row sits directly after the connector-name row and before the `onPartitionsRevoked` row; Known cost 24 sits between item 23 and `## Named skip inventory`, names the vetted set, 216, the judgment, FUT-05 still open, the owner and the re-open trigger, and Known cost 17 is untouched. The comment and two rows at the end of `fork-anchors.txt` follow the last TMO-01 row. The two expected-added files hold 21 and 22 `PASS` rows, written from the red-run status dumps.
 
 2026-11-02T13:03:04Z
+
+Verdict: pass
+
+### E-10: Gate on the RSK-03 commit: testUnit with Docker unreachable and the full suite on latest x V2, status delta of exactly the added rows
+
+Backs: RSK-03 (success criterion 3: the WARN is pinned Docker-free and live on the user's target; success criterion 4 for the RSK-03 commit: a cache-busted `testUnit` with Docker unreachable and a full suite on ClickHouse `latest` x client V2 on the tree of the code commit, totals equal to the E-07 totals plus 21 and plus 22, and a status delta of exactly the added rows).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-parse HEAD
+git diff --quiet 4935e9c5 HEAD -- . ':!.planning'
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd42/exec/gate3-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-gate3-testunit
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-gate3-testunit /tmp/gsd42/exec/status-gate3-testunit.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py delta /tmp/gsd42/exec/status-gate2-testunit.tsv /tmp/gsd42/exec/status-gate3-testunit.tsv .planning/phases/42-isolated-high-risk-edits/42-rsk03-expected-added-testunit.tsv
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+./gradlew --stop
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd42/exec/gate3-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd42/exec/xml-gate3-full
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-gate3-full /tmp/gsd42/exec/status-gate3-full.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py skips /tmp/gsd42/exec/xml-gate3-full
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py delta /tmp/gsd42/exec/status-gate2-full.tsv /tmp/gsd42/exec/status-gate3-full.tsv .planning/phases/42-isolated-high-risk-edits/42-rsk03-expected-added-full.tsv --by-class
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+gate_head: 5d81088f1bfee844d1aa740e215ba934f0c34947
+gated_tree_equals_code_commit: yes
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1822
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_rsk02_gate: 21
+testunit_delta_vs_baseline: 65
+full_exit: 0
+full_tests: 2421
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_delta_vs_rsk02_gate: 22
+full_delta_vs_baseline: 66
+new_unit_class_testunit: 21/0
+new_unit_class_full: 21/0
+new_live_class_full: 1/0
+codes_pin_testunit: 19/0
+codes_pin_full: 19/0
+codes_live_full: 3/0
+status_delta_testunit: delta: removed=0 added=21 expected=21 match=yes
+status_delta_full: delta: removed=0 added=22 expected=22 match=yes
+clickhouse_version_before: 26.10.3.7
+clickhouse_version_after: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_crash: none
+origin_reread: equal
+```
+
+The gated head descends from the RSK-03 code commit `4935e9c5` and its non-planning tree is equal to it. Both runs exited 0 with 0 failures and 0 errors: `testUnit` with Docker unreachable ran 1822 tests (the E-07 total 1801 plus 21, which is the E-01 total 1757 plus 65; 2 skipped) and the full suite on `latest` x V2 ran 2421 tests (2399 plus 22, which is 2355 plus 66; the 18 named skips). Both status deltas against the E-07 dumps removed nothing and added exactly the rows of the committed expected-added files (21 for `testUnit`, 22 by class for the full suite), so every pre-existing testcase kept its status, including the 19 `AdditionalRetriableErrorCodesPinUnitTest` cases and the 3 `AdditionalRetriableErrorCodesTest` cases. The new unit class is 21/0 in both runs and the live class is 1/0. The ClickHouse version and the image digest equal E-01's and read the same before and after the full run. No crash file appeared in the repository root, and `origin/custom_build` still equals the E-01 value.
+
+2026-11-02T13:07:18Z
 
 Verdict: pass
