@@ -1,8 +1,11 @@
 package com.clickhouse.kafka.connect.sink;
 
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
+import com.clickhouse.kafka.connect.util.Utils;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -15,6 +18,14 @@ import org.slf4j.LoggerFactory;
 public class ClickHouseSinkTask extends SinkTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseSinkTask.class);
+
+    // Vetted retriable codes: the connector's own set plus the code the additional-codes setting was added for.
+    private static final int QUERY_WITH_SAME_ID_IS_ALREADY_RUNNING = 216;
+    private static final String UNVETTED_RETRIABLE_CODES_WARNING =
+            "additionalRetriableErrorCodes lists {}, which the connector does not treat as transient. "
+                    + "A batch that fails with such a code is redelivered with no retry budget and outside "
+                    + "errors.tolerance and the dead letter queue, so a permanent error blocks the partition "
+                    + "until the setting is changed.";
 
     private ProxySinkTask proxySinkTask;
     private ClickHouseSinkConfig clickHouseSinkConfig;
@@ -44,6 +55,7 @@ public class ClickHouseSinkTask extends SinkTask {
         }
 
         validateBufferConfig(clickHouseSinkConfig);
+        warnOnUnvettedRetriableCodes(clickHouseSinkConfig);
 
         this.proxySinkTask = new ProxySinkTask(clickHouseSinkConfig, errorReporter, connectorName);
         this.proxySinkTask.start();
@@ -118,6 +130,15 @@ public class ClickHouseSinkTask extends SinkTask {
                     "When partitions are ignored, the dedup token has no partition component (null) " +
                     "and offset-range deduplication cannot fire."
             );
+        }
+    }
+
+    private static void warnOnUnvettedRetriableCodes(ClickHouseSinkConfig cfg) {
+        Set<Integer> unvetted = new TreeSet<>(cfg.getAdditionalRetriableErrorCodes());
+        unvetted.removeAll(Utils.DEFAULT_RETRIABLE_ERROR_CODES);
+        unvetted.remove(QUERY_WITH_SAME_ID_IS_ALREADY_RUNNING);
+        if (!unvetted.isEmpty()) {
+            LOGGER.warn(UNVETTED_RETRIABLE_CODES_WARNING, unvetted);
         }
     }
 

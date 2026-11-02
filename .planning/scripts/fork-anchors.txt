@@ -220,3 +220,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.set
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	settings.setNetworkTimeout(	1	TMO-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	operatorSetSocketTimeout	3	TMO-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setSocketTimeout(	0	TMO-01
+# Phase 42 (v1.7.0_gg7): ClickHouseSinkTask.start logs one WARN naming the additionalRetriableErrorCodes entries outside the built-in retriable set and 216 (RSK-03); rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	warnOnUnvettedRetriableCodes(	2	RSK-03
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	unvetted.removeAll(Utils.DEFAULT_RETRIABLE_ERROR_CODES);	1	RSK-03
