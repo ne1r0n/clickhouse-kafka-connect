@@ -19,7 +19,7 @@
 | E-01 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-01 | pass |
 | E-02 | RSK-01 | 42-01 | pass |
 | E-03 | RSK-01, RSK-04 | 42-01 | pass |
-| E-04 | RSK-01, RSK-04 | 42-01 | pending (plan 42-01) |
+| E-04 | RSK-01, RSK-04 | 42-01 | pass |
 | E-05 | RSK-02 | 42-02 | pending (plan 42-02) |
 | E-06 | RSK-02 | 42-02 | pending (plan 42-02) |
 | E-07 | RSK-02 | 42-02 | pending (plan 42-02) |
@@ -202,5 +202,66 @@ revert_unit: one commit (tests, code and record rows together): cba0909bc15fb833
 Why the state key cannot move: the value read at line 137 is the sixth argument of every `StateRecord` that `doLogic` builds and is set on the record read back from the provider, but its only reader in `src/main` is `BaseStateProviderImpl.onStateUpdate`, which uses it as the topic half of the key of the in-memory `lastInsertedOffsets` map, while the state key `<transformed topic>-<partition>` comes from `TopicPartitionContainer` and the KeeperMap row `(key, minOffset, maxOffset, state)` never reads it. The trace guard `stateKeyAndFlagSequenceStayOnTheTransformedTopicUnderAnInjectiveRename` passed on both trees with the key `orig-0` and `BEFORE_PROCESSING` before `AFTER_PROCESSING` for every inserted range, and `sink/state` and `sink/kafka` have an empty diff against the phase start. The test file committed in the code commit has the SHA-256 recorded at the red run. `ProcessingTest` and `ProcessingRenamedTopicStateKeyUnitTest` are byte-unchanged.
 
 2026-11-02T12:07:54Z
+
+Verdict: pass
+
+### E-04: Gate on the RSK-01 commit: testUnit with Docker unreachable and the full suite on latest x V2, status delta of exactly the added rows
+
+Backs: RSK-01, RSK-04 (success criterion 4 for the RSK-01 commit: a cache-busted `testUnit` with Docker unreachable and a full suite on ClickHouse `latest` x client V2 on the tree of the code commit, totals equal to the E-01 baselines plus 6, and a per-testcase status delta of exactly the 6 added rows).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-parse HEAD
+git diff --quiet cba0909b HEAD -- . ':!.planning'
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd42/exec/gate1-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-gate1-testunit
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-gate1-testunit /tmp/gsd42/exec/status-gate1-testunit.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py delta /tmp/gsd42/exec/status-base-testunit.tsv /tmp/gsd42/exec/status-gate1-testunit.tsv .planning/phases/42-isolated-high-risk-edits/42-rsk01-expected-added.tsv
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd42/exec/gate1-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd42/exec/xml-gate1-full
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-gate1-full /tmp/gsd42/exec/status-gate1-full.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py skips /tmp/gsd42/exec/xml-gate1-full
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py delta /tmp/gsd42/exec/status-base-full.tsv /tmp/gsd42/exec/status-gate1-full.tsv .planning/phases/42-isolated-high-risk-edits/42-rsk01-expected-added.tsv --by-class
+```
+
+```text
+gate_head: b21e0f15f056b4acfee9af81e60ac8989c3d1817
+gated_tree_equals_code_commit: yes
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1763
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 6
+full_exit: 0
+full_tests: 2361
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_delta_vs_baseline: 6
+new_class_testunit: 6/0
+new_class_full: 6/0
+processing_test_testunit: 14/0
+processing_test_full: 14/0
+status_delta_testunit: delta: removed=0 added=6 expected=6 match=yes
+status_delta_full: delta: removed=0 added=6 expected=6 match=yes
+clickhouse_version_before: 26.10.3.7
+clickhouse_version_after: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_crash: none
+origin_reread: equal
+```
+
+The gated head descends from the RSK-01 code commit `cba0909b` and its non-planning tree is equal to it. Both runs exited 0 with 0 failures and 0 errors: `testUnit` with Docker unreachable ran 1763 tests (the E-01 baseline 1757 plus 6, 2 skipped) and the full suite on `latest` x V2 ran 2361 tests (2355 plus 6, the 18 named skips). Both status deltas against the E-01 dumps removed nothing and added exactly the six `OriginalTopicInsertedOffsetsUnitTest` rows, so every pre-existing testcase kept its status. The ClickHouse version and the image digest equal E-01's and read the same before and after the full run. No crash file appeared in the repository root, and `origin/custom_build` still equals the E-01 value.
+
+2026-11-02T12:11:49Z
 
 Verdict: pass
