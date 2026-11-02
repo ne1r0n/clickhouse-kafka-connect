@@ -21,7 +21,7 @@
 | E-05 | RLS-03 | 44-02 | pass |
 | E-06 | RLS-03 | 44-02 | pass |
 | E-07 | RLS-03 | 44-02 | pass |
-| E-08 | RLS-03 | 44-03 | pending (plan 44-03) |
+| E-08 | RLS-03 | 44-03 | pass |
 | E-09 | RLS-03 | 44-03 | pending (plan 44-03) |
 | E-10 | RLS-03 | 44-03 | pending (plan 44-03) |
 | E-11 | RLS-02 | 44-04 | pending (plan 44-04) |
@@ -448,5 +448,33 @@ note_commit_3: 7b6640fdfe30532eb03224bc6bd93a5f9915f4b0
 The full checker run passed all five checks (rows, labels, forbidden, fut, claims) with exit 0. The six mutations were a deleted T6 row and a T6 label set to `measured` (both fail `rows`), a line naming a planning identifier in section A and a line with a destructive SQL word (both fail `forbidden`), the deleted `FUT-05 stays open.` line (fails `fut`) and a 40-hex string (fails `claims`). The only 64-hex string in the note is the digest of the published gg6 asset, which is a fact about a release that exists. The three relative links that were broken at the end of plan 44-01 (to this note, from the changelog and from the maintainer document) now resolve. The rows were checked against their sources before writing: the WARN text equals the string constant of `ClickHouseSinkTask` joined from its literals (E-05 `warn_text`); the vetted set is the 15 codes of `Utils.DEFAULT_RETRIABLE_ERROR_CODES` plus 216 (E-05 `vetted_codes`); `Processing.java` differs from `v1.7.0_gg6` by exactly the line of row R1; `StateRecord.getOriginalTopic` is read only in `BaseStateProviderImpl.onStateUpdate`, so the claim that only the in-memory inserted-offset map reads the consumer's topic holds; `KeeperStateProvider.setStateRecord` writes no original topic. No row had a weaker source than the planning inventory expected, apart from the two wording corrections recorded in E-06 and the rebuild-versus-asset correction recorded in E-05.
 
 2026-11-02T21:27:19Z
+
+Verdict: pass
+
+### E-08: Review round 1 of the release documents by a fresh gsd-code-reviewer
+
+Backs: RLS-03 (round 1 of the independent review of the release documents: a fresh-context gsd-code-reviewer spawned by the orchestrator with the Agent tool, the brief it ran on, the schema-valid 44-REVIEW.md and its commit).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-review-check.py round .planning/phases/44-release-publication/44-REVIEW.md --diff-base 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 --files <the five files> --tokens <the eleven tokens>
+python3 -I .planning/phases/44-release-publication/44-review-check.py agents .planning/phases/44-release-publication/44-REVIEW.md --expect-ids a37f170dc8cc7a801
+git add .planning/phases/44-release-publication/44-REVIEW.md
+git commit -m "docs(44-03): review round 1 of the release documents (RLS-03)"
+git rev-parse HEAD
+```
+
+```text
+reviewer_agent: round 1 agentId=a37f170dc8cc7a801 (gsd-code-reviewer spawned by the orchestrator with the Agent tool, fresh context)
+agents_check: OK agents: rounds=1 distinct=1 ids=a37f170dc8cc7a801
+brief_files: docs/ROLLOUT-v1.7.0_gg7.md; CHANGELOG.md; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg6.md; docs/ROLLOUT-v1.7.0_gg1.md
+brief_path: /tmp/gsd44/review/brief-r1.md
+round1_findings: 14
+review_commit: e02adb0c7ab638b171e6768a525da537dc3a38fd
+schema_check: OK round: findings=14 rounds=1
+```
+
+The round has 4 warnings and 10 info findings, no critical one. The orchestrator spawned the reviewer and copied the returned agentId into the round section; the executor that recorded this entry did not review. A round with findings is a pass here: the verdict is about the process.
+
+2026-11-02T21:43:34Z
 
 Verdict: pass
