@@ -18,7 +18,7 @@
 | E-01 | DOC-01, DOC-02 | 43-01 | pass |
 | E-02 | DOC-02 | 43-01 | pass |
 | E-03 | DOC-02 | 43-01 | pass |
-| E-04 | DOC-02 | 43-01 | pending |
+| E-04 | DOC-02 | 43-01 | pass |
 | E-05 | DOC-02 | 43-01 | pending |
 | E-06 | DOC-01, DOC-02 | 43-02 | pending |
 | E-07 | DOC-01 | 43-02 | pending |
@@ -194,5 +194,59 @@ jvm_crash: none
 The user's approval is read from the committed research file at `f8ff8fc3` (section "User Decisions Recorded"), not from a relayed message. The red run took 0.005 s for the new testcase, whose single `failure` element has type `org.opentest4j.MultipleFailuresError` and holds `expected the fixture to be rejected by compare chain order` (5 occurrences: both `assertAll` executables fail on the unchanged `CHAIN`, because with no `TAG_GATE_STEP` in it neither a swapped nor a missing tag-gate step is a violation). The 37 pre-existing testcases of the class passed in the red run. The committed file differs from the saved red copy by exactly one added line, `TAG_GATE_STEP,` at line 115 of the `CHAIN` list between `TESTS_GATE_STEP,` and `PUBLISH_STEP,`; the commit adds 15 lines and deletes none. Both real workflows pass `workflowRunsTheCompareChainInOrder` in the green run (class total 38, 0 failures).
 
 2026-11-02T19:29:05Z
+
+Verdict: pass
+
+### E-04: Row 37-IN-06: the zero-jar hint, tests first, one commit
+
+Backs: DOC-02 (row 37-IN-06: the new zero-jar stderr test seen red on the unchanged helper, then the one size condition of `ConfluentArchiveCheck.run` changed from "not one" to "more than one", green, one commit).
+
+```sh
+grep -c 'result.libJarNames().size() != 1' src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheck.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheckUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd43/exec/sc-red-act.out 2> /tmp/gsd43/exec/sc-red-act.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*ConfluentArchiveCheckUnitTest' > /tmp/gsd43/exec/red-archive.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd43/exec/xml-red-archive
+cp src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheckUnitTest.java /tmp/gsd43/exec/red-ConfluentArchiveCheckUnitTest.java
+shasum -a 256 /tmp/gsd43/exec/red-ConfluentArchiveCheckUnitTest.java
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py failed /tmp/gsd43/exec/xml-red-archive --expect 'ConfluentArchiveCheckUnitTest#CI-20: an archive with no lib jar gets no stale directory hint on stderr'
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py junit /tmp/gsd43/exec/xml-red-archive --class ConfluentArchiveCheckUnitTest tests=8 failures=1 errors=0
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<file>" -PspotlessIdeHookUseStdOut > /tmp/gsd43/exec/sc-commit-<name>.out 2> /tmp/gsd43/exec/sc-commit-<name>.err
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*ConfluentArchiveCheckUnitTest' > /tmp/gsd43/exec/green-archive.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd43/exec/xml-green-archive
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py junit /tmp/gsd43/exec/xml-green-archive --class ConfluentArchiveCheckUnitTest tests=8 failures=0 errors=0
+git add src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheck.java src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheckUnitTest.java
+git commit -F /tmp/gsd43/exec/msg-c3.txt
+git diff --numstat 7796ad0ab338ca623f41901dcb36935c49226a40^ 7796ad0ab338ca623f41901dcb36935c49226a40
+```
+
+```text
+spotless_test_file_red: IS CLEAN
+red_run_exit: 1
+red_class_tests: 8
+red_class_failures: 1
+red_failed_set: ConfluentArchiveCheckUnitTest#CI-20: an archive with no lib jar gets no stale directory hint on stderr
+red_failure_type: org.opentest4j.MultipleFailuresError
+red_reason_text: yes
+red_test_sha256: 8fad0b14340b7c48d455ed0ab4d74ec270d044b5254c56acba96d2bacf1fdec5
+helper_condition_before: 1
+green_run_exit: 0
+green_class_tests: 8
+green_class_failures: 0
+committed_test_sha256_equals_red: yes
+helper_numstat: 1 1
+test_numstat_deleted: 0
+spotless_helper: IS CLEAN
+spotless_test_file: IS CLEAN
+code_commit: 7796ad0ab338ca623f41901dcb36935c49226a40
+code_commit_files: src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheck.java src/test/java/com/clickhouse/kafka/connect/ci/ConfluentArchiveCheckUnitTest.java
+jvm_crash: none
+```
+
+On the unchanged helper the new testcase took 0.006 s and failed with one `failure` element of type `org.opentest4j.MultipleFailuresError` that holds `lib jars found: ` (the helper printed the stale-directory hint line for an archive with zero lib jars, so the two `noneMatch` assertions fail while the exit-1 and shape-line assertions pass). The 7 pre-existing testcases of the class passed in the red run. The committed test file has the red copy's SHA-256 and the commit changes one line of `ConfluentArchiveCheck.java` (`result.libJarNames().size() != 1` becomes `result.libJarNames().size() > 1`; the `check` method's separate `libJarNames.size() != 1` shape violation is untouched) and adds 35 lines to the test file with none deleted. The existing `twoLibJarsAreNamedOnStderr` case still passes in the green run (class total 8, 0 failures).
+
+2026-11-02T19:31:40Z
 
 Verdict: pass
