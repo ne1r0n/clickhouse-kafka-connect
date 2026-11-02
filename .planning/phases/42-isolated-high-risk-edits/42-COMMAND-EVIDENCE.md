@@ -20,7 +20,7 @@
 | E-02 | RSK-01 | 42-01 | pass |
 | E-03 | RSK-01, RSK-04 | 42-01 | pass |
 | E-04 | RSK-01, RSK-04 | 42-01 | pass |
-| E-05 | RSK-02 | 42-02 | pending (plan 42-02) |
+| E-05 | RSK-02 | 42-02 | pass |
 | E-06 | RSK-02 | 42-02 | pending (plan 42-02) |
 | E-07 | RSK-02 | 42-02 | pending (plan 42-02) |
 | E-08 | RSK-03 | 42-03 | pending (plan 42-03) |
@@ -263,5 +263,88 @@ origin_reread: equal
 The gated head descends from the RSK-01 code commit `cba0909b` and its non-planning tree is equal to it. Both runs exited 0 with 0 failures and 0 errors: `testUnit` with Docker unreachable ran 1763 tests (the E-01 baseline 1757 plus 6, 2 skipped) and the full suite on `latest` x V2 ran 2361 tests (2355 plus 6, the 18 named skips). Both status deltas against the E-01 dumps removed nothing and added exactly the six `OriginalTopicInsertedOffsetsUnitTest` rows, so every pre-existing testcase kept its status. The ClickHouse version and the image digest equal E-01's and read the same before and after the full run. No crash file appeared in the repository root, and `origin/custom_build` still equals the E-01 value.
 
 2026-11-02T12:11:49Z
+
+Verdict: pass
+
+### E-05: RSK-02 expected changed rows written down before the change, and the red run of the pass-through pins
+
+Backs: RSK-02 (success criterion 2: the set of classification rows the chain pass-through changes is written down and committed before `Utils.java` is touched; the Docker-free `RetriableExceptionPassThroughUnitTest` is run red on the unchanged tree together with every existing classification pin).
+
+```sh
+test -f /tmp/gsd42/exec/status-gate1-testunit.tsv && test -f /tmp/gsd42/exec/status-gate1-full.tsv
+wc -l /tmp/gsd42/exec/status-gate1-testunit.tsv /tmp/gsd42/exec/status-gate1-full.tsv
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-r2.out 2> /tmp/gsd42/exec/sc-r2.err
+git diff --quiet HEAD -- src/main
+shasum -a 256 src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*RetriableExceptionPassThroughUnitTest' --tests '*WriterFailureClassificationUnitTest' --tests '*WrappedDataExceptionClassificationPinUnitTest' --tests '*InsertStallBoundPinUnitTest' --tests '*AdditionalRetriableErrorCodesPinUnitTest' --tests '*.UtilsTest' --tests '*UtilsNullMessageClassificationUnitTest' --tests '*.ProcessingTest' > /tmp/gsd42/exec/rsk02-red.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-rsk02-red
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py dump /tmp/gsd42/exec/xml-rsk02-red /tmp/gsd42/exec/status-rsk02-red.tsv
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk02-red --class .RetriableExceptionPassThroughUnitTest tests=38 failures=30
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py failed /tmp/gsd42/exec/xml-rsk02-red --expect 'RetriableExceptionPassThroughUnitTest#handleExceptionOutcome' 'RetriableExceptionPassThroughUnitTest#writerFailureOutcomeThroughPut'
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py count /tmp/gsd42/exec/status-rsk02-red.tsv .RetriableExceptionPassThroughUnitTest FAIL --name-contains _CONTROL
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py count /tmp/gsd42/exec/status-rsk02-red.tsv .RetriableExceptionPassThroughUnitTest PASS --name-lacks _CONTROL
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-testcase-status.py select .planning/phases/42-isolated-high-risk-edits/42-rsk02-expected-added.tsv PASS /tmp/gsd42/exec/status-rsk02-red.tsv .RetriableExceptionPassThroughUnitTest
+shasum -a 256 .planning/phases/42-isolated-high-risk-edits/42-rsk02-expected-added.tsv
+```
+
+```text
+before_dumps: from E-04
+spotless_test_class: IS CLEAN
+red_run_exit: 1
+red_class_tests: 38
+red_class_failures: 30
+red_failed_set: RetriableExceptionPassThroughUnitTest#handleExceptionOutcome; RetriableExceptionPassThroughUnitTest#writerFailureOutcomeThroughPut
+red_fail_controls: 0
+red_pass_non_controls: 0
+red_reason_assertion: yes
+red_test_sha256: aaca2de46d0e17c3cc30789305f29b4ff6392eee08b6952ecba790ca96fdba4f
+src_main_untouched: yes
+matrix_tests: 216
+matrix_failures: 0
+pin02: 14/0
+tmo02: 15/0
+codes_pin: 19/0
+utils_test: 34/0
+utils_null_message: 6/0
+processing_test: 14/0
+matrix_label_184_note: the ROADMAP and REQUIREMENTS say 184 cases, the Phase 22 count with 21 failure kinds; Phase 27 (WRT-16, commit 108f79a5) added four Jackson kinds, so 25 x 8 + 8 + 8 = 216 executions; the roadmap text is not edited in this phase
+expected_changed_matrix_rows: none
+expected_changed_pin02_rows: none
+expected_changed_tmo02_rows: none
+expected_changed_existing_rows: none
+expected_added_rows: 38
+expected_added_sha256: 534089c3c7dc47fe10c4bdb5a8f24b8f58d59e17246306f9d0f824c783026848
+```
+
+The list is written down before the change. The before dumps are the E-04 gate dumps (`status-gate1-testunit.tsv` 1763 lines and `status-gate1-full.tsv` 2361 lines, both equal to the E-04 totals). `Utils.java` equals HEAD at this point (`git diff --quiet HEAD -- src/main` exits 0), so the red run is on the unchanged tree. The red run exited non-zero with the class XML present: 38 tests, 30 failures, every failure an `org.opentest4j.AssertionFailedError` failure element (no `error` element), none slower than 30 s. The failing methods are exactly `handleExceptionOutcome` (18 of 22 rows) and `writerFailureOutcomeThroughPut` (12 of 16 rows). The 8 `_CONTROL` rows pass on the unchanged tree and no non-control row passes. The failure messages show today's outcome, for example `ASYNC_INSERT_TIMEOUT through PROXY_PUT under errors.tolerance=none` expected `RETRIABLE` but was `FAILS_TASK`, and under `all` was `DLQ`. The existing classes of the path all pass in the same run at their measured counts: `WriterFailureClassificationUnitTest` 216, `WrappedDataExceptionClassificationPinUnitTest` 14, `InsertStallBoundPinUnitTest` 15, `AdditionalRetriableErrorCodesPinUnitTest` 19, `UtilsTest` 34, `UtilsNullMessageClassificationUnitTest` 6, `ProcessingTest` 14.
+
+Existing classes and the rows expected to change in them:
+
+| Existing class | Executions | Expected changed rows |
+|----------------|-----------:|-----------------------|
+| `WriterFailureClassificationUnitTest` (matrix, 25 kinds x 8 + 8 + 8) | 216 | none |
+| `WrappedDataExceptionClassificationPinUnitTest` (PIN-02) | 14 | none |
+| `InsertStallBoundPinUnitTest` (TMO-02) | 15 | none |
+| `AdditionalRetriableErrorCodesPinUnitTest` | 19 | none |
+| `UtilsTest` | 34 | none |
+| `UtilsNullMessageClassificationUnitTest` | 6 | none |
+| `ProcessingTest` | 14 | none |
+| every other existing testcase (whole `testUnit` 1763, full suite 2361) | | none |
+
+The added rows (38, all `PASS` after the change; the chain form chosen by the user):
+
+| Path | Shape | Tolerance | Expected outcome after the change |
+|------|-------|-----------|-----------------------------------|
+| direct `Utils.handleException` | `BARE_RETRIABLE`, `BARE_RETRIABLE_OVER_TIMEOUT`, `BARE_RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE`, `RETRIABLE_FROM_FIRST_HANDLING`, `RETRIABLE_OVER_NUMBER_OF_RECORDS_WRAP` | none, all | `RETRIABLE_SAME` (the input instance is rethrown) |
+| direct `Utils.handleException` | `WRAPPED_INSERT_TIMEOUT`, `WRAPPED_DDL_PROPAGATION_TIMEOUT`, `DATA_EXCEPTION_OVER_RETRIABLE`, `WRAPPED_RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE`, `WRAPPED_RETRIABLE_SERVER_CODE_CONTROL` | none, all | `RETRIABLE_WRAPPED` (one new `RetriableException` around the input) |
+| direct `Utils.handleException` | `WRAPPED_ILLEGAL_STATE_CONTROL` | none | `RUNTIME_WRAP` (control, unchanged) |
+| direct `Utils.handleException` | `WRAPPED_ILLEGAL_STATE_CONTROL` | all | `RETURNS` (control, unchanged) |
+| `ProxySinkTask.put` and `ChunkFlusher.putDirect` | writer throws `ASYNC_INSERT_TIMEOUT`, `DDL_PROPAGATION_TIMEOUT`, `DATA_EXCEPTION_OVER_RETRIABLE` | none, all | `RETRIABLE`, no dead letter queue record |
+| `ProxySinkTask.put` and `ChunkFlusher.putDirect` | writer throws `SOCKET_TIMEOUT_CONTROL` | none, all | `RETRIABLE`, no dead letter queue record (control, unchanged) |
+
+The outcomes of `BARE_RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE`, `WRAPPED_RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE` and `DATA_EXCEPTION_OVER_RETRIABLE` are fixed by the user's chain-form choice; a change to any of them returns to the user.
+
+2026-11-02T12:16:15Z
 
 Verdict: pass
