@@ -186,6 +186,9 @@ src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	clickHouseSin
 # Phase 34 (v1.7.0_gg6): the DEFAULT_RETRIABLE_ERROR_CODES lookup that replaced the retriable-code switch (TAL-05) and the five-argument handleException signature (TAL-03).
 src/main/java/com/clickhouse/kafka/connect/util/Utils.java	DEFAULT_RETRIABLE_ERROR_CODES.contains(errorCode)	1	TAL-05
 src/main/java/com/clickhouse/kafka/connect/util/Utils.java	boolean retryOnSocketException, Set	1	TAL-03
+# Phase 42 (v1.7.0_gg7): Utils.handleException throws a RetriableException found anywhere in the cause chain as retriable, after the server-code rule and before the DataException rule (RSK-02); rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	for (Throwable t = e; t != null; t = t.getCause())	1	RSK-02
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	t instanceof RetriableException	1	RSK-02
 # Phase 35 (v1.7.0_gg6): buffered offsets are keyed by the consumer's original topic and partition (BUF-01, BUF-02, upstream #777); the three 0 rows pin that the transformed-topic accessor call stays gone from each file; rows land in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java	new TopicPartition(record.originalTopic(), record.originalKafkaPartition())	1	BUF-01
 src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java	record.originalKafkaOffset() + 1	1	BUF-01

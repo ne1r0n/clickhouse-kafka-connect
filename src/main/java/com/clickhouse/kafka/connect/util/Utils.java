@@ -102,6 +102,13 @@ public class Utils {
             LOGGER.error("Error code [{}] wasn't in the acceptable list.", errorCode);
         }
 
+        // A RetriableException below the top stays retriable: Processing wraps every writer failure.
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof RetriableException) {
+                throw t == e ? (RetriableException) e : new RetriableException(e);
+            }
+        }
+
         //High-Level Explicit Exception Checking
         if (e instanceof DataException && !errorsTolerance) {
             LOGGER.warn("DataException thrown, wrapping exception: {}", e.getLocalizedMessage());
