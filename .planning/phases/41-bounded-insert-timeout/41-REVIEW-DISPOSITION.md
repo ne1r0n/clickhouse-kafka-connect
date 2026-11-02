@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Insert-timeout documentation now describes a mechanism that is a no-op while `async=false`"
   - id: WR-02
     severity: warning
@@ -36,7 +36,7 @@ recorded: 2026-11-02T10:14:30.494Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
+| WR-01 | warning | fixed | 41-REVIEW-FIX.md |
 | WR-02 | warning | fixed | 41-REVIEW-FIX.md |
 | WR-03 | warning | fixed | 41-REVIEW-FIX.md |
 | IN-01 | info | open | - |
