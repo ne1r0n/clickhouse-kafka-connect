@@ -27,7 +27,7 @@
 | E-09 | RSK-03 | 42-03 | pass |
 | E-10 | RSK-03 | 42-03 | pass |
 | E-11 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pass |
-| E-12 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pending (plan 42-04) |
+| E-12 | RSK-01, RSK-02, RSK-03, RSK-04 | 42-04 | pass |
 
 ### E-01: Execution-start facts, measured baseline and environment
 
@@ -736,5 +736,67 @@ jvm_crash: none
 The base is the head after plan 42-03 (`7fdfdaff`); its non-planning tree equals the RSK-03 code commit. Each revert ran in the detached worktree through `git -C`, so the main tree was never reverted or reset. Every revert applied without conflict, touched exactly the four or five paths of its commit, and produced the exact inverse of the commit's `+`/`-` lines. The production file of each reverted tree equals the phase start (`Processing.java` for RSK-01, `Utils.java` for RSK-02, `ClickHouseSinkTask.java` for RSK-03), the commit's new test files were absent from the index, and the anchors mirror read `rows=188 bad=0` (the head's 190 rows less the commit's two). The cache-busted `testUnit` (`--rerun`, Docker unreachable) exited 0 on each reverted tree with 0 failures, 0 errors and 2 skipped, at the E-10 total of 1822 minus 6, 38 and 21 (1816, 1784, 1801). The reverts are independent because no two Phase 42 insertions are adjacent in `docs/FORK-DELTA.md` or `.planning/scripts/fork-anchors.txt`: each code commit's rows are separated from the next by at least one line that no other Phase 42 commit touches, so git applies each inverse hunk without context overlap. The worktree was removed and pruned, the main tree outside `.planning/` was empty before and after (byte-identical, the SHA-256 of an empty file), and no crash file appeared in the repository root.
 
 2026-11-02T13:11:30Z
+
+Verdict: pass
+
+### E-12: Phase gate: cumulative merge-invariant script, anchors, src/main file list, untouched files, existing tests, origin
+
+Backs: RSK-01, RSK-02, RSK-03, RSK-04 (ROADMAP Phase 42 phase gate: the per-commit gates E-04, E-07 and E-10, then the anchors invariant across every commit of the phase; success criterion 4 across the phase: `src/main` changed only in the three declared files, the sink configuration, the state paths, `ProcessingTest`, `VERSION`, `CHANGELOG.md`, the published notes and the raw numbers untouched, no existing test modified, and nothing pushed).
+
+```sh
+git rev-parse HEAD
+git diff --quiet 4935e9c5 HEAD -- . ':!.planning'
+date -u +%Y-%m-%dT%H:%M:%SZ
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 cca74819e6dc1963eff076f9c87d77a79207d538 > /tmp/gsd42/exec/invariants-42.log 2>&1
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git diff --name-only 1c808c02 HEAD -- src/main
+git log --format=%H 1c808c02..HEAD -- . ':!.planning'
+git diff --name-only cba0909b^ cba0909b
+git diff --name-only c8574890^ c8574890
+git diff --name-only 4935e9c5^ 4935e9c5
+git diff --quiet 1c808c02 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+git diff --quiet 1c808c02 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/state src/main/java/com/clickhouse/kafka/connect/sink/kafka
+git diff --quiet 1c808c02 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/processing/ProcessingTest.java
+git diff --name-only --diff-filter=MDR 1c808c02 HEAD -- src/test src/testFixtures src/integrationTest
+git diff --name-only --diff-filter=A 1c808c02 HEAD -- src/test src/testFixtures src/integrationTest
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-gate3-testunit --class WriterFailureClassificationUnitTest tests=216 failures=0 errors=0
+git diff --quiet 1c808c02 HEAD -- VERSION CHANGELOG.md
+git diff --quiet 1c808c02 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md
+git show 1c808c02:docs/FORK-DELTA.md > /tmp/gsd42/exec/fork-delta-start.md
+python3 -I -c '<compare the lines from "## The raw numbers" up to "## Known costs and open items" in the phase-start copy and in docs/FORK-DELTA.md>' /tmp/gsd42/exec/fork-delta-start.md docs/FORK-DELTA.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+invariants_head: cca74819e6dc1963eff076f9c87d77a79207d538
+invariants_head_tree_equals_c3: yes
+invariants_start_utc: 2026-11-02T13:11:36Z
+invariants_end_utc: 2026-11-02T13:53:45Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=1428 anchor_rows=190 marker_commits=1494 anchor_exempt=19 result=PASS
+invariants_exit: 0
+invariants_scope: the script evaluates the anchor inventory at every commit of the range 54e63648..head, so one run on the final SHA covers the three code commits, each of which already passed the anchors mirror (rows=186 after the RSK-01 commit, 188 after RSK-02, 190 after RSK-03); run once and alone because it takes about 40 minutes and a Gradle run beside it adds swap pressure
+anchors_mirror: rows=190 bad=0
+src_main_files_vs_phase_start: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+non_planning_commits: 4935e9c50402283ec5ac8625415ad38eade5c762 c857489081e27133b74e1ebf9bb061d930624024 cba0909bc15fb83305e1b539c257b2e7b95842d9
+code_commit_files_ok: yes
+per_commit_gates: E-04 pass; E-07 pass; E-10 pass
+sink_config_unchanged: yes
+state_paths_unchanged: yes
+processing_test_unchanged: yes
+existing_tests_modified: none
+new_test_files: src/test/java/com/clickhouse/kafka/connect/sink/OriginalTopicInsertedOffsetsUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnLiveTest.java src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java
+matrix_executions: 216
+matrix_label_note: ROADMAP success criterion 2 and RSK-02 say 184; the matrix runs 216 executions since Phase 27 (WRT-16, 108f79a5); the label is recorded here and not edited in this phase
+version_changelog_untouched: yes
+published_notes_untouched: yes
+raw_numbers_untouched: yes
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+pushes: none
+post_review_recheck: after the orchestrator's code review and any review fix, re-run the anchors mirror at rows=190 and the classes the fix touches; re-run the E-11 revert check for a code commit a fix touches; re-run the invariant script only if a fix changes an anchored line or fork-anchors.txt
+```
+
+The invariant head is the E-11 commit `cca74819`; it descends from the RSK-03 code commit `4935e9c5` and its non-planning tree equals it, so the script judged the same production tree that E-10 gated. The script ended `result=PASS` with exit 0 and `anchor_rows=190`, over 1428 commits of the range. The anchors mirror reads 190 rows with none bad. Against the phase start `src/main` differs in exactly `ClickHouseSinkTask.java`, `Processing.java` and `Utils.java`, and the only non-planning commits are the three code commits, newest first, each holding exactly its production file, its new test file or files, `docs/FORK-DELTA.md` and `.planning/scripts/fork-anchors.txt`. `ClickHouseSinkConfig.java`, `sink/state`, `sink/kafka`, `ProcessingTest.java`, `VERSION`, `CHANGELOG.md`, the gg6 and gg1 rollout notes and the FORK-DELTA raw numbers section are unchanged from the phase start. No existing file under `src/test`, `src/testFixtures` or `src/integrationTest` was modified, deleted or renamed, and exactly the four planned test files were added. The matrix `WriterFailureClassificationUnitTest` ran 216 executions with 0 failures in the E-10 `testUnit` copy. The E-04, E-07, E-10 and E-11 index rows read `pass`. `origin/custom_build` equals the E-01 value and nothing was pushed; no commit was made while the script ran.
+
+2026-11-02T13:54:00Z
 
 Verdict: pass
