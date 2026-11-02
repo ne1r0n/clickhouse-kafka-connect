@@ -19,7 +19,7 @@
 | E-03 | RLS-01 | 44-01 | pass |
 | E-04 | RLS-01 | 44-01 | pass |
 | E-05 | RLS-03 | 44-02 | pass |
-| E-06 | RLS-03 | 44-02 | pending (plan 44-02) |
+| E-06 | RLS-03 | 44-02 | pass |
 | E-07 | RLS-03 | 44-02 | pending (plan 44-02) |
 | E-08 | RLS-03 | 44-03 | pending (plan 44-03) |
 | E-09 | RLS-03 | 44-03 | pending (plan 44-03) |
@@ -374,5 +374,40 @@ note_commit_1: 7ef33b4feae0759c17a77e171e4d53e36b924b3a
 The two archives were rebuilt from clean exports and compared with a comment-only list: every one of the 120 differences is a gson entry, a connector class or the manifest, and the version table differs for `gson` only. The planning figures held (7933 and 7932 entries, the two sizes, 120 differences). One planning statement did not hold: the research and the plan said that a rebuild of tag `v1.7.0_gg6` compares equal entry by entry to the published gg6 asset. Measured here, the local rebuild is 59 bytes smaller than the asset and six connector class files differ; the two that were disassembled differ in the compiled form of a string concatenation, which points at a different compiler, not a different source, but that cause was not established. The note therefore tells operators to download the asset and does not claim the rebuild is equal to it. The rehearsal ran on the committed note (the note is present in the merged tip and absent after the block) with git 2.50.1; the first run switched git's attributes off for the revert, the second ran plain `git switch` and `git revert` and also restored the merged tree, and `gradlew.bat` was not listed after the block, so the note carries no sentence about it. A scratch rebuild on another JDK may differ again; the runner dry run of plan 44-05 is the check that counts for the gg7 allow-list.
 
 2026-11-02T21:19:25Z
+
+Verdict: pass
+
+### E-06: Note sections A and B: closing on stop, the bounded client V2 insert with its 13 claims in order, the supersession table
+
+Backs: RLS-03 (section A rows F1 to F5, section B rows T1 to T15 with the 13 claims of the bounded-insert evidence in their order and the client V2 scope first, the progress-header row as `derived (mechanism, not measured)`, and the table of what this release closes from the gg6 note, with the gg6 note itself untouched).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-note-check.py rows docs/ROLLOUT-v1.7.0_gg7.md --only F T D
+python3 -I .planning/phases/44-release-publication/44-note-check.py labels|forbidden|claims docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I <order check: the T IDs in the note in the order T1..T15; the ten section B tokens present>
+git diff --quiet 9a5209c17e5380ec1f675cd8b3225250d3ff41fe HEAD -- docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets docs/ROLLOUT-v1.7.0_gg7.md
+git add docs/ROLLOUT-v1.7.0_gg7.md && git commit -F /tmp/gsd44/exec/msg-n2.txt
+```
+
+```text
+nc_rows_ftd: OK rows=25 measured=16 code=15 derived=2 mechanism=2
+t_order: yes
+nc_labels: OK labels: 4 of 4 defined
+nc_forbidden: OK forbidden: 0 lines
+nc_claims: OK claims: 0 hex strings outside the allowed set
+section_b_tokens: yes
+gg6_note_untouched: yes
+t7_token_on_default_path: yes
+t12_label_split: yes
+hygiene_note: clean
+secrets_scan: clean
+note_commit_2: 38b26281f0556350b777313231093c036870ddb4
+```
+
+Every row was checked against its source before it was written. Two rows are worded differently from the planning inventory because the code does not support the inventory's wording. Row T7: the planning text said no deduplication token is sent without `exactlyOnce`. The code sends one on the default path: `Processing.doLogic` runs for `exactlyOnce=false` too (with the in-memory state) and builds a `QueryIdentifier` with partition and offsets, so each attempt of a redelivered batch carries the same `insert_deduplication_token`; only `ignorePartitionsWhenBatching=true` sends none. The row therefore says the batch is inserted again, that a duplicate follows in a table that does not deduplicate, that a table deduplicating for the token may drop the repeat, and labels the token claim `read from the code` and the rest `derived`. Row T12: the three `future.get()` sites are read from the code and only the 30.1 s bound was measured, so the label is split instead of `measured`. Row T2 quotes the 304 to 432 ms timings as a probe on a scratch copy of the change, which is what they were. The statements in the maintainer documents (FORK-DELTA item 14 and the changelog section) say the batch can be inserted twice, which the new wording does not contradict; the earlier planning sentence about the token is the only one that does.
+
+2026-11-02T21:24:26Z
 
 Verdict: pass
