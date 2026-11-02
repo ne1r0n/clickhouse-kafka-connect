@@ -27,7 +27,7 @@
 | E-11 | RLS-02 | 44-04 | pass |
 | E-12 | RLS-04 | 44-04 | fail |
 | E-13 | RLS-04 | 44-04 | pass |
-| E-14 | RLS-04 | 44-05 | pending (plan 44-05) |
+| E-14 | RLS-04 | 44-05 | pass |
 | E-15 | RLS-04 | 44-05 | pending (plan 44-05) |
 | E-16 | RLS-04 | 44-05 | pending (plan 44-05) |
 | E-17 | RLS-04 | 44-05 | pending (plan 44-05) |
@@ -902,5 +902,111 @@ utc_end: 2026-11-02T23:36:45Z
 Both full suites read 2425 tests with 0 failures, 0 errors and the 18 named skips (7 disabled methods and the 11 `exactlyOnceStateMismatchTest` cases), on one build of `latest` (`26.10.3.7`, one digest at all three reads) with client V2 and the default JDK 17 line; the Docker-only delta over `testUnit` is 599, as in the research. The invariant script ran alone, before the suites, on the gated head and ended `result=PASS`. The runner-side checks are the user's.
 
 2026-11-02T23:36:45Z
+
+Verdict: pass
+
+### E-14: Publication rehearsal without a push: upstream recheck 2, the merge message, a dry-run merge with its checks, the rollback on it, the date check, the approval bundle
+
+Backs: RLS-04 (the publication path rehearsed without a push on the final tip: origin and divergence facts, the second upstream recheck, the merge message, a dry-run merge D of the tip onto 72e8ccff in a throwaway detached worktree with the note's rollback block run on it, the server and image read, the CHANGELOG date check, and the approval bundle with its gates and eight questions).
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git rev-list --left-right --count origin/custom_build...sync/v1.7.0
+git rev-list --count 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236..HEAD
+git rev-list --count HEAD --not --remotes=origin
+git rev-parse 'pre-v1.7.0_gg7^{commit}'; git cat-file -t pre-v1.7.0_gg7
+git ls-remote --heads origin 'sync/*'; git ls-remote --tags origin 'v1.7.0_gg7*' 'pre-v1.7.0_gg7*'; git tag -l 'v1.7.0_gg7'
+gh api "repos/ne1r0n/clickhouse-kafka-connect/pulls?state=open&per_page=50" --jq '[.[] | "\(.number) \(.head.sha[0:8])"] | sort | join("; ")'
+git diff --shortstat 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 HEAD -- . ':(exclude).planning'    # and -- .planning
+git diff --quiet <E-12 gated_head> HEAD -- . ':(exclude).planning'; git diff --quiet <E-12 gated_head> HEAD -- .planning/scripts
+git diff --quiet <E-10 disposition_commit> <E-12 gated_head> -- . ':(exclude).planning'
+git ls-remote upstream refs/heads/main; git ls-remote --tags --refs upstream 'v*'
+curl -s https://api.github.com/repos/ClickHouse/clickhouse-kafka-connect/pulls/<861|855|857>
+curl -s https://api.github.com/repos/ClickHouse/clickhouse-kafka-connect/compare/9bed6f79...d92a1830
+/bin/bash /tmp/gsd44/exec/t1-facts-a.sh        # the reads above, read-only
+python3 -I /tmp/gsd44/exec/extract-rb.py docs/ROLLOUT-v1.7.0_gg7.md /tmp/gsd44/exec/rollback-block-t1.sh
+git worktree add --detach /tmp/gsd44/w/pubdry 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+git --attr-source="$(git hash-object -t tree /dev/null)" merge --no-ff -F <absolute path of 44-MERGE-MESSAGE.txt> <tip_head>    # in the worktree, demo identity
+bash -e /tmp/gsd44/exec/rollback-block-t1.sh   # in the worktree
+git --attr-source="$(git hash-object -t tree /dev/null)" revert --no-edit <rollback commit>    # in the worktree
+git worktree remove --force /tmp/gsd44/w/pubdry; git worktree prune; git branch -D rollback-v1.7.0_gg7
+/bin/bash /tmp/gsd44/exec/t1-facts-b.sh <tip_head> <absolute path of 44-MERGE-MESSAGE.txt> /tmp/gsd44/exec/rollback-block-t1.sh   # the five lines above in one script
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+head -1 CHANGELOG.md; date -u +%F
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict <merge message> <bundle> <evidence>
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets .planning/phases/44-release-publication/44-COMMAND-EVIDENCE.md
+git add .planning/phases/44-release-publication/44-MERGE-MESSAGE.txt .planning/phases/44-release-publication/44-APPROVAL-BUNDLE.md && git commit -F /tmp/gsd44/exec/msg-t1a.txt
+```
+
+```text
+tip_head: 45cbc9db5bba2e5f367eff4bb7043251587e44e2
+origin_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+origin_unchanged: yes
+left_count: 0
+left_right: 0 261
+ahead_of_gg6: 261
+unpublished_commits: 259
+pre_tag_local: yes (commit at 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236)
+origin_sync_ref: none
+origin_gg7_tags: none
+local_release_tag: none
+pr_heads: 21 14be67ce; 22 b5cccbd3
+pr_heads_unchanged: yes
+non_planning_vs_gg6: 40 files changed, 3167 insertions(+), 146 deletions(-)
+planning_vs_gg6: 301 files changed, 30107 insertions(+), 1427 deletions(-)
+gated_sha: a43ff32f39647dfc3afb9849f6729b251f2619d2
+gated_head: b265f5a45a0752f314bb95315e3cdfbeaa2b78cd
+tip_equals_gate_outside_planning: yes
+frozen_docs_equal_gate: yes
+upstream_main_end: d92a1830113a5f9c1cf49bf67f65ec6d188d1391
+upstream_newest_tag_end: v1.7.0
+upstream_tag_past_v170_end: no
+upstream_pr_861_end: open False 3d4cfdf2
+upstream_pr_855_end: open False ddabf28b
+upstream_pr_857_end: open False 11d88bc0
+upstream_main_moved: yes: 9bed6f7970670a55c66be8efda246889e1f95bd0 (E-01) to d92a1830113a5f9c1cf49bf67f65ec6d188d1391, 6 commits, ahead_by 6 behind_by 0, merged 2026-11-01 to 2026-11-02T23:29:30Z; files changed: .github/workflows/tests.yaml, gradle/libs.versions.toml
+upstream_changed_since_e01: yes: main moved (dependency bumps spotless 8.10.4 and commons-lang3 3.21.0, cloud-test secrets in tests.yaml); newest tag, tags past v1.7.0 and pull requests 861, 855 and 857 unchanged; not a STOP (a bundle item and information for the next sync)
+merge_subject: Merge sync/v1.7.0: release v1.7.0_gg7
+merge_trailer_last: yes
+d_commit: 0209fb6a218dc5e669e2f108fd73e981ef012457
+d_parents: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 45cbc9db5bba2e5f367eff4bb7043251587e44e2
+d_tree_equal: yes
+d_subject: Merge sync/v1.7.0: release v1.7.0_gg7
+d_no_gsd_ws_arg: yes
+d_version: v1.7.0_gg7
+d_allowlist_present: yes
+d_baseline_tag: v1.7.0_gg6
+d_no_gg7_tag_merged: yes
+d_operator_doc_check: none
+d_rollback_exit: 0
+d_rollback_output: ok
+d_rollback_version: v1.7.0_gg6
+d_rollback_note_absent: yes
+d_rollback_tree_equals_tag: yes
+d_gradlew_bat_trap: no
+d_revert_restores_tree: yes
+d_cleaned: yes
+local_custom_build_ref_unmoved: yes
+select_version: 26.10.3.7
+image_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e13: yes
+changelog_heading_date: 2026-11-02
+utc_today: 2026-11-02 (read at 2026-11-02T23:41:23Z)
+changelog_date_vs_today: equal (2026-11-02) at 2026-11-02T23:41:23Z; the UTC date flips at 2026-11-03T00:00Z, so at every later read, and at any merge, the heading differs; the user decides at bundle question 5 and again before the push of M
+changelog_read_by_tooling: no: no workflow, script or test under .github or src/test refers to CHANGELOG.md
+message_check: yes
+bundle_items: yes
+bundle_gates: yes
+hygiene_scan: clean
+secrets_scan: clean
+anchors_mirror: rows=190 bad=0
+bundle_commit: adf06e15dacbe2bb08f128621d06fd272aab8520
+```
+
+D was built from the committed merge message, with parents 72e8ccff and the tip, and removed; it was never pushed and the local custom_build ref did not move. The upstream recheck found that upstream main moved by six commits since E-01 (dependency bumps and the cloud-test secrets in tests.yaml, no source change); nothing else changed. The task's CHANGELOG date check reads equal at the moment of measurement, and the bundle states that the date flips minutes later and asks the user directly. The plan's verify clause for plan 44-05 Task 1 was run as written; the evidence helper's rows check accepts E-20 beside E-01 to E-14 (E-20 is the superseding hygiene re-run of plan 44-04).
+
+2026-11-02T23:44:09Z
 
 Verdict: pass
