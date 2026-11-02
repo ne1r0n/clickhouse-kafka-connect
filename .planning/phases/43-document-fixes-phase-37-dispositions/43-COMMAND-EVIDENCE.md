@@ -17,7 +17,7 @@
 |-------|-------------|------|---------|
 | E-01 | DOC-01, DOC-02 | 43-01 | pass |
 | E-02 | DOC-02 | 43-01 | pass |
-| E-03 | DOC-02 | 43-01 | pending |
+| E-03 | DOC-02 | 43-01 | pass |
 | E-04 | DOC-02 | 43-01 | pending |
 | E-05 | DOC-02 | 43-01 | pending |
 | E-06 | DOC-01, DOC-02 | 43-02 | pending |
@@ -138,5 +138,61 @@ jvm_crash: none
 The two replaced lines are header lines 5 and 6 (110 and 94 columns after the edit); line 1 still starts `# FORK MODIFICATION` and no header line holds `left unfixed` or `vnull`. The six workflow guard classes ran 188 testcases (equal to `six_guard_tests_base`) with 0 failures and 0 errors before the commit; the anchored strings of the file are not on the edited lines, so the anchors mirror stays at `rows=190 bad=0`. `origin/custom_build` was re-read before the commit and is unchanged. The commit pointer `code_commit` is the one the disposition ledger of plan 43-03 consumes for row 37-HDR.
 
 2026-11-02T19:28:30Z
+
+Verdict: pass
+
+### E-03: Row 37-IN-04: the tag gate in CHAIN, tests first, one commit
+
+Backs: DOC-02 (row 37-IN-04, approved by the user: the new fixture test seen red on the unchanged `CHAIN`, then the one added `CHAIN` line, green, one commit).
+
+```sh
+git show f8ff8fc3:.planning/phases/43-document-fixes-phase-37-dispositions/43-RESEARCH.md | grep -F 'Approve 37 IN-04'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd43/exec/sc-red-rg.out 2> /tmp/gsd43/exec/sc-red-rg.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*ReleaseWorkflowGuardUnitTest' > /tmp/gsd43/exec/red-chain.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd43/exec/xml-red-chain
+cp src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java /tmp/gsd43/exec/red-ReleaseWorkflowGuardUnitTest.java
+shasum -a 256 /tmp/gsd43/exec/red-ReleaseWorkflowGuardUnitTest.java
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py failed /tmp/gsd43/exec/xml-red-chain --expect 'ReleaseWorkflowGuardUnitTest#CIH-04: fixture: the chain rule requires the tag gate after the tests gate'
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py junit /tmp/gsd43/exec/xml-red-chain --class ReleaseWorkflowGuardUnitTest tests=38 failures=1 errors=0
+diff -U0 /tmp/gsd43/exec/red-ReleaseWorkflowGuardUnitTest.java src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*ReleaseWorkflowGuardUnitTest' > /tmp/gsd43/exec/green-chain.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd43/exec/xml-green-chain
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py junit /tmp/gsd43/exec/xml-green-chain --class ReleaseWorkflowGuardUnitTest tests=38 failures=0 errors=0
+git add src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java
+git commit -F /tmp/gsd43/exec/msg-c2.txt
+git diff --numstat 33d079a986b04ade5c878caa0d3aa392915c38a8^ 33d079a986b04ade5c878caa0d3aa392915c38a8 -- src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java
+```
+
+```text
+approval_quote: Approve 37 IN-04, defer 28 IN-05(b) (Recommended)
+approval_source: 43-RESEARCH.md at f8ff8fc3, User Decisions Recorded
+spotless_red_file: IS CLEAN
+red_run_exit: 1
+red_class_tests: 38
+red_class_failures: 1
+red_failed_set: ReleaseWorkflowGuardUnitTest#CIH-04: fixture: the chain rule requires the tag gate after the tests gate
+red_failure_type: org.opentest4j.MultipleFailuresError
+red_reason_text: yes
+red_file_sha256: 5c8244cfad77526db6519b1816c83d3373edda894f0d2e31ea44901f494b7b88
+chain_gate_before: fail
+red_to_commit_added_lines: 1
+red_to_commit_removed_lines: 0
+green_run_exit: 0
+green_class_tests: 38
+green_class_failures: 0
+chain_gate_after: pass
+spotless_commit_file: IS CLEAN
+code_commit: 33d079a986b04ade5c878caa0d3aa392915c38a8
+code_commit_files: src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java
+code_commit_deleted_lines: 0
+jvm_crash: none
+```
+
+The user's approval is read from the committed research file at `f8ff8fc3` (section "User Decisions Recorded"), not from a relayed message. The red run took 0.005 s for the new testcase, whose single `failure` element has type `org.opentest4j.MultipleFailuresError` and holds `expected the fixture to be rejected by compare chain order` (5 occurrences: both `assertAll` executables fail on the unchanged `CHAIN`, because with no `TAG_GATE_STEP` in it neither a swapped nor a missing tag-gate step is a violation). The 37 pre-existing testcases of the class passed in the red run. The committed file differs from the saved red copy by exactly one added line, `TAG_GATE_STEP,` at line 115 of the `CHAIN` list between `TESTS_GATE_STEP,` and `PUBLISH_STEP,`; the commit adds 15 lines and deletes none. Both real workflows pass `workflowRunsTheCompareChainInOrder` in the green run (class total 38, 0 failures).
+
+2026-11-02T19:29:05Z
 
 Verdict: pass
