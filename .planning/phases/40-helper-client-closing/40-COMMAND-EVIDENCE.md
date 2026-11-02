@@ -21,7 +21,7 @@
 | E-05 | CLS-01, CLS-04 | 40-02 | pass |
 | E-06 | CLS-01, CLS-02, CLS-04 | 40-02 | pass |
 | E-07 | CLS-01, CLS-02 | 40-02 | pass |
-| E-08 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
+| E-08 | CLS-03, CLS-04 | 40-03 | pass |
 | E-09 | CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
 | E-10 | CLS-03 | 40-03 | pending (plan 40-03) |
 | E-11 | CLS-01, CLS-02, CLS-03, CLS-04 | 40-03 | pending (plan 40-03) |
@@ -441,5 +441,49 @@ Cause, read from the stack traces and the test log. The three failing cases call
 Attempt 1 verdict: fail
 
 2026-11-02T06:35:09Z
+
+Verdict: pass
+
+### E-08: Keeper red tree re-applied and re-confirmed; the provider slice turns the Keeper cases green
+
+Backs: CLS-03 (KeeperStateProvider.close() closes only the helper client its own constructor built) and CLS-04 (the Keeper red tree from 40-red-keeper.patch re-confirmed red on the plan-40-02 tip, then the thinnest fix through the provider layer turns exactly the two Keeper cases green on V1 and V2 while the two ProxySinkTask.stop cases stay red for the right reason).
+
+```sh
+shasum -a 256 .planning/phases/40-helper-client-closing/40-red-keeper.patch
+git apply --check .planning/phases/40-helper-client-closing/40-red-keeper.patch
+git apply .planning/phases/40-helper-client-closing/40-red-keeper.patch
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*KeeperStateProviderClosingUnitTest' --tests '*ProxySinkTaskStopUnitTest' > /tmp/gsd40/exec/keeper-reconfirm.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-keeper-reconfirm
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-keeper-reconfirm --expect <the four E-04 names>
+# edit KeeperStateProvider.java: ownedClient field, ownedClient = chc; in the factory constructor, @Override public void close()
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*KeeperStateProviderClosingUnitTest' --tests '*ProxySinkTaskStopUnitTest' > /tmp/gsd40/exec/keeper-intermediate.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd40/exec/xml-keeper-intermediate
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-keeper-intermediate --class KeeperStateProviderClosingUnitTest tests=5 failures=0 errors=0
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py junit /tmp/gsd40/exec/xml-keeper-intermediate --class ProxySinkTaskStopUnitTest tests=2 failures=2
+python3 -I .planning/phases/40-helper-client-closing/40-evidence-check.py failed /tmp/gsd40/exec/xml-keeper-intermediate --expect <the two stop names below>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java" -PspotlessIdeHookUseStdOut
+```
+
+```text
+keeper_patch_sha256_matches: yes
+keeper_patch_applied: yes
+reconfirm_run_exit: 1
+reconfirm_failed_count: 4
+reconfirm_matches_e04: yes
+intermediate_run_exit: 1
+intermediate_keeper_failures: 0
+intermediate_proxy_failures: 2
+intermediate_failed_count: 2
+intermediate_failed_set: ProxySinkTaskStopUnitTest#writerStopFailureStillUnregistersTheMBeanAndClosesTheStateProvider; ProxySinkTaskStopUnitTest#stopClosesTheStateProviderOnceAfterTheWriterAndTheMBean
+red_reason_close_count: yes
+```
+
+The patch SHA-256 equals E-04's `bdc2533c...ea9c` and `git apply` re-created exactly the four Keeper paths on the plan-40-02 tip (HEAD `e8e0318b`, which contains the writer-half commit `de3faf77` and the test-only seed `fae1fcb1`; the patch applied cleanly, so no regeneration was needed). The re-run reproduced E-04: 7 tests, 4 failing cases over the same four methods, the tripwire `injectedClientConstructorStillFailsBeforeAnyInstanceExistsTripwire` passing, every failure an `AssertionFailedError` with `close count`. With `ownedClient` (four occurrences), `ownedClient = chc;` in the factory constructor only and `close()` between `init()` and `getStateRecord`, `KeeperStateProviderClosingUnitTest` shows 5 tests and 0 failures on V1 and V2, and both `ProxySinkTaskStopUnitTest` cases stay red on `close count` because `ProxySinkTask.stop()` does not call the provider yet. The scoped Spotless hook's stdout for `KeeperStateProvider.java` differs from the file in the same 5 import and blank lines as at the phase baseline, with equal import sets, and the file's only import change against HEAD is `+import java.util.function.Function;`; the file was not rewritten.
+
+2026-11-02T06:38:18Z
 
 Verdict: pass
