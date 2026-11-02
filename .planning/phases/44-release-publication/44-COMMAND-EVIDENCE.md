@@ -20,7 +20,7 @@
 | E-04 | RLS-01 | 44-01 | pass |
 | E-05 | RLS-03 | 44-02 | pass |
 | E-06 | RLS-03 | 44-02 | pass |
-| E-07 | RLS-03 | 44-02 | pending (plan 44-02) |
+| E-07 | RLS-03 | 44-02 | pass |
 | E-08 | RLS-03 | 44-03 | pending (plan 44-03) |
 | E-09 | RLS-03 | 44-03 | pending (plan 44-03) |
 | E-10 | RLS-03 | 44-03 | pending (plan 44-03) |
@@ -409,5 +409,44 @@ note_commit_2: 38b26281f0556350b777313231093c036870ddb4
 Every row was checked against its source before it was written. Two rows are worded differently from the planning inventory because the code does not support the inventory's wording. Row T7: the planning text said no deduplication token is sent without `exactlyOnce`. The code sends one on the default path: `Processing.doLogic` runs for `exactlyOnce=false` too (with the in-memory state) and builds a `QueryIdentifier` with partition and offsets, so each attempt of a redelivered batch carries the same `insert_deduplication_token`; only `ignorePartitionsWhenBatching=true` sends none. The row therefore says the batch is inserted again, that a duplicate follows in a table that does not deduplicate, that a table deduplicating for the token may drop the repeat, and labels the token claim `read from the code` and the rest `derived`. Row T12: the three `future.get()` sites are read from the code and only the 30.1 s bound was measured, so the label is split instead of `measured`. Row T2 quotes the 304 to 432 ms timings as a probe on a scratch copy of the change, which is what they were. The statements in the maintainer documents (FORK-DELTA item 14 and the changelog section) say the batch can be inserted twice, which the new wording does not contradict; the earlier planning sentence about the token is the only one that does.
 
 2026-11-02T21:24:26Z
+
+Verdict: pass
+
+### E-07: Note complete: 33 labelled rows, the verbatim WARN, FUT-05 stays open, checker and six mutations, links
+
+Backs: RLS-03 (sections C to F with rows R1 to R8, the start-up WARN quoted verbatim from the source on one line, the line `FUT-05 stays open.` in section F and nowhere else, the known limits, the full checker run with six mutations that each fail, every relative link of the note, the changelog and the maintainer document resolving, and no fact about the release object).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-note-check.py all docs/ROLLOUT-v1.7.0_gg7.md --allow 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 e745e7d5363fca8067ddfcc80f3ebea034b93abb4f2912e514492201a729c2af
+python3 -I .planning/phases/44-release-publication/44-note-check.py rows docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I .planning/phases/44-release-publication/44-note-check.py fut docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I /tmp/gsd44/exec/mut7.py docs/ROLLOUT-v1.7.0_gg7.md /tmp/gsd44/exec   # six scratch copies
+python3 -I .planning/phases/44-release-publication/44-note-check.py rows|forbidden|fut|claims <each scratch copy>
+grep -cF <the warn text of E-05> docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I .planning/phases/44-release-publication/44-doc-check.py links docs/ROLLOUT-v1.7.0_gg7.md CHANGELOG.md docs/FORK-DELTA.md
+python3 -I <release object scan: no v1.7.0_gg7.zip followed by a byte count, no releases/tag/v1.7.0_gg7, no digest other than the gg6 asset's>
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe HEAD -- . ':(exclude).planning'
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg7.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets docs/ROLLOUT-v1.7.0_gg7.md
+git add docs/ROLLOUT-v1.7.0_gg7.md && git commit -F /tmp/gsd44/exec/msg-n3.txt
+```
+
+```text
+nc_all: OK claims: 0 hex strings outside the allowed set
+nc_rows: OK rows=33 measured=23 code=18 derived=3 mechanism=2
+nc_fut: OK fut: 'FUT-05 stays open.' stands in section F and FUT-05 appears nowhere else
+nc_mutations: 6 of 6 failed as expected
+warn_verbatim: yes
+links_all: OK links: 32 relative targets checked, 0 broken
+release_object_facts: none
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg7.md
+hygiene_note: clean
+secrets_scan: clean
+note_commit_3: 7b6640fdfe30532eb03224bc6bd93a5f9915f4b0
+```
+
+The full checker run passed all five checks (rows, labels, forbidden, fut, claims) with exit 0. The six mutations were a deleted T6 row and a T6 label set to `measured` (both fail `rows`), a line naming a planning identifier in section A and a line with a destructive SQL word (both fail `forbidden`), the deleted `FUT-05 stays open.` line (fails `fut`) and a 40-hex string (fails `claims`). The only 64-hex string in the note is the digest of the published gg6 asset, which is a fact about a release that exists. The three relative links that were broken at the end of plan 44-01 (to this note, from the changelog and from the maintainer document) now resolve. The rows were checked against their sources before writing: the WARN text equals the string constant of `ClickHouseSinkTask` joined from its literals (E-05 `warn_text`); the vetted set is the 15 codes of `Utils.DEFAULT_RETRIABLE_ERROR_CODES` plus 216 (E-05 `vetted_codes`); `Processing.java` differs from `v1.7.0_gg6` by exactly the line of row R1; `StateRecord.getOriginalTopic` is read only in `BaseStateProviderImpl.onStateUpdate`, so the claim that only the in-memory inserted-offset map reads the consumer's topic holds; `KeeperStateProvider.setStateRecord` writes no original topic. No row had a weaker source than the planning inventory expected, apart from the two wording corrections recorded in E-06 and the rebuild-versus-asset correction recorded in E-05.
+
+2026-11-02T21:27:19Z
 
 Verdict: pass
