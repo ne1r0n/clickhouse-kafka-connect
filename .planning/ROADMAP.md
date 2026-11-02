@@ -147,7 +147,7 @@ Phase artifacts: `milestones/v1.7.0_gg6-maintenance-phases/`
 - [x] **Phase 39: Dependabot Absorption & Behaviour Pins** - gson 2.15.0 and `setup-gradle` 6.4.1 land first, one commit and one gate each. Then Docker-free pins fix today's wrapped-`DataException` classification and today's `custom_*` forwarding on client 0.11.0, and the integration harness counts only its own connector (F-3). No `src/main` change (completed 2026-11-01)
 - [x] **Phase 40: Helper Client Closing** - F-1: a stopping task closes every helper client it created (the writer's `chc`, the V1 per-batch client, the exactly-once Keeper client), pinned by a Mockito-free counting seam seen red first. The Keeper half is its own commit behind its own gate (completed 2026-11-02)
 - [x] **Phase 41: Bounded Insert Timeout** - F-2: a red stall pin comes first. Then a stalled `async=false` insert fails after `clickhouseClientInsertTimeoutMs` as a retriable error, through a per-insert `socket_timeout`; an operator's `socket_timeout` still wins, and the cases that stay unbounded are written down (completed 2026-11-02)
-- [ ] **Phase 42: Isolated High-Risk Edits** - OI-35-1 (`originalTopic()` at `Processing.doLogic` line 137), the `Utils.handleException` `RetriableException` pass-through and the FUT-05 start-up WARN land one commit and one gate each, tests first. The state key does not move, and OI-35-2/3 are recorded as limits
+- [x] **Phase 42: Isolated High-Risk Edits** - OI-35-1 (`originalTopic()` at `Processing.doLogic` line 137), the `Utils.handleException` `RetriableException` pass-through and the FUT-05 start-up WARN land one commit and one gate each, tests first. The state key does not move, and OI-35-2/3 are recorded as limits (completed 2026-11-02)
 - [ ] **Phase 43: Document Fixes & Phase 37 Dispositions** - The gg1 half of WR-08, FORK-DELTA's future-tense lines and FUT-05 by ID are fixed, and every Phase 37 row has a disposition with an owner. A row that touches `src/main` is fixed only on the user's approval
 - [ ] **Phase 44: Release & Publication** - `v1.7.0_gg7` is published with CHANGELOG, FORK-DELTA, the gg7 allow-list compare and an independently reviewed rollout note. Two green suites, the `--no-ff` merge only on the user's direct approval, one green `tests.yaml` on the published SHA, and the publish run creates the tag
 
@@ -284,7 +284,7 @@ The OI-35 cases that the edit does not fix are written down as limits.
   3. *[Docker-free]* In the RSK-03 commit, a task started with a non-transient code in `additionalRetriableErrorCodes` logs one WARN that names the code and carries no record data, and a transient code logs none. Start-up still succeeds. Nothing validates the codes or budgets retries, the `ClickHouseSinkConfig` diff is empty, and the existing `additionalRetriableErrorCodes` pins are unchanged (RSK-03).
   4. *[record]* FORK-DELTA states OI-35-2 and OI-35-3 as limits: exactly-once under a topic-renaming SMT needs an injective rename and a partition-preserving SMT. The state key does not change (RSK-04). Each of the three code commits touches only its production file, its tests and its record rows. Each is followed by cache-busted `testUnit` and a full suite.
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 - [x] 42-01-PLAN.md — measured start baseline with per-testcase status dumps, then RSK-01 as one commit: a 6-case Docker-free pin class (direct preCommit and close under a rename, two `limit...` characterization pins, a state-key and BEFORE/AFTER trace guard, a no-SMT guard) seen red, the one-line `originalTopic()` edit at `Processing.doLogic` line 137, the FORK-DELTA row, Known cost 16 rewritten with the OI-35-2/OI-35-3 limits, two anchor rows; gated by cache-busted testUnit and the full suite with a status delta of exactly the added rows (RSK-01, RSK-04)
@@ -464,7 +464,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-01 |
 | 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 42. Isolated High-Risk Edits | v1.7.0_gg7 | 4/4 | In Progress | - |
+| 42. Isolated High-Risk Edits | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-02 |
 | 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 0/TBD | Not started | - |
 | 44. Release & Publication | v1.7.0_gg7 | 0/TBD | Not started | - |
 
