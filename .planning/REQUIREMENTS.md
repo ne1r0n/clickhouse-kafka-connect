@@ -29,9 +29,9 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Insert Timeout (TMO)
 
-- [ ] **TMO-01**: A stalled insert with `async=false` fails after `clickhouseClientInsertTimeoutMs` as a retriable error, through a per-insert `socket_timeout` on the V2 insert sites; an operator `socket_timeout` in `jdbcConnectionProperties` still wins, pinned by a test; `async_insert` is not touched.
-- [ ] **TMO-02**: Classification of the timeout failure is pinned through `ProxySinkTask.put` under both `errors.tolerance` values.
-- [ ] **TMO-03**: The limits are recorded in writing: a write-side stall (peer stops reading the body) and the three V1 `future.get()` sites stay unbounded.
+- [x] **TMO-01**: A stalled insert with `async=false` fails after `clickhouseClientInsertTimeoutMs` as a retriable error, through a per-insert `socket_timeout` on the V2 insert sites; an operator `socket_timeout` in `jdbcConnectionProperties` still wins, pinned by a test; `async_insert` is not touched.
+- [x] **TMO-02**: Classification of the timeout failure is pinned through `ProxySinkTask.put` under both `errors.tolerance` values.
+- [x] **TMO-03**: The limits are recorded in writing: a write-side stall (peer stops reading the body) and the three V1 `future.get()` sites stay unbounded.
 
 ### Risky Edits (RSK)
 
@@ -86,9 +86,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLS-02 | Phase 40 | Complete |
 | CLS-03 | Phase 40 | Complete |
 | CLS-04 | Phase 40 | Complete |
-| TMO-01 | Phase 41 | Pending |
-| TMO-02 | Phase 41 | Pending |
-| TMO-03 | Phase 41 | Pending |
+| TMO-01 | Phase 41 | Complete |
+| TMO-02 | Phase 41 | Complete |
+| TMO-03 | Phase 41 | Complete |
 | RSK-01 | Phase 42 | Pending |
 | RSK-02 | Phase 42 | Pending |
 | RSK-03 | Phase 42 | Pending |
