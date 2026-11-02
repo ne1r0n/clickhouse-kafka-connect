@@ -343,13 +343,13 @@ Plans:
   4. *[live]* On the release tip, two full `--rerun` suites pass on one pinned `latest` build with client V2, with `SELECT version()` and the named skips recorded. `testUnit` passes with Docker unreachable, and the anchors gate passes (RLS-04).
   5. *[operator, CI]* The user gives a direct approval, to the orchestrator and in their own words. After it, `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip. The published SHA has exactly one `tests.yaml` run, and it is green before the user launches `release.yaml`. That publish run creates the tag `v1.7.0_gg7` and the GitHub release (RLS-04).
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 - [x] 44-01-PLAN.md — pre-flight and the first upstream recheck, helper copies, VERSION bumped by bump_version.py in one commit with its anchors row (generated constant after clean, baseline v1.7.0_gg6, rows=190, local pre-v1.7.0_gg7), the 1.7.0_gg7 CHANGELOG section, and the final FORK-DELTA pass (false Processing.java claim and stale recounts fixed, tag-pair commands, raw numbers refreshed once) (RLS-01)
 - [x] 44-02-PLAN.md — docs/ROLLOUT-v1.7.0_gg7.md with 33 labelled rows (F-1, F-2 with its 13 claims in order and the progress-header claim as derived (mechanism, not measured), RSK-01..04 with the verbatim WARN and "FUT-05 stays open."), its checker, the archives re-measured and the rollback block rehearsed on a dry-run merge (RLS-03)
 - [x] 44-03-PLAN.md — ORCHESTRATOR-INLINE: fresh gsd-code-reviewer rounds on the note, CHANGELOG, FORK-DELTA and the Phase 43-edited gg6 and gg1 notes (diff base 72e8ccff, `### ID: title` headings, at most three rounds unless the user authorises more), dispositions, documents frozen (RLS-03)
-- [ ] 44-04-PLAN.md — the gg7 allow-list generated last from the final tree (gson rows, exact connector rows, local compare dry run `exit 0, 0 unallowed, 0 stale rows`), then the gates on one head: testUnit with Docker unreachable, two full --rerun suites on one pinned latest with client V2, the anchors mirror and the invariant script once on an explicit SHA (RLS-02, RLS-04)
+- [x] 44-04-PLAN.md — the gg7 allow-list generated last from the final tree (gson rows, exact connector rows, local compare dry run `exit 0, 0 unallowed, 0 stale rows`), then the gates on one head: testUnit with Docker unreachable, two full --rerun suites on one pinned latest with client V2, the anchors mirror and the invariant script once on an explicit SHA (RLS-02, RLS-04)
 - [ ] 44-05-PLAN.md — rehearsal on the final tip, the second upstream recheck, merge message, approval bundle (gates G0..G5, eight questions), four user handoffs and the orchestrator runbook, local close record; STOPS at ready for the user's direct approval (the push, merge and publish tail is orchestrator-inline on the user's word) (RLS-04)
 
 **Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (Phase 29 D-05). A defect found here goes back to its phase as a gap. Otherwise it is deferred with a reason, an owner and a re-open trigger in the milestone close record. The recipe is the gg6 one:
@@ -478,7 +478,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-02 |
 | 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 44. Release & Publication | v1.7.0_gg7 | 3/5 | In Progress | - |
+| 44. Release & Publication | v1.7.0_gg7 | 4/5 | In Progress | - |
 
 ---
 *Roadmap reorganized at the `v1.7.0_gg6-maintenance` close: 2026-11-01. Milestone `v1.7.0_gg7` phases 39-44 added: 2026-11-01.*
