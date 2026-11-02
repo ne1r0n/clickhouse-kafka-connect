@@ -16,7 +16,7 @@
 |-------|-------------|------|---------|
 | E-01 | PIN-01 | 41-01 | pass |
 | E-02 | PIN-01 | 41-01 | pass |
-| E-03 | PIN-01, TMO-01, TMO-02 | 41-01 | pending (plan 41-01) |
+| E-03 | PIN-01, TMO-01, TMO-02 | 41-01 | pass |
 | E-04 | PIN-01 | 41-02 | pending (plan 41-02) |
 | E-05 | TMO-01 | 41-02 | pending (plan 41-02) |
 | E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pending (plan 41-02) |
@@ -131,5 +131,53 @@ src_main_untouched: yes
 The run exited non-zero (`40 tests completed, 3 failed`) and produced the class XML, which proves the sources compiled and the run did not hang. The three failures are the pin on the JSON, String and RowBinary routes, each an `org.opentest4j.AssertionFailedError` whose message contains `execution timed out after`; they took 10.604 s, 10.02 s and 10.017 s, the 10 s preemptive bound plus teardown, so the unfixed V2 insert with `async=false` blocks in the stalled read and is ended only by the bound. The other 37 tests pass, among them the four existing stub users (`ClientInsertWirePinUnitTest` 2, `ClientErrorShapePinUnitTest` 7, `ClientEndpointAndOptionsPinUnitTest` 5, `WriterHelperClientClosingUnitTest` 23), so the stub change (public class, release latch, daemon pool factories, idempotent `close()`) did not disturb them. `git diff --quiet HEAD -- src/main` exits 0: no fix of any kind exists in the tree. The two test files stay uncommitted for Task 2.
 
 2026-11-02T08:51:08Z
+
+Verdict: pass
+
+### E-03: The 15-case stall pin red on the unfixed tree, the red tree saved as a patch, src restored
+
+Backs: PIN-01 (every stall pin has a recorded red on a tree with no fix), TMO-01 (the writer-level pin and the operator guards that the fix of plan 41-02 must turn green and keep green) and TMO-02 (the `ProxySinkTask.put` pin under `errors.tolerance` none and all).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd41/exec/sc-pin2.out 2> /tmp/gsd41/exec/sc-pin2.err
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java" -PspotlessIdeHookUseStdOut > /tmp/gsd41/exec/sc-stub2.out 2> /tmp/gsd41/exec/sc-stub2.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*InsertStallBoundPinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*ClientErrorShapePinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*WriterHelperClientClosingUnitTest' > /tmp/gsd41/exec/red.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd41/exec/xml-red
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-red --class InsertStallBoundPinUnitTest tests=15 failures=9
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-red --expect 'InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause' 'InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord'
+git add -N src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java
+git diff --no-color --no-ext-diff -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java > .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git reset -q -- src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java
+shasum -a 256 .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git checkout -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+rm src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java
+git status --porcelain -- src
+git diff --quiet HEAD -- src
+git apply --check .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+```
+
+```text
+spotless_test_class: IS CLEAN
+spotless_stub_server: IS CLEAN
+red_run_exit: 1
+class_tests: 15
+class_failures: 9
+red_failed_count: 2
+red_failed_set: InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause; InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord
+red_reason_timeout: yes
+red_case_max_seconds: 10.691
+operator_guards_green_on_unfixed: yes
+stub_users_green: yes
+patch_paths: src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+patch_sha256: 10c738b2beac4abd91c4a7b126e947052d0b7b1d62e7f807d243b84de36e9ffc
+tree_restored: yes
+patch_applies_on_head: yes
+```
+
+The run exited non-zero (`52 tests completed, 9 failed`) and produced the class XML. `InsertStallBoundPinUnitTest` ran 15 cases: the writer-level pin on the JSON, String and RowBinary routes (3 cases) and the `ProxySinkTask.put` pin over the same routes under `errors.tolerance` none and all (6 cases) all failed, every one an `org.opentest4j.AssertionFailedError` whose message contains `execution timed out after`, the slowest at 10.691 s (the 10 s preemptive bound plus teardown). The six operator `socket_timeout` cases (a longer value than the insert timeout against a 1 s delayed answer, a shorter value than the insert timeout against a stall) passed on the unfixed tree, as designed: the operator path already works today because `createClientV2` forwards `socket_timeout` as a client-level option, so these cases are guards against a naive fix that sets the per-insert value unconditionally (per-insert settings override the client-level option), not red pins; plan 41-02 proves they discriminate by a recorded mutation. The four existing stub users (2, 7, 5 and 23 tests) pass. The red tree (the stub and the pin class) was saved with `git add -N`, `git diff` and `git reset -q`, the stub restored with `git checkout --` on that one file and the pin class removed by name, leaving `src` equal to HEAD; the patch names exactly those two paths and applies on HEAD. A first attempt of this run stopped at test compilation (the `ProxySinkTask.put` case lacked `throws Exception` because `StubClickHouseServer.stalling()` throws `IOException`); that was a compile error in the new test, fixed before any recorded red, and the red run above is the first that compiled.
+
+2026-11-02T08:59:54Z
 
 Verdict: pass
