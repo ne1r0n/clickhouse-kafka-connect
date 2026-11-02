@@ -23,7 +23,7 @@
 | E-07 | TMO-01 | 41-02 | pass |
 | E-08 | TMO-01, TMO-02 | 41-03 | pass |
 | E-09 | TMO-03 | 41-03 | pass |
-| E-10 | PIN-01, TMO-01, TMO-02, TMO-03 | 41-03 | pending (plan 41-03) |
+| E-10 | PIN-01, TMO-01, TMO-02, TMO-03 | 41-03 | pass |
 
 ### E-01: Execution-start facts, measured baseline and environment
 
@@ -480,5 +480,48 @@ The 13 claims below are in the order Phase 44's note states them, the client V2 
 | Requests other than client V2 inserts (`DESCRIBE`, the version query, the table refresh, the `KeeperStateProvider` state queries) stay unbounded unless the operator sets `socket_timeout`; ping has its own timeout; before this change an operator could already bound a stalled insert the same way. | read from the code | one client per helper, the per-insert option set only on the inserts; the last half is measured: `41-RESEARCH.md` Probes D3 and D4 (jdbc `socket_timeout=400` ended a stall at 407 ms and 403 ms). |
 
 2026-11-02T09:21:50Z
+
+Verdict: pass
+
+### E-10: Phase gate: cumulative merge-invariant script, anchors, src/main file list, config and published notes, origin
+
+Backs: PIN-01, TMO-01, TMO-02 and TMO-03 (ROADMAP Phase 41 phase gate: the anchors invariant across every commit of the phase, `src/main` changed only where the phase declared, the sink configuration and the CFG-02 line untouched, no asynchronous insert line added, the published notes untouched and nothing pushed).
+
+```sh
+git rev-parse HEAD
+date -u +%Y-%m-%dT%H:%M:%SZ
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 c03171b0f6a81993f06671b0bfcc56065f9ee0d6 > /tmp/gsd41/exec/invariants-41.log 2>&1
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 184
+git diff --name-only 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+grep -cF -e '//this.addClickHouseSetting("async_insert", "0", false);' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+git diff 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main | grep -E '^[+]' | grep -E 'async_insert|useAsyncRequests|ASYNC_OPERATIONS'
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- VERSION CHANGELOG.md
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+invariants_head: c03171b0f6a81993f06671b0bfcc56065f9ee0d6
+invariants_start_utc: 2026-11-02T09:22:03Z
+invariants_end_utc: 2026-11-02T10:02:23Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=1387 anchor_rows=184 marker_commits=1453 anchor_exempt=19 result=PASS
+invariants_exit: 0
+invariants_scope: the script evaluates the anchor inventory at every commit of the range 54e63648..head, so one run on the final SHA covers the pin commit and the fix commit, each of which already passed the anchors mirror (rows=180 before, rows=184 after the fix); run once and alone because it takes about 40 minutes and a Gradle run beside it adds swap pressure
+anchors_mirror: rows=184 bad=0
+src_main_files_vs_phase_start: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+sink_config_unchanged: yes
+cfg02_anchor_count: 1
+async_lines_added: 0
+version_changelog_untouched: yes
+published_notes_untouched: yes
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+pushes: none
+post_review_recheck: after the orchestrator's code review and any review fix, re-run the anchors mirror at rows=184 and the classes the fix touches; re-run the invariant script only if a fix changes an anchored line or fork-anchors.txt
+```
+
+The invariant head is the E-09 commit; it descends from the fix commit and its non-planning tree equals the fix commit's, so the script judged the same production tree that E-08 gated. The script ended `result=PASS` with exit 0. The anchors mirror reads 184 rows with none bad (the four TMO-01 rows added by the fix commit included). Against phase start `src/main` differs in exactly the writer and the helper client; `ClickHouseSinkConfig.java` is byte-identical, the CFG-02 commented line counts 1, and no added `src/main` line names the server-side asynchronous insert setting or the client's asynchronous mode. `VERSION`, `CHANGELOG.md` and the published gg6 and gg1 rollout notes are unchanged from phase start. Origin `custom_build` still reads the tip recorded in E-01 and nothing was pushed; no commit was made while the script ran.
+
+2026-11-02T10:02:39Z
 
 Verdict: pass
