@@ -21,7 +21,7 @@
 | E-03 | RSK-01, RSK-04 | 42-01 | pass |
 | E-04 | RSK-01, RSK-04 | 42-01 | pass |
 | E-05 | RSK-02 | 42-02 | pass |
-| E-06 | RSK-02 | 42-02 | pending (plan 42-02) |
+| E-06 | RSK-02 | 42-02 | pass |
 | E-07 | RSK-02 | 42-02 | pending (plan 42-02) |
 | E-08 | RSK-03 | 42-03 | pending (plan 42-03) |
 | E-09 | RSK-03 | 42-03 | pending (plan 42-03) |
@@ -346,5 +346,67 @@ The added rows (38, all `PASS` after the change; the chain form chosen by the us
 The outcomes of `BARE_RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE`, `WRAPPED_RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE` and `DATA_EXCEPTION_OVER_RETRIABLE` are fixed by the user's chain-form choice; a change to any of them returns to the user.
 
 2026-11-02T12:16:15Z
+
+Verdict: pass
+
+### E-06: RSK-02 code commit: the chain pass-through green with its pins, the FORK-DELTA row, the Known cost 17 sentence, two anchor rows
+
+Backs: RSK-02 (the chain pass-through in `Utils.handleException` green together with its 38 pins and the existing classification classes, the FORK-DELTA Connector source row, the two sentences at the front of Known cost 17, the two anchor rows, and the code commit that holds them as one revert unit).
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*RetriableExceptionPassThroughUnitTest' --tests '*WriterFailureClassificationUnitTest' --tests '*WrappedDataExceptionClassificationPinUnitTest' --tests '*InsertStallBoundPinUnitTest' --tests '*AdditionalRetriableErrorCodesPinUnitTest' --tests '*.UtilsTest' --tests '*UtilsNullMessageClassificationUnitTest' --tests '*.ProcessingTest' --tests '*ConnectApiReferencesUnitTest' --tests '*SourcePlanningIdGuardUnitTest' > /tmp/gsd42/exec/rsk02-green.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd42/exec/xml-rsk02-green
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py junit /tmp/gsd42/exec/xml-rsk02-green --class .RetriableExceptionPassThroughUnitTest tests=38 failures=0 errors=0
+python3 -I .planning/phases/42-isolated-high-risk-edits/42-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 188
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<file>" -PspotlessIdeHookUseStdOut > /tmp/gsd42/exec/sc-<name>.out 2> /tmp/gsd42/exec/sc-<name>.err
+git diff --numstat
+git diff -U0 -- src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+git add src/main/java/com/clickhouse/kafka/connect/util/Utils.java src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java docs/FORK-DELTA.md .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd42/exec/msg-code2.txt
+git diff --name-only c8574890^ c8574890
+git diff --quiet b34d0280 c8574890 -- src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java
+git diff --quiet 1c808c02 c8574890 -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java src/main/java/com/clickhouse/kafka/connect/sink/state src/main/java/com/clickhouse/kafka/connect/sink/kafka
+git show c8574890:src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java | shasum -a 256
+```
+
+```text
+green_run_exit: 0
+green_class_tests: 38
+green_class_failures: 0
+green_failed: none
+matrix: 216/0
+pin02: 14/0
+tmo02: 15/0
+codes_pin: 19/0
+utils_test: 34/0
+utils_null_message: 6/0
+processing_test: 14/0
+connect_api_refs_green: yes
+planning_id_guard_green: yes
+spotless_utils: IS CLEAN
+spotless_test_class: IS CLEAN
+utils_numstat: 7/0
+utils_hunks: 1
+utils_import_lines_changed: 0
+utils_log_lines_added: 0
+utils_block_position: ok
+fork_delta_row_position: ok
+item17_sentence: ok
+anchors_block_position: ok
+anchors_mirror: rows=188 bad=0
+code_commit: c857489081e27133b74e1ebf9bb061d930624024
+code_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/util/Utils.java; src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java
+committed_test_sha256_equals_red: yes
+expected_list_commit: b34d02804a5cd2e69d9a80c4b0e10d788c25328b
+expected_list_before_change: yes
+processing_unchanged_since_rsk01: yes
+sink_config_unchanged: yes
+revert_unit: one commit (tests, code and record rows together): c857489081e27133b74e1ebf9bb061d930624024
+```
+
+The green run exited 0: the class is 38/0 with the test file byte-identical to the red run (the SHA-256 `aaca2de4...` of the committed blob equals `red_test_sha256` of E-05), and every existing classification class keeps its red-run count with 0 failures (216, 14, 15, 19, 34, 6, 14). `ConnectApiReferencesUnitTest` (3) and `SourcePlanningIdGuardUnitTest` (18) pass. The `Utils.java` diff is one hunk of 7 added lines and 0 removed (a comment, the `for` loop over the cause chain, the `if`, the `throw`, two braces and a blank line), with no import and no log line; it sits after the server block's `wasn't in the acceptable list.` line and directly before `//High-Level Explicit Exception Checking`. The expected-list commit `b34d0280` is a strict ancestor of the code commit and has `Utils.java` equal to the phase start. `Processing.java` is unchanged since the RSK-01 commit `cba0909b`, and `ClickHouseSinkConfig.java`, `sink/state` and `sink/kafka` equal the phase start. The FORK-DELTA row sits directly after the Four Single Message Transforms row and before the IOException-branch row, and states both consequences in the plan's exact words; Known cost 17 carries the two new sentences on its one physical line and still names FUT-05 and "no retry budget" (FUT-05 is not claimed closed). The two anchor rows and their comment sit between the TAL-03 row and the `# Phase 35` comment.
+
+2026-11-02T12:18:19Z
 
 Verdict: pass
