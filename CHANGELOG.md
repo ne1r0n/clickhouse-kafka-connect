@@ -17,7 +17,7 @@ inserted-offset topic fix, a start-up WARN for unvetted retriable codes, and a `
   batch can be inserted twice. A `socket_timeout` that an operator names in `jdbcConnectionProperties` keeps its value for
   every request and turns the per-insert value off (`socket_timeout=0` keeps inserts unbounded). For a legitimately slow
   insert, raise `clickhouseClientInsertTimeoutMs` (minimum 100) or set `socket_timeout`. A connector that does not set
-  `client_version` runs client V1, and client V1 inserts are unchanged.
+  `client_version` runs client V1, and no timeout is added to client V1 inserts.
 * A `RetriableException` anywhere in the cause chain of an insert failure is now treated as retriable under both
   `errors.tolerance` values, also over a non-retriable ClickHouse error code. Under `errors.tolerance=all` such a batch is
   redelivered instead of being sent to the dead letter queue, with no retry budget; under `errors.tolerance=none` the task
