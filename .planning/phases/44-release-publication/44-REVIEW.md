@@ -1,6 +1,6 @@
 ---
 phase: 44-release-publication
-reviewed: 2026-11-02T22:00:00Z
+reviewed: 2026-11-03T01:00:00Z
 depth: standard
 diff_base: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
 files_reviewed: 5
@@ -13,10 +13,10 @@ files_reviewed_list:
 findings:
   critical: 0
   warning: 6
-  info: 12
-  total: 18
+  info: 14
+  total: 20
 status: issues_found
-rounds: 3
+rounds: 4
 ---
 
 ## Round 1
@@ -209,4 +209,44 @@ round: 3 findings: 2
 
 _Reviewed: 2026-11-03T00:30:00Z_
 _Reviewer: Claude (gsd-code-reviewer), round 3_
+_Depth: standard_
+
+## Round 4
+
+reviewer_agent_id: a32f740ad20019e8a
+
+Scope: `git diff 156fd283 HEAD -- docs CHANGELOG.md`, two commits that touch two files (`docs/FORK-DELTA.md` one row, `docs/ROLLOUT-v1.7.0_gg7.md` rollback step 1, the paragraph after step 4 and row D5). The `ClickHouseWriter` row now says three residuals of the five in Known cost 13: I checked it against `ClickHouseHelperClient` (the constructor assigns `client = createClientV2()` and then `server = createClientV1()`, and `ClickHouseNode.of(url, options)` can throw after the client V2 instance exists), `ClickHouseWriter.startInternal` (assigns `chc` with no earlier close) and `stop()` (`TIMEOUT_FOR_SHUTDOWN` 5 s); the count is right (Known cost 13 lists five, three on the writer, one Keeper provider, one task `stop()`). I re-ran the rollback rehearsal myself in a scratch clone under `/tmp`: dry-run merge of `f95f9e9c` onto `72e8ccff`, `git status --porcelain` empty, the block of step 2 printed `ok`, status empty after it, `VERSION` `v1.7.0_gg6`, no copy of the note, and a revert restored the merged tree. The claims of the reworded text therefore hold. Two wording and evidence points remain.
+
+### IN-13: The rehearsal the note now names (commit `f95f9e9c`) is recorded in no evidence entry; E-05 still records `7ef33b4f`
+
+**File:** `docs/ROLLOUT-v1.7.0_gg7.md:156`, `:175` and `:190` (row D5, label `rollback block on a dry-run merge: measured`); `.planning/phases/44-release-publication/44-COMMAND-EVIDENCE.md` E-05
+**Issue:** The three sentences were changed to say the block ran on a merge of `f95f9e9c`. The only evidence entry for the rehearsal, E-05, records `rehearsal_tip: 7ef33b4feae0759c17a77e171e4d53e36b924b3a` and `rehearsal_parents: 72e8ccff... 7ef33b4f...`. The re-run on `f95f9e9c` left its output only in `/tmp/gsd44/exec` (`rb-*.log`, overwritten by any later run), so a label `measured` rests on a record that is neither in the repository nor the one the evidence map points to. I reproduced the result (see the scope paragraph), so the claim is true; the gap is the record. A later round or an audit that follows the evidence map finds a different commit from the one the note names.
+**Fix:** Add an E-entry to `44-COMMAND-EVIDENCE.md` (for example E-05b under plan 44-03) with `rehearsal_tip: f95f9e9cb5859f7a77cc7cfc32d72d67686ec64c`, `rehearsal_parents`, `d0_status_before_block`, `rollback_output`, `rollback_status_after`, `rollback_version`, `rollback_note_absent`, `rollback_tree_equals_tag` and `revert_restores_tree` as printed by `rehearse.sh`, and state that E-05's `7ef33b4f` rehearsal is superseded for the note's wording. At the publication step, re-run on the release tip (the merge commit) if it is to be quoted as such.
+
+### IN-14: "commit `f95f9e9c` of this branch" never names the branch, in a note that operators read after the branch is merged
+
+**File:** `docs/ROLLOUT-v1.7.0_gg7.md:156`, `:175`, `:190`
+**Issue:** The note names no branch anywhere (`grep -n 'sync/v1.7.0'` finds nothing in it). "This branch" means `sync/v1.7.0` only to someone who knows the release process; an operator reading the note from `custom_build` has no way to tell which branch is meant, and the abbreviated SHA is the only handle. The commit does stay reachable after the release (the release is a merge commit of `sync/v1.7.0`, as `3a3a15a9` and its predecessors show), so the pointer is valid but cryptic.
+**Fix:** Write "commit `f95f9e9c` of the release branch `sync/v1.7.0` (reachable from `custom_build` through the release merge)" in the first use (step 1) and "that commit" in the other two.
+
+round: 4 findings: 2
+
+## Mandated confirmations (RLS-03)
+
+- (a) 33 rows: `44-note-check.py all` prints `OK rows=33 measured=23 code=20 derived=4 mechanism=2`; the two commits touch no row text except the D5 How-known cell, whose label and strength are unchanged. T1 to T13 still carry the 13 E-09 claims in order, and T6 stays `derived (mechanism, not measured)` by design. No row is stronger than its evidence; the only evidence gap added is IN-13 (the record, not the fact).
+- (b) Numbers and commands: `git diff --shortstat v1.7.0_gg6 HEAD -- src/main` is unchanged in substance (8 files, 194 insertions, 22 deletions; no commit since round 3 touches `src`, `gradle`, `build.gradle.kts` or `.github`); the archive figures (7933 and 7932 entries, 13558633 and 13564144 bytes, 120 differences, 59 bytes and six classes against the asset, 13558692 bytes) match E-05. Rows D1 and D4 say "release tip" for the archive rebuilds: accurate in effect, because E-05 exported `HEAD` at `27859a8d` and no file that goes into the archive (`src`, `gradle`, `build.gradle.kts`, `VERSION`, `.github`) changed between `27859a8d` and the current head (only `docs`, `CHANGELOG.md` and `.planning` did, none of which `createConfluentArchive` packs; the archive holds only `doc/LICENSE` and `doc/README.md`). Not reported.
+- (c) Applies-when: unchanged by the two commits; every client V1 insert claim stays scoped to `client V1` (default `client_version` V1; the F-2 fix is client V2 only), and the `exactlyOnce=false` plus `ignorePartitionsWhenBatching=true` exclusion stands in R1, section C and the supersession row.
+- (d) Rollback: steps 1 to 4 run in order; target `pre-v1.7.0_gg7` is a local tag on `72e8ccff`, equal to `v1.7.0_gg6`; the step 2 block and its `ok` output are unchanged since `f95f9e9c` (the diff of the two commits shows only prose lines 156, 175 and 190 changed), and I reproduced the full rehearsal on `f95f9e9c` in a scratch clone (merge clean, block `ok`, tree equal to the tag, revert restores the tree). No `gradlew.bat` sentence, as measured. The gg6 asset facts match E-05. Findings: IN-13, IN-14.
+- (e) No fact about the `release object` of `v1.7.0_gg7` and no promise of one in the two commits; "the release tip, which does not exist until the merge" is about the merge commit, not the release object, and is true.
+- (f) No advice that empties or destroys data; step 1 keeps the warning about `git read-tree -u --reset`, no TRUNCATE, DELETE, DROP or force-push.
+- (g) `FUT-05 stays open.` is the only line with FUT-05 in the gg7 note (`grep -c FUT-05` prints 1; the checker's `fut` check prints OK), in section F.
+- (h) The WARN text: no `src` change since round 3; it still equals the constant in `ClickHouseSinkTask.java` (E-05 `warn_text`).
+- (i) FORK-DELTA: the one changed row checked against `ClickHouseHelperClient`, `ClickHouseWriter.startInternal`, `stop()` and `getMutationRequest`: three residuals on the writer's own paths among the five of Known cost 13 is correct and consistent with row F5 and item 13. The `Processing.java` row (line 137, `String originalTopic = record.getSinkRecord().originalTopic();`), the `KeyToValue.java` row, the recounts, the tag-pair commands, the gg7 paragraphs and items 12, 19, 22 and 23 are unchanged by the two commits and stand as confirmed in rounds 2 and 3; the `HEAD`-relative phrases left are the `measured with HEAD in place of the tag` forms that the note states openly.
+- (j) CHANGELOG: not touched by the two commits; each bullet of `1.7.0_gg7` still matches the code or behaviour change, the heading date format is unchanged, and it carries no promise of a release beyond the rollout-note pointer.
+- Specific tokens: `socket_timeout` rows T9, T10 and T13 unchanged and consistent with `ClickHouseHelperClient`; `pre-v1.7.0_gg7` and `72e8ccff` consistent in the intro, step 2 and row D5; `FUT-05 stays open` stands.
+
+---
+
+_Reviewed: 2026-11-03T01:00:00Z_
+_Reviewer: Claude (gsd-code-reviewer), round 4_
 _Depth: standard_
