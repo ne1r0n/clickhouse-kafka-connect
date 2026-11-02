@@ -1,0 +1,2 @@
+com.clickhouse.kafka.connect.ci.ConfluentArchiveCheckUnitTest	CI-20: an archive with no lib jar gets no stale directory hint on stderr	PASS
+com.clickhouse.kafka.connect.ci.ReleaseWorkflowGuardUnitTest	CIH-04: fixture: the chain rule requires the tag gate after the tests gate	PASS

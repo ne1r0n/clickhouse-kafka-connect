@@ -19,7 +19,7 @@
 | E-02 | DOC-02 | 43-01 | pass |
 | E-03 | DOC-02 | 43-01 | pass |
 | E-04 | DOC-02 | 43-01 | pass |
-| E-05 | DOC-02 | 43-01 | pending |
+| E-05 | DOC-02 | 43-01 | pass |
 | E-06 | DOC-01, DOC-02 | 43-02 | pending |
 | E-07 | DOC-01 | 43-02 | pending |
 | E-08 | DOC-01 | 43-02 | pending |
@@ -248,5 +248,67 @@ jvm_crash: none
 On the unchanged helper the new testcase took 0.006 s and failed with one `failure` element of type `org.opentest4j.MultipleFailuresError` that holds `lib jars found: ` (the helper printed the stale-directory hint line for an archive with zero lib jars, so the two `noneMatch` assertions fail while the exit-1 and shape-line assertions pass). The 7 pre-existing testcases of the class passed in the red run. The committed test file has the red copy's SHA-256 and the commit changes one line of `ConfluentArchiveCheck.java` (`result.libJarNames().size() != 1` becomes `result.libJarNames().size() > 1`; the `check` method's separate `libJarNames.size() != 1` shape violation is untouched) and adds 35 lines to the test file with none deleted. The existing `twoLibJarsAreNamedOnStderr` case still passes in the green run (class total 8, 0 failures).
 
 2026-11-02T19:31:40Z
+
+Verdict: pass
+
+### E-05: Row 37-IN-05, the expected-added rows and the full testUnit delta
+
+Backs: DOC-02 (row 37-IN-05(a): line 1 of the two allow-lists the review names; the expected-added rows of the phase; the full cache-busted `testUnit` whose per-testcase status delta against the E-01 baseline is exactly the two new testcases; the phase facts so far: no existing assertion removed, `src/main` unchanged).
+
+```sh
+grep -c 'compare-confluent-archives' .planning/scripts/confluent-archive-allowlist-v1.7.0_gg4.txt .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt
+git diff -U0 -- .planning/scripts
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*CompareConfluentArchivesScriptUnitTest' > /tmp/gsd43/exec/allowlist.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd43/exec/xml-allowlist
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py junit /tmp/gsd43/exec/xml-allowlist --class CompareConfluentArchivesScriptUnitTest tests=58 failures=0 errors=0
+git add .planning/scripts/confluent-archive-allowlist-v1.7.0_gg4.txt .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt
+git commit -F /tmp/gsd43/exec/msg-c4.txt
+git diff --quiet cb1ccb669be916b6da439d3f936c5cfbade42bd2 HEAD -- .planning/scripts/confluent-archive-allowlist-25.txt .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+git diff --quiet v1.7.0_gg6 HEAD -- .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+shasum -a 256 .planning/phases/43-document-fixes-phase-37-dispositions/43-expected-added.tsv
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd43/exec/p01-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd43/exec/xml-p01-testunit
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-testcase-status.py dump /tmp/gsd43/exec/xml-p01-testunit /tmp/gsd43/exec/status-p01-testunit.tsv
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-testcase-status.py delta /tmp/gsd43/exec/status-base-testunit.tsv /tmp/gsd43/exec/status-p01-testunit.tsv .planning/phases/43-document-fixes-phase-37-dispositions/43-expected-added.tsv
+git diff --quiet cb1ccb669be916b6da439d3f936c5cfbade42bd2 HEAD -- src/main
+git diff -U0 cb1ccb669be916b6da439d3f936c5cfbade42bd2 HEAD -- src/test src/testFixtures src/integrationTest
+python3 -I .planning/phases/43-document-fixes-phase-37-dispositions/43-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+allowlist_old_name_count_before: 2
+allowlist_old_name_count_after: 0
+allowlist_new_name_line1: 2
+allowlist_diff: 2 files, line 1 only
+allowlists_untouched: yes
+allowlist_run_exit: 0
+allowlist_run_tests: 58
+allowlist_run_failures: 0
+code_commit: 103221a459dcd742a7404d3ea8eceefa17493a29
+code_commit_files: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg4.txt .planning/scripts/confluent-archive-allowlist-v1.7.0_gg5.txt
+expected_added_rows: 2
+expected_added_sha256: 25f7aebc771c23c5199b8dbd30f7c3e6f16edbaaefafa484c38b17d091ebb246
+testunit_exit: 0
+testunit_tests: 1826
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 2
+status_delta: removed=0 added=2 equals_expected=yes
+removed_test_lines: 1
+src_main_unchanged: yes
+anchors_mirror: rows=190 bad=0
+origin_reread: unchanged
+jvm_crash: none
+```
+
+Before the edit, line 1 of each of the gg4 and gg5 lists named the hyphenated `compare-confluent-archives.py` once (count 2 over the two files, 0 after); after it, both lines start `# Allow-list for .github/scripts/compare_confluent_archives.py (`, and each C4 hunk is `@@ -1 +1 @@`. `confluent-archive-allowlist-25.txt` and `-v1.7.0_gg6.txt` are unchanged since the phase start, and the gg6 list is identical to its copy in tag `v1.7.0_gg6`; both stay with row 37-IN-05(b), deferred by plan 43-03. `CompareConfluentArchivesScriptUnitTest` ran 58 testcases (its E-01 count) with 0 failures, including `WR-02: every allow-list shipped under .planning/scripts loads` (`everyShippedAllowListStillLoads`). The full cache-busted `testUnit` ran 1826 tests (the E-01 total 1824 plus 2) with 0 failures, 0 errors and 2 skipped; its dump holds 1826 lines and `43-testcase-status.py delta` against `43-expected-added.tsv` reports removed=0 added=2 with the added set equal to the expected file. The only line removed under `src/test`, `src/testFixtures` and `src/integrationTest` since `cb1ccb66` is the old size condition `if (result.libJarNames().size() != 1) {` of `ConfluentArchiveCheck.run`; `src/main` is byte-identical to the phase start. The full ClickHouse-backed suite is not run in this phase (decision and reason recorded in the plan's Execution environment and re-stated in E-10).
+
+2026-11-02T19:32:31Z
 
 Verdict: pass
