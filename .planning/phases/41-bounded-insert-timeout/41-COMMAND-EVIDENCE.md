@@ -19,7 +19,7 @@
 | E-03 | PIN-01, TMO-01, TMO-02 | 41-01 | pass |
 | E-04 | PIN-01 | 41-02 | pass |
 | E-05 | TMO-01 | 41-02 | pass |
-| E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pending (plan 41-02) |
+| E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pass |
 | E-07 | TMO-01 | 41-02 | pending (plan 41-02) |
 | E-08 | TMO-01, TMO-02 | 41-03 | pending (plan 41-03) |
 | E-09 | TMO-03 | 41-03 | pending (plan 41-03) |
@@ -251,5 +251,94 @@ spotless_writer_diff_import_only: yes
 The run exited non-zero with the pin class at 15 tests and 6 failures: the String and RowBinary cases of the two stall pins (writer-level 2, `ProxySinkTask.put` under `none` and `all` 4), every one an `AssertionFailedError` containing `execution timed out after`, none above 30 s. No failing testcase name contains `route=JSON`, so the writer-level JSON case and the JSON `put` cases under both tolerances pass, and the 6 operator guards pass. `NetworkCompressionPinUnitTest` (9 tests) and `ClientEndpointAndOptionsPinUnitTest` (5 tests), the two parser guards, pass with 0 failures. The helper's import lines changed by exactly the two planned additions, the writer's import lines did not change, and the live scoped hook reports both files import-only dirty as at phase start. The helper and writer edits stay uncommitted for the fix commit.
 
 2026-11-02T09:07:54Z
+
+Verdict: pass
+
+### E-06: The fix commit: per-insert timeout at three V2 sites, 26 new cases and the guards green, the progress-header probe, FORK-DELTA and anchors
+
+Backs: TMO-01 (the helper call at all three V2 insert sites, the operator skip, the 11 helper cases), TMO-02 (the six `ProxySinkTask.put` cases retriable with no DLQ record under both tolerances) and TMO-03 (Known cost 14 with the client V2 scope, the open limits and the progress-header outcome, in the fix commit).
+
+```sh
+python3 -I /tmp/gsd41/exec/edit-writer.py rest
+bash /tmp/gsd41/exec/spot.sh clean src/test/java/com/clickhouse/kafka/connect/sink/db/helper/InsertSocketTimeoutOptionUnitTest.java option
+bash /tmp/gsd41/exec/run-filtered.sh green '*InsertStallBoundPinUnitTest' '*InsertSocketTimeoutOptionUnitTest' '*SourcePlanningIdGuardUnitTest' '*ProxySinkTaskConstructorUnitTest' '*ConnectApiReferencesUnitTest' '*NetworkCompressionPinUnitTest' '*ClientEndpointAndOptionsPinUnitTest' '*ClientInsertWirePinUnitTest' '*ClientErrorShapePinUnitTest' '*ClientTimeoutPrefixPinUnitTest' '*ClickHouseHelperClientForkUnitTest' '*WriterHelperClientClosingUnitTest' '*WrappedDataExceptionClassificationPinUnitTest' '*AsyncInsertSettingsUnitTest'
+docker run -d --rm --name gsd41-progress-probe -p 127.0.0.1:18124:8123 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:latest
+curl -sS --data-binary 'CREATE TABLE p41_progress (id UInt32, d UInt8 DEFAULT sleepEachRow(0.002)) ENGINE = Memory' http://127.0.0.1:18124/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --offline -I /tmp/gsd41/exec/progress-cp.gradle printTestCp -PjavaVersion=21
+javac -cp <build/classes/java/main + test runtime classpath> -d /tmp/gsd41/exec/progress-out /tmp/gsd41/exec/progress-src/ProgressProbe.java
+java -cp <same> ProgressProbe
+curl -sS 'http://127.0.0.1:18124/?query=SELECT%20count()%20FROM%20p41_progress'
+python3 -I /tmp/gsd41/exec/progress-stamp.py /tmp/gsd41/exec/progress-rows.jsonl 'http://127.0.0.1:18124/?query=INSERT%20INTO%20p41_progress%20FORMAT%20JSONEachRow&send_progress_in_http_headers=1&wait_end_of_query=1&max_insert_block_size=100&min_insert_block_size_rows=0&min_insert_block_size_bytes=0'
+python3 -I /tmp/gsd41/exec/progress-raw.py /tmp/gsd41/exec/progress-rows.jsonl '<same query string, with and without wait_end_of_query=1>'
+java -cp <same> ProgressProbeQuery
+docker rm -f gsd41-progress-probe
+python3 -I /tmp/gsd41/exec/edit-forkdelta.py
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 184
+git add <writer> <helper> <option test> docs/FORK-DELTA.md .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd41/exec/msg-fix.txt
+```
+
+```text
+green_run_exit: 0
+bound_class_tests: 15
+option_class_tests: 11
+green_failures: 0
+guards_failed: none
+tmo02_retriable_both: yes
+progress_probe_ran: yes
+progress_probe_label: inferred
+progress_probe_outcome: unmeasured
+progress_headers_on_wire: no streaming for the body insert; 1 header at 4.114s, the end of the insert (raw socket); an INSERT ... SELECT streamed one about every 0.2s
+progress_probe_short_ms: 3000
+progress_probe_short_result: FAIL at 3030 ms, DataTransferException > SocketTimeoutException
+progress_probe_long_ms: 8000
+progress_probe_long_result: OK at 4110 ms, written_rows=2000
+progress_probe_rows_committed: 4000
+progress_probe_clickhouse_version: 26.10.3.7
+progress_probe_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+progress_probe_container_removed: yes
+progress_query_path_1000ms_result: OK at 2056 ms (not bounded; headers streamed)
+progress_query_path_8000ms_result: OK at 2020 ms
+spotless_helper_diff_import_only: yes
+spotless_writer_diff_import_only: yes
+spotless_option_test: IS CLEAN
+helper_import_lines: +import com.clickhouse.client.api.ClientConfigProperties; and +import java.time.temporal.ChronoUnit;
+writer_numstat: 3 0
+anchor_counts: writer setInsertSocketTimeoutV2 call 3; helper settings.setNetworkTimeout( 1; helper operatorSetSocketTimeout 3; helper clientBuilder.setSocketTimeout( 0
+anchors_mirror: rows=184 bad=0
+fork_delta_tmo_row: added
+fork_delta_known_cost_14: rewritten
+upstream_main_ref: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_main_network_timeout_count: 0
+fix_commit: 14952562ed2cdbc8307a65357a136d2d63b69c62
+fix_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/InsertSocketTimeoutOptionUnitTest.java
+fix_commit_parent_src_main_equals_start: yes
+revert_pair_restores_start: yes
+revert_unit: pin commit plus fix commit, reverted together newest first (git revert <fix> <pin>); the pins are red without the fix and no gate runs on that intermediate; the commits are not folded
+src_main_files_vs_phase_start: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+sink_config_unchanged: yes
+cfg02_anchor_count: 1
+async_lines_added: 0
+log_lines_added: 0
+```
+
+The green run exited 0: `InsertStallBoundPinUnitTest` 15 tests and `InsertSocketTimeoutOptionUnitTest` 11 tests with 0 failures, and every guard class passed (`SourcePlanningIdGuardUnitTest` 18, `ProxySinkTaskConstructorUnitTest` 4, `ConnectApiReferencesUnitTest` 3, `NetworkCompressionPinUnitTest` 9, `ClientEndpointAndOptionsPinUnitTest` 5, `ClientInsertWirePinUnitTest` 2, `ClientErrorShapePinUnitTest` 7, `ClientTimeoutPrefixPinUnitTest` 2, `ClickHouseHelperClientForkUnitTest` 51, `WriterHelperClientClosingUnitTest` 23, `WrappedDataExceptionClassificationPinUnitTest` 14, `AsyncInsertSettingsUnitTest` 3). All six `ProxySinkTask.put` cases ended in a `RetriableException` with no DLQ record on JSON, String and RowBinary under `errors.tolerance` none and all (0.3 to 0.9 s each), and each stalled writer-level insert ended in about 0.3 s (the 300 ms insert timeout).
+
+Progress-header probe (research A5), measured on the fixed tree against ClickHouse 26.10.3.7 (digest above, re-read after the probe), client 0.11.0:
+
+```text
+RESULT per_insert_ms=3000 elapsed_ms=3030 FAIL com.clickhouse.client.api.DataTransferException > java.net.SocketTimeoutException
+RESULT per_insert_ms=8000 elapsed_ms=4110 OK written_rows=2000
+rows committed after both runs: 4000
+RESULT query_timeout_ms=1000 elapsed_ms=2056 OK        (extra datum: INSERT ... SELECT through the query path)
+RESULT query_timeout_ms=8000 elapsed_ms=2020 OK
+wire, curl -D: STATUS 4.124s; PROGRESS_HEADERS count=1 first=4.125s last=4.125s
+wire, raw socket, body insert, with and without wait_end_of_query=1 and with http_headers_progress_interval_ms=100: 1 progress header, at 4.06 to 4.11 s (the end)
+wire, raw socket, INSERT INTO p41_progress (id) SELECT number FROM numbers(2000): progress headers at 0.207, 0.408, 0.610, 0.813, 1.012, 1.214, 1.414, 1.615 s ... (about every 0.2 s)
+```
+
+The per-insert timeout through `setInsertSocketTimeoutV2` ended the 3000 ms insert at 3030 ms with a `SocketTimeoutException` root, the 8000 ms control succeeded at 4110 ms, and the count of 4000 rows after both runs shows the timed-out insert was still committed by the server, as in Probe 8. The plan's rule for `bounded` also needs progress headers about every 0.2 s on the wire; they were not there: a connector-shaped insert (rows in the request body) sent no progress header while the server worked, only one at the end, with and without `wait_end_of_query`, so this run did not exercise a header-streaming insert and the outcome is recorded `unmeasured` with label `inferred`, not adjusted. This differs from the planning-time note (headers every 0.2 s on a 2000-row body insert); the 0.2 s cadence reproduces only for an `INSERT ... SELECT`, and for that shape the extra datum shows the opposite of the planning-time note: a 1000 ms `socket_timeout` did not end the request (it finished at 2056 ms), so streamed progress headers do reset the client's read timer. The consequence recorded in Known cost 14: a connector body insert is bounded on 26.10.3.7, and an insert shape or server version that streams progress headers during a body insert would escape the bound (inferred). The scratch container was removed (`docker ps -a` lists none, port 18124 is free).
+
+2026-11-02T09:13:43Z
 
 Verdict: pass
