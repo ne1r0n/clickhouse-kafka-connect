@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 5
-  info: 11
-  total: 16
+  warning: 6
+  info: 12
+  total: 18
 status: issues_found
-rounds: 2
+rounds: 3
 ---
 
 ## Round 1
@@ -169,4 +169,44 @@ round: 2 findings: 2
 
 _Reviewed: 2026-11-02T23:30:00Z_
 _Reviewer: Claude (gsd-code-reviewer), round 2_
+_Depth: standard_
+
+## Round 3
+
+reviewer_agent_id: a401c814e0b118957
+
+Scope: `git diff 8e226d41 HEAD -- docs CHANGELOG.md`, three commits that touch two files (`docs/FORK-DELTA.md` one row, `docs/ROLLOUT-v1.7.0_gg7.md` section C "What to do" and rollback step 1; CHANGELOG, the gg6 note and the gg1 note did not change; `git diff --stat 8e226d41 HEAD -- src` lists nothing). Each change was read against `DirectDeliveryStrategy.preCommit`, `Processing.doLogic`, `ClickHouseWriter.start/startInternal/stop/closeHelperClient/getMutationRequest`, `ClickHouseHelperClient`'s constructor, FORK-DELTA Known cost 13, note row F5 and E-05 (with `/tmp/gsd44/exec/rehearse.sh`). Confirmed correct: IN-11 (the exclusion is the combination only; `exactlyOnce=true` with `ignorePartitionsWhenBatching=true`, and `exactlyOnce=false` with the default `ignorePartitionsWhenBatching=false`, both run the state machine and both reach the inserted-offset snapshot; `bufferCount` 0 is now stated); rollback step 1 (the dry run did merge the committed tip into a detached checkout of `72e8ccff` and did not run `git fetch` or `--ff-only`; `d0_status_before_block: clean` is the measured figure; reproduced the plain merge, `read-tree`, commit and equality check in a scratch clone and `git status --porcelain` printed nothing after each). IN-03 stays deferred to the user and is not re-reported.
+
+### WR-06: FORK-DELTA writer row says "two residuals stay open (Known cost 13)", but Known cost 13 and note row F5 list a third that sits on the writer's own factory
+
+**File:** `docs/FORK-DELTA.md:39` (the `ClickHouseWriter` row of the table)
+**Issue:** The WR-05 fix reads "closes the ones a started task holds, on the paths named here; two residuals stay open (Known cost 13): a second `start()` on one writer ... and the 5 s wait of `stop()` ...". Known cost 13 lists five residuals and the note's row F5 lists the same five. One of the three that Known cost 13 does not attribute to the keeper or the task is on this row's own code: `ClickHouseHelperClient`'s constructor assigns `this.client = createClientV2()` (line 110) before `this.server = createClientV1()` (line 111), so a throw from the second leaves a V2 client open with no object to close; `ClickHouseWriter` reaches it at every `createHelperClient(builder)` call (`startInternal` and the per-batch call in `getMutationRequest`). The row says it "builds every helper client through the protected factory", so a reader who counts residuals from the row finds two, from item 13 five, and cannot tell which of the other three touch the writer. "Two" is also read by `grep` as the total for the file.
+**Fix:** Say "two residuals of the writer's own paths stay open ... and a helper client whose constructor throws after it built its V2 client is never held, so nothing closes it; the keeper and task residuals are in Known cost 13". Shortest safe form: replace "two residuals stay open (Known cost 13): a second ... and the 5 s wait ..." with "the residuals of Known cost 13 stay open, among them a second `start()` on one writer, which does not close the client the first one built, the 5 s wait of `stop()`, which can end with a table refresh still running on a closed client, and a `ClickHouseHelperClient` constructor that throws after it built its V2 client".
+
+### IN-12: The note calls the rehearsed commit "the release tip"; E-05 merged an intermediate note commit
+
+**File:** `docs/ROLLOUT-v1.7.0_gg7.md:154` (rollback step 1), also the paragraph after step 4 and row D5 (`dry-run merge of the release tip`)
+**Issue:** The reworded step 1 now says "on the dry run below, the merge of the release tip left a clean tree ... (measured; the dry run merges the tip into a detached checkout of the `v1.7.0_gg6` commit ...)". E-05 records `rehearsal_tip: 7ef33b4feae0759c17a77e171e4d53e36b924b3a`, `note_commit_1` of plan 44-02, which is an early commit of the note. The release tip (the merged `sync/v1.7.0` head) has more commits and does not exist yet, and no later evidence block repeats the rehearsal. The clean-tree and block results do not depend on the later content (checked: a plain merge of the current `71fe00e9` onto `72e8ccff` also leaves `git status --porcelain` empty, and the block prints `ok`), so this is a wording point, but "release tip" asserts a rehearsal of the thing that will be published. The same wording was accepted in rounds 1 and 2 for the paragraph after step 4; the new step 1 sentence adds a third use.
+**Fix:** Write "a dry-run merge of the committed tip of the branch (an earlier commit than the release tip)" in step 1, the paragraph after step 4 and row D5, or re-run `rehearse.sh` on the final tip at the publication step and record it as a new E-entry.
+
+round: 3 findings: 2
+
+## Mandated confirmations (RLS-03)
+
+- (a) 33 rows: unchanged since round 2 in count and labels, F1 to F5, T1 to T15, R1 to R8 and D1 to D5 = 33 labelled rows (`grep -cE '^\| T[0-9]+ '` prints 15). R1's text was not edited by the three fixes; only its "What to do" paragraph was. The 13 E-09 claims remain T1 to T13 in order, T6 stays `derived (mechanism, not measured)` by design, and no row is stronger than its source.
+- (b) The commit set touches no `src`, `gradle`, `build` or archive figure. `git diff --shortstat v1.7.0_gg6 HEAD -- src/main` still reads 8 files, 194 insertions, 22 deletions (E-05 `src_main_shortstat`); the archive figures (7933 and 7932 entries, 13558633 and 13564144 bytes, 120 differences, 59 bytes and six classes against the asset, 13558692 bytes) still match E-05. The new FORK-DELTA clause "the 5 s wait" matches `TIMEOUT_FOR_SHUTDOWN = 5` seconds; the new "a second `start()` on one writer does not close the client the first one built" matches `startInternal`, which assigns `chc` with no prior close. The row's count "two residuals" is WR-06.
+- (c) Applies-when: section C "What to do" now matches `DirectDeliveryStrategy.preCommit` (the first branch returns Connect's offsets only for `!isExactlyOnce() && isIgnorePartitionsWhenBatching()`) and `Processing.doLogic` (the same condition, `doInsert(records)` with no state), the default of `ignorePartitionsWhenBatching` is `false`, and the bullet "either of the two alone does not exclude you" holds for both singles. `bufferCount` 0 and `reportInsertedOffsets=true` are carried. Every `client V1` insert claim stays scoped to client V1 (the default `client_version` is V1; the F-2 fix is client V2 only).
+- (d) Rollback: steps 1 to 4 run in order and the step 1 parenthetical matches `rehearse.sh` (`git merge --no-ff` into a detached worktree at `72e8ccff`, no fetch, no fast-forward merge; the tree before the block printed `clean`). Target `pre-v1.7.0_gg7` is a local tag on `72e8ccff`, equal to `v1.7.0_gg6` (`git rev-parse` prints the same SHA), and the intro still tells the operator what to do if origin lacks it. No `gradlew.bat` sentence is carried, as measured (`gradlew_bat_trap: no`, and a plain merge, `read-tree` and commit in a scratch clone leave no ` M gradlew.bat`). The gg6 asset facts match E-05. "Release tip" wording: IN-12.
+- (e) No fact about the `release object` of `v1.7.0_gg7` was added by the three commits; the note, the CHANGELOG and FORK-DELTA still carry no release URL, asset, size or digest for it, and the conditional process sentences are unchanged.
+- (f) No advice that empties or destroys data was added; the step 1 text keeps the warning that `git read-tree -u --reset` discards uncommitted changes, and no TRUNCATE, DELETE, DROP or force-push appears.
+- (g) `FUT-05 stays open.` is the only `FUT-05` line of the gg7 note (line 130; `grep -c FUT-05` prints 1); the changed lines add none.
+- (h) The WARN text was not touched; it still equals `UNVETTED_RETRIABLE_CODES_WARNING` in `ClickHouseSinkTask.java` as confirmed in rounds 1 and 2 (no `src` change since).
+- (i) FORK-DELTA: the one changed row is checked above (WR-06); the `Processing.java` row (one line at `doLogic` line 137, `String originalTopic = record.getSinkRecord().originalTopic();`) and the `KeyToValue.java` row, the recounts, the tag-pair commands, the gg7 paragraphs and items 12, 19, 22 and 23 are unchanged by the three commits and stand as confirmed in round 2. The new clause "closes the ones a started task holds" is consistent with item 13's title and with row F5.
+- (j) CHANGELOG `1.7.0_gg7`: not changed since round 2; each bullet still matches the code or behaviour change and the heading date format is unchanged; no promise of a release beyond the rollout-note pointer.
+- Specific tokens: `socket_timeout` rows T9, T10 and T13 were not changed and still match `ClickHouseHelperClient`; the `exactlyOnce=false` plus `ignorePartitionsWhenBatching=true` text in row R1, section C and the gg6-supersession row is consistent after the IN-11 rewrite; `FUT-05 stays open` stands; `pre-v1.7.0_gg7` and `72e8ccff` are consistent in the intro, step 2 and row D5.
+
+---
+
+_Reviewed: 2026-11-03T00:30:00Z_
+_Reviewer: Claude (gsd-code-reviewer), round 3_
 _Depth: standard_
