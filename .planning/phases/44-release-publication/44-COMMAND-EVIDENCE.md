@@ -42,6 +42,8 @@
 | E-26 | RLS-04 | 44-04 | pass |
 | E-27 | RLS-04 | 44-05 | pass |
 | E-28 | RLS-04 | 44-05 | pass |
+| E-29 | RLS-04 | 44-05 | pass |
+| E-30 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1710,5 +1712,57 @@ publish_word: not given; the user's own direct word 'publish' is still required 
 The go covers U1 and U2 only. The merge message sits under `.planning`, so the Freeze rule is not triggered.
 
 2026-11-03T13:30:00Z
+
+Verdict: pass
+
+### E-29: U1 scratch push and its tests.yaml run, user-reported (user-authorised, run by the orchestrator)
+
+Backs: RLS-04 (the dry-run half; the push of the scratch branch).
+
+```text
+user_instruction: the user's own message "делай сам по документу то что нужно" (do it yourself per the document), after the E-28 go for U1 and U2 and the earlier answer "You run them (Recommended)"
+pre_checks_1_to_9: all as expected (custom_build 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236; left count 0, right count 283; commit; same-as-gated; scripts-same-as-gated; no origin ref holds the SHA; no sync/v1.7.0 on origin; no v1.7.0_gg7 tag; heading date 2026-11-02 against UTC 2026-11-03, accepted as a deviation in E-28)
+pushed_sha: fc5709374adcf87a1537e88ded8fb2968be331c3
+push: git push origin "${SHA}":refs/heads/sync/v1.7.0, output "[new branch] fc5709374adcf87a1537e88ded8fb2968be331c3 -> sync/v1.7.0"
+tests_yaml_run_id: 41687285579
+tests_yaml_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/41687285579
+tests_yaml_head_sha: fc5709374adcf87a1537e88ded8fb2968be331c3
+tests_yaml_runs_for_sha: 1
+tests_yaml_conclusion: success
+```
+
+Origin `custom_build` was not touched. The pushed head holds `.planning` commits after the gated head only.
+
+2026-11-03T17:50:00Z
+
+Verdict: pass
+
+### E-30: U2 release dry run, user-reported (user-authorised, run by the orchestrator)
+
+Backs: RLS-04 (the dry-run half only; RLS-04 stays pending until the publication entries exist).
+
+```text
+dispatch: gh workflow run release.yaml --ref sync/v1.7.0 -f dry_run=true
+run_id: 41688323407
+run_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/41688323407
+run_name: Release sync/v1.7.0 (dry run)
+event: workflow_dispatch
+headBranch: sync/v1.7.0
+headSha: fc5709374adcf87a1537e88ded8fb2968be331c3
+conclusion: success
+steps: every step success except "Publish release", skipped; draft created, checked, shown to have no tag, deleted
+select_baseline_notice: v1.7.0_gg7 is compared with v1.7.0_gg6 under .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+compare_notice: exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg6, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+artifact: archive-compare-report present (the RESULT line was not read; the compare step's notice above is the verdict)
+check_archive_notice: clickhouse-kafka-connect-v1.7.0_gg7.zip 13564238 bytes sha256=3dbdcf03e5825073b7b0535718c9998a5e5754c0ae05a17502bbf4c6d69472af
+tests_yaml_check_notice: successful tests.yaml runs on fc5709374adcf87a1537e88ded8fb2968be331c3: 1
+cleanup_notices: no draft and no tag dry-run-41688323407-1 remain; tag v1.7.0_gg7 is absent
+releases_listed: v1.7.0_gg6, v1.7.0_gg5 only
+v1_7_0_gg7_tag_on_origin: none
+```
+
+A green dry run is not a pass for the whole publication; the publish run (U4) is the first to exercise the Publish release step for this release.
+
+2026-11-03T17:55:00Z
 
 Verdict: pass
