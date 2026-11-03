@@ -55,7 +55,7 @@ inserted-offset topic fix, a start-up WARN for unvetted retriable codes, and a `
 * The bounded insert has limits. A write-side stall, where the peer stops reading the request body, is not bounded.
   Client V1 inserts have no connector timeout and rely on the client V1 library's own 30-second read bound. Requests other
   than client V2 inserts stay unbounded unless `socket_timeout` is set. The help text of `clickhouseClientInsertTimeoutMs`
-  still describes a hard limit. Whether a body insert that streams progress headers escapes the bound was not measured.
+  still describes a hard limit. An insert during which the server streams progress headers escapes the bound (measured: a 3000 ms bound did not end a body insert that ran for about 8 s while the server streamed progress headers; the same insert without `send_progress_in_http_headers` failed at 3003 ms).
 * A many-to-one topic rename and an SMT that changes the partition are not supported for exactly-once, the in-memory state
   machine or `reportInsertedOffsets`; do not enable `reportInsertedOffsets` with them.
 * A code in `additionalRetriableErrorCodes` is redelivered with no retry budget, and no setting removes a code from the
