@@ -45,6 +45,7 @@
 | E-29 | RLS-04 | 44-05 | pass |
 | E-30 | RLS-04 | 44-05 | pass |
 | E-31 | RLS-04 | 44-05 | pass |
+| E-32 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1796,5 +1797,23 @@ pushed: nothing
 M exists only in this local repository. The next step is U3, the user's push of M to `custom_build`.
 
 2026-11-03T18:20:00Z
+
+Verdict: pass
+
+### E-32: U3 push of M to custom_build and its single tests.yaml run, user-reported (user-authorised, run by the orchestrator)
+
+Backs: RLS-04 (the push of M to the default branch).
+
+```text
+user_instruction: "push m" (the user's own message to the orchestrator, 2026-11-03)
+pre_checks_1_to_7: all as expected (custom_build 72e8ccff; two parents 72e8ccff and fc570937; tree-equal; same-as-gated; scripts-same-as-gated; no origin ref holds M; left count 0; heading 2026-11-02 against UTC 2026-11-03, accepted in E-28)
+push: git push origin "${M}":refs/heads/custom_build, output "72e8ccff..94834763  9483476322e0d331e81c5b92ac266a18f0f01450 -> custom_build" (fast-forward, no force)
+origin_custom_build_after: 9483476322e0d331e81c5b92ac266a18f0f01450
+runs_for_M: exactly one, tests.yaml, event push, run id 41704437509, conclusion success
+runs_for_M_120s_after_completion: still one; no release.yaml run
+tag_v1_7_0_gg7_on_origin: none
+```
+
+2026-11-03T18:50:00Z
 
 Verdict: pass
