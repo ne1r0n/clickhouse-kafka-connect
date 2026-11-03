@@ -37,6 +37,7 @@
 | E-21 | RLS-03 | 44-03 | pass |
 | E-22 | RLS-04 | 44-04 | pass |
 | E-23 | RLS-02 | 44-04 | pass |
+| E-24 | RLS-04 | 44-04 | fail |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1333,3 +1334,110 @@ The archives were rebuilt from clean exports of tag `v1.7.0_gg6` and of the new 
 2026-11-03T11:42:30Z
 
 Verdict: pass
+
+### E-24: Re-run of plan 44-04 Task 2 on the new head: the invariant script started on it, testUnit with Docker unreachable, the anchors mirror, scope and numbers; one hygiene hit in the orchestrator's re-open handoff
+
+Backs: RLS-04 (Docker-free half re-run after the T6 re-open of plan 44-03, E-21; this entry is the re-run of E-12 and E-20 on the new head and supersedes their gated head, testUnit totals and invariant start without editing them).
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git rev-list --left-right --count origin/custom_build...HEAD
+git ls-remote --heads origin 'sync/*'
+git ls-remote --tags origin 'v1.7.0_gg7*'
+git log -1 --format=%H -- . ':(exclude).planning'
+git log -1 --format=%H -- .planning/scripts
+/bin/bash -c 'bash .planning/scripts/verify-merge-invariants.sh 54e63648 06a9980a7f7271efa1bae4c8b88ad149e51f50ee > /tmp/gsd44/exec/invariants.log 2>&1; echo $? > /tmp/gsd44/exec/invariants.exit'   # once, in the background, alone (no Gradle build ran until it had finished)
+DOCKER_HOST=unix:///nonexistent/docker.sock docker info
+./gradlew --stop; sysctl vm.swapusage; rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun -PjavaVersion=21 > /tmp/gsd44/exec2/gate-testunit.log 2>&1
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py junit|failed build/test-results/testUnit ...
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe 06a9980a7f7271efa1bae4c8b88ad149e51f50ee -- . ':(exclude).planning'
+git diff --name-only 9a5209c17e5380ec1f675cd8b3225250d3ff41fe 06a9980a7f7271efa1bae4c8b88ad149e51f50ee -- .planning/scripts
+git diff --shortstat v1.7.0 06a9980a7f7271efa1bae4c8b88ad149e51f50ee -- src build.gradle.kts gradle .github
+git diff --shortstat v1.7.0 06a9980a7f7271efa1bae4c8b88ad149e51f50ee -- src/main
+git diff --shortstat v1.7.0_gg6 06a9980a7f7271efa1bae4c8b88ad149e51f50ee -- src/main
+git log --format=%h 31b1721427915576bb631e59a6c75812725fd8b0..06a9980a7f7271efa1bae4c8b88ad149e51f50ee -- src/integrationTest
+python3 -I .planning/phases/44-release-publication/44-review-check.py agents|rounds|disposition ...   # five reviewer ids
+python3 -I .planning/phases/44-release-publication/44-note-check.py all docs/ROLLOUT-v1.7.0_gg7.md --allow 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 e745e7d5363fca8067ddfcc80f3ebea034b93abb4f2912e514492201a729c2af
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py [--strict] <every file added since the phase start, the added lines of the modified documents>
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets <evidence, review, note>
+git worktree list
+```
+
+```text
+supersedes: E-12 and E-20 (gated head, testUnit totals, invariant start); E-24 itself keeps verdict fail for the one hygiene hit below, which a later entry re-runs
+gated_head: 06a9980a7f7271efa1bae4c8b88ad149e51f50ee
+gated_head_note: the commit of E-23, the first commit after the T6 documents and their disposition; only .planning evidence commits follow it
+utc_start: 2026-11-03T11:42:00Z
+dirty_paths_at_gate: M .planning/config.json; M .planning/state.json
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+origin_unchanged: yes
+left_count_at_gate: 0
+origin_sync_ref: none
+origin_gg7_tags: none
+local_release_tag: none
+last_non_planning_commit: 5b25c18ce6137892383899f9f10663a22f498fe5
+last_scripts_commit: 402b6e2ea99a65e80c42f710e2b93277c6f78c64
+invariants_started_on: 06a9980a7f7271efa1bae4c8b88ad149e51f50ee
+invariants_started_utc: 2026-11-03T11:42:10Z
+invariants_exit_seen: 0
+invariants_line_seen: invariants: provenance_paths=21 anchor_commits=1556 anchor_rows=190 marker_commits=1622 anchor_exempt=19 result=PASS
+invariants_finished_utc: 2026-11-03T12:29:13Z
+invariants_overlap: none (no Gradle build ran between the start and the finish of the script; only read-only git and python checks ran beside it)
+docker_unreachable_proof: exit=1 failed to connect to the docker API at unix:///nonexistent/docker.sock; check if the path is correct and if the daemon is running: dial unix /nonexistent/docker.sock: connect: no such file or directory
+swap_before_testunit: vm.swapusage: total = 30720.00M  used = 29506.56M  free = 1213.44M  (encrypted)
+testunit_exit: 0
+testunit_tests: 1826
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_expected_tests: 1826
+testunit_count_matches: yes
+testunit_jdk: -PjavaVersion=21 (the default OpenJ9 17 test JVM cannot load class version 65 on this machine, as E-22 recorded)
+testunit_jvm_crash: none
+testunit_duration: BUILD SUCCESSFUL in 17s
+failed_ok: yes
+compare_xml: OK junit build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=58 failures=0 errors=0 skipped=0 files=1
+bump_xml: OK junit build/test-results/testUnit class *BumpVersionScriptUnitTest: tests=52 failures=0 errors=0 skipped=0 files=1
+baseline_xml: OK junit build/test-results/testUnit class *BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+relguard_xml: OK junit build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=38 failures=0 errors=0 skipped=0 files=1
+mbean_xml: OK junit build/test-results/testUnit class *MBeanNameUnitTest: tests=11 failures=0 errors=0 skipped=0 files=1
+closing_writer_xml: OK junit build/test-results/testUnit class *WriterHelperClientClosingUnitTest: tests=23 failures=0 errors=0 skipped=0 files=1
+closing_keeper_xml: OK junit build/test-results/testUnit class *KeeperStateProviderClosingUnitTest: tests=5 failures=0 errors=0 skipped=0 files=1
+stop_xml: OK junit build/test-results/testUnit class *ProxySinkTaskStopUnitTest: tests=4 failures=0 errors=0 skipped=0 files=1
+stall_xml: OK junit build/test-results/testUnit class *InsertStallBoundPinUnitTest: tests=15 failures=0 errors=0 skipped=0 files=1
+sockopt_xml: OK junit build/test-results/testUnit class *InsertSocketTimeoutOptionUnitTest: tests=23 failures=0 errors=0 skipped=0 files=1
+origtopic_xml: OK junit build/test-results/testUnit class *OriginalTopicInsertedOffsetsUnitTest: tests=6 failures=0 errors=0 skipped=0 files=1
+passthrough_xml: OK junit build/test-results/testUnit class *RetriableExceptionPassThroughUnitTest: tests=38 failures=0 errors=0 skipped=0 files=1
+cycle_xml: OK junit build/test-results/testUnit class *HandleExceptionCauseCycleUnitTest: tests=2 failures=0 errors=0 skipped=0 files=1
+warn_unit_xml: OK junit build/test-results/testUnit class *UnvettedRetriableCodesWarnUnitTest: tests=21 failures=0 errors=0 skipped=0 files=1
+wrapped_xml: OK junit build/test-results/testUnit class *WrappedDataExceptionClassificationPinUnitTest: tests=14 failures=0 errors=0 skipped=0 files=1
+anchors_mirror: rows=190 bad=0
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg7.md
+scope_planning_scripts: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt; .planning/scripts/fork-anchors.txt
+no_java_change: yes
+src_main_vs_gg6_equals_forkdelta: yes
+forkdelta_numbers_equal: yes
+note_archive_numbers_match: yes
+reviewer_agents_check: OK agents: rounds=5 distinct=5 ids=a37f170dc8cc7a801,a752798ab528d2b1f,a401c814e0b118957,a32f740ad20019e8a,a87ce913aac02a00b
+reviewer_rounds_check: OK rounds: [(1, 14), (2, 2), (3, 2), (4, 2), (5, 5)] last_clean=False decision=True
+disposition_check: OK disposition: findings=25 rows=25
+note_check: OK rows=33 measured=24 code=21 derived=4 mechanism=1
+integration_test: the whole integrationTest task was not re-run (it needs a Connect stack); E-22 re-ran ClickHouseSinkConnectorIntegrationTest on head 14f4567e (docs-only change since the last src change) and it passed with 55 tests
+integration_sources_after_run: 51200928 (fix(39): WR-01, the sink task status log line kept purely diagnostic in the integration test; before the Phase 39 run of record, and E-22 is the newer run)
+hygiene_scan_all: not clean: 24 of the 25 text files added since the phase start read 0 hits in default and strict mode, the added lines of CHANGELOG.md, VERSION, docs/FORK-DELTA.md and fork-anchors.txt read 0 hits in both modes, and the evidence, review, disposition, allow-list and note files read 0 hits strict; but 44-REOPEN-HANDOFF.md (added by the orchestrator after E-20) has 1 hit at line 32 in both modes (the helper's fifth default pattern, a bare four-letter verb beginning with st, written in a sentence that describes the helper's own quirk)
+secrets_scan: clean
+nothing_pushed: yes
+worktrees_clean: yes
+docker_free_decision: no-go
+gate_failures: hygiene_scan_all (1 hit in 44-REOPEN-HANDOFF.md line 32, an orchestrator working note; this plan never edits a document; every other Docker-free gate holds)
+utc_end: 2026-11-03T12:33:00Z
+```
+
+Every Docker-free gate other than the hygiene scan holds on the new gated head: the invariant script, started once on this SHA and run alone, ended `result=PASS` with `anchor_rows=190` over 1556 anchor commits; testUnit with the daemon proven unreachable read 1826 tests with 0 failures, 0 errors and 2 skipped and every pin class green; the anchors mirror reads `rows=190 bad=0`; the non-planning scope is the four document paths and the scripts scope is the allow-list and the anchors file; the FORK-DELTA figures and the note's entry counts agree with fresh runs; the five reviewer ids, the disposition of all 25 findings and the note checker are green; origin `custom_build` still reads the gg6 commit and nothing was pushed. The one red is the helper's pattern for an outside-system name matching a plain verb in the orchestrator's re-open handoff, a file that the plan's wide scan covers and that no earlier entry scanned. A wording change in that planning file is outside this plan and is the orchestrator's decision; the verdict stays fail until a later entry re-runs the scan, as E-20 did for E-12. The invariant result is kept in `/tmp/gsd44/exec/invariants.exit` and `invariants.log` for the suites entry.
+
+2026-11-03T12:33:00Z
+
+Verdict: fail
