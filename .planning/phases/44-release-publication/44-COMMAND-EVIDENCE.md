@@ -39,6 +39,7 @@
 | E-23 | RLS-02 | 44-04 | pass |
 | E-24 | RLS-04 | 44-04 | fail |
 | E-25 | RLS-04 | 44-04 | fail |
+| E-26 | RLS-04 | 44-04 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1527,3 +1528,37 @@ Both full suites read 2425 tests with 0 failures, 0 errors and the 18 named skip
 2026-11-03T12:38:00Z
 
 Verdict: fail
+
+### E-26: Re-run of the E-24 hygiene scan after a neutral rewording of one handoff line; the Docker-free decision and the suites decision are go
+
+Backs: RLS-04 (E-24 read verdict fail on one hygiene hit, line 32 of 44-REOPEN-HANDOFF.md; this entry re-runs the scan and supersedes the E-24 and E-25 decision without editing them).
+
+```sh
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py [--strict] <the 25 files added since the phase start>
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets <evidence, review, note>
+git diff --quiet 06a9980a7f7271efa1bae4c8b88ad149e51f50ee HEAD -- . ':(exclude).planning'
+git diff --quiet 06a9980a7f7271efa1bae4c8b88ad149e51f50ee HEAD -- .planning/scripts
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+supersedes: E-24 and E-25 (decision only; their numbers stay as recorded)
+hit_before: 44-REOPEN-HANDOFF.md line 32, the helper's fifth default pattern (a plain four-letter verb beginning with st)
+wording_change_by: the orchestrator; one line reworded, no fact changed
+hygiene_default: 25 files, 0 hits
+hygiene_strict: 25 files, 0 hits
+secrets_scan: clean
+gated_head: 06a9980a7f7271efa1bae4c8b88ad149e51f50ee
+tip_equals_gate_outside_planning: yes
+tip_equals_gate_planning_scripts: yes
+origin_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 (unchanged)
+nothing_pushed: yes
+docker_free_decision: go
+suites_decision: go
+```
+
+Every technical gate of E-23 to E-25 was green; the one red was the hygiene hit, now gone.
+
+2026-11-03T12:50:00Z
+
+Verdict: pass

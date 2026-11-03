@@ -29,4 +29,4 @@ Nothing has been pushed, merged, tagged or dispatched. Origin `custom_build` = `
 - Phases 39-43 verified `passed`; Phase 44 plans 44-01..44-05 executed (local); RLS-01/02/03 satisfied locally, RLS-04 pending publication.
 - Upstream main moved (9bed6f79 -> d92a1830: tests.yaml cloud secrets + two dependency bumps); no tag past v1.7.0; PRs #861/#855/#857 unchanged. Release is built on 9bed6f79 as the CHANGELOG states.
 - Deferred to the milestone close: IN-03 (planning identifier "Phase 39" in the published gg6 note; owner user), 28 IN-05(b), four Phase 37 src/main rows, 16 carried items (see 44-LOCAL-CLOSE-RECORD.md).
-- Hygiene helper quirk: it flags the plain word "stand" (pattern `\bstand\b`) in reviewer text; E-12 stays `fail` by design and E-20 supersedes it.
+- Hygiene helper quirk: its fifth default pattern flags one plain four-letter verb (it begins with st) in reviewer and handoff text; E-12 stays `fail` by design and E-20 supersedes it.
