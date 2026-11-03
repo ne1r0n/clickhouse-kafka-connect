@@ -454,6 +454,46 @@
 
 ---
 
+## Milestone: v1.7.0_gg7-followup — Follow-up Debt, Dependency Sweep & Document Cleanup
+
+**Shipped:** 2026-11-03 (closed 2026-11-04)
+**Phases:** 6 | **Plans:** 22 | **Tasks:** 59 | **Commits:** 284 since `v1.7.0_gg6` | **Timeline:** 3 days (2026-11-01 → 2026-11-03)
+
+### What Was Built
+
+- **gson 2.15.0 and `setup-gradle` 6.4.1** went in as their own gated merges, the latter pinned by commit in all four fork workflows.
+- **The writer and the Keeper provider close the helper clients they create** (F-1), pinned on a Mockito-free counting seam seen red first.
+- **A stalled client V2 `async=false` insert ends after `clickhouseClientInsertTimeoutMs`** (F-2) as a retriable timeout; the progress-header escape was measured against a real server and recorded.
+- **Three isolated `src/main` edits** (`originalTopic()`, the `RetriableException` cause-chain pass-through, the FUT-05 start-up WARN), each its own revert unit.
+- **Phase 37 leftovers and the published notes** were fixed or owned in an 18-row ledger.
+- **`v1.7.0_gg7` was published (`94834763`)** after a five-round reviewed note, two equal green suites and a green dry run.
+
+### What Worked
+
+- **Red-first pins on a counting seam and a latch-held stall server** made F-1 and F-2 provable without Docker.
+- **Measuring the claim at the end.** The T6 progress-header claim was re-opened and measured against a real server rather than shipped as "derived"; the note and CHANGELOG now say what happened.
+- **The runbook's per-step origin re-check** (custom_build, tags, run counts) caught nothing wrong because it ran before every push and dispatch.
+- **Read-back after every origin write** (release, tag, asset digest, PR states).
+
+### What Was Inefficient
+
+- **The T6 re-open after the approval gate** voided the bundle: a fresh review round, the gates and the rehearsal re-ran (about 2.5 hours). The claim should have been measured before the documents froze.
+- **Five review rounds against a plan cap of 3**, and the fixes after rounds 4 and 5 were never read by a fresh reviewer.
+- **Evidence time stamps were written from memory, not a clock;** the verifier found several earlier than GitHub's own times.
+- **A date gate fired again:** the CHANGELOG heading date lagged the merge by a day, as at gg6, and was kept as a deviation.
+- **Who runs the publication was ambiguous again:** the plans said the user, and the orchestrator ran U1 to U5 on the user's words, with U4 as an explicit override.
+
+### Patterns Established
+
+- **A claim-bearing row carries its measurement label in the note and a checker that fails the build when the label and the evidence disagree** (`44-note-check.py`).
+- **The evidence note is the place to correct an evidence mistake,** not an edit of the entry.
+
+### Key Lessons
+
+1. **Measure every claim the note labels "derived" before the documents freeze,** when one probe can settle it.
+2. **Put the date and the executor of the publication into the plan,** so neither costs a deviation record.
+3. **Take evidence times from a clock command,** never from the writer's estimate.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -468,6 +508,7 @@
 | v1.7.0_gg4-hardening | 5 | 32 | Third milestone without a full sync (a tagless mini-sync only). Spike-then-pin-then-fix for both discovery defects, a build-failing check on the shipped archive, and a release phase that edits no code and carries unfixed findings in a close record. |
 | v1.7.0_gg5-ci | 3 | 16 | First CI-only milestone, with no connector code change. Guards seen red before the files they protect, a measured full integration run before the nightly design, and a manual-dispatch gate that had to move to the release phase. |
 | v1.7.0_gg6-maintenance | 6 | 23 | Dependency sweep, tail merge, one fork-only offset fix and the client 0.11.0 jump in one milestone. Pins on the old client first, a revertable bump, a runner dry run before the publish, and a publish run that created the tag and release for the first time. |
+| v1.7.0_gg7-followup | 6 | 22 | Follow-up debt in production code with red-first pins (a counting seam, a latch-held stall server), one isolated revert unit per `src/main` edit, a measured claim re-opened late, and a publication run on the user's words with a per-step origin re-check. |
 
 ### Cumulative Quality
 
@@ -481,6 +522,7 @@
 | v1.7.0_gg4-hardening | 1281 → 1865 | 0 | 999.4 size-named Tuple element dropped at discovery, 999.5 doubled backslash in names and Enum labels, Jackson Map key in the JSON-as-string failure text, Enum-label NPE, Shadow 9 nested-jar archive | 16 unfixed review findings carried (all gg3 carried items closed) |
 | v1.7.0_gg5-ci | 1865 → 1961 | 0 | Integration harness Java 11 worker (54 of 54 connector tests failing), `pre-release.yaml` Gradle `7.4.2`, archived release actions; no connector code change | 13 review advisories open in Phases 30 and 31 (6 WR, 7 IN) |
 | v1.7.0_gg6-maintenance | 1961 → 2270 | 0 | Buffered offsets under topic-renaming SMTs committed for the wrong partitions, `vnull` version bump, the first-start reread documented in the rollout note, 7 files in `src/main` | 11 open follow-ups carried |
+| v1.7.0_gg7-followup | 1672 → 1826 (testUnit); 2270 → 2425 (full suite) | 0 | F-1 helper clients never closed, F-2 no insert timeout with `async=false`, OI-35-1 offsets under the original topic, wrapped `RetriableException` classification, F-3 cross-connector Datagen count | 6 carried (see the audit) |
 
 ### Top Lessons (Verified Across Milestones)
 
