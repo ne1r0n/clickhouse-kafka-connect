@@ -41,6 +41,7 @@
 | E-25 | RLS-04 | 44-04 | fail |
 | E-26 | RLS-04 | 44-04 | pass |
 | E-27 | RLS-04 | 44-05 | pass |
+| E-28 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1687,5 +1688,27 @@ utc_end: 2026-11-03T12:48:41Z
 D was built from the committed merge message (unchanged since `adf06e15`), with parents `72e8ccff` and the tip, and removed; it was never pushed, no branch or tag was created on origin, and the local custom_build ref did not move. Upstream `main` and the three pull requests read the same as at E-14. The extracted rollback block is byte-equal to the E-14 block although the note itself changed (the T6 row). The CHANGELOG heading date differs from UTC today, which the user's recorded answer accepts as a deviation. The one loose end for the user is the merge message's silence on the progress-header escape (bundle question (8)). The plan's verify clause was adapted: the gate and freeze sources are E-24 and E-21, the digest compare reads E-25, and the clause that demands `derived (mechanism, not measured)` in the bundle is dropped because the F-2 claim is measured (E-21).
 
 2026-11-03T12:48:41Z
+
+Verdict: pass
+
+### E-28: The user's answers to the rewritten approval bundle, received by the orchestrator; the merge message gains one sentence
+
+Backs: RLS-04 (the Freeze rule voided the first go; this records the answers to the bundle rewritten for gated head 06a9980a).
+
+```text
+received_by: the orchestrator, directly from the user through its question tool, 2026-11-03
+go_u1_u2: "Go for U1 and U2 (Recommended)" (for gated head 06a9980a7f7271efa1bae4c8b88ad149e51f50ee, tip 16ffde588434c36085d80c124e6036a9cf478043 at the rehearsal)
+review_end_state: "Accept without round 6 (Recommended)"
+merge_message: "Add one sentence (Recommended)"
+jdk_record: "JDK 21 is enough (Recommended)"
+carried_answers: origin writes "You run them (Recommended)"; CHANGELOG heading date "Keep the date (Recommended)" (heading 2026-11-02 stays, recorded as a deviation)
+merge_message_commit: 43f6c9da7c2d4c9f8cf5d4fac44c112594fd9c7c (44-MERGE-MESSAGE.txt, three added lines about the progress-header limit; strict hygiene 0 hits)
+non_planning_change: none
+publish_word: not given; the user's own direct word 'publish' is still required for step O3
+```
+
+The go covers U1 and U2 only. The merge message sits under `.planning`, so the Freeze rule is not triggered.
+
+2026-11-03T13:30:00Z
 
 Verdict: pass
