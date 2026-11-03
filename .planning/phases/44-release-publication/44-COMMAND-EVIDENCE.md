@@ -34,6 +34,8 @@
 | E-18 | RLS-04 | 44-05 | pending (user-gated) |
 | E-19 | RLS-01 to RLS-04 | 44-05 | pass |
 | E-20 | RLS-04 | 44-04 | pass |
+| E-21 | RLS-03 | 44-03 | pass |
+| E-22 | RLS-04 | 44-04 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1182,5 +1184,60 @@ close_commit: 9d5c8d0de54db1043eb846d82cbcd9e0293f0d18
 The phase is complete locally and stops here. The bundle, the four handoffs and the runbook exist; the merge, the runs and the tag are the user's and the orchestrator's after the user's direct approval. The verdict is pass for the local gate only.
 
 2026-11-02T23:48:57Z
+
+Verdict: pass
+
+### E-21: The T6 progress-header claim measured on a real ClickHouse; row T6, Known cost 14 and the CHANGELOG now say measured; review round 5 and its fixes
+
+Backs: RLS-03 (re-open of plan 44-03 at the user's G3 answer "Measure the T6 progress-header claim first"; this entry supersedes the E-09 statement that T6 stays `derived (mechanism, not measured)` without editing it).
+
+```sh
+docker run -d -p 18123:8123 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:latest
+java -cp "t6:$CP" ProbeT6   # /tmp/gsd44/ProbeT6.java; connector helper client V2, body insert of 4000 rows
+python3 -I .planning/phases/44-release-publication/44-note-check.py all docs/ROLLOUT-v1.7.0_gg7.md --allow 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 e745e7d5363fca8067ddfcc80f3ebea034b93abb4f2912e514492201a729c2af
+python3 -I .planning/phases/44-release-publication/44-review-check.py rounds .planning/phases/44-release-publication/44-REVIEW.md .planning/phases/44-release-publication/44-REVIEW-DISPOSITION.md
+```
+
+```text
+server: 26.10.3.7, image digest sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+shape: table dst(id UInt32, s String) Memory with a materialized view to a Null table using sleepEachRow(0.002); async_insert=0; wait_end_of_query=1; input_format_skip_unknown_fields=1; http_headers_progress_interval_ms=50; block settings for about one block per second
+control_no_timeout_progress_on: 8106 ms OK
+bound_3000ms_progress_on: 8141 ms OK (escaped the bound)
+bound_3000ms_progress_off: 3007 ms FAIL DataTransferException>SocketTimeoutException
+bound_3000ms_server_default_async_insert: 89 ms rejected by the server (TOO_SLOW sleep limit), not measured
+curl_progress_headers: 8 over about 8 s
+first_probe_without_wait_end_of_query: 8093 ms OK escaped; 3003 ms fail without progress
+doc_commits: 14f4567e, 5b25c18c
+review_round_5_agent: a87ce913aac02a00b
+review_round_5_findings: WR-07 WR-08 IN-15 IN-16 IN-17, all fixed, not re-reviewed (round 6 needs the user's direct word)
+disposition_commit: 8188a9ac
+note_check: rows=33 measured=24 code=21 derived=4 mechanism=1, all OK
+rounds_check: OK, five rounds
+```
+
+The T6 claim is measured for the shape above. The documents changed outside `.planning`, so the Freeze rule applies: the E-14 rehearsal, the E-13 suites and the approval bundle are void for the new head until plans 44-04 and 44-05 are re-run.
+
+2026-11-03T09:40:00Z
+
+Verdict: pass
+
+### E-22: integrationTest re-run on the changed tree: ClickHouseSinkConnectorIntegrationTest green
+
+Backs: RLS-04 (the user's G3 answer "Re-run integrationTest first").
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain integrationTest --tests "*ClickHouseSinkConnectorIntegrationTest" -PjavaVersion=21 --rerun-tasks
+```
+
+```text
+head: 14f4567e70814d4bd245aaec1fe398d403d4bb2a (docs-only change since the last src change; src unchanged)
+first_attempt: failed in 16 s, the default OpenJ9 17 test JVM could not load class version 65 (environment, not a test result)
+second_attempt: BUILD SUCCESSFUL in 30m 52s, exit 0
+tests: 55 passed, 0 failed, 0 skipped, 0 errors
+```
+
+The nightly upstream workflow stays red by inheritance and is unrelated.
+
+2026-11-03T10:15:00Z
 
 Verdict: pass
