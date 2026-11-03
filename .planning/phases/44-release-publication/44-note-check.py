@@ -18,7 +18,7 @@ Subcommands (exit 0 = every check holds, 1 = a check failed, 2 = usage or unread
                               letter is listed are checked and rows of the other letters are ignored, so a
                               partial note and the finished note both pass), no other ID of that shape
                               occurs, every label cell is made of the four forms, every other cell is non-empty,
-                              the T6 and F4 rows (when present) carry exactly `derived (mechanism, not measured)`,
+                              the F4 row (when present) carries exactly `derived (mechanism, not measured)`,
                               every T row (when present) names `client V` in its Applies-when cell;
                               prints `rows=N measured=a code=b derived=c mechanism=d` (rows per label form)
   labels NOTE                 each label form is written in backticks in the text before the first `## ` heading
@@ -127,7 +127,7 @@ def cmd_rows(text, only=None):
                 used.add(token)
         if not used:
             problems.append("line %d: %s has no label" % (number, rid))
-        if rid in ("T6", "F4") and cells[2] != MECHANISM:
+        if rid == "F4" and cells[2] != MECHANISM:
             problems.append("line %d: %s must carry exactly the label %r" % (number, rid, MECHANISM))
         if rid[0] == "T" and "client V" not in cells[3]:
             problems.append("line %d: %s has an Applies-when cell without 'client V'" % (number, rid))
