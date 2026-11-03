@@ -44,6 +44,7 @@
 | E-28 | RLS-04 | 44-05 | pass |
 | E-29 | RLS-04 | 44-05 | pass |
 | E-30 | RLS-04 | 44-05 | pass |
+| E-31 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1764,5 +1765,36 @@ v1_7_0_gg7_tag_on_origin: none
 A green dry run is not a pass for the whole publication; the publish run (U4) is the first to exercise the Publish release step for this release.
 
 2026-11-03T17:55:00Z
+
+Verdict: pass
+
+### E-31: The user's own publish message and the merge commit M, built after it
+
+Backs: RLS-04 (O2 pre-checks and O3: the merge commit M, built locally and detached, nothing pushed).
+
+```text
+publish_message: "publish" (the user's own message to the orchestrator, 2026-11-03, a second time after the reply that U1 and U2 were green; received directly, not relayed)
+o2_a_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 (unmoved)
+o2_b_date: heading 2026-11-02, UTC 2026-11-03; kept as a recorded deviation by the user's answer in E-28 (no edit)
+o2_c_upstream: newest tag v1.7.0 (no tag past v1.7.0)
+o2_d: X0 is an ancestor of sync/v1.7.0 (equals the pushed head); same-as-gated and scripts-same-as-gated both printed; the merge message unchanged since 43f6c9da7c2d4c9f8cf5d4fac44c112594fd9c7c
+X0: fc5709374adcf87a1537e88ded8fb2968be331c3 (origin sync/v1.7.0 reads the same)
+M: 9483476322e0d331e81c5b92ac266a18f0f01450
+m_parents: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 fc5709374adcf87a1537e88ded8fb2968be331c3
+m_tree_equals_x0: yes
+m_subject: Merge sync/v1.7.0: release v1.7.0_gg7
+m_gsd_ws_arg_present: no
+m_version: v1.7.0_gg7
+m_author: the repository's configured identity
+ref_keeping_m: refs/gsd/release-m-v1.7.0_gg7 (local only)
+rollback_block_on_m: exit 0, output ok, status before and after empty, VERSION v1.7.0_gg6, note absent
+rollback_cleanup: throwaway worktrees removed, branch rollback-v1.7.0_gg7 deleted, one worktree left
+local_custom_build_ref: 3a3a15a9ae064ffe09c696b8bb87bce23419d463 (unmoved)
+pushed: nothing
+```
+
+M exists only in this local repository. The next step is U3, the user's push of M to `custom_build`.
+
+2026-11-03T18:20:00Z
 
 Verdict: pass
