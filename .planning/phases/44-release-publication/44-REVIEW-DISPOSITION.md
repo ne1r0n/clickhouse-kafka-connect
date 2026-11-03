@@ -62,14 +62,29 @@ findings:
   - id: IN-14
     severity: info
     disposition: fixed
+  - id: WR-07
+    severity: warning
+    disposition: fixed
+  - id: WR-08
+    severity: warning
+    disposition: fixed
+  - id: IN-15
+    severity: info
+    disposition: fixed
+  - id: IN-16
+    severity: info
+    disposition: fixed
+  - id: IN-17
+    severity: info
+    disposition: fixed
 open: 0
-total: 20
+total: 25
 recorded: 2026-11-02T22:29:03Z
 ---
 
 # Phase 44 review disposition
 
-Four review rounds ran, each by a fresh `gsd-code-reviewer` spawned by the orchestrator (round 1 over the five release documents, rounds 2 to 4 over the previous round's fix commits). Findings per round: 1:14; 2:2; 3:2; 4:2; total 20 (6 warnings, 14 info, 0 critical). The plan allows three rounds unless the user authorises more; the user authorised a fourth at gate G1 after round 3, and the two findings of round 4 were fixed without a fifth round (a recorded deviation from the plan). Every fixed row names the commit that holds the fix, and each fix was re-run through its owning checks (evidence entry E-09).
+Five review rounds ran (round 5, reviewer a87ce913aac02a00b, was added after the user asked at G3 to measure the T6 claim first; it reviewed the one commit that restated T6 as measured), each by a fresh `gsd-code-reviewer` spawned by the orchestrator (round 1 over the five release documents, rounds 2 to 4 over the previous round's fix commits). Findings per round: 1:14; 2:2; 3:2; 4:2; total 20 (6 warnings, 14 info, 0 critical). The plan allows three rounds unless the user authorises more; the user authorised a fourth at gate G1 after round 3, and the two findings of round 4 were fixed without a fifth round (a recorded deviation from the plan). Every fixed row names the commit that holds the fix, and each fix was re-run through its owning checks (evidence entry E-09).
 
 round3_decision: G1 after round 3: "Fix both, then one more round (Recommended)"; G1 after round 4: "Fix both, accept without round 5 (Recommended)"
   - Both answers were given by the user directly to the orchestrator through its AskUserQuestion on 2026-11-02. The executor that wrote this file did not receive them: the orchestrator quoted both verbatim in its dispatch, and the executor cannot verify them.
@@ -97,6 +112,11 @@ round3_decision: G1 after round 3: "Fix both, then one more round (Recommended)"
 | IN-12 | Info | fixed | 06be77ce (Phase 44) |
 | IN-13 | Info | fixed | 09271222 (Phase 44); fixed after round 4, not re-reviewed (user decision at G1: "Fix both, accept without round 5 (Recommended)") |
 | IN-14 | Info | fixed | a43ff32f (Phase 44); fixed after round 4, not re-reviewed (user decision at G1: "Fix both, accept without round 5 (Recommended)") |
+| WR-07 | Warning | fixed | 5b25c18c (Phase 44); fixed after round 5, not re-reviewed (a round 6 needs the user's direct word under G1) |
+| WR-08 | Warning | fixed | 5b25c18c (Phase 44); fixed after round 5, not re-reviewed (a round 6 needs the user's direct word under G1) |
+| IN-15 | Info | fixed | 5b25c18c (Phase 44); fixed after round 5, not re-reviewed (a round 6 needs the user's direct word under G1) |
+| IN-16 | Info | fixed | 5b25c18c (Phase 44); fixed after round 5, not re-reviewed (a round 6 needs the user's direct word under G1) |
+| IN-17 | Info | fixed | 5b25c18c (Phase 44); fixed after round 5, not re-reviewed (a round 6 needs the user's direct word under G1) |
 
 Dispositions: `fixed`, `rejected`, `deferred`; none is `open`. Commit 71fe00e9 is the round 2 follow-up that reworded rollback step 1 after the WR-05 and IN-11 fixes and is recorded under E-09 `fix_commits`.
 

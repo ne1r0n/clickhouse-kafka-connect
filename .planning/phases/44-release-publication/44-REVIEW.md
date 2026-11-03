@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 6
-  info: 14
-  total: 20
+  warning: 8
+  info: 17
+  total: 25
 status: issues_found
-rounds: 4
+rounds: 5
 ---
 
 ## Round 1
