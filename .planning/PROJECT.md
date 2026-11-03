@@ -40,6 +40,19 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 
 </details>
 
+## Current Milestone: v1.7.0_gg8-closeout Gap Closure, Upstream Tail & Release
+
+**Goal:** Close every known gap left by `v1.7.0_gg7-followup`, take upstream's new tail (`main` `9bed6f79` → `83808df9`) while keeping the fork's value-free error policy, and publish `v1.7.0_gg8` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
+
+**Target features:**
+- **Code gaps (tests first):** `ClickHouseSinkTask.stop()` stops every delivery strategy even when one throws (`try`/`finally`); correct the `clickhouseClientInsertTimeoutMs` help text; the Phase 37 `src/main` rows and the null assertion; the 28 IN-05(b) items; FUT-05; retriable `DataException` cases with no retry budget; bound the behaviour limits where feasible (progress-header escape, write-side stalls, client V1 inserts, non-insert requests), and record a measurement for any that cannot be bounded.
+- **Documents:** CHANGELOG `stop()` wording; IN-03 (planning identifier in the published gg6 note); FORK-DELTA evidence paths now under `.planning/milestones/` and the test path missing its package; item 20's ledger path; broad allow-list glob rows (UF-37-3); review Infos.
+- **Upstream tail:** merge in the usual sync shape (scratch branch, rollback tag, `verify-merge-invariants.sh`, two full runs). Upstream #857 (record context in serialization errors) is merged **value-free** — where it conflicts with the gg3 column/type/class-only messages the fork's behaviour wins, after checking what #857 puts in the context. Also #839 (slash column names in DESCRIBE), the `fromJsonRow` fix (check against fork backlog 999.5), slf4j-simple 2.0.20, spotless 8.10.4, commons-lang3 3.21.0.
+- **Dependabot:** no open PRs on `origin` (checked 2026-11-04); repository alerts are disabled, so a manual dependency/CVE check replaces them.
+- **Release:** `VERSION=v1.7.0_gg8`, CHANGELOG, FORK-DELTA, rollout note with independent review, `--no-ff` merge after human approval, CI green on the published SHA; delete `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` from `origin` in the release phase with a final confirmation before the push.
+
+**Out of scope:** new connector features, running the upgrade on production connectors, open upstream PRs #861, #855, #854 and #788 (not merged upstream), many-to-one rename and partition-changing SMT limits for exactly-once (design limit). `NIGHTLY_ENABLED` and Dependabot settings stay with the user.
+
 ## Current State
 
 **Shipped:** `v1.7.0_gg7-followup` (published 2026-11-03, closed 2026-11-04). It covered 6 phases (39–44), 22 plans, 59 tasks and 23/23 requirements. The milestone audit is `tech_debt` with no gaps: requirements 23/23, phases 6/6, integration 15 wired / 5 partial / 0 broken (documentation and label gaps), flows 4/6. It closed as an `override_closeout`.
@@ -1044,4 +1057,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-04 after v1.7.0_gg7-followup milestone*
+*Last updated: 2026-11-04 after starting milestone v1.7.0_gg8-closeout*
