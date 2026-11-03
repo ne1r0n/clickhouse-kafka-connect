@@ -15,6 +15,9 @@ Shipped changes:
   while the server may still commit it, so with exactlyOnce=false the
   batch can be inserted twice. A socket_timeout named in
   jdbcConnectionProperties overrides the per-insert value.
+  The bound does not hold for an insert during which the server keeps
+  streaming progress headers (send_progress_in_http_headers=1 is a
+  connector default): such an insert runs to its natural end.
 - Inserted offsets are reported under the consumer's topic when an SMT
   renames the topic (unbuffered path, reportInsertedOffsets=true).
 - A RetriableException anywhere in the cause chain of an insert failure
