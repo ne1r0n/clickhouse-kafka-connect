@@ -46,6 +46,8 @@
 | E-30 | RLS-04 | 44-05 | pass |
 | E-31 | RLS-04 | 44-05 | pass |
 | E-32 | RLS-04 | 44-05 | pass |
+| E-33 | RLS-04 | 44-05 | pass |
+| E-34 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1815,5 +1817,58 @@ tag_v1_7_0_gg7_on_origin: none
 ```
 
 2026-11-03T18:50:00Z
+
+Verdict: pass
+
+### E-33: U4 publish dispatch, user-reported (dispatched by the orchestrator on the user's explicit override)
+
+Backs: RLS-04 (the publish dispatch).
+
+```text
+user_instruction: "dispatch the publish run" (the user's own message, 2026-11-03), given after the orchestrator said U4 stays the user's by the runbook and offered to dispatch only on that explicit wording; recorded as an override of the runbook rule that U4 is always the user's
+pre_checks_1_to_4: custom_build 9483476322e0d331e81c5b92ac266a18f0f01450 (M); one green tests.yaml run on M (E-32); no v1.7.0_gg7 tag on origin or locally; no release.yaml run in progress
+dispatch: gh workflow run release.yaml -R ne1r0n/clickhouse-kafka-connect --ref custom_build (no dry_run input)
+run_id: 41721771615
+run_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/41721771615
+run_name: Release custom_build (publish)
+event: workflow_dispatch
+headBranch: custom_build
+headSha: 9483476322e0d331e81c5b92ac266a18f0f01450
+conclusion: success
+publish_release_step: success
+draft_steps: skipped (four)
+release_url: https://github.com/ne1r0n/clickhouse-kafka-connect/releases/tag/v1.7.0_gg7
+```
+
+2026-11-03T19:40:00Z
+
+Verdict: pass
+
+### E-34: The publish run read back: release, tag, asset, uploader and steps
+
+Backs: RLS-04 (read-only reads of the publish run).
+
+```text
+steps: every step success except the four draft steps, skipped
+compare_notice: exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg6, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+select_baseline_notice: v1.7.0_gg7 is compared with v1.7.0_gg6 under .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+artifact: archive-compare-report present (its last line was not read)
+tests_yaml_check_notice: successful tests.yaml runs on 9483476322e0d331e81c5b92ac266a18f0f01450: 1
+tag_absent_notice: tag v1.7.0_gg7 is absent (before publishing)
+tag_ref: refs/tags/v1.7.0_gg7, object type commit, sha 9483476322e0d331e81c5b92ac266a18f0f01450
+release_id: 433237218
+release_author: github-actions[bot]
+release_draft: false
+release_prerelease: false
+assets: exactly one, clickhouse-kafka-connect-v1.7.0_gg7.zip, 13564238 bytes, digest sha256:3dbdcf03e5825073b7b0535718c9998a5e5754c0ae05a17502bbf4c6d69472af, uploader github-actions[bot]
+archive_digest_equals_dry_run: yes (the dry run E-30 and this run built the same bytes)
+custom_build_after: 9483476322e0d331e81c5b92ac266a18f0f01450
+other_releases: v1.7.0_gg6 (430511927), v1.7.0_gg5 (426690002), unchanged
+pull_requests: #21 and #22 read state closed, merged true, merged_at 2026-11-03T19:33:58Z, base custom_build; custom_build still reads M, so GitHub marked them merged once M brought their head commits (an inference, not a read of the cause)
+origin_heads: custom_build, main, sync/v1.7.0, scratch/clt-07-client-0.11.0, scratch/clt-07-prebump-0.9.6
+upstream_newest_tag: v1.7.0
+```
+
+2026-11-03T19:45:00Z
 
 Verdict: pass
