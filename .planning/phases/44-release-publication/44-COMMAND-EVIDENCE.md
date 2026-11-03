@@ -40,6 +40,7 @@
 | E-24 | RLS-04 | 44-04 | fail |
 | E-25 | RLS-04 | 44-04 | fail |
 | E-26 | RLS-04 | 44-04 | pass |
+| E-27 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1560,5 +1561,131 @@ suites_decision: go
 Every technical gate of E-23 to E-25 was green; the one red was the hygiene hit, now gone.
 
 2026-11-03T12:50:00Z
+
+Verdict: pass
+
+### E-27: Re-run of plan 44-05 Task 1 on the new head: upstream recheck 3, the merge message, a dry-run merge with its checks, the rollback on it, the date check, and the approval bundle rewritten for the new gated head
+
+Backs: RLS-04 (the Freeze rule's re-run of the publication rehearsal after the T6 re-open of plan 44-03, E-21, and the re-runs of plan 44-04, E-23 to E-26; this entry supersedes E-14 for the new gated head without editing it).
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git rev-list --left-right --count origin/custom_build...sync/v1.7.0
+git rev-list --count 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236..HEAD
+git rev-list --count HEAD --not --remotes=origin
+git rev-parse 'pre-v1.7.0_gg7^{commit}'; git cat-file -t pre-v1.7.0_gg7
+git ls-remote --heads origin 'sync/*'; git ls-remote --tags origin 'v1.7.0_gg7*' 'pre-v1.7.0_gg7*'; git tag -l 'v1.7.0_gg7'
+gh api "repos/ne1r0n/clickhouse-kafka-connect/pulls?state=open&per_page=50" --jq '[.[] | "\(.number) \(.head.sha[0:8])"] | sort | join("; ")'
+git diff --shortstat 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 HEAD -- . ':(exclude).planning'    # and -- .planning
+git diff --quiet <E-24 gated_head> HEAD -- . ':(exclude).planning'; git diff --quiet <E-24 gated_head> HEAD -- .planning/scripts
+git diff --quiet <E-21 disposition_commit> <E-24 gated_head> -- . ':(exclude).planning'
+git ls-remote upstream refs/heads/main; git ls-remote --tags --refs upstream 'v*'
+curl -s https://api.github.com/repos/ClickHouse/clickhouse-kafka-connect/pulls/<861|855|857>
+curl -s https://api.github.com/repos/ClickHouse/clickhouse-kafka-connect/compare/d92a1830...main
+/bin/bash /tmp/gsd44/exec3/t1-facts-a.sh        # the reads above, read-only (the E-14 script with E-24 and E-21 as the gate and freeze sources)
+git diff --stat adf06e15dacbe2bb08f128621d06fd272aab8520 HEAD -- .planning/phases/44-release-publication/44-MERGE-MESSAGE.txt
+python3 -I /tmp/gsd44/exec/extract-rb.py docs/ROLLOUT-v1.7.0_gg7.md /tmp/gsd44/exec3/rollback-block-t1.sh
+git worktree add --detach /tmp/gsd44/w/pubdry 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+git --attr-source="$(git hash-object -t tree /dev/null)" merge --no-ff -F <absolute path of 44-MERGE-MESSAGE.txt> <tip_head>    # in the worktree, demo identity
+bash -e /tmp/gsd44/exec3/rollback-block-t1.sh   # in the worktree
+git --attr-source="$(git hash-object -t tree /dev/null)" revert --no-edit <rollback commit>    # in the worktree
+git worktree remove --force /tmp/gsd44/w/pubdry; git worktree prune; git branch -D rollback-v1.7.0_gg7
+/bin/bash /tmp/gsd44/exec3/t1-facts-b.sh <tip_head> <absolute path of 44-MERGE-MESSAGE.txt> /tmp/gsd44/exec3/rollback-block-t1.sh   # the five lines above in one script
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+head -1 CHANGELOG.md; date -u +%F
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict <merge message> <bundle> <four handoffs> <runbook> <evidence>
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py secrets .planning/phases/44-release-publication/44-COMMAND-EVIDENCE.md
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 190
+git add .planning/phases/44-release-publication/44-APPROVAL-BUNDLE.md && git commit -F <message>
+git add <four handoffs> <runbook> && git commit -F <message>
+```
+
+```text
+supersedes: E-14 (the rehearsal and the bundle of the older gated head b265f5a45a0752f314bb95315e3cdfbeaa2b78cd)
+utc_start: 2026-11-03T12:43:05Z
+tip_head: 16ffde588434c36085d80c124e6036a9cf478043
+origin_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 refs/heads/custom_build
+origin_unchanged: yes
+left_count: 0
+left_right: 0 278
+ahead_of_gg6: 278
+unpublished_commits: 276
+pre_tag_local: yes (commit at 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236)
+origin_sync_ref: none
+origin_gg7_tags: none
+local_release_tag: none
+pr_heads: 21 14be67ce; 22 b5cccbd3
+pr_heads_unchanged: yes
+non_planning_vs_gg6: 40 files changed, 3169 insertions(+), 146 deletions(-)
+planning_vs_gg6: 311 files changed, 31735 insertions(+), 1428 deletions(-)
+gated_sha: 5b25c18ce6137892383899f9f10663a22f498fe5
+gated_head: 06a9980a7f7271efa1bae4c8b88ad149e51f50ee
+tip_equals_gate_outside_planning: yes
+frozen_docs_equal_gate: yes
+e21_disposition_commit: 8188a9ac
+changed_files_outside_planning_equal_e14: yes (the same 40 paths as the list of the first bundle)
+src_gradle_github_unchanged_since_phase_start: yes
+upstream_main_end: d92a1830113a5f9c1cf49bf67f65ec6d188d1391
+upstream_newest_tag_end: v1.7.0
+upstream_tag_past_v170_end: no
+upstream_pr_861_end: open False 3d4cfdf2
+upstream_pr_855_end: open False ddabf28b
+upstream_pr_857_end: open False 11d88bc0
+upstream_main_vs_e14: unchanged (d92a1830 at E-14 and now; the compare of d92a1830 against main reads identical)
+upstream_changed_since_e14: no
+upstream_changed_since_e01: yes: main moved from 9bed6f7970670a55c66be8efda246889e1f95bd0 (E-01) to d92a1830113a5f9c1cf49bf67f65ec6d188d1391 before E-14 (six commits, dependency bumps and cloud-test secrets in tests.yaml); newest tag, tags past v1.7.0 and pull requests 861, 855 and 857 unchanged; information for the next sync, not a STOP
+merge_message_unchanged_since_adf06e15: yes
+merge_message_facts_hold: yes (it names no SHA but 72e8ccff, no count other than eight src/main files, four minutes and the version, all unchanged)
+merge_message_note: the message says an insert "is bounded" and that "a quiet insert that runs longer fails"; after the T6 measurement (E-21) the CHANGELOG says an insert that streams progress headers escapes the bound; the message is accurate as worded but silent on the escape; not edited, put to the user in bundle question (8)
+merge_subject: Merge sync/v1.7.0: release v1.7.0_gg7
+merge_trailer_last: yes
+d_commit: ff4a84e70281a97951766268afdd6c0830fc0181
+d_parents: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 16ffde588434c36085d80c124e6036a9cf478043
+d_tree_equal: yes
+d_subject: Merge sync/v1.7.0: release v1.7.0_gg7
+d_no_gsd_ws_arg: yes
+d_version: v1.7.0_gg7
+d_allowlist_present: yes
+d_baseline_tag: v1.7.0_gg6
+d_no_gg7_tag_merged: yes
+d_operator_doc_check: none
+d_rollback_block_equal_e14: yes
+d_rollback_exit: 0
+d_rollback_output: ok
+d_rollback_version: v1.7.0_gg6
+d_rollback_note_absent: yes
+d_rollback_tree_equals_tag: yes
+d_gradlew_bat_trap: no
+d_revert_restores_tree: yes
+d_cleaned: yes
+local_custom_build_ref_unmoved: yes
+select_version: 26.10.3.7
+image_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e25: yes
+changelog_heading_date: 2026-11-02
+utc_today: 2026-11-03 (read at 2026-11-03T12:43:14Z)
+changelog_date_vs_today: differs (2026-11-02 vs 2026-11-03)
+changelog_date_deviation: the heading date stays by the user's recorded answer "Keep the date (Recommended)"; read as the date the documents were frozen; no edit; the release record states it as a deviation
+user_answers_carried: "Go for U1 and U2" (for the older head, void, asked again); "You run them (Recommended)"; "Keep the date (Recommended)"; "Re-run integrationTest first" (E-22); "Measure the T6 progress-header claim first" (E-21)
+bundle_questions_asked_again: (2) the go for U1 and U2 on the new head; (4) round 5 fixes accepted without a round 6, yes or no; (1), (3), (5), (6), (7), (8) restate answers or measurements and need a word only on disagreement
+handoff_files_updated: the four handoffs and the runbook name the new gated head 06a9980a, last non-planning commit 5b25c18c, tip 16ffde58 and the evidence numbers E-23 to E-27; the publication tail is recorded from E-28; E-15 to E-18 are untouched
+bundle_items: yes
+bundle_gates: yes
+message_check: yes
+hygiene_scan: clean
+secrets_scan: clean
+anchors_mirror: rows=190 bad=0
+bundle_commit: 9f72b5d888fe63f1c8f0e2d7057a9a9fa97ae9a9
+handoffs_commit: d71825e3020358b6345b7186bcf841044ac52334
+nothing_pushed: yes
+worktrees_clean: yes
+utc_end: 2026-11-03T12:48:41Z
+```
+
+D was built from the committed merge message (unchanged since `adf06e15`), with parents `72e8ccff` and the tip, and removed; it was never pushed, no branch or tag was created on origin, and the local custom_build ref did not move. Upstream `main` and the three pull requests read the same as at E-14. The extracted rollback block is byte-equal to the E-14 block although the note itself changed (the T6 row). The CHANGELOG heading date differs from UTC today, which the user's recorded answer accepts as a deviation. The one loose end for the user is the merge message's silence on the progress-header escape (bundle question (8)). The plan's verify clause was adapted: the gate and freeze sources are E-24 and E-21, the digest compare reads E-25, and the clause that demands `derived (mechanism, not measured)` in the bundle is dropped because the F-2 claim is measured (E-21).
+
+2026-11-03T12:48:41Z
 
 Verdict: pass
