@@ -38,6 +38,7 @@
 | E-22 | RLS-04 | 44-04 | pass |
 | E-23 | RLS-02 | 44-04 | pass |
 | E-24 | RLS-04 | 44-04 | fail |
+| E-25 | RLS-04 | 44-04 | fail |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1439,5 +1440,90 @@ utc_end: 2026-11-03T12:33:00Z
 Every Docker-free gate other than the hygiene scan holds on the new gated head: the invariant script, started once on this SHA and run alone, ended `result=PASS` with `anchor_rows=190` over 1556 anchor commits; testUnit with the daemon proven unreachable read 1826 tests with 0 failures, 0 errors and 2 skipped and every pin class green; the anchors mirror reads `rows=190 bad=0`; the non-planning scope is the four document paths and the scripts scope is the allow-list and the anchors file; the FORK-DELTA figures and the note's entry counts agree with fresh runs; the five reviewer ids, the disposition of all 25 findings and the note checker are green; origin `custom_build` still reads the gg6 commit and nothing was pushed. The one red is the helper's pattern for an outside-system name matching a plain verb in the orchestrator's re-open handoff, a file that the plan's wide scan covers and that no earlier entry scanned. A wording change in that planning file is outside this plan and is the orchestrator's decision; the verdict stays fail until a later entry re-runs the scan, as E-20 did for E-12. The invariant result is kept in `/tmp/gsd44/exec/invariants.exit` and `invariants.log` for the suites entry.
 
 2026-11-03T12:33:00Z
+
+Verdict: fail
+
+### E-25: Re-run of plan 44-04 Task 3 on the new head: two full suites on one pinned ClickHouse latest with client V2, the invariant script's result, and the gate decision (no-go on the single hygiene hit of E-24 only)
+
+Backs: RLS-04 (live half re-run after the T6 re-open of plan 44-03, E-21; supersedes E-13 for the new gated head without editing it). The suites and the invariant script do not depend on the hygiene scan, so they were run although E-24 reads fail, which the plan's Task 3 precondition would not allow; this is a recorded deviation and the decision below carries it.
+
+```sh
+git diff --quiet 06a9980a7f7271efa1bae4c8b88ad149e51f50ee HEAD -- . ':(exclude).planning'
+git diff --quiet 06a9980a7f7271efa1bae4c8b88ad149e51f50ee HEAD -- .planning/scripts
+./gradlew --stop; sysctl vm.swapusage; colima list
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd44/exec2/suite1.log 2>&1
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py junit|skips|failed build/test-results/test ...
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd44/exec2/suite2.log 2>&1
+python3 -I .planning/phases/44-release-publication/44-evidence-check.py junit|skips|failed build/test-results/test ...
+cat /tmp/gsd44/exec/invariants.exit; grep '^invariants:' /tmp/gsd44/exec/invariants.log
+```
+
+```text
+supersedes: E-13 (the live half of the older gated head b265f5a45a0752f314bb95315e3cdfbeaa2b78cd)
+gated_head: 06a9980a7f7271efa1bae4c8b88ad149e51f50ee
+gate_head_same: yes
+swap_before: vm.swapusage: total = 30720.00M  used = 29726.12M  free = 993.88M  (encrypted)
+colima_vz: Running
+digest_before_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_before_run1: 26.10.3.7
+digest_same_as_e01: yes
+suite1_utc_start: 2026-11-03T12:31:15Z
+suite1_exit: 0
+suite1_tests: 2425
+suite1_failures: 0
+suite1_errors: 0
+suite1_skipped: 18
+suite1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite1_failed_ok: yes
+suite1_duration: BUILD SUCCESSFUL in 2m 47s
+suite1_jdk: -PjavaVersion=21 (the default OpenJ9 17 test JVM cannot load class version 65 on this machine, as E-22 recorded; E-13 ran on the default JDK 17 line)
+suite1_jvm_crash: none
+suite1_warn_live_xml: OK junit build/test-results/test class *UnvettedRetriableCodesWarnLiveTest: tests=1 failures=0 errors=0 skipped=0 files=1
+suite1_processing_xml: OK junit build/test-results/test class *ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+digest_after_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run1: 26.10.3.7
+suite2_utc_start: 2026-11-03T12:34:32Z
+suite2_exit: 0
+suite2_tests: 2425
+suite2_failures: 0
+suite2_errors: 0
+suite2_skipped: 18
+suite2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite2_failed_ok: yes
+suite2_duration: BUILD SUCCESSFUL in 2m 38s
+suite2_jdk: -PjavaVersion=21 (as run 1)
+suite2_jvm_crash: none
+suite2_warn_live_xml: OK junit build/test-results/test class *UnvettedRetriableCodesWarnLiveTest: tests=1 failures=0 errors=0 skipped=0 files=1
+suite2_processing_xml: OK junit build/test-results/test class *ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+digest_after_run2: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run2: 26.10.3.7
+suites_jdk: -PjavaVersion=21 for both suites and for the testUnit run of E-24
+suites_same_jvm: yes
+suite_expected_tests: 2425
+suite_count_matches: yes
+suite_tests_equal: yes
+docker_only_delta: 599
+pinned_image_same: yes
+crash_files_left: none
+invariants_exit: 0
+invariants_line: invariants: provenance_paths=21 anchor_commits=1556 anchor_rows=190 marker_commits=1622 anchor_exempt=19 result=PASS
+invariants_head: 06a9980a7f7271efa1bae4c8b88ad149e51f50ee
+invariants_finished_utc: 2026-11-03T12:29:13Z
+technical_gates: green (testUnit, both suites, the invariant script, the anchors mirror, the allow-list compare and the scope and number facts of E-23 and E-24)
+docker_free_decision_source: E-24 (no-go: hygiene_scan_all only)
+gate_decision: no-go
+gate_failures: hygiene_scan_all (E-24: 1 hit in 44-REOPEN-HANDOFF.md line 32, an orchestrator working note outside this plan's remit)
+gate_note: The CI side (the scratch dry run, the single tests.yaml run on the merged SHA and the publish run) is the user's and not part of this gate; the whole integrationTest task was not re-run and E-22 holds its one recorded class run (E-24 integration_test).
+utc_start: 2026-11-03T12:31:15Z
+utc_end: 2026-11-03T12:38:00Z
+```
+
+Both full suites read 2425 tests with 0 failures, 0 errors and the 18 named skips on one build of `latest` (`26.10.3.7`, one digest at all three reads) with client V2 and one JVM line (`-PjavaVersion=21`, not the default JDK 17 line of E-13, because the default test JVM cannot load class version 65 here); the Docker-only delta over `testUnit` is 599, as in E-13. The invariant script ran alone before the suites on the gated head and ended `result=PASS`. The decision is no-go only because E-24 reads fail on the one hygiene hit; every technical gate is green, and a neutral rewording of that one planning-file line (a `.planning` path outside `.planning/scripts`, so the Freeze rule's gated head is unchanged) followed by a superseding hygiene re-run, as E-20 did for E-12, turns the decision to go without a new suite or invariant run. The runner-side checks are the user's.
+
+2026-11-03T12:38:00Z
 
 Verdict: fail
