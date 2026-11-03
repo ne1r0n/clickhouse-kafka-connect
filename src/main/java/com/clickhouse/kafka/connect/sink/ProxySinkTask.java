@@ -74,8 +74,37 @@ public final class ProxySinkTask {
     }
 
     public void stop() {
-        dbWriter.stop();
-        statistics.unregisterMBean();
+        Throwable failure = null;
+        try {
+            dbWriter.stop();
+        } catch (RuntimeException | Error e) {
+            failure = e;
+        }
+        try {
+            statistics.unregisterMBean();
+        } catch (RuntimeException | Error e) {
+            failure = keepFirst(failure, e);
+        }
+        try {
+            stateProvider.close();
+        } catch (RuntimeException | Error e) {
+            failure = keepFirst(failure, e);
+        }
+        if (failure instanceof RuntimeException runtimeFailure) {
+            throw runtimeFailure;
+        }
+        if (failure instanceof Error errorFailure) {
+            throw errorFailure;
+        }
+    }
+
+    // Every stop step runs; the first failure is the one thrown and later ones ride along as suppressed.
+    private static Throwable keepFirst(Throwable first, Throwable later) {
+        if (first == null) {
+            return later;
+        }
+        first.addSuppressed(later);
+        return first;
     }
 
     public void put(final Collection<SinkRecord> records) throws IOException, ExecutionException, InterruptedException {

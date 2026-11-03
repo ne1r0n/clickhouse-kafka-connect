@@ -1,0 +1,41 @@
+Merge sync/v1.7.0: release v1.7.0_gg7
+
+VERSION v1.7.0_gg7. The connector source changes: eight src/main files
+differ from v1.7.0_gg6. Read docs/ROLLOUT-v1.7.0_gg7.md, the operator
+note, before upgrading a connector from v1.7.0_gg6. CHANGELOG.md carries
+the 1.7.0_gg7 section and docs/FORK-DELTA.md is refreshed.
+
+Shipped changes:
+- The writer closes its helper client on stop and on every failing exit
+  of start; the Keeper state provider closes the client its constructor
+  built. Some residuals remain and are listed in the CHANGELOG.
+- On client V2 with async=false, an insert is bounded by a per-insert
+  socket_timeout (clickhouseClientInsertTimeoutMs, four minutes by
+  default). A quiet insert that runs longer fails and is redelivered
+  while the server may still commit it, so with exactlyOnce=false the
+  batch can be inserted twice. A socket_timeout named in
+  jdbcConnectionProperties overrides the per-insert value.
+  The bound does not hold for an insert during which the server keeps
+  streaming progress headers (send_progress_in_http_headers=1 is a
+  connector default): such an insert runs to its natural end.
+- Inserted offsets are reported under the consumer's topic when an SMT
+  renames the topic (unbuffered path, reportInsertedOffsets=true).
+- A RetriableException anywhere in the cause chain of an insert failure
+  is treated as retriable under both errors.tolerance values.
+- One WARN at task start names every additionalRetriableErrorCodes code
+  outside the connector's vetted transient set.
+- gson 2.15.0 and setup-gradle 6.4.1.
+- The JMX MBean version= segment and the client name carry v1.7.0_gg7.
+
+This merge also publishes the .planning/ history since 72e8ccff.
+
+The tag v1.7.0_gg7 and the GitHub release are created by the release
+workflow run that follows the green tests.yaml run on this commit; only
+the rollback tag pre-v1.7.0_gg7 is pushed by hand.
+
+Rollback: restore the tree of tag pre-v1.7.0_gg7 (commit 72e8ccff) with
+git read-tree -u --reset plus one commit, as the Rollback section of
+docs/ROLLOUT-v1.7.0_gg7.md describes, and redeploy the v1.7.0_gg6
+archive.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>

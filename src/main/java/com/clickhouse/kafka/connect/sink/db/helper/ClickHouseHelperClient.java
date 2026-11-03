@@ -8,6 +8,7 @@ import com.clickhouse.client.ClickHouseProtocol;
 import com.clickhouse.client.ClickHouseRequest;
 import com.clickhouse.client.ClickHouseResponse;
 import com.clickhouse.client.api.Client;
+import com.clickhouse.client.api.ClientConfigProperties;
 import com.clickhouse.client.api.enums.ProxyType;
 import com.clickhouse.client.api.insert.InsertSettings;
 import com.clickhouse.client.api.query.GenericRecord;
@@ -35,6 +36,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -75,12 +77,14 @@ public class ClickHouseHelperClient implements AutoCloseable {
     private final String targetTableFilter;
     @Getter
     private final boolean setCompressionMethod;
+    private final boolean operatorSetSocketTimeout;
 
     // Part of HTTP protocol header
     public static final String REPLICA_TAG_HEADER = "X-ClickHouse-Replica-Tag";
     public static final String NETWORK_COMPRESSION_METHOD = "network_compression_method";
     public static final String LZ4 = "lz4";
     public static final String IGNORE_UNKNOWN_CONFIG_KEY = "ignore_unknown_config_key";
+    private static final String SOCKET_TIMEOUT_OPTION = ClientConfigProperties.SOCKET_OPERATION_TIMEOUT.getKey();
 
     public ClickHouseHelperClient(ClickHouseClientBuilder builder) {
         this.hostname = builder.hostname;
@@ -101,6 +105,7 @@ public class ClickHouseHelperClient implements AutoCloseable {
         this.enableReplicaPinning = builder.enableReplicaPinning;
         this.targetTableFilter = builder.targetTableFilter;
         this.setCompressionMethod = builder.setCompressionMethod;
+        this.operatorSetSocketTimeout = operatorNamesSocketTimeout(builder.jdbcConnectionProperties);
         // We are creating two clients, one for V1 and one for V2
         this.client = createClientV2();
         this.server = createClientV1();
@@ -162,6 +167,34 @@ public class ClickHouseHelperClient implements AutoCloseable {
         return server;
     }
 
+    /** The key-value pairs {@link #createClientV2()} applies as client options, in input order. */
+    private static List<Map.Entry<String, String>> parseJdbcConnectionProperties(String jdbcConnectionProperties) {
+        if (jdbcConnectionProperties == null || jdbcConnectionProperties.isEmpty()) {
+            return Collections.emptyList();
+        }
+        String props = jdbcConnectionProperties.startsWith("?") ? jdbcConnectionProperties.substring(1) : jdbcConnectionProperties;
+        List<Map.Entry<String, String>> options = new ArrayList<>();
+        for (String pair : props.split("&")) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2 && !kv[0].isEmpty()) {
+                options.add(Map.entry(kv[0], kv[1]));
+            }
+        }
+        return options;
+    }
+
+    private static boolean operatorNamesSocketTimeout(String jdbcConnectionProperties) {
+        if (jdbcConnectionProperties == null || jdbcConnectionProperties.isBlank()) {
+            return false;
+        }
+        for (Map.Entry<String, String> option : parseJdbcConnectionProperties(jdbcConnectionProperties)) {
+            if (SOCKET_TIMEOUT_OPTION.equals(option.getKey())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Client createClientV2() {
         String protocol = "http";
         if (this.sslEnabled)
@@ -202,14 +235,8 @@ public class ClickHouseHelperClient implements AutoCloseable {
         // from being built; a key the operator sets below still overrides this default.
         clientBuilder.setOption(IGNORE_UNKNOWN_CONFIG_KEY, "true");
 
-        if (jdbcConnectionProperties != null && !jdbcConnectionProperties.isEmpty()) {
-            String props = jdbcConnectionProperties.startsWith("?") ? jdbcConnectionProperties.substring(1) : jdbcConnectionProperties;
-            for (String pair : props.split("&")) {
-                String[] kv = pair.split("=", 2);
-                if (kv.length == 2 && !kv[0].isEmpty()) {
-                    clientBuilder.setOption(kv[0], kv[1]);
-                }
-            }
+        for (Map.Entry<String, String> option : parseJdbcConnectionProperties(jdbcConnectionProperties)) {
+            clientBuilder.setOption(option.getKey(), option.getValue());
         }
 
         if (proxyType != null && !proxyType.equals(ClickHouseProxyType.IGNORE)) {
@@ -693,6 +720,18 @@ public class ClickHouseHelperClient implements AutoCloseable {
         if (tag != null && settings != null) {
             settings.httpHeader(REPLICA_TAG_HEADER, tag);
         }
+    }
+
+    public void setInsertSocketTimeoutV2(InsertSettings settings, long timeoutMs) {
+        if (settings == null || operatorSetSocketTimeout || timeoutMs <= 0) {
+            return;
+        }
+        // A per-insert value replaces the client-level one, so it stays unset when the operator's
+        // connection properties name the key; an explicit 0 there keeps inserts unbounded. A
+        // non-positive timeout is ignored, because 0 would mean unbounded and a negative value is not
+        // a timeout. The value is clamped to the int range of the client's socket option. It is a
+        // client setting and does not reach the server.
+        settings.setNetworkTimeout(Math.min(timeoutMs, Integer.MAX_VALUE), ChronoUnit.MILLIS);
     }
 
     /**

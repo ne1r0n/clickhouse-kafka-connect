@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class KeeperStateProvider extends BaseStateProviderImpl {
@@ -27,11 +28,17 @@ public class KeeperStateProvider extends BaseStateProviderImpl {
     private static final Logger LOGGER = LoggerFactory.getLogger(KeeperStateProvider.class);
 
     private ClickHouseHelperClient chc = null;
+    // Only a client this provider built is closed; an injected client stays with its owner.
+    private ClickHouseHelperClient ownedClient = null;
     private ClickHouseSinkConfig csc = null;
 
     private Map<String, StateRecord> stateMap = null;
 
     public KeeperStateProvider(ClickHouseSinkConfig csc) {
+        this(csc, ClickHouseHelperClient.ClickHouseClientBuilder::build);
+    }
+
+    KeeperStateProvider(ClickHouseSinkConfig csc, Function<ClickHouseHelperClient.ClickHouseClientBuilder, ClickHouseHelperClient> helperClientFactory) {
         this.csc = csc;
         this.stateMap = new ConcurrentHashMap<>();
 
@@ -47,7 +54,7 @@ public class KeeperStateProvider extends BaseStateProviderImpl {
         boolean useClientV2 = clientVersion.equals("V1") ? false : true;
         LOGGER.info(String.format("hostname: [%s] port [%d] database [%s] username [%s] password [%s] sslEnabled [%s] timeout [%d]", hostname, port, database, username, Mask.passwordMask(password), sslEnabled, timeout));
 
-        chc = new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+        chc = helperClientFactory.apply(new ClickHouseHelperClient.ClickHouseClientBuilder(hostname, port, csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
                 .setDatabase(database)
                 .setUsername(username)
                 .setPassword(password)
@@ -56,8 +63,8 @@ public class KeeperStateProvider extends BaseStateProviderImpl {
                 .setTimeout(timeout)
                 .setRetry(csc.getRetry())
                 .useClientV2(useClientV2)
-                .setCompressionMethod(csc.isSetCompressionMethod())
-                .build();
+                .setCompressionMethod(csc.isSetCompressionMethod()));
+        ownedClient = chc;
 
         if (!chc.ping()) {
             LOGGER.error("Unable to ping Clickhouse server.");
@@ -91,6 +98,15 @@ public class KeeperStateProvider extends BaseStateProviderImpl {
         } else {
             ClickHouseResponse r = chc.queryV1(createTable);
             r.close();
+        }
+    }
+
+    @Override
+    public void close() {
+        ClickHouseHelperClient client = ownedClient;
+        ownedClient = null;
+        if (client != null) {
+            client.close();
         }
     }
 

@@ -1,184 +1,157 @@
 # Technology Stack
 
-**Project:** ClickHouse Kafka Connect `custom_build` fork, milestone `v1.7.0_gg6-maintenance`
-**Researched:** 2026-10-28
-**Mode:** Subsequent milestone (maintenance). Only what the NEW work needs; validated capabilities are not re-researched.
-**Overall confidence:** HIGH. The client-bump findings were measured, not read off release notes: a scratch copy of `HEAD` (in `/tmp`, repo untouched) with `clickHouseDriver = 0.11.0` was built and run against ClickHouse `latest` (26.10.3.7) with client V2, including the full `./gradlew test` suite.
+**Project:** ClickHouse Kafka Connect `custom_build` fork, milestone `v1.7.0_gg7-maintenance`
+**Researched:** 2026-11-01
+**Mode:** Ecosystem, subsequent milestone (only what the NEW work needs)
+**Overall confidence:** HIGH. Client behaviour was read from the `v0.11.0` source tag, the advisory and releases came from the GitHub API, and the fork code was read in the working tree.
 
-## Headline
+## Bottom Line
 
-The milestone needs **no new libraries**. It needs one version bump that is NOT a drop-in (client `0.9.6` -> `0.11.0`), two small production-code fixes that the bump forces, one test-source fix, one PR to reject (#10), and a re-baselined archive allowlist. Everything else Dependabot has open is safe to merge as-is.
+**This milestone adds no new library, plugin or tool.** Two version bumps (gson 2.15.0, `setup-gradle` 6.4.1) are the only stack changes. F-1 and F-2 are fixable with APIs already on the classpath (`ClickHouseHelperClient.close()`, the client's `socket_timeout` option). Docker-free pins reuse `StubClickHouseServer`, which is plain JDK `com.sun.net.httpserver` and already in `src/test`. Do NOT add WireMock, MockWebServer, Awaitility, Toxiproxy or a new JaCoCo/Mockito plugin.
 
-| Bump | Verdict | Evidence |
-|------|---------|----------|
-| #17 `clickHouseDriver` 0.9.6 -> 0.11.0 | **Merge only together with the fixes below.** PR #17 alone is red (`compileTestJava`) and would also break at runtime | Measured; see next section |
-| #19 lz4-java 1.12.0 -> 1.12.1 | **Merge first.** Security release for GHSA-48mj-8f7c-7qfm (bounds/length checks on malformed LZ4 input) in a jar that ships inside the archive | PR CI green; release notes (HIGH) |
-| #18 okhttp 5.5.0 -> 5.5.1 | Merge. Integration-test source set only; blocklists 8 compromised eMudhra intermediates (CVE-2026-111943) | PR CI green; changelog |
-| #20 Gradle wrapper 9.8.1 -> 9.8.2 | Merge. Patch release; works with Shadow 9.6.1 (PR CI ran `Build and verify Confluent archive` green) | PR CI green |
-| #16 `actions/setup-java` 6.0.1 -> 6.1.0 | Merge. Dependabot already wrote the full SHA (`b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0`) into all four workflows, so the "needs a re-pin" step is not needed; just run `WorkflowActionPinGuardUnitTest` | PR CI green; `git diff` of the branch |
-| #10 protobuf-java 3.25.9 -> 4.36.2 | **Do NOT merge. Close and add a Dependabot ignore for `protobuf-java` major >= 4.** | PR CI red: `java.lang.VerifyError ... DescriptorProtos$EnumValueOptions is not assignable to GeneratedMessageV3$ExtendableMessage` in `ProtobufIngestTest` and `ClickHouseSinkTaskWithSchemaTest` |
+## Recommended Stack Changes
 
-## The client bump: 0.9.6 -> 0.11.0 (via 0.9.7, 0.9.8, 0.9.9, 0.10.0)
+### Dependency and action bumps
 
-Note: 0.9.7 .. 0.9.9 are on the way to 0.10.0/0.11.0, and the first breaking change that matters to this connector landed in **0.9.7**, not in 0.10/0.11. The milestone brief lists only the 0.11.0 notes; the 0.9.7 and 0.10.0 notes carry two more.
+| Technology | From -> To | Purpose | Why / risk verdict |
+|------------|-----------|---------|--------------------|
+| `com.google.code.gson:gson` | 2.14.0 -> **2.15.0** (Maven Central `latest`/`release`, published 2026-10-24) | JSON serialization in `DataJson.GSON` and the `ConvertToMapOrJson` SMT (`jsonLibrary=gson`) | **Take it, one-line catalog change (`gradle/libs.versions.toml` is the only file in PR #22). Risk LOW.** See the behaviour table below. |
+| `gradle/actions/setup-gradle` | 6.4.0 -> **6.4.1**, pin to commit `8da46b539cd8fe6ab27ca75128919a18d757604c` | Gradle setup and cache in 4 workflows | **Take it. Risk LOW.** 6.4.1 is a security patch release with no input or behaviour changes. Pin the **commit** SHA, not the annotated-tag object `7296c772…`. |
 
-### Measured result
+#### gson 2.15.0 against this fork
 
-Scratch copy, client `0.11.0`, all four artifacts (`client-v2`, `clickhouse-client`, `clickhouse-http-client`, `clickhouse-data`) moved through the single `clickHouseDriver` catalog entry:
+The fork only **serializes** (`toJson` of `Map`, `Struct`, `Data`, with custom `Date`/`Timestamp` adapters and `disableHtmlEscaping`). There is no `fromJson` anywhere in `src/main` or the tests. `fromJsonRow` in `ClickHouseFieldDescriptor` is a Jackson method with a similar name, unrelated to gson.
 
-| Step | Result |
-|------|--------|
-| PR #17 as opened | `compileTestJava` fails: `UtilsTest.java:80,89,98` `constructor ServerException ... required: int,String,int,String`. `src/main` compiles unchanged (the V2 API the connector uses is source-compatible) |
-| + test fix only, `testUnit` (Docker-free) | Green (exit 0). The Docker-free tests do not exercise the live client build, which is why this step hides both runtime breaks |
-| + test fix, Docker-tagged subset | **23 of 30 fail** (ping returns false -> `Connection to ClickHouse is not active`; `ClientMisconfigurationException: Unknown and unmapped config properties`) |
-| + the two production fixes below | **30 tests, 29 pass, 0 fail, 1 skip** (same skip as baseline) |
-| + full `./gradlew test` with both fixes | **1,961 tests, 1,943 pass, 0 fail, 18 skipped.** Identical count and skips to the `v1.7.0_gg5` baseline |
-| `createConfluentArchive` + `verifyConfluentArchive` | Passes (7,932 inner entries, no nested jar, no Kafka API class) |
+| 2.15.0 change | Reaches the fork? | Verdict |
+|---------------|-------------------|---------|
+| Default `Map` for untyped deserialization is now `LinkedHashMap` (#3057) | No, read side only | None |
+| `JsonReader` and `JsonTreeReader` `NumberFormatException` messages, BOM detection, `peekNumber`, non-ASCII digits, strict rejection of unpaired surrogates (#3116, `Strictness.STRICT` and `JsonReader` only) | No, read side only | None |
+| `InetAddress`, `URI` adapters, `JsonPrimitive.hashCode`, `LazilyParsedNumber` is `Comparable`, wildcard types use the runtime type (#3112), `BoundField` accessibility skip, `JsonArray.removeIf` | Not on the paths used | Negligible. #3112 changes reflective type resolution only for wildcard-typed fields, and the fork serializes `Map<String,Object>` and custom-adapter types |
+| New `JsonReader.getCharacterOffset` | No | None |
 
-### Behaviour and breaking changes that touch this connector
+- No Java-baseline change found (the artifact stays a Java 8 multi-release/ModiTect jar). The compile toolchain stays JDK 17.
+- The Confluent archive allow-list is path-pattern based (`com/google/gson/*`, `META-INF/maven/com.google.code.gson/gson/*`) and the gg6 file has no gson row. The gg4 and "25" files carry version text only in comments (`gson 2.13.1 -> 2.14.0`). **Integration point:** the new `confluent-archive-allowlist-v1.7.0_gg7.txt` should add (or inherit) the two gson rows with an `2.14.0 -> 2.15.0` comment. The release-time archive compare will show gson content change vs the gg6 archive.
+- **Docs follow-through:** `docs/FORK-DELTA.md` row 72 names gson `2.14.0`. It must read `2.15.0` after the merge. gson is in `implementation`, `clickhouseDependencies` and `testFixturesImplementation` (`build.gradle.kts` lines 95, 118, 158), and the catalog change reaches all three.
+- **Suite gate (as the milestone plans):** `testUnit` plus the full suite. The gson-specific tests are `ConvertToMapOrJson*`, `JsonSerializationEquivalenceTest`, `ClickHouseSinkTaskJsonInsertFormatTest` and `ClickHouseSinkTaskStringTest`. `JsonSerializationEquivalenceTest` is the closest guard for byte-identical serialization.
 
-| # | Change (version) | Connector impact | Action | Confidence |
-|---|------------------|------------------|--------|------------|
-| 1 | **`Client.Builder.addEndpoint(String)` now keeps the URL base path** (0.9.7, issue 2344). `createClientV2` passes `http://host:port/<database>?<props>`, so every request now goes to `POST /<database>`. ClickHouse 26.10 then rejects it: `UNKNOWN_TABLE ... Unknown table expression identifier '<database>'. In scope SELECT VERSION()` | **Hard break.** Ping fails, so `ProxySinkTask.start` throws `Connection to ClickHouse is not active` for every task on client V2 | **Production fix (required):** pass only `protocol://host:port` to `addEndpoint`. The database already travels through `setDefaultDatabase`. Keep the full `url` for the log line only | HIGH (measured) |
-| 2 | **`Client.Builder.build()` throws `ClientMisconfigurationException` for unknown config keys** (0.9.7, issue 2658). The connector forwards every `k=v` of `jdbcConnectionProperties` through `setOption` | The documented example `?ssl=true&sslmode=strict` and the repo's own test props (`?ssl=false&sslmode=none`, `?load_balancing_policy=random&health_check_interval=5000&failover=2`) are V1/JDBC keys. They were silently ignored on V2 under 0.9.6 and now fail `start()`. Probe: `?ssl=true&sslmode=*` fails, `?sslmode=none` fails, `?socket_timeout=5000` and `?compress=true` pass, `?ssl_mode=none` fails (`none` is no longer valid on V2) | **Production fix (required):** `clientBuilder.setOption("ignore_unknown_config_key", "true")` before the property loop (so an operator-supplied value still wins). Restores 0.9.6 behaviour; the client logs one WARN naming the ignored keys. Do not filter against `ClientConfigProperties` yourself: the prefixes (`clickhouse_setting_`, `http_header_`, `custom_`) make a hand-rolled allowlist wrong. Add a ROLLOUT line: `ssl`/`sslmode` in `jdbcConnectionProperties` were never honoured on V2; use `sslEnabled` / `ssl_mode` (values `DISABLED`, `TRUST`, `VERIFY_CA`, `STRICT`) | HIGH (measured) |
-| 3 | `ServerException` constructor is now `(int code, String message, int transportProtocolCode, String queryId)` (between 0.9.6 and 0.11.0) | Test-source only. `src/main` only reads `getCode()` | **Test fix:** add a 4th arg at `UtilsTest` lines 80, 89, 98. Upstream's tail brings 5 more 3-arg sites to the same file (8 in total), so do the bump AFTER merging the upstream tail and fix all sites in one commit. Record it in FORK-DELTA as a known upstream-sync conflict until upstream bumps the client | HIGH (compile error captured in CI log) |
-| 4 | **Server error 159 `TIMEOUT_EXCEEDED` is no longer retried by the client** (own cause `ClientFaultCause.ServerTimeoutExceeded`, not in the default list; 0.9.9 first made it non-retriable, 0.11.0 made it opt-in) | The connector never sets `retryOnFailures`, so it gets the new default. Connector-layer classification is unchanged: `Utils.handleException` still lists `159` and throws `RetriableException`, so Kafka Connect redelivers (and exactly-once replays through the BEFORE/AFTER state machine). What changes is that the in-client 3x re-send disappears, so a 159 reaches Connect faster | **Leave the default. Do NOT add `ServerTimeoutExceeded` to the client list.** The client's own rationale applies: a retried insert without dedup can double-write, and the connector already owns the retry with a stable block. Add a Docker-free pin that `Utils.handleException` still maps 159 to `RetriableException`, and note the new Connect-driven retry cadence in the rollout note. `additionalRetriableErrorCodes` (upstream tail) is documented as not changing client retry settings, so the two do not interact | HIGH for the client behaviour (source: `HttpAPIClientHelper` line 1181), MEDIUM for operator-visible cadence |
-| 5 | **HTTP 503 and 502 become `java.net.ConnectException`** (wrapped in `ConnectionInitiationException`), retried by default via `ConnectTimeout`; unknown status codes become `ClientException` instead of `ServerException` (0.10.0) | Previously a 503 was a `ServerException` with an unlisted code, so `handleException` failed the task (or DLQ'd with `errors.tolerance=all`). Now the client retries 3x first, then the root cause is `ConnectException`, which is a `SocketException`: it becomes `RetriableException` only when `retryOnSocketException=true`. Net classification at the connector is unchanged for the default config | No code change. Pin both shapes (`ConnectException` root with and without `retryOnSocketException`, `ClientException` root -> non-retriable) in the Docker-free `WriterFailureClassificationUnitTest` family. Mention in rollout | MEDIUM (source read, not exercised against a real 503) |
-| 6 | **`socket_rcvbuf` / `socket_sndbuf` have no default** (0.11.0; were 804800) | The connector never sets them, so sockets now use OS auto-tuning. Throughput on high-latency links may differ either way | No code change. Do not set them. Rollout note: an operator who needs the old behaviour adds `?socket_rcvbuf=804800&socket_sndbuf=804800` to `jdbcConnectionProperties` (both are known keys, so they pass check #2). Optionally compare once with `InsertFormatPerformanceTest` | HIGH (source), perf effect UNMEASURED |
-| 7 | **ZSTD block compression decode/encode added** (0.11.0, issue 3105). Client-v2 now depends on `com.github.luben:zstd-jni:1.5.7-23:cloud` at compile scope | See D-17 verdict below. Also grows the archive | See D-17 and archive sections | HIGH (measured) |
-| 8 | `User-Agent` format changed to `<client name> clickhouse-java-v2/<ver> (lv:java/..; os:..; hc:ahc_..)` (0.11.0) | The client name `clickhouse-kafka-connect/<version>` stays the prefix, and `ClickHouseSinkTaskTest` (`startsWith(CONNECT_CLIENT_NAME)`) passed. Dashboards that parse the tail of `http_user_agent` break | Rollout note only. `ROLLOUT-v1.7.0_gg5.md` currently says "the rest of the user agent did not change"; that sentence must be superseded | HIGH |
-| 9 | `X-ClickHouse-Format` header now set client-wide (default `RowBinaryWithNamesAndTypes`); on ClickHouse 26.8+ the header beats a SQL `FORMAT` clause (0.11.0, issue 3086) | The connector queries through `queryV2`/`Records` and passed on 26.10 with no change, including the DESCRIBE paths | No action. Do not introduce SQL `FORMAT` clauses on V2 queries | HIGH (suite green) |
-| 10 | `Date`/`Date32` read as `LocalDate` without timezone; explicit tz handling on write (0.9.7) | The connector writes RowBinary itself (`ClickHouseWriter.doWriteColValue`) and reads only DESCRIBE metadata through the client, so no data-path effect. Test read-backs passed | None | HIGH (suite green) |
-| 11 | Auth/SSL builder strictness (0.10.0): `ClientMisconfigurationException` instead of `IllegalArgumentException`; user+password together with a custom `Authorization` header rejected; `ssl_mode` reintroduced (default `STRICT` on HTTPS); `access_token` now actually sent | Connector sets only user/password, optional SNI, optional proxy. SNI still disables hostname verification exactly as under 0.9.6 (source compared line by line), so `sslSocketSni` users are unaffected | None. Do not add `Authorization` through `clickhouseSettings`/headers | HIGH (source) |
-| 12 | `executionTimeout` is now always milliseconds (0.10.0) | The connector never sets `max_execution_time` on the client | None | HIGH (grep) |
-| 13 | JDBC-V2 changes (`async_insert` no longer forced to 0, metadata via `SHOW`, parser fixes) | The connector does not use the JDBC driver; only `clickhouse-client`/`http-client`/`data` (V1, now deprecated classes but present at 0.11.0) and `client-v2` | None. Skip all JDBC-v2 migration items | HIGH |
-| 14 | Observability SPI, Micrometer and OpenTelemetry recorders (0.11.0) | Optional; OTel API is `provided` scope, Micrometer optional | **Do not add** `opentelemetry-api` or `micrometer-core`. The connector's JMX statistics (`SinkTaskStatistics`/`TopicStatistics`) are the observability surface | HIGH |
+#### setup-gradle 6.4.1 against this fork
 
-### D-17 (`network_compression_method=lz4`): still needed? safe?
+- Release notes: "Security fix ... `dependency-submission` ... GHSA-chpw-2mqm-95cc. All users should upgrade", plus "combined dependency updates" (#1105) and "latest Dependency Graph plugin" (#1106). No breaking changes, no new inputs, no Node or runner requirement changes.
+- **The advisory does not affect this fork.** GHSA-chpw-2mqm-95cc (high, CVSS 8.1) is the `dependency-graph` `download-and-submit` mode used in a `workflow_run` workflow for fork PRs. No fork workflow uses `dependency-graph`, `dependency-submission` or `download-and-submit`. The bump is routine hygiene and the PR description should not claim a vulnerability was closed. Record this in the PR #21 disposition.
+- **SHA re-pin, as for the earlier `actions/setup-java` bump.** The tag `v6.4.1` is an annotated tag, and `gh api .../git/ref/tags/v6.4.1` returns the tag object `7296c772…`. The commit to pin is `8da46b539cd8fe6ab27ca75128919a18d757604c`. That is the commit Dependabot's compare shows, and `…/git/tags/7296c772…` dereferences to it. v6.4.0 was `3f5f9adaf7d9fecd50b5935e54106014257a94e6` (a tag object `b9bee63e…` also exists, so the same trap applies).
+- PR #21 touches exactly four files: `tests.yaml`, `release.yaml`, `pre-release.yaml` and `nightly-integration-tests.yaml`. Each carries one `uses: gradle/actions/setup-gradle@<sha> # v6.4.0` line, so the SHA and the trailing comment must both change.
+- **Test pin impact:** `WorkflowActionPinGuardUnitTest` (line 233) and `TestsWorkflowPinGuardUnitTest` (line 709) contain the literal `# v6.4.0` in synthetic fixtures. Check whether they read the real workflow files. If they only build synthetic YAML they need no edit. Do not rewrite them to track the bump unless they fail.
+- The `github-actions` Dependabot group is already configured (`.github/dependabot.yml`). The PR comes from that group, and the `integrationTests.yaml` exclusion stays untouched.
 
-**Verdict: no longer required for client V2 on 0.11.0, still safe, keep it. Do not retire it in this milestone.**
+## Client 0.11.0 Lifecycle and Timeouts (F-1, F-2)
 
-Measured on ClickHouse 26.10.3.7 (server default `network_compression_method=ZSTD`), client V2 `0.11.0`:
+Source: `ClickHouse/clickhouse-java` tag `v0.11.0` (`Client.java`, `HttpAPIClientHelper.java`, `ClientConfigProperties.java`, V1 `ClickHouseClient.java` and `ClickHouseClientOption.java`). Confidence HIGH. Everything below was read from source, not documentation prose.
 
-| `setCompressionMethod` | `jdbcConnectionProperties` | Result |
-|-----------------------|---------------------------|--------|
-| true (default) | `` | OK, server reports `lz4` |
-| false | `` | OK, server reports `ZSTD` |
-| false | `?compress=true` | **OK** (on 0.9.6 this was `Invalid LZ4 magic byte: '-112'`) |
-| true | `?compress=true` | OK, server reports `lz4` |
+### F-1: close semantics
 
-Why keep it:
-1. The old failure mode is gone on V2: with both controls absent and `compress=true`, 0.11.0 decodes ZSTD. So `FORK-DELTA` row "at least one of the two controls is required on V2" and the ROLLOUT-gg1 warning ("do not combine `compress=true` with `setCompressionMethod=false`") become stale for 0.11.0, and `NetworkCompressionPinLiveTest` / `NetworkCompressionPinUnitTest` Javadoc ("client 0.9.6 cannot decode ZSTD") must be reworded.
-2. The V1 stack (`clickhouse-client`/`http-client` 0.11.0) is not in the ZSTD change list (the notes name client-v2 and jdbc-v2 only); the lz4 setting remains the only guard there.
-3. `setCompressionMethod` is upstream's flag (default true) on a high-risk file (`ClickHouseSinkConfig`). Retiring it is a behaviour change with no benefit; lz4 avoids loading the zstd-jni native library on the default path.
-4. All existing D-17 pins passed unchanged on 0.11.0 (`NetworkCompressionPin*`, `Lz4RoundTripLiveTest`).
+| Fact | Detail | Implication |
+|------|--------|-------------|
+| V2 `Client.close()` | Calls `shutdownNow()` on the operation executor **only if the client owns it** (created when `async=true` and no shared executor was supplied). Then `httpClient.close(CloseMode.IMMEDIATE)` on the Apache HC5 client. Exceptions from the executor shutdown are logged, not thrown. | Safe in `stop()`. IMMEDIATE aborts any in-flight request, so close only after the refresher has stopped and no `put` is running (Connect guarantees `put` and `stop` do not overlap). |
+| Default pool | `max_open_connections=10`, `connection_ttl=-1`. There is no finaliser or shutdown hook. | An unclosed client keeps its pool and idle sockets for the life of the worker. The leak is real. |
+| `ClickHouseHelperClient.close()` | Exists, `AutoCloseable`, null-safe, closes the V2 `client` only. The V1 path builds and try-with-resources-closes a `ClickHouseClient` per call (`pingV1`, query helpers). | `ClickHouseWriter.stop()` needs one call after the scheduled-executor shutdown, and the field should be nulled. |
+| **Constructor builds a V2 client unconditionally** | `ClickHouseHelperClient(...)` runs `this.client = createClientV2(); this.server = createClientV1();` regardless of `useClientV2` ("We are creating two clients"). | The leak is **not limited to client V2 deployments**. A V1-selected connector also builds, and leaks, a V2 client per helper. |
+| **Wider leak sites (extend F-1's scope, or record them as sibling items)** | (a) `ClickHouseWriter.getMutationRequest` (V1 insert path, 4 call sites) builds a **new** `ClickHouseHelperClient` (`chcTmp`) on every call to read `getServer()` and never closes it, so a per-insert leak with `clientVersion=V1`. (b) `KeeperStateProvider` builds its own `chc` (line 50) and neither it nor `StateProvider` has a close, so a per-task leak in exactly-once mode. (c) `ClickHouseWriter.start()` returns `false` after a failed ping or version check without closing `chc`. (d) A second `start()` would overwrite `chc` without closing the old one. | The Phase 36 text names only `ClickHouseWriter.stop()`. Planning should decide (a) to (d) explicitly. (a) can be fixed by reading the node from the existing `chc.getServer()` (the same host, with the `database` the only difference, and the V1 node is built per database) or by try-with-resources on `chcTmp`. Upstream `main` has the same leaks, so every fix is a fork-only delta to record in FORK-DELTA and the anchors file. |
+| Upstream | `upstream/main` `ClickHouseWriter.stop()` shuts the executor only and also leaves `chcTmp` open. | No upstream fix to cherry-pick. Keep the change small and additive for rebasability. |
 
-Add one new live pin: V2, `setCompressionMethod=false`, `compress=true`, ZSTD server -> query round-trips. That converts today's measurement into a regression guard and documents that the 0.9.6 constraint is lifted.
+**Recommended F-1 implementation:** in `ClickHouseWriter.stop()`, after the executor block and in its own try/catch, call `chc.close()` (log, never throw) and set `chc = null`. Make `start()` close `chc` on its `return false` paths. Handle the V1 `chcTmp` per-insert leak (a) in the same plan if the reviewer accepts the scope. `ClickHouseWriter.java` is a high-risk file, so a full suite is required.
 
-### zstd-jni in the archive
+**Docker-free pin for F-1:** reuse `StubClickHouseServer`. The V2 client keeps pooled keep-alive sockets after a successful ping, and `CloseMode.IMMEDIATE` closes them, so the stub can observe the socket close. As a second observable, a query on the helper's `Client` after `stop()` fails (HC5 closed-client `IllegalStateException`, wrapped by the client). Verify empirically which one is stable before fixing the assertion shape. The V2 `Client` exposes no `isClosed` or open-client counter, so "count open clients" as worded in 36-FOLLOWUPS has no public hook. The alternative is a small package-private seam in the writer (a supplier for the helper) with a counting subclass. Prefer the stub-socket approach, which needs no production change beyond the fix.
 
-Client-v2 0.11.0 adds `zstd-jni 1.5.7-23` with classifier `cloud` (1.0 MB; natives for `linux/amd64`, `linux/aarch64`, `darwin/aarch64` only; no Windows, musl, ppc64le or s390x). It is shaded into the fat jar. The default connector path (`compress=false`, `decompress=false`) never touches ZSTD, so a worker without a matching native is not affected unless an operator turns `compress=true` on. Say this in the rollout note. Medium risk to verify once: on a Connect worker with a noexec `/tmp`, zstd-jni extracts its native to a temp file on first use.
+### F-2: why the 4-minute timeout never fires, and what bounds a V2 insert
 
-## Other compatibility answers
+| Fact | Detail | Implication |
+|------|--------|-------------|
+| `async` default | `ClientConfigProperties.ASYNC_OPERATIONS = "async"`, default `"false"`. `runAsyncOperation` returns `CompletableFuture.completedFuture(resultSupplier.get())`, so the HTTP call runs on the **caller thread** before `insert(...)` returns. | Confirms F-2: `future.get(timeoutMs)` on an already-completed future cannot time out. Only the client's own timeouts can bound the call. |
+| `socket_timeout` | `SOCKET_OPERATION_TIMEOUT = "socket_timeout"`, `Integer`, **default 0 (unbounded)**. Applied twice: the pool `SocketConfig` `setSoTimeout` (client-level) and per request via `createRequestHttpContext` -> `RequestConfig.setResponseTimeout(...)`, read from the **request's merged config**. | A per-request override works: `insertSettings.setOption("socket_timeout", ms)` bounds the insert only, and leaves ping, DESCRIBE and queries untouched. The client-level key (also reachable through `jdbcConnectionProperties`) would affect everything. |
+| Semantics | Inactivity per read or write, not wall-clock. The server sends the HTTP response only after the insert completes (no progress headers by default), so for a stalled or very slow server the wait for the response header trips it. | Setting it to `clickhouseClientInsertTimeoutMs` is a faithful "no response within N ms" bound. The existing validation that `clickhouseClientInsertTimeoutMs < max.poll.interval.ms` already reasons about this value. |
+| `max_execution_time` / `Builder.setExecutionTimeout` | `MAX_EXECUTION_TIME = "max_execution_time"`, default 0. It is the query-timeout hint sent to the **server** and the value used by `ping`/`query` wait logic (`getOperationTimeout()`), not a client-side deadline on an insert. | Not a fix for F-2. Do not use it to bound the insert. |
+| `async=true` as the fix | Would make `future.get(timeout)` throw, but **`CompletableFuture.cancel(true)` does not interrupt the worker thread** (the flag is ignored), and a blocked HC5 socket read is not interruptible anyway. The client creates `newCachedThreadPool("chc-operation")`, so a stalled server leaks one live thread and one held connection per timed-out batch until the OS times out. | **Reject.** It converts "blocked call" into "blocked call plus leaked threads" and changes threading on the hot path. |
+| Retry interaction | `SocketTimeout` is **not** in the default `client_retry_on_failures` (`NoHttpResponse, ConnectTimeout, ConnectionRequestTimeout, ServerRetryable`), so a read timeout is not retried inside the client and surfaces immediately. `Utils.handleException` already maps a root-cause `SocketTimeoutException` to `RetriableException` (line 112), which Connect retries, and exactly-once replays the same block under the same dedup token. | A V2 socket timeout is already classified retriable end to end. The new pin only has to prove it with a real client against a stall. |
+| 0.11.0 breaking item, adjacent | Server error 159 (`TIMEOUT_EXCEEDED`) is no longer retried by default (`ServerTimeoutExceeded`). | Unrelated to the client-side stall, but do not conflate it in the pin or in the rollout text. |
 
-**lz4-java capability rule (`org.lz4:lz4-java` vs `at.yawk.lz4:lz4-java`).** Unchanged and still correct. `client-v2` 0.11.0 declares `at.yawk.lz4:lz4-java:1.11.4`; the fork pins 1.12.0 (1.12.1 after #19), higher wins inside the same module, and the capability rule only decides between the two groups. `TestRuntimeClasspathLz4UnitTest` and `Lz4RoundTripLiveTest` passed with 0.11.0. Client 0.11.0 now uses `lz4-java` directly for request compression (replacing a slow Apache Commons Compress path), so the `at.yawk` fork is exercised more than before, which is one more reason to take 1.12.1 first.
+**Recommended F-2 behaviour (decision to make in discuss-phase, with this as the research default):** keep `awaitInsertResponse` as is (it is correct for V1 and for `async=true`), and on V2 additionally set the per-insert option `socket_timeout = clickhouseClientInsertTimeoutMs` on `InsertSettings` at the three V2 insert sites (`ClickHouseWriter` around lines 1298, 1574 and 1722, where `insertSettings` already exists). Cast to `int` with a guard (the value is a `long`, the option is `Integer`, and `Integer.MAX_VALUE` about 24.8 days is an adequate "unbounded"). Leave the client-level default of 0 so ping and describe are unchanged. The change is additive and uses no new API. The option key is a literal in the V2 builder path (`ClientConfigProperties.SOCKET_OPERATION_TIMEOUT.getKey()` is the constant to use, not the string).
 
-**Gradle 9.8.2 with Shadow 9.6.1.** Compatible. PR #20 CI ran the whole job including `Build and verify Confluent archive`. No `distributionSha256Sum` is set in `gradle-wrapper.properties`; Dependabot rewrites only `distributionUrl`. Optional hardening, not required.
+**Behaviour-preservation note:** this turns an existing "blocks forever" into a retriable failure after 4 minutes by default. An operator can legitimately have inserts longer than 4 minutes, and with `async=false` those currently succeed. The change makes them fail and retry, and exactly-once dedup then needs the earlier attempt to have landed. It needs a rollout-note entry and probably a default review (the milestone treats "pin current behaviour, fix genuine bugs" as the rule). Flag as the highest-risk decision of the milestone.
 
-**okhttp 5.5.1.** `integrationTest` source set only (`libs.okhttp`). Not in the shipped jar.
+**V1 path:** `ClickHouseClient.execute` returns a real `supplyAsync(..., getExecutorService())` future when async, and a `completedFuture` otherwise (`ClickHouseClient` lines 289 to 290). V1 `socket_timeout` defaults to `ClickHouseDataConfig.DEFAULT_TIMEOUT` and `connect_timeout` to 5000 ms. The connector's V1 insert goes through `request.execute()`, whose future is genuinely asynchronous, so `awaitInsertResponse` does work for V1. I did not test V1 against a stall in this pass. Treat "V1 is already bounded" as MEDIUM confidence and confirm with the same stub test, parameterised on client version (V1 is non-default, so low priority).
 
-**protobuf-java 4.x in testFixtures.** Incompatible with the current Confluent test stack. `kafkaPlatformProtobuf = 7.9.1` (serializer/converter/provider) is compiled against protobuf 3.25 generated classes; protobuf-java 4.x moved `DescriptorProtos` off `GeneratedMessageV3`, hence the `VerifyError`. Confluent Platform **8.0.0** is the first line built on protobuf 4.x (`protobuf.version` 4.29.3 in its parent POM; 8.4.0 is current). Making #10 work therefore means moving the whole Confluent test stack (Schema Registry client, Avro/Protobuf serializers, converters, all pinned at 7.9.1) to 8.x: a separate, larger change that drags the Avro and JSON-schema test paths along and has nothing to do with production code. Defer; do not fold it into this milestone.
+**Docker-free pin for F-2:** extend `StubClickHouseServer` with a responder that accepts the request and then blocks (the `Responder` functional interface already exists at line 25). Build a real `ClickHouseHelperClient` against it, run the V2 insert path with a short `clickhouseClientInsertTimeoutMs` (for example 300 ms), and assert a `RetriableException` within a bounded wall time, with a JUnit `assertTimeoutPreemptively` wrapper as the safety net. `ClientTimeoutPrefixPinUnitTest` stays the sibling pin (it covers the V1 piped-stream message prefixes). The stub server uses `com.sun.net.httpserver` from the JDK, so no dependency is added.
 
-## Required `Dependabot` / catalog housekeeping
+### F-3 and the `custom_*` forwarding pin (IN-04)
 
-- `gradle/libs.versions.toml`: `clickHouseDriver = "0.11.0"`, `lz4Java = "1.12.1"`, `okhttp = "5.5.1"`. Leave `libprotobuf = "3.25.9"`. Leave `kafka = "4.4.0"` (compile-only, unchanged), `shadow = "9.6.1"`, `kafkaPlatform* = "7.9.1"`.
-- `gradle/wrapper/gradle-wrapper.properties`: `gradle-9.8.2-bin.zip`.
-- `.github/dependabot.yml`: add an ignore for `com.google.protobuf:protobuf-java` `version-update:semver-major` with a comment pointing at the Confluent 7.9 -> 8.x prerequisite. Without it Dependabot reopens #10 monthly.
-- Keep all four ClickHouse artifacts on the one `clickHouseDriver` ref so they cannot drift.
+- **F-3** is test-harness code (`ConfluentPlatform` log-text counting across `getConnectors()`), with no library involved. The existing `generateData` fix is the template: count one connector's task status and delete the connector in `finally`. No stack change.
+- **IN-04 (`custom_*` key forwarding on 0.11.0):** `createClientV2` splits `jdbcConnectionProperties` and forwards every `key=value` through `clientBuilder.setOption(k, v)`. In 0.11.0, `custom_*` keys are rejected at ping on V2 (the one upgrade-breaking item in the gg6 note), and `IGNORE_UNKNOWN_CONFIG_KEY` is set to `"true"` by the fork but, per `ClientConfigProperties` line 459, only turns the "Unknown and unmapped config properties" exception into a WARN. A Docker-free pin can build the V2 `Client` against `StubClickHouseServer`, capture the request URL or query string the stub sees, and assert on what is (or is not) forwarded. The stub already records `exchange.getRequestURI()`. No new tooling is needed.
 
-## Archive allowlist for the CI consumer (`confluent-archive-allowlist-*.txt`)
+## What NOT to Add
 
-Measured with `.planning/scripts/compare-confluent-archives.py`, baseline `HEAD` (0.9.6) vs scratch (0.11.0), empty allowlist: **exit 1; 4 only-A, 117 only-B, 96 changed, 7,299 same; 0 nested jars; 0 Kafka classes; MANIFEST identical**. The two connector-owned classes that differ are `ClickHouseHelperClient.class` and `ClickHouseHelperClient$ClickHouseClientBuilder.class` (the fixes above, plus the version constant). All other differences are the client bump. A gg6 allowlist needs these rows, each of which must match at least one difference or the script fails `STALE-ROW`:
+| Avoid | Why | Use instead |
+|-------|-----|-------------|
+| WireMock, MockWebServer (okhttp is test-only for the harness, and `mockwebserver` is a separate artifact), Toxiproxy | The repo already has `StubClickHouseServer` on the JDK `HttpServer`. Another stub stack is a new test dependency with a Shadow and archive-compare surface for no gain. | Extend `StubClickHouseServer` with a stall responder |
+| `useAsyncRequests(true)` / `async=true` as the F-2 fix | A timed-out `CompletableFuture` leaves the worker thread running and the socket held, and `cancel(true)` does not interrupt (see above). | Per-insert `socket_timeout` |
+| `Builder.setExecutionTimeout` / `max_execution_time` for F-2 | Server-side query limit, not a client deadline | `socket_timeout` |
+| Client-level `socket_timeout` default | Changes ping, DESCRIBE and all queries, and silently affects every deployment | Per-insert `InsertSettings` option |
+| Client upgrade past 0.11.0 | Out of scope per PROJECT.md | Stay on 0.11.0 |
+| gson major or any unrelated Dependabot PR | Not in scope. Protobuf 4.x is still blocked by the fork's Dependabot ignore rule. | Take PRs #21 and #22 only |
+| Floating tags (`@v6`, `@v6.4.1`) for `setup-gradle` | Breaks `WorkflowActionPinGuardUnitTest` and the supply-chain stance | Commit SHA plus `# v6.4.1` comment |
+| Mockito inline mocking for the new `ClickHouseWriter` pins | Intermittent OpenJ9 crash, and the writer tests already moved off it in gg3 | Real objects against `StubClickHouseServer`, or `InMemoryDBWriter` for state-machine tests |
 
-| Glob | Why |
-|------|-----|
-| `com/clickhouse/client/**`, `com/clickhouse/data/**` | client 0.9.6 -> 0.11.0 classes (80 changed, 60 added, 3 removed `ClickHouseLZ4*Stream`/`LZ4Entity`, 10 `data`) |
-| `META-INF/versions/11/**` | multi-release `HttpClientConnectionImpl`, `module-info` of the client |
-| `com/github/luben/zstd/**`, `META-INF/versions/22/com/github/luben/**` | new zstd-jni classes (37 + 17) |
-| `linux/amd64/libzstd-jni-1.5.7-23.so`, `linux/aarch64/libzstd-jni-1.5.7-23.so`, `darwin/aarch64/libzstd-jni-1.5.7-23.dylib` | zstd natives, listed exactly (no catch-all `*.so`) |
-| `client-v2-version.properties` | removed in 0.11.0 |
-| the four `Version`/MBean/`MANIFEST` rows as in `-32.txt` | release identity v1.7.0_gg5 -> v1.7.0_gg6 |
-| `com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient*.class` | the two connector fixes (once; the Version row already covers the constant) |
+## Other Work Items: Stack Implications
 
-The lz4 bump to 1.12.1 adds its own `net/jpountz/**` rows (the baseline for gg6 is the rebuilt `v1.7.0_gg5` tag, which carries 1.12.0). Recommended CI shape: build the tag archive and the tip archive in the workflow, run the script with the committed allowlist, fail the job on non-zero. Stdlib Python only, so no new dependency; reuse `python3 -I`. Do not commit generated archives.
+| Item | Stack impact |
+|------|--------------|
+| `Processing.doLogic` wrapped-`DataException` case | None. JUnit 5 plus `InMemoryDBWriter` and `InMemoryState` (do not mock `ClickHouseWriter`, per AGENTS.md). |
+| FUT-05 (`additionalRetriableErrorCodes` lists only transient codes) | None. A docs and validation decision in `ClickHouseSinkConfig` (high-risk file) and the rollout note. Default retriable set: `Utils.DEFAULT_RETRIABLE_ERROR_CODES`. |
+| OI-35-1..3 | None expected (test and doc advisories). |
+| Phase 37 dispositions (`increment-version.yml`, allow-list globs) | None. Workflow comments and `.planning/scripts` allow-list rows. The pin guard classes are existing tests. |
+| Release `v1.7.0_gg7` | New `confluent-archive-allowlist-v1.7.0_gg7.txt` (gson rows), `VERSION`, CHANGELOG, FORK-DELTA row 72 (gson version), rollout note, MBean `version=` segment and client name `v1.7.0_gg7`. |
 
-## `increment-version.yml` (`vnull`)
+## Version Compatibility
 
-No new library. `semver.inc('v1.7.0_gg5', ...)` returns null because `_ggN` is not valid semver. Drop the npm `semver` install and parse in the shell step: match `^v?([0-9]+)\.([0-9]+)\.([0-9]+)(_gg([0-9]+))?$`, bump the requested part, and for `_ggN` map `patch` to `N+1`. Fewer moving parts than the current Node 24 + semver 7.8.5 install, and the action SHA pins stay as they are. Add a Docker-free unit test of the extracted script (the repo already guards workflows with `WorkflowActionPinGuardUnitTest`).
+| Package | Compatible with | Notes |
+|---------|-----------------|-------|
+| gson 2.15.0 | JDK 17 toolchain, Jackson 2.22.4, Kafka Connect API 4.4.0 compile-only | Serialize-only use. gson 2.15.0 is already latest on Maven Central. |
+| `setup-gradle` 6.4.1 (`8da46b53…`) | Gradle wrapper 9.x, `ubuntu-24.04` runner, the fork's SHA-pin guard | Same inputs as 6.4.0. |
+| client 0.11.0 (`client-v2`, `clickhouse-client`, `clickhouse-http-client`) | ClickHouse `latest` (26.10.3.7 at gg6) | Stays. `socket_timeout` is an existing option in 0.11.0, and no 0.11.0 breaking item changes it. |
 
-## Alternatives Considered
-
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Client bump scope | Go straight to 0.11.0 behind the two fixes | Stop at 0.10.0 (Dependabot PR exists as a branch) | 0.10.0 already carries both hard breaks (0.9.7 inheritance) and the 503/`ServerException` changes, and only 0.11.0 decodes ZSTD. Stopping earlier buys no safety |
-| Unknown JDBC keys | `ignore_unknown_config_key=true` | Strip unknown keys against `ClientConfigProperties` | Prefix families make a hand-written allowlist drift; the flag is the client's own switch and keeps operator overrides |
-| Base-path break | Endpoint = `protocol://host:port` | Keep the path and set the HTTP path to `/` per request | The database is already sent via `setDefaultDatabase`; the path was only ever decoration |
-| 159 handling | Leave the client default, rely on Connect + state machine | Add `ServerTimeoutExceeded` to `retryOnFailures` | Re-introduces a client-side re-send of a possibly dedup-less insert, and the client authors removed it for that reason |
-| D-17 | Keep `setCompressionMethod` default true | Retire it now that V2 decodes ZSTD | No benefit, touches a high-risk config file, V1 still needs it, zstd-jni native stays unloaded |
-| protobuf 4.x | Reject #10; revisit with Confluent 8.x | Force protobuf-java 4.x over Confluent 7.9.1 | `VerifyError`; would need the whole test stack on 8.x |
-| Observability | Existing JMX statistics | Micrometer / OpenTelemetry recorders from client 0.11.0 | Optional deps, new classpath surface in a Connect plugin, not requested |
-
-## What NOT to add
-
-- `opentelemetry-api`, `micrometer-core` (client 0.11.0 optional recorders).
-- `socket_rcvbuf`/`socket_sndbuf` settings (the point of the change is OS auto-tuning).
-- `ServerTimeoutExceeded` in the client retry list.
-- `jdbc-v2` / `clickhouse-jdbc` artifacts or any JDBC-v2 migration (the connector does not use JDBC).
-- A zstd-jni or lz4 direct dependency: both arrive through `client-v2`; pin lz4 only through the existing catalog entry.
-- `distributionSha256Sum` or a Gradle plugin change as part of #20.
-- A hand-rolled allowlist of client config keys.
-
-## Installation / change set
+## Installation
 
 ```bash
-# gradle/libs.versions.toml (four artifacts share the one ref)
-clickHouseDriver = "0.11.0"
-lz4Java          = "1.12.1"
-okhttp           = "5.5.1"
-# gradle/wrapper/gradle-wrapper.properties
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.8.2-bin.zip
-# keep: libprotobuf = "3.25.9", shadow = "9.6.1", kafka = "4.4.0", kafkaPlatform* = "7.9.1"
+# gson (PR #22; one-line catalog change)
+#   gradle/libs.versions.toml:  gson = "2.15.0"
+
+# setup-gradle (PR #21; four workflow files)
+#   uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+# Verify the pin resolves to a commit, not a tag object
+gh api repos/gradle/actions/git/ref/tags/v6.4.1 --jq .object          # tag object 7296c772...
+gh api repos/gradle/actions/git/tags/7296c772c13d12d9871528814b51fb2143c138ef --jq .object   # commit 8da46b53...
 ```
 
-Production-code change (`ClickHouseHelperClient.createClientV2`, two lines of substance, both measured):
+No other dependencies to install.
 
-```java
-.addEndpoint(String.format("%s://%s:%d", protocol, hostname, port))   // was: the full url incl. /<database>?<props>
-...
-clientBuilder.setOption("ignore_unknown_config_key", "true");           // before the jdbcConnectionProperties loop
-```
+## Roadmap Implications
 
-## Suggested ordering (stack-driven)
-
-1. #19 lz4 1.12.1, #18 okhttp 5.5.1, #20 Gradle 9.8.2, #16 setup-java 6.1.0: independent, each already green.
-2. Upstream tail merge (adds `additionalRetriableErrorCodes`, 5 more 3-arg `ServerException` test sites).
-3. Client 0.11.0 as its own commit with the two production fixes, the 8 `UtilsTest` sites, new pins (endpoint has no path; unknown JDBC key tolerated; 159 stays `RetriableException`; 503 `ConnectException` shapes; V2 decodes ZSTD with both controls off), reworded D-17 docs, FORK-DELTA/anchors rows. Run two full suites.
-4. Re-baseline the archive allowlist and wire the compare into CI.
-5. Close #10 with a Dependabot ignore.
-
-## Residual gaps (not measured)
-
-- `integrationTest` (Connect-worker Docker harness) and the nightly were not run against 0.11.0.
-- Real 502/503 behaviour and the 159 cadence against a live proxy or an overloaded server are source-derived.
-- Throughput effect of the dropped 804800-byte socket buffers is unmeasured.
-- Client V1 path (`useClientV2=false`) was only exercised by the existing live tests (passed), not re-audited line by line.
+1. **Dependabot first, one commit each.** Both are low risk and independent. Gate gson with `testUnit` plus the full suite. Gate `setup-gradle` with the pin guard tests and one CI run (the action only runs on CI, so a local suite cannot prove it).
+2. **F-1 and F-2 as separate plans, tests first.** Both touch the high-risk `ClickHouseWriter.java`. F-1's scope question (the V1 `chcTmp` per-insert leak, the `KeeperStateProvider` leak, the `start()` failure paths) needs a discuss-phase decision. F-2 needs a user decision on default behaviour (see the behaviour-preservation note).
+3. **Both pins reuse `StubClickHouseServer`**, so no Docker and no new dependency. The only test-fixture change is a stall responder.
+4. **Release docs** must carry: gson `2.15.0`, `setup-gradle` `6.4.1` with the "advisory does not apply" statement, the F-2 behaviour change (if taken), and the F-1 leak fix (operators on workers with frequent rebalances will see fewer open connections).
 
 ## Sources
 
-- ClickHouse/clickhouse-java `docs/releases/0_10_0.md`, `0_11_0.md`; GitHub release bodies v0.9.7, v0.9.8, v0.9.9, v0.10.0, v0.11.0 (HIGH, official)
-- clickhouse-java v0.11.0 source: `ClientConfigProperties.parseConfigMap` (unknown keys), `ServerException`, `HttpAPIClientHelper` (retry classification lines ~1150-1190, 503 mapping ~845, SNI ~326-346) (HIGH)
-- Maven Central POMs `com.clickhouse:client-v2:0.9.6` and `0.11.0`; `zstd-jni-1.5.7-23-cloud.jar` listing (HIGH)
-- Dependabot PRs #10, #16-#20 on `ne1r0n/clickhouse-kafka-connect` and their check runs, incl. failed logs for runs 40416377063 (#17) and 39501799049 (#10) (HIGH)
-- yawkat/lz4-java v1.12.1 release notes (security release GHSA-48mj-8f7c-7qfm); okhttp 5.5.1 changelog; actions/setup-java v6.1.0 release (HIGH; advisory text itself was not retrievable, severity unconfirmed)
-- Confluent `kafka-schema-registry-parent` POMs 7.9.1 / 8.0.0 / 8.4.0 (protobuf 4.29.3 from 8.0.0) (MEDIUM: 8.4.0 value not read, only the 8.0.0 line)
-- Local measurement: scratch copy of `HEAD` under `/tmp` with client 0.11.0, ClickHouse 26.10.3.7, Gradle 9.8.1 wrapper (HIGH)
+- GitHub API, `google/gson` release `gson-parent-2.15.0` (published 2026-10-24) and PRs #3057, #3116 (reader-only, strict-mode-only) — HIGH
+- Maven Central `maven-metadata.xml` for `com.google.code.gson:gson` (`latest`/`release` = 2.15.0) — HIGH
+- GitHub release `gradle/actions` v6.4.1, advisory GHSA-chpw-2mqm-95cc (`gh api /repos/gradle/actions/security-advisories/...`), tag and commit objects via the Git API — HIGH
+- `ne1r0n/clickhouse-kafka-connect` PRs #21 and #22 (file lists, Dependabot compare range `3f5f9ada…8da46b53`) — HIGH
+- `ClickHouse/clickhouse-java` tag `v0.11.0`: release notes (`gh release view`), `docs/releases/0_11_0.md`, `client-v2` `Client.java` (`close`, `runAsyncOperation`, `setSocketTimeout`, `setExecutionTimeout`, `useAsyncRequests`), `HttpAPIClientHelper.java` (`close`, `createRequestHttpContext`, retry causes), `ClientConfigProperties.java`, V1 `ClickHouseClient.java` and `ClickHouseClientOption.java` — HIGH for V2, MEDIUM for V1 (not exercised)
+- Working tree: `ClickHouseWriter.java`, `ClickHouseHelperClient.java`, `KeeperStateProvider.java`, `ProxySinkTask.java`, `Utils.java`, `DataJson.java`, `ConvertToMapOrJson.java`, `StubClickHouseServer.java`, `ClientTimeoutPrefixPinUnitTest.java`, `.github/dependabot.yml`, `docs/FORK-DELTA.md` row 72, and `36-FOLLOWUPS.md` — HIGH
+- `upstream/main` `ClickHouseWriter.java` (`stop()`, `chcTmp`) via `git show` — HIGH
+- Not done: no Context7 and no research-seam cache entries were written (the primary sources above were read directly from tags and APIs). The empirical V1 stall behaviour and the exact post-close observable for the F-1 pin remain for the plan phase.
+
+---
+*Stack research for: v1.7.0_gg7 maintenance milestone*
+*Researched: 2026-11-01*

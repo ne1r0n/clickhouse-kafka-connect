@@ -1,0 +1,559 @@
+diff --git a/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java b/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+index 9603ead4..83912412 100644
+--- a/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
++++ b/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+@@ -84,7 +84,7 @@ public class ClickHouseWriter implements DBWriter {
+         String clientVersion = csc.getClientVersion();
+         boolean useClientV2 = clientVersion.equals("V1") ? false : true;
+ 
+-        chc = new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
++        chc = createHelperClient(new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+                 .setDatabase(csc.getDatabase())
+                 .setUsername(csc.getUsername())
+                 .setPassword(csc.getPassword())
+@@ -97,8 +97,7 @@ public class ClickHouseWriter implements DBWriter {
+                 .setClusterClause(csc.getClusterName())
+                 .enableReplicaPinning(csc.isEnableReplicaPinning())
+                 .setTargetTableFilter(csc.getTargetTableFilter())
+-                .setCompressionMethod(csc.isSetCompressionMethod())
+-                .build();
++                .setCompressionMethod(csc.isSetCompressionMethod()));
+ 
+         if (!chc.ping()) {
+             LOGGER.error("Unable to ping Clickhouse server.");
+@@ -192,6 +191,10 @@ public class ClickHouseWriter implements DBWriter {
+         }
+     }
+ 
++    protected ClickHouseHelperClient createHelperClient(ClickHouseHelperClient.ClickHouseClientBuilder builder) {
++        return builder.build();
++    }
++
+     public ClickHouseNode getServer() {
+         return chc.getServer();
+     }
+@@ -1783,7 +1786,7 @@ public class ClickHouseWriter implements DBWriter {
+     }
+     private ClickHouseRequest.Mutation getMutationRequest(ClickHouseClient client, ClickHouseFormat format, String tableName, String database, QueryIdentifier queryId) {
+ 
+-        ClickHouseHelperClient chcTmp = new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
++        ClickHouseHelperClient chcTmp = createHelperClient(new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+                 .setDatabase(database)
+                 .setUsername(csc.getUsername())
+                 .setPassword(csc.getPassword())
+@@ -1794,8 +1797,7 @@ public class ClickHouseWriter implements DBWriter {
+                 .setSslSocketSni(csc.getSslSocketSni())
+                 .setClusterClause(csc.getClusterName())
+                 .enableReplicaPinning(csc.isEnableReplicaPinning())
+-                .setCompressionMethod(csc.isSetCompressionMethod())
+-                .build();
++                .setCompressionMethod(csc.isSetCompressionMethod()));
+ 
+         ClickHouseNode server = chcTmp.getServer();
+         ClickHouseRequest.Mutation request = client.read(server)
+diff --git a/src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java b/src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java
+index 80048154..201fb20f 100644
+--- a/src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java
++++ b/src/test/java/com/clickhouse/kafka/connect/sink/db/CountingHelperClient.java
+@@ -1,34 +1,130 @@
+ package com.clickhouse.kafka.connect.sink.db;
+ 
++import com.clickhouse.client.ClickHouseResponse;
++import com.clickhouse.client.api.query.Records;
+ import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
++import com.clickhouse.kafka.connect.sink.db.mapping.Table;
++import java.util.List;
++import java.util.Map;
+ 
+ /**
+- * A real {@link ClickHouseHelperClient} that answers {@code isUseClientV2} with its constructor
+- * flag and counts {@code pinReplica} and {@code unpinReplica}, the other two calls
+- * {@code ClickHouseWriter.doInsertRawBinary} makes on it. Its constructor opens no connection and
+- * starts no thread of its own, so the dummy builder target is never contacted. It deliberately uses
+- * no Mockito: inline-mocking {@code ClickHouseHelperClient} crashed the Semeru/OpenJ9 test JVM
+- * natively inside {@code retransformClasses} in the full suite (Phase 18 deferred item, HARN-08).
+- * Callers close it with try-with-resources; the inherited {@code close()} closes the V2 client. It
+- * holds no static mutable state, so counts never leak between tests.
++ * A real {@link ClickHouseHelperClient} that counts {@code pinReplica}, {@code unpinReplica} and
++ * {@code close}, the calls {@code ClickHouseWriter.doInsertRawBinary} and the connector's lifecycle
++ * make on it. It answers {@code isUseClientV2} with its constructor flag, or, when built from a real
++ * {@link ClickHouseHelperClient.ClickHouseClientBuilder}, from that builder. It scripts the server
++ * answers a writer or a state provider asks for at start (ping, version, table mapping, the two
++ * query calls), so neither needs a server; anything left unscripted falls back to the real class.
++ * Its constructors open no connection and start no thread of their own. It deliberately uses no
++ * Mockito: inline-mocking {@code ClickHouseHelperClient} crashed the Semeru/OpenJ9 test JVM natively
++ * inside {@code retransformClasses} in the full suite (Phase 18 deferred item, HARN-08). Callers
++ * close it with try-with-resources; the inherited {@code close()} closes the V2 client. It holds no
++ * static mutable state, so counts never leak between tests.
+  */
+ public final class CountingHelperClient extends ClickHouseHelperClient {
+ 
+     private static final String DUMMY_HOSTNAME = "127.0.0.1";
+     private static final int DUMMY_PORT = 8123;
+ 
+-    private final boolean useClientV2;
++    private final Boolean forcedUseClientV2;
+     private int pinCalls = 0;
+     private int unpinCalls = 0;
++    private int closeCalls = 0;
++    private Boolean scriptedPing = null;
++    private String scriptedVersion = null;
++    private RuntimeException scriptedVersionFailure = null;
++    private List<Table> scriptedTables = null;
++    private RuntimeException scriptedTablesFailure = null;
++    private RuntimeException scriptedQueryV2Failure = null;
++    private boolean emptyQueryV1Response = false;
++    private Runnable closeHook = null;
+ 
+     public CountingHelperClient(boolean useClientV2) {
+         super(new ClickHouseHelperClient.ClickHouseClientBuilder(DUMMY_HOSTNAME, DUMMY_PORT, null, null, -1));
+-        this.useClientV2 = useClientV2;
++        this.forcedUseClientV2 = useClientV2;
++    }
++
++    public CountingHelperClient(ClickHouseHelperClient.ClickHouseClientBuilder builder) {
++        super(builder);
++        this.forcedUseClientV2 = null;
++    }
++
++    public CountingHelperClient pingReturns(boolean answer) {
++        this.scriptedPing = answer;
++        return this;
++    }
++
++    public CountingHelperClient versionReturns(String version) {
++        this.scriptedVersion = version;
++        return this;
++    }
++
++    public CountingHelperClient versionThrows(RuntimeException failure) {
++        this.scriptedVersionFailure = failure;
++        return this;
++    }
++
++    public CountingHelperClient tablesReturn(List<Table> tables) {
++        this.scriptedTables = tables;
++        return this;
++    }
++
++    public CountingHelperClient tablesThrow(RuntimeException failure) {
++        this.scriptedTablesFailure = failure;
++        return this;
++    }
++
++    public CountingHelperClient queryV2Throws(RuntimeException failure) {
++        this.scriptedQueryV2Failure = failure;
++        return this;
++    }
++
++    public CountingHelperClient queryV1ReturnsEmptyResponse() {
++        this.emptyQueryV1Response = true;
++        return this;
++    }
++
++    public CountingHelperClient onClose(Runnable hook) {
++        this.closeHook = hook;
++        return this;
+     }
+ 
+     @Override
+     public boolean isUseClientV2() {
+-        return useClientV2;
++        return forcedUseClientV2 != null ? forcedUseClientV2 : super.isUseClientV2();
++    }
++
++    @Override
++    public boolean ping() {
++        return scriptedPing != null ? scriptedPing : super.ping();
++    }
++
++    @Override
++    public String version() {
++        if (scriptedVersionFailure != null) {
++            throw scriptedVersionFailure;
++        }
++        return scriptedVersion != null ? scriptedVersion : super.version();
++    }
++
++    @Override
++    public List<Table> extractTablesMapping(String database, Map<String, Table> cache) {
++        if (scriptedTablesFailure != null) {
++            throw scriptedTablesFailure;
++        }
++        return scriptedTables != null ? scriptedTables : super.extractTablesMapping(database, cache);
++    }
++
++    @Override
++    public Records queryV2(String query) {
++        if (scriptedQueryV2Failure != null) {
++            throw scriptedQueryV2Failure;
++        }
++        return super.queryV2(query);
++    }
++
++    @Override
++    public ClickHouseResponse queryV1(String query) {
++        return emptyQueryV1Response ? ClickHouseResponse.EMPTY : super.queryV1(query);
+     }
+ 
+     @Override
+@@ -41,6 +137,15 @@ public final class CountingHelperClient extends ClickHouseHelperClient {
+         unpinCalls++;
+     }
+ 
++    @Override
++    public void close() {
++        closeCalls++;
++        if (closeHook != null) {
++            closeHook.run();
++        }
++        super.close();
++    }
++
+     public int pinCalls() {
+         return pinCalls;
+     }
+@@ -48,4 +153,8 @@ public final class CountingHelperClient extends ClickHouseHelperClient {
+     public int unpinCalls() {
+         return unpinCalls;
+     }
++
++    public int closeCalls() {
++        return closeCalls;
++    }
+ }
+diff --git a/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java b/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+new file mode 100644
+index 00000000..1332216c
+--- /dev/null
++++ b/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/WriterHelperClientClosingUnitTest.java
+@@ -0,0 +1,329 @@
++package com.clickhouse.kafka.connect.sink.db.helper;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertNotNull;
++import static org.junit.jupiter.api.Assertions.assertSame;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++import com.clickhouse.kafka.connect.ClickHouseSinkConnector;
++import com.clickhouse.kafka.connect.sink.ClickHouseSinkConfig;
++import com.clickhouse.kafka.connect.sink.data.Record;
++import com.clickhouse.kafka.connect.sink.db.ClickHouseWriter;
++import com.clickhouse.kafka.connect.sink.db.CountingHelperClient;
++import com.clickhouse.kafka.connect.sink.db.mapping.Table;
++import com.clickhouse.kafka.connect.util.QueryIdentifier;
++import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
++import java.lang.reflect.Field;
++import java.nio.charset.StandardCharsets;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.concurrent.ScheduledExecutorService;
++import java.util.concurrent.atomic.AtomicReference;
++import java.util.function.UnaryOperator;
++import org.apache.kafka.connect.sink.SinkRecord;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.ValueSource;
++
++/**
++ * Counts the helper clients {@link ClickHouseWriter} opens and closes through its {@code
++ * createHelperClient} factory, on client V1 and V2, with scripted server answers and no network
++ * except the loopback stub of the batch cases. Each helper is a {@link CountingHelperClient}, so no
++ * Mockito is involved and the class stays in the Docker-free {@code testUnit} loop.
++ */
++class WriterHelperClientClosingUnitTest {
++
++    private static final String PARAMETERIZED_NAME = "{displayName}[{index}] client_version={0}";
++    private static final String LOOPBACK = "127.0.0.1";
++    private static final String UNUSED_PORT = "8123";
++    private static final String DATABASE = "default";
++    private static final String TABLE_NAME = "writer_closing";
++    private static final String SUPPORTED_VERSION = "26.10.3.7";
++    private static final String ONE_PART_VERSION = "26";
++    private static final String TOO_OLD_VERSION = "23.2";
++    private static final String VERSION_FAILURE = "scripted version lookup failure";
++    private static final String MAPPING_FAILURE = "scripted table mapping failure";
++    private static final String TABLE_REFRESH_SECONDS = "1";
++    private static final String SCHEDULED_EXECUTOR_FIELD = "scheduledExecutor";
++    private static final String OPEN_COUNT = "open count of helper clients";
++    private static final String CLOSE_COUNT = "close count of the writer's helper client";
++    private static final String PER_BATCH_CLOSE_COUNT = "close count of a per-batch helper client";
++    private static final String EXECUTOR_NOT_STARTED = "the table sync executor must exist after a clean start";
++    private static final String EXECUTOR_TERMINATED = "the table sync executor had not terminated when the helper client closed";
++    private static final String TOPIC = "writer_closing_topic";
++    private static final String QUERY_ID_FIRST = "writer-closing-q1";
++    private static final String QUERY_ID_SECOND = "writer-closing-q2";
++    private static final String QUERY_ID_V2 = "writer-closing-q3";
++    private static final String CLIENT_V1 = "V1";
++    private static final String CLIENT_V2 = "V2";
++
++    private static final class CountingWriter extends ClickHouseWriter {
++
++        private final UnaryOperator<CountingHelperClient> script;
++        private final SinkTaskStatistics statistics;
++        private final List<CountingHelperClient> created = new ArrayList<>();
++
++        CountingWriter(UnaryOperator<CountingHelperClient> script) {
++            this(script, new SinkTaskStatistics(null, 0));
++        }
++
++        private CountingWriter(UnaryOperator<CountingHelperClient> script, SinkTaskStatistics statistics) {
++            super(statistics);
++            this.script = script;
++            this.statistics = statistics;
++        }
++
++        @Override
++        protected ClickHouseHelperClient createHelperClient(ClickHouseHelperClient.ClickHouseClientBuilder builder) {
++            CountingHelperClient helper = script.apply(new CountingHelperClient(builder));
++            created.add(helper);
++            return helper;
++        }
++
++        List<CountingHelperClient> created() {
++            return created;
++        }
++
++        ScheduledExecutorService tableSyncExecutor() throws ReflectiveOperationException {
++            Field field = ClickHouseWriter.class.getDeclaredField(SCHEDULED_EXECUTOR_FIELD);
++            field.setAccessible(true);
++            return (ScheduledExecutorService) field.get(this);
++        }
++
++        void insertJsonV1(List<Record> records, Table table, QueryIdentifier queryId) throws Exception {
++            doInsertJsonV1(records, table, queryId);
++        }
++
++        void insertJsonV2(List<Record> records, Table table, QueryIdentifier queryId) throws Exception {
++            doInsertJsonV2(records, table, queryId);
++        }
++
++        void unregisterStatistics() {
++            statistics.unregisterMBean();
++        }
++
++        void closeLeftoverHelpers() {
++            for (CountingHelperClient helper : created) {
++                if (helper.closeCalls() == 0) {
++                    helper.close();
++                }
++            }
++        }
++    }
++
++    private static ClickHouseSinkConfig config(String clientVersion, Map<String, String> extra) {
++        Map<String, String> props = new HashMap<>();
++        props.put(ClickHouseSinkConnector.HOSTNAME, LOOPBACK);
++        props.put(ClickHouseSinkConnector.PORT, UNUSED_PORT);
++        props.put(ClickHouseSinkConnector.SSL_ENABLED, "false");
++        props.put(ClickHouseSinkConnector.CLIENT_VERSION, clientVersion);
++        props.putAll(extra);
++        return new ClickHouseSinkConfig(props);
++    }
++
++    private static UnaryOperator<CountingHelperClient> startsCleanly() {
++        return helper -> helper.pingReturns(true)
++                .versionReturns(SUPPORTED_VERSION)
++                .tablesReturn(List.of(new Table(DATABASE, TABLE_NAME, false, List.of(), 0)));
++    }
++
++    private static void assertFailedStartClosesOnce(String clientVersion, UnaryOperator<CountingHelperClient> script) {
++        CountingWriter writer = new CountingWriter(script);
++        try {
++            assertFalse(writer.start(config(clientVersion, Map.of())));
++            assertEquals(1, writer.created().size(), OPEN_COUNT);
++            CountingHelperClient helper = writer.created().get(0);
++            assertEquals(1, helper.closeCalls(), CLOSE_COUNT);
++            writer.stop();
++            assertEquals(1, helper.closeCalls(), CLOSE_COUNT);
++        } finally {
++            writer.closeLeftoverHelpers();
++        }
++    }
++
++    private static Record schemalessRecord(int id) {
++        SinkRecord sinkRecord = new SinkRecord(TOPIC, 0, null, null, null, Map.of("id", id), id);
++        return Record.convert(sinkRecord, false, ".", DATABASE, false);
++    }
++
++    private static Map<String, String> stubProps(StubClickHouseServer stub) {
++        return Map.of(
++                ClickHouseSinkConnector.PORT, String.valueOf(stub.port()),
++                ClickHouseSinkConfig.BYPASS_FIELD_CLEANUP, "true");
++    }
++
++    private static ClickHouseSinkConfig stubConfig(String clientVersion, StubClickHouseServer stub) {
++        return config(clientVersion, stubProps(stub));
++    }
++
++    private static Table batchTable() {
++        return new Table(DATABASE, TABLE_NAME, false, List.of(), 0);
++    }
++
++    private static List<StubClickHouseServer.Request> posts(StubClickHouseServer stub) {
++        return stub.requests().stream().filter(request -> "POST".equals(request.method())).toList();
++    }
++
++    private static String body(StubClickHouseServer.Request request) {
++        return new String(request.body(), StandardCharsets.UTF_8);
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void successfulStartThenStopClosesTheHelperClientOnce(String clientVersion) {
++        CountingWriter writer = new CountingWriter(startsCleanly());
++        try {
++            assertTrue(writer.start(config(clientVersion, Map.of())));
++            assertEquals(1, writer.created().size(), OPEN_COUNT);
++            CountingHelperClient helper = writer.created().get(0);
++            assertEquals(CLIENT_V2.equals(clientVersion), helper.isUseClientV2());
++            writer.stop();
++            assertEquals(1, helper.closeCalls(), CLOSE_COUNT);
++        } finally {
++            writer.closeLeftoverHelpers();
++        }
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void secondStopNeitherThrowsNorClosesAgain(String clientVersion) {
++        CountingWriter writer = new CountingWriter(startsCleanly());
++        try {
++            assertTrue(writer.start(config(clientVersion, Map.of())));
++            writer.stop();
++            writer.stop();
++            assertEquals(1, writer.created().size(), OPEN_COUNT);
++            assertEquals(1, writer.created().get(0).closeCalls(), CLOSE_COUNT);
++        } finally {
++            writer.closeLeftoverHelpers();
++        }
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void stopWithoutStartCreatesNoHelperClient(String clientVersion) {
++        CountingWriter writer = new CountingWriter(startsCleanly());
++        writer.stop();
++        assertEquals(0, writer.created().size(), OPEN_COUNT);
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void failedPingClosesTheHelperClientAndALaterStopClosesNothingMore(String clientVersion) {
++        assertFailedStartClosesOnce(clientVersion, helper -> helper.pingReturns(false));
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void unreadableServerVersionClosesTheHelperClient(String clientVersion) {
++        assertFailedStartClosesOnce(clientVersion, helper -> helper.pingReturns(true).versionReturns(ONE_PART_VERSION));
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void serverOlderThanTheMinimumVersionClosesTheHelperClient(String clientVersion) {
++        assertFailedStartClosesOnce(clientVersion, helper -> helper.pingReturns(true).versionReturns(TOO_OLD_VERSION));
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void versionLookupFailureClosesTheHelperClient(String clientVersion) {
++        assertFailedStartClosesOnce(
++                clientVersion,
++                helper -> helper.pingReturns(true).versionThrows(new IllegalStateException(VERSION_FAILURE)));
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void noTablesWithoutDbTopicSplitClosesTheHelperClient(String clientVersion) {
++        assertFailedStartClosesOnce(
++                clientVersion,
++                helper -> helper.pingReturns(true).versionReturns(SUPPORTED_VERSION).tablesReturn(List.of()));
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void tableMappingFailureClosesTheHelperClientAndPropagatesTheSameException(String clientVersion) {
++        IllegalStateException failure = new IllegalStateException(MAPPING_FAILURE);
++        CountingWriter writer = new CountingWriter(
++                helper -> helper.pingReturns(true).versionReturns(SUPPORTED_VERSION).tablesThrow(failure));
++        try {
++            IllegalStateException thrown =
++                    assertThrows(IllegalStateException.class, () -> writer.start(config(clientVersion, Map.of())));
++            assertEquals(1, writer.created().size(), OPEN_COUNT);
++            CountingHelperClient helper = writer.created().get(0);
++            assertEquals(1, helper.closeCalls(), CLOSE_COUNT);
++            assertSame(failure, thrown);
++            writer.stop();
++            assertEquals(1, helper.closeCalls(), CLOSE_COUNT);
++        } finally {
++            writer.closeLeftoverHelpers();
++        }
++    }
++
++    @ParameterizedTest(name = PARAMETERIZED_NAME)
++    @ValueSource(strings = {CLIENT_V1, CLIENT_V2})
++    void stopClosesTheHelperClientOnlyAfterTheTableSyncExecutorTerminated(String clientVersion) throws Exception {
++        CountingWriter writer = new CountingWriter(startsCleanly());
++        try {
++            assertTrue(writer.start(config(clientVersion, Map.of(ClickHouseSinkConfig.TABLE_REFRESH_INTERVAL, TABLE_REFRESH_SECONDS))));
++            ScheduledExecutorService executor = writer.tableSyncExecutor();
++            assertNotNull(executor, EXECUTOR_NOT_STARTED);
++            CountingHelperClient helper = writer.created().get(0);
++            AtomicReference<Boolean> terminatedAtClose = new AtomicReference<>();
++            helper.onClose(() -> terminatedAtClose.set(executor.isTerminated()));
++            writer.stop();
++            assertEquals(1, helper.closeCalls(), CLOSE_COUNT);
++            assertEquals(Boolean.TRUE, terminatedAtClose.get(), EXECUTOR_TERMINATED);
++        } finally {
++            writer.closeLeftoverHelpers();
++        }
++    }
++
++    @Test
++    void clientV1BatchesCloseTheirPerBatchHelperClientAndTheNodeStillServesTheInsert() throws Exception {
++        try (StubClickHouseServer stub = new StubClickHouseServer(StubClickHouseServer.ok())) {
++            CountingWriter writer = new CountingWriter(startsCleanly());
++            try {
++                assertTrue(writer.start(stubConfig(CLIENT_V1, stub)));
++                writer.insertJsonV1(List.of(schemalessRecord(1)), batchTable(), new QueryIdentifier(TOPIC, QUERY_ID_FIRST));
++                writer.insertJsonV1(List.of(schemalessRecord(2)), batchTable(), new QueryIdentifier(TOPIC, QUERY_ID_SECOND));
++                assertEquals(3, writer.created().size(), OPEN_COUNT);
++                assertEquals(1, writer.created().get(1).closeCalls(), PER_BATCH_CLOSE_COUNT);
++                assertEquals(1, writer.created().get(2).closeCalls(), PER_BATCH_CLOSE_COUNT);
++                assertEquals(0, writer.created().get(0).closeCalls(), CLOSE_COUNT);
++                List<StubClickHouseServer.Request> posts = posts(stub);
++                assertEquals(2, posts.size());
++                assertTrue(posts.get(0).rawUri().contains("query_id=" + QUERY_ID_FIRST), posts.get(0).rawUri());
++                assertTrue(posts.get(1).rawUri().contains("query_id=" + QUERY_ID_SECOND), posts.get(1).rawUri());
++                assertTrue(body(posts.get(0)).contains("{\"id\":1}"));
++                assertTrue(body(posts.get(1)).contains("{\"id\":2}"));
++            } finally {
++                writer.stop();
++                writer.closeLeftoverHelpers();
++                writer.unregisterStatistics();
++            }
++        }
++    }
++
++    @Test
++    void clientV2BatchBuildsNoPerBatchHelperClient() throws Exception {
++        try (StubClickHouseServer stub = new StubClickHouseServer(StubClickHouseServer.ok())) {
++            CountingWriter writer = new CountingWriter(startsCleanly());
++            try {
++                assertTrue(writer.start(stubConfig(CLIENT_V2, stub)));
++                writer.insertJsonV2(List.of(schemalessRecord(1)), batchTable(), new QueryIdentifier(TOPIC, QUERY_ID_V2));
++                assertEquals(1, writer.created().size(), OPEN_COUNT);
++                assertEquals(1, posts(stub).size());
++            } finally {
++                writer.stop();
++                writer.closeLeftoverHelpers();
++                writer.unregisterStatistics();
++            }
++        }
++    }
++}

@@ -1,0 +1,527 @@
+# Phase 41: Command evidence
+
+- **Base commit:** `phase_start_sha` = `69d5da3aa0d2f443294b26b954bc78c84643fe17` (HEAD when plan 41-01 started, branch `sync/v1.7.0`).
+- **Shell:** macOS zsh, multi-line logic under `/bin/bash` or `python3 -I`. Gradle is run as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain ... -PjavaVersion=21`, so every run shares one HotSpot 21 JVM line and the OpenJ9 crash is avoided.
+- **Docker:** colima profile `vz` (aarch64, 8 CPU, 16 GiB, 256 GiB disk), docker CLI from `/opt/homebrew/Cellar/docker/29.8.2/bin/docker`.
+- **Date (UTC):** 2026-11-02.
+- **Entry format:** each entry has a `### E-NN: {title}` heading, a `Backs:` line, an `sh` fence with the commands as run, a `text` fence of `key: value` lines (keys match `[a-z0-9_]+`, one fact per line, no key twice) with free text allowed after the fence, a UTC timestamp line, and a final line `Verdict: pass`, `Verdict: fail`, `Verdict: pending ({reason})` or `Verdict: unmeasured ({reason})`.
+- **Rule:** a fail or pending verdict is fixed by re-measuring in a new run, never by editing the evidence.
+- **Helper:** `41-evidence-check.py` in this directory is a byte copy of Phase 39's `39-evidence-check.py` (get, expect, index, rows, secrets, junit, anchors, skips, failed) and is never edited.
+- **Red-reason rule:** a red counts only when every failing testcase is an `org.opentest4j.AssertionFailedError` whose message contains `execution timed out after` (the text `assertTimeoutPreemptively` produces) and no failing testcase took more than 30 s; a compile error, an unexpected exception, a different assertion or a hang is not a recorded red.
+- **No push happens in Phase 41.** Reads use `git ls-remote` only.
+
+## Index
+
+| Entry | Requirement | Plan | Verdict |
+|-------|-------------|------|---------|
+| E-01 | PIN-01 | 41-01 | pass |
+| E-02 | PIN-01 | 41-01 | pass |
+| E-03 | PIN-01, TMO-01, TMO-02 | 41-01 | pass |
+| E-04 | PIN-01 | 41-02 | pass |
+| E-05 | TMO-01 | 41-02 | pass |
+| E-06 | TMO-01, TMO-02, TMO-03 | 41-02 | pass |
+| E-07 | TMO-01 | 41-02 | pass |
+| E-08 | TMO-01, TMO-02 | 41-03 | pass |
+| E-09 | TMO-03 | 41-03 | pass |
+| E-10 | PIN-01, TMO-01, TMO-02, TMO-03 | 41-03 | pass |
+
+### E-01: Execution-start facts, measured baseline and environment
+
+Backs: PIN-01 (execution-start facts: base commit, origin re-read, the evidence helper copy, the anchors mirror, the environment, the Spotless baselines of the three files the phase touches, and the start baseline measured on the unchanged tree instead of taken from the Phase 40 report).
+
+```sh
+mkdir -p /tmp/gsd41/exec
+git rev-parse HEAD
+git rev-parse --abbrev-ref HEAD
+git status --porcelain
+git ls-remote origin refs/heads/custom_build
+cp .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py .planning/phases/41-bounded-insert-timeout/41-evidence-check.py
+cmp .planning/phases/39-dependabot-absorption-behaviour-pins/39-evidence-check.py .planning/phases/41-bounded-insert-timeout/41-evidence-check.py
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 180
+grep -cF -e '//this.addClickHouseSetting("async_insert", "0", false);' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+git rev-parse HEAD:src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+colima list
+ls -d /opt/homebrew/Cellar/docker/*/bin/docker
+/usr/libexec/java_home -v 21
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/<file>" -PspotlessIdeHookUseStdOut > /tmp/gsd41/exec/sc-base-<name>.out 2> /tmp/gsd41/exec/sc-base-<name>.err
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd41/exec/baseline-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd41/exec/xml-baseline-testunit
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd41/exec/baseline-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd41/exec/xml-baseline-full
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py skips /tmp/gsd41/exec/xml-baseline-full
+```
+
+```text
+phase_start_sha: 69d5da3aa0d2f443294b26b954bc78c84643fe17
+branch: sync/v1.7.0
+dirty_paths: M .planning/config.json; M .planning/state.json
+origin_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+origin_custom_build_expected: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+helper_copy: cmp-equal
+anchors_mirror: rows=180 bad=0
+cfg02_anchor_count: 1
+sink_config_blob: 7ab06b3c2eebe131c06f4c1087b2c73295b443d7
+colima_vz: Running
+docker_cli: /opt/homebrew/Cellar/docker/29.8.2/bin/docker
+jdk21_home: /opt/homebrew/Cellar/openjdk@21/21.0.12.1/libexec/openjdk.jdk/Contents/Home
+testcontainers_host_override: set
+spotless_baseline_clickhouse_writer: IS DIRTY
+spotless_baseline_clickhouse_helper_client: IS DIRTY
+spotless_baseline_stub_server: IS CLEAN
+baseline_testunit_exit: 0
+baseline_testunit_tests: 1719
+baseline_testunit_failures: 0
+baseline_testunit_errors: 0
+baseline_testunit_skipped: 2
+baseline_full_exit: 0
+baseline_full_tests: 2317
+baseline_full_failures: 0
+baseline_full_errors: 0
+baseline_full_skipped: 18
+baseline_full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+baseline_recorded_testunit: 1719
+baseline_recorded_full: 2317
+baseline_matches_record: yes
+clickhouse_version_baseline: 26.10.3.7
+clickhouse_digest_baseline: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1); no OpenJ9 launcher
+```
+
+The only dirty paths are the two orchestrator-managed `.planning/` files, so the dirty-path rule holds. `origin/custom_build` equals the expected tip. The three Spotless verdicts equal the planning measurement: `ClickHouseWriter.java` differs from the hook's output in 21 lines and `ClickHouseHelperClient.java` in 7, every differing line an import or blank line with equal import sets, so neither file is ever rewritten by the hook; `StubClickHouseServer.java` is clean. The measured `testUnit` totals (1719 tests, 2 skipped) and the measured full-suite totals on ClickHouse `latest` x client V2 (2317 tests, the 18 named skips) both equal the Phase 40 review-fix record, and both runs exited 0 with 0 failures and 0 errors; those measured totals are the phase baseline. The ClickHouse version and image digest read the same before the `testUnit` run and after the full run. No crash file (`hs_err_pid*`, `javacore.*`, `core*`, `Snap.*`) appeared in the repository root. `testcontainers_host_override` is recorded as set only; this shell sets it to a literal that breaks Ryuk, which is why every Gradle run unsets it.
+
+2026-11-02T08:49:47Z
+
+Verdict: pass
+
+### E-02: Tracer: the stall responder and the writer-level pin, red on three V2 routes
+
+Backs: PIN-01 (the stall responder in `StubClickHouseServer` and the first stall pin, a real `ClickHouseWriter` insert on client V2 with `async=false` wrapped in `assertTimeoutPreemptively`, run end to end with Docker unreachable on the JSON, String and RowBinary routes; the first red of the matrix, recorded before any fix exists).
+
+```sh
+git diff --quiet HEAD -- src/main
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java" -PspotlessIdeHookUseStdOut > /tmp/gsd41/exec/sc-stub.out 2> /tmp/gsd41/exec/sc-stub.err
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd41/exec/sc-pin.out 2> /tmp/gsd41/exec/sc-pin.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*InsertStallBoundPinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*ClientErrorShapePinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*WriterHelperClientClosingUnitTest' > /tmp/gsd41/exec/tracer.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd41/exec/xml-tracer
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-tracer --class InsertStallBoundPinUnitTest tests=3 failures=3
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-tracer --expect 'InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause'
+```
+
+```text
+spotless_stub_server: IS CLEAN
+spotless_test_class: IS CLEAN
+tracer_run_exit: 1
+tracer_class_tests: 3
+tracer_class_failures: 3
+red_failed_set: InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause
+red_reason_timeout: yes
+red_case_max_seconds: 10.604
+stub_users_green: yes
+src_main_untouched: yes
+```
+
+The run exited non-zero (`40 tests completed, 3 failed`) and produced the class XML, which proves the sources compiled and the run did not hang. The three failures are the pin on the JSON, String and RowBinary routes, each an `org.opentest4j.AssertionFailedError` whose message contains `execution timed out after`; they took 10.604 s, 10.02 s and 10.017 s, the 10 s preemptive bound plus teardown, so the unfixed V2 insert with `async=false` blocks in the stalled read and is ended only by the bound. The other 37 tests pass, among them the four existing stub users (`ClientInsertWirePinUnitTest` 2, `ClientErrorShapePinUnitTest` 7, `ClientEndpointAndOptionsPinUnitTest` 5, `WriterHelperClientClosingUnitTest` 23), so the stub change (public class, release latch, daemon pool factories, idempotent `close()`) did not disturb them. `git diff --quiet HEAD -- src/main` exits 0: no fix of any kind exists in the tree. The two test files stay uncommitted for Task 2.
+
+2026-11-02T08:51:08Z
+
+Verdict: pass
+
+### E-03: The 15-case stall pin red on the unfixed tree, the red tree saved as a patch, src restored
+
+Backs: PIN-01 (every stall pin has a recorded red on a tree with no fix), TMO-01 (the writer-level pin and the operator guards that the fix of plan 41-02 must turn green and keep green) and TMO-02 (the `ProxySinkTask.put` pin under `errors.tolerance` none and all).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java" -PspotlessIdeHookUseStdOut > /tmp/gsd41/exec/sc-pin2.out 2> /tmp/gsd41/exec/sc-pin2.err
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain -q spotlessApply -PspotlessIdeHook="$(pwd)/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java" -PspotlessIdeHookUseStdOut > /tmp/gsd41/exec/sc-stub2.out 2> /tmp/gsd41/exec/sc-stub2.err
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun --tests '*InsertStallBoundPinUnitTest' --tests '*ClientInsertWirePinUnitTest' --tests '*ClientErrorShapePinUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest' --tests '*WriterHelperClientClosingUnitTest' > /tmp/gsd41/exec/red.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd41/exec/xml-red
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-red --class InsertStallBoundPinUnitTest tests=15 failures=9
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-red --expect 'InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause' 'InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord'
+git add -N src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java
+git diff --no-color --no-ext-diff -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java > .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git reset -q -- src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java
+shasum -a 256 .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git checkout -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+rm src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java
+git status --porcelain -- src
+git diff --quiet HEAD -- src
+git apply --check .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+```
+
+```text
+spotless_test_class: IS CLEAN
+spotless_stub_server: IS CLEAN
+red_run_exit: 1
+class_tests: 15
+class_failures: 9
+red_failed_count: 2
+red_failed_set: InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause; InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord
+red_reason_timeout: yes
+red_case_max_seconds: 10.691
+operator_guards_green_on_unfixed: yes
+stub_users_green: yes
+patch_paths: src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+patch_sha256: 10c738b2beac4abd91c4a7b126e947052d0b7b1d62e7f807d243b84de36e9ffc
+tree_restored: yes
+patch_applies_on_head: yes
+```
+
+The run exited non-zero (`52 tests completed, 9 failed`) and produced the class XML. `InsertStallBoundPinUnitTest` ran 15 cases: the writer-level pin on the JSON, String and RowBinary routes (3 cases) and the `ProxySinkTask.put` pin over the same routes under `errors.tolerance` none and all (6 cases) all failed, every one an `org.opentest4j.AssertionFailedError` whose message contains `execution timed out after`, the slowest at 10.691 s (the 10 s preemptive bound plus teardown). The six operator `socket_timeout` cases (a longer value than the insert timeout against a 1 s delayed answer, a shorter value than the insert timeout against a stall) passed on the unfixed tree, as designed: the operator path already works today because `createClientV2` forwards `socket_timeout` as a client-level option, so these cases are guards against a naive fix that sets the per-insert value unconditionally (per-insert settings override the client-level option), not red pins; plan 41-02 proves they discriminate by a recorded mutation. The four existing stub users (2, 7, 5 and 23 tests) pass. The red tree (the stub and the pin class) was saved with `git add -N`, `git diff` and `git reset -q`, the stub restored with `git checkout --` on that one file and the pin class removed by name, leaving `src` equal to HEAD; the patch names exactly those two paths and applies on HEAD. A first attempt of this run stopped at test compilation (the `ProxySinkTask.put` case lacked `throws Exception` because `StubClickHouseServer.stalling()` throws `IOException`); that was a compile error in the new test, fixed before any recorded red, and the red run above is the first that compiled.
+
+2026-11-02T08:59:54Z
+
+Verdict: pass
+
+### E-04: Red tree re-applied and re-confirmed; the pin/seam commit
+
+Backs: PIN-01 (the red tree from `41-red-pins.patch` is re-applied byte-identical and re-run with the same red set as E-03, then committed apart from the fix as the pin/seam commit with the stub's FORK-DELTA harness row).
+
+```sh
+shasum -a 256 .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git apply --check .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+git apply .planning/phases/41-bounded-insert-timeout/41-red-pins.patch
+bash /tmp/gsd41/exec/run-filtered.sh reconfirm '*InsertStallBoundPinUnitTest' '*ClientInsertWirePinUnitTest' '*ClientErrorShapePinUnitTest' '*ClientEndpointAndOptionsPinUnitTest' '*WriterHelperClientClosingUnitTest'
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-reconfirm --class InsertStallBoundPinUnitTest tests=15 failures=9
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-reconfirm --expect 'InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause' 'InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord'
+python3 -I /tmp/gsd41/exec/insert-harness-row.py
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java docs/FORK-DELTA.md
+git commit -F /tmp/gsd41/exec/msg-pin.txt
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main
+```
+
+```text
+patch_sha256_matches: yes
+patch_applied: yes
+reconfirm_run_exit: 1
+reconfirm_class_tests: 15
+reconfirm_class_failures: 9
+reconfirm_matches_e03: yes
+red_reason_timeout: yes
+harness_row_added: yes
+pin_commit: 0a8e1e53698fca30efcfcc3051c46d59894a3c65
+pin_commit_files: docs/FORK-DELTA.md; src/test/java/com/clickhouse/kafka/connect/sink/InsertStallBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+pin_commit_src_main_untouched: yes
+```
+
+The patch SHA-256 equals E-03's `10c738b2...e9ffc`, `git apply --check` and `git apply` succeeded on the branch tip. The re-run exited non-zero with the pin class at 15 tests and 9 failures; the failing set is E-03's two names and every failure is an `AssertionFailedError` containing `execution timed out after`, none above 30 s. The FORK-DELTA harness row for `StubClickHouseServer` sits directly after the "Hand-written test doubles" row (a one-line insertion). The pin/seam commit holds exactly the stub, the pin class and FORK-DELTA, and no `src/main` file; it is red by design until the fix commit and the two commits are one revert unit.
+
+2026-11-02T09:07:54Z
+
+Verdict: pass
+
+### E-05: Tracer: the per-insert timeout at the JSON site turns the JSON cases green
+
+Backs: TMO-01 (the thinnest fix that reaches every layer: `ClickHouseHelperClient.setInsertSocketTimeoutV2` with its operator skip, called at the JSON insert site only; the JSON cases pass while the String and RowBinary cases stay red by timeout).
+
+```sh
+python3 -I /tmp/gsd41/exec/edit-helper.py
+python3 -I /tmp/gsd41/exec/edit-writer.py json
+bash /tmp/gsd41/exec/spot.sh imports src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java writer
+bash /tmp/gsd41/exec/spot.sh imports src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java helper
+bash /tmp/gsd41/exec/run-filtered.sh intermediate '*InsertStallBoundPinUnitTest' '*NetworkCompressionPinUnitTest' '*ClientEndpointAndOptionsPinUnitTest'
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-intermediate --class InsertStallBoundPinUnitTest tests=15 failures=6
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-intermediate --expect 'InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause' 'InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord'
+git diff -- src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java | grep -E '^[-+]import '
+```
+
+```text
+intermediate_run_exit: 1
+intermediate_class_tests: 15
+intermediate_class_failures: 6
+intermediate_failed_set: InsertStallBoundPinUnitTest#stalledV2InsertEndsWithinTheBoundWithARetriableRootCause; InsertStallBoundPinUnitTest#stalledV2InsertThroughPutIsRetriableWithNoDlqRecord
+json_cases_failing: 0
+red_reason_timeout: yes
+parser_guards_green: yes
+helper_import_lines: +import com.clickhouse.client.api.ClientConfigProperties; and +import java.time.temporal.ChronoUnit;
+writer_call_lines: 1
+spotless_helper_diff_import_only: yes
+spotless_writer_diff_import_only: yes
+```
+
+The run exited non-zero with the pin class at 15 tests and 6 failures: the String and RowBinary cases of the two stall pins (writer-level 2, `ProxySinkTask.put` under `none` and `all` 4), every one an `AssertionFailedError` containing `execution timed out after`, none above 30 s. No failing testcase name contains `route=JSON`, so the writer-level JSON case and the JSON `put` cases under both tolerances pass, and the 6 operator guards pass. `NetworkCompressionPinUnitTest` (9 tests) and `ClientEndpointAndOptionsPinUnitTest` (5 tests), the two parser guards, pass with 0 failures. The helper's import lines changed by exactly the two planned additions, the writer's import lines did not change, and the live scoped hook reports both files import-only dirty as at phase start. The helper and writer edits stay uncommitted for the fix commit.
+
+2026-11-02T09:07:54Z
+
+Verdict: pass
+
+### E-06: The fix commit: per-insert timeout at three V2 sites, 26 new cases and the guards green, the progress-header probe, FORK-DELTA and anchors
+
+Backs: TMO-01 (the helper call at all three V2 insert sites, the operator skip, the 11 helper cases), TMO-02 (the six `ProxySinkTask.put` cases retriable with no DLQ record under both tolerances) and TMO-03 (Known cost 14 with the client V2 scope, the open limits and the progress-header outcome, in the fix commit).
+
+```sh
+python3 -I /tmp/gsd41/exec/edit-writer.py rest
+bash /tmp/gsd41/exec/spot.sh clean src/test/java/com/clickhouse/kafka/connect/sink/db/helper/InsertSocketTimeoutOptionUnitTest.java option
+bash /tmp/gsd41/exec/run-filtered.sh green '*InsertStallBoundPinUnitTest' '*InsertSocketTimeoutOptionUnitTest' '*SourcePlanningIdGuardUnitTest' '*ProxySinkTaskConstructorUnitTest' '*ConnectApiReferencesUnitTest' '*NetworkCompressionPinUnitTest' '*ClientEndpointAndOptionsPinUnitTest' '*ClientInsertWirePinUnitTest' '*ClientErrorShapePinUnitTest' '*ClientTimeoutPrefixPinUnitTest' '*ClickHouseHelperClientForkUnitTest' '*WriterHelperClientClosingUnitTest' '*WrappedDataExceptionClassificationPinUnitTest' '*AsyncInsertSettingsUnitTest'
+docker run -d --rm --name gsd41-progress-probe -p 127.0.0.1:18124:8123 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:latest
+curl -sS --data-binary 'CREATE TABLE p41_progress (id UInt32, d UInt8 DEFAULT sleepEachRow(0.002)) ENGINE = Memory' http://127.0.0.1:18124/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --offline -I /tmp/gsd41/exec/progress-cp.gradle printTestCp -PjavaVersion=21
+javac -cp <build/classes/java/main + test runtime classpath> -d /tmp/gsd41/exec/progress-out /tmp/gsd41/exec/progress-src/ProgressProbe.java
+java -cp <same> ProgressProbe
+curl -sS 'http://127.0.0.1:18124/?query=SELECT%20count()%20FROM%20p41_progress'
+python3 -I /tmp/gsd41/exec/progress-stamp.py /tmp/gsd41/exec/progress-rows.jsonl 'http://127.0.0.1:18124/?query=INSERT%20INTO%20p41_progress%20FORMAT%20JSONEachRow&send_progress_in_http_headers=1&wait_end_of_query=1&max_insert_block_size=100&min_insert_block_size_rows=0&min_insert_block_size_bytes=0'
+python3 -I /tmp/gsd41/exec/progress-raw.py /tmp/gsd41/exec/progress-rows.jsonl '<same query string, with and without wait_end_of_query=1>'
+java -cp <same> ProgressProbeQuery
+docker rm -f gsd41-progress-probe
+python3 -I /tmp/gsd41/exec/edit-forkdelta.py
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 184
+git add <writer> <helper> <option test> docs/FORK-DELTA.md .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd41/exec/msg-fix.txt
+```
+
+```text
+green_run_exit: 0
+bound_class_tests: 15
+option_class_tests: 11
+green_failures: 0
+guards_failed: none
+tmo02_retriable_both: yes
+progress_probe_ran: yes
+progress_probe_label: inferred
+progress_probe_outcome: unmeasured
+progress_headers_on_wire: no streaming for the body insert; 1 header at 4.114s, the end of the insert (raw socket); an INSERT ... SELECT streamed one about every 0.2s
+progress_probe_short_ms: 3000
+progress_probe_short_result: FAIL at 3030 ms, DataTransferException > SocketTimeoutException
+progress_probe_long_ms: 8000
+progress_probe_long_result: OK at 4110 ms, written_rows=2000
+progress_probe_rows_committed: 4000
+progress_probe_clickhouse_version: 26.10.3.7
+progress_probe_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+progress_probe_container_removed: yes
+progress_query_path_1000ms_result: OK at 2056 ms (not bounded; headers streamed)
+progress_query_path_8000ms_result: OK at 2020 ms
+spotless_helper_diff_import_only: yes
+spotless_writer_diff_import_only: yes
+spotless_option_test: IS CLEAN
+helper_import_lines: +import com.clickhouse.client.api.ClientConfigProperties; and +import java.time.temporal.ChronoUnit;
+writer_numstat: 3 0
+anchor_counts: writer setInsertSocketTimeoutV2 call 3; helper settings.setNetworkTimeout( 1; helper operatorSetSocketTimeout 3; helper clientBuilder.setSocketTimeout( 0
+anchors_mirror: rows=184 bad=0
+fork_delta_tmo_row: added
+fork_delta_known_cost_14: rewritten
+upstream_main_ref: 9bed6f7970670a55c66be8efda246889e1f95bd0
+upstream_main_network_timeout_count: 0
+fix_commit: 14952562ed2cdbc8307a65357a136d2d63b69c62
+fix_commit_files: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/InsertSocketTimeoutOptionUnitTest.java
+fix_commit_parent_src_main_equals_start: yes
+revert_pair_restores_start: yes
+revert_unit: pin commit plus fix commit, reverted together newest first (git revert <fix> <pin>); the pins are red without the fix and no gate runs on that intermediate; the commits are not folded
+src_main_files_vs_phase_start: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+sink_config_unchanged: yes
+cfg02_anchor_count: 1
+async_lines_added: 0
+log_lines_added: 0
+```
+
+The green run exited 0: `InsertStallBoundPinUnitTest` 15 tests and `InsertSocketTimeoutOptionUnitTest` 11 tests with 0 failures, and every guard class passed (`SourcePlanningIdGuardUnitTest` 18, `ProxySinkTaskConstructorUnitTest` 4, `ConnectApiReferencesUnitTest` 3, `NetworkCompressionPinUnitTest` 9, `ClientEndpointAndOptionsPinUnitTest` 5, `ClientInsertWirePinUnitTest` 2, `ClientErrorShapePinUnitTest` 7, `ClientTimeoutPrefixPinUnitTest` 2, `ClickHouseHelperClientForkUnitTest` 51, `WriterHelperClientClosingUnitTest` 23, `WrappedDataExceptionClassificationPinUnitTest` 14, `AsyncInsertSettingsUnitTest` 3). All six `ProxySinkTask.put` cases ended in a `RetriableException` with no DLQ record on JSON, String and RowBinary under `errors.tolerance` none and all (0.3 to 0.9 s each), and each stalled writer-level insert ended in about 0.3 s (the 300 ms insert timeout).
+
+Progress-header probe (research A5), measured on the fixed tree against ClickHouse 26.10.3.7 (digest above, re-read after the probe), client 0.11.0:
+
+```text
+RESULT per_insert_ms=3000 elapsed_ms=3030 FAIL com.clickhouse.client.api.DataTransferException > java.net.SocketTimeoutException
+RESULT per_insert_ms=8000 elapsed_ms=4110 OK written_rows=2000
+rows committed after both runs: 4000
+RESULT query_timeout_ms=1000 elapsed_ms=2056 OK        (extra datum: INSERT ... SELECT through the query path)
+RESULT query_timeout_ms=8000 elapsed_ms=2020 OK
+wire, curl -D: STATUS 4.124s; PROGRESS_HEADERS count=1 first=4.125s last=4.125s
+wire, raw socket, body insert, with and without wait_end_of_query=1 and with http_headers_progress_interval_ms=100: 1 progress header, at 4.06 to 4.11 s (the end)
+wire, raw socket, INSERT INTO p41_progress (id) SELECT number FROM numbers(2000): progress headers at 0.207, 0.408, 0.610, 0.813, 1.012, 1.214, 1.414, 1.615 s ... (about every 0.2 s)
+```
+
+The per-insert timeout through `setInsertSocketTimeoutV2` ended the 3000 ms insert at 3030 ms with a `SocketTimeoutException` root, the 8000 ms control succeeded at 4110 ms, and the count of 4000 rows after both runs shows the timed-out insert was still committed by the server, as in Probe 8. The plan's rule for `bounded` also needs progress headers about every 0.2 s on the wire; they were not there: a connector-shaped insert (rows in the request body) sent no progress header while the server worked, only one at the end, with and without `wait_end_of_query`, so this run did not exercise a header-streaming insert and the outcome is recorded `unmeasured` with label `inferred`, not adjusted. This differs from the planning-time note (headers every 0.2 s on a 2000-row body insert); the 0.2 s cadence reproduces only for an `INSERT ... SELECT`, and for that shape the extra datum shows the opposite of the planning-time note: a 1000 ms `socket_timeout` did not end the request (it finished at 2056 ms), so streamed progress headers do reset the client's read timer. The consequence recorded in Known cost 14: a connector body insert is bounded on 26.10.3.7, and an insert shape or server version that streams progress headers during a body insert would escape the bound (inferred). The scratch container was removed (`docker ps -a` lists none, port 18124 is free).
+
+2026-11-02T09:13:43Z
+
+Verdict: pass
+
+### E-07: The operator guards discriminate: the unconditional per-insert set fails exactly the operator cases
+
+Backs: TMO-01 (an operator `socket_timeout` still wins, pinned by a test that is shown to fail against the naive unconditional per-insert set).
+
+```sh
+python3 -I - # replace "settings == null || operatorSetSocketTimeout" by "settings == null" in ClickHouseHelperClient.java (asserted to occur once)
+bash /tmp/gsd41/exec/run-filtered.sh mutation '*InsertStallBoundPinUnitTest' '*InsertSocketTimeoutOptionUnitTest'
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-mutation --class InsertStallBoundPinUnitTest tests=15 failures=6
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-mutation --class InsertSocketTimeoutOptionUnitTest tests=11 failures=4
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py failed /tmp/gsd41/exec/xml-mutation --expect 'InsertStallBoundPinUnitTest#operatorSocketTimeoutLongerThanTheInsertTimeoutStillApplies' 'InsertStallBoundPinUnitTest#operatorSocketTimeoutShorterThanTheInsertTimeoutStillApplies' 'InsertSocketTimeoutOptionUnitTest#insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne'
+git checkout -- src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+git diff --quiet HEAD -- src
+```
+
+```text
+mutation_applied: yes
+mutation_run_exit: 1
+mutation_bound_tests: 15
+mutation_bound_failures: 6
+mutation_option_tests: 11
+mutation_option_failures: 4
+mutation_failed_set: InsertSocketTimeoutOptionUnitTest#insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne; InsertStallBoundPinUnitTest#operatorSocketTimeoutLongerThanTheInsertTimeoutStillApplies; InsertStallBoundPinUnitTest#operatorSocketTimeoutShorterThanTheInsertTimeoutStillApplies
+mutation_reason_assertion: yes
+restored: yes
+discriminating: yes
+```
+
+The operator guards were green on the unfixed tree by design (E-03) and fail here, so they would catch a fix that overrides the operator. With the operator skip removed (the naive unconditional per-insert set), the pin class ran 15 tests with 6 failures (the longer-value guard and the shorter-value guard on JSON, String and RowBinary) and the helper class ran 11 tests with 4 failures (the four `insertCarriesNoSocketTimeoutWhenTheOperatorNamedOne` rows); all 10 failures are `org.opentest4j.AssertionFailedError`. The 9 stall pins stay green, and so do the four other helper methods, including the null-or-blank case, which expects the per-insert value either way. The helper was restored with `git checkout -- <file>` (the guard expression counts 1 again and `git diff --quiet HEAD -- src` exits 0).
+
+2026-11-02T09:14:48Z
+
+Verdict: pass
+
+### E-08: Gate on the fix commit: testUnit with Docker unreachable and the full suite on latest x V2
+
+Backs: TMO-01 and TMO-02 (the cache-busted `testUnit` with Docker unreachable and the full suite on ClickHouse `latest` x client V2 run on a head whose non-planning tree equals the fix commit; totals compared live with E-01's measured baseline plus the 26 cases the phase added).
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git rev-parse HEAD
+git diff --quiet 14952562ed2cdbc8307a65357a136d2d63b69c62 HEAD -- . ':!.planning'
+./gradlew --stop
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit -PjavaVersion=21 --rerun > /tmp/gsd41/exec/gate-testunit.log 2>&1
+cp -R build/test-results/testUnit /tmp/gsd41/exec/xml-gate-testunit
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+rm -rf build/test-results/test
+./gradlew --stop
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test -PjavaVersion=21 --rerun > /tmp/gsd41/exec/gate-full.log 2>&1
+cp -R build/test-results/test /tmp/gsd41/exec/xml-gate-full
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-testunit tests=1745 failures=0 errors=0 skipped=2
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-full tests=2343 failures=0 errors=0 skipped=18
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py skips /tmp/gsd41/exec/xml-gate-full
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-full --class InsertStallBoundPinUnitTest tests=15 failures=0 errors=0
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py junit /tmp/gsd41/exec/xml-gate-full --class InsertSocketTimeoutOptionUnitTest tests=11 failures=0 errors=0
+```
+
+```text
+origin_reread: equal
+gate_head: 8ba2c6f1a6276101f4f870fa3f3f514392bfd985
+gated_tree_equals_fix_commit: yes
+jvm_line: -PjavaVersion=21; openjdk version 21.0.12.1 2026-08-18 (Homebrew build 21.0.12.1); no OpenJ9 launcher
+testunit_exit: 0
+testunit_tests: 1745
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_delta_vs_baseline: 26
+full_exit: 0
+full_tests: 2343
+full_failures: 0
+full_errors: 0
+full_skipped: 18
+full_skips_helper: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+full_delta_vs_baseline: 26
+new_classes: InsertStallBoundPinUnitTest 15/0; InsertSocketTimeoutOptionUnitTest 11/0
+new_classes_green: yes
+clickhouse_version_before: 26.10.3.7
+clickhouse_version_after: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_crash: none
+```
+
+The gated head descends from the fix commit `14952562` and differs from it only under `.planning`, so every non-planning file is the fix commit's. The `testUnit` run with Docker unreachable (colima profile `vz` untouched, the daemon socket pointed at a missing path) was cache-busted by deleting the results directory and passing `--rerun`; it ran 1745 tests, exactly the measured baseline of 1719 plus the 26 new cases (15 stall-pin cases and 11 helper cases), with 0 failures, 0 errors and the 2 baseline skips. The full suite on ClickHouse `latest` x client V2 ran 2343 tests, the measured full baseline of 2317 plus 26, with 0 failures, 0 errors and exactly the 18 named skips (the helper reports 7 named skips and 11 state-mismatch cases, none unexpected). Both new classes read 15/0 and 11/0 in both runs. `SELECT version()` read 26.10.3.7 before the `testUnit` run and after the full suite and the image digest is unchanged from E-01, so no image drift. Every Gradle run used HotSpot 21 (`-PjavaVersion=21`), so the OpenJ9 crash did not apply; no `hs_err_pid*`, `javacore.*`, `core.*` or `Snap.*` file appeared in the repository root. Origin `custom_build` still reads the tip recorded in E-01. Nothing was pushed.
+
+2026-11-02T09:21:02Z
+
+Verdict: pass
+
+### E-09: The F-2 rollout item for Phase 44, each claim labelled with its evidence
+
+Backs: TMO-03 (the F-2 rollout item recorded with its evidence for Phase 44's gg7 note: the client V2 scope first, then the retriable failure after `clickhouseClientInsertTimeoutMs`, the behaviour change for a quiet slow insert, the progress-header outcome as E-06 recorded it, the duplicate risk with `exactlyOnce=false`, the `socket_timeout` override and the unbounded cases).
+
+```sh
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md CHANGELOG.md VERSION
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py get .planning/phases/41-bounded-insert-timeout/41-COMMAND-EVIDENCE.md E-06 progress_probe_outcome
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py get .planning/phases/41-bounded-insert-timeout/41-COMMAND-EVIDENCE.md E-06 progress_probe_label
+```
+
+```text
+rollout_claims: 13
+rollout_labels: measured; read from the code; derived; inferred
+scope_first: yes
+progress_claim_outcome: unmeasured
+progress_claim_label: inferred
+retriable_failure_stated: yes
+behaviour_change_stated: yes
+duplicate_risk_stated: yes
+override_stated: yes
+unbounded_cases_stated: yes
+default_v1_stated: yes
+published_notes_untouched: yes
+published_statement_correction_owner: Phase 44 (the gg7 note corrects the published gg6 sentence that the four-minute insert timeout has no effect while async=false; the published text is not edited)
+```
+
+The 13 claims below are in the order Phase 44's note states them, the client V2 scope first. Each carries one of the labels RLS-03 allows, except the progress-header row: E-06 recorded its outcome as `unmeasured` with the label `inferred` (a connector body insert sent one progress header, at its end, so the header-streaming case was not exercised; the streaming case reproduced only for `INSERT ... SELECT`, where a 1000 ms `socket_timeout` did not end the request), so the row carries `inferred` exactly as E-06 wrote it and Phase 44 states it as `derived (mechanism, not measured)` or measures it first. The not-measured server half of exactly-once deduplication is labelled `derived`/`read from the code`, not `measured`. Nothing published was edited: `docs/ROLLOUT-v1.7.0_gg6.md`, `docs/ROLLOUT-v1.7.0_gg1.md`, `CHANGELOG.md` and `VERSION` are byte-identical to phase start, so the published gg6 sentence that the four-minute insert timeout has no effect while `async=false` stays as history and its correction is Phase 44's.
+
+| Claim | Label | Evidence |
+|-------|-------|----------|
+| Scope: client V2 only. A connector that does not set `client_version` runs client V1 (the default is `V1`): nothing in this change applies to it, and the client V1 library's own default `socket_timeout` of 30000 ms stays its only read bound. | read from the code | `ClickHouseSinkConfig` reads `client_version` with default `V1`; `ClickHouseWriter.startInternal` selects client V2 only for other values. The 30 s bound is measured: `41-RESEARCH.md` Probes 4 (V1) and 5. |
+| On client V2 with `async=false`, an insert into a server that stops answering now fails after `clickhouseClientInsertTimeoutMs` (default 4 minutes) with a retriable error (`RetriableException` out of `put`); before, it blocked the task forever. | measured | E-03 (red on the unfixed tree), E-06 and E-08 (green); `41-RESEARCH.md` Probe 4. |
+| The failure is retriable under `errors.tolerance=none` and `all`; the task is not failed and no DLQ record is written. | measured | E-06 and E-08 (`stalledV2InsertThroughPutIsRetriableWithNoDlqRecord`, six cases). |
+| One request per stalled insert (no client-side retry), and the option is not sent to the server. | measured | E-06 (one POST at the stub, request URI without `socket_timeout`). |
+| A quiet insert (the server sends nothing while it works) that legitimately runs longer than `clickhouseClientInsertTimeoutMs` now fails and is redelivered, and the server may still commit it. | measured | `41-RESEARCH.md` Probe 8 on ClickHouse 26.10.3.7 (failed at 1003 ms, the row landed); E-06 repeated it (3000 ms value failed at 3030 ms, 4000 rows committed). |
+| An insert during which the server keeps sending progress headers (`send_progress_in_http_headers=1` is a default client setting): on ClickHouse 26.10.3.7 a connector-shaped insert (rows in the request body) sent no progress header while the server worked and one at its end, so the per-insert timeout bounded it (a 3000 ms value failed at 3030 ms, an 8000 ms control succeeded at 4110 ms, and the timed-out rows were committed); a request that does stream progress headers (`INSERT ... SELECT` through the query path, one about every 0.2 s) was not ended by a 1000 ms `socket_timeout` and finished at 2056 ms, so a server version or an insert shape that streams progress headers during a body insert would reset the timer and escape the bound. Whether progress headers extend the bound was not measured on a connector insert in this phase. | inferred | E-06 `progress_probe_outcome: unmeasured`, `progress_probe_label: inferred`, with its RESULT lines and header timings; the planning-time scratch run in `41-02-PLAN.md` "Verification" saw headers on a body insert and E-06 did not. Phase 44 carries it as `derived (mechanism, not measured)` or measures it. |
+| With `exactlyOnce=false` that redelivery inserts the batch again, a duplicate. | derived | Probe 8 (the timed-out insert still commits) plus the redelivery path read from the code (`put` raises a `RetriableException`, Kafka Connect redelivers, no deduplication token without `exactlyOnce`). |
+| With `exactlyOnce=true` the retry reuses the `insert_deduplication_token`; whether the server drops the repeat depends on the target table's deduplication settings, which this phase did not measure. | read from the code | the token is set in each V2 insert method of `ClickHouseWriter`; the server half is derived (assumption A3 of `41-RESEARCH.md`, not probed). |
+| An operator `socket_timeout` in `jdbcConnectionProperties` keeps its value: it bounds every request, inserts included, and the per-insert value is not set; an explicit `socket_timeout=0` keeps inserts unbounded. | measured | E-06 (the two operator guards in `InsertStallBoundPinUnitTest` and the helper cases in `InsertSocketTimeoutOptionUnitTest`), E-07 (the guards fail against the unconditional per-insert set). |
+| Remedies for a legitimately slow insert: raise `clickhouseClientInsertTimeoutMs` (minimum 100) or set `socket_timeout` in `jdbcConnectionProperties`. | read from the code | `ConfigDef.Range.atLeast(100)` on the option in `ClickHouseSinkConfig`; the helper's skip when the operator names `socket_timeout`. |
+| A write-side stall (the peer stops reading the request body) is not bounded. | measured | `41-RESEARCH.md` Probe 6 (64 MiB body, still blocked after 15 s with a 500 ms per-insert value). |
+| Client V1 inserts have no connector timeout (three `future.get()` sites); the client V1 library's own default `socket_timeout` of 30000 ms ended a read-side stall after about 30.1 s; a write-side stall on client V1 was not measured. | measured | `41-RESEARCH.md` Probes 4 (V1, 30140 ms) and 5 (library default 30000). |
+| Requests other than client V2 inserts (`DESCRIBE`, the version query, the table refresh, the `KeeperStateProvider` state queries) stay unbounded unless the operator sets `socket_timeout`; ping has its own timeout; before this change an operator could already bound a stalled insert the same way. | read from the code | one client per helper, the per-insert option set only on the inserts; the last half is measured: `41-RESEARCH.md` Probes D3 and D4 (jdbc `socket_timeout=400` ended a stall at 407 ms and 403 ms). |
+
+2026-11-02T09:21:50Z
+
+Verdict: pass
+
+### E-10: Phase gate: cumulative merge-invariant script, anchors, src/main file list, config and published notes, origin
+
+Backs: PIN-01, TMO-01, TMO-02 and TMO-03 (ROADMAP Phase 41 phase gate: the anchors invariant across every commit of the phase, `src/main` changed only where the phase declared, the sink configuration and the CFG-02 line untouched, no asynchronous insert line added, the published notes untouched and nothing pushed).
+
+```sh
+git rev-parse HEAD
+date -u +%Y-%m-%dT%H:%M:%SZ
+bash .planning/scripts/verify-merge-invariants.sh 54e63648 c03171b0f6a81993f06671b0bfcc56065f9ee0d6 > /tmp/gsd41/exec/invariants-41.log 2>&1
+python3 -I .planning/phases/41-bounded-insert-timeout/41-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 184
+git diff --name-only 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+grep -cF -e '//this.addClickHouseSetting("async_insert", "0", false);' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+git diff 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- src/main | grep -E '^[+]' | grep -E 'async_insert|useAsyncRequests|ASYNC_OPERATIONS'
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- VERSION CHANGELOG.md
+git diff --quiet 69d5da3aa0d2f443294b26b954bc78c84643fe17 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md
+git ls-remote origin refs/heads/custom_build
+```
+
+```text
+invariants_head: c03171b0f6a81993f06671b0bfcc56065f9ee0d6
+invariants_start_utc: 2026-11-02T09:22:03Z
+invariants_end_utc: 2026-11-02T10:02:23Z
+invariants_line: invariants: provenance_paths=21 anchor_commits=1387 anchor_rows=184 marker_commits=1453 anchor_exempt=19 result=PASS
+invariants_exit: 0
+invariants_scope: the script evaluates the anchor inventory at every commit of the range 54e63648..head, so one run on the final SHA covers the pin commit and the fix commit, each of which already passed the anchors mirror (rows=180 before, rows=184 after the fix); run once and alone because it takes about 40 minutes and a Gradle run beside it adds swap pressure
+anchors_mirror: rows=184 bad=0
+src_main_files_vs_phase_start: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+sink_config_unchanged: yes
+cfg02_anchor_count: 1
+async_lines_added: 0
+version_changelog_untouched: yes
+published_notes_untouched: yes
+origin_custom_build_at_gate: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+pushes: none
+post_review_recheck: after the orchestrator's code review and any review fix, re-run the anchors mirror at rows=184 and the classes the fix touches; re-run the invariant script only if a fix changes an anchored line or fork-anchors.txt
+```
+
+The invariant head is the E-09 commit; it descends from the fix commit and its non-planning tree equals the fix commit's, so the script judged the same production tree that E-08 gated. The script ended `result=PASS` with exit 0. The anchors mirror reads 184 rows with none bad (the four TMO-01 rows added by the fix commit included). Against phase start `src/main` differs in exactly the writer and the helper client; `ClickHouseSinkConfig.java` is byte-identical, the CFG-02 commented line counts 1, and no added `src/main` line names the server-side asynchronous insert setting or the client's asynchronous mode. `VERSION`, `CHANGELOG.md` and the published gg6 and gg1 rollout notes are unchanged from phase start. Origin `custom_build` still reads the tip recorded in E-01 and nothing was pushed; no commit was made while the script ran.
+
+2026-11-02T10:02:39Z
+
+Verdict: pass

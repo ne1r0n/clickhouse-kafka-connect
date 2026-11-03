@@ -1,7 +1,16 @@
 package com.clickhouse.kafka.connect.sink.helper;
 
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.stream.StreamSupport;
 import okhttp3.*;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Assertions;
 import org.slf4j.Logger;
@@ -15,17 +24,6 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.pollinterval.FixedPollInterval;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-
-import org.json.JSONArray;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
-import java.util.stream.StreamSupport;
 
 
 public class ConfluentPlatform {
@@ -75,6 +73,14 @@ public class ConfluentPlatform {
     private static int KSQL_INTERNAL_PORT = 8088;
     private static final long CONNECTOR_RUNNING_TIMEOUT_MINS = 5L;
     private static final long CONNECTOR_STATUS_POLL_INTERVAL_SECONDS = 5L;
+    private static final Pattern DATAGEN_FINISHED_MARKER = Pattern.compile("Stopping connector: generated the configured");
+    private static final String DATAGEN_CONNECTOR_PREFIX = "DatagenConnector_";
+    private static final int DATAGEN_TASKS_PER_PARTITION = 10;
+    private static final long DATAGEN_POLL_INTERVAL_MS = 2_000L;
+    private static final int DATAGEN_MAX_POLLS = 120;
+    private static final int DATAGEN_PROGRESS_LOG_EVERY = 4;
+    private static final String TASK_TRACE_KEY = "trace";
+    private static final String TASK_STATE_FAILED = "FAILED";
     private String clusterId = null;
     private String controlCenterEndpoint = null;
     private String restProxyEndpoint = null;
@@ -414,24 +420,6 @@ public class ConfluentPlatform {
     }
 
 
-    public String getConnectors() {
-        String connectRestEndpoint = getConnectRestEndPoint();
-        OkHttpClient client = new OkHttpClient();
-        String connectorsEndpoint = String.format("%s/connectors?expand=status&expand=info", connectRestEndpoint);
-        Request request = new Request.Builder()
-                .url(connectorsEndpoint)
-                .get()
-                .build();
-        try (Response response = client.newCall(request).execute(); ResponseBody responseBody = response.body()) {
-            String responseBodyString = responseBody.string();
-            LOGGER.debug("Get connectors response code: {}", response.code());
-            LOGGER.debug("Get connectors response body: {}", responseBodyString);
-            return responseBodyString;
-        } catch (IOException ioe) {
-            return "";
-        }
-    }
-
     public void restartConnector(String connectorName) throws InterruptedException, IOException {
         LOGGER.info("Restarting connector: " + connectorName);
         String connectRestEndpoint = getConnectRestEndPoint();
@@ -496,36 +484,96 @@ public class ConfluentPlatform {
     }
 
 
+    public static String newDatagenConnectorName(String topicName) {
+        return DATAGEN_CONNECTOR_PREFIX + topicName + UUID.randomUUID();
+    }
+
+    public static int datagenTaskCount(int numberOfPartitions) {
+        return numberOfPartitions * DATAGEN_TASKS_PER_PARTITION;
+    }
+
+    // No RUNNING wait: Datagen tasks can finish before they are ever seen RUNNING.
+    public void startDatagenConnector(String connectorName, String templateFileName, String topicName, int numberOfPartitions, int numberOfRecords) throws IOException {
+        String payloadDataGen = String.join("", Files.readAllLines(Paths.get(templateFileName)));
+        createConnector(connectorName, String.format(payloadDataGen, connectorName, connectorName, datagenTaskCount(numberOfPartitions), topicName, numberOfRecords));
+    }
+
+    /**
+     * Counts the tasks of one connector that report the Datagen completion marker, reading only that connector's own
+     * status endpoint (/connectors/{name}/status). A task counts once however often its trace repeats the marker.
+     */
+    public long countFinishedDatagenTasks(String connectorName) throws IOException {
+        long tasksWithMarker = 0;
+        for (Object task : getConnectorTasksStatus(connectorName)) {
+            JSONObject jsonTaskObj = (JSONObject) task;
+            if (jsonTaskObj.has(TASK_TRACE_KEY)
+                    && DATAGEN_FINISHED_MARKER.matcher(String.valueOf(jsonTaskObj.get(TASK_TRACE_KEY))).find()) {
+                tasksWithMarker++;
+            }
+        }
+        return tasksWithMarker;
+    }
+
+    public long awaitDatagenCompletion(String connectorName, int totalWorkers) throws IOException, InterruptedException {
+        long finished;
+        int polls = 0;
+        do {
+            Thread.sleep(DATAGEN_POLL_INTERVAL_MS);
+            if (polls % DATAGEN_PROGRESS_LOG_EVERY == 0) {
+                LOGGER.info("Generating...");
+            }
+            finished = countFinishedDatagenTasks(connectorName);
+            polls++;
+        } while (finished < totalWorkers && polls < DATAGEN_MAX_POLLS);
+
+        LOGGER.info("Datagen connector {}: {} of {} tasks finished, counted from its own status endpoint only", connectorName, finished, totalWorkers);
+        if (finished < totalWorkers) {
+            LOGGER.error("Data generation failed: {} of {} datagen tasks finished", finished, totalWorkers);
+            throw new RuntimeException("Data generation failed");
+        }
+        return finished;
+    }
+
+    // Waits on task state only, so it is independent of countFinishedDatagenTasks, which callers assert on.
+    public void awaitAllTasksFailed(String connectorName, int expectedTasks) {
+        Awaitility.await("datagen tasks finished")
+                .atMost(Duration.ofMinutes(CONNECTOR_RUNNING_TIMEOUT_MINS))
+                .pollDelay(Duration.ofSeconds(CONNECTOR_STATUS_POLL_INTERVAL_SECONDS))
+                .pollInterval(FixedPollInterval.fixed(CONNECTOR_STATUS_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS))
+                .ignoreExceptionsInstanceOf(IOException.class)
+                .until(() -> {
+                    JSONArray tasks = getConnectorTasksStatus(connectorName);
+                    if (tasks.length() != expectedTasks) {
+                        return false;
+                    }
+                    for (Object task : tasks) {
+                        String state = String.valueOf(((JSONObject) task).get(CONNECTORS_ENDPOINT_RESPONSE_TASKS_STATE_KEY));
+                        if (!TASK_STATE_FAILED.equals(state)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+    }
+
     public int generateData(String templateFileName, String topicName, int numberOfPartitions, int numberOfRecords) throws IOException, InterruptedException {
         LOGGER.info("Generating data...");
-        String connectorName = "DatagenConnector_" + topicName + UUID.randomUUID();
-        int totalWorkers = numberOfPartitions * 10;
+        String connectorName = newDatagenConnectorName(topicName);
+        int totalWorkers = datagenTaskCount(numberOfPartitions);
 
-        String payloadDataGen = String.join("", Files.readAllLines(Paths.get(templateFileName)));
         // Datagen tasks generate 100 records in about 5 s, the same as the first status poll of
         // createConnectorAndWaitUntilRunning, so a task can already be FAILED ("generated the configured")
         // before it is ever seen RUNNING. Wait for completion of this connector's own tasks instead, and
         // always delete the connector so a failure cannot leak finished tasks into the next test's count.
         try {
-            createConnector(connectorName, String.format(payloadDataGen, connectorName, connectorName, totalWorkers, topicName, numberOfRecords));
-            long finished = 0;
-            int loopCount = 0;
-            do {
-                Thread.sleep(2 * 1000);
-                if (loopCount % 4 == 0) {
-                    LOGGER.info("Generating...");
-                }
-                finished = Pattern.compile("Stopping connector: generated the configured")
-                        .matcher(getConnectorTasksStatus(connectorName).toString()).results().count();
-                loopCount++;
-            } while (finished != totalWorkers && loopCount < 120);
-
-            if (finished != totalWorkers) {
-                LOGGER.error("Data generation failed: {} of {} datagen tasks finished", finished, totalWorkers);
-                throw new RuntimeException("Data generation failed");
-            }
+            startDatagenConnector(connectorName, templateFileName, topicName, numberOfPartitions, numberOfRecords);
+            awaitDatagenCompletion(connectorName, totalWorkers);
         } finally {
-            deleteConnectors(connectorName);
+            try {
+                deleteConnectors(connectorName);
+            } catch (IOException e) {
+                LOGGER.warn("Could not delete Datagen connector {}", connectorName, e);
+            }
         }
         Thread.sleep(3 * 1000);//Wait for the connector to be deleted
         long offsetTotal = 0;
@@ -637,8 +685,8 @@ public class ConfluentPlatform {
         for (Object task : tasks) {
             JSONObject jsonTaskObj = (JSONObject) task;
             String state = String.valueOf(jsonTaskObj.get(CONNECTORS_ENDPOINT_RESPONSE_TASKS_STATE_KEY));
-            if ("FAILED".equalsIgnoreCase(state)) {
-                return Optional.of(jsonTaskObj.has("trace") ? String.valueOf(jsonTaskObj.get("trace")) : "No trace available");
+            if (TASK_STATE_FAILED.equalsIgnoreCase(state)) {
+                return Optional.of(jsonTaskObj.has(TASK_TRACE_KEY) ? String.valueOf(jsonTaskObj.get(TASK_TRACE_KEY)) : "No trace available");
             }
         }
 

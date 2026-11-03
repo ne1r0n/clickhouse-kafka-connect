@@ -1,4 +1,4 @@
-# Allow-list for compare-confluent-archives.py (PUB-11, ROLL-04, PT-13), plan 29-01.
+# Allow-list for .github/scripts/compare_confluent_archives.py (PUB-11, ROLL-04, PT-13), plan 29-01.
 # Archive A is v1.7.0_gg3 rebuilt from the tag v1.7.0_gg3; archive B is the archive built at the v1.7.0_gg4 tip.
 # Format: glob<TAB>reason. A star matches across slashes (fnmatch). Paths of the outer zip carry the prefix "outer/".
 # Every row must match at least one difference (an unused row fails as STALE-ROW), and no row is a catch-all.

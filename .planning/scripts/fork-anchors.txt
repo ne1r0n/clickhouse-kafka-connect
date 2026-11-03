@@ -38,7 +38,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg6	1	BLD-07
+VERSION	v1.7.0_gg7	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
 gradle/libs.versions.toml	slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }	1	BLD-08
 build.gradle.kts	implementation(libs.slf4j.reload4j)	1	BLD-08
@@ -186,6 +186,9 @@ src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	clickHouseSin
 # Phase 34 (v1.7.0_gg6): the DEFAULT_RETRIABLE_ERROR_CODES lookup that replaced the retriable-code switch (TAL-05) and the five-argument handleException signature (TAL-03).
 src/main/java/com/clickhouse/kafka/connect/util/Utils.java	DEFAULT_RETRIABLE_ERROR_CODES.contains(errorCode)	1	TAL-05
 src/main/java/com/clickhouse/kafka/connect/util/Utils.java	boolean retryOnSocketException, Set	1	TAL-03
+# Phase 42 (v1.7.0_gg7): Utils.handleException throws a RetriableException found anywhere in the cause chain as retriable, after the server-code rule and before the DataException rule (RSK-02); rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	for (Throwable t = e; t != null; t = t.getCause())	1	RSK-02
+src/main/java/com/clickhouse/kafka/connect/util/Utils.java	t instanceof RetriableException	1	RSK-02
 # Phase 35 (v1.7.0_gg6): buffered offsets are keyed by the consumer's original topic and partition (BUF-01, BUF-02, upstream #777); the three 0 rows pin that the transformed-topic accessor call stays gone from each file; rows land in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java	new TopicPartition(record.originalTopic(), record.originalKafkaPartition())	1	BUF-01
 src/main/java/com/clickhouse/kafka/connect/sink/ChunkFlusher.java	record.originalKafkaOffset() + 1	1	BUF-01
@@ -194,8 +197,29 @@ src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java	n
 src/main/java/com/clickhouse/kafka/connect/sink/AtLeastOnceBufferStrategy.java	record.topic()	0	BUF-02
 src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java	new TopicPartition(r.originalTopic(), r.originalKafkaPartition())	1	BUF-02
 src/main/java/com/clickhouse/kafka/connect/sink/ExactlyOnceBufferStrategy.java	r.topic()	0	BUF-02
+# Phase 42 (v1.7.0_gg7): Processing.doLogic reads the consumer's topic for the inserted-offset key (RSK-01); the exactly-once state key keeps the transformed topic; the 0 row pins that the transformed-topic read stays gone from Processing; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java	String originalTopic = record.getSinkRecord().originalTopic();	1	RSK-01
+src/main/java/com/clickhouse/kafka/connect/sink/processing/Processing.java	getSinkRecord().topic()	0	RSK-01
 # Phase 36 (v1.7.0_gg6): the V2 client is built with protocol://host:port only and with ignore_unknown_config_key set before the jdbcConnectionProperties loop (CLT-03); the 0 row pins that the path-carrying endpoint stays gone.
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(endpoint)	1	CLT-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	.addEndpoint(url)	0	CLT-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setOption(IGNORE_UNKNOWN_CONFIG_KEY, "true");	1	CLT-03
 .gitattributes	.github/workflows/integrationTests.yaml -text	1	ADV-01
+# Phase 40 (v1.7.0_gg7): the writer builds its helper clients through one factory and closes them on stop, on a failed start and per client V1 batch (CLS-01, CLS-02); the 0 row pins that the unclosed per-batch construction stays gone; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	createHelperClient(	3	CLS-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	closeHelperClient()	3	CLS-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	closeQuietly(chcTmp)	1	CLS-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	ClickHouseHelperClient chcTmp = new	0	CLS-02
+# Phase 40 (v1.7.0_gg7): StateProvider gets a default close, the Keeper provider closes only the client it built, and ProxySinkTask.stop closes the provider after the writer and the MBean (CLS-03); rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	ownedClient	4	CLS-03
+src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	public void close()	1	CLS-03
+src/main/java/com/clickhouse/kafka/connect/sink/state/StateProvider.java	default void close()	1	CLS-03
+src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	stateProvider.close()	1	CLS-03
+# Phase 41 (v1.7.0_gg7): client V2 inserts carry a per-insert socket_timeout from clickhouseClientInsertTimeoutMs unless the operator named socket_timeout (TMO-01); the 0 row pins that the client-level alternative stays out; rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());	3	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	settings.setNetworkTimeout(	1	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	operatorSetSocketTimeout	3	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setSocketTimeout(	0	TMO-01
+# Phase 42 (v1.7.0_gg7): ClickHouseSinkTask.start logs one WARN naming the additionalRetriableErrorCodes entries outside the built-in retriable set and 216 (RSK-03); rows land in the commit that changes the code.
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	warnOnUnvettedRetriableCodes(	2	RSK-03
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	unvetted.removeAll(Utils.DEFAULT_RETRIABLE_ERROR_CODES);	1	RSK-03

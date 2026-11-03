@@ -1,46 +1,46 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg6-maintenance
-milestone_name: Dependency Absorption, Upstream Tail & Advisory Debt
-current_phase: 38
+milestone: v1.7.0_gg7
+milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
+current_phase: 44
 current_phase_name: Release & Publication
-status: executing
-stopped_at: Phase 37 complete, ready to plan Phase 38
-last_updated: "2026-10-31T12:42:02.843Z"
-last_activity: 2026-10-31
-last_activity_desc: Phase 38 execution started
-state_head: 0d4763ee73d56fba499f3e8d7d3963400dcc4a51
+status: verifying
+stopped_at: Completed 44-05-PLAN.md (READY-FOR-USER-APPROVAL)
+last_updated: "2026-11-02T23:50:43.696Z"
+last_activity: 2026-11-02
+last_activity_desc: Phase 44 execution started
+state_head: 185d29687394f9fc82c56539454ff9bf7f7139dd
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 23
-  completed_plans: 18
-  percent: 78
+  total_plans: 22
+  completed_plans: 22
+  percent: 83
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-28 after starting milestone v1.7.0_gg6-maintenance)
+See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 38 — Release & Publication
+**Current focus:** Phase 44 — Release & Publication
 
 ## Current Position
 
-Phase: 38 (Release & Publication) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 38
-Last activity: 2026-10-31 — Phase 38 execution started
+Phase: 44 (Release & Publication) — EXECUTING
+Plan: 5 of 5
+Status: Phase complete — ready for verification
+Last activity: 2026-11-02 — Phase 44 execution started
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: `v1.7.0_gg5-ci`: 16; `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
+- Total plans completed: `v1.7.0_gg6-maintenance`: 23; `v1.7.0_gg5-ci`: 16; `v1.7.0_gg4-hardening`: 32; `v1.7.0_gg3-hardening`: 23 (+ quick 261020-vcr); `v1.7.0_gg2-hardening`: 29; `v1.7.0_gg1-sync`: 25; `v1.6.0_gg1-sync`: 24; `v1.2.9_gg4-tests`: 16
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -74,6 +74,12 @@ Progress: [████████░░] 78%
 | 35 | 3 | - | - |
 | 36 | 4 | - | - |
 | 37 | 5 | - | - |
+| 38 | 5 | - | - |
+| 39 | 4 | - | - |
+| 40 | 3 | - | - |
+| 41 | 3 | - | - |
+| 42 | 4 | - | - |
+| 43 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -222,6 +228,28 @@ Progress: [████████░░] 78%
 | Phase 34 P02 | 38 min | 3 tasks | 6 files |
 | Phase 34 P03 | 55 min | 3 tasks | 2 files |
 | Phase 35 P01 | 14 min | 3 tasks | 10 files |
+| Phase 39 P01 | 40 min | 3 tasks | 4 files |
+| Phase 39 P02 | 45 min | 2 tasks | 6 files |
+| Phase 39 P03 | 5 min | 2 tasks | 4 files |
+| Phase 39 P04 | 84 min | 3 tasks | 4 files |
+| Phase 40 P01 | 8 min | 3 tasks | 4 files |
+| Phase 40 P02 | 25 min | 3 tasks | 7 files |
+| Phase 40 P03 | 50 min | 3 tasks | 8 files |
+| Phase 41 P01 | 21 min | 2 tasks | 3 files |
+| Phase 41 P02 | 11 min | 3 tasks | 8 files |
+| Phase 41 P03 | 46 min | 2 tasks | 1 files |
+| Phase 42 P01 | 11 min | 3 tasks | 8 files |
+| Phase 42 P02 | 9 min | 3 tasks | 6 files |
+| Phase 42 P03 | 43 min | 3 tasks | 8 files |
+| Phase 42 P04 | 45 min | 2 tasks | 1 files |
+| Phase 43 P01 | 9 min | 3 tasks | 11 files |
+| Phase 43 P02 | 3 min | 2 tasks | 4 files |
+| Phase 43 P03 | 13 min | 2 tasks | 4 files |
+| Phase 44 P01 | 11 min | 3 tasks | 10 files |
+| Phase 44 P02 | 18 min | 3 tasks | 3 files |
+| Phase 44 P03 | 9 min | 3 tasks | 6 files |
+| Phase 44 P04 | 66 min | 3 tasks | 2 files |
+| Phase 44 P05 | 12 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -292,6 +320,52 @@ The BUF fix lands after the tail, which also edits `ChunkFlusher`. It lands befo
 - [Phase 35]: Buffered offsets are keyed by originalTopic()/originalKafkaPartition()/originalKafkaOffset() + 1 in ChunkFlusher and both buffer strategies; Processing.java, state keys and table routing untouched — Connect validates preCommit offsets against its assignment; fork-only until upstream resolves #777 (PR #786 closed unmerged)
 - [Phase 35]: The Phase 35 fix commit carries six paths by design (three main files, BLD-16 re-bless, anchors, FORK-DELTA) — BLD-16 goes red the instant the edit lands without the re-bless, and anchors may not precede or lag the code they pin
 
+**`v1.7.0_gg7` roadmap (2026-11-01):** six phases under `coarse` granularity:
+1. Dependabot absorption and behaviour pins (39);
+2. helper client closing, F-1 (40);
+3. bounded insert timeout, F-2 (41);
+4. isolated high-risk edits, RSK-01..04 (42);
+5. document fixes and Phase 37 dispositions (43);
+6. the release (44).
+
+The user decided these before the roadmap:
+- F-2 uses a per-insert `socket_timeout` on the V2 insert sites, and an operator's `socket_timeout` in `jdbcConnectionProperties` still wins.
+- F-1 covers all three sites: the writer's `chc`, the V1 `chcTmp`, and `KeeperStateProvider` through `StateProvider.close()`. The Keeper half is its own commit and gate.
+- OI-35-1, the `Utils` `RetriableException` pass-through and the FUT-05 start-up WARN are in scope, each in its own commit.
+
+Placement:
+- The research's Dependabot and pins phases are merged, because neither changes `src/main`. The bumps still land first.
+- PIN-01's red stall pin sits in Phase 41, so no gate between phases runs red.
+- The F-1 halves share Phase 40, because CLS-04 pins all three sites.
+- The documents phase stays separate, because DOC-02 edits `.github/` and may edit `src/main`, and the release phase can edit neither.
+- [Phase 39]: Phase 39-01: absorption mode pr-heads (origin custom_build 72e8ccff, PRs #21 and #22 open); gson 2.15.0 merged from PR #22 head as ac216401 with its FORK-DELTA row, gated green twice on testUnit and full suite plus cumulative invariants PASS
+- [Phase 39]: setup-gradle pinned to the peeled commit 8da46b53 of v6.4.1 (not the tag object 7296c772); no vulnerability claim written — The pin must be the commit GitHub Actions executes; the 6.4.1 security fix concerns dependency-submission, unused by any fork workflow
+- [Phase 39]: 39-03: PIN-02 expectations are literal rows from research F6 (14 cases through ProxySinkTask.put, conversion-time DataException a labelled control); PIN-03 is a client-version tripwire on custom_* forwarding, with the 0.9.6 branch taken from Phase 36 E-11 and not re-measured
+- [Phase 39]: 39-04: F-3 deliverable is the leftover-connector pin, the removal of getConnectors() and the IN-06 hygiene, not a change of the counting key (generateData already counted by connector name)
+- [Phase 39]: 39-04: the recorded integrationTest run is the ClickHouseSinkConnectorIntegrationTest class, since every executing caller of the changed helpers is in it
+- [Phase 39]: 39-04: ClickHouseSinkConnectorIntegrationTest.java keeps its pre-existing import order (waiver in E-08); ConfluentPlatform.java is formatter-clean with an unchanged import set
+- [Phase 40]: 40-01: red trees live only in 40-red-writer.patch and 40-red-keeper.patch (strict red-first); no src change committed; injected-client Keeper clause pinned by the K3 NPE tripwire plus plan 40-03 source identity
+- [Phase 40]: 40-02: gate A red on three ClickHouseWriterTest cases using a writer after a false start(); user chose to seed a table in runWithWriter (test-only commit fae1fcb1) and keep production closing chc on every failed start
+- [Phase 40]: 40-03: the writer-files untouched check is taken against fae1fcb1 (the test-only seed), not de3faf77; the invariants gate ran once on the E-10 commit and covers both code commits
+- [Phase 41]: Operator socket_timeout cases are guards against a naive fix, not red pins — They pass on the unfixed tree because createClientV2 already forwards socket_timeout as a client-level option; plan 41-02 proves they discriminate by a recorded mutation
+- [Phase 41]: Phase 41 plan 02: per-insert socket_timeout at all three V2 insert sites via setInsertSocketTimeoutV2, skipped when jdbcConnectionProperties names socket_timeout (0 included); progress-header probe recorded unmeasured/inferred (a connector body insert streams no progress header on 26.10.3.7)
+- [Phase 41]: 41-03: the progress-header claim in the F-2 rollout item carries label inferred / outcome unmeasured exactly as E-06 recorded it; Phase 44 states it as derived (mechanism, not measured) or measures it first
+- [Phase 41]: 41-03: the exactly-once half of the duplicate risk is labelled read from the code (token reuse) and derived (server deduplication), never measured
+- [Phase 42]: Processing.doLogic reads SinkRecord.originalTopic() at line 137 so the Direct path keys inserted offsets by the consumer topic; the exactly-once state key stays on the transformed topic
+- [Phase 42]: Many-to-one rename and partition-changing SMT are pinned as limit cases so Known cost 16 labels them measured
+- [Phase 42]: RSK-02 chain form: a RetriableException anywhere in the cause chain stays retriable in Utils.handleException (after the server-error rule, before the DataException rule); it overrides a non-retriable server code and a DataException holding one no longer fails the task under errors.tolerance=none — The user chose the chain form because Processing.doInsert wraps every writer failure, so a bare-only rule would never see the async insert timeout or the DDL-propagation timeout; the changed-row list was committed before the edit and the actual status delta equals it (38 added, none changed)
+- [Phase 42]: RSK-03: unvetted additionalRetriableErrorCodes are named in one start-up WARN (vetted set = Utils.DEFAULT_RETRIABLE_ERROR_CODES plus 216); the definition of transient is the connector judgment, FUT-05 stays open
+- [Phase 43]: 37-IN-04 landed on the user's recorded approval; 37-IN-05 limited to the gg4 and gg5 allow-lists (gg6 list belongs to published tag, row 37-IN-05(b) deferred)
+- [Phase 43]: 43-03: Phase 44 handoff: the gg7 rollout note states 'FUT-05 stays open' in its RSK-03 section, and the RLS-03 reviewer brief covers docs/ROLLOUT-v1.7.0_gg1.md, docs/ROLLOUT-v1.7.0_gg6.md and docs/FORK-DELTA.md as edited in Phase 43, with FUT-05 in the gg6 note deliberate (43-DISPOSITION-LEDGER.md, Handoff to Phase 44) — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
+- [Phase 43]: 43-03: no src/main row approved; 26-IN-02, 27-WR-01, 27-IN-01, 28-IN-01 and 28-IN-05(b) dispositioned with the fork maintainer as owner (user answers "Defer all four (Recommended)" and "Approve 37 IN-04, defer 28 IN-05(b) (Recommended)"); 37-IN-05 split so the gg6 allow-list stays identical to tag v1.7.0_gg6 — Recorded in 43-DISPOSITION-LEDGER.md and the 43-03 SUMMARY key-decisions.
+- [Phase 44]: Phase 44 plan 01: VERSION is bumped only through bump_version.py with its fork-anchors.txt row in one two-file commit; FORK-DELTA raw numbers are measured once on the release tip and written as tag-pair commands — The generated Version.java and the baseline picker were proven after a clean build; the 128-of-143 test-tree count in FORK-DELTA is left as written because no scope re-derives it and none moves between gg6 and the tip
+- [Phase 44]: 44-02: row T7 says the duplicate with exactlyOnce=false but not that no deduplication token is sent without exactlyOnce; the code sends the same token on each attempt on the default path
+- [Phase 44]: 44-02: the gg6 rollback step 3 points at the published asset, since a local rebuild of the tag differs from it in six connector classes
+- [Phase 44]: 44-02: the note carries no gradlew.bat sentence (git status empty after the rollback block, git 2.50.1); the forward path uses plain git switch and revert
+- [Phase 44]: 44-02: 44-note-check.py --only ignores rows of the other sections so the partial-note verify blocks pass on the finished note
+- [Phase 44]: Plan 44-05: the CHANGELOG heading date 2026-11-02 was not edited; the bundle (question 5) and the runbook (C-7) put keep versus date-fix to the user, recommending keep as the freeze date
+- [Phase 44]: Plan 44-05: the publication tail evidence numbers start at E-21 because E-20 is the plan 44-04 hygiene re-run; RLS-04 stays pending until E-21 to E-29 show the publication
+
 ### Pending Todos
 
 None.
@@ -323,6 +397,9 @@ None.
 - [Roadmap] 2026-10-28: Dependabot PRs #10 and #16–#20 are open on `origin`, and PR #4 is gone (superseded by #17). This replaces the PR lists in the older `[Publish]` and `[Dependabot]` lines above. Phase 33 absorbs #16, #18, #19 and #20 from their PR heads on the scratch branch, Phase 36 absorbs #17, and #10 is declined. Ask the user not to merge any of them on `origin` until publication, because a merge there diverges the scratch branch again.
 - [Roadmap] 2026-10-28: BUF-03 (Phase 35). `Processing.doLogic` keys exactly-once state by the transformed topic. A fix that changes the state key would orphan the KeeperMap state of existing exactly-once deployments, so it stops for a user decision before it lands. The operator's production connectors run `exactlyOnce=false`.
 - [Roadmap] 2026-10-28: Pushes. CLT-07's manual nightly dispatch (Phase 36) needs the scratch branch on `origin`, and so does any Phase 37 dry run of the archive-compare step. Each push publishes the local `.planning` tail one way and runs `tests.yaml` once, so it needs the user's direct approval and a SHA that no other pushed branch holds.
+- [Roadmap] 2026-11-01: Dependabot PRs #21 (`setup-gradle` 6.4.1) and #22 (gson 2.15.0) are open on `origin`, and Phase 39 absorbs both on the scratch branch. Ask the user not to merge them on `origin` until publication. If they do, Phase 39 absorbs `origin/custom_build` by merge instead. Measured 2026-11-01: `origin/custom_build...sync/v1.7.0` counts 1 and 13, and the 1 is the gg6 merge `72e8ccff`.
+- [Roadmap] 2026-11-01: `config.json` has `mode: yolo`, `auto_advance: true` and `skip_discuss: true`. None of them passes a user-owned gate (ROADMAP.md → User-Owned Gates): pushes, out-of-scope `src/main` changes, DOC-02 `src/main` rows, the `--no-ff` merge, the publish run and a fourth review round. Each stays a blocking-human checkpoint that the user answers directly.
+- [Roadmap] 2026-11-01: upstream PRs #861, #855 and #857 touch the files that Phases 40–42 edit. Re-read them before planning Phase 40 and again before the Phase 44 gate. An upstream tag past `v1.7.0` would make the next sync FUT-01, which stops for the user.
 
 ### Quick Tasks Completed
 
@@ -347,13 +424,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T09:34:10.618Z
-Stopped at: Phase 37 complete, ready to plan Phase 38
+Last session: 2026-11-02T23:50:41.961Z
+Stopped at: Completed 44-05-PLAN.md (READY-FOR-USER-APPROVAL)
 Resume file: None
 
 ## Operator Next Steps
 
-- Discuss and plan Phase 33 with /gsd-discuss-phase 33, then /gsd-plan-phase 33
-- Do not merge Dependabot PRs on `origin` until `v1.7.0_gg6` is published. The milestone absorbs them from their PR heads on the scratch branch.
-- Phase 33 asks you to close PR #10 (protobuf-java 4.x), or to confirm that it may stay open until the `ignore` reaches `custom_build`
-- Phase 36's manual nightly dispatch, and any Phase 37 dry run, need you to approve a push of the scratch branch and to start the runs from GitHub's `Run workflow` control
+
+- Plan Phase 39 with `/gsd-plan-phase 39`. `skip_discuss` is on, so planning reads the phase's research flags in ROADMAP.md directly.

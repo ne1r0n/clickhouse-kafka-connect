@@ -57,6 +57,7 @@ public class ClickHouseWriter implements DBWriter {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseWriter.class);
 
     private static final long TIMEOUT_FOR_SHUTDOWN = 5; // seconds
+    private static final String HELPER_CLIENT_CLOSE_FAILURE_LOG = "Failed to close ClickHouse helper client";
     private ClickHouseHelperClient chc = null;
     private ClickHouseSinkConfig csc = null;
 
@@ -79,12 +80,26 @@ public class ClickHouseWriter implements DBWriter {
 
     @Override
     public boolean start(ClickHouseSinkConfig csc) {
+        // Every exit that does not start the writer, a thrown exception included, releases the client it opened,
+        // because a later stop() is not relied on.
+        boolean started = false;
+        try {
+            started = startInternal(csc);
+            return started;
+        } finally {
+            if (!started) {
+                closeHelperClient();
+            }
+        }
+    }
+
+    private boolean startInternal(ClickHouseSinkConfig csc) {
         LOGGER.trace("Starting ClickHouseWriter");
         this.csc = csc;
         String clientVersion = csc.getClientVersion();
         boolean useClientV2 = clientVersion.equals("V1") ? false : true;
 
-        chc = new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+        chc = createHelperClient(new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
                 .setDatabase(csc.getDatabase())
                 .setUsername(csc.getUsername())
                 .setPassword(csc.getPassword())
@@ -97,8 +112,7 @@ public class ClickHouseWriter implements DBWriter {
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
                 .setTargetTableFilter(csc.getTargetTableFilter())
-                .setCompressionMethod(csc.isSetCompressionMethod())
-                .build();
+                .setCompressionMethod(csc.isSetCompressionMethod()));
 
         if (!chc.ping()) {
             LOGGER.error("Unable to ping Clickhouse server.");
@@ -189,6 +203,29 @@ public class ClickHouseWriter implements DBWriter {
             } finally {
                 scheduledExecutor = null;
             }
+        }
+        // Closed after the executor's shutdown and bounded wait, so on the normal path no refresh runs on a closed client.
+        closeHelperClient();
+    }
+
+    protected ClickHouseHelperClient createHelperClient(ClickHouseHelperClient.ClickHouseClientBuilder builder) {
+        return builder.build();
+    }
+
+    private void closeHelperClient() {
+        ClickHouseHelperClient toClose = chc;
+        chc = null;
+        if (toClose == null) {
+            return;
+        }
+        closeQuietly(toClose);
+    }
+
+    private static void closeQuietly(ClickHouseHelperClient helperClient) {
+        try {
+            helperClient.close();
+        } catch (Exception e) {
+            LOGGER.warn(HELPER_CLIENT_CLOSE_FAILURE_LOG, e);
         }
     }
 
@@ -1300,6 +1337,7 @@ public class ClickHouseWriter implements DBWriter {
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
         chc.setReplicaTagHeaderV2(insertSettings);
+        chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());
 
         String deduplicationToken = queryId.getDeduplicationToken();
         if (deduplicationToken != null) {
@@ -1576,6 +1614,7 @@ public class ClickHouseWriter implements DBWriter {
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
         chc.setReplicaTagHeaderV2(insertSettings);
+        chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());
         String deduplicationToken = queryId.getDeduplicationToken();
         if (deduplicationToken != null) {
             insertSettings.setDeduplicationToken(deduplicationToken);
@@ -1724,6 +1763,7 @@ public class ClickHouseWriter implements DBWriter {
         InsertSettings insertSettings = new InsertSettings();
         insertSettings.setDatabase(database);
         chc.setReplicaTagHeaderV2(insertSettings);
+        chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());
         String deduplicationToken = queryId.getDeduplicationToken();
         if (deduplicationToken != null) {
             insertSettings.setDeduplicationToken(deduplicationToken);
@@ -1769,6 +1809,12 @@ public class ClickHouseWriter implements DBWriter {
      * socket timeouts are treated in {@link com.clickhouse.kafka.connect.util.Utils#handleException}).
      * In exactly-once mode the retry reconstructs the same block (deterministic offsets +
      * insert_deduplication_token), so ClickHouse drops duplicates.
+     *
+     * <p>With the client's default {@code async=false} the insert has already run synchronously and the
+     * future is complete, so the timeout here only applies when the operator sets {@code async=true}. On
+     * the default path the bound is the per-insert {@code socket_timeout} set by
+     * {@link ClickHouseHelperClient#setInsertSocketTimeoutV2}, which is a read-inactivity timeout, not a
+     * cap on total insert time.
      */
     private InsertResponse awaitInsertResponse(Future<InsertResponse> future, QueryIdentifier queryId)
             throws ExecutionException, InterruptedException {
@@ -1783,7 +1829,8 @@ public class ClickHouseWriter implements DBWriter {
     }
     private ClickHouseRequest.Mutation getMutationRequest(ClickHouseClient client, ClickHouseFormat format, String tableName, String database, QueryIdentifier queryId) {
 
-        ClickHouseHelperClient chcTmp = new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
+        ClickHouseNode server;
+        ClickHouseHelperClient chcTmp = createHelperClient(new ClickHouseHelperClient.ClickHouseClientBuilder(csc.getHostname(), csc.getPort(), csc.getProxyType(), csc.getProxyHost(), csc.getProxyPort())
                 .setDatabase(database)
                 .setUsername(csc.getUsername())
                 .setPassword(csc.getPassword())
@@ -1794,10 +1841,13 @@ public class ClickHouseWriter implements DBWriter {
                 .setSslSocketSni(csc.getSslSocketSni())
                 .setClusterClause(csc.getClusterName())
                 .enableReplicaPinning(csc.isEnableReplicaPinning())
-                .setCompressionMethod(csc.isSetCompressionMethod())
-                .build();
-
-        ClickHouseNode server = chcTmp.getServer();
+                .setCompressionMethod(csc.isSetCompressionMethod()));
+        try {
+            server = chcTmp.getServer();
+        } finally {
+            // The node is a value object and stays usable after its helper client is closed; a failed close must not fail the batch.
+            closeQuietly(chcTmp);
+        }
         ClickHouseRequest.Mutation request = client.read(server)
                 .write()
                 .table(tableName, queryId.getQueryId())

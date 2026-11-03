@@ -33,4 +33,7 @@ public interface StateProvider {
      * @param removedPartitions list of removed partitions.
      */
     void onPartitionRemoved(Collection<TopicPartition> removedPartitions);
+
+    /** Releases what the provider created itself; the default holds nothing. */
+    default void close() {}
 }

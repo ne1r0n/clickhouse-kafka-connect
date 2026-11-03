@@ -33,6 +33,14 @@
 | E-17 | RLS-05 | 38-05 | pending (user-gated) |
 | E-18 | RLS-05 | 38-05 | pending (user-gated) |
 | E-19 | RLS-01 to RLS-06 | 38-05 | pass |
+| E-20 | RLS-05 | 38-05 | pass |
+| E-21 | RLS-05 | 38-05 | pass |
+| E-22 | RLS-05 | 38-05 | pass |
+| E-23 | RLS-05 | 38-05 | pass |
+| E-24 | RLS-05 | 38-05 | pass |
+| E-25 | RLS-05 | 38-05 | pass |
+| E-26 | RLS-05 | 38-05 | pass |
+| E-27 | RLS-05 | 38-05 | pass |
 
 ### E-01: Pre-flight: origin and pull requests re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1230,5 +1238,174 @@ phase_commits: 5c7f51a7 docs(38-05): the local close record: requirement status,
 The verdict is pass for the local gate only: it says that everything an agent may do is done, not that the release exists. RLS-05 is pending and human-gated; the five user steps (U1 and U2, U3, U4, U5) and the orchestrator's steps are in `38-ORCHESTRATOR-RUNBOOK.md`, and no handoff entry (E-15 to E-18) was counted as passed. The wide hygiene scan used the default mode over the 17 files added since the phase start; the strict mode ran over the 15 files added under the phase directory (helper scripts excluded), over the added lines of CHANGELOG.md, VERSION, docs/FORK-DELTA.md and docs/ROLLOUT-v1.7.0_gg5.md, and over docs/ROLLOUT-v1.7.0_gg6.md. The key `phase_commits` lists every commit of the phase up to the close record; the evidence commits that follow it are not in it. The wording of the ROADMAP and REQUIREMENTS changes is listed in the close record; this plan edited neither file.
 
 2026-10-31T18:36:05Z
+
+Verdict: pass
+
+### E-20: U1 scratch push of X0 and its single tests.yaml run, executed by the orchestrator at the user's direct request
+
+Backs: RLS-05 (first handoff). Executed by the orchestrator, not by the user: the user's own direct messages to the orchestrator were «а модешь же сам сделать по этой же инструкции?» (about U1 and U2, after the handoff file was presented) and, later, «делай» (about the rest). Recorded as such, not as `user-reported`.
+
+```sh
+git ls-remote origin refs/heads/custom_build
+git push origin a46be37f4971bd25f1f0a2e7e1e370da34832b40:refs/heads/sync/v1.7.0
+gh run list -R ne1r0n/clickhouse-kafka-connect --branch sync/v1.7.0
+```
+
+```text
+X0: a46be37f4971bd25f1f0a2e7e1e370da34832b40
+precheck_custom_build: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+precheck_left_count: 0
+precheck_same_as_gated: yes
+precheck_scripts_same_as_gated: yes
+push_result: [new branch] a46be37f -> sync/v1.7.0
+tests_yaml_run: 41257363463
+tests_yaml_runs_on_x0: 1
+tests_yaml_conclusion: success
+```
+
+Verdict: pass
+
+### E-21: U2 dry run of release.yaml from sync/v1.7.0, read back
+
+Backs: RLS-05, RLS-03 (compare chain on a runner), ROADMAP criterion 5 (dry-run half). Dispatched by the orchestrator with `gh workflow run release.yaml --ref sync/v1.7.0 -f dry_run=true`.
+
+```text
+run: 41257794165
+name: Release sync/v1.7.0 (dry run)
+event: workflow_dispatch
+headBranch: sync/v1.7.0
+headSha: a46be37f4971bd25f1f0a2e7e1e370da34832b40
+conclusion: success
+publish_release_step: skipped
+compare_notice: Archive compare exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg5, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt
+artifact: archive-compare-report, last line RESULT: PASS
+archive: clickhouse-kafka-connect-v1.7.0_gg6.zip 13558692 bytes sha256=e745e7d5363fca8067ddfcc80f3ebea034b93abb4f2912e514492201a729c2af
+draft_cleanup: draft created, held the archive, had no tag, deleted; no draft and no tag left
+wrapper_gradle: 9.8.2
+```
+
+Verdict: pass
+
+### E-22: The merge commit M, built after the user's direct approval and the recorded date decision
+
+Backs: RLS-05. The user's own messages: «делай» (after the offer to run U3 to U5 as well). Date decision (O2(b), C-7), asked with AskUserQuestion and answered by the user directly: «Оставить 2026-10-31 (Recommended)», i.e. the CHANGELOG heading `# 1.7.0_gg6, 2026-10-31` stays although the UTC date at the merge was 2026-11-01 (recorded deviation).
+
+```sh
+git worktree add --detach /tmp/gsd38/w/cb 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+git --attr-source="$(git hash-object -t tree /dev/null)" merge --no-ff -F .planning/phases/38-release-publication/38-MERGE-MESSAGE.txt a46be37f4971bd25f1f0a2e7e1e370da34832b40
+git update-ref refs/gsd/release-m-v1.7.0_gg6 <M>
+```
+
+```text
+M: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+parents: 3a3a15a9ae064ffe09c696b8bb87bce23419d463 a46be37f4971bd25f1f0a2e7e1e370da34832b40
+tree_equals_x0: yes
+subject: Merge sync/v1.7.0: release v1.7.0_gg6
+gsd_ws_arg_absent: yes
+VERSION: v1.7.0_gg6
+changelog_heading: # 1.7.0_gg6, 2026-10-31
+utc_date_at_merge: 2026-11-01
+merge_message_unchanged_since_36dd3f8a: yes
+rollback_block_on_m: ok
+```
+
+Verdict: pass
+
+### E-23: U3 push of M to custom_build and its single tests.yaml run, executed by the orchestrator
+
+Backs: RLS-05. Executed by the orchestrator at the user's direct «делай».
+
+```sh
+git push origin 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236:refs/heads/custom_build
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/actions/runs?head_sha=72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236'
+```
+
+```text
+push_result: 3a3a15a9..72e8ccff fast-forward of custom_build
+origin_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+tests_yaml_run: 41297502026
+tests_yaml_runs_on_m: 1
+tests_yaml_conclusion: success
+release_yaml_runs_on_m: 0
+other_runs_on_m: Dependabot dynamic runs (success) and one scheduled Nightly Integration Tests run (skipped, NIGHTLY_ENABLED unset)
+```
+
+Verdict: pass
+
+### E-24: U4 publish dispatch of release.yaml from custom_build, executed by the orchestrator
+
+Backs: RLS-05, ADV-03. Dispatched with `gh workflow run release.yaml --ref custom_build` (no dry_run input) at the user's direct «делай».
+
+```text
+run: 41298074815
+name: Release custom_build (publish)
+event: workflow_dispatch
+headBranch: custom_build
+headSha: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+conclusion: success
+publish_release_step: success
+draft_steps: skipped
+compare_notice: exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg5
+artifact_last_line: RESULT: PASS
+```
+
+Verdict: pass
+
+### E-25: The publish run read back: release, tag, asset, uploader and steps (ADV-03)
+
+Backs: RLS-05, ADV-03 (the publish path was exercised by a run). Read-only `gh api` calls.
+
+```text
+release_id: 430511927
+tag_name: v1.7.0_gg6
+release_author: github-actions[bot]
+draft: false
+prerelease: false
+target_commitish: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+tag_ref_type: commit (lightweight)
+tag_ref_sha: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+asset: clickhouse-kafka-connect-v1.7.0_gg6.zip
+asset_size: 13558692
+asset_digest: sha256:e745e7d5363fca8067ddfcc80f3ebea034b93abb4f2912e514492201a729c2af
+asset_uploader: github-actions[bot]
+previous_release: v1.7.0_gg5, id 426690002, author ne1r0n, unchanged
+assumption_A3: confirmed (the workflow token created the tag and the release)
+assumption_A7: runner archive 13558692 bytes against local 13558634 (+58 bytes)
+```
+
+Verdict: pass
+
+### E-26: U5 pre-tag push and scratch deletion, executed by the orchestrator
+
+Backs: RLS-05. The two branches `scratch/clt-07-*` (user-owned) and every pull request were left untouched.
+
+```sh
+git push origin refs/tags/pre-v1.7.0_gg6
+git push origin --delete refs/heads/sync/v1.7.0
+```
+
+```text
+pre_tag_pushed: refs/tags/pre-v1.7.0_gg6 -> 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+sync_v1.7.0_deleted: yes (a46be37f stays reachable from M)
+scratch_clt_07_branches: left in place, user decides
+pull_requests_touched: none
+```
+
+Verdict: pass
+
+### E-27: Final reads after publication: refs, release, pull requests
+
+Backs: RLS-05. Read-only.
+
+```text
+custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+tags: pre-v1.7.0_gg6 -> 3a3a15a9ae064ffe09c696b8bb87bce23419d463; v1.7.0_gg6 -> 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236
+heads_other: main, scratch/clt-07-client-0.11.0 (de8c685b), scratch/clt-07-prebump-0.9.6 (939e8992), two Dependabot branches
+pr_16_18_19_20: MERGED (A1 confirmed)
+pr_17: CLOSED
+pr_10: CLOSED
+pr_21_22: OPEN (new Dependabot PRs: setup-gradle 6.4.1, gson 2.15.0)
+actor_of_closures: not read
+```
 
 Verdict: pass

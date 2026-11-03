@@ -1,0 +1,22 @@
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnLiveTest	startupWithAnUnvettedCodeWarnsAndStillInserts(TestInfo)	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	unsetSettingLogsNoWarnAtStartup()	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	unvettedCodesLogOneWarnNamingThemAtStartup(String, String)[1] additionalRetriableErrorCodes=60	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	unvettedCodesLogOneWarnNamingThemAtStartup(String, String)[2] additionalRetriableErrorCodes=62, 60,159	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	unvettedCodesLogOneWarnNamingThemAtStartup(String, String)[3] additionalRetriableErrorCodes=2147483647	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[10] additionalRetriableErrorCodes=242	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[11] additionalRetriableErrorCodes=252	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[12] additionalRetriableErrorCodes=285	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[13] additionalRetriableErrorCodes=319	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[14] additionalRetriableErrorCodes=425	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[15] additionalRetriableErrorCodes=999	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[16] additionalRetriableErrorCodes=216	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[17] additionalRetriableErrorCodes=216,159,3	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[1] additionalRetriableErrorCodes=3	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[2] additionalRetriableErrorCodes=107	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[3] additionalRetriableErrorCodes=159	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[4] additionalRetriableErrorCodes=164	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[5] additionalRetriableErrorCodes=202	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[6] additionalRetriableErrorCodes=203	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[7] additionalRetriableErrorCodes=209	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[8] additionalRetriableErrorCodes=210	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	vettedCodesLogNoWarnAtStartup(String)[9] additionalRetriableErrorCodes=241	PASS

@@ -119,7 +119,7 @@ public final class ConfluentArchiveCheck {
                         + " violations of "
                         + result.innerEntries()
                         + " entries):");
-        if (result.libJarNames().size() != 1) {
+        if (result.libJarNames().size() > 1) {
             err.println(
                     LIB_JARS_FOUND_PREFIX
                             + String.join(NAME_SEPARATOR, result.libJarNames())

@@ -2,8 +2,8 @@
 # VERSION, validates it and its own result against vX.Y.Z or vX.Y.Z_ggN, and writes VERSION together with the
 # VERSION row of .planning/scripts/fork-anchors.txt. It refuses and writes nothing when either file is not as
 # expected, so a dispatch can no longer put a null version into VERSION. BumpVersionScriptUnitTest pins the
-# rules, and ReleaseWorkflowGuardUnitTest pins this file. Every action is pinned to a full commit SHA with a
-# version comment, and the token scopes are granted on the job instead of the workflow.
+# rules, and IncrementVersionWorkflowGuardUnitTest pins this file. Every action is pinned to a full commit SHA
+# with a version comment, and the token scopes are granted on the job instead of the workflow.
 name: Increment Version
 
 on:

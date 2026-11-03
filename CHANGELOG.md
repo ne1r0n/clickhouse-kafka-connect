@@ -1,3 +1,80 @@
+# 1.7.0_gg7, 2026-11-02
+
+This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `9bed6f79` (the same base as
+`1.7.0_gg6`). It lists the fork's own changes since `v1.7.0_gg6`: a bounded client V2 insert, the closing of the helper
+clients that a started task holds (with residuals, listed below), a `RetriableException` pass-through, the
+inserted-offset topic fix, a start-up WARN for unvetted retriable codes, and a `gson` and a `setup-gradle` bump. See
+[docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on top of upstream, and read
+[docs/ROLLOUT-v1.7.0_gg7.md](docs/ROLLOUT-v1.7.0_gg7.md) before upgrading from
+`v1.7.0_gg6`. If you are coming from an earlier release, start with the `1.7.0_gg6` note's pointers.
+
+## Important Changes
+
+* On client V2 only, with `async=false`, an insert into a server that stops answering now fails after
+  `clickhouseClientInsertTimeoutMs` (default four minutes) with a retriable error, instead of blocking the task. The bound
+  is a per-insert `socket_timeout` set on the three client V2 insert paths. A quiet insert that legitimately runs longer
+  than the setting now fails and is redelivered while the server may still commit it, so with `exactlyOnce=false` the
+  batch can be inserted twice. A `socket_timeout` that an operator names in `jdbcConnectionProperties` keeps its value for
+  every request and turns the per-insert value off (`socket_timeout=0` keeps inserts unbounded). For a legitimately slow
+  insert, raise `clickhouseClientInsertTimeoutMs` (minimum 100) or set `socket_timeout`. A connector that does not set
+  `client_version` runs client V1, and no timeout is added to client V1 inserts.
+* A `RetriableException` anywhere in the cause chain of an insert failure is now treated as retriable under both
+  `errors.tolerance` values, also over a non-retriable ClickHouse error code. Under `errors.tolerance=all` such a batch is
+  redelivered instead of being sent to the dead letter queue, with no retry budget; under `errors.tolerance=none` the task
+  no longer fails on it.
+* The JMX MBean `version=` segment and the client name sent on every request now read `v1.7.0_gg7` and
+  `clickhouse-kafka-connect/v1.7.0_gg7`. Update dashboard, alert and exporter matchers that spell out the `v1.7.0_gg6`
+  value; matchers that do not spell out the version are unaffected.
+
+## Bug Fixes
+
+* The writer closes its helper client on `stop()` and on every failing exit of `start()`. On client V1, the helper client
+  that every insert batch builds is closed after use. With `exactlyOnce=true`, the Keeper state provider closes the client
+  its constructor built. The task's `stop()` stops the writer, the MBean and the state provider even when one of them
+  throws. This closes the first item of the `1.7.0_gg6` Known Issues for the paths named here; its residuals are listed
+  below.
+* With `reportInsertedOffsets=true` under a topic-renaming SMT that renames each source topic to its own target, the
+  unbuffered Direct path (`bufferCount` 0) now reports inserted offsets under the consumer's topic, read from
+  `originalTopic()`, and clears them on revocation; with `exactlyOnce=false` and `ignorePartitionsWhenBatching=true`
+  Connect's own offsets are returned and nothing changes. The exactly-once state key and the KeeperMap rows do not change.
+* The integration test harness counts only its own connector when it waits for the Datagen source (test harness only).
+
+## Improvements
+
+* One WARN at task start names every code in `additionalRetriableErrorCodes` that is outside the connector's vetted
+  transient set. The WARN never fails the start-up (with ClickHouse down the task still fails at the connection step,
+  after it), the connector does not judge whether a listed code is transient beyond that
+  set and does not budget retries, and the format check of the setting still applies.
+
+## Known Issues
+
+* The closing has residuals: a Keeper state-provider constructor that fails on client V1, a helper-client constructor
+  that fails after it built its client V2, a second `start()` on one writer, and a task-level `stop()` that has no
+  `try`/`finally` around the delivery strategy's `stop()`. The writer's `stop()` waits at most five seconds for the table
+  refresh and then closes its client, so a refresh that is still running can end with an error on a closed client.
+* The bounded insert has limits. A write-side stall, where the peer stops reading the request body, is not bounded.
+  Client V1 inserts have no connector timeout and rely on the client V1 library's own 30-second read bound. Requests other
+  than client V2 inserts stay unbounded unless `socket_timeout` is set. The help text of `clickhouseClientInsertTimeoutMs`
+  still describes a hard limit. An insert during which the server streams progress headers escapes the bound
+  (measured: a 3000 ms bound did not end a body insert that ran for about 8 s while the server streamed progress headers;
+  the same insert without `send_progress_in_http_headers` failed at 3007 ms).
+* A many-to-one topic rename and an SMT that changes the partition are not supported for exactly-once, the in-memory state
+  machine or `reportInsertedOffsets`; do not enable `reportInsertedOffsets` with them.
+* A code in `additionalRetriableErrorCodes` is redelivered with no retry budget, and no setting removes a code from the
+  built-in set.
+* A writer `DataException` that wraps a retriable server error, and one whose root cause is a socket timeout or an unknown
+  host, stay retriable under both `errors.tolerance` values; both are now pinned by tests, and a decision on changing
+  them is open.
+
+## Build and CI
+
+* `gson` moves from `2.14.0` to `2.15.0` in the shipped archive.
+* `gradle/actions/setup-gradle` is pinned to `6.4.1` in the four fork workflows (CI only; no vulnerability is claimed
+  closed by it).
+* The release workflows' comparison of the archive with the one rebuilt from the previous release tag, `v1.7.0_gg6`, is
+  unchanged; their only change is the `setup-gradle` pin above. The allow-list they read for this release is generated in
+  the release process.
+
 # 1.7.0_gg6, 2026-10-31
 
 This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `9bed6f79` (the `1.7.0_gg4` and
