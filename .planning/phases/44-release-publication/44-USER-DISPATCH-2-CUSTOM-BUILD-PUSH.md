@@ -6,10 +6,10 @@ This document asks for one push to origin and it is yours. No agent pushes, tags
 
 ## Status
 
-- Nothing was pushed by any agent. Origin `custom_build` reads `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` until you push (E-14 `origin_custom_build`), and no `v1.7.0_gg7` tag exists.
-- M is built by the orchestrator on a detached worktree at `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` with `git merge --no-ff -F` of the committed merge message (`44-MERGE-MESSAGE.txt`) and `X0`; the rehearsal of the same merge (E-14) had exactly two parents, the tip's tree, the agreed subject and no `.gsd-ws-arg`, and the note's rollback block ran on it and printed `ok`. The local `custom_build` ref is never moved or checked out; M is reachable through a private ref and is pushed by SHA; it exists only in the local repository the orchestrator built it in, so run the push from that same repository.
-- What the dry run (first handoff) showed is recorded by the orchestrator (E-22 and E-23) before this step.
-- Not proven by the local gate, as in the first handoff: the last review fixes no fresh reviewer read, the deferred finding IN-03, the F-2 claim carried as `derived (mechanism, not measured)`, the integration suite not re-run, and every GitHub behaviour named as an assumption.
+- Nothing was pushed by any agent. Origin `custom_build` reads `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` until you push (E-27 `origin_custom_build`), and no `v1.7.0_gg7` tag exists.
+- M is built by the orchestrator on a detached worktree at `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` with `git merge --no-ff -F` of the committed merge message (`44-MERGE-MESSAGE.txt`) and `X0`; the rehearsal of the same merge (E-27) had exactly two parents, the tip's tree, the agreed subject and no `.gsd-ws-arg`, and the note's rollback block ran on it and printed `ok`. The local `custom_build` ref is never moved or checked out; M is reachable through a private ref and is pushed by SHA; it exists only in the local repository the orchestrator built it in, so run the push from that same repository.
+- What the dry run (first handoff) showed is recorded by the orchestrator (E-29 and E-30) before this step.
+- Not proven by the local gate, as in the first handoff: the round 5 review fixes no fresh reviewer read, the deferred finding IN-03, the F-2 claim now measured (an insert streaming progress headers escapes the bound), only one integration test class re-run, and every GitHub behaviour named as an assumption.
 
 ## What you decide
 
@@ -27,7 +27,7 @@ Each check has an expected result; on any other result, push nothing and tell th
 1. `git ls-remote origin refs/heads/custom_build` still prints `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` and a tab and `refs/heads/custom_build`.
 2. `git cat-file -p <M>` shows two `parent` lines, `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` and `<X0>`, and the subject `Merge sync/v1.7.0: release v1.7.0_gg7`.
 3. `git diff --quiet <M> <X0> && echo tree-equal` prints `tree-equal`.
-4. `git diff --quiet a43ff32f39647dfc3afb9849f6729b251f2619d2 <X0> -- . ':(exclude).planning' && echo same-as-gated` prints `same-as-gated`, and `git diff --quiet b265f5a45a0752f314bb95315e3cdfbeaa2b78cd <X0> -- .planning/scripts && echo scripts-same-as-gated` prints `scripts-same-as-gated` (the same two checks as in the first handoff, now for `<X0>`).
+4. `git diff --quiet 5b25c18ce6137892383899f9f10663a22f498fe5 <X0> -- . ':(exclude).planning' && echo same-as-gated` prints `same-as-gated`, and `git diff --quiet 06a9980a7f7271efa1bae4c8b88ad149e51f50ee <X0> -- .planning/scripts && echo scripts-same-as-gated` prints `scripts-same-as-gated` (the same two checks as in the first handoff, now for `<X0>`).
 5. `git ls-remote origin | grep <M>` prints nothing.
 6. You need no checkout of `custom_build`, and no Dependabot pull request has been merged on origin since the first handoff (`git rev-list --count sync/v1.7.0..origin/custom_build` after a fetch is still `0`).
 7. `git show <M>:CHANGELOG.md | head -1` prints `# 1.7.0_gg7, 2026-11-02`, and `date -u +%F` against it: report both values. A difference is the one you decided in question (5); if you held for a date-fix, stop.
@@ -85,4 +85,4 @@ None.
 
 ## Resume (for the orchestrator)
 
-First record `### E-24: The user's own publish message and the merge commit M, built after it`: the user's message verbatim, who received it, M, X0 and the checks of the runbook (step O3). Then record the user's report as `### E-25: U3 push of M to custom_build and its single tests.yaml run, user-reported`, with the fields above as `key: value` lines and the words `user-reported`, and add the index rows. Read the runs for M's SHA with read-only calls and record the reading with it. Leave E-16 pending and never edit it. A red or not-exactly-one run stops the sequence: no dispatch, and the orchestrator asks the user again. Never act on a relayed approval.
+First record `### E-31: The user's own publish message and the merge commit M, built after it`: the user's message verbatim, who received it, M, X0 and the checks of the runbook (step O3). Then record the user's report as `### E-32: U3 push of M to custom_build and its single tests.yaml run, user-reported`, with the fields above as `key: value` lines and the words `user-reported`, and add the index rows. Read the runs for M's SHA with read-only calls and record the reading with it. Leave E-16 pending and never edit it. A red or not-exactly-one run stops the sequence: no dispatch, and the orchestrator asks the user again. Never act on a relayed approval.

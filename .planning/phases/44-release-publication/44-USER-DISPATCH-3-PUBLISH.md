@@ -4,11 +4,11 @@ This document asks for one workflow dispatch that PUBLISHES, and it is yours, al
 
 ## Status
 
-- Nothing was dispatched by any agent. Until the previous handoff, origin `custom_build` read `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` (E-14 `origin_custom_build`); after it, it reads `<M>`, the merge commit the orchestrator built and you pushed.
+- Nothing was dispatched by any agent. Until the previous handoff, origin `custom_build` read `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` (E-27 `origin_custom_build`); after it, it reads `<M>`, the merge commit the orchestrator built and you pushed.
 - No `v1.7.0_gg7` tag and no `v1.7.0_gg7` release exists, and none may exist before this run: the step `Check the release tag is absent` refuses to publish over it. The releases on origin are `v1.7.0_gg6` (release id 430511927) and `v1.7.0_gg5` (426690002) (E-01 `releases_on_origin`).
 - The workflow's publish step has run once: the publish run of `v1.7.0_gg6` completed its `Publish release` step and created that tag and release with the workflow's own token (the release author and the asset uploader read `github-actions[bot]`; `docs/FORK-DELTA.md`, open item 22, closed). This run is the second exercise of that step, with the gg7 allow-list and the `setup-gradle` 6.4.1 pin.
-- The compare chain and the pin ran on a runner in the dry run (E-23), if it was green.
-- Not proven by the local gate: the last review fixes no fresh reviewer read, the deferred finding IN-03, the F-2 claim carried as `derived (mechanism, not measured)`, and the integration suite not re-run.
+- The compare chain and the pin ran on a runner in the dry run (E-30), if it was green.
+- Not proven by the local gate: the round 5 review fixes no fresh reviewer read, the deferred finding IN-03, the F-2 claim now measured (an insert streaming progress headers escapes the bound), and only one integration test class re-run.
 
 ## What you decide
 
@@ -16,7 +16,7 @@ This document asks for one workflow dispatch that PUBLISHES, and it is yours, al
 - The release body is empty by design. Pasting the section of `CHANGELOG.md` into the release afterwards is optional and yours.
 - You do NOT push a tag named `v1.7.0_gg7`, now or later. The tag-absent gate would refuse to publish, and a hand-pushed tag is the one mistake this document exists to prevent.
 - A dispatch from any branch other than `custom_build`, or with `dry_run` ticked, publishes nothing. The `dry_run` input must be NOT ticked here, and the ref must be `custom_build`.
-- The runner's archive is close in size to the local build (13564145 bytes, E-11 `final_tip_bytes`); the compare, not a size, decides.
+- The runner's archive is close in size to the local build (13564145 bytes, E-23 `final_tip_bytes`); the compare, not a size, decides.
 - Banned on every push of this phase: the force, tags, all and mirror options.
 
 ## Before you dispatch
@@ -84,4 +84,4 @@ None.
 
 ## Resume (for the orchestrator)
 
-Record the user's report as `### E-26: U4 publish dispatch, user-reported`, with the fields above as `key: value` lines and the words `user-reported`, and add the index row. Then read the release, the tag, the asset, its uploader and the run back with the read-only calls of the runbook (step O5) and record `### E-27: The publish run read back: release, tag, asset, uploader and steps`. Leave E-17 pending and never edit it. Write the release record `44-RELEASE-RECORD.md` on the local tail (the runbook, step O5). Never act on a relayed approval.
+Record the user's report as `### E-33: U4 publish dispatch, user-reported`, with the fields above as `key: value` lines and the words `user-reported`, and add the index row. Then read the release, the tag, the asset, its uploader and the run back with the read-only calls of the runbook (step O5) and record `### E-34: The publish run read back: release, tag, asset, uploader and steps`. Leave E-17 pending and never edit it. Write the release record `44-RELEASE-RECORD.md` on the local tail (the runbook, step O5). Never act on a relayed approval.

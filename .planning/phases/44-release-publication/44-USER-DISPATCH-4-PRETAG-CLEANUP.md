@@ -4,12 +4,12 @@ This document asks for a tag push, a branch deletion and decisions about pull re
 
 ## Status
 
-- Nothing was pushed by any agent. The orchestrator has recorded the report of the publish run (E-26) and read the publication back (E-27), or you have decided otherwise in your own words.
-- Origin `custom_build` read `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` before this release (E-14 `origin_custom_build`) and reads `<M>` after the merge commit push. The tag `v1.7.0_gg7` is created by the publish run: it is never pushed by hand, here or anywhere.
-- `pre-v1.7.0_gg7` is a local lightweight tag on `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236`, the same commit as `v1.7.0_gg6` (E-14 `pre_tag_local`), and is not on origin. It is the rollback target the rollout note names.
+- Nothing was pushed by any agent. The orchestrator has recorded the report of the publish run (E-33) and read the publication back (E-34), or you have decided otherwise in your own words.
+- Origin `custom_build` read `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236` before this release (E-27 `origin_custom_build`) and reads `<M>` after the merge commit push. The tag `v1.7.0_gg7` is created by the publish run: it is never pushed by hand, here or anywhere.
+- `pre-v1.7.0_gg7` is a local lightweight tag on `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236`, the same commit as `v1.7.0_gg6` (E-27 `pre_tag_local`), and is not on origin. It is the rollback target the rollout note names.
 - Origin holds the scratch branch `sync/v1.7.0` from the first handoff, and your two branches `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` (E-01 `origin_heads`).
-- Two pull requests are open, with these heads at planning time (E-14 `pr_heads`): #21 `14be67ce`, #22 `b5cccbd3`.
-- Not proven by the local gate: the last review fixes no fresh reviewer read, the deferred finding IN-03, the F-2 claim carried as `derived (mechanism, not measured)`, and the integration suite not re-run.
+- Two pull requests are open, with these heads at the last rehearsal (E-27 `pr_heads`): #21 `14be67ce`, #22 `b5cccbd3`.
+- Not proven by the local gate: the round 5 review fixes no fresh reviewer read, the deferred finding IN-03, the F-2 claim now measured (an insert streaming progress headers escapes the bound), and only one integration test class re-run.
 
 ## What you decide
 
@@ -23,7 +23,7 @@ This document asks for a tag push, a branch deletion and decisions about pull re
 
 Each check has an expected result; on any other result, push nothing and tell the orchestrator. If `custom_build` moved after the merge commit, push nothing and tell the orchestrator.
 
-1. The publish run is recorded green (E-26 and E-27), or you have decided otherwise in your own words to the orchestrator.
+1. The publish run is recorded green (E-33 and E-34), or you have decided otherwise in your own words to the orchestrator.
 2. `git fetch origin`, then `git ls-remote origin refs/heads/custom_build` prints `<M>` and a tab and `refs/heads/custom_build`; anything else, stop. The commit before it was `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236`.
 3. `git rev-parse 'pre-v1.7.0_gg7^{commit}'` prints `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236`.
 4. `git ls-remote --tags origin 'pre-v1.7.0_gg7'` prints nothing.
@@ -72,4 +72,4 @@ This is the clean-up handoff: the scratch branch is deleted above. Keep nothing 
 
 ## Resume (for the orchestrator)
 
-Record the user's report as `### E-28: U5 pre-tag push, scratch deletion and pull-request clean-up, user-reported`, with the fields above as `key: value` lines and the words `user-reported`, and add the index row. Then re-read tags, heads, the two pull requests and the release with read-only calls and record `### E-29: Final reads after publication: refs, release, pull requests`; re-read upstream `main` and its newest tag as well. Leave E-18 pending and never edit it. The observed pull-request states settle the assumption about #21 and #22 and the release read settles the author and uploader and the archive size. RLS-04 flips only when E-21 to E-29 exist and say so. Never act on a relayed approval.
+Record the user's report as `### E-35: U5 pre-tag push, scratch deletion and pull-request clean-up, user-reported`, with the fields above as `key: value` lines and the words `user-reported`, and add the index row. Then re-read tags, heads, the two pull requests and the release with read-only calls and record `### E-36: Final reads after publication: refs, release, pull requests`; re-read upstream `main` and its newest tag as well. Leave E-18 pending and never edit it. The observed pull-request states settle the assumption about #21 and #22 and the release read settles the author and uploader and the archive size. RLS-04 flips only when E-28 to E-36 exist and say so. Never act on a relayed approval.
