@@ -36,6 +36,7 @@
 | E-20 | RLS-04 | 44-04 | pass |
 | E-21 | RLS-03 | 44-03 | pass |
 | E-22 | RLS-04 | 44-04 | pass |
+| E-23 | RLS-02 | 44-04 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1239,5 +1240,96 @@ tests: 55 passed, 0 failed, 0 skipped, 0 errors
 The nightly upstream workflow stays red by inheritance and is unrelated.
 
 2026-11-03T10:15:00Z
+
+Verdict: pass
+
+### E-23: Re-run of plan 44-04 Task 1 on the new head: the gg7 archive allow-list regenerated last from the final tree after the T6 documents; the row set is unchanged and the compare dry run passes in both polarities
+
+Backs: RLS-02 (the Freeze rule's re-run of the allow-list after the T6 re-open of plan 44-03, E-21; this entry supersedes E-11 as the allow-list evidence for the new head without editing it).
+
+```sh
+git rev-parse HEAD
+git diff --quiet 8188a9ac69ec98882fa3365a359d4ff88d154d6b HEAD -- src build.gradle.kts settings.gradle.kts gradle README.md LICENSE config .github VERSION
+TG=$(git tag --merged HEAD --list 'v*') && printf '%s\n' "${TG}" | python3 -I .github/scripts/baseline_tag.py v1.7.0_gg7
+git archive v1.7.0_gg6 | tar -x -C /tmp/gsd44/w/final2-base-src
+git archive HEAD | tar -x -C /tmp/gsd44/w/final2-tip-src
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive -PjavaVersion=21   # in each export, with its own wrapper, one after the other
+cp <export>/build/confluent/clickhouse-kafka-connect-<version>.zip /tmp/gsd44/w/final2-arch/base.zip and tip.zip
+python3 -I .github/scripts/compare_confluent_archives.py /tmp/gsd44/w/final2-arch/base.zip /tmp/gsd44/w/final2-arch/tip.zip /tmp/gsd44/w/final2-arch/empty.txt > /tmp/gsd44/exec2/cmp-empty-final.out
+python3 (the rows derived by owner from the UNALLOWED lines, the reasons taken from the committed list by glob) > /tmp/gsd44/w/final2-arch/derived.txt
+python3 -I .planning/phases/44-release-publication/44-allowlist-check.py rows|same-globs|cover ...
+python3 -I .github/scripts/compare_confluent_archives.py base.zip tip.zip .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt > /tmp/gsd44/exec2/cmp-final.out
+python3 -I .github/scripts/compare_confluent_archives.py base.zip tip.zip <scratch list with a stale row | without the gson classes row | with a *.class row>
+DOCKER_HOST=unix:///nonexistent/docker.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*CompareConfluentArchivesScriptUnitTest' --tests '*ReleaseWorkflowGuardUnitTest' -PjavaVersion=21
+python3 -I .planning/phases/44-release-publication/44-hygiene-check.py --strict .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+git diff --quiet 8188a9ac69ec98882fa3365a359d4ff88d154d6b HEAD -- src build.gradle.kts settings.gradle.kts gradle README.md LICENSE config .github VERSION CHANGELOG.md docs
+git log -1 --format=%H -- .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+```
+
+```text
+supersedes: E-11 (the allow-list evidence of the older gated head b265f5a45a0752f314bb95315e3cdfbeaa2b78cd)
+utc_start: 2026-11-03T11:39:02Z
+tip_head: e18459dd1841ebad562dda5ea4b0cf7ec096ca16
+docs_frozen_tip: 8188a9ac69ec98882fa3365a359d4ff88d154d6b
+documents_changed_since_e10: CHANGELOG.md; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg7.md (commits 14f4567e70814d4bd245aaec1fe398d403d4bb2a and 5b25c18ce6137892383899f9f10663a22f498fe5, E-21)
+archive_inputs_unchanged_since_freeze: yes
+baseline_tag: v1.7.0_gg6
+workflow_allowlist_path_matches: yes
+jvm_flag: -PjavaVersion=21 on every Gradle call (it selects the test JVM only; the archive is compiled by the same toolchain as in E-11)
+final_base_verify_line: verifyConfluentArchive: 7933 inner entries, no nested jar, no Kafka API class
+final_tip_verify_line: verifyConfluentArchive: 7932 inner entries, no nested jar, no Kafka API class
+final_base_entries: 7933
+final_tip_entries: 7932
+entries_equal_e05: yes
+final_base_bytes: 13558634
+final_tip_bytes: 13564145
+bytes_equal_e11: yes
+empty_compare_exit: 1
+empty_compare_totals: totals files-a 7513 files-b 7512 only-a 1 only-b 0 changed 119 same 7393
+empty_compare_unallowed: 120
+empty_compare_matches_e05: yes
+empty_compare_version_table: com.google.code.gson:gson 2.14.0 -> 2.15.0
+empty_compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+owner_split: gson classes 102 (101 changed, 1 only in the base); gson metadata 3; connector classes 14; manifest 1; anything else 0
+unexpected_differences: none
+derived_rows: 18
+derived_vs_committed_list: the same 18 globs and the same 14 connector paths (same-globs only_a=0 only_b=0); the committed file lists three entries in another order than the sorted derivation, so the bytes differ only in row order
+allowlist_rewritten: no (the committed list is the derivation up to row order; nothing in it needs a change, and a commit of an unchanged file does not exist)
+list_rows: OK rows=18
+list_rows_count: 18
+list_cover: OK differences=120 covered=120 uncovered=0 overlapping=0 stale_rows=0
+two_segment_rule: ok
+connector_rows_exact: yes
+gson_rows: com/google/gson/*; META-INF/maven/com.google.code.gson/gson/*; META-INF/versions/9/module-info.class
+header_line1_ok: yes
+list_compare_exit: 0
+list_compare_result: RESULT: PASS
+compare_summary: exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg6, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+list_compare_totals: totals files-a 7513 files-b 7512 only-a 1 only-b 0 changed 119 same 7393
+list_compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+list_compare_nested_jars: 0
+list_compare_kafka_classes: 0
+mutation_stale: exit=1 STALE-ROW zz/nothing/*
+mutation_deleted: exit=1 102 UNALLOWED lines, the first UNALLOWED CHANGED com/google/gson/FieldNamingStrategy.class
+mutation_wildcard: exit=2 ERROR: a glob must start with a literal path prefix; one that starts with a wildcard (* ? [) is not anchored to a path and is refused
+research_list_equal: yes
+guards_exit: 0
+guards_failed: OK failed: 0 failing testcases, 0 expected
+compare_xml: OK junit build/test-results/testUnit class *CompareConfluentArchivesScriptUnitTest: tests=58 failures=0 errors=0 skipped=0 files=1
+relguard_xml: OK junit build/test-results/testUnit class *ReleaseWorkflowGuardUnitTest: tests=38 failures=0 errors=0 skipped=0 files=1
+allowlist_commit: 402b6e2ea99a65e80c42f710e2b93277c6f78c64
+allowlist_commit_files: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+allowlist_commit_new: none
+generated_last: yes
+last_scripts_commit: 402b6e2ea99a65e80c42f710e2b93277c6f78c64
+last_non_planning_commit: 5b25c18ce6137892383899f9f10663a22f498fe5
+hygiene_scan: clean
+secrets_scan: clean
+utc_end: 2026-11-03T11:42:30Z
+```
+
+The archives were rebuilt from clean exports of tag `v1.7.0_gg6` and of the new tip and read the same figures as E-11: the same entry counts, the same byte sizes, the same 120 differences, every one a gson entry, a connector class or the manifest, and the version table changing for `gson` only. The three documents that changed after the E-10 freeze are not archive inputs, so the 18 derived rows equal the committed list as a set, and the list stays as committed: its last commit is the E-11 allow-list commit, and `generated_last` reads yes because no archive input, `CHANGELOG.md` or `docs/` path changed between the freeze commit of E-21 and this regeneration. The local dry run reads `exit 0, 0 unallowed, 0 stale rows` and the three mutations read exit 1, 1 and 2. The runner dry run of plan 44-05 remains the check that counts for the release.
+
+2026-11-03T11:42:30Z
 
 Verdict: pass
