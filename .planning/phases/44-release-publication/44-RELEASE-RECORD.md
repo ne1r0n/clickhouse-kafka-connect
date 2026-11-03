@@ -24,5 +24,5 @@ Written on the local tail after the publish run was read back (E-33, E-34). It s
 - The CHANGELOG heading reads `2026-11-02`; the merge and the publish happened on UTC 2026-11-03. The user kept the date (E-28).
 - The user ran none of the origin writes: the orchestrator pushed `sync/v1.7.0` and M and dispatched the publish run, each on the user's direct word. U4 was dispatched on the user's explicit override of the runbook rule that U4 stays the user's (E-33).
 - Pull requests #21 and #22 read as merged on 2026-11-03T19:33:58Z with `custom_build` equal to M.
-- U5 is not done: the scratch branch `sync/v1.7.0` still exists on origin, and the pre-tag `pre-v1.7.0_gg7` is local only. The pre-tag push, the scratch deletion and any pull-request clean-up wait for the user's word (E-35, E-36).
+- U5 is done (E-35, E-36): `pre-v1.7.0_gg7` was pushed to origin at `72e8ccff`, the scratch branch `sync/v1.7.0` was deleted, and the two `scratch/clt-07-*` branches were left alone. #21 and #22 read closed and merged.
 - Review items deferred from earlier rounds (IN-03 and the carried items) stay as recorded in `44-LOCAL-CLOSE-RECORD.md`.

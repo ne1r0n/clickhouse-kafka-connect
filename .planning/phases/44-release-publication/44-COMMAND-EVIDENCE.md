@@ -48,6 +48,8 @@
 | E-32 | RLS-04 | 44-05 | pass |
 | E-33 | RLS-04 | 44-05 | pass |
 | E-34 | RLS-04 | 44-05 | pass |
+| E-35 | RLS-04 | 44-05 | pass |
+| E-36 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1870,5 +1872,39 @@ upstream_newest_tag: v1.7.0
 ```
 
 2026-11-03T19:45:00Z
+
+Verdict: pass
+
+### E-35: U5 pre-tag push, scratch deletion and pull-request clean-up, user-reported (run by the orchestrator on the user's word)
+
+Backs: RLS-04 (the clean-up handoff).
+
+```text
+user_instruction: "run U5" (the user's own message to the orchestrator)
+pre_checks: custom_build 9483476322e0d331e81c5b92ac266a18f0f01450; pre-v1.7.0_gg7 resolves to 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236; pre-v1.7.0_gg7 absent on origin; v1.7.0_gg7 on origin at 9483476322e0d331e81c5b92ac266a18f0f01450 (made by the publish run)
+tag_push: git push origin refs/tags/pre-v1.7.0_gg7, output "[new tag] pre-v1.7.0_gg7 -> pre-v1.7.0_gg7"
+scratch_deletion: git push origin --delete refs/heads/sync/v1.7.0, output "[deleted] sync/v1.7.0"
+pull_requests: no action taken by the orchestrator; #21 and #22 read closed and merged
+local_side_effect: the git fetch of the pre-check brought the tag v1.7.0_gg7 into the local repository (the handoff allows a local copy)
+```
+
+2026-11-04T07:30:00Z
+
+Verdict: pass
+
+### E-36: Final reads after publication: refs, release, pull requests
+
+Backs: RLS-04 (final read-only reads).
+
+```text
+origin_tags: pre-v1.7.0_gg7 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236; v1.7.0_gg7 9483476322e0d331e81c5b92ac266a18f0f01450
+origin_heads: custom_build (9483476322e0d331e81c5b92ac266a18f0f01450), main, scratch/clt-07-client-0.11.0, scratch/clt-07-prebump-0.9.6; sync/v1.7.0 is gone
+release: id 433237218, draft false, author github-actions[bot], one asset clickhouse-kafka-connect-v1.7.0_gg7.zip 13564238 bytes, uploader github-actions[bot]
+tag_ref_type: commit
+pull_requests: #21 closed merged true; #22 closed merged true (the assumption of the handoff held: both became merged once M landed)
+upstream: newest tag v1.7.0; main 83808df9a0993cf49b2ceaa4633c782e550c0180
+```
+
+2026-11-04T07:35:00Z
 
 Verdict: pass
