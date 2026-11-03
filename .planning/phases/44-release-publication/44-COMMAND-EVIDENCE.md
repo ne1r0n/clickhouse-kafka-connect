@@ -1908,3 +1908,5 @@ upstream: newest tag v1.7.0; main 83808df9a0993cf49b2ceaa4633c782e550c0180
 2026-11-04T07:35:00Z
 
 Verdict: pass
+
+Note on the time stamps: the UTC stamps at the end of E-29 to E-36 were written by the orchestrator as approximate times, not read from a clock, and several are earlier than GitHub's own times (the verifier found E-33 stamped 19:40Z against a run created at 21:26:10Z). The run ids, SHAs, digests and results in those entries were read from GitHub and are exact; for times, the run and push times that GitHub reports are authoritative.

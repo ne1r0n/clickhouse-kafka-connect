@@ -47,10 +47,10 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Release (RLS)
 
-- [ ] **RLS-01**: `VERSION=v1.7.0_gg7` is set through `bump_version.py`; CHANGELOG, FORK-DELTA and `fork-anchors.txt` are updated in the same commits as the counts they change.
+- [x] **RLS-01**: `VERSION=v1.7.0_gg7` is set through `bump_version.py`; CHANGELOG, FORK-DELTA and `fork-anchors.txt` are updated in the same commits as the counts they change.
 - [x] **RLS-02**: `confluent-archive-allowlist-v1.7.0_gg7.txt` is generated from the final tree (with gson rows) and a dry run reads `0 unallowed, 0 stale rows`.
-- [ ] **RLS-03**: `docs/ROLLOUT-v1.7.0_gg7.md` covers F-1, F-2 (duplicate risk with `exactlyOnce=false`) and RSK-01..04, each claim labelled `measured`, `read from the code` or `derived`, and has passed an independent review by a fresh `gsd-code-reviewer`.
-- [ ] **RLS-04**: Two full runs on ClickHouse `latest` × client V2 are green; the `--no-ff` merge happens only after the user's direct approval; the published SHA has one green `tests.yaml` run; the tag is created by the publish run.
+- [x] **RLS-03**: `docs/ROLLOUT-v1.7.0_gg7.md` covers F-1, F-2 (duplicate risk with `exactlyOnce=false`) and RSK-01..04, each claim labelled `measured`, `read from the code` or `derived`, and has passed an independent review by a fresh `gsd-code-reviewer`.
+- [x] **RLS-04**: Two full runs on ClickHouse `latest` × client V2 are green; the `--no-ff` merge happens only after the user's direct approval; the published SHA has one green `tests.yaml` run; the tag is created by the publish run.
 
 ## Future Requirements
 
@@ -95,10 +95,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RSK-04 | Phase 42 | Complete |
 | DOC-01 | Phase 43 | Complete |
 | DOC-02 | Phase 43 | Complete |
-| RLS-01 | Phase 44 | Pending |
+| RLS-01 | Phase 44 | Complete |
 | RLS-02 | Phase 44 | Complete |
-| RLS-03 | Phase 44 | Pending |
-| RLS-04 | Phase 44 | Pending |
+| RLS-03 | Phase 44 | Complete |
+| RLS-04 | Phase 44 | Complete |
 
 **Coverage:**
 - v1 requirements: 23 total

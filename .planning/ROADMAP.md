@@ -149,7 +149,7 @@ Phase artifacts: `milestones/v1.7.0_gg6-maintenance-phases/`
 - [x] **Phase 41: Bounded Insert Timeout** - F-2: a red stall pin comes first. Then a stalled `async=false` insert fails after `clickhouseClientInsertTimeoutMs` as a retriable error, through a per-insert `socket_timeout`; an operator's `socket_timeout` still wins, and the cases that stay unbounded are written down (completed 2026-11-02)
 - [x] **Phase 42: Isolated High-Risk Edits** - OI-35-1 (`originalTopic()` at `Processing.doLogic` line 137), the `Utils.handleException` `RetriableException` pass-through and the FUT-05 start-up WARN land one commit and one gate each, tests first. The state key does not move, and OI-35-2/3 are recorded as limits (completed 2026-11-02)
 - [x] **Phase 43: Document Fixes & Phase 37 Dispositions** - The gg1 half of WR-08, FORK-DELTA's future-tense lines and FUT-05 by ID are fixed, and every Phase 37 row has a disposition with an owner. A row that touches `src/main` is fixed only on the user's approval (completed 2026-11-02)
-- [ ] **Phase 44: Release & Publication** - `v1.7.0_gg7` is published with CHANGELOG, FORK-DELTA, the gg7 allow-list compare and an independently reviewed rollout note. Two green suites, the `--no-ff` merge only on the user's direct approval, one green `tests.yaml` on the published SHA, and the publish run creates the tag
+- [x] **Phase 44: Release & Publication** - `v1.7.0_gg7` is published with CHANGELOG, FORK-DELTA, the gg7 allow-list compare and an independently reviewed rollout note. Two green suites, the `--no-ff` merge only on the user's direct approval, one green `tests.yaml` on the published SHA, and the publish run creates the tag (completed 2026-11-04)
 
 ## Phase Details
 
@@ -343,7 +343,7 @@ Plans:
   4. *[live]* On the release tip, two full `--rerun` suites pass on one pinned `latest` build with client V2, with `SELECT version()` and the named skips recorded. `testUnit` passes with Docker unreachable, and the anchors gate passes (RLS-04).
   5. *[operator, CI]* The user gives a direct approval, to the orchestrator and in their own words. After it, `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip. The published SHA has exactly one `tests.yaml` run, and it is green before the user launches `release.yaml`. That publish run creates the tag `v1.7.0_gg7` and the GitHub release (RLS-04).
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 - [x] 44-01-PLAN.md — pre-flight and the first upstream recheck, helper copies, VERSION bumped by bump_version.py in one commit with its anchors row (generated constant after clean, baseline v1.7.0_gg6, rows=190, local pre-v1.7.0_gg7), the 1.7.0_gg7 CHANGELOG section, and the final FORK-DELTA pass (false Processing.java claim and stale recounts fixed, tag-pair commands, raw numbers refreshed once) (RLS-01)
@@ -353,7 +353,7 @@ Plans:
 - [x] 44-05-PLAN.md — rehearsal on the final tip, the second upstream recheck, merge message, approval bundle (gates G0..G5, eight questions), four user handoffs and the orchestrator runbook, local close record; STOPS at ready for the user's direct approval (the push, merge and publish tail is orchestrator-inline on the user's word) (RLS-04)
 
 **Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (Phase 29 D-05). A defect found here goes back to its phase as a gap. Otherwise it is deferred with a reason, an owner and a re-open trigger in the milestone close record. The recipe is the gg6 one:
-1. Check `origin/custom_build...sync/v1.7.0` for divergence before gating. A left count of 1 is the gg6 merge; more means `origin` moved.
+1. Check `origin/custom_build...sync/v1.7.0` for divergence before gating. The left count is 0, because `sync/v1.7.0` already contains the gg6 merge `72e8ccff`; any count above 0 means `origin` moved.
 2. Push the scratch branch once, at a SHA that no other pushed branch holds, and wait for green.
 3. Merge with `--no-ff` from a throwaway worktree, so the merged tree equals the rehearsed tip.
 4. Push `custom_build` only, and wait for its single run.
@@ -478,7 +478,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | 41. Bounded Insert Timeout | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
 | 42. Isolated High-Risk Edits | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-02 |
 | 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 44. Release & Publication | v1.7.0_gg7 | 5/5 | In Progress | - |
+| 44. Release & Publication | v1.7.0_gg7 | 5/5 | Complete    | 2026-11-04 |
 
 ---
 *Roadmap reorganized at the `v1.7.0_gg6-maintenance` close: 2026-11-01. Milestone `v1.7.0_gg7` phases 39-44 added: 2026-11-01.*
