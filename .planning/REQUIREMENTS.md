@@ -11,7 +11,7 @@ Requirements for this milestone. Each maps to a roadmap phase.
 ### Upstream Tail (UPS)
 
 - [ ] **UPS-01**: A rollback tag `pre-v1.7.0_gg8` and a scratch branch exist, and upstream `83808df9` is merged in one mechanical commit with a generated per-path merge checklist.
-- [ ] **UPS-02**: Upstream #857 is merged value-free. What it puts in the record context is measured first. No error message, DLQ header or log line carries a record value, and the gg3 column/type/class-only pins still pass unchanged.
+- [ ] **UPS-02**: Upstream #857 is merged value-free. What it puts in the record context is measured first. No error message, DLQ header or log line carries a record value, and the gg3 column/type/class-only pins still pass unchanged. Amendments (2026-11-04): the plan-check answers in `.planning/phases/45-upstream-tail-merge-dependency-check/45-CONTEXT.md` (log line content, every Jackson chain withheld, the named pin edits), recorded in `docs/FORK-DELTA.md` by plan 45-04.
 - [ ] **UPS-03**: Slash column names in DESCRIBE (#839) round-trip on ClickHouse `latest` × client V2, checked against the fork's raw-identifier matching (gg4).
 - [ ] **UPS-04**: Upstream's `fromJsonRow` fix is reconciled with the fork's Phase 28 raw-identifier handling (backlog 999.5, delivered in gg4). The gg4 NAME-01..NAME-07 pins stay green unchanged, and any behavioural difference from upstream is pinned.
 - [ ] **UPS-05**: Upstream's slf4j-simple 2.0.20, spotless 8.10.4 and commons-lang3 3.21.0 bumps are taken, with `verify-merge-invariants.sh` at `PASS` and its anchor count updated.
