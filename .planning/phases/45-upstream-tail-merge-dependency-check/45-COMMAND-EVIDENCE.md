@@ -25,7 +25,7 @@
 | E-10 | UPS-02 | 45-04 | pass |
 | E-11 | UPS-02 | 45-04 | pass |
 | E-12 | UPS-02 | 45-04 | pass |
-| E-13 | UPS-03, UPS-04 | 45-05 | pending (plan 45-05) |
+| E-13 | UPS-03, UPS-04 | 45-05 | pass |
 | E-14 | UPS-05 | 45-05 | pending (plan 45-05) |
 | E-15 | UPS-02, UPS-04 | 45-05 | pending (plan 45-05) |
 | E-16 | DEP-01 | 45-06 | pending (plan 45-06) |
@@ -724,4 +724,63 @@ tail_gate_exit: 0
 Mutation red sets (each in its own detached worktree, removed afterwards; the main tree was never touched). J1 (guard off): 18 of the 46 pins red, `carriesNoRecordValue` and `isValueFreeAndKeepsTheTrustedSuffix` for all seven value-carrying shapes and all four production-path cases of `JsonRouteValueFreeDlqUnitTest`. J2 (the top text carries the exception message): 14 red, the same two checks for the seven value-carrying shapes including JSON_SCRIPTED_JACKSON_ALONE, so the value-free top text is watched. J3 (kept trusted suffix replaced by a withheld copy): 3 red, all for JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT: `isValueFreeAndKeepsTheTrustedSuffix`, `keepsTheClassifiedLinks` and `keepsTheRetryOutcome`, so the retriable classification on the JSON route is pinned. The cache-busted testUnit is 1995 (E-09) + 46 = 2041 tests with the 2 skips. The targeted live run on ClickHouse `26.10.3.7` x client V2 passes the five JSON-route classes (31 tests), which read back what they insert, so the bytes sent are unchanged on a real server. The plan's J1 and J2 targets name `table.getName()`; the code uses `table.getCleanName()` (see E-11), and the recorded targets are the exact replaced text. Nothing was pushed.
 
 2026-11-04T20:57:37Z
+Verdict: pass
+
+### E-13: fromJsonRow difference pinned and biting; slash column and NAME pins live on latest x V2; NAME pins unchanged
+
+Backs: UPS-03, UPS-04, ROADMAP Phase 45 criterion 3 (the one behaviour where the fork's `fromJsonRow` differs from upstream #839 is pinned Docker-free and bites against upstream's `readValue`; upstream's `SlashColumnRoundTripTest` and the live NAME pins pass on ClickHouse latest x client V2; the NAME pins are byte-unchanged since the tag).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*FieldDescriptorLiteralFieldsUnitTest*' > /tmp/gsd45/exec/lf.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+git worktree add --detach /tmp/gsd45/mut HEAD
+cp <the new test> /tmp/gsd45/mut/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/
+python3 -I /tmp/gsd45/mutate.py /tmp/gsd45/mut/<FD> 'try (JsonParser parser = OBJECT_MAPPER.createParser(json)) {' 'if (true) { return OBJECT_MAPPER.readValue(json, ClickHouseFieldDescriptor.class); } try (...'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/mut --console=plain testUnit --rerun --tests '*FieldDescriptorLiteralFieldsUnitTest*' > /tmp/gsd45/exec/lf-mut.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit /tmp/gsd45/mut/build/test-results/testUnit
+git worktree remove --force /tmp/gsd45/mut
+git worktree prune
+git worktree list
+bash /tmp/gsd45/fmtcheck.sh fmt-lf.log <the new test>
+git commit -F /tmp/gsd45/exec/msg-lf.txt
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*SlashColumnRoundTripTest*' --tests '*RawIdentifierNameLiveTest*' --tests '*RawNameMatrixLiveTest*' --tests '*NullableTupleMatrixLiveTest*' > /tmp/gsd45/exec/live-names.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/test --class <each of the four>
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+grep -o 'NAME-0[0-9]' docs/FORK-DELTA.md | sort -u
+git ls-files '*/<Class>.java'
+git diff --quiet pre-v1.7.0_gg8 HEAD -- <the tracked files of the NAME pin classes>
+git diff --quiet 83808df9a0993cf49b2ceaa4633c782e550c0180 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/db/SlashColumnRoundTripTest.java
+```
+
+```text
+lf_tests: 31
+lf_failures: 0
+mutation_target: first statement of fromJsonRow in the worktree copy of ClickHouseFieldDescriptor.java: if (true) { return OBJECT_MAPPER.readValue(json, ClickHouseFieldDescriptor.class); } (upstream's body; the anchor text occurred once)
+mutation_failures: 30
+mutation_null_case_green: yes
+worktree_removed: yes
+fmt_lf: identical
+lf_commit: b41f913c893c459fa200c8a7221b7d21ca20501b
+live_exit: 0
+live_failed_count: 0
+live_tests: 135
+slash_tests: 4
+slash_failures: 0
+raw_identifier_live_tests: 73
+raw_name_matrix_live_tests: 25
+nullable_tuple_matrix_live_tests: 33
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+name_ids_found: NAME-01; NAME-02; NAME-03; NAME-04; NAME-05; NAME-06
+name_pin_classes: ClickHouseHelperClientForkLiveTest; ClickHouseHelperClientForkUnitTest; ColumnTest; DeclaredNullabilityTest; JsonDynamicRoundTripTest; NestedNullRowBinaryLiveTest; NestedNullableCompositeWriteTest; NullableTupleMatrixLiveTest; RawIdentifierNameLiveTest; RawNameMatrixDriftLiveTest; RawNameMatrixFixturesUnitTest; RawNameMatrixLiveTest; SimpleAggregateTupleRoundTripLiveTest; TableTest
+name_pins_unchanged_since_tag: yes
+slash_test_identical_to_upstream: yes
+jvm_crash: none
+```
+
+The new class holds 31 cases: five fields (`type`, `comment`, `default_expression`, `codec_expression`, `ttl_expression`) times six escape samples (escaped slash, backslash, quote, newline, tab, unicode with slash), plus one JSON-null case. Against upstream's decode-all `readValue` in a detached worktree exactly the 30 field cases go red (every sample holds an escape, so every field is decoded away from its literal text) and the null case stays green, so the pin watches the difference and not the shared behaviour. `SlashColumnRoundTripTest` (4 cases: V1 and V2 for each of its two methods), byte-identical to upstream's blob, passes through DESCRIBE, insert and typed read-back, with the three live NAME pin classes in the same run (135 tests, no failure). The NAME pin classes were read from the "Pinned by" cells of the four FORK-DELTA rows that cite a NAME-0N ID (`RawNameMatrix` is a helper, not a test class, and is not in the list); none of their 14 files differs from `pre-v1.7.0_gg8`. `FieldDescriptorEscapeTest` is not in this list: it is an upstream test edited in plan 45-02 and is named in the Test-harness row written by Task 3. Nothing was pushed; the worktree was removed.
+
+2026-11-04T21:03:00Z
 Verdict: pass
