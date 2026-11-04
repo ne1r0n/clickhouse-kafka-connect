@@ -223,3 +223,5 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 # Phase 42 (v1.7.0_gg7): ClickHouseSinkTask.start logs one WARN naming the additionalRetriableErrorCodes entries outside the built-in retriable set and 216 (RSK-03); rows land in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	warnOnUnvettedRetriableCodes(	2	RSK-03
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	unvetted.removeAll(Utils.DEFAULT_RETRIABLE_ERROR_CODES);	1	RSK-03
+# Phase 45 (v1.7.0_gg8): every value-carrying Jackson chain the writer would pass through is rebuilt value-free, keeping the links and root facts retry classification reads (UPS-02, plan-check answer 1 and the iteration-2 answer); rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	withheldJacksonChain(	2	UPS-02

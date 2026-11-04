@@ -605,6 +605,9 @@ public class ClickHouseWriter implements DBWriter {
     private static final String NESTED_NULL_MESSAGE_FORMAT = "column '%s' (%s) %s: null in non-nullable slot";
     private static final String DATETIME_PARSE_FAILURE_LOG_FORMAT = "Error parsing date time string for column '{}' "
             + "(ClickHouse type {}, Kafka type {}): exception {}, value length {}";
+    // Reads like WithheldMessageException.toString() after the class name, so a stand-in link and a
+    // withheld copy of a cause look the same to an operator.
+    private static final String WITHHELD_LINK_NOTE = " (message withheld: may contain record data)";
     private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
     // Built from Column metadata and class names only: this text reaches Connect status and DLQ
     // topics, so it carries no value and no value length.
@@ -686,7 +689,8 @@ public class ClickHouseWriter implements DBWriter {
      *
      * <p>A Jackson exception is itself an IOException and its message can quote record data (a
      * reference chain names a Map key), so a Jackson link never counts, while a timeout beneath it
-     * still does.
+     * still does. A chain that passes through and holds a Jackson link is rebuilt value-free by
+     * {@link #withheldJacksonChain} before it is thrown.
      */
     private static boolean passesThroughUnchanged(Exception e) {
         if (e instanceof ConnectException || e.getClass() == RuntimeException.class) {
@@ -699,6 +703,110 @@ public class ClickHouseWriter implements DBWriter {
             }
         }
         return false;
+    }
+
+    /**
+     * Rebuilds a pass-through chain that holds a Jackson link, or returns {@code null} when it holds
+     * none. A Jackson message can quote record data, so every Jackson link and every link above one
+     * is replaced by a stand-in carrying a withheld text. The links retry classification reads keep
+     * their kind and error code, the run of non-Jackson IOExceptions at the bottom stays the same
+     * objects, and a Jackson root becomes an IOException that keeps the client-timeout prefix the
+     * classifier reads. The top keeps its IOException or RuntimeException category, so client V2
+     * wraps it exactly as before.
+     *
+     * @return {@code null}, an {@link IOException} or a {@link RuntimeException}, never another type
+     */
+    private static Exception withheldJacksonChain(Exception e, String topText) {
+        List<Throwable> chain = new ArrayList<>();
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        boolean holdsJackson = false;
+        for (Throwable t = e; t != null && seen.add(t); t = t.getCause()) {
+            chain.add(t);
+            holdsJackson |= t instanceof JacksonException;
+        }
+        if (!holdsJackson) {
+            return null;
+        }
+        int deepest = chain.size() - 1;
+        int suffixStart = chain.size();
+        while (suffixStart > 0 && isTrustedIoLink(chain.get(suffixStart - 1))) {
+            suffixStart--;
+        }
+        Throwable below;
+        int nextAbove;
+        if (suffixStart < chain.size()) {
+            below = chain.get(suffixStart);
+            nextAbove = suffixStart - 1;
+        } else if (deepest == 0) {
+            below = null;
+            nextAbove = -1;
+        } else {
+            Throwable root = chain.get(deepest);
+            below = root instanceof JacksonException ? withheldJacksonRoot(root) : sameKindStandIn(root, withheldText(root), null);
+            nextAbove = deepest - 1;
+        }
+        for (int i = nextAbove; i >= 1; i--) {
+            Throwable link = chain.get(i);
+            if (!(link instanceof JacksonException)) {
+                below = sameKindStandIn(link, withheldText(link), below);
+            }
+        }
+        if (e instanceof IOException) {
+            IOException top = new IOException(topText, below);
+            top.setStackTrace(e.getStackTrace());
+            return top;
+        }
+        return e instanceof RuntimeException ? (RuntimeException) sameKindStandIn(e, topText, below) : new RuntimeException(topText, below);
+    }
+
+    private static boolean isTrustedIoLink(Throwable link) {
+        return link instanceof IOException && !(link instanceof JacksonException);
+    }
+
+    private static String withheldText(Throwable link) {
+        return link.getClass().getName() + WITHHELD_LINK_NOTE;
+    }
+
+    private static IOException withheldJacksonRoot(Throwable root) {
+        String message = root.getMessage();
+        String prefix = "";
+        if (message != null) {
+            if (message.startsWith(Utils.CLICKHOUSE_CLIENT_ERROR_READ_TIMEOUT_MSG)) {
+                prefix = Utils.CLICKHOUSE_CLIENT_ERROR_READ_TIMEOUT_MSG + " ";
+            } else if (message.startsWith(Utils.CLICKHOUSE_CLIENT_ERROR_WRITE_TIMEOUT_MSG)) {
+                prefix = Utils.CLICKHOUSE_CLIENT_ERROR_WRITE_TIMEOUT_MSG + " ";
+            }
+        }
+        IOException standIn = new IOException(prefix + withheldText(root));
+        standIn.setStackTrace(root.getStackTrace());
+        return standIn;
+    }
+
+    private static Exception sameKindStandIn(Throwable original, String text, Throwable cause) {
+        Exception standIn;
+        if (original instanceof RetriableException) {
+            standIn = new RetriableException(text, cause);
+        } else if (original instanceof DataException) {
+            standIn = new DataException(text, cause);
+        } else if (original instanceof ConnectException) {
+            standIn = new ConnectException(text, cause);
+        } else if (original instanceof ClickHouseException) {
+            int code = ((ClickHouseException) original).getErrorCode();
+            standIn = cause == null ? new ClickHouseException(code, text, null) : new ClickHouseException(code, cause, null);
+        } else if (original instanceof ServerException) {
+            ServerException server = (ServerException) original;
+            ServerException copy = new ServerException(server.getCode(), text, server.getTransportProtocolCode(), server.getQueryId());
+            if (cause != null) {
+                copy.initCause(cause);
+            }
+            standIn = copy;
+        } else if (original instanceof IOException) {
+            standIn = new IOException(text, cause);
+        } else {
+            standIn = new RuntimeException(text, cause);
+        }
+        standIn.setStackTrace(original.getStackTrace());
+        return standIn;
     }
 
     private static String sourceTypeName(Data value) {
@@ -955,6 +1063,13 @@ public class ClickHouseWriter implements DBWriter {
             LOGGER.error(WRITE_VALUE_FAILURE_LOG_FORMAT, value == null ? "<value null>" : value.getFieldType(), col.getName(), columnType,
                     e.getClass().getName());
             if (passesThroughUnchanged(e)) {
+                Exception rebuilt = withheldJacksonChain(e, buildValueConversionFailureMessage(col, columnType, value, e));
+                if (rebuilt instanceof IOException) {
+                    throw (IOException) rebuilt;
+                }
+                if (rebuilt instanceof RuntimeException) {
+                    throw (RuntimeException) rebuilt;
+                }
                 throw e;
             }
             throw new DataException(buildValueConversionFailureMessage(col, columnType, value, e), WithheldMessageException.of(e));
