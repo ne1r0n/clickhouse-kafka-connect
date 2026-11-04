@@ -22,7 +22,7 @@
 | E-07 | UPS-02 | 45-03 | pass |
 | E-08 | UPS-02 | 45-03 | pass |
 | E-09 | UPS-02 | 45-03 | pass |
-| E-10 | UPS-02 | 45-04 | pending (plan 45-04) |
+| E-10 | UPS-02 | 45-04 | pass |
 | E-11 | UPS-02 | 45-04 | pending (plan 45-04) |
 | E-12 | UPS-02 | 45-04 | pending (plan 45-04) |
 | E-13 | UPS-03, UPS-04 | 45-05 | pending (plan 45-05) |
@@ -558,4 +558,60 @@ tail_gate_exit: 0
 Mutation red sets (each in its own detached worktree, removed afterwards; the main tree was never touched). M1 (a value in the coordinate line): 18 red in `WriterRecordContextUnitTest`, all `logsOneValueFreeCoordinateLine` (14) or `carriesNoRecordValue` (INVALID_UUID, UNPARSEABLE_INT128, TYPE_MISMATCH, UNKNOWN_ENUM_LABEL), so the value check bites. M2 (rethrow as RetriableException): `keepsTheRetryOutcome` red for the nine NON_RETRIABLE shapes and SOCKET_EXCEPTION, `rethrowsWhatDoWriteColThrew` red for 14. M3 (rebuild call replaced by null): `carriesNoRecordValue` and `rebuildIsValueFreeAndKeepsTheSuffix` red for all 19 chains, the three renamed `WriterValueFreeFailureUnitTest` methods red, and `WriterRecordContextUnitTest#carriesNoRecordValue JACKSON_OVER_SOCKET_TIMEOUT` red. M4 (kept suffix replaced by a withheld copy): 9 `keepsTheClassifiedLinks`, 9 `rebuildIsValueFreeAndKeepsTheSuffix` and 6 `keepsTheRetryOutcome` cases red including OVER_SOCKET_TIMEOUT in the last two, and 16 matrix cases of `WriterFailureClassificationUnitTest` red, 8 of them named JACKSON_OVER_SOCKET_TIMEOUT, so the 216-case matrix watches the rebuild. M5 (RetriableException stand-in made a RuntimeException): `keepsTheClassifiedLinks` and `keepsTheRetryOutcome` red for RETRIABLE_OVER_JACKSON_ROOT and OVER_RETRIABLE_OVER_PLAIN_IO. M6 (root stand-in without the timeout prefix): `keepsTheRetryOutcome`, `keepsTheClassifiedLinks` and `rebuildIsValueFreeAndKeepsTheSuffix` red for PLAIN_IO_OVER_TIMEOUT_PREFIXED_JACKSON_ROOT only. The cache-busted testUnit is 1837 (E-05) + 95 + 59 + 4 = 1995 tests with the 2 skips. The live run on ClickHouse `26.10.3.7` x client V2 passes `WriterErrorPathLiveTest` (10 tests, WRT-10 included), `JsonAsStringKeyResidualLiveTest` (4) and the 216-case matrix, and no crash dump was left in the root. The m1 and m2 targets differ from the plan's one-line text only in the line breaks of the formatted call; each was replaced exactly once. Nothing was pushed.
 
 2026-11-04T20:41:00Z
+Verdict: pass
+
+### E-10: JSON insert route measured before the guard (worktree probe)
+
+Backs: UPS-02, ROADMAP Phase 45 criterion 2 (the JSON insert route's failure shapes are measured on the real tree before the guard: which are reachable, which surfaces a record value reaches, and the retry outcome as thrown and as client V2 wraps it; the probe exists only in a detached worktree that is removed).
+
+```sh
+git worktree add --detach /tmp/gsd45/probe-json HEAD
+git -C /tmp/gsd45/probe-json rev-parse HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/probe-json --console=plain testUnit --rerun --tests '*ProbeJsonRouteMeasurementTest*' > /tmp/gsd45/exec/probe-json.log 2>&1
+python3 -I <extract the PROBEJSON lines from TEST-...ProbeJsonRouteMeasurementTest.xml into /tmp/gsd45/exec/probe-json-lines.txt>
+grep -c '<the probe sentinel text>' /tmp/gsd45/exec/probe-json-lines.txt
+git worktree remove --force /tmp/gsd45/probe-json
+git worktree prune
+git worktree list
+git log --all --format=%H -- '*ProbeJsonRouteMeasurementTest.java'
+```
+
+```text
+json_probe_tree: fb5fa4cbd758b32f5e14cdc4c3bb8cb81d379325
+json_probe_shapes: 8
+json_probe_lines: 9
+json_probe_run: 1 test, 0 failures, BUILD SUCCESSFUL
+json_probe_lines_with_sentinel: 0
+json_reachable_shapes: 8
+json_unreachable: none
+json_pinned_shapes: JSON_SCRIPTED_RUNTIME; JSON_KEY_IN_REFERENCE_CHAIN; JSON_SCRIPTED_JACKSON_ALONE; JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT; JSON_NO_JACKSON_NULL_DATA_CONTROL; JSON_SCHEMA_BYPASS_KEY; JSON_METADATA_FREE_STRUCT_VALUE; JSON_METADATA_FREE_CDC_VALUE
+json_value_in_message_shapes: JSON_SCRIPTED_RUNTIME; JSON_KEY_IN_REFERENCE_CHAIN; JSON_SCRIPTED_JACKSON_ALONE; JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT; JSON_SCHEMA_BYPASS_KEY; JSON_METADATA_FREE_STRUCT_VALUE; JSON_METADATA_FREE_CDC_VALUE
+json_value_in_dlq_headers_shapes: JSON_SCRIPTED_RUNTIME; JSON_KEY_IN_REFERENCE_CHAIN; JSON_SCRIPTED_JACKSON_ALONE; JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT; JSON_SCHEMA_BYPASS_KEY; JSON_METADATA_FREE_STRUCT_VALUE; JSON_METADATA_FREE_CDC_VALUE
+json_value_in_logs_shapes: none
+json_jackson_shapes: JSON_SCRIPTED_RUNTIME; JSON_KEY_IN_REFERENCE_CHAIN; JSON_SCRIPTED_JACKSON_ALONE; JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT; JSON_SCHEMA_BYPASS_KEY; JSON_METADATA_FREE_STRUCT_VALUE; JSON_METADATA_FREE_CDC_VALUE
+json_control_unchanged: yes
+json_io_timeout_wrapped: yes
+json_retriable_shapes: JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT
+json_outcome_v1_equals_v2: yes
+worktree_removed: yes
+json_probe_class_committed: no
+```
+
+The first run of this probe, on the plan's original shape table, found two plan assumptions false, and the table was amended in its own commit before this entry (`fb5fa4cb`). First, `ObjectMapper.writeValueAsBytes` turns every non-Jackson IOException into a `JsonMappingException` with no cause (message `Unexpected IOException (of type <class>): <text>`) on all four routes, so a plain IOException cannot leave the serialization statements and an unchanged retriable IOException control cannot exist; the control is a Jackson-free `NullPointerException` (a null `Data` in a DEBEZIUM_CDC `bypassRowBinary` record, thrown by the writer's own `v.getObject()`), and the scripted IO timeout is the ninth line, kept as a measured fact (`json_io_timeout_wrapped`): Jackson wraps it, its chain holds no IOException, its outcome is not retriable, and the guard does not try to change that. Second, the metadata-free serializers write map keys themselves, so a key never reached a reference chain there (message `boom`, no value); their shapes now put the value in the scripted exception's message. Every shape drives `CapturingClickHouseWriter.doInsert(records, queryId, null)` (the real `writeRecordsJson`), the sentinel is masked as `<SENTINEL>` and never printed, and `outcome_*` lists the four settings in the order errors.tolerance none/socket off, none/socket on, all/socket off, all/socket on through the `RuntimeException(queryId)` wrap Processing applies (the V2 column after the client-V2 wrap of a RuntimeException).
+
+```probejson
+PROBEJSON shape=JSON_SCRIPTED_RUNTIME reachable=yes thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=yes sentinel_in_stack=yes sentinel_in_dlq_headers=yes sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=<SENTINEL> (through reference chain: java.util.HashMap["payload"]->java.util.HashMap["k"])
+PROBEJSON shape=JSON_KEY_IN_REFERENCE_CHAIN reachable=yes thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=yes sentinel_in_stack=yes sentinel_in_dlq_headers=yes sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=boom (through reference chain: java.util.HashMap["payload"]->java.util.HashMap["<SENTINEL>"])
+PROBEJSON shape=JSON_SCRIPTED_JACKSON_ALONE reachable=yes thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=yes sentinel_in_stack=yes sentinel_in_dlq_headers=yes sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=<SENTINEL> (through reference chain: java.util.HashMap["payload"]->java.util.HashMap["k"])
+PROBEJSON shape=JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT reachable=yes thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=yes sentinel_in_stack=yes sentinel_in_dlq_headers=yes sentinel_in_logs=no outcome_v1=RETRIABLE,RETRIABLE,RETRIABLE,RETRIABLE outcome_v2=RETRIABLE,RETRIABLE,RETRIABLE,RETRIABLE message_head=<SENTINEL> (through reference chain: java.util.HashMap["payload"]->java.util.HashMap["k"])
+PROBEJSON shape=JSON_NO_JACKSON_NULL_DATA_CONTROL reachable=yes thrown_class=java.lang.NullPointerException jackson_link=no sentinel_in_message=no sentinel_in_stack=no sentinel_in_dlq_headers=no sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=Cannot invoke "com.clickhouse.kafka.connect.sink.data.Data.getObject()" because "v" is null
+PROBEJSON shape=JSON_SCHEMA_BYPASS_KEY reachable=yes thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=yes sentinel_in_stack=yes sentinel_in_dlq_headers=yes sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=boom (through reference chain: java.util.HashMap["payload"]->java.util.HashMap["<SENTINEL>"])
+PROBEJSON shape=JSON_METADATA_FREE_STRUCT_VALUE reachable=yes thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=yes sentinel_in_stack=yes sentinel_in_dlq_headers=yes sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=<SENTINEL>
+PROBEJSON shape=JSON_METADATA_FREE_CDC_VALUE reachable=yes thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=yes sentinel_in_stack=yes sentinel_in_dlq_headers=yes sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=<SENTINEL>
+PROBEJSON shape=JSON_SCRIPTED_IO_TIMEOUT reachable=no thrown_class=com.fasterxml.jackson.databind.JsonMappingException jackson_link=yes sentinel_in_message=no sentinel_in_stack=no sentinel_in_dlq_headers=no sentinel_in_logs=no outcome_v1=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS outcome_v2=RUNTIME_WRAP,RUNTIME_WRAP,RETURNS,RETURNS message_head=Unexpected IOException (of type java.io.IOException): Read timed out after 30000 ms
+```
+
+Today the record value reaches the thrown message, the rendered stack trace and the Connect DLQ headers for seven of the eight shapes (every Jackson-wrapped value-carrying failure on the schemaless, bypass and both metadata-free routes) and no log line, while the null-Data control and the IO-timeout fact carry none; the only retriable shape is the Jackson-over-socket-timeout one, whose outcome the guard must keep.
+
+2026-11-04T20:50:10Z
 Verdict: pass
