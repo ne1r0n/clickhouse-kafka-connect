@@ -24,7 +24,7 @@
 | E-09 | UPS-02 | 45-03 | pass |
 | E-10 | UPS-02 | 45-04 | pass |
 | E-11 | UPS-02 | 45-04 | pass |
-| E-12 | UPS-02 | 45-04 | pending (plan 45-04) |
+| E-12 | UPS-02 | 45-04 | pass |
 | E-13 | UPS-03, UPS-04 | 45-05 | pending (plan 45-05) |
 | E-14 | UPS-05 | 45-05 | pending (plan 45-05) |
 | E-15 | UPS-02, UPS-04 | 45-05 | pending (plan 45-05) |
@@ -666,4 +666,62 @@ json_commit: 0c8be1daedb04a77240191cbf76a857fa15a4a82
 Red-first on the unguarded tree (`src/main` differs from the merge commit only by plan 45-03's two files): 46 tests, 18 red. `carriesNoRecordValue` and `isValueFreeAndKeepsTheTrustedSuffix` are red for exactly the seven value-carrying shapes (every shape except the Jackson-free null-Data control), with `no Jackson link may be left in the thrown chain` and `no message of the thrown chain may carry the value` as the failures; the four production-path cases of `JsonRouteValueFreeDlqUnitTest` (two shapes by errors.tolerance all and none) are red on the sentinel in the DLQ stack trace and in the thrown chain. The control's five checks, `rawFailureCarriesTheValue` on every shape, both success-path byte tests and the non-change checks (`keepsTheClassifiedLinks`, `keepsTheRetryOutcome`) are green there: they hold because THROWN is the serializer's own exception, so their bite is mutation J3. After the change all 46 pass (42 + 4 = 5 x 8 shapes + 2 + 4), the 529 neighbouring tests (the other Jackson, writer and JSON-route pins, with the 216-case matrix) pass, `withheldJacksonChain(` occurs twice (declaration and the shared entry point) and the mirror reads `rows=197 bad=0`. Two details of the final pins differ from the first draft that was run red: a lone Jackson exception rebuilds to the value-free top alone (the test now asserts that single link, as the rebuild produces no separate root), and the message names the table with `getCleanName()` because the format already wraps it in backticks (`getName()` would print them twice); both only affect assertions that were already failing for the unguarded tree. `fmt_writer_json` is `preexisting`: Spotless would only move the static import and the Connect import block of `ClickHouseWriter.java`, which this commit does not touch. Nothing was pushed.
 
 2026-11-04T20:54:19Z
+Verdict: pass
+
+### E-12: JSON-route bite and gate: three mutations, testUnit, live JSON run, anchors, tail gate
+
+Backs: UPS-02, ROADMAP Phase 45 criterion 2 (the JSON-route checks bite under three mutations applied only in a removed worktree; the cache-busted testUnit and a targeted live JSON run on latest x V2 pass; the anchors stay at 197 rows; the unedited tail gate passes with `anchor_rows=197`).
+
+```sh
+git worktree add --detach /tmp/gsd45/mut HEAD
+python3 -I /tmp/gsd45/mutate.py /tmp/gsd45/mut/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java <old> <new>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/mut --console=plain testUnit --rerun --tests '<class filter>' > /tmp/gsd45/exec/mut-<n>.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed /tmp/gsd45/mut/build/test-results/testUnit
+git worktree remove --force /tmp/gsd45/mut
+git worktree prune
+git worktree list
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd45/exec/testunit-json.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*ClickHouseSinkTaskSchemalessTest*' --tests '*JsonInsertColumnsLiveTest*' --tests '*ExplicitJsonInsertPathLiveTest*' --tests '*ClickHouseSinkTaskJsonInsertFormatTest*' --tests '*JsonAsStringKeyResidualLiveTest*' > /tmp/gsd45/exec/live-json.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/test
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git diff --name-only 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- src/main
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 79eb0b95449ef188b9f0957313add68348787553 > /tmp/gsd45/exec/tail-gate-04.log 2>&1
+```
+
+```text
+j1_target: in writeRecordsJson's catch, the throwRebuiltJacksonChain(e, String.format(JSON_ROW_FAILURE_FORMAT, table.getCleanName(), e.getClass().getName())) statement removed, so the catch only rethrows e
+j1_failed_count: 18
+j1_expected_met: yes
+j2_target: in the same catch, `table.getCleanName(), e.getClass().getName()` replaced by `table.getCleanName(), e.getMessage()`
+j2_failed: 14
+j2_expected_met: yes
+j3_target: in withheldJacksonChain, below = chain.get(suffixStart); replaced by below = WithheldMessageException.of(chain.get(suffixStart));
+j3_failed: 3
+j3_expected_met: yes
+worktrees_removed: yes
+testunit_exit: 0
+testunit_tests: 2041
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+live_json_exit: 0
+live_json_failed_count: 0
+live_json_tests: 31
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+anchors_mirror: rows=197 bad=0
+main_diff_since_merge: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+tail_gate_head: 79eb0b95449ef188b9f0957313add68348787553
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=21 anchor_rows=197 marker_commits=39 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+Mutation red sets (each in its own detached worktree, removed afterwards; the main tree was never touched). J1 (guard off): 18 of the 46 pins red, `carriesNoRecordValue` and `isValueFreeAndKeepsTheTrustedSuffix` for all seven value-carrying shapes and all four production-path cases of `JsonRouteValueFreeDlqUnitTest`. J2 (the top text carries the exception message): 14 red, the same two checks for the seven value-carrying shapes including JSON_SCRIPTED_JACKSON_ALONE, so the value-free top text is watched. J3 (kept trusted suffix replaced by a withheld copy): 3 red, all for JSON_SCRIPTED_JACKSON_OVER_SOCKET_TIMEOUT: `isValueFreeAndKeepsTheTrustedSuffix`, `keepsTheClassifiedLinks` and `keepsTheRetryOutcome`, so the retriable classification on the JSON route is pinned. The cache-busted testUnit is 1995 (E-09) + 46 = 2041 tests with the 2 skips. The targeted live run on ClickHouse `26.10.3.7` x client V2 passes the five JSON-route classes (31 tests), which read back what they insert, so the bytes sent are unchanged on a real server. The plan's J1 and J2 targets name `table.getName()`; the code uses `table.getCleanName()` (see E-11), and the recorded targets are the exact replaced text. Nothing was pushed.
+
+2026-11-04T20:57:37Z
 Verdict: pass
