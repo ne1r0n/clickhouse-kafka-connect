@@ -26,7 +26,7 @@
 | E-11 | UPS-02 | 45-04 | pass |
 | E-12 | UPS-02 | 45-04 | pass |
 | E-13 | UPS-03, UPS-04 | 45-05 | pass |
-| E-14 | UPS-05 | 45-05 | pending (plan 45-05) |
+| E-14 | UPS-05 | 45-05 | pass |
 | E-15 | UPS-02, UPS-04 | 45-05 | pending (plan 45-05) |
 | E-16 | DEP-01 | 45-06 | pending (plan 45-06) |
 | E-17 | DEP-01, DEP-02 | 45-06 | pending (plan 45-06) |
@@ -783,4 +783,56 @@ jvm_crash: none
 The new class holds 31 cases: five fields (`type`, `comment`, `default_expression`, `codec_expression`, `ttl_expression`) times six escape samples (escaped slash, backslash, quote, newline, tab, unicode with slash), plus one JSON-null case. Against upstream's decode-all `readValue` in a detached worktree exactly the 30 field cases go red (every sample holds an escape, so every field is decoded away from its literal text) and the null case stays green, so the pin watches the difference and not the shared behaviour. `SlashColumnRoundTripTest` (4 cases: V1 and V2 for each of its two methods), byte-identical to upstream's blob, passes through DESCRIBE, insert and typed read-back, with the three live NAME pin classes in the same run (135 tests, no failure). The NAME pin classes were read from the "Pinned by" cells of the four FORK-DELTA rows that cite a NAME-0N ID (`RawNameMatrix` is a helper, not a test class, and is not in the list); none of their 14 files differs from `pre-v1.7.0_gg8`. `FieldDescriptorEscapeTest` is not in this list: it is an upstream test edited in plan 45-02 and is named in the Test-harness row written by Task 3. Nothing was pushed; the worktree was removed.
 
 2026-11-04T21:03:00Z
+Verdict: pass
+
+### E-14: UPS-05 resolution facts, three anchor rows and the tail gate
+
+Backs: UPS-05, ROADMAP Phase 45 criterion 4 (resolution and anchor clauses: the upstream coordinates resolve where they should, connect-json stays out of the shipped set, the anchor count changes in the commit that adds its rows, the tail gate passes).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration integrationTestRuntimeClasspath --dependency slf4j-simple
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration testRuntimeClasspath --dependency commons-lang3
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration testFixturesRuntimeClasspath --dependency commons-lang3
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration runtimeClasspath --dependency commons-lang3
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain buildEnvironment | grep -i spotless
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration testRuntimeClasspath --dependency connect-json
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration runtimeClasspath --dependency connect-json
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration clickhouseDependencies --dependency connect-json
+git show pre-v1.7.0_gg8:gradle/libs.versions.toml | grep -cxF -e '<each of the three lines>'
+git diff 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10^1 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 -- gradle/libs.versions.toml
+grep -cF -e '<each of the three patterns>' <its file>
+git show 83808df9a0993cf49b2ceaa4633c782e550c0180:src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java | grep -cF -e 'BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream()'
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd45/exec/msg-anch.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 9c7a31a14de4638aa38a9d050fae88bf8340ff12 > /tmp/gsd45/exec/tail-gate-04b.log 2>&1
+```
+
+```text
+slf4j_simple_integration: 2.0.20
+commons_lang3_test: 3.21.0
+commons_lang3_test_fixtures: 3.21.0
+commons_lang3_runtime: 3.20.0
+spotless_plugin: 8.10.4
+connect_json_test: 4.4.0
+connect_json_test_requesters: root project
+connect_json_runtime: absent
+connect_json_shipped: absent
+bumps_already_at_tag: yes
+catalog_change_in_m: +kafka-connect-json = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }
+catalog_commons_lang3: commonsLang3 = "3.21.0"
+catalog_slf4j: slf4j = "2.0.20"
+catalog_spotless: spotless = "8.10.4"
+anchor_counts: 1; 1; 0
+dead_reader_count_upstream: 1
+anchors_mirror: rows=200 bad=0
+anchors_commit: 9c7a31a14de4638aa38a9d050fae88bf8340ff12
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=26 anchor_rows=200 marker_commits=44 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+Configurations: `slf4j_simple_integration` is `integrationTestRuntimeClasspath`; `commons_lang3_test` and `commons_lang3_test_fixtures` are `testRuntimeClasspath` and `testFixturesRuntimeClasspath`, where conflict resolution picks the catalog's 3.21.0 over 3.20.0, 3.18.0, 3.17.0, 3.13.0 and 3.7; `commons_lang3_runtime` is `runtimeClasspath`, where the ClickHouse client 0.11.0's own 3.20.0 wins over 3.18.0; `spotless_plugin` is the `com.diffplug.spotless.gradle.plugin` line of `buildEnvironment`; `connect_json_test` is `testRuntimeClasspath`.
+
+Of the four coordinates the user approved to land in M (plan-check answer 4), three were already at the pre-merge tip (`pre-v1.7.0_gg8` holds `commonsLang3 = "3.21.0"`, `slf4j = "2.0.20"` and `spotless = "8.10.4"`, each exactly once) and only connect-json changes: M's diff of `gradle/libs.versions.toml` against its first parent is the one added `kafka-connect-json` library line. The shipped `runtimeClasspath` carries commons-lang3 3.20.0, the ClickHouse client's own pin; the catalog's 3.21.0 reaches only `testRuntimeClasspath` and `testFixturesRuntimeClasspath`. connect-json 4.4.0 is requested only by the root project on `testRuntimeClasspath` and no dependency of that name resolves on `runtimeClasspath` or `clickhouseDependencies`, so it cannot reach the Confluent archive. The catalog has a second line starting `spotless =` (the plugin alias, `{ id = "com.diffplug.spotless", version.ref = "spotless" }`); `catalog_spotless` is the version line. The three anchor rows measured 1, 1 and 0 on the tree before the commit; the 0 row's pattern occurs once in upstream's blob of `ClickHouseHelperClient.java`, so it would catch #839's dead reader if it came back. The gate ran unedited over `M` to the anchors commit with the full SHAs and the tail-3 conflicted-paths file (about 90 s).
+
+2026-11-04T21:05:30Z
 Verdict: pass
