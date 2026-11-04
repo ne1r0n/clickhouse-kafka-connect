@@ -17,7 +17,7 @@
 | E-02 | UPS-01 | 45-01 | pass |
 | E-03 | UPS-01 | 45-01 | pass |
 | E-04 | UPS-01, UPS-02, UPS-04 | 45-01 | pass |
-| E-05 | UPS-02, UPS-04 | 45-02 | pending (plan 45-02) |
+| E-05 | UPS-02, UPS-04 | 45-02 | pass |
 | E-06 | UPS-02 | 45-02 | pending (plan 45-02) |
 | E-07 | UPS-02 | 45-03 | pending (plan 45-03) |
 | E-08 | UPS-02 | 45-03 | pending (plan 45-03) |
@@ -248,4 +248,70 @@ upstream_tests_byte_identical_to_upstream: yes
 `measured_head` is the record commit; the evidence commit after it touches only `.planning`, so the tree outside `.planning` is the tree of M. The three compile tasks of the combined run all pass; `compileTestJava` fails with exactly the predicted two javac errors, both `new SinkTaskStatistics(0)` against the fork's `(String connectorName, int taskId)` constructor (lines 41 and 63). `connect-json` 4.4.0 resolved from the network on the first build after M (no `Could not resolve` or `No cached version` line) and its SHA-1 equals Maven Central's. Nothing else is red on the compile side, so plan 45-02's repairs are scoped to the predicted set. Nothing in `src` changed in this task.
 
 2026-11-04T20:10:50Z
+Verdict: pass
+
+### E-05: U-2 upstream-test edits, testUnit before and after, and the attributable full-suite red set
+
+Backs: UPS-02, UPS-04, ROADMAP Phase 45 criterion 3 (U-2: upstream's two edited tests are kept green by named, minimal, test-only edits, each in its own commit, and the only red left on the merged tree is the one #857 causes).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava compileTestJava compileTestFixturesJava compileIntegrationTestJava > /tmp/gsd45/exec/compile-fix.log 2>&1
+git worktree add --detach /tmp/gsd45/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/fmt --console=plain spotlessApply > /tmp/gsd45/exec/fmt-1.log 2>&1
+git commit -F /tmp/gsd45/exec/msg-a.txt
+git diff --numstat 83808df9a0993cf49b2ceaa4633c782e550c0180 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterRecordContextTest.java
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd45/exec/testunit-after-compile-fix.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*FieldDescriptorEscapeTest*' > /tmp/gsd45/exec/fdt.log 2>&1
+git worktree add --detach /tmp/gsd45/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/fmt --console=plain spotlessApply > /tmp/gsd45/exec/fmt-2.log 2>&1
+git commit -F /tmp/gsd45/exec/msg-b.txt
+git diff -U0 83808df9a0993cf49b2ceaa4633c782e550c0180 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/db/FieldDescriptorEscapeTest.java | grep -cE '^-[^-]'
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd45/exec/testunit-after-u2.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd45/exec/suite-after-u2.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/test --expect 'WriterErrorPathLiveTest#WRT-10: a record whose Array'
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+compile_four_tasks_exit: 0
+compile_fix_commit: c3946803517bbeb4e807569cac797170ba3128d2
+compile_fix_numstat: 2 2
+fmt_record_context_test: preexisting
+testunit_after_fix_exit: 1
+testunit_after_fix_tests: 1837
+testunit_after_fix_failed: FieldDescriptorEscapeTest#preservesEscapedCommentsAndDefaultExpressions
+escape_edit_commit: 0f4e45bd698e59acb977daa0c3878f2afeab2800
+escape_edit_removed_lines: 2
+fmt_field_descriptor_escape_test: identical
+testunit_exit: 0
+testunit_tests: 1837
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+suite_exit: 1
+suite_tests: 2440
+suite_failures: 1
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_failed: WriterErrorPathLiveTest#WRT-10: a record whose Array
+suite_files: 141
+suite_duration: 164s
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+jvm_crash: first suite run crashed (OpenJ9 exit 255, partial XML: 2356 tests, 133 files); core dump and sibling files deleted; the single re-run recorded here is clean
+```
+
+Compile fix: the four compile tasks pass after the two-line edit; the numstat against upstream's blob is `2 2`, so the file differs from upstream only by its two constructor lines. `fmt_record_context_test` is `preexisting`: Spotless' `removeUnusedImports` would drop one line, the unused `java.io.IOException` import that upstream's own blob carries (the file at HEAD is byte-identical to upstream's blob apart from the two constructor lines), so it was left as merged to keep the diff to the two named lines. Escape edit: testUnit was red on exactly `FieldDescriptorEscapeTest#preservesEscapedCommentsAndDefaultExpressions` after the compile fix (1837 = 1826 baseline + 11 upstream tests), with the failure `expected: <'a\\b'> but was: <'a\\\\b'>` as predicted; the edit changed only the two expected values of `getDefaultExpression()` and `getComment()` to the literal JSON text (default expression with four backslashes; comment with `\\`, `\"`, `\n`, `\t` kept as backslash sequences) plus one comment line, the file's Spotless run is `identical`, and the class passed on the first run after the edit. The full suite on the repaired merge is baseline 2425 + 15 = 2440 tests with the 18 named skips and exactly one red testcase, WRT-10, so plan 45-03's repair is attributable. The first full-suite attempt hit the known intermittent OpenJ9 crash (exit 255, `Gradle Test Executor 33`, 8 GB core dump) and was discarded; its partial XML was not used.
+
+2026-11-04T20:21:30Z
 Verdict: pass
