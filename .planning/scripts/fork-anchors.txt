@@ -233,3 +233,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Failed 
 # Phase 45 (v1.7.0_gg8): the JSON insert route rethrows a serialization failure through the shared value-free Jackson rebuild, failure path only (UPS-02, iteration-3 answer); rows land in the commit that changes the code
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	throwRebuiltJacksonChain(	3	UPS-02
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	JSON_ROW_FAILURE_FORMAT	2	UPS-02
+# Phase 45 (v1.7.0_gg8): upstream tail 83808df9 puts connect-json on the test classpath only (UPS-05); the 0 row pins that #839's unused describeTableV1 reader stays dropped (HLP-04); these rows follow M because a merge commit cannot carry this file
+build.gradle.kts	testImplementation(libs.kafka.connect.json)	1	UPS-05
+gradle/libs.versions.toml	kafka-connect-json = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }	1	UPS-05
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream()	0	HLP-04
