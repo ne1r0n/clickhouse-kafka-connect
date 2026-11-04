@@ -53,8 +53,9 @@ public class FieldDescriptorEscapeTest {
 
         assertEquals("a/b", descriptor.getName());
         assertEquals("DEFAULT", descriptor.getDefaultType());
-        assertEquals("'a\\\\b'", descriptor.getDefaultExpression());
-        assertEquals("backslash: \\, quote: \", newline: \n, tab: \t, café/温度", descriptor.getComment());
+        // The fork decodes only `name`; the other strings stay the server's literal JSON text (docs/FORK-DELTA.md).
+        assertEquals("'a\\\\\\\\b'", descriptor.getDefaultExpression());
+        assertEquals("backslash: \\\\, quote: \\\", newline: \\n, tab: \\t, café/温度", descriptor.getComment());
     }
 
     @Test
