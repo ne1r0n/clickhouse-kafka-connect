@@ -32,7 +32,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -609,6 +608,7 @@ public class ClickHouseWriter implements DBWriter {
     // withheld copy of a cause look the same to an operator.
     private static final String WITHHELD_LINK_NOTE = " (message withheld: may contain record data)";
     private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
+    private static final String RECORD_CONTEXT_FAILURE_LOG_FORMAT = "Record serialization failed: topic [{}] partition [{}] offset [{}] column `{}`: exception {}";
     // Built from Column metadata and class names only: this text reaches Connect status and DLQ
     // topics, so it carries no value and no value length.
     private static final String WRITE_FAILURE_COLUMN_PREFIX = "Failed to write column `";
@@ -1536,10 +1536,10 @@ public class ClickHouseWriter implements DBWriter {
     }
 
     /**
-     * Writes a single column and, on failure, reports which record and column caused it.
-     *
-     * @throws RetriableException as-is, because a transient server condition must not fail the record
-     * @throws DataException      wrapping the original failure, so the offending record can be routed to the DLQ
+     * Writes a single column. The exception {@code doWriteCol} produced is rethrown unchanged
+     * because its class drives retry classification and its text already follows the value-free
+     * policy of {@code doWriteColValue}. The line logged names only the record's coordinates, the
+     * column and the exception class, never the value, the exception message or a stack trace.
      */
     private void writeColumnWithRecordContext(Record record, Column col, OutputStream stream, boolean supportDefaults) throws IOException {
         String name = col.getName();
@@ -1548,25 +1548,17 @@ public class ClickHouseWriter implements DBWriter {
         try {
             doWriteCol(value, fieldExists, col, stream, supportDefaults);
         } catch (RetriableException e) {
-            // Not a serialization problem: let the framework retry the batch instead of failing the task.
+            // A transient server condition is retried by the framework, not reported per record.
             throw e;
-        } catch (Exception e) {
-            throw serializationFailure(record, name, e);
+        } catch (IOException | RuntimeException e) {
+            LOGGER.error(RECORD_CONTEXT_FAILURE_LOG_FORMAT,
+                    record.getTopic(),
+                    record.getRecordOffsetContainer().getPartition(),
+                    record.getRecordOffsetContainer().getOffset(),
+                    name,
+                    e.getClass().getName());
+            throw e;
         }
-    }
-
-    private static DataException serializationFailure(Record record, String columnName, Exception cause) {
-        SinkRecord sinkRecord = record.getSinkRecord();
-        String recordContext = sinkRecord == null
-                ? "an unknown record"
-                : String.format("topic `%s`, partition `%s`, offset `%d`", sinkRecord.topic(), sinkRecord.kafkaPartition(), sinkRecord.kafkaOffset());
-        String message = String.format(
-                "Failed to serialize record for %s, column `%s`: %s",
-                recordContext,
-                columnName,
-                cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage());
-        LOGGER.error(message, cause);
-        return new DataException(message, cause);
     }
 
     protected void doInsertRawBinaryV1(List<Record> records, Table table, QueryIdentifier queryId, boolean supportDefaults) throws IOException, ExecutionException, InterruptedException {

@@ -1,5 +1,7 @@
 package com.clickhouse.kafka.connect.sink.db;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,6 +12,7 @@ import com.clickhouse.kafka.connect.sink.data.Record;
 import com.clickhouse.kafka.connect.sink.data.SchemaType;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
+import com.clickhouse.kafka.connect.sink.util.LogCapture;
 import com.clickhouse.kafka.connect.util.jmx.SinkTaskStatistics;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -43,18 +47,28 @@ public class ClickHouseWriterRecordContextTest {
         // report which record failed instead of failing the whole task with a bare cast error.
         Record record = record(new Data(Schema.STRING_SCHEMA, "definitely-not-a-number"));
 
-        DataException thrown = assertThrows(DataException.class,
-                () -> writer.writeRecordsRowBinary(List.of(record), table(), new ByteArrayOutputStream(), false));
+        // The fork keeps the writer's own exception and logs the coordinates value-free (docs/FORK-DELTA.md).
+        try (LogCapture log = LogCapture.attach(ClickHouseWriter.class)) {
+            DataException thrown = assertThrows(DataException.class,
+                    () -> writer.writeRecordsRowBinary(List.of(record), table(), new ByteArrayOutputStream(), false));
 
-        String message = thrown.getMessage();
-        assertTrue(message.contains("topic `" + TOPIC + "`"), "should name the topic: " + message);
-        assertTrue(message.contains("partition `" + PARTITION + "`"), "should name the partition: " + message);
-        assertTrue(message.contains("offset `" + OFFSET + "`"), "should name the offset: " + message);
-        assertTrue(message.contains("`" + COLUMN_NAME + "`"), "should name the column: " + message);
-        // DataException, not RetriableException: the framework must be able to route the offending
-        // record to the DLQ instead of redelivering the batch forever.
-        assertInstanceOf(DataException.class, thrown);
-        assertTrue(thrown.getCause() != null, "should keep the underlying failure as the cause");
+            List<LogCapture.CapturedEvent> coordinateLines = log.events("ERROR").stream()
+                    .filter(event -> event.message().startsWith("Record serialization failed: "))
+                    .collect(Collectors.toList());
+            assertEquals(1, coordinateLines.size(), "should log one coordinate line");
+            String line = coordinateLines.get(0).message();
+            assertTrue(line.contains("topic [" + TOPIC + "]"), "should name the topic: " + line);
+            assertTrue(line.contains("partition [" + PARTITION + "]"), "should name the partition: " + line);
+            assertTrue(line.contains("offset [" + OFFSET + "]"), "should name the offset: " + line);
+            assertFalse(coordinateLines.get(0).hasThrowable(), "the coordinate line should carry no throwable");
+
+            String message = thrown.getMessage();
+            assertTrue(message.contains("`" + COLUMN_NAME + "`"), "should name the column: " + message);
+            // DataException, not RetriableException: the framework must be able to route the offending
+            // record to the DLQ instead of redelivering the batch forever.
+            assertInstanceOf(DataException.class, thrown);
+            assertTrue(thrown.getCause() != null, "should keep the underlying failure as the cause");
+        }
     }
 
     @Test
