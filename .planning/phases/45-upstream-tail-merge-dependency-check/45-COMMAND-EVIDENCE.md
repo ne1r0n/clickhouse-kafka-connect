@@ -20,7 +20,7 @@
 | E-05 | UPS-02, UPS-04 | 45-02 | pass |
 | E-06 | UPS-02 | 45-02 | pass |
 | E-07 | UPS-02 | 45-03 | pass |
-| E-08 | UPS-02 | 45-03 | pending (plan 45-03) |
+| E-08 | UPS-02 | 45-03 | pass |
 | E-09 | UPS-02 | 45-03 | pending (plan 45-03) |
 | E-10 | UPS-02 | 45-04 | pending (plan 45-04) |
 | E-11 | UPS-02 | 45-04 | pending (plan 45-04) |
@@ -428,4 +428,61 @@ jx_commit: f13d83781efd97589d8aec292c39faca4face820
 Red-first on the unchanged writer (HEAD equals M outside `.planning`): 340 tests, 41 failures. In `JacksonOverIoValueFreeUnitTest` (95 cases) exactly the two value checks of every one of the 19 chains were red (`rebuildIsValueFreeAndKeepsTheSuffix` and `carriesNoRecordValue`, 38 cases); `rawChainCarriesTheValue`, `keepsTheClassifiedLinks` and `keepsTheRetryOutcome` held on all 19 chains because the unchanged writer throws the scripted chain itself (their bites are mutations M4-M6 in E-09). The three edited `WriterValueFreeFailureUnitTest` methods were the only red ones of that class, and the 216-case matrix was green. After the change every one of the 340 tests passes, the other gg3 pins (91 tests over 7 classes) pass, and the 19 shapes include the iteration-2 shapes (a) OVER_RETRIABLE_OVER_PLAIN_IO, (b) PLAIN_IO_OVER_JACKSON_ROOT (also timeout-prefixed and the exact RuntimeException), (c) OVER_CONNECT_OVER_SOCKET_TIMEOUT, the four between-link chains and a value-carrying non-IO link below a Jackson link. The client V1 `ClickHouseException(int, Throwable, ClickHouseNode)` constructor accepts a `null` node, so no node was needed for the shape or the stand-in. The stand-in text for a link is its class name plus the withheld note held as one constant in the writer (a second `WithheldMessageException.of(` call would have moved the existing WRT-13 anchor row, whose count is 1). `fmt_writer_jx` is `preexisting`: Spotless would only move the static import and the `org.apache.kafka.connect` import block of `ClickHouseWriter.java`, which this commit does not touch. Nothing was pushed.
 
 2026-11-04T20:31:30Z
+Verdict: pass
+
+### E-08: Option A re-expression: pins red on the #857 tree, then green in one commit with four anchor rows
+
+Backs: UPS-02, ROADMAP Phase 45 criterion 2 (U-1 Option A with the log line of plan-check answer 3: the record loop rethrows the fork's own exception and logs the record's coordinates, the column and the exception class, never a message or a value; upstream's three coordinate assertions move to the log line, U-2 extended).
+
+```sh
+git diff --name-only 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- src/main
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*WriterRecordContextUnitTest*' --tests '*WriterRecordContextDlqUnitTest*' --tests '*ClickHouseWriterRecordContextTest*' > /tmp/gsd45/exec/redfirst.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*WriterRecordContextUnitTest*' --tests '*WriterRecordContextDlqUnitTest*' --tests '*ClickHouseWriterRecordContextTest*' > /tmp/gsd45/exec/green.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class WriterRecordContextUnitTest
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class WriterRecordContextDlqUnitTest
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class ClickHouseWriterRecordContextTest
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*WriterFailureClassificationUnitTest*' --tests '*WriterValueFreeFailureUnitTest*' --tests '*JacksonOverIoValueFreeUnitTest*' --tests '*WithheldMessageExceptionUnitTest*' --tests '*WriterLogMaskingUnitTest*' --tests '*ClickHouseWriterColumnContextTest*' --tests '*SourcePlanningIdGuardUnitTest*' --tests '*ConnectApiReferencesUnitTest*' > /tmp/gsd45/exec/gg3-unit.log 2>&1
+grep -cF -e 'writeColumnWithRecordContext(' -e 'RECORD_CONTEXT_FAILURE_LOG_FORMAT' -e 'serializationFailure(' -e 'Failed to serialize record for' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git diff -U0 83808df9a0993cf49b2ceaa4633c782e550c0180 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterRecordContextTest.java
+git worktree add --detach /tmp/gsd45/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/fmt --console=plain spotlessApply > /tmp/gsd45/exec/fmt-fix.log 2>&1
+git commit -F /tmp/gsd45/exec/msg-fix.txt
+```
+
+```text
+redfirst_head: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+redfirst_failed_count: 32
+redfirst_failed_checks: logsOneValueFreeCoordinateLine; rethrowsWhatDoWriteColThrew; dlqHeadersAndLogsCarryNoRecordValue; thrownChainAndLogsCarryNoRecordValue
+redfirst_rethrow_red_shapes: 14
+redfirst_coordinate_red_shapes: 14
+redfirst_dlq_pin_red_cases: 4
+redfirst_value_free_red_shapes: none
+redfirst_retriable_shape_green: yes
+redfirst_record_context_test_green: yes
+dlq_pin_shapes: INVALID_UUID; UNPARSEABLE_INT128
+dlq_pin_shape_replaced: no
+green_failed_count: 0
+p1_tests: 59
+p2_tests: 4
+rct_tests: 2
+rct_bound: bounded
+rct_approved_removed_lines: 5
+gg3_unit_tests: 391
+gg3_unit_failed_count: 0
+matrix_tests: 216
+anchor_counts: 2; 2; 0; 0
+anchors_mirror: rows=195 bad=0
+fmt_writer: preexisting
+fmt_p1: identical
+fmt_p2: identical
+fmt_rct: preexisting
+fix_commit: f4b85584a112062d8872aa31e6806cae6b6f55d0
+```
+
+Red-first on the #857 tree with Task 1's rebuild (`src/main` differs from M only by the writer and Utils): 65 tests, 32 red. `rethrowsWhatDoWriteColThrew` and `logsOneValueFreeCoordinateLine` were red for exactly the 14 shapes that E-06 `m857_new_layer_shapes` counts, and green for RETRIABLE_FROM_COLUMN_WRITER; the four production-path cases of `WriterRecordContextDlqUnitTest` were red on `exactly one coordinate line ... expected 1 but was 0` (#857's line does not start with the coordinate prefix), after their DLQ-header, thrown-chain and exception-text checks had already passed. `carriesNoRecordValue` and `keepsTheRetryOutcome` (non-change checks, bitten by M1 and M2 in E-09) were green for all 15 and 14 shapes, so no value-free check was red there, and upstream's `ClickHouseWriterRecordContextTest` (both methods) was green on the #857 tree. `WriterRecordContextDlqUnitTest` runs INVALID_UUID and UNPARSEABLE_INT128 (schema validation sits behind `doInsertRawBinary`, which `CapturingClickHouseWriter` replaces, so no shape needed substituting). After the change all 65 tests and the 391 gg3/matrix tests are green; the matrix file is unchanged since the tag. The diff of upstream's test against `83808df9` removes 13 lines, 5 approved (the two constructor lines and the three coordinate assertions) and 8 that reappear re-indented. `fmt_writer` and `fmt_rct` are `preexisting`: Spotless would only move the writer's static import and the Connect import block, and drop upstream's unused `java.io.IOException` import, none of which this commit touches. Nothing was pushed.
+
+2026-11-04T20:36:00Z
 Verdict: pass
