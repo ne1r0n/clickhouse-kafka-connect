@@ -29,7 +29,7 @@
 | E-14 | UPS-05 | 45-05 | pass |
 | E-15 | UPS-02, UPS-04 | 45-05 | pass |
 | E-16 | DEP-01 | 45-06 | pass |
-| E-17 | DEP-01, DEP-02 | 45-06 | pending (plan 45-06) |
+| E-17 | DEP-01, DEP-02 | 45-06 | pass |
 | E-18 | UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-02 | 45-06 | pending (plan 45-06) |
 
 ### E-01: Pre-flight: upstream and origin re-read, conflict set, baseline suites on the untouched tip
@@ -963,3 +963,24 @@ Scopes: section 2 has 228 rows (the union of `testRuntimeClasspath` and `testFix
 
 2026-11-04T21:25:24Z
 Verdict: pending (awaiting the user's decision per proposal, U-4)
+
+Re-measured after the user's decisions (relayed by the coordinator as the user's AskUserQuestion answers on 2026-11-04, recorded in spirit, not verbatim; no agent approved anything):
+
+```sh
+git diff --quiet 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- build.gradle.kts gradle .github
+git commit -F /tmp/gsd45/exec/msg-dc3.txt
+```
+
+```text
+dep02_decision_1: record only: P1 to P16 all declined, nothing bumped, kept as backlog in 45-DEPENDENCY-CHECK.md, none ships
+dep02_decision_2: the 12 Confluent 7.9.1-ccs Kafka artifacts: the unmapped Apache version is noted as an unknown, not chased
+dep02_bumps_approved: 0
+dep02_disposition: none approved, nothing moved
+build_files_unchanged_at_decision: yes
+dc_commit_3: bd34d71bdd76b16a49f44532381378a64b89e32d
+```
+
+Every proposal is declined, so no coordinate, plugin, wrapper or action version moved and no bump gate applies; the record and 45-CONTEXT.md carry the decisions.
+
+2026-11-04T21:27:12Z
+Verdict: pass
