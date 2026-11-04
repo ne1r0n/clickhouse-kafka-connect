@@ -23,7 +23,7 @@
 | E-08 | UPS-02 | 45-03 | pass |
 | E-09 | UPS-02 | 45-03 | pass |
 | E-10 | UPS-02 | 45-04 | pass |
-| E-11 | UPS-02 | 45-04 | pending (plan 45-04) |
+| E-11 | UPS-02 | 45-04 | pass |
 | E-12 | UPS-02 | 45-04 | pending (plan 45-04) |
 | E-13 | UPS-03, UPS-04 | 45-05 | pending (plan 45-05) |
 | E-14 | UPS-05 | 45-05 | pending (plan 45-05) |
@@ -614,4 +614,56 @@ PROBEJSON shape=JSON_SCRIPTED_IO_TIMEOUT reachable=no thrown_class=com.fasterxml
 Today the record value reaches the thrown message, the rendered stack trace and the Connect DLQ headers for seven of the eight shapes (every Jackson-wrapped value-carrying failure on the schemaless, bypass and both metadata-free routes) and no log line, while the null-Data control and the IO-timeout fact carry none; the only retriable shape is the Jackson-over-socket-timeout one, whose outcome the guard must keep.
 
 2026-11-04T20:50:10Z
+Verdict: pass
+
+### E-11: JSON-route guard: pins red on the unguarded tree, green in one commit, success-path bytes unchanged
+
+Backs: UPS-02, ROADMAP Phase 45 criterion 2 (the JSON insert route: a serialization failure leaves `writeRecordsJson` value-free through the shared rebuild, on the failure path only; the retry outcome is the serializer's own; a successful batch sends the same bytes).
+
+```sh
+git diff --name-only 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- src/main
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*JsonRouteValueFreeUnitTest*' --tests '*JsonRouteValueFreeDlqUnitTest*' > /tmp/gsd45/exec/json-redfirst.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*JsonRouteValueFreeUnitTest*' --tests '*JsonRouteValueFreeDlqUnitTest*' > /tmp/gsd45/exec/json-green.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class JsonRouteValueFreeUnitTest
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class JsonRouteValueFreeDlqUnitTest
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*JacksonOverIoValueFreeUnitTest*' --tests '*WriterValueFreeFailureUnitTest*' --tests '*WriterRecordContextUnitTest*' --tests '*WriterFailureClassificationUnitTest*' --tests '*MetadataFreeJsonInsertUnitTest*' --tests '*JsonSerializationEquivalenceTest*' --tests '*MetadataFreeJsonWriterTest*' --tests '*EmptyCdcSkipUnitTest*' --tests '*JsonInsertColumnsUnitTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd45/exec/json-neighbours.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class WriterFailureClassificationUnitTest
+grep -cF 'withheldJacksonChain(' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 197
+bash /tmp/gsd45/fmtcheck.sh fmt-json.log <the writer and the two pin files>
+git commit -F /tmp/gsd45/exec/msg-json.txt
+```
+
+```text
+json_redfirst_head: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+json_redfirst_tests: 46
+json_redfirst_failed_count: 18
+json_redfirst_red_checks: carriesNoRecordValue; isValueFreeAndKeepsTheTrustedSuffix; dlqHeadersAndLogsCarryNoRecordValue; thrownChainAndLogsCarryNoRecordValue
+json_redfirst_value_red_shapes: 7
+json_redfirst_dlq_red: yes
+json_redfirst_control_green: yes
+json_redfirst_bytes_green: yes
+json_redfirst_nonchange_green: yes
+json_green_failed_count: 0
+json_unit_tests: 42
+json_dlq_tests: 4
+json_pin_tests: 46
+json_neighbours_failed_count: 0
+json_neighbours_tests: 529
+matrix_tests: 216
+rebuild_anchor_count: 2
+anchors_mirror: rows=197 bad=0
+fmt_writer_json: preexisting
+fmt_jr: identical
+fmt_jd: identical
+json_commit: 0c8be1daedb04a77240191cbf76a857fa15a4a82
+```
+
+Red-first on the unguarded tree (`src/main` differs from the merge commit only by plan 45-03's two files): 46 tests, 18 red. `carriesNoRecordValue` and `isValueFreeAndKeepsTheTrustedSuffix` are red for exactly the seven value-carrying shapes (every shape except the Jackson-free null-Data control), with `no Jackson link may be left in the thrown chain` and `no message of the thrown chain may carry the value` as the failures; the four production-path cases of `JsonRouteValueFreeDlqUnitTest` (two shapes by errors.tolerance all and none) are red on the sentinel in the DLQ stack trace and in the thrown chain. The control's five checks, `rawFailureCarriesTheValue` on every shape, both success-path byte tests and the non-change checks (`keepsTheClassifiedLinks`, `keepsTheRetryOutcome`) are green there: they hold because THROWN is the serializer's own exception, so their bite is mutation J3. After the change all 46 pass (42 + 4 = 5 x 8 shapes + 2 + 4), the 529 neighbouring tests (the other Jackson, writer and JSON-route pins, with the 216-case matrix) pass, `withheldJacksonChain(` occurs twice (declaration and the shared entry point) and the mirror reads `rows=197 bad=0`. Two details of the final pins differ from the first draft that was run red: a lone Jackson exception rebuilds to the value-free top alone (the test now asserts that single link, as the rebuild produces no separate root), and the message names the table with `getCleanName()` because the format already wraps it in backticks (`getName()` would print them twice); both only affect assertions that were already failing for the unguarded tree. `fmt_writer_json` is `preexisting`: Spotless would only move the static import and the Connect import block of `ClickHouseWriter.java`, which this commit does not touch. Nothing was pushed.
+
+2026-11-04T20:54:19Z
 Verdict: pass
