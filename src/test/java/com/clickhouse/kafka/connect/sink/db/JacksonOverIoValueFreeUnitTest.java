@@ -35,6 +35,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -46,7 +47,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * error code of each RetriableException, DataException, ConnectException and server-error link,
  * and the type family and timeout prefix of the classified root.
  *
- * <p>Each of the 19 chains is driven through the real {@code doWriteColValue} of a writer whose
+ * <p>Each of the 21 chains is driven through the real {@code doWriteColValue} of a writer whose
  * primitive write throws the scripted exception. The class extends nothing, carries no tag and uses
  * no mocking library, so it runs without Docker.
  */
@@ -74,6 +75,10 @@ public class JacksonOverIoValueFreeUnitTest {
         return new JsonMappingException(text, cause);
     }
 
+    private static SocketTimeoutException readTimeout() {
+        return new SocketTimeoutException(READ_TIMEOUT_PREFIX + " 30000 ms");
+    }
+
     private static ServerException serverErrorOver(Throwable cause) {
         ServerException server = new ServerException(SERVER_ERROR_CODE, "server says", 0, "query-1");
         server.initCause(cause);
@@ -94,7 +99,13 @@ public class JacksonOverIoValueFreeUnitTest {
         PLAIN_IO_OVER_JACKSON_ROOT(() -> new IOException(STREAM_CLOSED, jackson(JACKSON_TEXT))),
         PLAIN_IO_OVER_TIMEOUT_PREFIXED_JACKSON_ROOT(
                 () -> new IOException(STREAM_CLOSED, jackson(READ_TIMEOUT_PREFIX + " 30000 ms " + JACKSON_TEXT))),
+        PLAIN_IO_OVER_WRITE_TIMEOUT_PREFIXED_JACKSON_ROOT(
+                () -> new IOException(
+                        STREAM_CLOSED,
+                        jackson(Utils.CLICKHOUSE_CLIENT_ERROR_WRITE_TIMEOUT_MSG + " 30000 ms " + JACKSON_TEXT))),
         RUNTIME_OVER_JACKSON_ROOT(() -> new RuntimeException(jackson(JACKSON_TEXT))),
+        RUNTIME_OVER_JACKSON_OVER_READ_TIMEOUT_SOCKET(
+                () -> new RuntimeException(jackson(JACKSON_TEXT, readTimeout()))),
         RETRIABLE_OVER_JACKSON_ROOT(() -> new RetriableException(SCRIPTED, jackson(JACKSON_TEXT))),
         JACKSON_OVER_JACKSON_OVER_IO(
                 () -> jackson(JACKSON_TEXT, jackson(JACKSON_TEXT, new SocketTimeoutException(TIMED_OUT)))),
@@ -361,5 +372,65 @@ public class JacksonOverIoValueFreeUnitTest {
                 }
             }
         }
+    }
+
+    /**
+     * The two chains whose retriable outcome rests on a classified-root fact the rebuild must carry
+     * over: a Jackson root whose message starts with the client write-timeout prefix, and the
+     * Map/Tuple/Array lambda shape (a RuntimeException over a Jackson link over a socket timeout).
+     */
+    @ParameterizedTest(name = "staysRetriableAndValueFree {0}")
+    @EnumSource(
+            value = Shape.class,
+            names = {
+                "PLAIN_IO_OVER_WRITE_TIMEOUT_PREFIXED_JACKSON_ROOT",
+                "RUNTIME_OVER_JACKSON_OVER_READ_TIMEOUT_SOCKET"
+            })
+    void staysRetriableAndValueFree(Shape shape) {
+        Exception scripted = shape.script();
+        Captured captured = drive(scripted);
+        Throwable thrown = captured.thrown();
+
+        for (boolean clientV2 : new boolean[] {false, true}) {
+            for (boolean errorsTolerance : new boolean[] {false, true}) {
+                assertEquals(
+                        Outcome.RETRIABLE,
+                        outcome(scripted, clientV2, errorsTolerance, false),
+                        "self-check: the scripted chain is retriable without retryOnSocketException");
+                assertEquals(
+                        Outcome.RETRIABLE,
+                        outcome(thrown, clientV2, errorsTolerance, false),
+                        "clientV2=" + clientV2 + " errorsTolerance=" + errorsTolerance);
+            }
+        }
+        for (Throwable link : ThrowableTexts.causeChain(thrown)) {
+            assertFalse(link instanceof JacksonException, "no Jackson link may be left in the thrown chain");
+        }
+        assertFalse(anyMessageContains(thrown, SENTINEL), "no message of the thrown chain may carry the value");
+        InMemoryDLQ.ConnectDlqHeaders headers = InMemoryDLQ.connectHeaders(new RuntimeException(QUERY_ID_TEXT, thrown));
+        assertFalse(String.valueOf(headers.exceptionMessage()).contains(SENTINEL));
+        assertFalse(headers.exceptionStacktrace().contains(SENTINEL));
+        for (String text : captured.logTexts()) {
+            assertFalse(String.valueOf(text).contains(SENTINEL), "a log text must carry no record value");
+        }
+    }
+
+    @Test
+    void writeTimeoutPrefixOfAJacksonRootSurvivesOnTheRebuiltRoot() {
+        Throwable thrown = drive(Shape.PLAIN_IO_OVER_WRITE_TIMEOUT_PREFIXED_JACKSON_ROOT.script()).thrown();
+
+        List<Throwable> rebuilt = ThrowableTexts.causeChain(thrown);
+        Throwable root = rebuilt.get(rebuilt.size() - 1);
+        assertTrue(root.getMessage().startsWith(Utils.CLICKHOUSE_CLIENT_ERROR_WRITE_TIMEOUT_MSG + " "));
+    }
+
+    @Test
+    void mapLambdaShapeDropsTheJacksonLinkAndKeepsTheTimeoutAsTheDirectCause() {
+        SocketTimeoutException timeout = readTimeout();
+
+        Throwable thrown = drive(new RuntimeException(jackson(JACKSON_TEXT, timeout))).thrown();
+
+        assertSame(RuntimeException.class, thrown.getClass());
+        assertSame(timeout, thrown.getCause());
     }
 }
