@@ -27,7 +27,7 @@
 | E-12 | UPS-02 | 45-04 | pass |
 | E-13 | UPS-03, UPS-04 | 45-05 | pass |
 | E-14 | UPS-05 | 45-05 | pass |
-| E-15 | UPS-02, UPS-04 | 45-05 | pending (plan 45-05) |
+| E-15 | UPS-02, UPS-04 | 45-05 | pass |
 | E-16 | DEP-01 | 45-06 | pending (plan 45-06) |
 | E-17 | DEP-01, DEP-02 | 45-06 | pending (plan 45-06) |
 | E-18 | UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-02 | 45-06 | pending (plan 45-06) |
@@ -835,4 +835,42 @@ Configurations: `slf4j_simple_integration` is `integrationTestRuntimeClasspath`;
 Of the four coordinates the user approved to land in M (plan-check answer 4), three were already at the pre-merge tip (`pre-v1.7.0_gg8` holds `commonsLang3 = "3.21.0"`, `slf4j = "2.0.20"` and `spotless = "8.10.4"`, each exactly once) and only connect-json changes: M's diff of `gradle/libs.versions.toml` against its first parent is the one added `kafka-connect-json` library line. The shipped `runtimeClasspath` carries commons-lang3 3.20.0, the ClickHouse client's own pin; the catalog's 3.21.0 reaches only `testRuntimeClasspath` and `testFixturesRuntimeClasspath`. connect-json 4.4.0 is requested only by the root project on `testRuntimeClasspath` and no dependency of that name resolves on `runtimeClasspath` or `clickhouseDependencies`, so it cannot reach the Confluent archive. The catalog has a second line starting `spotless =` (the plugin alias, `{ id = "com.diffplug.spotless", version.ref = "spotless" }`); `catalog_spotless` is the version line. The three anchor rows measured 1, 1 and 0 on the tree before the commit; the 0 row's pattern occurs once in upstream's blob of `ClickHouseHelperClient.java`, so it would catch #839's dead reader if it came back. The gate ran unedited over `M` to the anchors commit with the full SHAs and the tail-3 conflicted-paths file (about 90 s).
 
 2026-11-04T21:05:30Z
+Verdict: pass
+
+### E-15: FORK-DELTA names the tail-3 differences
+
+Backs: UPS-02, UPS-04, ROADMAP Phase 45 criteria 2 and 3 (every difference from upstream's #857 text and from #839's `fromJsonRow` that this tail introduced is named in `docs/FORK-DELTA.md` with its pin; the documentation commit leaves `testUnit` green and `CHANGELOG.md` and `VERSION` untouched).
+
+```sh
+git show pre-v1.7.0_gg8:docs/FORK-DELTA.md
+python3 -I <row counts of the Connector source and Test harness tables, HEAD minus the tag>
+grep -cF -e '<each new pin name>' docs/FORK-DELTA.md
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd45/exec/testunit-docs.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/testUnit
+git commit -F /tmp/gsd45/exec/msg-fd.txt
+git diff --name-only 722d713fcfd1c44b542b1bd3914a977f6525ab7a^ 722d713fcfd1c44b542b1bd3914a977f6525ab7a
+git diff --quiet refs/tags/pre-v1.7.0_gg8 HEAD -- CHANGELOG.md VERSION
+```
+
+```text
+connector_rows_delta: 2
+harness_rows_delta: 1
+mentions_new_pins: yes
+cites_e06: yes
+cites_e10: yes
+testunit_exit: 0
+testunit_tests: 2072
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+fork_delta_commit: 722d713fcfd1c44b542b1bd3914a977f6525ab7a
+fork_delta_commit_files: docs/FORK-DELTA.md
+changelog_version_unchanged_since_tag: yes
+```
+
+The Connector-source table gains two rows (the Option A record-context row citing E-06, and the JSON-route row citing E-10) and the Test-harness table one row, which names every test edited by a user decision: upstream's `ClickHouseWriterRecordContextTest` (constructor, and the three coordinate assertions moved to the log line), upstream's `FieldDescriptorEscapeTest#preservesEscapedCommentsAndDefaultExpressions` (literal JSON text), and the three renamed WRT-17 assertions of `WriterValueFreeFailureUnitTest`. The WRT-13/WRT-17 row now describes the value-free rebuild of every Jackson chain, with `Utils` named for its two public constants, and Known costs item 6 reads the Jackson residual as closed on 2026-11-04 with E-07 and E-10 to E-12. The raw-identifier row names #839's decode-all `readValue`, the five literal fields (`type`, `comment`, `default_expression`, `codec_expression`, `ttl_expression`), the slash round trip and the malformed-row contract, with the new pins. "For the next syncer" leads with `.planning/MERGE-CHECKLIST-v1.7.0-tail-3.md` and reads Recorded Facts 42-43 in the first tail checklist, 44-45 in the second and 46 onward in the third. The testUnit total is E-12's 2041 plus E-13's 31 `FieldDescriptorLiteralFieldsUnitTest` cases. Two wording reconciliations against the plan text: the JSON-route row says the value reaches the thrown message, the rendered trace and the DLQ headers and that no measured logger line carried it (E-10 `json_value_in_logs_shapes: none`; the plan's wording named the logs), and the raw-identifier row says the comment and the three expression fields are read nowhere in `src/main` (the plan's "the four expression fields" counted `comment` as one). FORK-DELTA is an operator document: the orchestrator spawns the independent `gsd-code-reviewer` pass over it before Phase 49's publication gate. Nothing was pushed.
+
+2026-11-04T21:10:30Z
 Verdict: pass
