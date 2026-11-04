@@ -608,6 +608,8 @@ public class ClickHouseWriter implements DBWriter {
     // withheld copy of a cause look the same to an operator.
     private static final String WITHHELD_LINK_NOTE = " (message withheld: may contain record data)";
     private static final String WRITE_VALUE_FAILURE_LOG_FORMAT = "Error writing value of {} to the column `{}` of type {}: exception {}";
+    // Table name and exception class only: Jackson messages can quote record keys and values.
+    private static final String JSON_ROW_FAILURE_FORMAT = "Failed to serialize a record as JSON for table `%s`: %s";
     private static final String RECORD_CONTEXT_FAILURE_LOG_FORMAT = "Record serialization failed: topic [{}] partition [{}] offset [{}] column `{}`: exception {}";
     // Built from Column metadata and class names only: this text reaches Connect status and DLQ
     // topics, so it carries no value and no value length.
@@ -757,6 +759,21 @@ public class ClickHouseWriter implements DBWriter {
             return top;
         }
         return e instanceof RuntimeException ? (RuntimeException) sameKindStandIn(e, topText, below) : new RuntimeException(topText, below);
+    }
+
+    /**
+     * The one entry point of the value-free rebuild: throws {@link #withheldJacksonChain}'s result
+     * when {@code e} holds a Jackson link and returns normally otherwise, so the caller rethrows
+     * {@code e} itself after it returns.
+     */
+    private static void throwRebuiltJacksonChain(Exception e, String topText) throws IOException {
+        Exception rebuilt = withheldJacksonChain(e, topText);
+        if (rebuilt instanceof IOException) {
+            throw (IOException) rebuilt;
+        }
+        if (rebuilt instanceof RuntimeException) {
+            throw (RuntimeException) rebuilt;
+        }
     }
 
     private static boolean isTrustedIoLink(Throwable link) {
@@ -1063,13 +1080,7 @@ public class ClickHouseWriter implements DBWriter {
             LOGGER.error(WRITE_VALUE_FAILURE_LOG_FORMAT, value == null ? "<value null>" : value.getFieldType(), col.getName(), columnType,
                     e.getClass().getName());
             if (passesThroughUnchanged(e)) {
-                Exception rebuilt = withheldJacksonChain(e, buildValueConversionFailureMessage(col, columnType, value, e));
-                if (rebuilt instanceof IOException) {
-                    throw (IOException) rebuilt;
-                }
-                if (rebuilt instanceof RuntimeException) {
-                    throw (RuntimeException) rebuilt;
-                }
+                throwRebuiltJacksonChain(e, buildValueConversionFailureMessage(col, columnType, value, e));
                 throw e;
             }
             throw new DataException(buildValueConversionFailureMessage(col, columnType, value, e), WithheldMessageException.of(e));
@@ -1634,33 +1645,38 @@ public class ClickHouseWriter implements DBWriter {
 
                 long beforeSerialize;
                 byte[] bytes;
-                if (metadataFree && record.getSchemaType() == SchemaType.SCHEMA) {
-                    beforeSerialize = System.currentTimeMillis();
-                    bytes = MetadataFreeJsonWriter.structRow((Struct) record.getSinkRecord().value());
-                } else if (metadataFree && record.getSchemaType() == SchemaType.DEBEZIUM_CDC) {
-                    beforeSerialize = System.currentTimeMillis();
-                    bytes = MetadataFreeJsonWriter.cdcRow(record.getJsonMap());
-                } else {
-                    Map<String, Object> data;
-                    switch (record.getSchemaType()) {
-                        case SCHEMA:
-                            data = new HashMap<>(16);
-                            Struct struct = (Struct) record.getSinkRecord().value();
-                            for (Field field : struct.schema().fields()) {
-                                data.put(field.name(), struct.get(field));//Doesn't handle multi-level object depth
-                            }
-                            break;
-                        case DEBEZIUM_CDC:
-                            data = new HashMap<>(record.getJsonMap().size());
-                            record.getJsonMap().forEach((k, v) -> data.put(k, v.getObject()));
-                            break;
-                        default:
-                            data = (Map<String, Object>) record.getSinkRecord().value();
-                            break;
+                try {
+                    if (metadataFree && record.getSchemaType() == SchemaType.SCHEMA) {
+                        beforeSerialize = System.currentTimeMillis();
+                        bytes = MetadataFreeJsonWriter.structRow((Struct) record.getSinkRecord().value());
+                    } else if (metadataFree && record.getSchemaType() == SchemaType.DEBEZIUM_CDC) {
+                        beforeSerialize = System.currentTimeMillis();
+                        bytes = MetadataFreeJsonWriter.cdcRow(record.getJsonMap());
+                    } else {
+                        Map<String, Object> data;
+                        switch (record.getSchemaType()) {
+                            case SCHEMA:
+                                data = new HashMap<>(16);
+                                Struct struct = (Struct) record.getSinkRecord().value();
+                                for (Field field : struct.schema().fields()) {
+                                    data.put(field.name(), struct.get(field));//Doesn't handle multi-level object depth
+                                }
+                                break;
+                            case DEBEZIUM_CDC:
+                                data = new HashMap<>(record.getJsonMap().size());
+                                record.getJsonMap().forEach((k, v) -> data.put(k, v.getObject()));
+                                break;
+                            default:
+                                data = (Map<String, Object>) record.getSinkRecord().value();
+                                break;
+                        }
+                        beforeSerialize = System.currentTimeMillis();
+                        Map<String, Object> cleaned = cleanupExtraFields(data, table);
+                        bytes = OBJECT_MAPPER.writeValueAsBytes(cleaned);
                     }
-                    beforeSerialize = System.currentTimeMillis();
-                    Map<String, Object> cleaned = cleanupExtraFields(data, table);
-                    bytes = OBJECT_MAPPER.writeValueAsBytes(cleaned);
+                } catch (IOException | RuntimeException e) {
+                    throwRebuiltJacksonChain(e, String.format(JSON_ROW_FAILURE_FORMAT, table.getCleanName(), e.getClass().getName()));
+                    throw e;
                 }
                 dataSerializeTime += writeJsonRow(record, bytes, beforeSerialize, stream);
             } else {
