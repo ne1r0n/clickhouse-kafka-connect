@@ -408,7 +408,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-25qh-j22f-pwp8: QOS.CH logback-core is vulnerable to Arbitrary Code Execution through file processing | GHSA-6v67-2wr5-gvf4: QOS.CH logback-core Server-Side Request Forgery vulnerability | GHSA-jhq6-gfmj-v8fx: Logback vulnerable to Object Injection through HardenedObjectInputStream modules | GHSA-p47f-322f-whfh: QOS.CH Sarl logback logback-core has a deserialization of untrusted data vulnerability | GHSA-pr98-23f8-jwxv: QOS.CH logback-core Expression Language Injection vulnerability | GHSA-qqpg-mvqg-649v: Logback allows an attacker to instantiate classes already present on the class path.
 - **Newest stable:** 1.6.6. **Lowest version that clears every listed advisory:** 1.5.34 (same major, different minor line (1.2 to 1.5); no 1.2.x release is listed as fixed, the listed fixes are 1.3.15, 1.3.16 and 1.5.13 to 1.5.34).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P2. `com.squareup.wire:wire-runtime-jvm` 5.1.0
 
@@ -417,7 +417,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-7xpr-hc2w-34m9: Wire: skipGroup() missing negative-length check allows 10-byte payload to crash any Wire-decoding service .
 - **Newest stable:** 7.1.2. **Lowest version that clears every listed advisory:** 6.3.0 (different major line (5 to 6)).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P3. `com.squareup.wire:wire-runtime` 5.1.0
 
@@ -426,7 +426,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-7xpr-hc2w-34m9: Wire: skipGroup() missing negative-length check allows 10-byte payload to crash any Wire-decoding service  | GHSA-9rm7-3qhh-h2mc: Wire: Unauthenticated decoder crash via 32-bit length integer overflow in ByteArrayProtoReader32 (incomplete fix of CVE-2026-45799) | GHSA-pwf9-q62p-v7wc: Wire has Uncontrolled Recursion on Nested Groups.
 - **Newest stable:** 7.1.2. **Lowest version that clears every listed advisory:** 6.4.5 (different major line (5 to 6); 5.2.0 fixes only GHSA-pwf9-q62p-v7wc, the other two need 6.3.0 and 6.4.5).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P4. `commons-beanutils:commons-beanutils` 1.9.4
 
@@ -435,7 +435,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-wxr5-93ph-8wr9: Apache Commons Improper Access Control vulnerability.
 - **Newest stable:** 1.11.0. **Lowest version that clears every listed advisory:** 1.11.0 (same major line (1.9 to 1.11)).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P5. `io.netty:netty-codec` 4.1.115.Final
 
@@ -444,7 +444,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-3p8m-j85q-pgmj: Netty's decoders vulnerable to DoS via zip bomb style attack | GHSA-558v-64gr-wgg4: Netty: [Bzip2Decoder] Infinite Loop in RLE State Machine Leads to Event-Loop Thread Hang | GHSA-mj4r-2hfc-f8p6: Netty Lz4FrameDecoder is vulnerable to resource exhaustion .
 - **Newest stable:** 4.2.20.Final. **Lowest version that clears every listed advisory:** 4.1.136.Final (same 4.1 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P6. `io.netty:netty-common` 4.1.115.Final
 
@@ -453,7 +453,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-389x-839f-4rhx: Denial of Service attack on windows app using Netty.
 - **Newest stable:** 4.2.20.Final. **Lowest version that clears every listed advisory:** 4.1.118.Final (same 4.1 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P7. `io.netty:netty-handler` 4.1.105.Final
 
@@ -462,7 +462,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-3qp7-7mw8-wx86: Netty has an IPv6 Subnet Filter Bypass via Incorrect Comparator Masking | GHSA-4g8c-wm8x-jfhw: SslHandler doesn't correctly validate packets which can lead to native crash when using native SSLEngine | GHSA-c4c3-7fpv-j4q5: Netty: SNI Routing Bypass via Fragmented TLS ClientHello Causing Fallback to Default SslContext | GHSA-c653-97m9-rcg9: Netty: Wrapping plain trust manager silently disables hostname verification | GHSA-fccg-mwvh-qqg4: Netty: Fragmented ClientHello records trigger quadratic pre-handshake reassembly in default SNI parsing | GHSA-x4gw-5cx5-pgmh: Netty: SNI handler pre-allocates up to 16 MiB from nine attacker bytes.
 - **Newest stable:** 4.2.20.Final. **Lowest version that clears every listed advisory:** 4.1.137.Final (same 4.1 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P8. `io.netty:netty-transport-native-epoll` 4.1.105.Final
 
@@ -471,7 +471,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-w573-9ffj-6ff9: Netty: Unix-socket fd receive leaks descriptors when peer sends two at once.
 - **Newest stable:** 4.2.20.Final. **Lowest version that clears every listed advisory:** 4.1.135.Final (same 4.1 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P9. `org.apache.mina:mina-core` 2.2.3
 
@@ -480,7 +480,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-76h9-2vwh-w278: Apache MINA Deserialization RCE Vulnerability | GHSA-8297-v2rf-2p32: Apache MINA vulnerable to Deserialization of Untrusted Data | GHSA-995c-6rp3-4m4x: Apache MINA vulnerable to Deserialization of Untrusted Data (CVE-2026-41409 Incomplete Fix) | GHSA-f2wh-grmh-r6jm: Apache MINA Vulnerable to Deserialization of Untrusted Data (CVE-2024-52046 Incomplete Fix) | GHSA-v3pr-hxpr-mfm8: Apache MINA: Critical Deserialization Allow-list Bypass via resolveProxyClass | GHSA-vf5j-865m-mq7c: Apache MINA vulnerable to Deserialization of Untrusted Data (CVE-2026-41635 Incomplete Fix).
 - **Newest stable:** 2.2.10. **Lowest version that clears every listed advisory:** 2.2.8 (same 2.2 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P10. `org.apache.zookeeper:zookeeper` 3.8.4
 
@@ -489,7 +489,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-7xrh-hqfc-g7qr: Apache ZooKeeper: Reverse-DNS fallback enables hostname verification bypass in ZooKeeper ZKTrustManager | GHSA-crhr-qqj8-rpxc: Apache ZooKeeper has improper handling of configuration values.
 - **Newest stable:** 3.9.7. **Lowest version that clears every listed advisory:** 3.8.6 (same 3.8 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P11. `org.bitbucket.b_c:jose4j` 0.9.4
 
@@ -498,7 +498,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-3677-xxcr-wjqv: jose4j is vulnerable to DoS via compressed JWE content.
 - **Newest stable:** 0.9.7. **Lowest version that clears every listed advisory:** 0.9.6 (same 0.9 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P12. `org.eclipse.jetty.http2:http2-common` 9.4.57.v20241219
 
@@ -507,7 +507,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-mmxm-8w33-wc4h: Eclipse Jetty affected by MadeYouReset HTTP/2 vulnerability.
 - **Newest stable:** 11.0.26. **Lowest version that clears every listed advisory:** 9.4.58 (same 9.4 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P13. `org.eclipse.jetty:jetty-http` 9.4.57.v20241219
 
@@ -516,7 +516,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-355h-qmc2-wpwf: Jetty has HTTP Request Smuggling via Chunked Extension Quoted-String Parsing | GHSA-qh8g-58pp-2wxh: Eclipse Jetty URI parsing of invalid authority | GHSA-wjpw-4j6x-6rwh: org.eclipse.jetty:jetty-http has different parsing of invalid URIs.
 - **Newest stable:** 12.1.14. **Lowest version that clears every listed advisory:** 12.0.33 (different major line (9 to 12); on the 9.4 line only GHSA-355h-qmc2-wpwf has a listed fix (9.4.60), while GHSA-qh8g-58pp-2wxh and GHSA-wjpw-4j6x-6rwh list none).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P14. `org.eclipse.jetty:jetty-security` 9.4.57.v20241219
 
@@ -525,7 +525,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-2fvj-hgj9-j2gr: Eclipse Jetty Digest Authentication: ISO-8859-1 lossy encoding allows authentication bypass via character substitution.
 - **Newest stable:** 12.1.14. **Lowest version that clears every listed advisory:** 9.4.63 (same 9.4 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P15. `org.eclipse.jetty:jetty-server` 9.4.57.v20241219
 
@@ -534,7 +534,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-7p3p-8qv8-m2vh: Eclipse Jetty: HTTP Authority/Host mismatch.
 - **Newest stable:** 12.1.14. **Lowest version that clears every listed advisory:** 12.0.35 (different major line (9 to 12); GHSA-7p3p-8qv8-m2vh lists no fixed 9.4 release).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 #### P16. `org.xerial.snappy:snappy-java` 1.1.10.5
 
@@ -543,7 +543,7 @@ On 2026-11-04 16 coordinates resolved on the test classpaths carry at least one 
 - **Summaries:** GHSA-gwq9-9ffj-mvrv: snappy-java: Heap buffer overflow in Snappy.uncompress*Array typed-array methods | GHSA-q233-g92q-qxp6: snappy-java: Unbounded memory allocation from attacker-declared uncompressed lengtha | GHSA-xqrx-qh46-34m7: snappy-java: JVM crash from unchecked ranges in Snappy.arrayCopy and SnappyOutputStream.rawWrite.
 - **Newest stable:** 1.1.10.12. **Lowest version that clears every listed advisory:** 1.1.10.9 (same 1.1.10 line).
 - **Phase 49 consequence:** none for the shipped archive: the coordinate is not packed into it, so the archive's jar set and `confluent-archive-allowlist-v1.7.0_gg8.txt` do not change.
-- **Decision:** pending, nothing changed.
+- **Decision:** declined (record only, backlog); nothing changed.
 
 ### Inconclusive: Confluent `-ccs` Kafka artifacts
 
@@ -551,4 +551,9 @@ The 12 `org.apache.kafka` artifacts at `7.9.1-ccs` in section 2 return 0 for the
 
 ### Decisions
 
-Pending: the user's own words per proposal are required (U-4). None recorded yet.
+Recorded 2026-11-04. These answers reached this plan through the coordinator, which relayed them as the user's AskUserQuestion answers; the exact wording is not available here, so they are recorded in spirit, not verbatim. No bump was proposed for approval by an agent and none was approved.
+
+1. **P1 to P16: record only.** All sixteen are declined; nothing is bumped. The list stays in this file as backlog for a later maintenance phase. None of the sixteen ships: they resolve only on the test and test-fixture classpaths and are not among the 27 shipped coordinates of section 1.
+2. **The 12 Confluent `7.9.1-ccs` Kafka artifacts: note and do not chase.** What Apache release a `7.9.1-ccs` build corresponds to is an open unknown: the databases index Apache version numbers, so the exact-version answer 0 does not show that these builds are clean, and Apache's 3.9.0 and 3.9.1 lines carry advisories. No further investigation was done.
+
+**Disposition:** `dep02_proposals: 16`, none approved, `dep02_bump_commits: 0`, `build.gradle.kts`, `gradle/` and `.github/` byte-unchanged since the merge commit M.

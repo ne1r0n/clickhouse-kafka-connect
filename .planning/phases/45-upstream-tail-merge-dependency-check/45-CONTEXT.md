@@ -31,6 +31,8 @@ The code-gap phases start from a tree that already holds upstream's tail, so a l
 
 - User answer (2026-11-04, plan-check iteration 3): cover the JSON insert route too — `doInsertJson`/`writeRecordsJson` (incl. `OBJECT_MAPPER.writeValueAsBytes` and `MetadataFreeJsonWriter`) get a measured shape set, a value-free guard that keeps what retry classification reads, and pins; criterion 2 stays unqualified. Main-code change on a hot path: keep the success path allocation-free (guard only on the failure path), no change to bytes sent. User also approved one more planner revision folding in warnings 2-5 and infos 6-7 (per-path checklist greps, malformed-row clause in FORK-DELTA, M5 retargeted to RETRIABLE_OVER_JACKSON_ROOT, between-link stand-in chains IOException(RuntimeException(J)) / IOException(IOException(J)) / IOException(ConnectException(J)), explicit return/throw type for withheldJacksonChain), then execution without a fourth checker pass.
 
+- User decisions on the DEP-01 findings (2026-11-04, plan 45-06; relayed by the coordinator as the user's AskUserQuestion answers, recorded in spirit, not verbatim): (1) the 16 open advisories on test-scope coordinates (P1-P16 in 45-DEPENDENCY-CHECK.md section 7) are record only: all declined, nothing bumped, kept as backlog, none ships. (2) The 12 Confluent `7.9.1-ccs` Kafka artifacts: note the unmapped Apache version as an unknown in the record and do not chase it.
+
 ### Claude's Discretion
 All implementation choices are at Claude's discretion — discuss phase was skipped per user setting. Use ROADMAP phase goal, success criteria, and codebase conventions to guide decisions.
 
