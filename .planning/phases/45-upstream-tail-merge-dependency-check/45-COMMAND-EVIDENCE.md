@@ -16,7 +16,7 @@
 | E-01 | UPS-01 | 45-01 | pass |
 | E-02 | UPS-01 | 45-01 | pass |
 | E-03 | UPS-01 | 45-01 | pass |
-| E-04 | UPS-01, UPS-02, UPS-04 | 45-01 | pending (plan 45-01) |
+| E-04 | UPS-01, UPS-02, UPS-04 | 45-01 | pass |
 | E-05 | UPS-02, UPS-04 | 45-02 | pending (plan 45-02) |
 | E-06 | UPS-02 | 45-02 | pending (plan 45-02) |
 | E-07 | UPS-02 | 45-03 | pending (plan 45-03) |
@@ -201,4 +201,51 @@ tail_gate_duration: 10s
 The gate ran unedited with the full SHAs, `PRE_TAG=pre-v1.7.0_gg8` and the new conflicted-paths file; the scripts have not changed since `046fe59d`. `anchor_commits=2` (M and the record commit) because the range is `pre-v1.7.0_gg8..record commit` over a short history. The checklist's Sections 1, 2, 2a and 3, the gate commands and Recorded Facts 46-47 are in the record commit.
 
 2026-11-04T20:09:05Z
+Verdict: pass
+
+### E-04: Break inventory on the bare merge (before any repair)
+
+Backs: UPS-01, UPS-02, UPS-04 (every break plans 45-02 and 45-03 repair is measured on the bare merge first; the one new Maven coordinate is checked against Maven Central; the static facts later plans rely on).
+
+```sh
+git diff --quiet 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- . ':(exclude).planning'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava compileTestFixturesJava compileIntegrationTestJava > /tmp/gsd45/exec/compile-main-m.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileTestJava > /tmp/gsd45/exec/compile-test-m.log 2>&1
+find ~/.gradle/caches/modules-2/files-2.1/org.apache.kafka/connect-json/4.4.0 -name 'connect-json-4.4.0.jar'
+shasum -a 1 <connect-json-4.4.0.jar>
+curl -fsS https://repo1.maven.org/maven2/org/apache/kafka/connect-json/4.4.0/connect-json-4.4.0.jar.sha1
+grep -F 'kafka-connect-json' gradle/libs.versions.toml
+grep -cF 'writeColumnWithRecordContext(' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+grep -cF '    long writeRecordsRowBinary(' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+grep -cF 'new SinkTaskStatistics(0)' src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterRecordContextTest.java
+git diff --quiet pre-v1.7.0_gg8 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/WriterFailureClassificationUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/ScriptedWriteFailureWriter.java
+git diff --quiet 83808df9a0993cf49b2ceaa4633c782e550c0180 HEAD -- <the three new upstream test paths>
+```
+
+```text
+measured_head: 43676e9aaff31961c062217bede6116d1403ef84
+tree_vs_m_outside_planning: identical
+compile_java_exit: 0
+compile_testfixtures_java_exit: 0
+compile_integration_test_java_exit: 0
+connect_json_resolved: yes
+compile_test_java_exit: 1
+compile_test_java_errors: 2
+compile_test_java_error_files: ClickHouseWriterRecordContextTest.java x2
+error_excerpt: ClickHouseWriterRecordContextTest.java:41: error: constructor SinkTaskStatistics in class SinkTaskStatistics cannot be applied to given types; (required: String,int; found: int)
+break_prediction_met: yes
+connect_json_sha1_local: d9a119423f72cdf12c32dd4aac958ec7dc35368f
+connect_json_sha1_central: d9a119423f72cdf12c32dd4aac958ec7dc35368f
+connect_json_sha1_matches_central: yes
+connect_json_catalog_line: kafka-connect-json = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }
+writer_seam_count: 2
+writer_rowbinary_loop_visibility: package-private
+record_context_test_old_ctor_sites: 2
+matrix_file_unchanged_since_tag: yes
+upstream_tests_byte_identical_to_upstream: yes
+```
+
+`measured_head` is the record commit; the evidence commit after it touches only `.planning`, so the tree outside `.planning` is the tree of M. The three compile tasks of the combined run all pass; `compileTestJava` fails with exactly the predicted two javac errors, both `new SinkTaskStatistics(0)` against the fork's `(String connectorName, int taskId)` constructor (lines 41 and 63). `connect-json` 4.4.0 resolved from the network on the first build after M (no `Could not resolve` or `No cached version` line) and its SHA-1 equals Maven Central's. Nothing else is red on the compile side, so plan 45-02's repairs are scoped to the predicted set. Nothing in `src` changed in this task.
+
+2026-11-04T20:10:50Z
 Verdict: pass
