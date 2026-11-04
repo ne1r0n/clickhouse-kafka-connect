@@ -38,7 +38,7 @@ public class ClickHouseWriterRecordContextTest {
 
     @Test
     public void serializationFailureNamesTopicPartitionOffsetAndColumn() {
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0));
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0));
         // A UInt64 column cannot take a String, so the block cannot be built and the writer has to
         // report which record failed instead of failing the whole task with a bare cast error.
         Record record = record(new Data(Schema.STRING_SCHEMA, "definitely-not-a-number"));
@@ -60,7 +60,7 @@ public class ClickHouseWriterRecordContextTest {
     @Test
     public void retriableFailureFromTheColumnWriterIsRethrownUntouched() {
         RetriableException retriable = new RetriableException("server is restarting");
-        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(0)) {
+        ClickHouseWriter writer = new ClickHouseWriter(new SinkTaskStatistics(null, 0)) {
             @Override
             protected void doWriteCol(Data value, boolean fieldExists, Column col, OutputStream stream,
                     boolean defaultsSupport) {
