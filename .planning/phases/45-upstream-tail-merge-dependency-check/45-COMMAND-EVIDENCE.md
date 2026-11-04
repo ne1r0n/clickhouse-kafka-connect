@@ -28,7 +28,7 @@
 | E-13 | UPS-03, UPS-04 | 45-05 | pass |
 | E-14 | UPS-05 | 45-05 | pass |
 | E-15 | UPS-02, UPS-04 | 45-05 | pass |
-| E-16 | DEP-01 | 45-06 | pending (plan 45-06) |
+| E-16 | DEP-01 | 45-06 | pass |
 | E-17 | DEP-01, DEP-02 | 45-06 | pending (plan 45-06) |
 | E-18 | UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-02 | 45-06 | pending (plan 45-06) |
 
@@ -873,4 +873,50 @@ changelog_version_unchanged_since_tag: yes
 The Connector-source table gains two rows (the Option A record-context row citing E-06, and the JSON-route row citing E-10) and the Test-harness table one row, which names every test edited by a user decision: upstream's `ClickHouseWriterRecordContextTest` (constructor, and the three coordinate assertions moved to the log line), upstream's `FieldDescriptorEscapeTest#preservesEscapedCommentsAndDefaultExpressions` (literal JSON text), and the three renamed WRT-17 assertions of `WriterValueFreeFailureUnitTest`. The WRT-13/WRT-17 row now describes the value-free rebuild of every Jackson chain, with `Utils` named for its two public constants, and Known costs item 6 reads the Jackson residual as closed on 2026-11-04 with E-07 and E-10 to E-12. The raw-identifier row names #839's decode-all `readValue`, the five literal fields (`type`, `comment`, `default_expression`, `codec_expression`, `ttl_expression`), the slash round trip and the malformed-row contract, with the new pins. "For the next syncer" leads with `.planning/MERGE-CHECKLIST-v1.7.0-tail-3.md` and reads Recorded Facts 42-43 in the first tail checklist, 44-45 in the second and 46 onward in the third. The testUnit total is E-12's 2041 plus E-13's 31 `FieldDescriptorLiteralFieldsUnitTest` cases. Two wording reconciliations against the plan text: the JSON-route row says the value reaches the thrown message, the rendered trace and the DLQ headers and that no measured logger line carried it (E-10 `json_value_in_logs_shapes: none`; the plan's wording named the logs), and the raw-identifier row says the comment and the three expression fields are read nowhere in `src/main` (the plan's "the four expression fields" counted `comment` as one). FORK-DELTA is an operator document: the orchestrator spawns the independent `gsd-code-reviewer` pass over it before Phase 49's publication gate. Nothing was pushed.
 
 2026-11-04T21:10:30Z
+Verdict: pass
+
+### E-16: DEP-01 shipped set: resolution, archive cross-check, latest versions, advisories
+
+Backs: DEP-01, ROADMAP Phase 45 criterion 5 (the dependencies that ship are checked for open advisories on the merged catalog: every coordinate `clickhouseDependencies` resolves, cross-checked against the Confluent archive, with its latest stable version and the advisories two live sources report on the exact version).
+
+```sh
+gh auth status
+curl -sS -o /dev/null -w '%{http_code}' https://api.osv.dev/v1/query -X POST -d '{}'
+gh api repos/ne1r0n/clickhouse-kafka-connect/dependabot/alerts
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencies --configuration clickhouseDependencies > /tmp/gsd45/exec/deps-shipped.txt
+python3 -I /tmp/gsd45/scripts/parse_deps.py /tmp/gsd45/exec/deps-shipped.txt > /tmp/gsd45/exec/shipped-coords.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive > /tmp/gsd45/exec/archive.log 2>&1
+unzip -Z1 build/confluent/clickhouse-kafka-connect-v1.7.0_gg7.zip
+python3 -I <read META-INF/maven/*/*/pom.properties and the top-level paths of the shadow jar, compare with shipped-coords.txt>
+python3 -I /tmp/gsd45/scripts/advq.py control   # OSV and GitHub advisories for jackson-databind@2.9.0
+python3 -I /tmp/gsd45/scripts/runq.py shipped-coords.txt shipped-adv.json   # maven-metadata.xml, OSV.dev, GitHub per coordinate
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py secrets .planning/phases/45-upstream-tail-merge-dependency-check/45-DEPENDENCY-CHECK.md
+git commit -F /tmp/gsd45/exec/msg-dc1.txt
+```
+
+```text
+query_date: 2026-11-04
+dependabot_alerts_status: 403 Dependabot alerts are disabled for this repository.
+osv_control_count: 74
+ghsa_control_count: 74
+shipped_coordinates: 27
+archive_task_exit: 0
+archive_path: build/confluent/clickhouse-kafka-connect-v1.7.0_gg7.zip
+archive_jars: 1
+archive_jars_not_in_resolution: none
+archive_pom_properties: 18
+archive_pom_properties_version_mismatches: 0
+archive_coordinates_matched_by_package_root: 8
+archive_pom_only_coordinates: 1
+archive_unmapped_top_level_paths: none
+shipped_open_advisories: 0
+shipped_advisory_ids: none
+shipped_stale: 10
+shipped_stale_list: lz4-java 1.12.1 -> 1.13.0; zstd-jni 1.5.7-23 -> 1.5.7-25; error_prone_annotations 2.50.0 -> 2.52.0; guava 33.7.2-jre -> 33.8.0-jre; commons-codec 1.19.0 -> 1.23.0; commons-io 2.20.0 -> 2.22.0; commons-lang3 3.20.0 -> 3.21.0; asm 9.7 -> 9.11.1; RoaringBitmap 1.0.6 -> 1.6.29; slf4j-api 2.0.7 -> 2.0.20
+dc_commit_1: 2f126eac43c8d054450c6d9ae1403c33fd15dce8
+```
+
+The two advisory sources were proven live first: the `jackson-databind@2.9.0` control returned 74 advisories from OSV.dev and 74 from the GitHub advisory database. Dependabot alerts are disabled for the repository (the read answers HTTP 403), so the two databases are the only sources. Plan assumption A2 ("list the archive's `.jar` entries and map each file name to a coordinate") did not hold as written: `createConfluentArchive` packs one shadow jar with every dependency unpacked inside it (`verifyConfluentArchive` itself asserts "no nested jar"), so `archive_jars` is 1 and the cross-check reads inside that jar. 18 `META-INF/maven/.../pom.properties` entries each carry the same version as the resolved coordinate; eight more coordinates are matched by package root or native file name (the four ClickHouse client artifacts, zstd-jni, jspecify, asm, RoaringBitmap); `jackson-bom` is a POM and puts no jar in the archive. No jar, pom.properties or package root exists that the resolution does not explain. None of the 27 coordinates has an advisory in either source; ten are behind the newest stable version (recorded as not proposed under U-4). The note on the commons-lang3 row matches E-14: the shipped classpath carries the client's 3.20.0, not the catalog's 3.21.0.
+
+2026-11-04T21:15:27Z
 Verdict: pass
