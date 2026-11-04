@@ -920,3 +920,46 @@ The two advisory sources were proven live first: the `jackson-databind@2.9.0` co
 
 2026-11-04T21:15:27Z
 Verdict: pass
+
+### E-17: DEP-01 remaining scopes and the DEP-02 disposition
+
+Backs: DEP-01, DEP-02, ROADMAP Phase 45 criterion 5 (every runtime and test dependency, the plugins, the wrapper, the JDK, the workflow actions and the test images recorded with latest versions and the advisories two live sources report; under U-4 an open advisory stops the plan at a decision checkpoint and nothing moves before the user answers).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencies --configuration testRuntimeClasspath > /tmp/gsd45/exec/deps-testRuntimeClasspath.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencies --configuration testFixturesRuntimeClasspath > /tmp/gsd45/exec/deps-testFixturesRuntimeClasspath.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencies --configuration integrationTestRuntimeClasspath > /tmp/gsd45/exec/deps-integrationTestRuntimeClasspath.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain buildEnvironment > /tmp/gsd45/exec/buildenv2.txt
+python3 -I /tmp/gsd45/scripts/runq.py coords-s2.txt s2-adv.json   # also coords-s3.txt, coords-s4.txt
+python3 -I /tmp/gsd45/scripts/advdetail.py   # gh api advisories/<GHSA id> for severity and fixed versions
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -q --console=plain dependencyInsight --configuration <each test classpath> --dependency <each affected artifact>
+gh api repos/ne1r0n/clickhouse-kafka-connect/actions/workflows --jq '.workflows[] | [.path, .state] | @tsv'
+gh api repos/<owner>/<repo>/git/ref/tags/<tag>   # and git/tags/<sha> for annotated tags, releases/latest
+gh api "advisories?ecosystem=actions&affects=<owner>/<repo>@<version>&per_page=100"
+curl -s https://services.gradle.org/versions/current
+git diff --quiet 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- build.gradle.kts gradle .github
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py secrets .planning/phases/45-upstream-tail-merge-dependency-check/45-DEPENDENCY-CHECK.md
+git commit -F /tmp/gsd45/exec/msg-dc2.txt
+```
+
+```text
+section_counts: section_2=228; section_3=7; section_4=50 (47 artifact rows, the wrapper, two JDK rows); section_5=7; section_6=5 rows (11 images)
+total_open_advisories: 16
+open_advisory_rows: ch.qos.logback:logback-core@1.2.13: GHSA-25qh-j22f-pwp8, GHSA-6v67-2wr5-gvf4, GHSA-jhq6-gfmj-v8fx, GHSA-p47f-322f-whfh, GHSA-pr98-23f8-jwxv, GHSA-qqpg-mvqg-649v; com.squareup.wire:wire-runtime-jvm@5.1.0: GHSA-7xpr-hc2w-34m9; com.squareup.wire:wire-runtime@5.1.0: GHSA-7xpr-hc2w-34m9, GHSA-9rm7-3qhh-h2mc, GHSA-pwf9-q62p-v7wc; commons-beanutils:commons-beanutils@1.9.4: GHSA-wxr5-93ph-8wr9; io.netty:netty-codec@4.1.115.Final: GHSA-3p8m-j85q-pgmj, GHSA-558v-64gr-wgg4, GHSA-mj4r-2hfc-f8p6; io.netty:netty-common@4.1.115.Final: GHSA-389x-839f-4rhx; io.netty:netty-handler@4.1.105.Final: GHSA-3qp7-7mw8-wx86, GHSA-4g8c-wm8x-jfhw, GHSA-c4c3-7fpv-j4q5, GHSA-c653-97m9-rcg9, GHSA-fccg-mwvh-qqg4, GHSA-x4gw-5cx5-pgmh; io.netty:netty-transport-native-epoll@4.1.105.Final: GHSA-w573-9ffj-6ff9; org.apache.mina:mina-core@2.2.3: GHSA-76h9-2vwh-w278, GHSA-8297-v2rf-2p32, GHSA-995c-6rp3-4m4x, GHSA-f2wh-grmh-r6jm, GHSA-v3pr-hxpr-mfm8, GHSA-vf5j-865m-mq7c; org.apache.zookeeper:zookeeper@3.8.4: GHSA-7xrh-hqfc-g7qr, GHSA-crhr-qqj8-rpxc; org.bitbucket.b_c:jose4j@0.9.4: GHSA-3677-xxcr-wjqv; org.eclipse.jetty.http2:http2-common@9.4.57.v20241219: GHSA-mmxm-8w33-wc4h; org.eclipse.jetty:jetty-http@9.4.57.v20241219: GHSA-355h-qmc2-wpwf, GHSA-qh8g-58pp-2wxh, GHSA-wjpw-4j6x-6rwh; org.eclipse.jetty:jetty-security@9.4.57.v20241219: GHSA-2fvj-hgj9-j2gr; org.eclipse.jetty:jetty-server@9.4.57.v20241219: GHSA-7p3p-8qv8-m2vh; org.xerial.snappy:snappy-java@1.1.10.5: GHSA-gwq9-9ffj-mvrv, GHSA-q233-g92q-qxp6, GHSA-xqrx-qh46-34m7
+open_advisory_rows_shipped: 0
+open_advisory_rows_by_section: section_1=0; section_2=16; section_3=0; section_4=0; section_5=0
+advisory_sources_agree: yes
+ccs_rows_inconclusive: 12
+stale_rows: 223
+tag_pinned_actions: actions/checkout@v3 resolves to v3.7.0; actions/setup-java@v3 resolves to v3.14.2; gradle/gradle-build-action@v2 resolves to v2.12.0
+active_workflows_with_tag_pinned_actions: none
+dep02_proposals: 16
+dep02_bump_commits: 0
+build_files_unchanged_since_merge: yes
+dc_commit_2: ef369177a10913715bea679bf30c7353201787eb
+```
+
+Scopes: section 2 has 228 rows (the union of `testRuntimeClasspath` and `testFixturesRuntimeClasspath` minus the shipped set), section 3 has 7 (the integration-test classpath minus sections 1 and 2), section 4 has the 43 buildscript artifacts, the four JaCoCo 0.8.15 tool artifacts, the Gradle 9.8.2 wrapper (current) and the two JDK rows, section 5 has the 7 distinct `uses:` values (four SHA-pinned and current, three tag-pinned in the disabled upstream `integrationTests.yaml`), section 6 has the container images. The shipped set, the plugins, the JaCoCo tools and the seven actions have no open advisory in either source; the GitHub actions ecosystem was proven live by a control (`tj-actions/changed-files@45.0.7`). Sixteen coordinates on the test and test-fixture classpaths have open advisories (OSV.dev and the GitHub advisory database agree on every row); all of them trace to `io.confluent:kafka-schema-registry` 7.9.1, `rest-utils` 7.9.1, `kafka-protobuf-*` 7.9.1 or Kafka's `kafka-clients`, and none is one of the 27 shipped coordinates, so the Confluent archive and the allow-list are unaffected. They are written up as proposals P1 to P16 in section 7. Under U-4 nothing was bumped: `build.gradle.kts`, `gradle/` and `.github/` are byte-unchanged since M, and this entry stays pending until the user records a decision per proposal in their own words. A second finding, outside the exact-version rule: the 12 Confluent `7.9.1-ccs` Kafka artifacts on the test classpath return 0 only because the databases index Apache version numbers; Apache's 3.9.0 and 3.9.1 lines of `kafka-clients` and `kafka_2.13` do carry advisories, and what `7.9.1-ccs` contains cannot be read from either source (named for the user in section 7). Plan text reconciled against the tree: the plan expected zero open advisories (research's 2026-11-04 pre-measurement covered only the shipped set).
+
+2026-11-04T21:25:24Z
+Verdict: pending (awaiting the user's decision per proposal, U-4)
