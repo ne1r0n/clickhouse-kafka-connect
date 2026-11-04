@@ -29,6 +29,8 @@ The code-gap phases start from a tree that already holds upstream's tail, so a l
 
 - User approved (2026-11-04): (1) `Utils.java` makes its two private client-timeout prefix constants public, nothing else in Utils changes; (2) server-error links above a Jackson link (client V1 and V2) are rebuilt value-free keeping their error code.
 
+- User answer (2026-11-04, plan-check iteration 3): cover the JSON insert route too — `doInsertJson`/`writeRecordsJson` (incl. `OBJECT_MAPPER.writeValueAsBytes` and `MetadataFreeJsonWriter`) get a measured shape set, a value-free guard that keeps what retry classification reads, and pins; criterion 2 stays unqualified. Main-code change on a hot path: keep the success path allocation-free (guard only on the failure path), no change to bytes sent. User also approved one more planner revision folding in warnings 2-5 and infos 6-7 (per-path checklist greps, malformed-row clause in FORK-DELTA, M5 retargeted to RETRIABLE_OVER_JACKSON_ROOT, between-link stand-in chains IOException(RuntimeException(J)) / IOException(IOException(J)) / IOException(ConnectException(J)), explicit return/throw type for withheldJacksonChain), then execution without a fourth checker pass.
+
 ### Claude's Discretion
 All implementation choices are at Claude's discretion — discuss phase was skipped per user setting. Use ROADMAP phase goal, success criteria, and codebase conventions to guide decisions.
 
