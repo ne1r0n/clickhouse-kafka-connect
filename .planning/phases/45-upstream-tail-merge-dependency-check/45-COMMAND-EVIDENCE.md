@@ -19,7 +19,7 @@
 | E-04 | UPS-01, UPS-02, UPS-04 | 45-01 | pass |
 | E-05 | UPS-02, UPS-04 | 45-02 | pass |
 | E-06 | UPS-02 | 45-02 | pass |
-| E-07 | UPS-02 | 45-03 | pending (plan 45-03) |
+| E-07 | UPS-02 | 45-03 | pass |
 | E-08 | UPS-02 | 45-03 | pending (plan 45-03) |
 | E-09 | UPS-02 | 45-03 | pending (plan 45-03) |
 | E-10 | UPS-02 | 45-04 | pending (plan 45-04) |
@@ -377,4 +377,55 @@ PROBE857 shape=RETRIABLE_FROM_COLUMN_WRITER before_class=org.apache.kafka.connec
 What #857 adds relative to the direct path is one `DataException` layer around 14 of the 15 shapes (its message is `Failed to serialize record for topic, partition, offset, column` followed by the cause's own message, which repeats the column name in 8 shapes), one ERROR log line per failure that carries the message and the full cause chain, and an unchanged pass-through for the retriable shape; none of the 56 outcome cells (14 shapes by 4 tolerance and socket settings, through the `RuntimeException(queryId)` wrap that Processing applies) changes, and the record-value stand-in reaches the message, the printed trace and the DLQ headers only for JACKSON_OVER_SOCKET_TIMEOUT, where it is already present before #857 in the pass-through Jackson exception (the documented residual of FORK-DELTA Known costs item 6, which plan 45-03 Task 1 closes per plan-check answer 1), while the one surface #857 adds for that shape is the ERROR log line (`sentinel_in_log_before=no`, `sentinel_in_error_log=yes`). Every research prediction held (14 new-layer shapes, the retriable one rethrown as the same instance, zero outcome changes); the thirteen other shapes carry no value on any surface because the fork's own `doWriteColValue` messages are value-free, so what #857 adds for them is the extra coordinates and the repeated column, not a value.
 
 2026-11-04T20:22:00Z
+Verdict: pass
+
+### E-07: Value-free rebuild of every Jackson chain: red on the unchanged writer, green in one commit, matrix unchanged
+
+Backs: UPS-02, ROADMAP Phase 45 criterion 2 (plan-check answer 1 and the iteration-2 answer: every value-carrying Jackson chain `doWriteColValue` would pass through is rebuilt value-free while the links and root facts retry classification reads stay).
+
+```sh
+git diff --quiet 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- src/main
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*JacksonOverIoValueFreeUnitTest*' --tests '*WriterValueFreeFailureUnitTest*' --tests '*WriterFailureClassificationUnitTest*' > /tmp/gsd45/exec/jx-redfirst.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*JacksonOverIoValueFreeUnitTest*' --tests '*WriterValueFreeFailureUnitTest*' --tests '*WriterFailureClassificationUnitTest*' > /tmp/gsd45/exec/jx-green.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class JacksonOverIoValueFreeUnitTest
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class WriterValueFreeFailureUnitTest
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit --class WriterFailureClassificationUnitTest
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*WithheldMessageExceptionUnitTest*' --tests '*WriterLogMaskingUnitTest*' --tests '*ClickHouseWriterColumnContextTest*' --tests '*SourcePlanningIdGuardUnitTest*' --tests '*UtilsTest*' --tests '*UtilsNullMessageClassificationUnitTest*' --tests '*AdditionalRetriableErrorCodesTest*' > /tmp/gsd45/exec/jx-gg3-unit.log 2>&1
+grep -cF '!(t instanceof JacksonException)' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+grep -cF 'withheldJacksonChain(' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git worktree add --detach /tmp/gsd45/fmt HEAD
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/fmt --console=plain spotlessApply > /tmp/gsd45/exec/fmt-jx.log 2>&1
+git commit -F /tmp/gsd45/exec/msg-jx.txt
+```
+
+```text
+jx_redfirst_head: clean
+jx_redfirst_failed_count: 41
+jx_redfirst_red_checks: carriesNoRecordValue; rebuildIsValueFreeAndKeepsTheSuffix
+jx_redfirst_red_shapes: 19
+jx_redfirst_wvf_red: WriterValueFreeFailureUnitTest#WRT-17 value-free: a Jackson exception over a SocketTimeoutException becomes a value-free IOException over the same SocketTimeoutException; WriterValueFreeFailureUnitTest#WRT-17 value-free: a Jackson exception over a plain IOException becomes a value-free IOException over the same IOException; WriterValueFreeFailureUnitTest#WRT-17 value-free: a plain IOException over a Jackson exception becomes a value-free IOException over a withheld IOException root
+jx_redfirst_nonchange_green: yes
+jx_redfirst_matrix_failed: 0
+jx_green_failed_count: 0
+jx_tests: 95
+wvf_tests: 29
+matrix_tests: 216
+jx_gg3_unit_failed_count: 0
+wrt17_anchor_count: 1
+anchors_mirror: rows=191 bad=0
+fmt_writer_jx: preexisting
+fmt_utils: identical
+fmt_jx: identical
+fmt_wvf: identical
+v1_constructor_null_node: accepted
+jx_commit: f13d83781efd97589d8aec292c39faca4face820
+```
+
+Red-first on the unchanged writer (HEAD equals M outside `.planning`): 340 tests, 41 failures. In `JacksonOverIoValueFreeUnitTest` (95 cases) exactly the two value checks of every one of the 19 chains were red (`rebuildIsValueFreeAndKeepsTheSuffix` and `carriesNoRecordValue`, 38 cases); `rawChainCarriesTheValue`, `keepsTheClassifiedLinks` and `keepsTheRetryOutcome` held on all 19 chains because the unchanged writer throws the scripted chain itself (their bites are mutations M4-M6 in E-09). The three edited `WriterValueFreeFailureUnitTest` methods were the only red ones of that class, and the 216-case matrix was green. After the change every one of the 340 tests passes, the other gg3 pins (91 tests over 7 classes) pass, and the 19 shapes include the iteration-2 shapes (a) OVER_RETRIABLE_OVER_PLAIN_IO, (b) PLAIN_IO_OVER_JACKSON_ROOT (also timeout-prefixed and the exact RuntimeException), (c) OVER_CONNECT_OVER_SOCKET_TIMEOUT, the four between-link chains and a value-carrying non-IO link below a Jackson link. The client V1 `ClickHouseException(int, Throwable, ClickHouseNode)` constructor accepts a `null` node, so no node was needed for the shape or the stand-in. The stand-in text for a link is its class name plus the withheld note held as one constant in the writer (a second `WithheldMessageException.of(` call would have moved the existing WRT-13 anchor row, whose count is 1). `fmt_writer_jx` is `preexisting`: Spotless would only move the static import and the `org.apache.kafka.connect` import block of `ClickHouseWriter.java`, which this commit does not touch. Nothing was pushed.
+
+2026-11-04T20:31:30Z
 Verdict: pass
