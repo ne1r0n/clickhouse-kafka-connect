@@ -23,6 +23,8 @@ The code-gap phases start from a tree that already holds upstream's tail, so a l
 
 - Plan-check answers (2026-11-04, user via AskUserQuestion): (1) Fix the Jackson-over-socket-timeout residual with a value-free wrapper that keeps the retriable classification — a main-code change to the fork's exception text for that shape, approved; re-check gg3 pins and the matrix. (2) Edit the three coordinate assertions of upstream's `serializationFailureNamesTopicPartitionOffsetAndColumn` to read the captured log line, named in FORK-DELTA. (3) The log line carries topic, partition, offset, column and exception class name (amends U-1); never message or value. (4) The four upstream coordinates (slf4j-simple 2.0.20, spotless 8.10.4, commons-lang3 3.21.0, connect-json 4.4.0 test-only) are approved to land in the merge commit. ROADMAP criterion 2 '184-case' is stale: the class is 216.
 
+- User approved (2026-11-04) editing the two existing pins `jacksonOverSocketTimeoutPassesThrough` and `jacksonOverPlainIoExceptionPassesThroughAsAcceptedResidual` in `WriterValueFreeFailureUnitTest` (rename + sentinel + wrapper assertion), scoped to those two methods and imports.
+
 ### Claude's Discretion
 All implementation choices are at Claude's discretion — discuss phase was skipped per user setting. Use ROADMAP phase goal, success criteria, and codebase conventions to guide decisions.
 
