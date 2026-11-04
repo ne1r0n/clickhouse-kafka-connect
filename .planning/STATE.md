@@ -3,10 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg8
 milestone_name: closeout
 status: planning
-last_updated: "2026-11-03T23:25:35.794Z"
+current_phase: "45"
+current_phase_name: "Upstream Tail Merge & Dependency Check"
+last_updated: "2026-11-03T23:34:01.000Z"
 last_activity: 2026-11-04
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,18 +19,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-04 after v1.7.0_gg7-followup milestone)
+See: .planning/PROJECT.md (updated 2026-11-04 after starting milestone v1.7.0_gg8)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 45 — Upstream Tail Merge & Dependency Check. Upstream `83808df9` lands as one mechanical merge behind `pre-v1.7.0_gg8`, #857 is re-expressed value-free with the gg3 pins unchanged, #839 and `fromJsonRow` are reconciled with the gg4 raw-identifier handling, and a manual dependency and CVE check of the merged catalog follows.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-11-04 — Milestone v1.7.0_gg8 started
+Phase: 45 of 49 (Upstream Tail Merge & Dependency Check) — not started (ready to plan)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-04 — Roadmap created for v1.7.0_gg8 (Phases 45-49, 26/26 requirements mapped)
 
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -360,6 +363,22 @@ Placement:
 - [Phase 44]: 44-02: 44-note-check.py --only ignores rows of the other sections so the partial-note verify blocks pass on the finished note
 - [Phase 44]: Plan 44-05: the CHANGELOG heading date 2026-11-02 was not edited; the bundle (question 5) and the runbook (C-7) put keep versus date-fix to the user, recommending keep as the freeze date
 
+**`v1.7.0_gg8` roadmap (2026-11-04):** five phases under `coarse` granularity:
+1. the upstream tail `83808df9` and the dependency check (45);
+2. the insert timeout limits (46);
+3. the task `stop()` fix and retry classification (47);
+4. the Phase 37 dispositions and document fixes (48);
+5. the release (49).
+
+Placement:
+- The sync lands first, on a scratch branch behind `pre-v1.7.0_gg8`, because the tail edits `ClickHouseWriter`, `ClickHouseHelperClient` and `ClickHouseFieldDescriptor`, which Phases 46 and 48 edit too.
+- The dependency check (DEP) is folded into Phase 45 and runs after the merge, on the catalog that ships: upstream's tail already brings slf4j-simple, spotless and commons-lang3 and adds `connect-json` to the test classpath.
+- The timeout limits come before the retry classification, so RTY-01's changed-row list is measured against the final retriable outcomes (the gg7 order of F-2 before RSK-02).
+- LIF shares Phase 47 with RTY (both at the task boundary in `ClickHouseSinkTask`). DOC shares Phase 48 with the Phase 37 rows, the gg7 Phase 43 shape.
+- The release (49) edits only documents. The publish run and the deletion of the two `scratch/clt-07-*` branches are separate user gates.
+
+Measured at roadmap time (2026-11-04): a `git merge-tree` dry run of `83808df9` into `sync/v1.7.0` conflicts in six paths and auto-merges #857 into `ClickHouseWriter.java` with no marker. #857's `serializationFailure` formats `cause.getMessage()` into the `DataException` text and wraps every exception that is not a `RetriableException`, so the gg3 value-free pins and the 184-case classification matrix are the gate for UPS-02.
+
 ### Pending Todos
 
 None.
@@ -373,6 +392,7 @@ None.
 
 - [Publish] 2026-11-03: `v1.7.0_gg7` is on `origin/custom_build` at `94834763` (a `--no-ff` merge of X0 `fc570937` onto `72e8ccff`, after the user's direct `publish`), with `tests.yaml` run 41704437509 green; the publish run 41721771615 created the tag and release 433237218 under the workflow token. `pre-v1.7.0_gg7` is on origin; `sync/v1.7.0` was deleted; Dependabot PRs #21 and #22 read merged. Older `[Publish]`, `[Roadmap]` and `[Dependabot]` lines were removed at the gg7 close; the history is in `MILESTONES.md`.
 - [Tooling]: `gh` is installed and signed in as of the gg7 publication; it was used for read-only reads and, on the user's direct words, the scratch push, the merge push, the dry-run and publish dispatches and the pre-tag push.
+- [Upstream] 2026-11-04: upstream's `VERSION` at `83808df9` reads `v1.7.1`, with no tag past `v1.7.0` seen locally. Recheck upstream's tags immediately before the Phase 45 merge. A tag at or past the merge target makes it a tagged sync (FUT-01), and the user decides the scope.
 
 ### Quick Tasks Completed
 
@@ -399,12 +419,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T23:50:41.961Z
-Stopped at: Milestone v1.7.0_gg7-followup completed and archived
+Last session: 2026-11-03T23:34:01.000Z
+Stopped at: Roadmap created for milestone v1.7.0_gg8 (Phases 45-49, 26/26 requirements mapped)
 Resume file: None
 
 ## Operator Next Steps
 
-
-
-- Run `/gsd-cleanup` if the archived phase directories should be removed from the working tree, then start the next milestone with `/gsd-new-milestone`.
+- Plan Phase 45 with `/gsd-plan-phase 45` (`skip_discuss` is on). Before the merge, recheck upstream's tags (upstream's `VERSION` already reads `v1.7.1`).

@@ -77,13 +77,38 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by roadmapper) | — | Pending |
+| UPS-01 | Phase 45 | Pending |
+| UPS-02 | Phase 45 | Pending |
+| UPS-03 | Phase 45 | Pending |
+| UPS-04 | Phase 45 | Pending |
+| UPS-05 | Phase 45 | Pending |
+| DEP-01 | Phase 45 | Pending |
+| DEP-02 | Phase 45 | Pending |
+| LIF-01 | Phase 47 | Pending |
+| LIF-02 | Phase 47 | Pending |
+| TMO-01 | Phase 46 | Pending |
+| TMO-02 | Phase 46 | Pending |
+| TMO-03 | Phase 46 | Pending |
+| RTY-01 | Phase 47 | Pending |
+| RTY-02 | Phase 47 | Pending |
+| P37-01 | Phase 48 | Pending |
+| P37-02 | Phase 48 | Pending |
+| P37-03 | Phase 48 | Pending |
+| P37-04 | Phase 48 | Pending |
+| DOC-01 | Phase 48 | Pending |
+| DOC-02 | Phase 48 | Pending |
+| RLS-01 | Phase 49 | Pending |
+| RLS-02 | Phase 49 | Pending |
+| RLS-03 | Phase 49 | Pending |
+| RLS-04 | Phase 49 | Pending |
+| RLS-05 | Phase 49 | Pending |
+| RLS-06 | Phase 49 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26 ⚠️
+- Mapped to phases: 26
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-04*
-*Last updated: 2026-11-04 after initial definition*
+*Last updated: 2026-11-04 after roadmap creation (Phases 45-49)*
