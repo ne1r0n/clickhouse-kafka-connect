@@ -31,6 +31,7 @@
 | E-16 | DEP-01 | 45-06 | pass |
 | E-17 | DEP-01, DEP-02 | 45-06 | pass |
 | E-18 | UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-02 | 45-06 | pass |
+| E-19 | UPS-02 | review follow-up (WR-01) | pass |
 
 ### E-01: Pre-flight: upstream and origin re-read, conflict set, baseline suites on the untouched tip
 
@@ -1074,4 +1075,60 @@ Counts: testUnit is E-15's 2072 (baseline 1826, plus 11 upstream tests, plus the
 Crash handling: the first full-suite attempt on the default Java 17 toolchain (OpenJ9) exited 255 at 2573 tests (`Gradle Test Executor 262`, 8 GB core dump); after the dump and its sibling files were deleted, the single permitted re-run crashed the same way (`Gradle Test Executor 267`) and its dumps were deleted too. Swap was 32.2 of 33.8 GB used at that moment, the memory-pressure condition behind the known OpenJ9 crash. Neither partial run's XML was used. Both recorded suites then ran with the documented `-PjavaVersion=21` escape (Homebrew OpenJDK 21.0.12.1), 2 min 43 s each, on the same ClickHouse image; the Docker-unreachable testUnit run used the default toolchain without crashing. No core, javacore, Snap or jitdump file remains in the repository root. `origin_sync_branch_at_gate` equals E-01's read (the branch does not exist on origin), `pre-v1.7.0_gg8` is absent on origin, upstream's main and newest release tag did not move during the phase, and origin's `custom_build` is still `94834763`. Nothing was pushed in this phase.
 
 2026-11-04T21:42:42Z
+Verdict: pass
+
+### E-19: Review follow-up WR-01: write-timeout prefix and Map-lambda shape pinned, two mutations bite, gate
+
+Backs: UPS-02, 45-REVIEW.md WR-01 (the retry-classification pins missed the write-timeout prefix branch of `withheldJacksonRoot` and the RuntimeException over Jackson over socket-timeout shape). Test-only: no production file changed (the mutations below were restored with `git checkout`, never committed).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain --offline spotlessApply -PspotlessIdeHook=$PWD/src/test/java/com/clickhouse/kafka/connect/sink/db/JacksonOverIoValueFreeUnitTest.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain --offline testUnit --tests '*JacksonOverIoValueFreeUnitTest' --tests '*WriterValueFreeFailureUnitTest' --tests '*WriterFailureClassificationUnitTest'
+# mutation M1: delete the write-timeout `else if` branch of ClickHouseWriter.withheldJacksonRoot, run the class, then git checkout the file
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain --offline testUnit --tests '*JacksonOverIoValueFreeUnitTest'
+# mutation M2: withheldJacksonChain builds the RuntimeException top with cause null instead of `below`, run the class, then git checkout the file
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain --offline testUnit --tests '*JacksonOverIoValueFreeUnitTest'
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain --offline testUnit --rerun
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 02baac3aad884ddac5e9470d1ce019b3bc420fdc
+```
+
+```text
+test_commit: 876a9bd1e49e0c7f5bbfe91269a8a7eb5269bc73
+fork_delta_commit: 02baac3aad884ddac5e9470d1ce019b3bc420fdc
+production_files_changed: none
+new_shapes: 2
+new_methods: 2
+jackson_over_io_cases_before: 95
+jackson_over_io_cases_after: 109
+spotless_file_unchanged: yes
+targeted_green_exit: 0
+targeted_classes_green: JacksonOverIoValueFreeUnitTest 109, WriterValueFreeFailureUnitTest 29, WriterFailureClassificationUnitTest 216, no failure
+m1_exit: 1
+m1_tests: 109
+m1_red: 5
+m1_red_names: keepsTheRetryOutcome, staysRetriableAndValueFree, keepsTheClassifiedLinks, rebuildIsValueFreeAndKeepsTheSuffix (all four on PLAIN_IO_OVER_WRITE_TIMEOUT_PREFIXED_JACKSON_ROOT) and writeTimeoutPrefixOfAJacksonRootSurvivesOnTheRebuiltRoot
+m1_restored: git checkout, ClickHouseWriter.java clean
+m2_exit: 1
+m2_tests: 109
+m2_red: 9
+m2_red_names: mapLambdaShapeDropsTheJacksonLinkAndKeepsTheTimeoutAsTheDirectCause, and keepsTheRetryOutcome, staysRetriableAndValueFree, keepsTheClassifiedLinks, rebuildIsValueFreeAndKeepsTheSuffix on RUNTIME_OVER_JACKSON_OVER_READ_TIMEOUT_SOCKET, plus keepsTheClassifiedLinks and rebuildIsValueFreeAndKeepsTheSuffix on RUNTIME_OVER_JACKSON_ROOT and RETRIABLE_OVER_JACKSON_ROOT
+m2_restored: git checkout, ClickHouseWriter.java clean
+green_after_restore_exit: 0
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2086
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+anchors_mirror: rows=200 bad=0
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=41 anchor_rows=200 marker_commits=59 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+The two chains are `PLAIN_IO_OVER_WRITE_TIMEOUT_PREFIXED_JACKSON_ROOT` (a Jackson root whose message starts with `Utils.CLICKHOUSE_CLIENT_ERROR_WRITE_TIMEOUT_MSG`) and `RUNTIME_OVER_JACKSON_OVER_READ_TIMEOUT_SOCKET` (the Map/Tuple/Array lambda shape over a `SocketTimeoutException` whose message starts with the read-timeout prefix); both joined the `Shape` enum, so the five existing matrix checks drive them too. The new `staysRetriableAndValueFree` asserts the retriable outcome for client V1 and V2 and both `errorsTolerance` values with `retryOnSocketException=false` (so the prefix, not the socket kind, carries the write-timeout case), after a self-check that the scripted chain is retriable, and asserts no Jackson link and no record value in the thrown messages, the DLQ headers and the log texts. M1 (the branch review WR-01 named) turns the write-timeout case from retriable into a task failure and is caught by five tests. M2 covers the second shape: it drops the kept timeout below a RuntimeException top, which no shape with a trusted suffix under a RuntimeException top caught before. The testUnit total is E-18's 2072 plus 14 (10 matrix cases, 2 parameterized retry cases, 2 methods). No new pinned literal was added, so the anchors file is unchanged. The count `anchor_commits` and `marker_commits` grew because the follow-up commits are included in the range.
+
+2026-11-04T22:10:20Z
 Verdict: pass
