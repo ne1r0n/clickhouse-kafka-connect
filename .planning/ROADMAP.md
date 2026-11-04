@@ -189,7 +189,14 @@ Phase artifacts: `milestones/v1.7.0_gg7-followup-phases/`
   4. *[Docker-free, live]* slf4j-simple 2.0.20, spotless 8.10.4 and commons-lang3 3.21.0 resolve on their classpaths (by `dependencyInsight`). `verify-merge-invariants.sh` reads `PASS` on the phase tip with `PRE_TAG=pre-v1.7.0_gg8` and the full upstream SHA, and the anchor count changes in the same commit as the rows it counts. Two full `--rerun` suites on that tip are green on `latest` × V2 (UPS-05).
   5. *[record, operator]* A manual dependency and CVE check of the merged catalog is recorded. It lists every runtime and test dependency with its latest version and any open advisory, and it names each dependency with an open CVE. Each proposed bump carries the user's decision in their own words. Each approved bump is its own commit, with `testUnit` green with Docker unreachable and the full suite green on `latest` × V2. If none is approved, the record says so and nothing moves (DEP-01, DEP-02).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 45-01-PLAN.md — pre-flight re-read and baseline suites on the untouched tip, rollback tag `pre-v1.7.0_gg8`, one mechanical merge of `83808df9` (six conflicts and the dead `describeTableV1` reader on the fork side), the tail-3 checklist and the unedited tail gate, then the bare-merge break inventory (UPS-01)
+- [ ] 45-02-PLAN.md — the U-2 upstream-test edits (RecordContextTest compile fix, FieldDescriptorEscapeTest literal JSON) with testUnit green and a full suite red on WRT-10 alone, then the #857 measurement of 15 failure shapes in a worktree probe (UPS-02, UPS-04)
+- [ ] 45-03-PLAN.md — U-1 Option A: the writer keeps its own exception and logs coordinates value-free, Docker-free pins through `writeRecordsRowBinary` and `ProxySinkTask.put` seen red first, four anchor rows, mutations, live WRT-10 and the gg3 pins unchanged (UPS-02)
+- [ ] 45-04-PLAN.md — the `fromJsonRow` literal-fields pin biting against upstream's decode-all, the live slash-column and NAME run on `latest` × V2, the UPS-05 `dependencyInsight` facts with three anchor rows, and the FORK-DELTA rows naming every difference (UPS-03, UPS-04, UPS-05, UPS-02)
+- [ ] 45-05-PLAN.md — the DEP-01 record (shipped set first, then test classpaths, plugins, actions, images), the DEP-02 disposition under U-4, and the phase gate: testUnit with Docker unreachable, two `--rerun` suites, the tail gate on explicit SHAs, nothing pushed (DEP-01, DEP-02, UPS-05, UPS-01)
 
 **Research flag**: Standard. The fork has a rehearsed recipe: Phase 34 and the earlier tails, the invariant script and the checklist. Settle these at plan time:
 - whether upstream has tagged a release past `v1.7.0`. Upstream's `VERSION` already reads `v1.7.1`. A tag at or past the merge target makes this a tagged sync (FUT-01), so stop, and the user decides the scope;
