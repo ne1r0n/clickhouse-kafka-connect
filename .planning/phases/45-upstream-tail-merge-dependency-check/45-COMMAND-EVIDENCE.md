@@ -21,7 +21,7 @@
 | E-06 | UPS-02 | 45-02 | pass |
 | E-07 | UPS-02 | 45-03 | pass |
 | E-08 | UPS-02 | 45-03 | pass |
-| E-09 | UPS-02 | 45-03 | pending (plan 45-03) |
+| E-09 | UPS-02 | 45-03 | pass |
 | E-10 | UPS-02 | 45-04 | pending (plan 45-04) |
 | E-11 | UPS-02 | 45-04 | pending (plan 45-04) |
 | E-12 | UPS-02 | 45-04 | pending (plan 45-04) |
@@ -485,4 +485,77 @@ fix_commit: f4b85584a112062d8872aa31e6806cae6b6f55d0
 Red-first on the #857 tree with Task 1's rebuild (`src/main` differs from M only by the writer and Utils): 65 tests, 32 red. `rethrowsWhatDoWriteColThrew` and `logsOneValueFreeCoordinateLine` were red for exactly the 14 shapes that E-06 `m857_new_layer_shapes` counts, and green for RETRIABLE_FROM_COLUMN_WRITER; the four production-path cases of `WriterRecordContextDlqUnitTest` were red on `exactly one coordinate line ... expected 1 but was 0` (#857's line does not start with the coordinate prefix), after their DLQ-header, thrown-chain and exception-text checks had already passed. `carriesNoRecordValue` and `keepsTheRetryOutcome` (non-change checks, bitten by M1 and M2 in E-09) were green for all 15 and 14 shapes, so no value-free check was red there, and upstream's `ClickHouseWriterRecordContextTest` (both methods) was green on the #857 tree. `WriterRecordContextDlqUnitTest` runs INVALID_UUID and UNPARSEABLE_INT128 (schema validation sits behind `doInsertRawBinary`, which `CapturingClickHouseWriter` replaces, so no shape needed substituting). After the change all 65 tests and the 391 gg3/matrix tests are green; the matrix file is unchanged since the tag. The diff of upstream's test against `83808df9` removes 13 lines, 5 approved (the two constructor lines and the three coordinate assertions) and 8 that reappear re-indented. `fmt_writer` and `fmt_rct` are `preexisting`: Spotless would only move the writer's static import and the Connect import block, and drop upstream's unused `java.io.IOException` import, none of which this commit touches. Nothing was pushed.
 
 2026-11-04T20:36:00Z
+Verdict: pass
+
+### E-09: Plan 45-03 bite and gate: six mutations, testUnit, live WRT-10, unchanged pins, tail gate
+
+Backs: UPS-02, ROADMAP Phase 45 criterion 2 (the non-change checks bite under six mutations applied only in a removed worktree; the cache-busted testUnit and the live gg3 pins pass; the gg3 pin files are unchanged except the three retired methods; the unedited tail gate passes with `anchor_rows=195`).
+
+```sh
+git worktree add --detach /tmp/gsd45/mut HEAD
+python3 -I /tmp/gsd45/mutate.py /tmp/gsd45/mut/src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java <old> <new>
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd45/mut --console=plain testUnit --rerun --tests '<class filter>' > /tmp/gsd45/exec/mut-<n>.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed /tmp/gsd45/mut/build/test-results/testUnit
+git worktree remove --force /tmp/gsd45/mut
+git worktree prune
+git worktree list
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd45/exec/testunit-ups02.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/testUnit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun --tests '*WriterErrorPathLiveTest*' --tests '*JsonAsStringKeyResidualLiveTest*' --tests '*WriterFailureClassificationUnitTest*' > /tmp/gsd45/exec/live-gg3.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/test
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+git diff --quiet pre-v1.7.0_gg8 HEAD -- <the seven gg3 pin files>
+git diff --name-only 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 HEAD -- src/main
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 d052b6b8a3f51a0e9518a13e6c6aa2f267be6b52 > /tmp/gsd45/exec/tail-gate-03.log 2>&1
+```
+
+```text
+m1_target: in writeColumnWithRecordContext, the log call's `name,` argument followed by `e.getClass().getName());` (the column argument)
+m1_failed: 18
+m1_expected_met: yes
+m2_target: in writeColumnWithRecordContext, the `throw e;` after the LOGGER.error(RECORD_CONTEXT_FAILURE_LOG_FORMAT, ...) call, replaced by `throw new RetriableException(e);`
+m2_failed_count: 38
+m2_expected_met: yes
+m3_target: withheldJacksonChain(e, buildValueConversionFailureMessage(col, columnType, value, e)) replaced by null
+m3_failed_count: 42
+m3_expected_met: yes
+m4_target: below = chain.get(suffixStart); replaced by below = WithheldMessageException.of(chain.get(suffixStart));
+m4_failed_count: 40
+m4_expected_met: yes
+m5_target: standIn = new RetriableException(text, cause); replaced by standIn = new RuntimeException(text, cause); (the one RetriableException stand-in, in sameKindStandIn)
+m5_failed: 4
+m5_expected_met: yes
+m6_target: IOException standIn = new IOException(prefix + withheldText(root)); replaced by IOException standIn = new IOException(withheldText(root));
+m6_failed: 3
+m6_expected_met: yes
+worktrees_removed: yes
+testunit_exit: 0
+testunit_tests: 1995
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+live_exit: 0
+live_failed_count: 0
+wrt10_passed: yes
+live_matrix_tests: 216
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+gg3_pins_unchanged_since_tag: yes
+wvf_edit_scope: three retired methods
+utils_edit_scope: visibility only
+main_diff_since_merge: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java
+anchors_mirror: rows=195 bad=0
+tail_gate_head: d052b6b8a3f51a0e9518a13e6c6aa2f267be6b52
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=15 anchor_rows=195 marker_commits=33 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+Mutation red sets (each in its own detached worktree, removed afterwards; the main tree was never touched). M1 (a value in the coordinate line): 18 red in `WriterRecordContextUnitTest`, all `logsOneValueFreeCoordinateLine` (14) or `carriesNoRecordValue` (INVALID_UUID, UNPARSEABLE_INT128, TYPE_MISMATCH, UNKNOWN_ENUM_LABEL), so the value check bites. M2 (rethrow as RetriableException): `keepsTheRetryOutcome` red for the nine NON_RETRIABLE shapes and SOCKET_EXCEPTION, `rethrowsWhatDoWriteColThrew` red for 14. M3 (rebuild call replaced by null): `carriesNoRecordValue` and `rebuildIsValueFreeAndKeepsTheSuffix` red for all 19 chains, the three renamed `WriterValueFreeFailureUnitTest` methods red, and `WriterRecordContextUnitTest#carriesNoRecordValue JACKSON_OVER_SOCKET_TIMEOUT` red. M4 (kept suffix replaced by a withheld copy): 9 `keepsTheClassifiedLinks`, 9 `rebuildIsValueFreeAndKeepsTheSuffix` and 6 `keepsTheRetryOutcome` cases red including OVER_SOCKET_TIMEOUT in the last two, and 16 matrix cases of `WriterFailureClassificationUnitTest` red, 8 of them named JACKSON_OVER_SOCKET_TIMEOUT, so the 216-case matrix watches the rebuild. M5 (RetriableException stand-in made a RuntimeException): `keepsTheClassifiedLinks` and `keepsTheRetryOutcome` red for RETRIABLE_OVER_JACKSON_ROOT and OVER_RETRIABLE_OVER_PLAIN_IO. M6 (root stand-in without the timeout prefix): `keepsTheRetryOutcome`, `keepsTheClassifiedLinks` and `rebuildIsValueFreeAndKeepsTheSuffix` red for PLAIN_IO_OVER_TIMEOUT_PREFIXED_JACKSON_ROOT only. The cache-busted testUnit is 1837 (E-05) + 95 + 59 + 4 = 1995 tests with the 2 skips. The live run on ClickHouse `26.10.3.7` x client V2 passes `WriterErrorPathLiveTest` (10 tests, WRT-10 included), `JsonAsStringKeyResidualLiveTest` (4) and the 216-case matrix, and no crash dump was left in the root. The m1 and m2 targets differ from the plan's one-line text only in the line breaks of the formatted call; each was replaced exactly once. Nothing was pushed.
+
+2026-11-04T20:41:00Z
 Verdict: pass
