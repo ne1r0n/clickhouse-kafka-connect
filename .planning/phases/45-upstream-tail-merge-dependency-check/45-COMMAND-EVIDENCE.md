@@ -30,7 +30,7 @@
 | E-15 | UPS-02, UPS-04 | 45-05 | pass |
 | E-16 | DEP-01 | 45-06 | pass |
 | E-17 | DEP-01, DEP-02 | 45-06 | pass |
-| E-18 | UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-02 | 45-06 | pending (plan 45-06) |
+| E-18 | UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-02 | 45-06 | pass |
 
 ### E-01: Pre-flight: upstream and origin re-read, conflict set, baseline suites on the untouched tip
 
@@ -983,4 +983,95 @@ dc_commit_3: bd34d71bdd76b16a49f44532381378a64b89e32d
 Every proposal is declined, so no coordinate, plugin, wrapper or action version moved and no bump gate applies; the record and 45-CONTEXT.md carry the decisions.
 
 2026-11-04T21:27:12Z
+Verdict: pass
+
+### E-18: Phase gate: testUnit with Docker unreachable, two full runs on latest x V2, pins unchanged, tail gate, nothing pushed
+
+Backs: UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-02, ROADMAP Phase 45 phase gate (a cache-busted testUnit with Docker unreachable; two `--rerun` full suites on ClickHouse latest x client V2 with `SELECT version()` recorded; the unedited tail gate on explicit SHAs; the pins, gate scripts and merge shape unchanged; nothing pushed).
+
+```sh
+git ls-remote upstream main
+git ls-remote --tags --refs upstream 'v*' | sed 's#.*refs/tags/##' | sort -V | tail -2
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/tags/pre-v1.7.0_gg8 --jq length
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/heads/sync/v1.7.0 --jq '.[].object.sha'
+gh api repos/ne1r0n/clickhouse-kafka-connect/branches/custom_build --jq .commit.sha
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd45/exec/gate-testunit.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd45/exec/gate-suite-1.log 2>&1   # twice: OpenJ9 exit 255 both times, dumps deleted
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd45/exec/gate-suite-1.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/test --class WriterFailureClassificationUnitTest
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/test --class WriterErrorPathLiveTest
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun -PjavaVersion=21 > /tmp/gsd45/exec/gate-suite-2.log 2>&1
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py failed build/test-results/test
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I /tmp/gsd45/scripts/wvf_check.py
+git diff --quiet pre-v1.7.0_gg8 HEAD -- <the seven gg3 pin files, the fourteen NAME pin files>
+git diff --quiet 83808df9a0993cf49b2ceaa4633c782e550c0180 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/db/SlashColumnRoundTripTest.java
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git diff --quiet pre-v1.7.0_gg8 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh .planning/scripts/fork-anchor-exemptions.txt .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py
+git rev-list --first-parent --merges refs/tags/pre-v1.7.0_gg8..HEAD
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 33b80d13ef7684e7b16a3f972540ea2dfbd9a51f > /tmp/gsd45/exec/gate-tail.log 2>&1
+```
+
+```text
+upstream_main_at_gate: 83808df9a0993cf49b2ceaa4633c782e550c0180
+upstream_newest_release_tag_at_gate: v1.7.0
+origin_pre_tag_at_gate: absent
+origin_sync_branch_at_gate: absent
+origin_custom_build_at_gate: 9483476322e0d331e81c5b92ac266a18f0f01450
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2072
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+suite_run1_exit: 0
+suite_run1_tests: 2675
+suite_run1_failures: 0
+suite_run1_errors: 0
+suite_run1_skipped: 18
+suite_run1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_run1_version: 26.10.3.7
+suite_run1_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_run1_crash: none on the recorded run; two earlier attempts on the default toolchain (OpenJ9 17) exited 255 and were discarded
+suite_run2_exit: 0
+suite_run2_tests: 2675
+suite_run2_failures: 0
+suite_run2_errors: 0
+suite_run2_skipped: 18
+suite_run2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_run2_version: 26.10.3.7
+suite_run2_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_run2_crash: none
+suite_java: both recorded runs used -PjavaVersion=21 (Homebrew OpenJDK 21.0.12.1); the testUnit run used the default Java 17 toolchain
+suite_runs_equal: yes
+suite_files: 147
+new_fork_cases: 235
+suite_delta_vs_baseline: 250
+matrix_tests_in_suite: 216
+wrt10_passed_in_suite: yes
+gg3_pins_unchanged_since_tag: yes
+wvf_edit_scope: three retired methods
+utils_edit_scope: visibility only
+name_pins_unchanged_since_tag: yes
+slash_test_identical_to_upstream: yes
+anchors_mirror: rows=200 bad=0
+gate_scripts_unchanged: yes
+merges_since_tag: 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10
+gate_head: 33b80d13ef7684e7b16a3f972540ea2dfbd9a51f
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=36 anchor_rows=200 marker_commits=54 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 127s
+```
+
+Counts: testUnit is E-15's 2072 (baseline 1826, plus 11 upstream tests, plus the new Docker-free cases 95 + 59 + 4 + 46 + 31). The full suite is 2675 in both runs, equal; against the E-01 baseline of 2425 that is +250, which is the 15 upstream cases plus 235 new fork cases (`jx_tests` 95, `p1_tests` 59, `p2_tests` 4, `json_pin_tests` 46, `lf_tests` 31). The 216-case matrix and WRT-10 pass in the suite (read from run 1's XML before run 2 cleared it). The 18 skips are the 7 named `@Disabled` methods and the 11 `exactlyOnceStateMismatchTest` cases. The stale counts in the plan text were reconciled against the real tree: anchors 200 (the plan's planning-time 190 was stale), testUnit 2072, full suite 2675.
+
+Crash handling: the first full-suite attempt on the default Java 17 toolchain (OpenJ9) exited 255 at 2573 tests (`Gradle Test Executor 262`, 8 GB core dump); after the dump and its sibling files were deleted, the single permitted re-run crashed the same way (`Gradle Test Executor 267`) and its dumps were deleted too. Swap was 32.2 of 33.8 GB used at that moment, the memory-pressure condition behind the known OpenJ9 crash. Neither partial run's XML was used. Both recorded suites then ran with the documented `-PjavaVersion=21` escape (Homebrew OpenJDK 21.0.12.1), 2 min 43 s each, on the same ClickHouse image; the Docker-unreachable testUnit run used the default toolchain without crashing. No core, javacore, Snap or jitdump file remains in the repository root. `origin_sync_branch_at_gate` equals E-01's read (the branch does not exist on origin), `pre-v1.7.0_gg8` is absent on origin, upstream's main and newest release tag did not move during the phase, and origin's `custom_build` is still `94834763`. Nothing was pushed in this phase.
+
+2026-11-04T21:42:42Z
 Verdict: pass
