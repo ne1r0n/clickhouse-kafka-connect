@@ -3,13 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.7.0_gg8
 milestone_name: Gap Closure, Upstream Tail & Release
 current_phase: 46
-current_phase_name: Insert Timeout Limits
-status: planning
+status: executing
 stopped_at: Phase 45 complete, ready to plan Phase 46
-last_updated: "2026-11-04T22:17:46.020Z"
+last_updated: "2026-11-04T22:27:57.247Z"
 last_activity: 2026-11-05
-last_activity_desc: Phase 45 complete, transitioned to Phase 46
-state_head: 1c998eb88e7f371bffb4c9a6a5b85a2bed90924b
+last_activity_desc: Phase 46 execution started
+state_head: d98222bf9ea12c895dcb0fc3f055548dc889e9bd
 progress:
   total_phases: 5
   completed_phases: 1
@@ -25,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-04 after starting milestone v1.7.0_gg8)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 45 — Upstream Tail Merge & Dependency Check
+**Current focus:** Phase 46
 
 ## Current Position
 
-Phase: 46 — Insert Timeout Limits
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-05 — Phase 45 complete, transitioned to Phase 46
+Phase: 46 — EXECUTING
+Plan: 1 of ?
+Status: Executing Phase 46
+Last activity: 2026-11-05 — Phase 46 execution started
 
 Progress: [██░░░░░░░░] 20%
 
