@@ -1,16 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.7.0_gg8
-milestone_name: closeout
-status: planning
-current_phase: "45"
-current_phase_name: "Upstream Tail Merge & Dependency Check"
-last_updated: "2026-11-03T23:34:01.000Z"
+milestone_name: Gap Closure, Upstream Tail & Release
+current_phase: 45
+current_phase_name: Upstream Tail Merge & Dependency Check
+status: executing
+stopped_at: Roadmap created for milestone v1.7.0_gg8 (Phases 45-49, 26/26 requirements mapped)
+last_updated: "2026-11-04T19:09:41.596Z"
 last_activity: 2026-11-04
+last_activity_desc: Phase 45 execution started
+state_head: 071c825c2f07d8e5f94743071ea0d45214ca149f
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -22,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-04 after starting milestone v1.7.0_gg8)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 45 — Upstream Tail Merge & Dependency Check. Upstream `83808df9` lands as one mechanical merge behind `pre-v1.7.0_gg8`, #857 is re-expressed value-free with the gg3 pins unchanged, #839 and `fromJsonRow` are reconciled with the gg4 raw-identifier handling, and a manual dependency and CVE check of the merged catalog follows.
+**Current focus:** Phase 45 — Upstream Tail Merge & Dependency Check
 
 ## Current Position
 
-Phase: 45 of 49 (Upstream Tail Merge & Dependency Check) — not started (ready to plan)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-04 — Roadmap created for v1.7.0_gg8 (Phases 45-49, 26/26 requirements mapped)
+Phase: 45 (Upstream Tail Merge & Dependency Check) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 45
+Last activity: 2026-11-04 — Phase 45 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
