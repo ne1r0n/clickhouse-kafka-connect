@@ -14,8 +14,8 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | UPS-01 | 45-01 | pass |
-| E-02 | UPS-01 | 45-01 | pending (plan 45-01) |
-| E-03 | UPS-01 | 45-01 | pending (plan 45-01) |
+| E-02 | UPS-01 | 45-01 | pass |
+| E-03 | UPS-01 | 45-01 | pass |
 | E-04 | UPS-01, UPS-02, UPS-04 | 45-01 | pending (plan 45-01) |
 | E-05 | UPS-02, UPS-04 | 45-02 | pending (plan 45-02) |
 | E-06 | UPS-02 | 45-02 | pending (plan 45-02) |
@@ -115,4 +115,90 @@ baseline_docker_only_tests: 599
 The gate self-test ran 16 cases (ST1-ST9 variants), all PASS, in about 55 minutes (ST4 runs the cumulative gate). `baseline_docker_only_tests` is 2425 suite tests minus 1826 testUnit tests. The research rehearsal's full-suite totals (2245 tests, partial, from a crashed run) were not used; these numbers are the measured expectation for the later plans. No `core.*`, `javacore.*`, `Snap.*` or `jitdump.*` file was left in the root. `origin_custom_build` has the `94834763` prefix, so origin did not move since planning.
 
 2026-11-04T20:06:30Z
+Verdict: pass
+
+### E-02: Rollback tag, upstream re-read immediately before the merge, and the mechanical merge M
+
+Backs: UPS-01, ROADMAP Phase 45 criterion 1 (the tag on the pre-merge tip; `git ls-remote upstream main` re-read immediately before `git merge`; one mechanical two-parent merge commit whose conflicted hunks and the one auto-merged dead-resource hunk all take the fork side).
+
+```sh
+git tag pre-v1.7.0_gg8 HEAD
+git rev-parse refs/tags/pre-v1.7.0_gg8
+git cat-file -t refs/tags/pre-v1.7.0_gg8
+git ls-remote upstream main
+git ls-remote --tags --refs upstream 'v*' | sed 's#.*refs/tags/##' | sort -V | tail -1
+git merge-tree --write-tree --name-only pre-v1.7.0_gg8 83808df9a0993cf49b2ceaa4633c782e550c0180 > /tmp/gsd45/exec/mt-atmerge.txt 2>&1
+git merge --no-ff --no-commit 83808df9a0993cf49b2ceaa4633c782e550c0180
+git diff --name-only --diff-filter=U | LC_ALL=C sort
+python3 -I /tmp/gsd45/exec/keep_head.py <the six conflicted files>
+git add <the six conflicted files>
+git grep -n --cached -E '^(<{7}|>{7})( |$)' -- src CHANGELOG.md VERSION gradle .github
+git diff --cached --quiet pre-v1.7.0_gg8 -- .github/workflows/tests.yaml CHANGELOG.md VERSION <FD> <HC>
+git diff --cached --numstat pre-v1.7.0_gg8 -- gradle/libs.versions.toml
+python3 -I .planning/phases/45-upstream-tail-merge-dependency-check/45-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileJava > /tmp/gsd45/exec/compilejava-premerge.log 2>&1
+git commit -F /tmp/gsd45/exec/msg-m.txt
+git rev-list --parents -n 1 HEAD
+git diff --name-only HEAD^1 HEAD
+git diff --numstat HEAD^1 HEAD
+```
+
+```text
+pre_tag_target: baa404cd5ed95c556db0acff84def1024c3bafe3
+pre_tag_object_type: commit
+upstream_main_at_merge: 83808df9a0993cf49b2ceaa4633c782e550c0180
+upstream_newest_release_tag_at_merge: v1.7.0
+merge_tree_conflicts_at_merge: .github/workflows/tests.yaml; CHANGELOG.md; VERSION; gradle/libs.versions.toml; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+expected_provenance_paths: 11
+merge_conflicted_paths: .github/workflows/tests.yaml; CHANGELOG.md; VERSION; gradle/libs.versions.toml; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+dead_resource_hunk_dropped: yes
+marker_scan_staged: clean
+fork_side_paths_identical_to_parent1: yes
+libs_versions_numstat: 1 0
+anchors_mirror_staged: rows=190 bad=0
+resolution_tests_yaml: fork side, 1 hunk (no cloud job in the fork)
+resolution_changelog: fork side in both hunks (2 hunks, plan expected 1)
+resolution_version: fork side, v1.7.0_gg7
+resolution_catalog: fork side (shadow 9.6.1); bump lines no-op, connect-json line kept
+resolution_field_descriptor: fork side, 1 hunk
+resolution_helper_client: fork side in all three hunks plus the dead resource restored
+compile_java_before_commit: 0
+merge_commit: 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10
+merge_parent1: baa404cd5ed95c556db0acff84def1024c3bafe3
+merge_parent2: 83808df9a0993cf49b2ceaa4633c782e550c0180
+merge_changed_paths: 6
+merge_changed_path_list: build.gradle.kts; gradle/libs.versions.toml; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterRecordContextTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/FieldDescriptorEscapeTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/SlashColumnRoundTripTest.java
+merge_numstat_total: +298/-5
+merge_planning_paths: 0
+```
+
+Every hunk was resolved by the one script `keep_head.py` (scratch, not committed), which drops the three marker lines and the upstream side of each marker hunk and touches nothing else, so the auto-merged lines (the catalog's connect-json line, the three no-op bumps) survive; no whole-file `--ours` or `-X ours` was used. The auto-merged dead resource in `describeTableV1` was dropped by a separate explicit Edit that restored the fork's `.executeAndWait()) {` try header. `CHANGELOG.md` carried two conflict hunks (the top of the file and the `Known Issues` block), where the plan predicted one; both take the fork side, which matches the plan's whole-file intent and leaves the file byte-identical to M's first parent. The pre-merge `compileJava` passed. The merge numstat equals the research rehearsal (+298/-5).
+
+2026-11-04T20:08:20Z
+Verdict: pass
+
+### E-03: Record commit and the unedited tail gate over M
+
+Backs: UPS-01, ROADMAP Phase 45 criterion 1 (the conflicted-paths record and the per-path checklist land in the commit after M; the unedited tail gate over M..record commit ends `result=PASS`).
+
+```sh
+git merge-tree --write-tree --name-only 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10^1 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10^2 > /tmp/gsd45/exec/mt-m.txt 2>&1
+git add .planning/scripts/conflicted-paths-v1.7.0-tail-3.txt .planning/MERGE-CHECKLIST-v1.7.0-tail-3.md
+git commit -F /tmp/gsd45/exec/msg-rec.txt
+git diff --name-only HEAD^ HEAD | LC_ALL=C sort
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 43676e9aaff31961c062217bede6116d1403ef84 > /tmp/gsd45/exec/tail-gate-m.log 2>&1
+```
+
+```text
+record_commit: 43676e9aaff31961c062217bede6116d1403ef84
+record_commit_files: .planning/MERGE-CHECKLIST-v1.7.0-tail-3.md .planning/scripts/conflicted-paths-v1.7.0-tail-3.txt
+conflicted_paths_lines: 6
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=2 anchor_rows=190 marker_commits=20 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 10s
+```
+
+The gate ran unedited with the full SHAs, `PRE_TAG=pre-v1.7.0_gg8` and the new conflicted-paths file; the scripts have not changed since `046fe59d`. `anchor_commits=2` (M and the record commit) because the range is `pre-v1.7.0_gg8..record commit` over a short history. The checklist's Sections 1, 2, 2a and 3, the gate commands and Recorded Facts 46-47 are in the record commit.
+
+2026-11-04T20:09:05Z
 Verdict: pass
