@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -31,7 +32,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * delay, on a daemon pool so every request is recorded while one is held.
  *
  * <p>A second, raw-socket mode (the factories {@link #notReadingBody()}, {@link #readingBodySlowly},
- * {@link #progressHeaders} and {@link #progressWhileReadingBodySlowly}) covers what the HTTP server
+ * {@link #progressHeaders}, {@link #progressWhileReadingBodySlowly} and
+ * {@link #closingFirstPostAfterItsBodyThenNotReadingBody}) covers what the HTTP server
  * cannot: it reads the whole request body before a responder runs and sends the response headers in one
  * call, so it can neither stall the write side of a client nor stream progress headers. The raw mode
  * listens with a small receive buffer so a peer that stops reading blocks a writer after few bytes on every
@@ -67,6 +69,7 @@ public final class StubClickHouseServer implements AutoCloseable {
             + "\"written_rows\":\"0\",\"written_bytes\":\"0\"}\r\n";
     private static final String RESPONSE_TAIL =
             SUMMARY_HEADER + ": " + SUMMARY_ONE_ROW + CRLF + "Content-Length: 0\r\nConnection: close\r\n\r\n";
+    private static final String POST = "POST";
     private static final String EXPECT_HEADER = "Expect";
     private static final String EXPECT_CONTINUE = "100-continue";
     private static final String TRANSFER_ENCODING_HEADER = "Transfer-Encoding";
@@ -159,6 +162,27 @@ public final class StubClickHouseServer implements AutoCloseable {
         return new StubClickHouseServer(
                 (stub, socket) -> {
                     stub.readAndRecordHead(socket);
+                    awaitRelease(stub.release, STALL_CAP);
+                },
+                RAW_THREAD_NAME);
+    }
+
+    /**
+     * Reads the whole body of the first POST and closes the connection without a response, which a client sees
+     * as no response at all and may retry; every later request reads the head only, as {@link #notReadingBody()}
+     * does, so a retried body write blocks.
+     */
+    public static StubClickHouseServer closingFirstPostAfterItsBodyThenNotReadingBody() throws IOException {
+        AtomicInteger posts = new AtomicInteger();
+        return new StubClickHouseServer(
+                (stub, socket) -> {
+                    Head head = stub.readAndRecordHead(socket);
+                    if (POST.equals(head.method()) && posts.getAndIncrement() == 0) {
+                        stub.sendContinueIfExpected(socket, head);
+                        stub.readBody(socket, head, 0, null, null);
+                        socket.close();
+                        return;
+                    }
                     awaitRelease(stub.release, STALL_CAP);
                 },
                 RAW_THREAD_NAME);

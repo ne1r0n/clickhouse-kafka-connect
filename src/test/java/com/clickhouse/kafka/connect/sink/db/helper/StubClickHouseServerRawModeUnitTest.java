@@ -32,7 +32,8 @@ import org.junit.jupiter.api.Timeout;
  * rely on four behaviours the HTTP mode cannot produce, so each is shown here against a plain socket
  * client: a peer that reads only the request head blocks a large body write, a peer that reads the body
  * slowly keeps reading without answering, a peer streams progress headers over time, and a peer streams
- * them while it is still reading the body.
+ * them while it is still reading the body. A fifth premise serves the retry pin: a peer that reads one
+ * whole body and closes with no response, then stops reading the next one.
  */
 @Timeout(60)
 class StubClickHouseServerRawModeUnitTest {
@@ -90,6 +91,39 @@ class StubClickHouseServerRawModeUnitTest {
         }
         assertFalse(writer.finished.get());
         assertNotNull(writer.failure.get(), "the blocked write must end with an IOException");
+    }
+
+    @Test
+    void closingFirstPostReadsItsBodyAndClosesThenStallsTheNextBodyWrite() throws Exception {
+        try (StubClickHouseServer stub = StubClickHouseServer.closingFirstPostAfterItsBodyThenNotReadingBody()) {
+            try (Socket first = new Socket(LOOPBACK, stub.port())) {
+                BodyWriter firstWriter = BodyWriter.start(first, SLOW_BODY_CHUNKS, MEBIBYTE);
+                assertTrue(
+                        firstWriter.done.await(AWAIT_BOUND.toMillis(), TimeUnit.MILLISECONDS),
+                        "the first body must be read through");
+                assertTrue(firstWriter.finished.get(), "the first body write must complete");
+                first.setSoTimeout((int) AWAIT_BOUND.toMillis());
+                assertEquals(-1, first.getInputStream().read(), "the first request ends with no response");
+                assertEquals(SLOW_BODY_BYTES, stub.bodyBytesRead());
+            }
+
+            BodyWriter second;
+            try (Socket client = new Socket(LOOPBACK, stub.port())) {
+                second = BodyWriter.start(client, STALL_BODY_CHUNKS, MEBIBYTE);
+                awaitRequests(stub, 2);
+                Thread.sleep(STALL_OBSERVATION.toMillis());
+
+                assertFalse(second.finished.get(), "the second body write must stay blocked");
+                assertEquals(2, stub.requests().size());
+                assertEquals(SLOW_BODY_BYTES, stub.bodyBytesRead(), "the second body must not be read");
+
+                stub.close();
+                assertTrue(
+                        second.done.await(RELEASE_BOUND.toMillis(), TimeUnit.MILLISECONDS),
+                        "close() must release the blocked writer");
+            }
+            assertNotNull(second.failure.get(), "the blocked write must end with an IOException");
+        }
     }
 
     @Test
