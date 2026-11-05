@@ -251,3 +251,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	try (Cl
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	awaitInsertResponseV1(	4	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.insertBoundMs(	2	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	V1_INSERT_TIMEOUT_FORMAT	2	TMO-03
+# Phase 46 (v1.7.0_gg8): the clickhouseClientInsertTimeoutMs help text names what the setting bounds and what it does not (TMO-01); the 0 row pins that the old response-wait claim stays gone; rows land in the commit that changes the text
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	What it does not bound	1	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	wait for a single ClickHouse insert response	0	TMO-01

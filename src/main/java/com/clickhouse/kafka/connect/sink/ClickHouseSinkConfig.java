@@ -838,13 +838,29 @@ public class ClickHouseSinkConfig {
                 clickhouseClientInsertTimeoutMsDefault,
                 ConfigDef.Range.atLeast(100),
                 ConfigDef.Importance.LOW,
-                "Maximum time in milliseconds to wait for a single ClickHouse insert response. " +
-                        "Must stay below consumer.override.max.poll.interval.ms: if an insert hangs longer than the " +
-                        "poll interval, Kafka assumes the worker is dead and rebalances the partitions mid-insert. " +
-                        "Leave a comfortable margin (e.g. at least 2x the slowest expected insert) so transient slow " +
-                        "inserts do not race the poll interval. On timeout a RetriableException is thrown, so the Connect " +
-                        "framework retries the batch; in exactly-once mode the retry reuses insert_deduplication_token " +
-                        "and ClickHouse drops duplicates. Default: " + clickhouseClientInsertTimeoutMsDefault + " ms.",
+                "Maximum time in milliseconds the connector gives one ClickHouse insert before it fails the batch " +
+                        "with a RetriableException, so the Connect framework retries it; in exactly-once mode the retry " +
+                        "reuses insert_deduplication_token and ClickHouse drops duplicates. " +
+                        "What it bounds. On client V2 (client_version=V2): a server that stops answering, as an " +
+                        "inactivity limit that restarts on every byte received; and the sending of the batch, " +
+                        "serialization included, which must finish within this time, even if the server already sends " +
+                        "progress headers while the batch is still being sent, so a server that stops reading the " +
+                        "request body is cut off. On client V1 (the default client_version): the whole wait for the " +
+                        "insert response, including a stalled body write (measured with batches up to 256 MiB), a quiet " +
+                        "server and a server that keeps sending progress headers. " +
+                        "What it does not bound. On client V2, an insert whose batch has been sent and whose server keeps sending progress headers runs to its natural end. " +
+                        "Requests that are not inserts (DESCRIBE, table refresh, version query, ping, ALTER, Keeper " +
+                        "state reads and writes) have no connector limit: on client V2 they wait without limit, except " +
+                        "the Keeper state read, which always uses client V1; on client V1 they end at the client " +
+                        "library's default 30 s inactivity limit, and ping at the timeout setting. " +
+                        "When jdbcConnectionProperties names socket_timeout, the connector adds no limit of its own on " +
+                        "either client. An insert that legitimately runs longer than this limit fails and is retried, " +
+                        "and a timed-out insert may still be committed by the server, in part or in full, so with " +
+                        "exactlyOnce=false the retry can duplicate rows. " +
+                        "Keep it below consumer.override.max.poll.interval.ms with a comfortable margin (e.g. at least " +
+                        "2x the slowest expected insert): if an insert runs longer than the poll interval, Kafka " +
+                        "assumes the worker is dead and rebalances the partitions mid-insert. " +
+                        "Default: " + clickhouseClientInsertTimeoutMsDefault + " ms.",
                 group,
                 ++orderInGroup,
                 ConfigDef.Width.SHORT,
