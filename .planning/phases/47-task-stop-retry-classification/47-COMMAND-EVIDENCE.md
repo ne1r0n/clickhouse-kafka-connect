@@ -24,6 +24,7 @@
 | E-09 | LIF-02 | 47-03 | pass |
 | E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pass |
 | E-11 | LIF-02, RTY-02 | 47-04 | pass |
+| E-12 | LIF-02 | 47-05 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base
 
@@ -669,5 +670,43 @@ Located unedited, each line number read live with `grep -n`. In `docs/ROLLOUT-v1
 The tag copy `docs/ROLLOUT-v1.7.0_gg7.md` and the gg6 note, `CHANGELOG.md`'s gg7 section, `VERSION`, `docs/FORK-DELTA.md`'s raw numbers and every planning record named above are unchanged by this plan; only this evidence file changed.
 
 Recorded 2026-11-05T21:29:17Z.
+
+Verdict: pass
+
+### E-12: Gap closure 47-05, docs: FORK-DELTA stop() residual wording (WR-01, IN-03a) and gg8 CHANGELOG bullets (WR-02, IN-03b)
+
+Backs: LIF-02, 47-REVIEW.md WR-01, WR-02 and IN-03 (a review finding is a correction to the text of plan 47-01/47-03, so the two edits diverge from the plan-time copy `47-doc-edits.json`, which stays unedited), D-3, U-3.
+
+```sh
+python3 -I /tmp/gsd47/exec/g05/edit_fd13.py   # three old/new pairs on docs/FORK-DELTA.md, each old text asserted to occur once
+git diff --numstat docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd47/exec/g05/msg1.txt
+python3 -I /tmp/gsd47/exec/g05/edit_cl.py   # three old/new pairs on CHANGELOG.md, each old text asserted to occur once
+git diff --numstat CHANGELOG.md
+git add CHANGELOG.md && git commit -F /tmp/gsd47/exec/g05/msg2.txt
+grep -c "task's \`stop()\`" docs/FORK-DELTA.md
+grep -c -e 'FUT-05 stays open' -e 'is not closed by this' -e '(FUT-05)' docs/FORK-DELTA.md
+git show 427f30b4c4dffd56841f5e5eafe13a55ac4caca8:CHANGELOG.md   # compared with the part of CHANGELOG.md from "# 1.7.0_gg7, " on
+git diff --name-only 427f30b4c4dffd56841f5e5eafe13a55ac4caca8 HEAD -- src/main
+```
+
+```text
+fork_delta_commit: 84f804d07ae1d761e03792510b07237073795716
+fork_delta_lines_changed: 2
+fork_delta_task_stop_open_mentions: 0
+fork_delta_open_fut05_lines: 0
+fork_delta_closed_by_decision_count: 1
+changelog_commit: 3e0575a77842255f055ffa962f15d2f8d244719b
+changelog_numstat_since_base: 26 0
+changelog_gg7_section_identical_to_base: yes
+changelog_close_partitions_mentions: 1
+plan_time_copy_md5_unchanged: 3c4b1ce86e50bf8970e744a7eb6dc3a6
+plan_time_text_diverges: yes
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+```
+
+WR-01: the `ClickHouseWriter` patch-table row (line 39) now says the other two of the five Known cost 13 residuals belong to the Keeper state provider and to the task's `close(partitions)`, which is what item 13 lists; no mention of the task's `stop()` as an open residual is left in `docs/FORK-DELTA.md`. IN-03a: item 13 now says two of the six `ClickHouseSinkTaskStopUnitTest` cases (the ones with a throwing strategy) were red on the unchanged tree and all six are green after (E-02: `red_tests: 6`, `red_failures: 2`, `red_pass: 4`). WR-02: the CHANGELOG Bug Fixes bullet says the strategy's exception is the one `stop()` throws and that Kafka Connect only logs a throw from `stop()` as a WARN and does not fail the task (read in the sources, 47-RESEARCH.md; not measured); the both-throw Known Issues bullet says both stops run, an exception reaches the caller of `stop()`, and the strategy's exception is dropped, not attached as suppressed and not logged by `stop()` (E-04: `both_throw_thrown: IllegalArgumentException:proxy side failure`, `both_throw_suppressed: 0`; the code of `stop()` has no catch). IN-03b: the gg8 Known Issues first bullet now carries the `close(partitions)` residual that item 13 records (read from the code, `ClickHouseSinkTask.close`, not fixed). Deviations from the plan-time text of `47-doc-edits.json`: the `changelog_gg8` value and the `fork_delta_item13` pair are no longer the committed text (the CHANGELOG now starts with a text that differs from `changelog_gg8`, and item 13 no longer contains the pair's `new` string); the gg7 section below the gg8 section is byte-identical to the phase base. One edit goes slightly past the review's wording and is recorded as a consistency correction: item 13 carried the same "reaches Kafka Connect" claim as the CHANGELOG, so it received the same WARN qualification and the not-logged remark. `src/main` is unchanged by this task (the only difference from the phase base is still `ClickHouseSinkTask.java`).
+
+Recorded 2026-11-05T21:44:49Z.
 
 Verdict: pass
