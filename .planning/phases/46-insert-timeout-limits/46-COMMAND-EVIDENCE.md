@@ -16,7 +16,7 @@
 | E-01 | TMO-01, TMO-02, TMO-03 | 46-01 | pass |
 | E-02 | TMO-03 | 46-01 | pass |
 | E-03 | TMO-02, TMO-03 | 46-01 | pass |
-| E-04 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
+| E-04 | TMO-03, TMO-02 | 46-02 | pass |
 | E-05 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
 | E-06 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
 | E-07 | TMO-03 | 46-03 | pending (plan 46-03) |
@@ -191,5 +191,40 @@ fmt_raw_test_2: identical
 Meaning of the A1 numbers for the 64 MiB body: with a 4096-byte receive buffer set before `listen` and a peer that reads only the request head, a writer pushed 662096 bytes (0.63 MiB) on macOS and 1245184 bytes (1.19 MiB) on the colima VM's Linux 6.8 kernel before its send timed out, so the 64 MiB pin body is 53.9 times the larger value and cannot be swallowed by loopback buffers on either OS. Measurement notes: the probe is a Python client and server (`/tmp/gsd46/exec/a1_probe.py`, scratch, never committed), not the Java stub; a send of 64 KiB pieces with a 2 s send timeout ends the run; on macOS the accepted socket reports a 326568-byte receive buffer, so the 4096 request is not honoured there and the Java premise test (`notReadingBodyBlocksA64MebibyteBodyWrite`, 2.016 s) is the macOS evidence; the Linux accepted socket reports 8192 (the kernel doubles 4096) and its send buffer autotuned to 2626560 bytes. The Java stub itself runs only on the machine that runs testUnit; the Linux figure shows that the same shape blocks long before 64 MiB on a Linux loopback. The per-file formatting check for the second commit reused the Spotless worktree run of the same file contents at B0.
 
 Recorded 2026-11-05T09:58:00Z.
+
+Verdict: pass
+
+### E-04: V2 pins red on the unchanged production tree
+
+Backs: TMO-03, TMO-02, ROADMAP Phase 46 criterion 2 (a red-first pin for the client V2 write-side stall) and criterion 3 (retriable under both tolerances, no DLQ record).
+
+```sh
+git worktree add --detach /tmp/gsd46/red 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 9bd0944ebd066852ef059e7b2bca2a6ff2a54137 -- src/main
+cp src/test/java/com/clickhouse/kafka/connect/sink/InsertBoundPinFixtures.java src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/red-v2.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/red/build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/red/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/red && git worktree prune
+```
+
+```text
+v2_red_tree: 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+v2_red_main_identical_to_base: yes
+v2_red_exit: 1
+v2_red_tests: 19
+v2_red_failed_count: 14
+v2_red_failed_methods: insertWatchdogIsADaemonThreadEndedByStop; progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound; slowV2UploadStillSendingAtTheBoundFailsAsRetriable; slowV2UploadThroughPutIsRetriableWithNoDlqRecord; writeStalledV2InsertEndsWithinTheBoundAsRetriable; writeStalledV2InsertThroughPutIsRetriableWithNoDlqRecord
+v2_red_green_methods: lateFireAfterASuccessfulV2InsertIsHarmless; operatorShorterSocketTimeoutEndsAV2QuietStallThroughPut; operatorSocketTimeoutLeavesAWriteStallToTheOperator; progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent
+v2_red_by_guard: yes
+v2_red_watchdog_by_assertion: yes
+v2_red_progress_case_seconds: 6.088
+v2_red_operator_long_case_seconds: 3.011
+worktree_removed: yes
+```
+
+The worktree's `src/main` is byte-identical to the base (`git diff --quiet` exit 0), so every red here is the unchanged production behaviour. The 13 guard cases (write stall x3 routes, write stall through put x6, slow upload x1, slow upload through put x2, progress while sending x1) each failed with `a client V2 insert must end within the bound ==> execution timed out after 10000 ms`, the `assertTimeoutPreemptively` guard: the insert was still blocked after 10 s with a 1000 ms insert timeout and a 64 MiB body. The watchdog case failed on `one armed insert creates exactly one watchdog thread ==> expected: <1> but was: <0>` (no watchdog exists). The five recorded or operator-owned cases were green: the progress-after-sent case ran 6.088 s past its 1500 ms bound (the recorded limit, body already sent), the operator's longer `socket_timeout` left the write stall running for the 3 s observation with no connector bound in the chain, the operator's shorter `socket_timeout` ended a quiet stall through put under both tolerances, and the late-fire pair of inserts passed.
+
+Recorded 2026-11-05T10:07:00Z.
 
 Verdict: pass
