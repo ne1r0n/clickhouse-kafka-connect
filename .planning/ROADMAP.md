@@ -163,7 +163,7 @@ Phase artifacts: `milestones/v1.7.0_gg7-followup-phases/`
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker unreachable. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action or decision, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
 - [x] **Phase 45: Upstream Tail Merge & Dependency Check** - Upstream `83808df9` lands as one mechanical merge behind `pre-v1.7.0_gg8`. #857 is re-expressed value-free, so the gg3 message and classification pins pass unchanged. Slash column names (#839) round-trip, `fromJsonRow` is reconciled with the gg4 raw-identifier handling, and upstream's three bumps are taken. A manual dependency and CVE check of the merged catalog follows, and only the bumps the user approves land, one commit each (completed 2026-11-05)
-- [ ] **Phase 46: Insert Timeout Limits** - Each case that `clickhouseClientInsertTimeoutMs` leaves unbounded today is bounded behind a pin seen red first, or recorded with a measured number: an insert streaming progress headers, a write-side stall, client V1 `future.get()` inserts and non-insert requests. The help text is then rewritten to say what the setting bounds, pinned Docker-free
+- [x] **Phase 46: Insert Timeout Limits** - Each case that `clickhouseClientInsertTimeoutMs` leaves unbounded today is bounded behind a pin seen red first, or recorded with a measured number: an insert streaming progress headers, a write-side stall, client V1 `future.get()` inserts and non-insert requests. The help text is then rewritten to say what the setting bounds, pinned Docker-free (completed 2026-11-05)
 - [ ] **Phase 47: Task Stop & Retry Classification** - `ClickHouseSinkTask.stop()` reaches every cleanup step when a delivery strategy throws, pinned red-first, and the CHANGELOG bullets match the code. A retriable `DataException` gets a retry budget or a pinned, documented limit under both `errors.tolerance` values, and FUT-05 closes with a recorded decision
 - [ ] **Phase 48: Phase 37 Dispositions & Document Fixes** - The four `src/main` advisory rows, the null assertion, the 28 IN-05(b) items, the broad allow-list glob rows and the review Infos each end fixed (tests first, one commit each) or closed with a written reason, and none is left as "owner: user". IN-03 leaves the published gg6 note, and FORK-DELTA's evidence paths survive archiving
 - [ ] **Phase 49: Release & Publication** - `v1.7.0_gg8` is published with CHANGELOG, FORK-DELTA, the gg8 allow-list compare and an independently reviewed rollout note. Two equal green suites, the `--no-ff` merge only on the user's explicit approval, one green `tests.yaml` on the published SHA, the publish run creates the tag, and the two `scratch/clt-07-*` branches leave `origin` after a separate confirmation
@@ -231,23 +231,23 @@ Phase gate: cache-busted `testUnit` with Docker unreachable, two `--rerun` full 
   3. *[Docker-free]* Through `ProxySinkTask.put`, each case bounded in this phase surfaces as retriable under `errors.tolerance=none` and `errors.tolerance=all`: the task is not failed and no DLQ record is written. An operator's `socket_timeout` in `jdbcConnectionProperties` still wins. No config key is added, because a new key is a feature and out of scope, and `async_insert` is not touched (TMO-02, TMO-03).
   4. *[Docker-free]* The `clickhouseClientInsertTimeoutMs` help text is written after criteria 1–3 settle. It says what the setting bounds and what it does not, and a Docker-free test pins the text against the measured list. The `ClickHouseSinkConfig` diff is that text and nothing else (TMO-01).
 
-**Plans**: 5 plans
+**Plans**: 6/5 plans complete
 
 Plans:
 **Wave 1**
-- [ ] 46-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit, full suite on `latest` × V2, anchors, tail gate, XML snapshots), `StubClickHouseServer` raw-socket responders (`notReadingBody`, `readingBodySlowly`, `progressHeaders`, `progressWhileReadingBodySlowly`) with Docker-free premise tests, A1 measured on Linux (TMO-03, TMO-02)
+- [x] 46-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit, full suite on `latest` × V2, anchors, tail gate, XML snapshots), `StubClickHouseServer` raw-socket responders (`notReadingBody`, `readingBodySlowly`, `progressHeaders`, `progressWhileReadingBodySlowly`) with Docker-free premise tests, A1 measured on Linux (TMO-03, TMO-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 46-02-PLAN.md — client V2 write-phase deadline as a private nested class of `ClickHouseWriter` (armed before `client.insert`, disarmed after the body is sent, `cancelTransportRequest`, `RetriableException` naming the setting), `insertBoundMs` operator gate (U-3), 19 pins red first at R0, four mutations, watchdog queue probe, eight anchor rows (TMO-03, TMO-02)
+- [x] 46-02-PLAN.md — client V2 write-phase deadline as a private nested class of `ClickHouseWriter` (armed before `client.insert`, disarmed after the body is sent, `cancelTransportRequest`, `RetriableException` naming the setting), `insertBoundMs` operator gate (U-3), 19 pins red first at R0, four mutations, watchdog queue probe, eight anchor rows (TMO-03, TMO-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 46-03-PLAN.md — the client V1 in-JVM pipe measured (capacity, pipe-write stall on both trees), V1 `future.get(timeout)` at the three insert sites (U-2), retriable under both tolerances, operator gate both ways, release pin, 21 pins red first at R0, three mutations, four anchor rows (TMO-03)
+- [x] 46-03-PLAN.md — the client V1 in-JVM pipe measured (capacity, pipe-write stall on both trees), V1 `future.get(timeout)` at the three insert sites (U-2), retriable under both tolerances, operator gate both ways, release pin, 21 pins red first at R0, three mutations, four anchor rows (TMO-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 46-04-PLAN.md — live re-measure on `latest` with numeric range checks (V2 progress escape, default `async_insert`, 64 MiB body behind a slow view, raw-wire progress-while-sending, V1 before/after, rows left by timed-out inserts), non-insert and V2 ping inventory, FORK-DELTA row and Known cost 14 in U-6 wording, scoped to the measurements, with the rollout consequence (TMO-02, TMO-03)
+- [x] 46-04-PLAN.md — live re-measure on `latest` with numeric range checks (V2 progress escape, default `async_insert`, 64 MiB body behind a slow view, raw-wire progress-while-sending, V1 before/after, rows left by timed-out inserts), non-insert and V2 ping inventory, FORK-DELTA row and Known cost 14 in U-6 wording, scoped to the measurements, with the rollout consequence (TMO-02, TMO-03)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 46-05-PLAN.md — `clickhouseClientInsertTimeoutMs` help text from the measured list (V1 clause chosen by E-09, progress clause qualified) with a Docker-free pin (seen red first, config diff text only, two anchor rows), FORK-DELTA help sentence, phase gate: testUnit with Docker unreachable, two `--rerun` suites re-checked against XML snapshots, tail gate with anchor_rows=214 (TMO-01, TMO-02, TMO-03)
+- [x] 46-05-PLAN.md — `clickhouseClientInsertTimeoutMs` help text from the measured list (V1 clause chosen by E-09, progress clause qualified) with a Docker-free pin (seen red first, config diff text only, two anchor rows), FORK-DELTA help sentence, phase gate: testUnit with Docker unreachable, two `--rerun` suites re-checked against XML snapshots, tail gate with anchor_rows=214 (TMO-01, TMO-02, TMO-03)
 
 **Research flag**: Settle these before planning:
 - Which mechanism reaches each case on client 0.11.0. The gg7 decision used a per-insert `socket_timeout` and rejected a client-level timeout that bounds every request. A mechanism that bounds requests beyond the case being fixed stops for the user.
@@ -460,7 +460,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 45. Upstream Tail Merge & Dependency Check | v1.7.0_gg8 | 6/6 | Complete    | 2026-11-05 |
-| 46. Insert Timeout Limits | v1.7.0_gg8 | 0/TBD | Not started | - |
+| 46. Insert Timeout Limits | v1.7.0_gg8 | 6/5 | Complete    | 2026-11-05 |
 | 47. Task Stop & Retry Classification | v1.7.0_gg8 | 0/TBD | Not started | - |
 | 48. Phase 37 Dispositions & Document Fixes | v1.7.0_gg8 | 0/TBD | Not started | - |
 | 49. Release & Publication | v1.7.0_gg8 | 0/TBD | Not started | - |

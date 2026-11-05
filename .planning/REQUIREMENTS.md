@@ -28,9 +28,9 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Insert Timeout and Limits (TMO)
 
-- [ ] **TMO-01**: The `clickhouseClientInsertTimeoutMs` help text says what the setting really bounds, and a Docker-free test pins the text against the measured behaviour.
-- [ ] **TMO-02**: An insert that streams progress headers is bounded, or its escape is re-measured against a real server and kept as a recorded limit with the number.
-- [ ] **TMO-03**: Write-side stalls, client V1 `future.get()` inserts and non-insert requests are each bounded with a red-first pin, or recorded with a measurement showing why they cannot be.
+- [x] **TMO-01**: The `clickhouseClientInsertTimeoutMs` help text says what the setting really bounds, and a Docker-free test pins the text against the measured behaviour.
+- [x] **TMO-02**: An insert that streams progress headers is bounded, or its escape is re-measured against a real server and kept as a recorded limit with the number.
+- [x] **TMO-03**: Write-side stalls, client V1 `future.get()` inserts and non-insert requests are each bounded with a red-first pin, or recorded with a measurement showing why they cannot be.
 
 ### Retry Classification (RTY)
 
@@ -86,9 +86,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEP-02 | Phase 45 | Complete |
 | LIF-01 | Phase 47 | Pending |
 | LIF-02 | Phase 47 | Pending |
-| TMO-01 | Phase 46 | Pending |
-| TMO-02 | Phase 46 | Pending |
-| TMO-03 | Phase 46 | Pending |
+| TMO-01 | Phase 46 | Complete |
+| TMO-02 | Phase 46 | Complete |
+| TMO-03 | Phase 46 | Complete |
 | RTY-01 | Phase 47 | Pending |
 | RTY-02 | Phase 47 | Pending |
 | P37-01 | Phase 48 | Pending |
