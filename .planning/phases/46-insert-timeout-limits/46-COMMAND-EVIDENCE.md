@@ -18,7 +18,7 @@
 | E-03 | TMO-02, TMO-03 | 46-01 | pass |
 | E-04 | TMO-03, TMO-02 | 46-02 | pass |
 | E-05 | TMO-03, TMO-02 | 46-02 | pass |
-| E-06 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
+| E-06 | TMO-03, TMO-02 | 46-02 | pass |
 | E-07 | TMO-03 | 46-03 | pending (plan 46-03) |
 | E-08 | TMO-03 | 46-03 | pending (plan 46-03) |
 | E-09 | TMO-03 | 46-03 | pending (plan 46-03) |
@@ -279,5 +279,75 @@ v2_fix_commit_files: 6
 The green runs passed on the first attempt after the code was written. Case times through the real writer and a raw loopback stub, wall clock from the call: the write stall (three routes, direct and through put) ended in 1.01 to 1.08 s against the 1000 ms bound (red on the unchanged tree: still blocked after 10 s); the slow upload cut at 1.023 s with body bytes already read; the progress-while-sending case 1.013 s; the progress-after-sent case ran 6.085 s against a 1500 ms bound (the recorded U-1 limit, body already sent, unchanged); the operator's longer `socket_timeout` left the write stall running for the whole 3 s observation. The fix commit holds exactly `ClickHouseWriter.java`, `ClickHouseHelperClient.java`, the fixtures, the V2 pin class, the gate unit class and `fork-anchors.txt`. The anchor counts measured with `grep -cF` before the rows were written: `insertWriteDeadline(client, queryId)` 3, `insertWithWriteDeadline(` 4, `deadline.disarm();` 4, `client::cancelTransportRequest` 1, `insertWatchdog.shutdownNow()` 1, `setRemoveOnCancelPolicy(true)` 1, `INSERT_BODY_DEADLINE_FORMAT` 2, `insertBoundMs(` declaration 1, and the operator row 3 to 4. The `awaitInsertResponse` method text from its Javadoc to its closing brace equals the base's (python extract of both versions). The per-file formatting check on a worktree at the pre-commit HEAD: the three test files were identical after `spotlessApply`; `ClickHouseWriter.java` and `ClickHouseHelperClient.java` differ only in import ordering, which also differs when the unchanged HEAD copies are formatted, so the lines this change added and edited are not reformatted (`preexisting`).
 
 Recorded 2026-11-05T10:11:00Z.
+
+Verdict: pass
+
+### E-06: V2 bite and gate: four mutations, watchdog queue probe, testUnit, scope, anchors, tail gate
+
+Backs: TMO-03, TMO-02, U-1 and U-3 (each check is shown able to fail), ROADMAP Phase 46 phase gate (cache-busted `testUnit`, anchors invariant, the unedited tail gate).
+
+```sh
+git worktree add --detach /tmp/gsd46/mut HEAD   # once per mutation D1..D4, python3 -I replacement asserting the old text occurs once, then removed
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/mut --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' > /tmp/gsd46/exec/mut-<n>.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/exec/xml-mut-<n>
+git worktree add --detach /tmp/gsd46/probe-queue HEAD && cp /tmp/gsd46/scripts/ProbeInsertWatchdogQueueMeasurementTest.java /tmp/gsd46/probe-queue/src/test/java/com/clickhouse/kafka/connect/sink/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-queue --console=plain testUnit --rerun --tests '*ProbeInsertWatchdogQueueMeasurementTest*' > /tmp/gsd46/exec/probe-queue.log 2>&1
+git worktree remove --force /tmp/gsd46/probe-queue && git worktree prune
+git log --all --format=%H -- '*ProbeInsertWatchdogQueueMeasurementTest.java'
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/testunit-v2.log 2>&1
+rm -rf /tmp/gsd46/exec/xml-02-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-02-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-02-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/exec/xml-02-testunit
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+grep -rn 'async_insert' src/main | wc -l
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 2776ae08c263d4b4a413c3b9101391c0d03c8e72 > /tmp/gsd46/exec/tail-gate-02.log 2>&1
+```
+
+```text
+d1_target: in InsertWriteDeadline.disarm(), the three body lines `ScheduledFuture<?> task = scheduled; if (task != null) { task.cancel(false); }` removed, leaving the method empty
+d1_failed: progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent
+d1_failed_count: 1
+d1_expected_met: yes
+d2_target: in InsertWriteDeadline.arm(), the statement `scheduled = watchdog.schedule(() -> { fired.set(true); try { canceller.accept(queryId); } catch (RuntimeException e) { LOGGER.warn(...); } }, boundMs, TimeUnit.MILLISECONDS);` removed
+d2_failed_count: 14
+d2_failed: insertWatchdogIsADaemonThreadEndedByStop x1; progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound x1; slowV2UploadStillSendingAtTheBoundFailsAsRetriable x1; slowV2UploadThroughPutIsRetriableWithNoDlqRecord x2; writeStalledV2InsertEndsWithinTheBoundAsRetriable x3; writeStalledV2InsertThroughPutIsRetriableWithNoDlqRecord x6
+d2_expected_met: yes
+d3_target: in ClickHouseHelperClient.insertBoundMs, `return operatorSetSocketTimeout || timeoutMs <= 0 ? 0L : timeoutMs;` replaced by `return timeoutMs <= 0 ? 0L : timeoutMs;`
+d3_failed_count: 9
+d3_failed: noConnectorBoundWhenTheOperatorNamedSocketTimeout x8; operatorSocketTimeoutLeavesAWriteStallToTheOperator x1
+d3_expected_met: yes
+d4_target: in insertWithWriteDeadline, the statement `deadline.throwIfFired(e);` removed
+d4_failed_count: 13
+d4_failed: progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound x1; slowV2UploadStillSendingAtTheBoundFailsAsRetriable x1; slowV2UploadThroughPutIsRetriableWithNoDlqRecord x2; writeStalledV2InsertEndsWithinTheBoundAsRetriable x3; writeStalledV2InsertThroughPutIsRetriableWithNoDlqRecord x6
+d4_expected_met: yes
+watchdog_queue_after_100_inserts: 0
+watchdog_pool_size: 1
+watchdog_terminated_after_stop: true
+probe_committed: no
+worktrees_removed: yes
+testunit_exit: 0
+testunit_tests: 2131
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 101
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+async_insert_main_lines: 2
+anchors_mirror: rows=208 bad=0
+tail_gate_head: 2776ae08c263d4b4a413c3b9101391c0d03c8e72
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=60 anchor_rows=208 marker_commits=78 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 3 min 22 s
+```
+
+Mutation readings. D1 (the deadline is never disarmed, so it covers the whole insert): the only red is the case that pins the recorded limit, `progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent`, which is cut at its 1500 ms bound; the disarm after the body closes is what keeps U-1's behaviour. D2 (never armed): the 13 guard cases (write stall x9 across direct and put, slow upload x3, progress while sending x1) are red by the preemptive guard, plus the watchdog case, because a thread is only started when the first task is scheduled. D3 (operator gate ignored): the eight gate-unit cases with an operator `socket_timeout` and the long-operator write-stall case are red, so the operator's `socket_timeout` keeps ownership of the transport limits only through `insertBoundMs`. D4 (fired deadline not converted): the 13 guard cases are red, including the six write-stall and two slow-upload put cases, because the cancelled request then surfaces as a non-retriable transport failure instead of a `RetriableException` (read from the XML: under `errors.tolerance=none` the put throws a `RuntimeException`, under `all` nothing is thrown because the batch goes to the DLQ).
+
+Watchdog queue probe (a throwaway test in a detached worktree, never committed: `git log --all` finds no commit touching it): after 100 successful small V2 inserts on one writer against the stub, with a 60000 ms insert timeout, the writer's `insertWatchdog` read by reflection had `queue_size=0` and `pool_size=1`; after `writer.stop()`, `awaitTermination(5 s)` returned true.
+
+The cache-busted `testUnit` ran 2131 tests (2086 baseline + 6 raw-stub premise cases + 39 new) with 0 failures, 0 errors and 2 skipped across 101 files, re-checked against the copied XML `xml-02-testunit`. The unedited tail gate over `M..2776ae08` printed `result=PASS` with `anchor_rows=208`. `src/main` differs from the base only in the writer and the helper client; no new `src/main` file exists; the `async_insert` lines in `src/main` still count 2.
+
+Recorded 2026-11-05T10:25:00Z.
 
 Verdict: pass
