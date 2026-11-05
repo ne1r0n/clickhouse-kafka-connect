@@ -22,7 +22,7 @@
 | E-07 | TMO-03 | 46-03 | pass |
 | E-08 | TMO-03 | 46-03 | pass |
 | E-09 | TMO-03 | 46-03 | pass |
-| E-10 | TMO-02 | 46-04 | pending (plan 46-04) |
+| E-10 | TMO-02 | 46-04 | pass |
 | E-11 | TMO-03 | 46-04 | pending (plan 46-04) |
 | E-12 | TMO-02, TMO-03 | 46-04 | pending (plan 46-04) |
 | E-13 | TMO-01 | 46-05 | pending (plan 46-05) |
@@ -524,5 +524,86 @@ Mutation readings. V1a (the wait never times out): the 18 bounded and release ca
 The cache-busted `testUnit` ran 2152 tests (2086 baseline + 6 raw-stub premise cases + 39 V2 cases + 21 V1 cases) with 0 failures, 0 errors and 2 skipped across 102 files, re-checked against the copied XML `xml-03-testunit` (the V1 class 21 of 21, the V2 write-stall class 19 of 19). The unedited tail gate over `M..462611cb` printed `result=PASS` with `anchor_rows=212`. `src/main` differs from the base only in the writer and the helper client; no new `src/main` file exists; the `async_insert` lines in `src/main` still count 2; no probe was committed.
 
 Recorded 2026-11-05T10:50:00Z.
+
+Verdict: pass
+
+### E-10: Live TMO-02 re-measure, large body, wire, and timed-out insert rows on ClickHouse latest (base and fixed tree)
+
+Backs: TMO-02 (U-1: the progress-header insert is re-measured against a real server and recorded with its number), TMO-03 (the V1 bound against the real server), ROADMAP Phase 46 criterion 1, and plan-check B2b (the progress-while-sending shape is measured before any claim about it).
+
+```sh
+git worktree add --detach /tmp/gsd46/probe-base 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5
+git worktree add --detach /tmp/gsd46/probe-fixed cc3c9b55dfdcfc52ab779f6bcdf8578f436b7e7f
+# scratch only in both worktrees: maxHeapSize = "3g" added to the test task of build.gradle.kts; the probe file written with the Write tool
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-base --console=plain test --rerun --tests '*ProbeInsertTimeoutLiveMeasurementTest*' > /tmp/gsd46/exec/probe-live-base.log 2>&1
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-fixed --console=plain test --rerun --tests '*ProbeInsertTimeoutLiveMeasurementTest*' > /tmp/gsd46/exec/probe-live-fixed.log 2>&1
+grep -h '^PROBE46 case=\|^PROBE46WIRE ' <the two TEST-*.xml> > /tmp/gsd46/exec/probe-live-lines.txt
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+git worktree remove --force /tmp/gsd46/probe-base && git worktree remove --force /tmp/gsd46/probe-fixed && git worktree prune
+git log --all --format=%H -- '*ProbeInsertTimeoutLiveMeasurementTest.java'
+```
+
+```text
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+probe_base_tree: 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5
+probe_fixed_tree: cc3c9b55dfdcfc52ab779f6bcdf8578f436b7e7f
+probe_exit_base: 0
+probe_exit_fixed: 0
+probe_transport: a Testcontainers port forward through colima profile vz to the container's mapped HTTP port
+probe_jvm: default toolchain, maxHeapSize 3g in the scratch worktrees only
+probe_row_count_instrument: ClickHouseTestHelpers.countRows, which issues OPTIMIZE TABLE before its SELECT count(), read right after the call returned and again once 15 s had passed since the call ended
+probe_retriable_instrument: yes when a RetriableException is in the cause chain, or when Utils.handleException, called with the connector's own tolerance=none, retry-on-socket and additional-code settings over a RuntimeException wrapper like Processing's, throws a RetriableException
+v2_progress_escape_ms_base: 8315
+v2_progress_escape_ms_fixed: 8299
+v2_progress_control_ms: 8059
+v2_default_async_insert_bounded_ms: 3050
+v2_default_async_insert_retriable: yes
+v2_default_async_insert_root: java.net.SocketTimeoutException
+v2_default_async_insert_rows_after_15s: 4000
+v1_progress_ms_base: 8141
+v1_progress_ms_fixed: 3034
+v1_progress_fixed_retriable: yes
+v1_memory_rows_at_timeout: 0
+v1_memory_rows_after_15s: 4000
+v1_mergetree_rows_base: 4000
+v1_mergetree_rows_at_timeout: 2500
+v1_mergetree_rows_after_15s: 4000
+v2_large_body_bytes: 65610890
+v2_large_body_ms_base: 8324
+v2_large_body_outcome_base: ok
+v2_large_body_ms_fixed: 8380
+v2_large_body_outcome_fixed: ok
+wire_body_bytes: 65610890
+wire_first_progress_ms: 64
+wire_body_sent_ms: 2305
+wire_total_ms: 8316
+deadline_leaves_progress_alone: yes
+v2_large_body_cut_by_deadline: no
+wire_progress_while_writing: yes
+worktrees_removed: yes
+probe_committed: no
+```
+
+```probe46
+PROBE46 case=l1 tree=base client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8315 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l2 tree=base client=V2 body_bytes=105780 insert_timeout_ms=600000 elapsed_ms=8072 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l3 tree=base client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3060 outcome=com.clickhouse.client.api.DataTransferException retriable_in_chain=yes root=java.net.SocketTimeoutException rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l4 tree=base client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8141 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l5 tree=base client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8088 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l6 tree=base client=V2 body_bytes=65610890 insert_timeout_ms=3000 elapsed_ms=8324 outcome=ok retriable_in_chain=no root=none rows_at_end=-1 rows_after_15s=-1
+PROBE46 case=l1 tree=fixed client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8299 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l2 tree=fixed client=V2 body_bytes=105780 insert_timeout_ms=600000 elapsed_ms=8059 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l3 tree=fixed client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3050 outcome=com.clickhouse.client.api.DataTransferException retriable_in_chain=yes root=java.net.SocketTimeoutException rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l4 tree=fixed client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3034 outcome=org.apache.kafka.connect.errors.RetriableException retriable_in_chain=yes root=java.util.concurrent.TimeoutException rows_at_end=0 rows_after_15s=4000
+PROBE46 case=l5 tree=fixed client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3026 outcome=org.apache.kafka.connect.errors.RetriableException retriable_in_chain=yes root=java.util.concurrent.TimeoutException rows_at_end=2500 rows_after_15s=4000
+PROBE46 case=l6 tree=fixed client=V2 body_bytes=65610890 insert_timeout_ms=3000 elapsed_ms=8380 outcome=ok retriable_in_chain=no root=none rows_at_end=-1 rows_after_15s=-1
+PROBE46WIRE body_bytes=65610890 first_progress_ms=64 body_sent_ms=2305 total_ms=8316 status=HTTP/1.1 200 OK
+```
+
+What the small-body progress escape needs: a slow materialized view behind a `Null` sink (`sleepEachRow(0.002)`), `async_insert=0` and the input split into 500-row blocks (the recipe's settings, `send_progress_in_http_headers=1`, `http_headers_progress_interval_ms=50`); with those the V2 insert ran 8315 ms on the base tree and 8299 ms on the fixed tree against a 3000 ms bound (the two differ by 0.2 %), and the control with a 600000 ms bound ran 8059 ms, so the write-phase deadline leaves a response that streams progress after the body is sent alone. The same insert under the server's default `async_insert=1` (the `function_sleep_max_microseconds_per_block` raise needed to get past the server's sleep limit) failed at 3060 ms on the base tree and 3050 ms on the fixed tree, a `DataTransferException` over a `SocketTimeoutException`, retriable by the connector's own classification. The 64 MiB body (4000 rows of 16 KiB behind the same slow view, `async_insert=0`) ended `ok` on both trees, at 8324 ms on the base tree and 8380 ms on the fixed tree, so the write-phase deadline did not cut it: the raw-wire probe of the same shape shows why, the server sent its first progress header 64 ms after the first byte (before the body had been fully sent, so `wire_progress_while_writing` is `yes`), but the client handed the whole 65610890-byte body to the socket in 2305 ms, inside the 3000 ms bound, over this transport, which means no body was still being sent at the bound and this live check never reached the progress-while-sending shape that `progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound` pins on a stub; the claim "the deadline cuts a progress-streaming body that is still being sent" therefore rests on the stub pin and not on a live measurement. What a timed-out insert left: the client V1 insert into a `Memory` table behind the slow view showed 0 rows when the timed-out call returned and 4000 rows 15 s later, the client V1 insert into a MergeTree table showed 2500 rows at once and 4000 rows 15 s later (the base-tree control landed all 4000 rows), and the timed-out default-`async_insert` V2 insert into a MergeTree table showed 4000 rows at once and 4000 rows 15 s later; in all three cases the server finished or kept the insert after the client gave up, so a timed-out insert is not rolled back, and the figures depend on the engine and on `async_insert` (the rows are read by a call that first runs `OPTIMIZE TABLE`, so "at once" is to within that call).
+
+Recorded 2026-11-05T11:05:00Z.
 
 Verdict: pass
