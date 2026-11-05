@@ -14,6 +14,16 @@ An operator can trust what `clickhouseClientInsertTimeoutMs` says. The gg7 fix b
 <decisions>
 ## Implementation Decisions
 
+### User decisions (research flags, answered 2026-11-05 via AskUserQuestion)
+
+- **U-1 (V2 progress-streaming insert):** RECORD as a limit in FORK-DELTA and the help text with the measured numbers (escapes a 3000 ms bound, ends at 8141 ms with async_insert=0 and many blocks; default server async_insert=1 fails at 3057 ms). Do NOT add a whole-insert watchdog.
+- **U-2 (client V1 inserts):** BOUND the three `future.get()` sites with `future.get(timeoutMs)`; retriable under both tolerances, no DLQ record. An operator-named `socket_timeout` in `jdbcConnectionProperties` still wins and skips the bound.
+- **U-3 (operator gate):** the connector bound is skipped whenever the operator named `socket_timeout` (V2 and V1); required by success criterion 3.
+- **U-4 (non-insert requests):** RECORD ONLY, each with its measured number. No client-level timeout, no Keeper bound. The anchor row counting 0 for a client-level timeout stays.
+- **U-5 (V2 ping):** RECORD the `ping(timeout)` no-op and CORRECT FORK-DELTA item 14 ("ping has its own timeout" is false on V2). No code change.
+- **U-6 (wording):** recorded items read "not bounded by decision, with the measured number", not "cannot be bounded".
+- The V2 write stall: research recommends a write-phase deadline; not yet decided by the user. Treat as the planner's default per success criterion 2 (bounded with a pin red on the unchanged tree, or recorded) and flag in the plan-check if it needs the user.
+
 ### Claude's Discretion
 All implementation choices are at Claude's discretion — discuss phase was skipped per user setting. Use ROADMAP phase goal, success criteria, and codebase conventions to guide decisions.
 
