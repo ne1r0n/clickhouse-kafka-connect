@@ -26,7 +26,7 @@
 | E-11 | TMO-03 | 46-04 | pass |
 | E-12 | TMO-02, TMO-03 | 46-04 | pass |
 | E-13 | TMO-01 | 46-05 | pass |
-| E-14 | TMO-01, TMO-02, TMO-03 | 46-05 | pending (plan 46-05) |
+| E-14 | TMO-01, TMO-02, TMO-03 | 46-05 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base
 
@@ -778,5 +778,102 @@ Scopes the text carries, which a reader of this entry should keep. The V1 clause
 The config diff is 23 added and 7 removed lines, all string literals inside the define call; `What it does not bound` counts 1 on one source line and the retired claim counts 0 in `ClickHouseSinkConfig.java`. The per-file formatting check on a worktree at the text commit's parent: the pin was identical after `spotlessApply`; `ClickHouseSinkConfig.java` differs only in import ordering, which also differs on the unchanged copy, and the define call region was identical, so the lines this change wrote are not reformatted (`preexisting`). The docs commit holds only `docs/FORK-DELTA.md`; the item 14 sentence no longer contains `is left as it is because` and names `InsertTimeoutHelpTextPinUnitTest` and E-13.
 
 Recorded 2026-11-05T11:22:55Z.
+
+Verdict: pass
+
+### E-14: Phase gate: testUnit with Docker unreachable, two full runs on latest x V2, pins and scope, tail gate, nothing pushed
+
+Backs: TMO-01, TMO-02, TMO-03 (ROADMAP Phase 46 phase gate: cache-busted `testUnit`, a full suite on `latest` x V2 with `SELECT version()` recorded, the anchors invariant on an explicit SHA; closes criteria 1-3 on the phase tip).
+
+```sh
+git ls-remote upstream main
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/tags/pre-v1.7.0_gg8 --jq length
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/heads/sync/v1.7.0 --jq '.[].object.sha'
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd46/exec/xml-gate-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-gate-testunit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd46/exec/gate-suite-1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd46/exec/xml-gate-suite-1 && cp -R build/test-results/test /tmp/gsd46/exec/xml-gate-suite-1
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+# the same suite, snapshot and version/digest reads again as run 2 (gate-suite-2.log, xml-gate-suite-2)
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-gate-suite-1 --class <each of the eight phase and gg7 timeout classes>
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- <the three gg7 pin files>
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+git diff --name-only --diff-filter=A 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- <Utils, Processing, ProxySinkTask, KeeperStateProvider>
+grep -rn 'async_insert' src/main | wc -l
+grep -cF 'clientBuilder.setSocketTimeout(' src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- build.gradle.kts gradle .github CHANGELOG.md VERSION
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh .planning/scripts/fork-anchor-exemptions.txt .planning/phases/46-insert-timeout-limits/46-evidence-check.py
+git rev-list --merges 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5..HEAD
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 3a399c38e0e19639b8939238cc667e96f183eabf > /tmp/gsd46/exec/gate-tail.log 2>&1
+```
+
+```text
+upstream_main_at_gate: 83808df9a0993cf49b2ceaa4633c782e550c0180 (unchanged since the Phase 45 pre-flight)
+origin_pre_tag_at_gate: absent
+origin_sync_branch_at_gate: absent
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2170
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 103
+suite_java: default toolchain (semeru-17.0.9, OpenJ9), no -PjavaVersion=21
+suite_run1_exit: 0
+suite_run1_tests: 2773
+suite_run1_failures: 0
+suite_run1_errors: 0
+suite_run1_skipped: 18
+suite_run1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_run1_version: 26.10.3.7
+suite_run1_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_run1_crash: none
+suite_run1_duration: 4m 9s
+suite_run1_files: 152
+suite_run2_exit: 0
+suite_run2_tests: 2773
+suite_run2_failures: 0
+suite_run2_errors: 0
+suite_run2_skipped: 18
+suite_run2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_run2_version: 26.10.3.7
+suite_run2_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_run2_crash: none
+suite_run2_duration: 4m 10s
+suite_runs_equal: yes
+new_fork_cases: 84 (6 raw-stub + 39 V2 + 21 V1 + 18 help-text pin)
+suite_delta_vs_baseline: 84
+gg7_pins_in_suite: InsertStallBoundPinUnitTest 15, InsertSocketTimeoutOptionUnitTest 23, RetriableExceptionPassThroughUnitTest 38
+phase_pins_in_suite: StubClickHouseServerRawModeUnitTest 6, InsertWriteStallBoundPinUnitTest 19, InsertBoundGateUnitTest 20, InsertV1WaitBoundPinUnitTest 21, InsertTimeoutHelpTextPinUnitTest 18, all green
+gg7_pins_unchanged_since_base: yes
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+main_files_added: none
+untouched_main_files: yes
+async_insert_main_lines: 2
+client_level_socket_timeout_rows: 0
+build_files_unchanged: yes
+anchors_mirror: rows=214 bad=0
+gate_scripts_unchanged: yes
+merges_since_base: none
+gate_head: 3a399c38e0e19639b8939238cc667e96f183eabf
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=75 anchor_rows=214 marker_commits=93 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 7 min 20 s
+pushed: nothing; pre-v1.7.0_gg8 and sync/v1.7.0 are absent on origin
+```
+
+The three runs agree with the arithmetic the plan sets: the cache-busted `testUnit` ran 2170 tests (E-09's 2152 plus the 18 cases of `InsertTimeoutHelpTextPinUnitTest`) with 2 skipped, with `DOCKER_HOST` pointing at a socket that does not exist, so no Docker-backed class ran; each of the two `--rerun` full suites on ClickHouse 26.10.3.7 (the digest is the one recorded since E-01) ran 2773 tests with the 18 named skips and no failing testcase, which is E-01's 2689 plus the phase's 84 Docker-free cases (6 + 39 + 21 + 18). Every count above was re-read from the copied XML snapshots (`xml-gate-testunit`, `xml-gate-suite-1`, `xml-gate-suite-2`). The timeout pin classes of gg7 are byte-unchanged since the base and run with E-01's counts (15, 23, 38); the five classes this phase added run green in the full suite. No JVM crash happened in either run and no crash file was left in the repository root; `-PjavaVersion=21` was not needed. The tail gate is the unedited script over `M..3a399c38` and took 7 min 20 s (earlier plans recorded 3 to 4 min; the cause was not investigated). The tree was clean in tracked source, build and docs files at the gate head; the only modified tracked files were the planning state files the dispatch said not to stage.
+
+Recorded 2026-11-05T11:41:12Z.
 
 Verdict: pass
