@@ -27,6 +27,11 @@
 | E-12 | TMO-02, TMO-03 | 46-04 | pass |
 | E-13 | TMO-01 | 46-05 | pass |
 | E-14 | TMO-01, TMO-02, TMO-03 | 46-05 | pass |
+| E-15 | TMO-03 | 46-06 | pass |
+| E-16 | TMO-03 | 46-06 | pass |
+| E-17 | TMO-01 | 46-06 | pass |
+| E-18 | TMO-01, TMO-03 | 46-06 | pass |
+| E-19 | TMO-01, TMO-02, TMO-03 | 46-06 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base
 
@@ -875,5 +880,293 @@ pushed: nothing; pre-v1.7.0_gg8 and sync/v1.7.0 are absent on origin
 The three runs agree with the arithmetic the plan sets: the cache-busted `testUnit` ran 2170 tests (E-09's 2152 plus the 18 cases of `InsertTimeoutHelpTextPinUnitTest`) with 2 skipped, with `DOCKER_HOST` pointing at a socket that does not exist, so no Docker-backed class ran; each of the two `--rerun` full suites on ClickHouse 26.10.3.7 (the digest is the one recorded since E-01) ran 2773 tests with the 18 named skips and no failing testcase, which is E-01's 2689 plus the phase's 84 Docker-free cases (6 + 39 + 21 + 18). Every count above was re-read from the copied XML snapshots (`xml-gate-testunit`, `xml-gate-suite-1`, `xml-gate-suite-2`). The timeout pin classes of gg7 are byte-unchanged since the base and run with E-01's counts (15, 23, 38); the five classes this phase added run green in the full suite. No JVM crash happened in either run and no crash file was left in the repository root; `-PjavaVersion=21` was not needed. The tail gate is the unedited script over `M..3a399c38` and took 7 min 20 s (earlier plans recorded 3 to 4 min; the cause was not investigated). The tree was clean in tracked source, build and docs files at the gate head; the only modified tracked files were the planning state files the dispatch said not to stage.
 
 Recorded 2026-11-05T11:41:12Z.
+
+Verdict: pass
+
+### E-15: WR-01 client V2 contract, retry-stall premise and red on the unchanged production tree
+
+Backs: TMO-03 (gap-closure plan 46-06, review finding WR-01: the V2 write deadline is disarmed after the first attempt and was never re-armed when the client retries an insert; a red-first pin on the unchanged tree).
+
+```sh
+git rev-parse HEAD
+javap -cp client-v2-0.11.0.jar -p com.clickhouse.client.api.DataStreamWriter
+javap -cp client-v2-0.11.0.jar -p -c com.clickhouse.client.api.Client            # Client.insert retry loop
+javap -cp client-v2-0.11.0.jar -p -c com.clickhouse.client.api.internal.HttpAPIClientHelper   # shouldRetry
+javap -cp client-v2-0.11.0.jar -p -c com.clickhouse.client.api.ClientConfigProperties         # RETRY_ON_FAILURE, CLIENT_RETRY_ON_FAILURE
+grep -n -i 'retry' src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*StubClickHouseServerRawModeUnitTest*' > /tmp/gsd46/exec/g06-raw.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <the stub, its raw-mode test and the pin class> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the three files> && git worktree remove --force /tmp/gsd46/fmt
+git add <the stub and its raw-mode test> && git commit -F /tmp/gsd46/exec/msg-g06-stub.txt
+git worktree add --detach /tmp/gsd46/red 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947
+git diff --quiet 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947 -- src/main
+cp <pin class, first draft> /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/ && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/g06-red.log 2>&1
+git show 10fdbf41:src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java > /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/g06-red-final.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/red/build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/red/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/red && git worktree prune
+```
+
+```text
+plan_head_before: 62ab21c94b5bb7404d1406d16b9d2a39256f57b2
+branch: sync/v1.7.0
+client_v2_jar: client-v2-0.11.0.jar from the Gradle cache (the version the build resolves)
+datastreamwriter_on_retry: default method onRetry() throws IOException next to abstract onOutput(OutputStream)
+client_insert_retry_order: Client.insert catches the failure, asks shouldRetry and requestIsNotCancelled, selects the next node, calls DataStreamWriter.onRetry() while the attempt count is below the retry count, then runs onOutput again for the next attempt
+client_retry_default: 3 (ClientConfigProperties.RETRY_ON_FAILURE, option name retry)
+client_retry_default_faults: NoHttpResponse, ConnectTimeout, ConnectionRequestTimeout, ServerRetryable (CLIENT_RETRY_ON_FAILURE default list; SocketTimeout is not in it)
+connector_sets_v2_retry: no, ClickHouseHelperClient names retry only for its own V1 ping and query loops and sets no V2 retry option
+stub_commit: 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947
+stub_commit_files: 2
+raw_slice_exit: 0
+raw_slice_tests: 7
+raw_slice_failures: 0
+premise_first_post: the whole 8 MiB body is read, the connection closes, a client read returns -1 (no response)
+premise_first_post_body_bytes_read: 8388608
+premise_second_post: a 64 MiB body write is still blocked after 2 s with no further body byte read, and ends with an IOException once the stub closes
+fmt_stub_3: identical
+fmt_raw_test_3: identical
+fmt_stall_pin_3: identical
+red_tree: 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947
+red_main_identical_to_base: yes
+red_draft_exit: 1
+red_draft_tests: 20
+red_draft_failed_count: 2
+red_draft_failed: clientInternalRetryOfAnInsertGetsAFreshWriteDeadline; secondInsertWithTheSameQueryIdSurvivesTheFirstInsertsElapsedBound
+red_draft_retry_case_seconds: 10.062
+red_draft_same_id_case: a draft replacement of the late-fire case was red on the unchanged tree for a test-design reason: the stub delayed the second response 900 ms and the per-insert socket_timeout equals the 300 ms bound, so the in-flight second insert ended at 301 ms with an inactivity timeout; the draft was dropped and never committed
+red_exit: 1
+red_tests: 20
+red_failed_count: 1
+red_failed: clientInternalRetryOfAnInsertGetsAFreshWriteDeadline
+red_by_guard: yes
+red_retry_case_seconds: 10.031
+red_renamed_case_green_seconds: 0.623
+worktree_removed: yes
+```
+
+The retry pin runs a real writer on client V2 with the default retry count against the new raw stub: 16 records of 1 MiB through the JSON route, a 1000 ms insert timeout, the first POST read through and closed with no response, every later request read by its head only. On the unchanged tree (`src/main` byte-identical to the review tip) the case failed by the 10 s preemptive guard, `a client V2 insert must end within the bound ==> execution timed out after 10000 ms`. A client that had not retried would have returned the closed-connection failure at once, so ending in the guard means the client sent a second attempt and its body write blocked with no connector bound; the second POST is also what the green run counts (E-16). The first red run used a draft of the test class that also carried a replacement for the late-fire case (see `red_draft_same_id_case`); that draft is not the final class, so the red was repeated with the final class (`red_exit` to `red_renamed_case_green_seconds`), where exactly the retry case is red and the renamed case is green.
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-16: WR-01 re-arm green, mutation checks, IN-03, anchors
+
+Backs: TMO-03 (review findings WR-01 and IN-03: the write deadline is re-armed on a client-internal retry, shown red on the unchanged tree in E-15 and green here, a mutation that drops the re-arm turns the pin red, and the late-fire case is renamed to what it pins).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' --tests '*StubClickHouseServerRawModeUnitTest*' > /tmp/gsd46/exec/g06-green.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests <the ten neighbour classes> > /tmp/gsd46/exec/g06-neighbours.log 2>&1
+git worktree add --detach /tmp/gsd46/mut HEAD   # twice (D5, D1): copy the writer and the pin, python3 -I replacement asserting the old text occurs once
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/mut --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/g06-mut-<n>.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/mut/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/mut && git worktree prune
+for each anchor pattern: grep -cF -e <pattern> src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 216
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <the writer and the pin> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin> && diff <the writer, new and unchanged copies> && git worktree remove --force /tmp/gsd46/fmt
+git add <the writer, the pin class, fork-anchors.txt> && git commit -F /tmp/gsd46/exec/msg-g06-fix.txt
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-g06-fd1.txt
+```
+
+```text
+green_exit: 0
+green_tests: 47 (V2 write-stall pin class 20, gate unit class 20, raw stub class 7)
+green_failed_count: 0
+retry_case_seconds: 1.088
+retry_case_posts: 2 (asserted by the pin)
+renamed_case_seconds: 0.613
+neighbours_exit: 0
+neighbours_tests: 368
+neighbours_files: 10
+neighbours_failed_count: 0
+neighbours_classes: InsertStallBoundPinUnitTest, InsertSocketTimeoutOptionUnitTest, RetriableExceptionPassThroughUnitTest, WriterHelperClientClosingUnitTest, ClientInsertWirePinUnitTest, ClientEndpointAndOptionsPinUnitTest, ClientErrorShapePinUnitTest, WriterFailureClassificationUnitTest, SourcePlanningIdGuardUnitTest, InsertV1WaitBoundPinUnitTest
+d5_target: in the writer returned by deadlineAwareWriter, the body of onRetry() (the statement deadline.rearm();) removed
+d5_failed_count: 1
+d5_failed: clientInternalRetryOfAnInsertGetsAFreshWriteDeadline
+d5_by_guard: yes (10000 ms)
+d5_expected_met: yes
+d1_target: in InsertWriteDeadline.disarm(), the three body lines that cancel the scheduled task removed
+d1_failed_count: 1
+d1_failed: progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent
+d1_renamed_case_green: yes
+in03_outcome: the case is renamed secondInsertAfterTheFirstInsertsBoundHasElapsedSucceeds and its Javadoc says what it does not pin; it was not strengthened because a fire against a finished request cannot be produced from outside the writer (disarm() cancels the task after every insert) and an in-flight second insert with the same query id cannot be held past the bound (the per-insert socket_timeout equals the bound and ends a quiet in-flight insert)
+anchors_disarm_before: 4
+anchors_disarm_after: 2
+anchors_rearm_after: 1
+anchors_deadline_aware_writer_after: 4
+anchors_insert_write_deadline_calls: 3
+anchors_insert_with_write_deadline_calls: 4
+anchors_rows_before: 214
+anchors_mirror: rows=216 bad=0
+fmt_writer_3: preexisting
+fmt_pin_4: identical
+fix_commit: 10fdbf411e6af14a368fa8c205e41fd678946dea
+fix_commit_files: 3
+fd_wr01_commit: c12c095a5418f2e909d5cf2e29d3f71e8461725d
+fd_wr01_commit_files: docs/FORK-DELTA.md
+```
+
+The fix replaces the three per-site lambdas with `deadlineAwareWriter(deadline, body)`, a `DataStreamWriter` whose `onOutput` runs the body, closes the stream and disarms, and whose `onRetry` calls `InsertWriteDeadline.rearm()` (disarm, then arm again, so each attempt gets the full bound and an attempt that failed before its body closed does not keep a stale task). The pin is green in 1.088 s: the first attempt is read through and closed, the second is cut at the bound. The anchor count moves are the ones written in `fork-anchors.txt`: `deadline.disarm();` 4 to 2 (the three site disarms became one in the shared writer, plus the one in the `finally` of `insertWithWriteDeadline`), `deadline.rearm();` 1 and `deadlineAwareWriter(` 4 (the declaration and three sites) added; `insertWriteDeadline(client, queryId)` stays 3 and `insertWithWriteDeadline(` stays 4. The per-file formatting check on a worktree at the pre-commit HEAD: the pin class was identical after `spotlessApply`; `ClickHouseWriter.java` differs only in import ordering, and the unchanged HEAD copy shows the same diff, so the lines this change wrote are not reformatted (`preexisting`). The FORK-DELTA commit narrows the Phase 41 sentence to "a read timeout is not retried by the client" and names the faults the client does retry (read from the decompiled client, E-15).
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-17: help text corrected (WR-02, WR-03, WR-04, IN-01, IN-04): red on the previous text, green after
+
+Backs: TMO-01 (review findings WR-02, WR-03, WR-04, IN-01 and IN-04: the help text of `clickhouseClientInsertTimeoutMs` no longer claims more than E-07 to E-11 measured, and the pin is changed with the wording).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' > /tmp/gsd46/exec/g06-help-red.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' --tests '*AdditionalRetriableErrorCodesPinUnitTest*' --tests '*NewUpstreamConfigDefaultsUnitTest*' --tests '*ClickHouseSinkConfigTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd46/exec/g06-help-green.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class InsertTimeoutHelpTextPinUnitTest
+python3 -I <config diff script: every changed line of ClickHouseSinkConfig.java is a string literal inside the define call>
+grep -cF 'What it does not bound' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 216
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <ClickHouseSinkConfig.java and the pin> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin> && diff <the config> && git worktree remove --force /tmp/gsd46/fmt
+git add <ClickHouseSinkConfig.java and the pin> && git commit -F /tmp/gsd46/exec/msg-g06-help.txt
+```
+
+```text
+help_red_text: the pin class with the corrected phrases run against the previous help text (ClickHouseSinkConfig.java unchanged)
+help_red_exit: 1
+help_red_tests: 27
+help_red_failed_count: 13
+help_red_failed: H0, H3, H8, H9, H10, H14, H15, H16, H17 and the four retired-claim cases (Maximum time in milliseconds the connector gives one ClickHouse insert; including a stalled body write; and ping at the timeout setting; the connector adds no limit of its own on either client)
+help_red_green: H1, H2, H13, H4, H5, H6, H7, H11, the four kept phrases, the attribute pin and the original retired claim
+help_green_exit: 0
+help_green_failed_count: 0
+help_pin_tests: 27
+help_neighbours_tests: 76
+help_neighbours_files: 5
+help_neighbours_failed_count: 0
+csc_changed_lines: 37
+csc_changed_lines_all_string_literals: yes
+what_it_does_not_bound_lines: 1
+anchors_mirror: rows=216 bad=0
+fmt_csc_2: preexisting
+fmt_help_pin: identical
+help_commit: 19c36eaae4b0f8060e71172f70a608e0a7871516
+help_commit_files: 2
+wr02_v1_30s_limit: stated in the V1 clause and pinned (H17); source E-07 and E-08 (the unchanged tree waited for the library's 30 s limit)
+wr03_v1_scope: the V1 clause is the response wait and nothing else (H3), the 256 MiB measurement is stated as the measured reason (H15, E-07 and E-09), and the pipe write is named as not bounded (H16)
+wr04_attempt_and_setting: each attempt ends at the library's 30 s limit, up to retryCount attempts at some requests, ping uses timeoutSeconds (H8); retryCount attempts read from the code of pingV1 and queryV1, not measured with 3
+in01_lead: the lead sentence is a time limit for the phases listed below (H0)
+in04_async_true: socket_timeout removes the connector's insert limits except the response wait of a V2 async=true insert (H9); read from awaitInsertResponse, not measured
+```
+
+Edits kept every measured number and removed no claim that a measurement supports; the V2 clause gained "(again for each attempt when the client retries the insert)" (H14, E-16). The nine changed or new required phrases and the four retired phrases failed on the previous text (13 of 27), and each passes on the new one. The config diff is 37 changed lines, all string literals inside the define call of `CLICKHOUSE_CLIENT_INSERT_TIMEOUT_MS`; the type, default, validator, importance, display name and width are checked by the unchanged `onlyTheDocumentationOfTheKeyChanged` case. `ClickHouseSinkConfig.java` differs after `spotlessApply` only in import ordering, the same as the unchanged copy.
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-18: FORK-DELTA item 14 corrected (WR-02, WR-03, WR-04, IN-04, IN-07)
+
+Backs: TMO-01, TMO-03 (review findings IN-07, WR-02, WR-03, WR-04 and IN-04 for the FORK-DELTA wording: the E-NN placeholder, the V1 30 s limit, the help-text scope description, the `async=true` exception and the schema-refresh bound).
+
+```sh
+python3 -I <item 14 script: E-NN literal count, not-bounded-by-decision count, evidence ids cited, stale clauses>
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-g06-fd2.txt
+git diff --name-only 7ee5c02a21baa891ae25ac81ed7700b860363140^ 7ee5c02a21baa891ae25ac81ed7700b860363140
+```
+
+```text
+fd_item14_commit: 7ee5c02a21baa891ae25ac81ed7700b860363140
+fd_item14_commit_files: docs/FORK-DELTA.md
+e_nn_literals_in_fork_delta: 0
+item14_not_bounded_by_decision: 4
+item14_ids_cited: E-03, E-04, E-05, E-06, E-07, E-08, E-09, E-10, E-11, E-13, E-15, E-16, E-17
+item14_placeholder_replaced_by: E-04, E-05, E-07, E-08, E-09, E-10, E-11 and, for the retried attempt, E-15 and E-16
+item14_stale_clauses: 0 (the previous "and ping at the timeout setting" and "including a stalled body write" are gone from FORK-DELTA)
+item14_schema_refresh_clause: the retry doInsertRawBinary makes after a schema refresh starts a new insert with a fresh deadline on client V2 and a fresh response wait on client V1, so it also gets a full bound (read from the code, not measured)
+item14_v1_30s_clause: a quiet client V1 insert still ends at the library's 30 s limit, a value above 30000 ms does not extend it, naming socket_timeout changes the library's limit and removes the connector bound
+item14_async_true_clause: the response wait of a client V2 async=true insert still applies this key under an operator socket_timeout (read from awaitInsertResponse, not measured)
+item14_help_text_scopes: three scopes, each corrected: V1 response wait only with the pipe write named as not bounded, the 30 s quiet limit, the per-attempt 30 s figure with up to retryCount attempts and timeoutSeconds for the ping
+```
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-19: Gap-closure gate: testUnit with Docker unreachable, full suite on latest x V2, scope, anchors, tail gate, nothing pushed
+
+Backs: TMO-01, TMO-02, TMO-03 (the phase gate repeated on the plan 46-06 tip: cache-busted `testUnit`, a full suite on `latest` x V2 with `SELECT version()` recorded, the anchors invariant on an explicit SHA, the unedited standing tail gate).
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/g06-gate-testunit.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd46/exec/xml-g06-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-g06-testunit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd46/exec/g06-suite-1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd46/exec/xml-g06-suite-1 && cp -R build/test-results/test /tmp/gsd46/exec/xml-g06-suite-1
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-g06-suite-1 --class <each of the eight phase and gg7 timeout classes>
+git diff --name-only 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD
+git diff --name-only --diff-filter=A 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD -- src/main
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- <the three gg7 pin files>
+git diff --quiet 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD -- build.gradle.kts gradle .github CHANGELOG.md VERSION
+git diff --quiet 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh .planning/scripts/fork-anchor-exemptions.txt .planning/phases/46-insert-timeout-limits/46-evidence-check.py
+grep -rn 'async_insert' src/main | wc -l
+grep -cF 'clientBuilder.setSocketTimeout(' src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+git rev-list --merges 62ab21c94b5bb7404d1406d16b9d2a39256f57b2..HEAD
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 7ee5c02a21baa891ae25ac81ed7700b860363140 > /tmp/gsd46/exec/g06-gate-tail.log 2>&1
+```
+
+```text
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2181
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 103
+testunit_arithmetic: E-14's 2170 plus 1 raw-stub case, 1 retry pin and 9 help-text cases (27 less 18)
+suite_java: default toolchain (semeru-17.0.9, OpenJ9), no -PjavaVersion=21
+suite_exit: 0
+suite_tests: 2784
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_files: 152
+suite_version: 26.10.3.7
+suite_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_crash: none
+suite_duration: 3m 14s
+suite_arithmetic: E-14's 2773 plus the same 11 cases
+phase_classes_in_suite: InsertWriteStallBoundPinUnitTest 20, InsertTimeoutHelpTextPinUnitTest 27, StubClickHouseServerRawModeUnitTest 7, InsertBoundGateUnitTest 20, InsertV1WaitBoundPinUnitTest 21, all green
+gg7_pins_in_suite: InsertStallBoundPinUnitTest 15, InsertSocketTimeoutOptionUnitTest 23, RetriableExceptionPassThroughUnitTest 38, no failure
+gg7_pins_unchanged_since_base: yes
+files_changed_since_review_tip: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertTimeoutHelpTextPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+main_files_changed_since_review_tip: ClickHouseSinkConfig.java (help text only); ClickHouseWriter.java (deadlineAwareWriter and InsertWriteDeadline.rearm only)
+main_files_added: none
+build_files_unchanged: yes
+gate_scripts_unchanged: yes
+async_insert_main_lines: 2
+client_level_socket_timeout_rows: 0
+merges_since_review_tip: none
+anchors_mirror: rows=216 bad=0
+tail_gate_head: 7ee5c02a21baa891ae25ac81ed7700b860363140
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=83 anchor_rows=216 marker_commits=101 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 5 min 27 s
+pushed: nothing; no push command was run in plan 46-06
+```
+
+The gate head is `7ee5c02a`, the last commit that changed a source, test or FORK-DELTA file; later commits of the plan only add this evidence file and the summary. The single full-suite run needed no re-run: no JVM crash happened and no crash file was left in the repository root. The OpenJ9 crash recovery and `-PjavaVersion=21` were not needed. The tracked files modified in the tree at the gate were only `.planning/config.json` and `.planning/state.json`, which the dispatch said not to stage.
+
+Recorded 2026-11-05T12:15:00Z.
 
 Verdict: pass
