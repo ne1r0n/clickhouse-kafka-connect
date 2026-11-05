@@ -274,7 +274,20 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
   3. *[Docker-free, record]* Through `ProxySinkTask.put` under `errors.tolerance=none` and `errors.tolerance=all`, each retriable `DataException` shape takes one of two outcomes; at least the shapes that PIN-02 and RSK-02 pinned are covered. Either it stops after a bounded retry budget, with the expected changed rows of the classification matrix committed before the change and the actual delta equal to that list, or it keeps today's unbounded redelivery, pinned by a test and documented as a limit in FORK-DELTA (RTY-01).
   4. *[record, operator]* FUT-05 is closed. The start-up WARN for unvetted `additionalRetriableErrorCodes` stays, a validator lands only if the user approves it in their own words, and the decision is recorded with its reason. FORK-DELTA no longer lists FUT-05 as open (RTY-02).
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 47-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit with Docker unreachable, full suite on `latest` × V2, anchors 216, tail gate, XML snapshots, per-testcase status dumps), `ClickHouseSinkTaskStopUnitTest` (6 cases, reflection seam, no Mockito) red on the unchanged tree with exactly 2 named failures and recorded before the fix with its expected-added rows, the `try`/`finally` in `ClickHouseSinkTask.stop()` (D-1) as its own commit with two anchor rows (216 to 218), its own testUnit gate (+6, delta exact), the both-throw probe, FORK-DELTA item 13 with the `close(partitions)` residual (LIF-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 47-02-PLAN.md — `RetriableRedeliveryLimitPinUnitTest` (108 cases: 22 shapes × both `errors.tolerance` values at the first put, 16 retriable shapes × 2 entries × 2 values over 500 redeliveries), a budget-of-5 mutation turning exactly the 64 redelivery rows red, testUnit gate (+114 over the base, no removed row), the live Connect worker measurement (cadence, `errors.retry.timeout` and `errors.tolerance` without effect, DLQ empty, task RUNNING, `DataException` fails the task) and the source read, FORK-DELTA item 17 rewritten from the measured facts (U-1) (RTY-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 47-03-PLAN.md — FUT-05 closed by the user's decision with its reason in FORK-DELTA items 8 and 24 (U-2: no validator, no budget, no removal setting; the WARN, its pins and `ClickHouseSinkConfig` untouched), and a new `# 1.7.0_gg8, Unreleased` CHANGELOG section with the corrected `stop()` bullets, the published gg7 section byte-identical (U-3) (RTY-02, LIF-02)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 47-04-PLAN.md — phase gate: cache-busted testUnit with Docker unreachable and one `--rerun` full suite on `latest` × V2 re-checked against XML snapshots (18 named skips, +114 cases, no removed row), scope (the only `src/main` change is the `stop()` body; `Processing`, `KeeperStateProvider`, `ProxySinkTask`, `Utils`, `ClickHouseSinkConfig` untouched), tail gate once on an explicit SHA with `anchor_rows=218`, nothing pushed; the Phase 49 hand-off inventory recorded read-only (LIF-01, LIF-02, RTY-01, RTY-02)
 
 **Research flag**: Settle these before planning:
 - What a retry budget can be built on without a new config key: what Connect does with a `RetriableException` thrown from `put`, whether the connector's existing retry settings reach it, and whether a budget needs state that survives a rebalance. If every option needs a new key or new persisted state, record the limit instead.
