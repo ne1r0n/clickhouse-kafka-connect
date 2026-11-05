@@ -23,8 +23,8 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Task Lifecycle (LIF)
 
-- [ ] **LIF-01**: `ClickHouseSinkTask.stop()` stops every delivery strategy and still reaches the later cleanup when one throws (`try`/`finally`), pinned red-first and Docker-free.
-- [ ] **LIF-02**: The CHANGELOG `stop()` bullet and its Known Issues bullet match the fixed behaviour.
+- [x] **LIF-01**: `ClickHouseSinkTask.stop()` stops every delivery strategy and still reaches the later cleanup when one throws (`try`/`finally`), pinned red-first and Docker-free.
+- [x] **LIF-02**: The CHANGELOG `stop()` bullet and its Known Issues bullet match the fixed behaviour.
 
 ### Insert Timeout and Limits (TMO)
 
@@ -34,8 +34,8 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Retry Classification (RTY)
 
-- [ ] **RTY-01**: A retriable `DataException` case has a retry budget, or the missing budget is pinned and documented as a limit through `ProxySinkTask.put` under both `errors.tolerance` values.
-- [ ] **RTY-02**: FUT-05 is closed. The start-up WARN is kept, and a validator is added only if the user approves it. The decision is recorded with its reason.
+- [x] **RTY-01**: A retriable `DataException` case has a retry budget, or the missing budget is pinned and documented as a limit through `ProxySinkTask.put` under both `errors.tolerance` values.
+- [x] **RTY-02**: FUT-05 is closed. The start-up WARN is kept, and a validator is added only if the user approves it. The decision is recorded with its reason.
 
 ### Phase 37 Dispositions (P37)
 
@@ -84,13 +84,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPS-05 | Phase 45 | Complete |
 | DEP-01 | Phase 45 | Complete |
 | DEP-02 | Phase 45 | Complete |
-| LIF-01 | Phase 47 | Pending |
-| LIF-02 | Phase 47 | Pending |
+| LIF-01 | Phase 47 | Complete |
+| LIF-02 | Phase 47 | Complete |
 | TMO-01 | Phase 46 | Complete |
 | TMO-02 | Phase 46 | Complete |
 | TMO-03 | Phase 46 | Complete |
-| RTY-01 | Phase 47 | Pending |
-| RTY-02 | Phase 47 | Pending |
+| RTY-01 | Phase 47 | Complete |
+| RTY-02 | Phase 47 | Complete |
 | P37-01 | Phase 48 | Pending |
 | P37-02 | Phase 48 | Pending |
 | P37-03 | Phase 48 | Pending |

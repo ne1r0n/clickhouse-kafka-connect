@@ -164,7 +164,7 @@ Phase artifacts: `milestones/v1.7.0_gg7-followup-phases/`
 
 - [x] **Phase 45: Upstream Tail Merge & Dependency Check** - Upstream `83808df9` lands as one mechanical merge behind `pre-v1.7.0_gg8`. #857 is re-expressed value-free, so the gg3 message and classification pins pass unchanged. Slash column names (#839) round-trip, `fromJsonRow` is reconciled with the gg4 raw-identifier handling, and upstream's three bumps are taken. A manual dependency and CVE check of the merged catalog follows, and only the bumps the user approves land, one commit each (completed 2026-11-05)
 - [x] **Phase 46: Insert Timeout Limits** - Each case that `clickhouseClientInsertTimeoutMs` leaves unbounded today is bounded behind a pin seen red first, or recorded with a measured number: an insert streaming progress headers, a write-side stall, client V1 `future.get()` inserts and non-insert requests. The help text is then rewritten to say what the setting bounds, pinned Docker-free (completed 2026-11-05)
-- [ ] **Phase 47: Task Stop & Retry Classification** - `ClickHouseSinkTask.stop()` reaches every cleanup step when a delivery strategy throws, pinned red-first, and the CHANGELOG bullets match the code. A retriable `DataException` gets a retry budget or a pinned, documented limit under both `errors.tolerance` values, and FUT-05 closes with a recorded decision
+- [x] **Phase 47: Task Stop & Retry Classification** - `ClickHouseSinkTask.stop()` reaches every cleanup step when a delivery strategy throws, pinned red-first, and the CHANGELOG bullets match the code. A retriable `DataException` gets a retry budget or a pinned, documented limit under both `errors.tolerance` values, and FUT-05 closes with a recorded decision (completed 2026-11-06)
 - [ ] **Phase 48: Phase 37 Dispositions & Document Fixes** - The four `src/main` advisory rows, the null assertion, the 28 IN-05(b) items, the broad allow-list glob rows and the review Infos each end fixed (tests first, one commit each) or closed with a written reason, and none is left as "owner: user". IN-03 leaves the published gg6 note, and FORK-DELTA's evidence paths survive archiving
 - [ ] **Phase 49: Release & Publication** - `v1.7.0_gg8` is published with CHANGELOG, FORK-DELTA, the gg8 allow-list compare and an independently reviewed rollout note. Two equal green suites, the `--no-ff` merge only on the user's explicit approval, one green `tests.yaml` on the published SHA, the publish run creates the tag, and the two `scratch/clt-07-*` branches leave `origin` after a separate confirmation
 
@@ -231,7 +231,7 @@ Phase gate: cache-busted `testUnit` with Docker unreachable, two `--rerun` full 
   3. *[Docker-free]* Through `ProxySinkTask.put`, each case bounded in this phase surfaces as retriable under `errors.tolerance=none` and `errors.tolerance=all`: the task is not failed and no DLQ record is written. An operator's `socket_timeout` in `jdbcConnectionProperties` still wins. No config key is added, because a new key is a feature and out of scope, and `async_insert` is not touched (TMO-02, TMO-03).
   4. *[Docker-free]* The `clickhouseClientInsertTimeoutMs` help text is written after criteria 1–3 settle. It says what the setting bounds and what it does not, and a Docker-free test pins the text against the measured list. The `ClickHouseSinkConfig` diff is that text and nothing else (TMO-01).
 
-**Plans**: 6/5 plans complete
+**Plans**: 5/5 plans complete, plus gap closure 46-06
 
 Plans:
 **Wave 1**
@@ -274,20 +274,23 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
   3. *[Docker-free, record]* Through `ProxySinkTask.put` under `errors.tolerance=none` and `errors.tolerance=all`, each retriable `DataException` shape takes one of two outcomes; at least the shapes that PIN-02 and RSK-02 pinned are covered. Either it stops after a bounded retry budget, with the expected changed rows of the classification matrix committed before the change and the actual delta equal to that list, or it keeps today's unbounded redelivery, pinned by a test and documented as a limit in FORK-DELTA (RTY-01).
   4. *[record, operator]* FUT-05 is closed. The start-up WARN for unvetted `additionalRetriableErrorCodes` stays, a validator lands only if the user approves it in their own words, and the decision is recorded with its reason. FORK-DELTA no longer lists FUT-05 as open (RTY-02).
 
-**Plans**: 4 plans
+**Plans**: 4/4 plans complete, plus gap closure 47-05
 
 Plans:
 **Wave 1**
-- [ ] 47-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit with Docker unreachable, full suite on `latest` × V2, anchors 216, tail gate, XML snapshots, per-testcase status dumps), `ClickHouseSinkTaskStopUnitTest` (6 cases, reflection seam, no Mockito) red on the unchanged tree with exactly 2 named failures and recorded before the fix with its expected-added rows, the `try`/`finally` in `ClickHouseSinkTask.stop()` (D-1) as its own commit with two anchor rows (216 to 218), its own testUnit gate (+6, delta exact), the both-throw probe, FORK-DELTA item 13 with the `close(partitions)` residual (LIF-01)
+- [x] 47-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit with Docker unreachable, full suite on `latest` × V2, anchors 216, tail gate, XML snapshots, per-testcase status dumps), `ClickHouseSinkTaskStopUnitTest` (6 cases, reflection seam, no Mockito) red on the unchanged tree with exactly 2 named failures and recorded before the fix with its expected-added rows, the `try`/`finally` in `ClickHouseSinkTask.stop()` (D-1) as its own commit with two anchor rows (216 to 218), its own testUnit gate (+6, delta exact), the both-throw probe, FORK-DELTA item 13 with the `close(partitions)` residual (LIF-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 47-02-PLAN.md — `RetriableRedeliveryLimitPinUnitTest` (108 cases: 22 shapes × both `errors.tolerance` values at the first put, 16 retriable shapes × 2 entries × 2 values over 500 redeliveries), a budget-of-5 mutation turning exactly the 64 redelivery rows red, testUnit gate (+114 over the base, no removed row), the live Connect worker measurement (cadence, `errors.retry.timeout` and `errors.tolerance` without effect, DLQ empty, task RUNNING, `DataException` fails the task) and the source read, FORK-DELTA item 17 rewritten from the measured facts (U-1) (RTY-01)
+- [x] 47-02-PLAN.md — `RetriableRedeliveryLimitPinUnitTest` (108 cases: 22 shapes × both `errors.tolerance` values at the first put, 16 retriable shapes × 2 entries × 2 values over 500 redeliveries), a budget-of-5 mutation turning exactly the 64 redelivery rows red, testUnit gate (+114 over the base, no removed row), the live Connect worker measurement (cadence, `errors.retry.timeout` and `errors.tolerance` without effect, DLQ empty, task RUNNING, `DataException` fails the task) and the source read, FORK-DELTA item 17 rewritten from the measured facts (U-1) (RTY-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 47-03-PLAN.md — FUT-05 closed by the user's decision with its reason in FORK-DELTA items 8 and 24 (U-2: no validator, no budget, no removal setting; the WARN, its pins and `ClickHouseSinkConfig` untouched), and a new `# 1.7.0_gg8, Unreleased` CHANGELOG section with the corrected `stop()` bullets, the published gg7 section byte-identical (U-3) (RTY-02, LIF-02)
+- [x] 47-03-PLAN.md — FUT-05 closed by the user's decision with its reason in FORK-DELTA items 8 and 24 (U-2: no validator, no budget, no removal setting; the WARN, its pins and `ClickHouseSinkConfig` untouched), and a new `# 1.7.0_gg8, Unreleased` CHANGELOG section with the corrected `stop()` bullets, the published gg7 section byte-identical (U-3) (RTY-02, LIF-02)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 47-04-PLAN.md — phase gate: cache-busted testUnit with Docker unreachable and one `--rerun` full suite on `latest` × V2 re-checked against XML snapshots (18 named skips, +114 cases, no removed row), scope (the only `src/main` change is the `stop()` body; `Processing`, `KeeperStateProvider`, `ProxySinkTask`, `Utils`, `ClickHouseSinkConfig` untouched), tail gate once on an explicit SHA with `anchor_rows=218`, nothing pushed; the Phase 49 hand-off inventory recorded read-only (LIF-01, LIF-02, RTY-01, RTY-02)
+- [x] 47-04-PLAN.md — phase gate: cache-busted testUnit with Docker unreachable and one `--rerun` full suite on `latest` × V2 re-checked against XML snapshots (18 named skips, +114 cases, no removed row), scope (the only `src/main` change is the `stop()` body; `Processing`, `KeeperStateProvider`, `ProxySinkTask`, `Utils`, `ClickHouseSinkConfig` untouched), tail gate once on an explicit SHA with `anchor_rows=218`, nothing pushed; the Phase 49 hand-off inventory recorded read-only (LIF-01, LIF-02, RTY-01, RTY-02)
+
+**Gap closure** *(after the code review)*
+- [x] 47-05 (no PLAN.md; brief and SUMMARY only) — review fixes WR-01..WR-05 and IN-03: FORK-DELTA writer row, gg8 CHANGELOG both-throw wording, item 17 qualified, redelivery pin cut to 50 per row with the budget-of-5 mutation re-run (no production change)
 
 **Research flag**: Settle these before planning:
 - What a retry budget can be built on without a new config key: what Connect does with a `RetriableException` thrown from `put`, whether the connector's existing retry settings reach it, and whether a budget needs state that survives a rebalance. If every option needs a new key or new persisted state, record the limit instead.
@@ -474,7 +477,7 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 |-------|-----------|----------------|--------|-----------|
 | 45. Upstream Tail Merge & Dependency Check | v1.7.0_gg8 | 6/6 | Complete    | 2026-11-05 |
 | 46. Insert Timeout Limits | v1.7.0_gg8 | 6/5 | Complete    | 2026-11-05 |
-| 47. Task Stop & Retry Classification | v1.7.0_gg8 | 0/TBD | Not started | - |
+| 47. Task Stop & Retry Classification | v1.7.0_gg8 | 5/4 | Complete    | 2026-11-06 |
 | 48. Phase 37 Dispositions & Document Fixes | v1.7.0_gg8 | 0/TBD | Not started | - |
 | 49. Release & Publication | v1.7.0_gg8 | 0/TBD | Not started | - |
 
