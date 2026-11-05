@@ -23,7 +23,7 @@
 | E-08 | RTY-02 | 47-03 | pass |
 | E-09 | LIF-02 | 47-03 | pass |
 | E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pass |
-| E-11 | LIF-02, RTY-02 | 47-04 | pending (plan 47-04) |
+| E-11 | LIF-02, RTY-02 | 47-04 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base
 
@@ -603,5 +603,71 @@ tail_gate_exit: 0
 The testUnit gate is E-01's 2181 tests plus 114 (6 LIF-01 and 108 RTY-01 rows) with 2 skips as at the base; the full suite is E-01's 2784 plus 114 with the 18 skips (7 named, 11 state-mismatch cases, none unexpected). Both per-testcase deltas against the E-01 dumps remove nothing and add exactly the two expected lists (exact over testUnit, by class over the suite, where only the two new classes gain rows). The eight E-01 pin classes keep their E-01 counts (14, 38, 216, 4, 21, 19, 2, 15), so `ProcessingTest` and the other unchanged suites are green in both runs. The server is `26.10.3.7` at the same digest as E-01, so the `latest` image did not move during the phase. No JVM crash occurred and `-PjavaVersion=21` was not used; no core dump or javacore file was left in the repository root. `upstream main` is still `83808df9` (the `UPSTREAM_REF` of the gate), `pre-v1.7.0_gg8` is absent on origin and the origin sync branch is absent as in E-01; nothing was pushed in this plan. The tail gate ran in the background over `12e2cf17..a9669f7b` while the testUnit and suite ran (it reads git objects only; the tree was not changed during the run), and its summary line carries `anchor_rows=218` with `anchor_exempt=0`, against `anchor_rows=216` at the phase base (E-01). The `fork_delta_final_checks` fact is the five counts of the plan: the open FUT-05 parenthesis 0, the stays-open wording 0, the not-closed sentence 0, `FUT-05 is closed by decision` 1, `ClickHouseSinkTaskStopUnitTest` 1 and `RetriableRedeliveryLimitPinUnitTest` 1 (at least 1 required). The `BEFORE`/`AFTER` flag sequence lives in `Processing.java` and `KeeperStateProvider.java`, both byte-identical to the phase base, as are `ProxySinkTask`, `Utils`, `ClickHouseSinkConfig`, `ChunkFlusher` and the three strategies.
 
 Recorded 2026-11-05T21:22:37Z.
+
+Verdict: pass
+
+### E-11: Phase 49 hand-off inventory, recorded and not edited
+
+Backs: LIF-02, RTY-02, ROADMAP Phase 47 phase gate (what Phase 49 and the orchestrator inherit, located live on the phase tip and shown unedited), D-2, U-3.
+
+```sh
+git diff --quiet v1.7.0_gg7 HEAD -- docs/ROLLOUT-v1.7.0_gg7.md
+grep -n '^| F5 |' docs/ROLLOUT-v1.7.0_gg7.md
+grep -n '^| R8 |' docs/ROLLOUT-v1.7.0_gg7.md
+grep -nxF 'FUT-05 stays open.' docs/ROLLOUT-v1.7.0_gg7.md
+grep -n '^- The closing of helper clients has residuals' docs/ROLLOUT-v1.7.0_gg7.md
+grep -n '^| C2 |' docs/ROLLOUT-v1.7.0_gg6.md
+git diff --quiet 427f30b4c4dffd56841f5e5eafe13a55ac4caca8 HEAD -- docs/ROLLOUT-v1.7.0_gg6.md
+grep -n 'is redelivered with no retry budget' CHANGELOG.md
+grep -n 'a decision on changing' CHANGELOG.md
+head -1 CHANGELOG.md
+python3 -I -c '<the "## The raw numbers" section of docs/FORK-DELTA.md up to the next "## " heading, at the phase base and now, compared>'
+grep -n 'Future Requirements' docs/FORK-DELTA.md
+grep -n -A6 '^## Future Requirements' .planning/REQUIREMENTS.md
+grep -nE 'delivery strategy|deliveryStrategy' .planning/PROJECT.md .planning/MILESTONES.md
+grep -n -A8 'public void close(Collection<TopicPartition> partitions)' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+grep -nE 'LIF-01|LIF-02|RTY-01|RTY-02' .planning/REQUIREMENTS.md
+```
+
+```text
+rollout_gg7_identical_to_tag: yes
+rollout_gg7_f5_line: 52
+rollout_gg7_r8_line: 126
+rollout_gg7_fut05_line: 130
+rollout_gg7_residuals_bullet_line: 208
+rollout_gg6_c2_line: 114
+rollout_gg6_unchanged_since_base: yes
+changelog_gg7_known_issue_budget_line: 85
+changelog_gg7_known_issue_open_decision_line: 87
+changelog_gg8_unreleased: yes
+raw_numbers_section_unchanged: yes
+fork_delta_item8_requirements_reference_stale: yes
+planning_records_with_stop_claim: .planning/MILESTONES.md:24; .planning/PROJECT.md:48; .planning/PROJECT.md:661
+backlog_candidates: close(partitions) runs the proxy's partition removal before the strategy's close with no finally (FORK-DELTA item 13, read from the code); the keepFirst idiom of ProxySinkTask.stop() in ClickHouseSinkTask.stop() would attach the strategy's exception as suppressed (E-04)
+handoff_items: 14
+```
+
+Located unedited, each line number read live with `grep -n`. In `docs/ROLLOUT-v1.7.0_gg7.md` (identical to tag `v1.7.0_gg7`): row F5 (line 52) still lists "`ClickHouseSinkTask.stop()` without `try`/`finally` around the delivery strategy's `stop()`" as not fixed; row R8 (line 126) still says there is no retry budget and no setting removes a code, and cites FORK-DELTA item 24; line 130 is exactly `FUT-05 stays open.`; the residuals bullet (line 208) still names "a task-level `stop()` without `try`/`finally` around the delivery strategy's `stop()`". In `docs/ROLLOUT-v1.7.0_gg6.md` (unchanged since the phase base) row C2 (line 114) says the redelivery has no retry budget and ends "That follow-up is FUT-05, open in FORK-DELTA.md under Known costs and open items", which FORK-DELTA no longer says. In `CHANGELOG.md` the gg8 section starts at line 1 (`# 1.7.0_gg8, Unreleased`) and the gg7 section at line 23; its Known Issues bullet on the retry budget starts at line 85 and the bullet on writer `DataException` shapes at line 87 (its last words: "a decision on changing them is open"). The `## The raw numbers` section of `docs/FORK-DELTA.md` is identical to the phase base's. Item 8 of FORK-DELTA (line 232) still points the reader to the Future Requirements list of `.planning/REQUIREMENTS.md` ("remains open and is not contradicted by anything here"), while that section holds two prose bullets (upstream PRs #861, #855, #854 and #788; the many-to-one rename and partition-changing SMTs) and no `FUT-0` identifier, so the identifiers FUT-01 to FUT-04 that item 8 lists are not findable there. The `close(partitions)` code (lines 161 to 169 of `ClickHouseSinkTask.java`) calls `proxySinkTask.onPartitionRemoved(partitions)` and then `deliveryStrategy.close(partitions)` with no `finally`, so a throw from the first skips the second. `.planning/REQUIREMENTS.md` still shows LIF-01 and LIF-02 (lines 26 and 27) and RTY-01 and RTY-02 (lines 37 and 38) as unchecked, and the traceability rows for the four (lines 87, 88, 92 and 93) as `Pending`.
+
+| # | Item | Owner | Current location | What to do |
+|---|------|-------|------------------|------------|
+| 1 | gg7 rollout row F5 | Phase 49 (D-2) | `docs/ROLLOUT-v1.7.0_gg7.md` line 52 (the gg7 note stays a tag copy) | the gg8 rollout note corrects it: the task-level `stop()` residual is closed (FORK-DELTA item 13, E-03); the other residuals (the V1 Keeper constructor, the helper-client constructor, the second `start()`, the five-second wait) stay open |
+| 2 | gg7 rollout row R8 | Phase 49 (D-2) | `docs/ROLLOUT-v1.7.0_gg7.md` line 126 | the gg8 note corrects it: the missing budget is a recorded limit by decision (FORK-DELTA item 17, E-05 and E-06); no setting removes a code from the built-in set, by decision (item 24, E-08) |
+| 3 | gg7 FUT-05 status line | Phase 49 (D-2) | `docs/ROLLOUT-v1.7.0_gg7.md` line 130, `FUT-05 stays open.` | the gg8 note states that FUT-05 is closed by decision (FORK-DELTA item 24, E-08) |
+| 4 | gg7 residuals bullet | Phase 49 (D-2) | `docs/ROLLOUT-v1.7.0_gg7.md` line 208 | the gg8 note corrects the task-level `stop()` part of the bullet (see row 1) |
+| 5 | gg6 rollout row C2 | Phase 48 edits the gg6 note; Phase 49 reviews it | `docs/ROLLOUT-v1.7.0_gg6.md` line 114, "That follow-up is FUT-05, open in FORK-DELTA" | FORK-DELTA closes FUT-05 by decision (items 8, 17 and 24), so the clause is stale; correct it with the Phase 48 edits of this note, or record why not |
+| 6 | gg8 CHANGELOG section | Phase 49 (U-3) | `CHANGELOG.md` lines 1 to 22, `# 1.7.0_gg8, Unreleased`, only the `stop()` bullets | complete and date it: the upstream tail, the timeout limits, the RTY-01 limit bullet and the FUT-05 closure bullet |
+| 7 | superseded gg7 Known Issues bullets | Phase 49 (U-3) | `CHANGELOG.md` line 85 (retry budget) and line 87 (open decision on writer `DataException` shapes), inside the unedited gg7 section | the gg8 section says both are superseded by the recorded decisions (FORK-DELTA items 17 and 24); the gg7 section is not edited |
+| 8 | `VERSION` bump | Phase 49 | `VERSION` (unchanged since the phase base) | bump to the gg8 release version when the section is dated |
+| 9 | FORK-DELTA raw numbers | Phase 49 | `docs/FORK-DELTA.md` line 149, `## The raw numbers` (identical to the phase base) | refresh with the gate totals of the release (this phase's gate: testUnit 2295, suite 2898, 18 skips, anchors 218) |
+| 10 | FORK-DELTA item 8 reference | Phases 48-49 | `docs/FORK-DELTA.md` line 232, the Future Requirements list of `.planning/REQUIREMENTS.md` (no `FUT-0` identifier there) | point item 8 at a list that carries the identifiers, or restore them in REQUIREMENTS.md |
+| 11 | planning records with the old `stop()` claim | orchestrator | `.planning/MILESTONES.md:24; .planning/PROJECT.md:48; .planning/PROJECT.md:661` | update them to the fixed behaviour; they are planning records, not published documents |
+| 12 | REQUIREMENTS checkboxes | orchestrator | `.planning/REQUIREMENTS.md` lines 26, 27, 37, 38 and traceability lines 87, 88, 92, 93 | set LIF-01, LIF-02, RTY-01 and RTY-02 complete (this plan did not touch REQUIREMENTS.md) |
+| 13 | backlog: `close(partitions)` | the user's decision (a production change outside this phase's scope; D-1, D-3) | `ClickHouseSinkTask.java` lines 161 to 169, FORK-DELTA item 13 | a `finally` so the strategy's `close(partitions)` runs when the proxy's partition removal throws |
+| 14 | backlog: `keepFirst` in `stop()` | the user's decision (D-1, D-3) | `ClickHouseSinkTask.stop()`, E-04 (both-throw probe: the proxy side's exception is thrown, 0 suppressed) | the `keepFirst` idiom of `ProxySinkTask.stop()` would attach the strategy's exception as suppressed; the LIF-01 pin needs no edit |
+
+The tag copy `docs/ROLLOUT-v1.7.0_gg7.md` and the gg6 note, `CHANGELOG.md`'s gg7 section, `VERSION`, `docs/FORK-DELTA.md`'s raw numbers and every planning record named above are unchanged by this plan; only this evidence file changed.
+
+Recorded 2026-11-05T21:29:17Z.
 
 Verdict: pass
