@@ -60,6 +60,8 @@ public class ClickHouseWriter implements DBWriter {
 
     private static final long TIMEOUT_FOR_SHUTDOWN = 5; // seconds
     private static final String HELPER_CLIENT_CLOSE_FAILURE_LOG = "Failed to close ClickHouse helper client";
+    private static final String V1_INSERT_TIMEOUT_FORMAT =
+            "ClickHouse client V1 insert response not received within clickhouseClientInsertTimeoutMs=%d ms (QueryId: [%s])";
     private ClickHouseHelperClient chc = null;
     private ClickHouseSinkConfig csc = null;
 
@@ -1618,7 +1620,7 @@ public class ClickHouseWriter implements DBWriter {
                 pushStreamTime = writeRecordsRowBinary(records, table, stream, supportDefaults);
                 // We need to close the stream before getting a response
                 stream.close();
-                try (ClickHouseResponse response = future.get()) {
+                try (ClickHouseResponse response = awaitInsertResponseV1(future, queryId)) {
                     ClickHouseResponseSummary summary = response.getSummary();
                     LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", summary.getWrittenBytes(), summary.getWrittenRows(), queryId.getQueryId());
                 }
@@ -1749,7 +1751,7 @@ public class ClickHouseWriter implements DBWriter {
 
                 stream.close();
                 s2 = System.currentTimeMillis();
-                try (ClickHouseResponse response = future.get()) {
+                try (ClickHouseResponse response = awaitInsertResponseV1(future, queryId)) {
                     ClickHouseResponseSummary summary = response.getSummary();
                     LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", summary.getWrittenBytes(), summary.getWrittenRows(), queryId.getQueryId());
                 }
@@ -1907,7 +1909,7 @@ public class ClickHouseWriter implements DBWriter {
 
                 stream.close();
                 s2 = System.currentTimeMillis();
-                try (ClickHouseResponse response = future.get()) {
+                try (ClickHouseResponse response = awaitInsertResponseV1(future, queryId)) {
                     ClickHouseResponseSummary summary = response.getSummary();
                     LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", summary.getWrittenBytes(), summary.getWrittenRows(), queryId.getQueryId());
                 }
@@ -1994,6 +1996,33 @@ public class ClickHouseWriter implements DBWriter {
             future.cancel(true);
             throw new RetriableException("ClickHouse insert timed out after " + timeoutMs
                     + " ms (QueryId: [" + queryId.getQueryId() + "])", e);
+        }
+    }
+
+    /**
+     * Awaits an in-flight V1 insert response, bounded by {@code clickhouseClientInsertTimeoutMs}.
+     *
+     * <p>The V1 client runs the request on its own worker pool, so this wait is real, unlike the V2 client
+     * with {@code async=false} where the request has finished before a future exists. The body is written into
+     * the piped stream on the calling thread before this wait, so a write that blocks on a full pipe is not
+     * reached by this bound. On timeout the future is cancelled and a {@link RetriableException} is thrown;
+     * the caller's try-with-resources then closes the piped stream and the client, which releases the
+     * connection and the worker. The server may still commit what it received before the bound elapsed.
+     *
+     * <p>When the operator named {@code socket_timeout} in {@code jdbcConnectionProperties} the operator owns
+     * the transport limits and the wait is left unbounded, exactly as the V2 deadline is skipped.
+     */
+    private ClickHouseResponse awaitInsertResponseV1(CompletableFuture<ClickHouseResponse> future, QueryIdentifier queryId)
+            throws ExecutionException, InterruptedException {
+        long bound = chc.insertBoundMs(csc.getClickhouseClientInsertTimeoutMs());
+        if (bound <= 0) {
+            return future.get();
+        }
+        try {
+            return future.get(bound, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new RetriableException(String.format(V1_INSERT_TIMEOUT_FORMAT, bound, queryId.getQueryId()), e);
         }
     }
 

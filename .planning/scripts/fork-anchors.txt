@@ -246,3 +246,8 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertW
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	setRemoveOnCancelPolicy(true)	1	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	INSERT_BODY_DEADLINE_FORMAT	2	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	public long insertBoundMs(long timeoutMs)	1	TMO-03
+# Phase 46 (v1.7.0_gg8): client V1 inserts wait for the response with clickhouseClientInsertTimeoutMs as a bound, skipped when the operator named socket_timeout (TMO-03); the 0 row pins that the bare waits stay gone; rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	try (ClickHouseResponse response = future.get())	0	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	awaitInsertResponseV1(	4	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.insertBoundMs(	2	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	V1_INSERT_TIMEOUT_FORMAT	2	TMO-03
