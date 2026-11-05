@@ -23,7 +23,7 @@
 | E-08 | TMO-03 | 46-03 | pass |
 | E-09 | TMO-03 | 46-03 | pass |
 | E-10 | TMO-02 | 46-04 | pass |
-| E-11 | TMO-03 | 46-04 | pending (plan 46-04) |
+| E-11 | TMO-03 | 46-04 | pass |
 | E-12 | TMO-02, TMO-03 | 46-04 | pending (plan 46-04) |
 | E-13 | TMO-01 | 46-05 | pending (plan 46-05) |
 | E-14 | TMO-01, TMO-02, TMO-03 | 46-05 | pending (plan 46-05) |
@@ -605,5 +605,75 @@ PROBE46WIRE body_bytes=65610890 first_progress_ms=64 body_sent_ms=2305 total_ms=
 What the small-body progress escape needs: a slow materialized view behind a `Null` sink (`sleepEachRow(0.002)`), `async_insert=0` and the input split into 500-row blocks (the recipe's settings, `send_progress_in_http_headers=1`, `http_headers_progress_interval_ms=50`); with those the V2 insert ran 8315 ms on the base tree and 8299 ms on the fixed tree against a 3000 ms bound (the two differ by 0.2 %), and the control with a 600000 ms bound ran 8059 ms, so the write-phase deadline leaves a response that streams progress after the body is sent alone. The same insert under the server's default `async_insert=1` (the `function_sleep_max_microseconds_per_block` raise needed to get past the server's sleep limit) failed at 3060 ms on the base tree and 3050 ms on the fixed tree, a `DataTransferException` over a `SocketTimeoutException`, retriable by the connector's own classification. The 64 MiB body (4000 rows of 16 KiB behind the same slow view, `async_insert=0`) ended `ok` on both trees, at 8324 ms on the base tree and 8380 ms on the fixed tree, so the write-phase deadline did not cut it: the raw-wire probe of the same shape shows why, the server sent its first progress header 64 ms after the first byte (before the body had been fully sent, so `wire_progress_while_writing` is `yes`), but the client handed the whole 65610890-byte body to the socket in 2305 ms, inside the 3000 ms bound, over this transport, which means no body was still being sent at the bound and this live check never reached the progress-while-sending shape that `progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound` pins on a stub; the claim "the deadline cuts a progress-streaming body that is still being sent" therefore rests on the stub pin and not on a live measurement. What a timed-out insert left: the client V1 insert into a `Memory` table behind the slow view showed 0 rows when the timed-out call returned and 4000 rows 15 s later, the client V1 insert into a MergeTree table showed 2500 rows at once and 4000 rows 15 s later (the base-tree control landed all 4000 rows), and the timed-out default-`async_insert` V2 insert into a MergeTree table showed 4000 rows at once and 4000 rows 15 s later; in all three cases the server finished or kept the insert after the client gave up, so a timed-out insert is not rolled back, and the figures depend on the engine and on `async_insert` (the rows are read by a call that first runs `OPTIMIZE TABLE`, so "at once" is to within that call).
 
 Recorded 2026-11-05T11:05:00Z.
+
+Verdict: pass
+
+### E-11: Non-insert requests and ping against a server that never answers (client V2 and V1)
+
+Backs: TMO-03 (U-4: each non-insert request recorded with its measured number, no client-level timeout and no Keeper bound; U-5: the V2 `ping(timeout)` no-op recorded), ROADMAP Phase 46 criterion 2's recorded half.
+
+```sh
+git worktree add --detach /tmp/gsd46/probe-noninsert 6d4f5081   # HEAD; probe written with the Write tool, never committed
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-noninsert --console=plain testUnit --rerun --tests '*ProbeNonInsertBoundsMeasurementTest*' > /tmp/gsd46/exec/probe-noninsert.log 2>&1
+grep -h '^PROBENI ' /tmp/gsd46/probe-noninsert/build/test-results/testUnit/TEST-*.xml > /tmp/gsd46/exec/probe-noninsert-lines.txt
+git worktree remove --force /tmp/gsd46/probe-noninsert && git worktree prune
+git log --all --format=%H -- '*ProbeNonInsertBoundsMeasurementTest.java'
+```
+
+```text
+probe_tree: 6d4f5081 (src identical to cc3c9b55)
+probe_runs: 2 (the first run capped the V2 helper's Keeper read at the 20 s V2 cap, a probe error: it recorded 20014 ms still running; the probe was changed to give the Keeper read the V1 cap on both helper clients, and the second run is the recorded one)
+probe_helper_retry: 1 (setRetry(1) on both helper clients, as the research probe had; the connector's default is 3)
+probe_stub: StubClickHouseServer.stalling(), HTTP mode, a request is held up to 60 s, every request on its own thread, the two helper clients closed at the end so every thread ends
+v2_block_cap_s: 20
+v1_cap_s: 45
+ping_timeout_ms: 2000
+v2_ping_elapsed_ms: 20005
+v2_version_elapsed_ms: 20004
+v2_show_tables_elapsed_ms: 20004
+v2_describe_elapsed_ms: 20004
+v2_alter_elapsed_ms: 20004
+v2_keeper_write_elapsed_ms: 20004
+v2_keeper_read_elapsed_ms: 30034
+v1_ping_elapsed_ms: 2082
+v1_version_elapsed_ms: 30036
+v1_show_tables_elapsed_ms: 30037
+v1_describe_elapsed_ms: 30045
+v1_alter_elapsed_ms: 30034
+v1_keeper_write_elapsed_ms: 30043
+v1_keeper_read_elapsed_ms: 30034
+v2_ping_noop_confirmed: yes
+v1_library_bound_ms: 30045
+v1_describe_outcome: returned null
+v1_version_outcome: returned null
+v1_show_tables_outcome: returned an ArrayList (empty, read from the code: the failure is swallowed and the list stays empty)
+v1_alter_outcome: java.lang.RuntimeException
+v1_keeper_write_outcome: java.lang.RuntimeException
+v1_keeper_read_outcome: com.clickhouse.client.ClickHouseException
+put_path_requests: show_tables; describe; alter; keeper_write; keeper_read
+worktree_removed: yes
+probe_committed: no
+```
+
+```probeni
+PROBENI client=V2 request=ping elapsed_ms=20005 still_running_at_cap=yes outcome=still-running put_path=no
+PROBENI client=V2 request=version elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=no
+PROBENI client=V2 request=show_tables elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=describe elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=alter elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=keeper_write elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=keeper_read elapsed_ms=30034 still_running_at_cap=no outcome=com.clickhouse.client.ClickHouseException put_path=yes
+PROBENI client=V1 request=ping elapsed_ms=2082 still_running_at_cap=no outcome=returned:Boolean put_path=no
+PROBENI client=V1 request=version elapsed_ms=30036 still_running_at_cap=no outcome=returned:null put_path=no
+PROBENI client=V1 request=show_tables elapsed_ms=30037 still_running_at_cap=no outcome=returned:ArrayList put_path=yes
+PROBENI client=V1 request=describe elapsed_ms=30045 still_running_at_cap=no outcome=returned:null put_path=yes
+PROBENI client=V1 request=alter elapsed_ms=30034 still_running_at_cap=no outcome=java.lang.RuntimeException put_path=yes
+PROBENI client=V1 request=keeper_write elapsed_ms=30043 still_running_at_cap=no outcome=java.lang.RuntimeException put_path=yes
+PROBENI client=V1 request=keeper_read elapsed_ms=30034 still_running_at_cap=no outcome=com.clickhouse.client.ClickHouseException put_path=yes
+```
+
+Read from the code: a table-refresh thread blocked on client V2 keeps `isUpdateMappingRunning` set, so every later `updateMapping` returns `false` and callers fall to a direct `describeTable`, and a start-path request that never returns leaves `SinkTask.start` blocked. Measured: against a server that accepts every request and never answers, every client V2 request except the Keeper read was still blocked at the 20 s cap (the V2 ping at 20005 ms with a 2000 ms timeout, so its timeout does not fire), while the Keeper read, which always goes through a client V1 read, ended at 30034 ms on the V2 helper client and 30034 ms on the V1 helper client, and every other client V1 request except ping ended between 30034 and 30045 ms; the client V1 ping ended at 2082 ms. The probe built both helper clients with the retry count at 1; the connector's default is 3, and `pingV1` and `queryV1` loop that many times (read from the code, not measured with 3), so the V1 ping and the V1 Keeper write take longer than these figures with the default. The V1 describe, version and table-list calls swallowed their failure and returned null or an empty list, and the ALTER and the Keeper write threw a `RuntimeException`.
+
+Recorded 2026-11-05T11:07:00Z.
 
 Verdict: pass
