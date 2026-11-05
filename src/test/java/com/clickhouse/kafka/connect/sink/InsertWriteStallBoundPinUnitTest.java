@@ -88,6 +88,8 @@ class InsertWriteStallBoundPinUnitTest {
     private static final String WATCHDOG_THREAD_NAME = "clickhouse-insert-watchdog";
     private static final int EXPECTED_POSTS = 1;
     private static final int EXPECTED_POSTS_AFTER_TWO_INSERTS = 2;
+    private static final int EXPECTED_POSTS_AFTER_A_RETRY = 2;
+    private static final int RETRY_RECORDS = 16;
 
     private static final String BOUND_PHRASE = "clickhouseClientInsertTimeoutMs=" + INSERT_BOUND_MS;
     private static final String DEADLINE_IN_CHAIN = "the bound's own message is in the failure chain";
@@ -109,6 +111,8 @@ class InsertWriteStallBoundPinUnitTest {
     private static final String WATCHDOG_ENDED = "stop() must end the watchdog thread";
     private static final String FIRST_INSERT = "the first insert succeeds";
     private static final String SECOND_INSERT = "a second insert on the same writer after the first one's bound succeeds";
+    private static final String RETRY_HAPPENED =
+            "POST count at the stub; two means the client retried the insert and the retry is what was cut";
 
     static Stream<Arguments> routesAndTolerances() {
         return Stream.of(ClickHouseSinkConfig.ERROR_TOLERANCE_NONE, ClickHouseSinkConfig.ERROR_TOLERANCE_ALL)
@@ -375,8 +379,13 @@ class InsertWriteStallBoundPinUnitTest {
         }
     }
 
+    /**
+     * Pins that a writer still inserts after the bound of its first insert has elapsed. It does not pin a late
+     * fire against a finished request: {@code disarm()} cancels the task at the end of every insert, so no late
+     * fire happens that a test could observe, and the mutation that never disarms leaves this case green.
+     */
     @Test
-    void lateFireAfterASuccessfulV2InsertIsHarmless() throws Exception {
+    void secondInsertAfterTheFirstInsertsBoundHasElapsedSucceeds() throws Exception {
         Route route = Route.JSON;
         String topic = topic(TOPIC_PREFIX, "late_fire", route);
         List<Record> records = records(route, topic, List.of(smallRecord(route, topic)));
@@ -391,6 +400,25 @@ class InsertWriteStallBoundPinUnitTest {
                     () -> writer.doInsert(records, new QueryIdentifier(topic, SECOND_QUERY_ID)), SECOND_INSERT);
 
             assertEquals(EXPECTED_POSTS_AFTER_TWO_INSERTS, posts(stub).size(), ONE_POST);
+        } finally {
+            writer.finish();
+        }
+    }
+
+    @Test
+    void clientInternalRetryOfAnInsertGetsAFreshWriteDeadline() throws Exception {
+        Route route = Route.JSON;
+        String topic = topic(TOPIC_PREFIX, "retry_stall", route);
+        List<Record> records = records(route, topic, largeRecords(route, topic, RETRY_RECORDS));
+
+        PinWriter writer = new PinWriter(topic);
+        try (StubClickHouseServer stub = StubClickHouseServer.closingFirstPostAfterItsBodyThenNotReadingBody()) {
+            assertTrue(writer.start(config(stub, CLIENT_V2, INSERT_TIMEOUT_MS, Map.of())));
+
+            Exception thrown = insertFailure(writer, records, topic, GUARD);
+
+            assertDeadlineFailure(thrown);
+            assertEquals(EXPECTED_POSTS_AFTER_A_RETRY, posts(stub).size(), RETRY_HAPPENED);
         } finally {
             writer.finish();
         }

@@ -1492,11 +1492,8 @@ public class ClickHouseWriter implements DBWriter {
 
         AtomicLong pushStreamTime = new AtomicLong(0);
         InsertWriteDeadline deadline = insertWriteDeadline(client, queryId);
-        DataStreamWriter dataWriter = out -> {
-            pushStreamTime.set(writeRecordsRowBinary(records, table, out, supportDefaults));
-            out.close();
-            deadline.disarm();
-        };
+        DataStreamWriter dataWriter = deadlineAwareWriter(deadline, out ->
+                pushStreamTime.set(writeRecordsRowBinary(records, table, out, supportDefaults)));
 
         try (InsertResponse insertResponse = insertWithWriteDeadline(deadline, () -> client.insert(table.getName(), dataWriter, format, insertSettings), queryId)) {
             LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", insertResponse.getWrittenBytes(), insertResponse.getWrittenRows(), queryId.getQueryId());
@@ -1794,11 +1791,8 @@ public class ClickHouseWriter implements DBWriter {
 
         AtomicLong dataSerializeTime = new AtomicLong(0);
         InsertWriteDeadline deadline = insertWriteDeadline(client, queryId);
-        DataStreamWriter dataWriter = out -> {
-            dataSerializeTime.set(writeRecordsJson(records, table, out));
-            out.close();
-            deadline.disarm();
-        };
+        DataStreamWriter dataWriter = deadlineAwareWriter(deadline, out ->
+                dataSerializeTime.set(writeRecordsJson(records, table, out)));
         long s2 = System.currentTimeMillis();
         List<String> insertColumns = csc.getJsonInsertColumns();
         Supplier<CompletableFuture<InsertResponse>> insert = () -> (insertColumns != null && !insertColumns.isEmpty())
@@ -1947,11 +1941,8 @@ public class ClickHouseWriter implements DBWriter {
         ClickHouseFormat clickHouseFormat = getStringInsertFormat();
         AtomicLong pushStreamTime = new AtomicLong(0);
         InsertWriteDeadline deadline = insertWriteDeadline(client, queryId);
-        DataStreamWriter dataWriter = out -> {
-            pushStreamTime.set(writeRecordsString(records, out));
-            out.close();
-            deadline.disarm();
-        };
+        DataStreamWriter dataWriter = deadlineAwareWriter(deadline, out ->
+                pushStreamTime.set(writeRecordsString(records, out)));
 
         long s2 = System.currentTimeMillis();
         try (InsertResponse insertResponse = insertWithWriteDeadline(deadline, () -> client.insert(table.getName(), dataWriter, clickHouseFormat, insertSettings), queryId)) {
@@ -2041,6 +2032,32 @@ public class ClickHouseWriter implements DBWriter {
             return InsertWriteDeadline.none();
         }
         return new InsertWriteDeadline(insertWatchdog(), client::cancelTransportRequest, queryId.getQueryId(), bound);
+    }
+
+    @FunctionalInterface
+    private interface InsertBody {
+        void write(OutputStream out) throws IOException;
+    }
+
+    /**
+     * Wraps an insert body so that the deadline is disarmed once the body is sent, and re-armed when the
+     * client retries the insert internally (it calls {@code onRetry} before each further attempt and then sends
+     * the body again), so every attempt gets the full bound.
+     */
+    private static DataStreamWriter deadlineAwareWriter(InsertWriteDeadline deadline, InsertBody body) {
+        return new DataStreamWriter() {
+            @Override
+            public void onOutput(OutputStream out) throws IOException {
+                body.write(out);
+                out.close();
+                deadline.disarm();
+            }
+
+            @Override
+            public void onRetry() {
+                deadline.rearm();
+            }
+        };
     }
 
     private InsertResponse insertWithWriteDeadline(InsertWriteDeadline deadline, Supplier<CompletableFuture<InsertResponse>> insert, QueryIdentifier queryId)
@@ -2168,8 +2185,10 @@ public class ClickHouseWriter implements DBWriter {
      * A deadline on sending one client V2 insert body. It is armed before the request and disarmed when the
      * body stream is closed, so it bounds sending only: a response that streams progress after the body is
      * sent is left alone, while progress that arrives during the send does not stop it. A fire after the
-     * request ended is a no-op, because the client unregisters the query id when the request ends. A request
-     * cancelled by id is not retried by the client, so one insert makes one request.
+     * request ended is a no-op, because the client unregisters the query id when the request ends. The client
+     * may retry a failed insert itself (its {@code retry} option, 3 by default, for a connection that closed
+     * without a response, a connect failure or a retryable server answer), so the deadline is re-armed for each
+     * retry and every attempt gets the full bound; a request cancelled by id is not retried.
      */
     private static final class InsertWriteDeadline {
         private static final String WATCHDOG_THREAD_NAME = "clickhouse-insert-watchdog";
@@ -2224,6 +2243,11 @@ public class ClickHouseWriter implements DBWriter {
             if (task != null) {
                 task.cancel(false);
             }
+        }
+
+        void rearm() {
+            disarm();
+            arm();
         }
 
         void throwIfFired(Exception cause) {

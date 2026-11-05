@@ -240,7 +240,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient
 # Phase 46 (v1.7.0_gg8): client V2 inserts get a write-phase deadline that cancels the request by query id when the body is not sent within clickhouseClientInsertTimeoutMs, skipped when the operator named socket_timeout (TMO-03); rows land in the commit that changes the code
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWriteDeadline(client, queryId)	3	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWithWriteDeadline(	4	TMO-03
-src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadline.disarm();	4	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadline.disarm();	2	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	client::cancelTransportRequest	1	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWatchdog.shutdownNow()	1	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	setRemoveOnCancelPolicy(true)	1	TMO-03
@@ -254,3 +254,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	V1_INSE
 # Phase 46 (v1.7.0_gg8): the clickhouseClientInsertTimeoutMs help text names what the setting bounds and what it does not (TMO-01); the 0 row pins that the old response-wait claim stays gone; rows land in the commit that changes the text
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	What it does not bound	1	TMO-01
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	wait for a single ClickHouse insert response	0	TMO-01
+# Phase 46 plan 46-06 (WR-01): the three V2 insert methods share deadlineAwareWriter, whose onRetry re-arms the write deadline when the client retries an insert; deadline.disarm( ) 4 -> 2 (the three per-site disarms became one in the shared writer), rows added in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadline.rearm();	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadlineAwareWriter(	4	TMO-03
