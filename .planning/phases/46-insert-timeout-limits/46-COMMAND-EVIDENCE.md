@@ -15,7 +15,7 @@
 |-------|-------------|------|---------|
 | E-01 | TMO-01, TMO-02, TMO-03 | 46-01 | pass |
 | E-02 | TMO-03 | 46-01 | pass |
-| E-03 | TMO-02, TMO-03 | 46-01 | pending (plan 46-01) |
+| E-03 | TMO-02, TMO-03 | 46-01 | pass |
 | E-04 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
 | E-05 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
 | E-06 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
@@ -146,5 +146,50 @@ raw_slice_main_diff: 0
 `notReadingBodyBlocksA64MebibyteBodyWrite` shows on the OS that runs testUnit (macOS, Darwin 25.5.0) that a plain socket client writing a 64 MiB chunked body against `notReadingBody()` is still blocked after 2 s, with 0 body bytes read and exactly 1 recorded request, and that the blocked writer ends with an `IOException` within 5 s of `close()`. The raw slice run was first made on the same file contents before the E-01 commit and repeated after it; the figures above are the repeat. The per-file formatting check ran on a worktree at B0; Spotless reformatted other, pre-existing files there but neither new file changed.
 
 Recorded 2026-11-05T09:57:00Z.
+
+Verdict: pass
+
+### E-03: Raw responders complete, existing stub users green, A1 measured on Linux and macOS
+
+Backs: TMO-02, TMO-03, 46-RESEARCH.md assumption A1 (Linux loopback buffers swallow no more than a fraction of the 64 MiB write-stall body) and Pitfalls 1 and 2 (a stub that streams progress headers, and a body that cannot fit in loopback buffers).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*StubClickHouseServerRawModeUnitTest*' --tests '*InsertStallBoundPinUnitTest*' --tests '*ClientErrorShapePinUnitTest*' --tests '*ClientEndpointAndOptionsPinUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' > /tmp/gsd46/exec/raw-full.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class StubClickHouseServerRawModeUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit failures=0 errors=0
+python3 -I /tmp/gsd46/exec/a1_probe.py
+colima ssh --profile vz -- python3 -I - < /tmp/gsd46/exec/a1_probe.py
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+git commit -F /tmp/gsd46/exec/msg-full.txt
+git rev-parse HEAD
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 9bd0944ebd066852ef059e7b2bca2a6ff2a54137 -- src/main | wc -l
+```
+
+```text
+raw_full_exit: 0
+raw_tests: 6
+raw_total_tests: 58 across the six classes run, 0 failures, 0 errors, 0 skipped
+http_mode_users_failed: 0
+a1_macos_absorbed_bytes: 662096
+a1_macos_kernel: Darwin 25.5.0
+a1_macos_rcvbuf_effective: 326568
+a1_linux_absorbed_bytes: 1245184
+a1_linux_kernel: 6.8.0-50-generic
+a1_linux_rcvbuf_effective: 8192
+a1_linux_tcp_rmem: 4096 131072 6291456
+a1_linux_tcp_wmem: 4096 16384 4194304
+a1_tool: colima-python3
+a1_runs: 4 runs on each OS (one plus three repeats), identical absorbed byte counts on every run
+a1_pin_body_bytes: 67108864
+a1_margin: 53.9
+harness_tip: 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+harness_main_diff: 0
+fmt_stub_2: identical
+fmt_raw_test_2: identical
+```
+
+Meaning of the A1 numbers for the 64 MiB body: with a 4096-byte receive buffer set before `listen` and a peer that reads only the request head, a writer pushed 662096 bytes (0.63 MiB) on macOS and 1245184 bytes (1.19 MiB) on the colima VM's Linux 6.8 kernel before its send timed out, so the 64 MiB pin body is 53.9 times the larger value and cannot be swallowed by loopback buffers on either OS. Measurement notes: the probe is a Python client and server (`/tmp/gsd46/exec/a1_probe.py`, scratch, never committed), not the Java stub; a send of 64 KiB pieces with a 2 s send timeout ends the run; on macOS the accepted socket reports a 326568-byte receive buffer, so the 4096 request is not honoured there and the Java premise test (`notReadingBodyBlocksA64MebibyteBodyWrite`, 2.016 s) is the macOS evidence; the Linux accepted socket reports 8192 (the kernel doubles 4096) and its send buffer autotuned to 2626560 bytes. The Java stub itself runs only on the machine that runs testUnit; the Linux figure shows that the same shape blocks long before 64 MiB on a Linux loopback. The per-file formatting check for the second commit reused the Spotless worktree run of the same file contents at B0.
+
+Recorded 2026-11-05T09:58:00Z.
 
 Verdict: pass
