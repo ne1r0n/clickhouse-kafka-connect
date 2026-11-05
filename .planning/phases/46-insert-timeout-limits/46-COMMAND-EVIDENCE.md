@@ -17,7 +17,7 @@
 | E-02 | TMO-03 | 46-01 | pass |
 | E-03 | TMO-02, TMO-03 | 46-01 | pass |
 | E-04 | TMO-03, TMO-02 | 46-02 | pass |
-| E-05 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
+| E-05 | TMO-03, TMO-02 | 46-02 | pass |
 | E-06 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
 | E-07 | TMO-03 | 46-03 | pending (plan 46-03) |
 | E-08 | TMO-03 | 46-03 | pending (plan 46-03) |
@@ -226,5 +226,58 @@ worktree_removed: yes
 The worktree's `src/main` is byte-identical to the base (`git diff --quiet` exit 0), so every red here is the unchanged production behaviour. The 13 guard cases (write stall x3 routes, write stall through put x6, slow upload x1, slow upload through put x2, progress while sending x1) each failed with `a client V2 insert must end within the bound ==> execution timed out after 10000 ms`, the `assertTimeoutPreemptively` guard: the insert was still blocked after 10 s with a 1000 ms insert timeout and a 64 MiB body. The watchdog case failed on `one armed insert creates exactly one watchdog thread ==> expected: <1> but was: <0>` (no watchdog exists). The five recorded or operator-owned cases were green: the progress-after-sent case ran 6.088 s past its 1500 ms bound (the recorded limit, body already sent), the operator's longer `socket_timeout` left the write stall running for the 3 s observation with no connector bound in the chain, the operator's shorter `socket_timeout` ended a quiet stall through put under both tolerances, and the late-fire pair of inserts passed.
 
 Recorded 2026-11-05T10:07:00Z.
+
+Verdict: pass
+
+### E-05: V2 write-phase deadline green in one commit, operator gate, anchors
+
+Backs: TMO-03, TMO-02 (U-1 recorded side), ROADMAP Phase 46 criteria 2 and 3 for the client V2 write-side stall, and U-3 (the operator's `socket_timeout` wins).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' > /tmp/gsd46/exec/green-v2.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertStallBoundPinUnitTest*' --tests '*InsertSocketTimeoutOptionUnitTest*' --tests '*RetriableExceptionPassThroughUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' --tests '*ClientEndpointAndOptionsPinUnitTest*' --tests '*ClientErrorShapePinUnitTest*' --tests '*WriterFailureClassificationUnitTest*' --tests '*SourcePlanningIdGuardUnitTest*' --tests '*StubClickHouseServerRawModeUnitTest*' > /tmp/gsd46/exec/neighbours-v2.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class InsertStallBoundPinUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 208
+grep -cF 'chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+git show 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5:src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java | grep -cF 'awaitInsertResponse('
+grep -cF 'awaitInsertResponse(' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <five files> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <five files>
+git add <six files> && git commit -F /tmp/gsd46/exec/msg-p2-fix.txt
+```
+
+```text
+v2_green_exit: 0
+v2_green_failed_count: 0
+v2_pin_tests: 19
+v2_gate_unit_tests: 20
+v2_new_tests: 39
+v2_write_stall_case_seconds_max: 1.082
+v2_slow_upload_case_seconds: 1.023
+v2_progress_while_sending_case_seconds: 1.013
+v2_progress_case_seconds: 6.085
+v2_operator_long_case_seconds: 3.026
+v2_neighbours_exit: 0
+v2_neighbours_tests: 353
+v2_neighbours_failed_count: 0
+gg7_pins_after: InsertStallBoundPinUnitTest 15, InsertSocketTimeoutOptionUnitTest 23, RetriableExceptionPassThroughUnitTest 38, no failure
+anchors_mirror: rows=208 bad=0
+insert_socket_timeout_sites: 3
+await_insert_response_count_before: 4
+await_insert_response_count_after: 2
+await_insert_response_body_unchanged: yes
+operator_set_socket_timeout_lines: 4
+fmt_writer: preexisting
+fmt_helper: preexisting
+fmt_fixtures: identical
+fmt_stall_pin: identical
+fmt_gate: identical
+v2_fix_commit: b53cd23c7114e9130ceeb4a552f2d87b1c50ca39
+v2_fix_commit_files: 6
+```
+
+The green runs passed on the first attempt after the code was written. Case times through the real writer and a raw loopback stub, wall clock from the call: the write stall (three routes, direct and through put) ended in 1.01 to 1.08 s against the 1000 ms bound (red on the unchanged tree: still blocked after 10 s); the slow upload cut at 1.023 s with body bytes already read; the progress-while-sending case 1.013 s; the progress-after-sent case ran 6.085 s against a 1500 ms bound (the recorded U-1 limit, body already sent, unchanged); the operator's longer `socket_timeout` left the write stall running for the whole 3 s observation. The fix commit holds exactly `ClickHouseWriter.java`, `ClickHouseHelperClient.java`, the fixtures, the V2 pin class, the gate unit class and `fork-anchors.txt`. The anchor counts measured with `grep -cF` before the rows were written: `insertWriteDeadline(client, queryId)` 3, `insertWithWriteDeadline(` 4, `deadline.disarm();` 4, `client::cancelTransportRequest` 1, `insertWatchdog.shutdownNow()` 1, `setRemoveOnCancelPolicy(true)` 1, `INSERT_BODY_DEADLINE_FORMAT` 2, `insertBoundMs(` declaration 1, and the operator row 3 to 4. The `awaitInsertResponse` method text from its Javadoc to its closing brace equals the base's (python extract of both versions). The per-file formatting check on a worktree at the pre-commit HEAD: the three test files were identical after `spotlessApply`; `ClickHouseWriter.java` and `ClickHouseHelperClient.java` differ only in import ordering, which also differs when the unchanged HEAD copies are formatted, so the lines this change added and edited are not reformatted (`preexisting`).
+
+Recorded 2026-11-05T10:11:00Z.
 
 Verdict: pass
