@@ -14,7 +14,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | TMO-01, TMO-02, TMO-03 | 46-01 | pass |
-| E-02 | TMO-03 | 46-01 | pending (plan 46-01) |
+| E-02 | TMO-03 | 46-01 | pass |
 | E-03 | TMO-02, TMO-03 | 46-01 | pending (plan 46-01) |
 | E-04 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
 | E-05 | TMO-03, TMO-02 | 46-02 | pending (plan 46-02) |
@@ -103,5 +103,48 @@ baseline_suite_rerun: the re-run above, same command, exit 0, no crash file
 The baseline totals later plans compute expected counts from are testUnit 2086 tests (Phase 45 E-19 recorded the same) and full suite 2689 tests (Phase 45 E-18's 2675 plus E-19's 14 test-only cases). The first full-suite attempt ended in the known intermittent OpenJ9 crash (exit 255, 2587 of 2689 tests finished, no failure among them); the single re-run is the recorded baseline. The self-test ran concurrently with the testUnit and full-suite baselines; it reads git objects only. Every file under `src` equalled B0 while the testUnit and full-suite baselines ran; the tail gate and the self-test read commit objects only.
 
 Recorded 2026-11-05T09:55:13Z.
+
+Verdict: pass
+
+### E-02: Raw-socket stub first slice: notReadingBody and the 64 MiB write-stall premise
+
+Backs: TMO-03, ROADMAP Phase 46 note (extend `StubClickHouseServer` with the responders the pins need): the com.sun `HttpServer` reads the whole body before a responder runs, so a client body write can never block against it; the raw mode reads the request head only.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*StubClickHouseServerRawModeUnitTest*' --tests '*InsertStallBoundPinUnitTest*' --tests '*ClientErrorShapePinUnitTest*' --tests '*ClientEndpointAndOptionsPinUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' > /tmp/gsd46/exec/raw-slice.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class StubClickHouseServerRawModeUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit failures=0 errors=0
+git worktree add --detach /tmp/gsd46/fmt 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply > /tmp/gsd46/exec/fmt-slice.log 2>&1
+cmp /tmp/gsd46/fmt/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+cmp /tmp/gsd46/fmt/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+git worktree remove --force /tmp/gsd46/fmt && git worktree prune
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+git commit -F /tmp/gsd46/exec/msg-slice.txt
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main | wc -l
+```
+
+```text
+raw_slice_exit: 0
+raw_slice_tests: 2
+raw_slice_total_tests: 54 across the six classes run, 0 failures, 0 errors, 0 skipped
+http_mode_users_failed: 0
+http_mode_users_run: InsertStallBoundPinUnitTest 15, ClientErrorShapePinUnitTest 7, ClientEndpointAndOptionsPinUnitTest 5, WriterHelperClientClosingUnitTest 23, ClientInsertWirePinUnitTest 2 (ClientErrorShapes is driven by ClientErrorShapePinUnitTest)
+premise_blocked_write_bytes: 67108864
+premise_observation_ms: 2000
+premise_body_bytes_read: 0
+premise_requests_recorded: 1
+premise_release_bound_ms: 5000
+premise_test_seconds: 2.005
+stub_receive_buffer_bytes: 4096
+fmt_stub_1: identical
+fmt_raw_test_1: identical
+raw_slice_commit: d1cbdff294b53aaccabff25d85f86718a1441643
+raw_slice_main_diff: 0
+```
+
+`notReadingBodyBlocksA64MebibyteBodyWrite` shows on the OS that runs testUnit (macOS, Darwin 25.5.0) that a plain socket client writing a 64 MiB chunked body against `notReadingBody()` is still blocked after 2 s, with 0 body bytes read and exactly 1 recorded request, and that the blocked writer ends with an `IOException` within 5 s of `close()`. The raw slice run was first made on the same file contents before the E-01 commit and repeated after it; the figures above are the repeat. The per-file formatting check ran on a worktree at B0; Spotless reformatted other, pre-existing files there but neither new file changed.
+
+Recorded 2026-11-05T09:57:00Z.
 
 Verdict: pass
