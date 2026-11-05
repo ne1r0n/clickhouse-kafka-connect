@@ -21,7 +21,7 @@
 | E-06 | RTY-01 | 47-02 | pass |
 | E-07 | RTY-01 | 47-02 | pass |
 | E-08 | RTY-02 | 47-03 | pass |
-| E-09 | LIF-02 | 47-03 | pending (plan 47-03) |
+| E-09 | LIF-02 | 47-03 | pass |
 | E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pending (plan 47-04) |
 | E-11 | LIF-02, RTY-02 | 47-04 | pending (plan 47-04) |
 
@@ -479,5 +479,49 @@ anchors_mirror: rows=218 bad=0
 The user decided on 2026-11-05 (47-CONTEXT.md U-2): "NO validator. Keep the start-up WARN and its two pins unchanged; close FUT-05 with the reason; FORK-DELTA items 8, 17 and 24 stop listing it as open." What stays as it was at the phase base: the WARN text (`UNVETTED_RETRIABLE_CODES_WARNING` and its method `warnOnUnvettedRetriableCodes`, lines 22-28 and 136-143 of `ClickHouseSinkTask.java`), `UnvettedRetriableCodesWarnUnitTest`, `UnvettedRetriableCodesWarnLiveTest`, `AdditionalRetriableErrorCodesPinUnitTest`, `AdditionalRetriableErrorCodesTest`, and the setting's description in `ClickHouseSinkConfig` (the file is byte-identical to the phase base, as are `Utils` and `ProxySinkTask`). `warn_tests_green` rests on E-05's testUnit gate (2295 tests, 0 failures), in which the E-01 `warn_tests` count of 21 for `UnvettedRetriableCodesWarnUnitTest` is unchanged. The commit changes exactly two lines of `docs/FORK-DELTA.md` (items 8 and 24, 2 insertions and 2 deletions); the Connector-source WARN row that cites Known cost 24 is not edited, and no line of the file carries the open FUT-05 parenthesis, the stays-open wording or the not-closed sentence. No source or test file changed in this task.
 
 Recorded 2026-11-05T21:13:30Z.
+
+Verdict: pass
+
+### E-09: CHANGELOG 1.7.0_gg8 section started with the corrected stop() bullets; gg7 section untouched
+
+Backs: LIF-02, ROADMAP Phase 47 criterion 2 (the CHANGELOG `stop()` Bug Fixes and Known Issues bullets describe the fixed behaviour and claim no more than the LIF-01 pin and the E-04 probe show), U-3.
+
+```sh
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py expect .planning/phases/47-task-stop-retry-classification/47-COMMAND-EVIDENCE.md E-04 'both_throw_thrown^IllegalArgumentException' 'both_throw_suppressed=0'   # and E-03 green_tests=6
+python3 -I -c '<read the changelog_gg8 value of 47-doc-edits.json and write it followed by the unchanged CHANGELOG.md content>'
+python3 -I -c '<SHA-256 and maximum line length of the changelog_gg8 value; CHANGELOG.md equals the value followed by the base content>'
+git diff --quiet 427f30b4c4dffd56841f5e5eafe13a55ac4caca8 HEAD -- VERSION
+git add CHANGELOG.md && git commit -F /tmp/gsd47/exec/msg-cl.txt
+python3 -I -c '<replay the prepend on the commit parent and compare with the commit>'
+```
+
+```text
+e04_both_throw_thrown: IllegalArgumentException:proxy side failure
+e04_both_throw_suppressed: 0
+e03_green_tests: 6
+changelog_first_line: # 1.7.0_gg8, Unreleased
+changelog_earlier_content_identical: yes
+gg8_sha256: 0fa57f146c9923b6d87881631adaaddedbd88d3d7d87ff2a97f7e1e3ed97b8b8
+gg8_max_line_length: 117
+gg7_section_edited: no
+version_unchanged: yes
+gg8_claims_backed: yes
+changelog_commit: 15aa445fac0b034ffdd57e64e88042af4e196db5
+```
+
+The commit adds 22 lines and removes none; the file equals the `changelog_gg8` text of `47-doc-edits.json` (md5 of the JSON `3c4b1ce86e50bf8970e744a7eb6dc3a6`) followed by the phase base's `CHANGELOG.md` byte for byte, so the published `1.7.0_gg7` section and everything below are unchanged. The section carries only the `stop()` bullets; the rest of the gg8 section (upstream tail, timeout limits, the RTY-01 limit and the FUT-05 closure bullets, the date) is Phase 49's.
+
+Claims map, each sentence against the fact that backs it:
+
+| Sentence | Evidence entry and fact |
+|---|---|
+| `stop()` stops the proxy task (writer, MBean, state provider) when the strategy's `stop()` throws | E-02: `strategyStopFailureStillStopsTheProxyTask` red on the unchanged tree (`the writer must have been stopped once ==> expected: <1> but was: <0>`); E-03: `green_tests: 6`, `green_failures: 0` after the fix commit |
+| when only the strategy throws, its exception is the one that reaches Kafka Connect | E-03: the same case is green and asserts `assertSame(strategy.failure, thrown, ...)` (line 220 of `ClickHouseSinkTaskStopUnitTest`); E-04 narrative: single-throw probe at the fix commit, strategy stop 1, writer stop 1, state close 1, MBean unregistered, the strategy's own exception to the caller; 47-RESEARCH.md: `WorkerSinkTask.close()` only logs a throw from `stop()` |
+| with each of the three shipped strategies `stop()` returns normally and stops the proxy task, as before | E-02: the four other cases (no strategy and the three shipped strategies, `stopReachesTheProxyTaskAfterEachShippedStrategy`) green on the unchanged tree (`red_pass: 4`); E-03: all 6 green after |
+| the gg7 sentence held for `ProxySinkTask.stop()` and not for `ClickHouseSinkTask.stop()` | E-01: `proxy_stop_tests: 4` (`ProxySinkTaskStopUnitTest`) green on the base and in E-03's neighbour run; E-02: the red run on the unchanged `ClickHouseSinkTask.stop()` |
+| the other residuals and the five-second wait | FORK-DELTA item 13 (read from the code, unchanged by this phase): the V1 Keeper constructor, the helper-client constructor, the second `start()`, and `awaitTermination` for at most 5 s |
+| both-throw outcome | E-04: `both_throw_thrown: IllegalArgumentException:proxy side failure`, `both_throw_suppressed: 0` (a one-off probe at the fix commit, measured and not pinned) |
+
+Recorded 2026-11-05T21:14:30Z.
 
 Verdict: pass
