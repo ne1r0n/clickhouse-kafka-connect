@@ -235,19 +235,19 @@ Phase gate: cache-busted `testUnit` with Docker unreachable, two `--rerun` full 
 
 Plans:
 **Wave 1**
-- [ ] 46-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit, full suite on `latest` × V2, anchors, tail gate), `StubClickHouseServer` raw-socket responders (`notReadingBody`, `readingBodySlowly`, `progressHeaders`) with Docker-free premise tests, A1 measured on Linux (TMO-03, TMO-02)
+- [ ] 46-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit, full suite on `latest` × V2, anchors, tail gate, XML snapshots), `StubClickHouseServer` raw-socket responders (`notReadingBody`, `readingBodySlowly`, `progressHeaders`, `progressWhileReadingBodySlowly`) with Docker-free premise tests, A1 measured on Linux (TMO-03, TMO-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 46-02-PLAN.md — client V2 write-phase deadline (armed before `client.insert`, disarmed after the body is sent, `cancelTransportRequest`, `RetriableException`), `insertBoundMs` operator gate (U-3), pins red first at R0, four mutations, seven anchor rows (TMO-03, TMO-02)
+- [ ] 46-02-PLAN.md — client V2 write-phase deadline as a private nested class of `ClickHouseWriter` (armed before `client.insert`, disarmed after the body is sent, `cancelTransportRequest`, `RetriableException` naming the setting), `insertBoundMs` operator gate (U-3), 19 pins red first at R0, four mutations, watchdog queue probe, eight anchor rows (TMO-03, TMO-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 46-03-PLAN.md — client V1 `future.get(timeout)` at the three insert sites (U-2), retriable under both tolerances, operator gate, release pin, pins red first at R0, three mutations, three anchor rows (TMO-03)
+- [ ] 46-03-PLAN.md — the client V1 in-JVM pipe measured (capacity, pipe-write stall on both trees), V1 `future.get(timeout)` at the three insert sites (U-2), retriable under both tolerances, operator gate both ways, release pin, 21 pins red first at R0, three mutations, four anchor rows (TMO-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 46-04-PLAN.md — live re-measure on `latest` (V2 progress escape, default `async_insert`, V1 before/after, rows left by timed-out inserts), non-insert and V2 ping inventory, FORK-DELTA row and Known cost 14 in U-6 wording with the rollout consequence (TMO-02, TMO-03)
+- [ ] 46-04-PLAN.md — live re-measure on `latest` with numeric range checks (V2 progress escape, default `async_insert`, 64 MiB body behind a slow view, raw-wire progress-while-sending, V1 before/after, rows left by timed-out inserts), non-insert and V2 ping inventory, FORK-DELTA row and Known cost 14 in U-6 wording, scoped to the measurements, with the rollout consequence (TMO-02, TMO-03)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 46-05-PLAN.md — `clickhouseClientInsertTimeoutMs` help text from the measured list with a Docker-free pin (seen red first, config diff text only, two anchor rows), FORK-DELTA help sentence, phase gate: testUnit with Docker unreachable, two `--rerun` suites, tail gate with anchor_rows=212 (TMO-01, TMO-02, TMO-03)
+- [ ] 46-05-PLAN.md — `clickhouseClientInsertTimeoutMs` help text from the measured list (V1 clause chosen by E-09, progress clause qualified) with a Docker-free pin (seen red first, config diff text only, two anchor rows), FORK-DELTA help sentence, phase gate: testUnit with Docker unreachable, two `--rerun` suites re-checked against XML snapshots, tail gate with anchor_rows=214 (TMO-01, TMO-02, TMO-03)
 
 **Research flag**: Settle these before planning:
 - Which mechanism reaches each case on client 0.11.0. The gg7 decision used a per-insert `socket_timeout` and rejected a client-level timeout that bounds every request. A mechanism that bounds requests beyond the case being fixed stops for the user.
