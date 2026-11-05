@@ -20,7 +20,7 @@
 | E-05 | TMO-03, TMO-02 | 46-02 | pass |
 | E-06 | TMO-03, TMO-02 | 46-02 | pass |
 | E-07 | TMO-03 | 46-03 | pass |
-| E-08 | TMO-03 | 46-03 | pending (plan 46-03) |
+| E-08 | TMO-03 | 46-03 | pass |
 | E-09 | TMO-03 | 46-03 | pending (plan 46-03) |
 | E-10 | TMO-02 | 46-04 | pending (plan 46-04) |
 | E-11 | TMO-03 | 46-04 | pending (plan 46-04) |
@@ -404,5 +404,50 @@ PROBEV1PIPE tree=base size_mib=256 blocked_in=future-get elapsed_ms=>60000 outco
 The three `PROBEV1PIPE` lines are the unchanged tree (R0, `src/main` identical to the base) with the real V1 client against `notReadingBody()`, JSON route, insert timeout 1000 (which the unchanged tree ignores on V1): at 16, 64 and 256 MiB the SinkTask thread was in a `CompletableFuture` wait at the 3 s sample, never in the pipe write, and at 60 s the call had still not ended, so the library's 30 s default does not end a V1 write stall at any of the three sizes. By the code the pipe holds at most 512 buffers of 8192 bytes (4 MiB) and a blocked write ends with "Write timed out" after the socket timeout, but no size up to 256 MiB reached that state, so the worker thread evidently drains the pipe as fast as the connector fills it; where those bytes go was not determined here and is not needed by the pin. Consequence: no pipe-write stall was seen up to 256 MiB, the V1 pin body is the 64 MiB the plan names (the 64 MiB body reached the future wait), and plan-check B2a's branch for a stall inside the body write is "not applicable" unless Task 3 sees otherwise on the fixed tree. The 21 V1 cases at R0: the 18 bounded and release cases were red by the `assertTimeoutPreemptively` guard (message `a client V1 insert must end within the bound ==> execution timed out after 10000 ms`, or 5000 ms for the progress shape), and the three operator cases (the longer value left the write stall running for the 3 s observation, 3.047 s; the shorter value ended a quiet stall through put under both tolerances) were green. The probe was a throwaway test in a detached worktree and was never committed.
 
 Recorded 2026-11-05T10:40:00Z.
+
+Verdict: pass
+
+### E-08: V1 wait bound green in one commit, operator gate, release, anchors
+
+Backs: TMO-03, ROADMAP Phase 46 criteria 2 and 3 for the client V1 `future.get()` insert sites, and U-2 and U-3 (the V1 wait is bounded, the operator's `socket_timeout` wins).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertV1WaitBoundPinUnitTest*' > /tmp/gsd46/exec/green-v1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' --tests '*InsertStallBoundPinUnitTest*' --tests '*InsertSocketTimeoutOptionUnitTest*' --tests '*RetriableExceptionPassThroughUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' --tests '*WriterFailureClassificationUnitTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd46/exec/neighbours-v1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+grep -cF 'try (ClickHouseResponse response = future.get())' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+grep -cF 'future.get()' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 212
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <the writer and the pin class> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin class> && git worktree remove --force /tmp/gsd46/fmt
+git add src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/test/java/com/clickhouse/kafka/connect/sink/InsertV1WaitBoundPinUnitTest.java .planning/scripts/fork-anchors.txt && git commit -F /tmp/gsd46/exec/msg-p3-fix.txt
+```
+
+```text
+v1_green_exit: 0
+v1_green_failed_count: 0
+v1_pin_tests: 21
+v1_write_stall_case_seconds_max: 1.218
+v1_progress_case_seconds: 1.51
+v1_quiet_case_seconds_max: 0.325
+v1_operator_long_case_seconds: 3.024
+v1_release_case_seconds: 1.34
+v1_neighbours_exit: 0
+v1_neighbours_tests: 374
+v1_neighbours_failed_count: 0
+bare_v1_wait_lines: 0
+bare_future_get_count: 1
+anchors_mirror: rows=212 bad=0
+v1_site_calls: 3
+v1_message_format: ClickHouse client V1 insert response not received within clickhouseClientInsertTimeoutMs=%d ms (QueryId: [%s])
+fmt_writer_v1: preexisting
+fmt_p1: identical
+v1_fix_commit: 05b46d18779d0981cf77e234c74df87062829450
+v1_fix_commit_files: 3
+```
+
+The green run passed on the first attempt after the code was written. Case times, wall clock through the real writer and a raw loopback stub, against the unchanged tree where the same cases were red by the preemptive guard (E-07): the V1 write stall ended in 1.137 to 1.218 s against the 1000 ms bound on three routes, direct and through put under both tolerances; the quiet stall in 0.313 to 0.325 s against 300 ms (the unchanged tree waited for the library's 30 s limit and was cut by the 10 s guard); the progress-streaming insert in 1.51 s against 1500 ms (the unchanged tree ran to about 6 s and was cut by the 5 s guard); the operator's longer `socket_timeout` left the write stall running for the whole 3 s observation (3.024 s) and its chain holds no `RetriableException` once the stub is closed; the operator's shorter value ended a quiet stall through put in 0.22 to 0.73 s as a retriable failure under both tolerances with an empty DLQ. The release case found no live thread in a socket write under a `com.clickhouse.` frame (the stub's own threads aside) within the 1.34 s the case took (the insert itself ended at about 1.2 s, so within about 0.15 s of the failure), while the stub still held the connection. The fix adds `awaitInsertResponseV1` (bounded `get` from the same `insertBoundMs` gate as the V2 deadline; the one remaining unbounded `future.get()` sits in its gated branch) and the three sites call it; the piped stream, `stream.close()`, the client block, the log lines and the statistics call are unchanged. The fix commit holds exactly `ClickHouseWriter.java`, the V1 pin class and `fork-anchors.txt`; `ClickHouseHelperClient.java` is untouched in it. The anchor counts measured with `grep -cF` before the rows were written: the old try line 0 (3 before), `awaitInsertResponseV1(` 4, `chc.insertBoundMs(` 2, `V1_INSERT_TIMEOUT_FORMAT` 2. The per-file formatting check on a worktree at the pre-commit HEAD: the pin class was identical after `spotlessApply`; `ClickHouseWriter.java` differs only in import ordering, which the unchanged HEAD copy shows as well (the text from the class declaration on was compared and is equal), so the lines this change added are not reformatted (`preexisting`).
+
+Recorded 2026-11-05T10:43:00Z.
 
 Verdict: pass
