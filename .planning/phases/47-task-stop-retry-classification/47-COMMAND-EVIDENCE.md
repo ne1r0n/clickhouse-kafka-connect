@@ -27,6 +27,7 @@
 | E-12 | LIF-02 | 47-05 | pass |
 | E-13 | RTY-01 | 47-05 | pass |
 | E-14 | RTY-01 | 47-05 | pass |
+| E-15 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-05 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base
 
@@ -808,5 +809,88 @@ anchors_mirror: rows=218 bad=0
 WR-03: the item now says the body of `deliverMessages` is identical in the sources of Kafka 3.9.1, 4.1.1 and 4.4.0 and that the code around it that sets the cadence (`iteration`, `poll`) was not compared; the 60 s default and the 7004, 7004 and 7006 ms gaps are stated for the Kafka 3.9 worker (`7.9.7-ccs`) only, with the remark that the interval is measured for the 3.9 line only; the absence of a count and a deadline is stated as read from the `deliverMessages` body, next to the three calls over 120 s that were measured (E-06: instants 506, 60042, 120055 and 449, 60012, 120013). WR-05: the sentence "Any other exception from `put` ... fails the task even under `errors.tolerance=all`" now reads as a statement about a task that throws from `put`, measured with the c2 probe task (a `DataException`, not this connector, E-06); the connector's own path is described next, labelled read from the code and not measured: all three delivery strategies call `ChunkFlusher.putDirect` (`DirectDeliveryStrategy.put`, `AtLeastOnceBufferStrategy` and `ExactlyOnceBufferStrategy` through `ChunkFlusher.flush`), which catches every exception from `ProxySinkTask.put`, runs `Utils.handleException` a second time, and under `all` sends the batch to the DLQ, so under `all` a `RetriableException` is the only exception `Utils.handleException` lets out, and a conversion `DataException` reaches the DLQ there while under `none` `putDirect` rethrows it. What the pin covers is stated without overclaiming: the 22-shape first-put matrix (44 rows) runs through `ProxySinkTask.put` only; through `ChunkFlusher.putDirect` only the 16 retriable shapes are pinned, in the 64 redelivery rows (32 of them through `putDirect`); the first-put outcomes of the non-retriable and conversion shapes through `putDirect` are stated as not pinned, which is the review's second option (no new rows were added, so the test and the 108 rows are unchanged by this edit). The pin's count is stated as 50 consecutive redeliveries and as a finite count (no budget below 50 exists, not that none exists above it), with the mutation citation extended to E-13. The classification sentences of the item before "A code listed in `additionalRetriableErrorCodes`" are verbatim as in E-07.
 
 Recorded 2026-11-05T21:48:10Z.
+
+Verdict: pass
+
+### E-15: Gap closure 47-05 gate: testUnit with Docker unreachable, full suite on latest x V2, deltas, scope, anchors, tail gate on an explicit SHA, nothing pushed
+
+Backs: LIF-01, LIF-02, RTY-01, RTY-02, 47-REVIEW.md WR-01..WR-05 (the gate of the corrections, measured on the tip after the last test or docs change, E-12..E-14, before this entry).
+
+```sh
+git ls-remote upstream main
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/tags/pre-v1.7.0_gg8 --jq length
+git ls-remote origin refs/heads/sync/v1.7.0
+git rev-parse HEAD
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 f3612284a3fba473825efba28eda1dab487a44b3 > /tmp/gsd47/exec/g05/gate-tail.log 2>&1   # background, explicit SHA
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd47/exec/g05/gate-testunit.log 2>&1
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd47/exec/g05/xml-gate-testunit && cp -R build/test-results/testUnit /tmp/gsd47/exec/g05/xml-gate-testunit
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/g05/xml-gate-testunit /tmp/gsd47/exec/g05/status-gate-testunit.tsv
+cat .planning/phases/47-task-stop-retry-classification/47-lif01-expected-added.tsv .planning/phases/47-task-stop-retry-classification/47-rty01-expected-added-gap.tsv > /tmp/gsd47/exec/g05/expected-phase-gap.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py delta /tmp/gsd47/exec/status-base-testunit.tsv /tmp/gsd47/exec/g05/status-gate-testunit.tsv /tmp/gsd47/exec/g05/expected-phase-gap.tsv
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd47/exec/g05/gate-suite.log 2>&1
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd47/exec/g05/xml-gate-suite && cp -R build/test-results/test /tmp/gsd47/exec/g05/xml-gate-suite
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/g05/xml-gate-suite /tmp/gsd47/exec/g05/status-gate-suite.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py delta /tmp/gsd47/exec/status-base-suite.tsv /tmp/gsd47/exec/g05/status-gate-suite.tsv /tmp/gsd47/exec/g05/expected-phase-gap.tsv --by-class
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit /tmp/gsd47/exec/g05/xml-gate-suite --class .ClickHouseSinkTaskStopUnitTest   # and .RetriableRedeliveryLimitPinUnitTest, .ProcessingTest and the eight E-01 pin classes (testUnit)
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+bash /tmp/gsd47/exec/g05/scope05.sh   # git diff and git show checks against B0 427f30b4, the fix commit and the E-10 tip a9669f7b; anchors mirror
+```
+
+```text
+gate_head: f3612284a3fba473825efba28eda1dab487a44b3
+upstream_main_at_gate: 83808df9a0993cf49b2ceaa4633c782e550c0180
+origin_pre_tag_at_gate: absent
+origin_sync_branch_at_gate: absent
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2295
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+status_delta_testunit: delta: removed=0 added=114 expected=114 match=yes
+suite_exit: 0
+suite_tests: 2898
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+status_delta_suite_by_class: delta: removed=0 added=114 expected=114 match=yes
+suite_version: 26.10.3.7
+suite_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_java: default toolchain
+suite_crash: no
+phase_classes_in_suite: ClickHouseSinkTaskStopUnitTest 6, RetriableRedeliveryLimitPinUnitTest 108, ProcessingTest 14, all green
+classification_pins_equal_base: yes
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+main_diff_since_phase_tip: none
+main_diff_since_fix: none
+main_files_added: none
+stop_body_check: try/finally only
+untouched_main_files: yes
+test_files_added_only: yes
+test_changed_since_phase_tip: src/test/java/com/clickhouse/kafka/connect/sink/RetriableRedeliveryLimitPinUnitTest.java
+build_files_unchanged: yes
+changelog_gg7_section_identical: yes
+docs_changed: docs/FORK-DELTA.md
+fork_delta_final_checks: yes
+gate_scripts_unchanged: yes
+merges_since_base: none
+state_files_committed: none
+anchors_mirror: rows=218 bad=0
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=119 anchor_rows=218 marker_commits=137 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+The totals equal E-10's: testUnit 2295 tests with 2 skips and the full suite 2898 tests with the 18 named skips (7 named, 11 state-mismatch cases), 0 failures and 0 errors in both. The per-testcase deltas against the E-01 dumps remove nothing and add the 114 rows of `47-lif01-expected-added.tsv` plus `47-rty01-expected-added-gap.tsv` (exact over testUnit, by class over the suite); the superseded `47-rty01-expected-added.tsv` is not used here because the 64 redelivery rows were renamed (E-13). The eight E-01 pin classes keep E-01's counts (14, 38, 216, 4, 21, 19, 2, 15) in the testUnit run, and `ProcessingTest` (14) is green in the suite. The server is `26.10.3.7` at the digest of E-01 and E-10. No JVM crash occurred, `-PjavaVersion=21` was not used and no core dump or javacore was left in the repository root. Scope: `src/main` differs from the phase base only in `ClickHouseSinkTask.java`, whose `stop()` body is the planned try/finally and every other line of the file is the base's; no `src/main` file differs from the fix commit or from the E-10 tip `a9669f7b`, so this plan made no production change; `Processing`, `ProxySinkTask`, `Utils`, `KeeperStateProvider`, `ClickHouseSinkConfig`, `ChunkFlusher` and the three strategies are byte-identical to the base, so the `BEFORE`/`AFTER` flag sequence is unchanged. Tests changed since the E-10 tip: only `RetriableRedeliveryLimitPinUnitTest.java` (E-13). Build files, workflows and `VERSION` are unchanged; the `1.7.0_gg7` CHANGELOG section is byte-identical to the base; docs changed only in `docs/FORK-DELTA.md`; the five final FORK-DELTA counts hold (open FUT-05 parenthesis 0, stays-open wording 0, not-closed sentence 0, `FUT-05 is closed by decision` 1, both pin class names 1, no open mention of the task's `stop()` 0); the gate scripts and the plan-time helpers are unedited; no merge since the base; `STATE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, `config.json` and `state.json` are in no commit of this plan and nothing is staged. The tail gate ran in the background over `12e2cf17..f3612284` while the testUnit and the suite ran (it reads git objects only); its summary line carries `anchor_rows=218` with `anchor_exempt=0`. `upstream main` is still `83808df9`, `pre-v1.7.0_gg8` is absent on origin and the origin sync branch is absent as in E-01 and E-10; nothing was pushed.
+
+Recorded 2026-11-05T21:56:24Z.
 
 Verdict: pass
