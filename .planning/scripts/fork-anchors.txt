@@ -257,3 +257,6 @@ src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	wait f
 # Phase 46 plan 46-06 (WR-01): the three V2 insert methods share deadlineAwareWriter, whose onRetry re-arms the write deadline when the client retries an insert; deadline.disarm( ) 4 -> 2 (the three per-site disarms became one in the shared writer), rows added in the commit that changes the code
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadline.rearm();	1	TMO-03
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadlineAwareWriter(	4	TMO-03
+# Phase 47 (v1.7.0_gg8): ClickHouseSinkTask.stop() runs the proxy task's stop in a finally after the delivery strategy's stop() (LIF-01); rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	} finally {	1	LIF-01
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	this.proxySinkTask.stop();	1	LIF-01
