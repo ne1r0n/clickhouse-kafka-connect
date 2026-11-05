@@ -838,25 +838,34 @@ public class ClickHouseSinkConfig {
                 clickhouseClientInsertTimeoutMsDefault,
                 ConfigDef.Range.atLeast(100),
                 ConfigDef.Importance.LOW,
-                "Maximum time in milliseconds the connector gives one ClickHouse insert before it fails the batch " +
-                        "with a RetriableException, so the Connect framework retries it; in exactly-once mode the retry " +
-                        "reuses insert_deduplication_token and ClickHouse drops duplicates. " +
+                "Time limit in milliseconds for the phases of one ClickHouse insert listed below; when it is exceeded " +
+                        "the connector fails the batch with a RetriableException, so the Connect framework retries it; " +
+                        "in exactly-once mode the retry reuses insert_deduplication_token and ClickHouse drops duplicates. " +
                         "What it bounds. On client V2 (client_version=V2): a server that stops answering, as an " +
                         "inactivity limit that restarts on every byte received; and the sending of the batch, " +
-                        "serialization included, which must finish within this time, even if the server already sends " +
-                        "progress headers while the batch is still being sent, so a server that stops reading the " +
-                        "request body is cut off. On client V1 (the default client_version): the whole wait for the " +
-                        "insert response, including a stalled body write (measured with batches up to 256 MiB), a quiet " +
-                        "server and a server that keeps sending progress headers. " +
+                        "serialization included, which must finish within this time (again for each attempt when the " +
+                        "client retries the insert), even if the server already sends progress headers while the batch " +
+                        "is still being sent, so a server that stops reading the request body is cut off. " +
+                        "On client V1 (the default client_version): the wait for the insert response, whether the " +
+                        "server stays quiet or keeps sending progress headers, and nothing else. " +
+                        "A server that stops reading the batch is cut off by that wait for batches up to 256 MiB " +
+                        "(measured: the batch is handed to the client before the wait starts); a write that blocks on " +
+                        "the client's full 4 MiB pipe is not bounded by this setting, and by the library code ends with " +
+                        "'Write timed out' after socket_timeout (30 s by default), which was not reached up to 256 MiB. " +
+                        "A server that stays quiet is also ended by the client library's own 30 s inactivity limit, so a " +
+                        "value above 30000 ms does not let a quiet insert run longer; name socket_timeout in " +
+                        "jdbcConnectionProperties to change that limit, which also removes this setting's bound. " +
                         "What it does not bound. On client V2, an insert whose batch has been sent and whose server keeps sending progress headers runs to its natural end. " +
                         "Requests that are not inserts (DESCRIBE, table refresh, version query, ping, ALTER, Keeper " +
                         "state reads and writes) have no connector limit: on client V2 they wait without limit, except " +
-                        "the Keeper state read, which always uses client V1; on client V1 they end at the client " +
-                        "library's default 30 s inactivity limit, and ping at the timeout setting. " +
-                        "When jdbcConnectionProperties names socket_timeout, the connector adds no limit of its own on " +
-                        "either client. An insert that legitimately runs longer than this limit fails and is retried, " +
-                        "and a timed-out insert may still be committed by the server, in part or in full, so with " +
-                        "exactlyOnce=false the retry can duplicate rows. " +
+                        "the Keeper state read, which always uses client V1; on client V1 each attempt ends at the client " +
+                        "library's default 30 s inactivity limit, the connector makes up to retryCount (default 3) " +
+                        "attempts at some of them, and the ping uses timeoutSeconds. " +
+                        "When jdbcConnectionProperties names socket_timeout, the connector adds no limit of its own to an " +
+                        "insert on either client, except that on client V2 with async=true the wait for the response " +
+                        "still ends at this setting. An insert that legitimately runs longer than a limit above fails " +
+                        "and is retried, and a timed-out insert may still be committed by the server, in part or in full, " +
+                        "so with exactlyOnce=false the retry can duplicate rows. " +
                         "Keep it below consumer.override.max.poll.interval.ms with a comfortable margin (e.g. at least " +
                         "2x the slowest expected insert): if an insert runs longer than the poll interval, Kafka " +
                         "assumes the worker is dead and rebalances the partitions mid-insert. " +
