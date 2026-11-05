@@ -19,7 +19,7 @@
 | E-04 | LIF-01, LIF-02 | 47-01 | pass |
 | E-05 | RTY-01 | 47-02 | pass |
 | E-06 | RTY-01 | 47-02 | pass |
-| E-07 | RTY-01 | 47-02 | pending (plan 47-02) |
+| E-07 | RTY-01 | 47-02 | pass |
 | E-08 | RTY-02 | 47-03 | pending (plan 47-03) |
 | E-09 | LIF-02 | 47-03 | pending (plan 47-03) |
 | E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pending (plan 47-04) |
@@ -414,5 +414,30 @@ Connector names are `c1-retriable-tolerance-all-retrytimeout5000` (c1), `c2-data
 Process notes. The first run of the flush-7000 worker (`/tmp/gsd47/exec/live/connect-flush7000-run1.log`) reached only 4 attempts inside the plan's 60 s window: its first `put` came at 40639 ms because the consumer group of c3 still held the member of the force-removed first worker, so the group rebalance waited for that member's session to expire (the gaps of that run from attempt 2, 7006 and 7008 ms, agree with the recorded run). The same worker was run again with the same files and the observation capped at 150 s instead of 60 s; the second run is the one recorded above (its first `put` came at 19856 ms for the same reason). The first `put` instants are therefore not a cadence fact; the gaps are. In the default-cadence worker the first call came at about 0.5 s instead of the 3.6 s of the research run; the gaps (60013 and 60001 ms) match the research run's (60001 and 60008 ms between its second and third calls). The research's c1 and c3 third calls were at 120010 and 120051 ms; here at 120055 and 120013 ms.
 
 Recorded 2026-11-05T21:09:27Z.
+
+Verdict: pass
+
+### E-07: FORK-DELTA item 17 rewritten from E-05 and E-06
+
+Backs: RTY-01, ROADMAP Phase 47 criterion 3 (the limit documented in FORK-DELTA with the measured facts only), U-1.
+
+```sh
+python3 -I -c '<rebuild only the item-17 line of docs/FORK-DELTA.md: the new title, the existing classification sentences verbatim, the new tail from 47-02-PLAN.md with the E-06 values substituted>'
+git diff --numstat docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd47/exec/msg-fd17.txt
+python3 -I -c '<item-17 check at the commit: one line changed, classification sentences verbatim, title, required phrases, runtime version, every E-06 instant and gap, no open FUT-05 reference>'
+grep -cF '(FUT-05)' docs/FORK-DELTA.md
+```
+
+```text
+fork_delta_item17: yes
+item17_lines_changed: 1
+item17_numbers_from_e06: yes
+fork_delta_commit: e1f3947454f15ae51e245e6522ff27c7399e50fe
+```
+
+The commit changes exactly one line of `docs/FORK-DELTA.md` (1 insertion, 1 deletion, file line count unchanged). The numbers written into the item are E-06's: runtime `7.9.7-ccs`; c1 calls at 506, 60042 and 120055 ms and c3 calls at 449, 60012 and 120013 ms; flush-7000 gaps 7004, 7004 and 7006 ms; E-05's counts: 22 shapes, 16 retriable shapes, 500 redeliveries, 64 redelivery cases red and 44 first-put cases green under the budget of 5. `(FUT-05)` remains on exactly one line of FORK-DELTA (item 8, closed in plan 47-03). `exactlyOnce=true` is stated as not pinned and the Phase 46 interaction as derived from item 14.
+
+Recorded 2026-11-05T21:10:50Z.
 
 Verdict: pass
