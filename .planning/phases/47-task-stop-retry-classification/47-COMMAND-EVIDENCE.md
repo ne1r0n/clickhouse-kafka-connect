@@ -22,7 +22,7 @@
 | E-07 | RTY-01 | 47-02 | pass |
 | E-08 | RTY-02 | 47-03 | pass |
 | E-09 | LIF-02 | 47-03 | pass |
-| E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pending (plan 47-04) |
+| E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pass |
 | E-11 | LIF-02, RTY-02 | 47-04 | pending (plan 47-04) |
 
 ### E-01: Pre-flight and baseline on the untouched base
@@ -523,5 +523,85 @@ Claims map, each sentence against the fact that backs it:
 | both-throw outcome | E-04: `both_throw_thrown: IllegalArgumentException:proxy side failure`, `both_throw_suppressed: 0` (a one-off probe at the fix commit, measured and not pinned) |
 
 Recorded 2026-11-05T21:14:30Z.
+
+Verdict: pass
+
+### E-10: Phase gate: testUnit with Docker unreachable, full suite on latest x V2, deltas, scope, anchors, tail gate, nothing pushed
+
+Backs: LIF-01, LIF-02, RTY-01, RTY-02, ROADMAP Phase 47 phase gate (cache-busted `testUnit`, a full suite on `latest` x V2 and the anchors invariant, measured on the phase tip, closing criteria 1-4).
+
+```sh
+git ls-remote upstream main
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/tags/pre-v1.7.0_gg8 --jq length
+git ls-remote origin refs/heads/sync/v1.7.0
+git rev-parse HEAD
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 a9669f7b0d8e54af8a8840e5d1650cd7ae91c58c > /tmp/gsd47/exec/gate-tail.log 2>&1   # background, explicit SHA
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd47/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd47/exec/xml-gate-testunit && cp -R build/test-results/testUnit /tmp/gsd47/exec/xml-gate-testunit
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/xml-gate-testunit /tmp/gsd47/exec/status-gate-testunit.tsv
+cat .planning/phases/47-task-stop-retry-classification/47-lif01-expected-added.tsv .planning/phases/47-task-stop-retry-classification/47-rty01-expected-added.tsv > /tmp/gsd47/exec/expected-phase.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py delta /tmp/gsd47/exec/status-base-testunit.tsv /tmp/gsd47/exec/status-gate-testunit.tsv /tmp/gsd47/exec/expected-phase.tsv
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd47/exec/gate-suite.log 2>&1
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd47/exec/xml-gate-suite && cp -R build/test-results/test /tmp/gsd47/exec/xml-gate-suite
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/xml-gate-suite /tmp/gsd47/exec/status-gate-suite.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py delta /tmp/gsd47/exec/status-base-suite.tsv /tmp/gsd47/exec/status-gate-suite.tsv /tmp/gsd47/exec/expected-phase.tsv --by-class
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit /tmp/gsd47/exec/xml-gate-suite --class .ClickHouseSinkTaskStopUnitTest   # and .RetriableRedeliveryLimitPinUnitTest and the eight E-01 pin classes
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+bash /tmp/gsd47/exec/scope04.sh   # git diff and git show checks against B0 (scope, stop() body, untouched files, tests, build files, CHANGELOG, docs, FORK-DELTA, gate scripts, merges), anchors mirror
+```
+
+```text
+gate_head: a9669f7b0d8e54af8a8840e5d1650cd7ae91c58c
+upstream_main_at_gate: 83808df9a0993cf49b2ceaa4633c782e550c0180
+origin_pre_tag_at_gate: absent
+origin_sync_branch_at_gate: absent
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2295
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+status_delta_testunit: delta: removed=0 added=114 expected=114 match=yes
+suite_exit: 0
+suite_tests: 2898
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+status_delta_suite_by_class: delta: removed=0 added=114 expected=114 match=yes
+status_delta_suite_by_class_exit: 0
+suite_version: 26.10.3.7
+suite_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_java: default toolchain
+suite_crash: no
+phase_classes_in_suite: ClickHouseSinkTaskStopUnitTest 6, RetriableRedeliveryLimitPinUnitTest 108, all green
+classification_pins_equal_base: yes
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+main_files_added: none
+stop_body_check: try/finally only
+untouched_main_files: yes
+test_files_added_only: yes
+build_files_unchanged: yes
+changelog_earlier_content_identical: yes
+docs_changed: docs/FORK-DELTA.md
+fork_delta_final_checks: yes
+gate_scripts_unchanged: yes
+merges_since_base: none
+anchors_mirror: rows=218 bad=0
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=108 anchor_rows=218 marker_commits=126 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+The testUnit gate is E-01's 2181 tests plus 114 (6 LIF-01 and 108 RTY-01 rows) with 2 skips as at the base; the full suite is E-01's 2784 plus 114 with the 18 skips (7 named, 11 state-mismatch cases, none unexpected). Both per-testcase deltas against the E-01 dumps remove nothing and add exactly the two expected lists (exact over testUnit, by class over the suite, where only the two new classes gain rows). The eight E-01 pin classes keep their E-01 counts (14, 38, 216, 4, 21, 19, 2, 15), so `ProcessingTest` and the other unchanged suites are green in both runs. The server is `26.10.3.7` at the same digest as E-01, so the `latest` image did not move during the phase. No JVM crash occurred and `-PjavaVersion=21` was not used; no core dump or javacore file was left in the repository root. `upstream main` is still `83808df9` (the `UPSTREAM_REF` of the gate), `pre-v1.7.0_gg8` is absent on origin and the origin sync branch is absent as in E-01; nothing was pushed in this plan. The tail gate ran in the background over `12e2cf17..a9669f7b` while the testUnit and suite ran (it reads git objects only; the tree was not changed during the run), and its summary line carries `anchor_rows=218` with `anchor_exempt=0`, against `anchor_rows=216` at the phase base (E-01). The `fork_delta_final_checks` fact is the five counts of the plan: the open FUT-05 parenthesis 0, the stays-open wording 0, the not-closed sentence 0, `FUT-05 is closed by decision` 1, `ClickHouseSinkTaskStopUnitTest` 1 and `RetriableRedeliveryLimitPinUnitTest` 1 (at least 1 required). The `BEFORE`/`AFTER` flag sequence lives in `Processing.java` and `KeeperStateProvider.java`, both byte-identical to the phase base, as are `ProxySinkTask`, `Utils`, `ClickHouseSinkConfig`, `ChunkFlusher` and the three strategies.
+
+Recorded 2026-11-05T21:22:37Z.
 
 Verdict: pass
