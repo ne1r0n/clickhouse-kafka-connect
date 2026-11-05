@@ -735,6 +735,16 @@ public class ClickHouseHelperClient implements AutoCloseable {
     }
 
     /**
+     * The wall-clock bound in milliseconds the connector puts on one insert on top of the transport
+     * timeouts, or 0 for none. It is 0 when the operator's connection properties name
+     * {@code socket_timeout}, an explicit 0 included, because the operator then owns the transport
+     * limits, and when the timeout is not positive.
+     */
+    public long insertBoundMs(long timeoutMs) {
+        return operatorSetSocketTimeout || timeoutMs <= 0 ? 0L : timeoutMs;
+    }
+
+    /**
      * Unpins replica for next operations.
      * Do not call it in main path.
      */

@@ -48,6 +48,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.clickhouse.kafka.connect.util.DataJson.OBJECT_MAPPER;
@@ -66,6 +68,9 @@ public class ClickHouseWriter implements DBWriter {
     private final SinkTaskStatistics statistics;
 
     private ScheduledExecutorService scheduledExecutor;
+    private final Object insertWatchdogLock = new Object();
+    // Guarded by insertWatchdogLock: created by the task thread on the first bounded insert, ended by stop().
+    private ScheduledThreadPoolExecutor insertWatchdog;
     private static final Set<Integer> UPDATE_TABLE_ERROR_CODES_V2 = Set.of(33, 131);
     @Deprecated private static final Map<String, Integer> UPDATE_TABLE_EXCEPTION_STR_TO_ERROR_CODE = Map.of("ClickHouseException: Code: 33", 33, "ClickHouseException: Code: 131", 131);
 
@@ -202,6 +207,12 @@ public class ClickHouseWriter implements DBWriter {
                 LOGGER.error("Failed to shutdown scheduled executor", e);
             } finally {
                 scheduledExecutor = null;
+            }
+        }
+        synchronized (insertWatchdogLock) {
+            if (insertWatchdog != null) {
+                insertWatchdog.shutdownNow();
+                insertWatchdog = null;
             }
         }
         // Closed after the executor's shutdown and bounded wait, so on the normal path no refresh runs on a closed client.
@@ -1475,18 +1486,17 @@ public class ClickHouseWriter implements DBWriter {
         for (String clickhouseSetting : csc.getClickhouseSettings().keySet()) {//THIS ASSUMES YOU DON'T ADD insert_deduplication_token
             insertSettings.serverSetting(clickhouseSetting, csc.getClickhouseSettings().get(clickhouseSetting));
         }
-        ClickHouseFormat format = ClickHouseFormat.RowBinary;
-        if (supportDefaults) {
-            format = ClickHouseFormat.RowBinaryWithDefaults;
-        }
+        ClickHouseFormat format = supportDefaults ? ClickHouseFormat.RowBinaryWithDefaults : ClickHouseFormat.RowBinary;
 
         AtomicLong pushStreamTime = new AtomicLong(0);
+        InsertWriteDeadline deadline = insertWriteDeadline(client, queryId);
         DataStreamWriter dataWriter = out -> {
             pushStreamTime.set(writeRecordsRowBinary(records, table, out, supportDefaults));
             out.close();
+            deadline.disarm();
         };
 
-        try (InsertResponse insertResponse = awaitInsertResponse(client.insert(table.getName(), dataWriter, format, insertSettings), queryId)) {
+        try (InsertResponse insertResponse = insertWithWriteDeadline(deadline, () -> client.insert(table.getName(), dataWriter, format, insertSettings), queryId)) {
             LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", insertResponse.getWrittenBytes(), insertResponse.getWrittenRows(), queryId.getQueryId());
         }
         long s3 = System.currentTimeMillis();
@@ -1781,16 +1791,18 @@ public class ClickHouseWriter implements DBWriter {
         }
 
         AtomicLong dataSerializeTime = new AtomicLong(0);
+        InsertWriteDeadline deadline = insertWriteDeadline(client, queryId);
         DataStreamWriter dataWriter = out -> {
             dataSerializeTime.set(writeRecordsJson(records, table, out));
             out.close();
+            deadline.disarm();
         };
         long s2 = System.currentTimeMillis();
         List<String> insertColumns = csc.getJsonInsertColumns();
-        CompletableFuture<InsertResponse> insertFuture = (insertColumns != null && !insertColumns.isEmpty())
+        Supplier<CompletableFuture<InsertResponse>> insert = () -> (insertColumns != null && !insertColumns.isEmpty())
                 ? client.insert(table.getName(), insertColumns, dataWriter, ClickHouseFormat.JSONEachRow, insertSettings)
                 : client.insert(table.getName(), dataWriter, ClickHouseFormat.JSONEachRow, insertSettings);
-        try (InsertResponse insertResponse = awaitInsertResponse(insertFuture, queryId)) {
+        try (InsertResponse insertResponse = insertWithWriteDeadline(deadline, insert, queryId)) {
             LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", insertResponse.getWrittenBytes(), insertResponse.getWrittenRows(), queryId.getQueryId());
         }
         long s3 = System.currentTimeMillis();
@@ -1932,13 +1944,15 @@ public class ClickHouseWriter implements DBWriter {
         // input_format_skip_unknown_fields setting, and missing fields will use ClickHouse defaults
         ClickHouseFormat clickHouseFormat = getStringInsertFormat();
         AtomicLong pushStreamTime = new AtomicLong(0);
+        InsertWriteDeadline deadline = insertWriteDeadline(client, queryId);
         DataStreamWriter dataWriter = out -> {
             pushStreamTime.set(writeRecordsString(records, out));
             out.close();
+            deadline.disarm();
         };
 
         long s2 = System.currentTimeMillis();
-        try (InsertResponse insertResponse = awaitInsertResponse(client.insert(table.getName(), dataWriter, clickHouseFormat, insertSettings), queryId)) {
+        try (InsertResponse insertResponse = insertWithWriteDeadline(deadline, () -> client.insert(table.getName(), dataWriter, clickHouseFormat, insertSettings), queryId)) {
             LOGGER.debug("Response Summary - Written Bytes: [{}], Written Rows: [{}] - (QueryId: [{}])", insertResponse.getWrittenBytes(), insertResponse.getWrittenRows(), queryId.getQueryId());
         }
         long s3 = System.currentTimeMillis();
@@ -1980,6 +1994,36 @@ public class ClickHouseWriter implements DBWriter {
             future.cancel(true);
             throw new RetriableException("ClickHouse insert timed out after " + timeoutMs
                     + " ms (QueryId: [" + queryId.getQueryId() + "])", e);
+        }
+    }
+
+    private ScheduledThreadPoolExecutor insertWatchdog() {
+        synchronized (insertWatchdogLock) {
+            if (insertWatchdog == null) {
+                insertWatchdog = InsertWriteDeadline.newWatchdog();
+            }
+            return insertWatchdog;
+        }
+    }
+
+    private InsertWriteDeadline insertWriteDeadline(Client client, QueryIdentifier queryId) {
+        long bound = chc.insertBoundMs(csc.getClickhouseClientInsertTimeoutMs());
+        if (bound <= 0) {
+            return InsertWriteDeadline.none();
+        }
+        return new InsertWriteDeadline(insertWatchdog(), client::cancelTransportRequest, queryId.getQueryId(), bound);
+    }
+
+    private InsertResponse insertWithWriteDeadline(InsertWriteDeadline deadline, Supplier<CompletableFuture<InsertResponse>> insert, QueryIdentifier queryId)
+            throws ExecutionException, InterruptedException {
+        deadline.arm();
+        try {
+            return awaitInsertResponse(insert.get(), queryId);
+        } catch (RuntimeException | ExecutionException e) {
+            deadline.throwIfFired(e);
+            throw e;
+        } finally {
+            deadline.disarm();
         }
     }
     private ClickHouseRequest.Mutation getMutationRequest(ClickHouseClient client, ClickHouseFormat format, String tableName, String database, QueryIdentifier queryId) {
@@ -2088,6 +2132,75 @@ public class ClickHouseWriter implements DBWriter {
             TableMappingRefresher tableMappingRefresher = new TableMappingRefresher(database, this);
             scheduledExecutor.scheduleAtFixedRate(tableMappingRefresher, csc.getTableRefreshInterval(), csc.getTableRefreshInterval(),
                     TimeUnit.MILLISECONDS);
+        }
+    }
+
+    /**
+     * A deadline on sending one client V2 insert body. It is armed before the request and disarmed when the
+     * body stream is closed, so it bounds sending only: a response that streams progress after the body is
+     * sent is left alone, while progress that arrives during the send does not stop it. A fire after the
+     * request ended is a no-op, because the client unregisters the query id when the request ends. A request
+     * cancelled by id is not retried by the client, so one insert makes one request.
+     */
+    private static final class InsertWriteDeadline {
+        private static final String WATCHDOG_THREAD_NAME = "clickhouse-insert-watchdog";
+        private static final String INSERT_BODY_DEADLINE_FORMAT =
+                "ClickHouse client V2 insert body not sent within clickhouseClientInsertTimeoutMs=%d ms (QueryId: [%s])";
+        private static final String CANCEL_FAILURE_LOG_FORMAT = "Could not cancel the timed-out insert request (QueryId: [{}])";
+
+        private final ScheduledExecutorService watchdog;
+        private final Consumer<String> canceller;
+        private final String queryId;
+        private final long boundMs;
+        private final AtomicBoolean fired = new AtomicBoolean(false);
+        private volatile ScheduledFuture<?> scheduled;
+
+        static ScheduledThreadPoolExecutor newWatchdog() {
+            ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1, task -> {
+                Thread thread = new Thread(task, WATCHDOG_THREAD_NAME);
+                thread.setDaemon(true);
+                return thread;
+            });
+            executor.setRemoveOnCancelPolicy(true);
+            return executor;
+        }
+
+        static InsertWriteDeadline none() {
+            return new InsertWriteDeadline(null, id -> { }, null, 0L);
+        }
+
+        InsertWriteDeadline(ScheduledExecutorService watchdog, Consumer<String> canceller, String queryId, long boundMs) {
+            this.watchdog = watchdog;
+            this.canceller = canceller;
+            this.queryId = queryId;
+            this.boundMs = boundMs;
+        }
+
+        void arm() {
+            if (boundMs <= 0 || watchdog == null) {
+                return;
+            }
+            scheduled = watchdog.schedule(() -> {
+                fired.set(true);
+                try {
+                    canceller.accept(queryId);
+                } catch (RuntimeException e) {
+                    LOGGER.warn(CANCEL_FAILURE_LOG_FORMAT, queryId, e);
+                }
+            }, boundMs, TimeUnit.MILLISECONDS);
+        }
+
+        void disarm() {
+            ScheduledFuture<?> task = scheduled;
+            if (task != null) {
+                task.cancel(false);
+            }
+        }
+
+        void throwIfFired(Exception cause) {
+            if (fired.get()) {
+                throw new RetriableException(String.format(INSERT_BODY_DEADLINE_FORMAT, boundMs, queryId), cause);
+            }
         }
     }
 }

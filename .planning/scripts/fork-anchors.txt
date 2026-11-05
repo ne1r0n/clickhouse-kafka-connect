@@ -218,7 +218,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	stateProvider
 # Phase 41 (v1.7.0_gg7): client V2 inserts carry a per-insert socket_timeout from clickhouseClientInsertTimeoutMs unless the operator named socket_timeout (TMO-01); the 0 row pins that the client-level alternative stays out; rows land in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());	3	TMO-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	settings.setNetworkTimeout(	1	TMO-01
-src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	operatorSetSocketTimeout	3	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	operatorSetSocketTimeout	4	TMO-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setSocketTimeout(	0	TMO-01
 # Phase 42 (v1.7.0_gg7): ClickHouseSinkTask.start logs one WARN naming the additionalRetriableErrorCodes entries outside the built-in retriable set and 216 (RSK-03); rows land in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	warnOnUnvettedRetriableCodes(	2	RSK-03
@@ -237,3 +237,12 @@ src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	JSON_RO
 build.gradle.kts	testImplementation(libs.kafka.connect.json)	1	UPS-05
 gradle/libs.versions.toml	kafka-connect-json = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }	1	UPS-05
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream()	0	HLP-04
+# Phase 46 (v1.7.0_gg8): client V2 inserts get a write-phase deadline that cancels the request by query id when the body is not sent within clickhouseClientInsertTimeoutMs, skipped when the operator named socket_timeout (TMO-03); rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWriteDeadline(client, queryId)	3	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWithWriteDeadline(	4	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadline.disarm();	4	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	client::cancelTransportRequest	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWatchdog.shutdownNow()	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	setRemoveOnCancelPolicy(true)	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	INSERT_BODY_DEADLINE_FORMAT	2	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	public long insertBoundMs(long timeoutMs)	1	TMO-03
