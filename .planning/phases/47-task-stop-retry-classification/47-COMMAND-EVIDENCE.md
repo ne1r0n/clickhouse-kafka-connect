@@ -26,6 +26,7 @@
 | E-11 | LIF-02, RTY-02 | 47-04 | pass |
 | E-12 | LIF-02 | 47-05 | pass |
 | E-13 | RTY-01 | 47-05 | pass |
+| E-14 | RTY-01 | 47-05 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base
 
@@ -772,5 +773,40 @@ main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouse
 The redelivery count per row is 50 instead of 500; a budget of 5 still fails at redelivery 6, as before. The class time went from 22.037 s (E-05) to 2.909 s and its XML report from 36,151,467 bytes (179,491 lines, the figures of the review run) to 3,870,005 bytes (19,291 lines), about a tenth, as expected from the 10-fold smaller loop (the log lines scale with the call count). The loggers were not silenced: the cost is gone with the count, and a level change in the test would be global to the test JVM's loggers, where other tests read log output through `LogCapture`, so it was left alone as unnecessary. The method is now `retriableShapeIsStillRedeliveredAfterManyAttempts`, the Javadoc says a finite count shows no budget below it and not that none exists above it, and the test file no longer contains the words "without bound". The testcase names of the 64 redelivery rows changed with the method name, so the 108 expected rows for the gate are written anew in `47-rty01-expected-added-gap.tsv` (the 44 first-put rows are line for line those of `47-rty01-expected-added.tsv`, which stays committed and unedited and is no longer used by the gate). The mutation was re-run on the pin commit in the removed worktree `/tmp/gsd47/wt-mut` (a consecutive-failure counter of 5 in `ProxySinkTask.put`, two lines, never in the main tree): exactly the 64 redelivery rows failed, each with `redelivery 6 ==> Unexpected exception type thrown, expected: <RetriableException> but was: <RuntimeException>`, and the 44 first-put rows stayed green, as in E-05. The full-suite and anchors totals are in the gate entry after the last edit. No JVM crash occurred and `-PjavaVersion=21` was not used.
 
 Recorded 2026-11-05T21:46:57Z.
+
+Verdict: pass
+
+### E-14: Gap closure 47-05, FORK-DELTA item 17 qualified (WR-03, WR-05) and brought to the 50-redelivery pin
+
+Backs: RTY-01, 47-REVIEW.md WR-03 and WR-05, U-1. The edit corrects the text written in plan 47-02 (E-07), so item 17 now diverges from the plan-time wording; `47-doc-edits.json` holds no item-17 text and stays unedited.
+
+```sh
+python3 -I /tmp/gsd47/exec/g05/edit_fd17.py   # five old/new pairs on the item-17 line of docs/FORK-DELTA.md, each old text asserted to occur once
+git diff --numstat docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd47/exec/g05/msg6.txt
+git show 7b348644^:docs/FORK-DELTA.md   # replay edit_fd17.py on the parent version and cmp with the committed file
+python3 -I -c '<item-17 check: the classification sentences up to "A code listed in additionalRetriableErrorCodes" verbatim, every E-06 instant and gap, runtime version, 22 shapes, 16 retriable shapes, 64 and 44, no "500 consecutive", no "fails the task even under", E-13 cited>'
+grep -cF 'FUT-05 is closed by decision' docs/FORK-DELTA.md   # and the stays-open, not-closed and (FUT-05) wordings, and the two pin class names
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+```
+
+```text
+fork_delta_commit: 7b3486444a64b4fde4fd3f564590973a59812ab2
+item17_lines_changed: 1
+item17_replay_identical: yes
+item17_prefix_verbatim: yes
+item17_e06_numbers_kept: yes
+item17_pin_count: 50
+item17_500_left: no
+item17_fails_task_claim_scoped: yes
+item17_cadence_scoped_to_kafka_3_9: yes
+fork_delta_open_fut05_lines: 0
+fork_delta_closed_by_decision_count: 1
+anchors_mirror: rows=218 bad=0
+```
+
+WR-03: the item now says the body of `deliverMessages` is identical in the sources of Kafka 3.9.1, 4.1.1 and 4.4.0 and that the code around it that sets the cadence (`iteration`, `poll`) was not compared; the 60 s default and the 7004, 7004 and 7006 ms gaps are stated for the Kafka 3.9 worker (`7.9.7-ccs`) only, with the remark that the interval is measured for the 3.9 line only; the absence of a count and a deadline is stated as read from the `deliverMessages` body, next to the three calls over 120 s that were measured (E-06: instants 506, 60042, 120055 and 449, 60012, 120013). WR-05: the sentence "Any other exception from `put` ... fails the task even under `errors.tolerance=all`" now reads as a statement about a task that throws from `put`, measured with the c2 probe task (a `DataException`, not this connector, E-06); the connector's own path is described next, labelled read from the code and not measured: all three delivery strategies call `ChunkFlusher.putDirect` (`DirectDeliveryStrategy.put`, `AtLeastOnceBufferStrategy` and `ExactlyOnceBufferStrategy` through `ChunkFlusher.flush`), which catches every exception from `ProxySinkTask.put`, runs `Utils.handleException` a second time, and under `all` sends the batch to the DLQ, so under `all` a `RetriableException` is the only exception `Utils.handleException` lets out, and a conversion `DataException` reaches the DLQ there while under `none` `putDirect` rethrows it. What the pin covers is stated without overclaiming: the 22-shape first-put matrix (44 rows) runs through `ProxySinkTask.put` only; through `ChunkFlusher.putDirect` only the 16 retriable shapes are pinned, in the 64 redelivery rows (32 of them through `putDirect`); the first-put outcomes of the non-retriable and conversion shapes through `putDirect` are stated as not pinned, which is the review's second option (no new rows were added, so the test and the 108 rows are unchanged by this edit). The pin's count is stated as 50 consecutive redeliveries and as a finite count (no budget below 50 exists, not that none exists above it), with the mutation citation extended to E-13. The classification sentences of the item before "A code listed in `additionalRetriableErrorCodes`" are verbatim as in E-07.
+
+Recorded 2026-11-05T21:48:10Z.
 
 Verdict: pass
