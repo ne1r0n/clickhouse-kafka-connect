@@ -32,11 +32,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Docker-free pin for RTY-01: what the connector does at the {@link ProxySinkTask#put} layer with a writer
- * failure, under both {@code errors.tolerance} values, and that a retriable one is redelivered with no bound
- * at the connector layer. {@code errors.retry.timeout} and {@code retryCount} are set in every case and bound
- * nothing: each retriable shape throws a {@code RetriableException} on every one of {@link #REDELIVERIES}
- * consecutive redeliveries of the same batch, through {@code ProxySinkTask.put} and through
- * {@code ChunkFlusher.putDirect}, with the writer called every time and nothing sent to the dead letter queue.
+ * failure, under both {@code errors.tolerance} values, and that a retriable one is still redelivered after many
+ * attempts, so the connector holds no retry budget. {@code errors.retry.timeout} and {@code retryCount} are set
+ * in every case and bound nothing: each retriable shape throws a {@code RetriableException} on every one of
+ * {@link #REDELIVERIES} consecutive redeliveries of the same batch, through {@code ProxySinkTask.put} and through
+ * {@code ChunkFlusher.putDirect}, with the writer called every time and nothing sent to the dead letter queue. A
+ * finite count shows no budget below it, not that none exists above it.
  *
  * <p>What Kafka Connect does with a {@code RetriableException} from {@code put} is documented in
  * {@code docs/FORK-DELTA.md} and not tested here.
@@ -64,8 +65,9 @@ class RetriableRedeliveryLimitPinUnitTest {
     private static final int NON_RETRIABLE_SERVER_CODE = 60;
     private static final int V1_TIMEOUT_EXCEEDED_CODE = 159;
     private static final int UNCONVERTIBLE_VALUE = 5;
-    // A retry budget below this count fails the redelivery rows.
-    private static final int REDELIVERIES = 500;
+    // A retry budget below this count fails the redelivery rows. It stays small because every attempt logs several
+    // lines, and it is far above the largest retry count a setting holds (retryCount, 3 to 10).
+    private static final int REDELIVERIES = 50;
 
     private static final String FIRST_PUT_NAME = "{displayName}[{index}] shape={0} errors.tolerance={1} expected={2}";
     private static final String REDELIVERY_NAME = "{displayName}[{index}] shape={0} path={1} errors.tolerance={2}";
@@ -311,7 +313,8 @@ class RetriableRedeliveryLimitPinUnitTest {
 
     @ParameterizedTest(name = REDELIVERY_NAME)
     @MethodSource("redeliveryMatrix")
-    void retriableShapeIsRedeliveredWithoutBound(Shape shape, PutPath path, String tolerance) throws Exception {
+    void retriableShapeIsStillRedeliveredAfterManyAttempts(Shape shape, PutPath path, String tolerance)
+            throws Exception {
         ClickHouseSinkConfig config = configFor(shape, tolerance);
         InMemoryDLQ dlq = new InMemoryDLQ();
         CountingFailingDBWriter writer = new CountingFailingDBWriter(shape.failure);
