@@ -231,7 +231,23 @@ Phase gate: cache-busted `testUnit` with Docker unreachable, two `--rerun` full 
   3. *[Docker-free]* Through `ProxySinkTask.put`, each case bounded in this phase surfaces as retriable under `errors.tolerance=none` and `errors.tolerance=all`: the task is not failed and no DLQ record is written. An operator's `socket_timeout` in `jdbcConnectionProperties` still wins. No config key is added, because a new key is a feature and out of scope, and `async_insert` is not touched (TMO-02, TMO-03).
   4. *[Docker-free]* The `clickhouseClientInsertTimeoutMs` help text is written after criteria 1–3 settle. It says what the setting bounds and what it does not, and a Docker-free test pins the text against the measured list. The `ClickHouseSinkConfig` diff is that text and nothing else (TMO-01).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+- [ ] 46-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit, full suite on `latest` × V2, anchors, tail gate), `StubClickHouseServer` raw-socket responders (`notReadingBody`, `readingBodySlowly`, `progressHeaders`) with Docker-free premise tests, A1 measured on Linux (TMO-03, TMO-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 46-02-PLAN.md — client V2 write-phase deadline (armed before `client.insert`, disarmed after the body is sent, `cancelTransportRequest`, `RetriableException`), `insertBoundMs` operator gate (U-3), pins red first at R0, four mutations, seven anchor rows (TMO-03, TMO-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 46-03-PLAN.md — client V1 `future.get(timeout)` at the three insert sites (U-2), retriable under both tolerances, operator gate, release pin, pins red first at R0, three mutations, three anchor rows (TMO-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 46-04-PLAN.md — live re-measure on `latest` (V2 progress escape, default `async_insert`, V1 before/after, rows left by timed-out inserts), non-insert and V2 ping inventory, FORK-DELTA row and Known cost 14 in U-6 wording with the rollout consequence (TMO-02, TMO-03)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 46-05-PLAN.md — `clickhouseClientInsertTimeoutMs` help text from the measured list with a Docker-free pin (seen red first, config diff text only, two anchor rows), FORK-DELTA help sentence, phase gate: testUnit with Docker unreachable, two `--rerun` suites, tail gate with anchor_rows=212 (TMO-01, TMO-02, TMO-03)
 
 **Research flag**: Settle these before planning:
 - Which mechanism reaches each case on client 0.11.0. The gg7 decision used a per-insert `socket_timeout` and rejected a client-level timeout that bounds every request. A mechanism that bounds requests beyond the case being fixed stops for the user.

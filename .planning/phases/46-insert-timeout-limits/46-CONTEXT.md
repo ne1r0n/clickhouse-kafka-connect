@@ -22,7 +22,7 @@ An operator can trust what `clickhouseClientInsertTimeoutMs` says. The gg7 fix b
 - **U-4 (non-insert requests):** RECORD ONLY, each with its measured number. No client-level timeout, no Keeper bound. The anchor row counting 0 for a client-level timeout stays.
 - **U-5 (V2 ping):** RECORD the `ping(timeout)` no-op and CORRECT FORK-DELTA item 14 ("ping has its own timeout" is false on V2). No code change.
 - **U-6 (wording):** recorded items read "not bounded by decision, with the measured number", not "cannot be bounded".
-- The V2 write stall: research recommends a write-phase deadline; not yet decided by the user. Treat as the planner's default per success criterion 2 (bounded with a pin red on the unchanged tree, or recorded) and flag in the plan-check if it needs the user.
+- **U-7 (V2 write stall):** BOUND it with the write-phase deadline (armed before client.insert, disarmed once the body is sent; serialization time counts). Approved knowing it also fails a V2 insert still sending its body when the bound elapses, even with progress; consequence pinned and stated in help text and FORK-DELTA. Operator-named socket_timeout skips it.
 
 ### Claude's Discretion
 All implementation choices are at Claude's discretion — discuss phase was skipped per user setting. Use ROADMAP phase goal, success criteria, and codebase conventions to guide decisions.
