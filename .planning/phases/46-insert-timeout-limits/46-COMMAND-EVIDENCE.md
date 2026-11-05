@@ -21,7 +21,7 @@
 | E-06 | TMO-03, TMO-02 | 46-02 | pass |
 | E-07 | TMO-03 | 46-03 | pass |
 | E-08 | TMO-03 | 46-03 | pass |
-| E-09 | TMO-03 | 46-03 | pending (plan 46-03) |
+| E-09 | TMO-03 | 46-03 | pass |
 | E-10 | TMO-02 | 46-04 | pending (plan 46-04) |
 | E-11 | TMO-03 | 46-04 | pending (plan 46-04) |
 | E-12 | TMO-02, TMO-03 | 46-04 | pending (plan 46-04) |
@@ -449,5 +449,80 @@ v1_fix_commit_files: 3
 The green run passed on the first attempt after the code was written. Case times, wall clock through the real writer and a raw loopback stub, against the unchanged tree where the same cases were red by the preemptive guard (E-07): the V1 write stall ended in 1.137 to 1.218 s against the 1000 ms bound on three routes, direct and through put under both tolerances; the quiet stall in 0.313 to 0.325 s against 300 ms (the unchanged tree waited for the library's 30 s limit and was cut by the 10 s guard); the progress-streaming insert in 1.51 s against 1500 ms (the unchanged tree ran to about 6 s and was cut by the 5 s guard); the operator's longer `socket_timeout` left the write stall running for the whole 3 s observation (3.024 s) and its chain holds no `RetriableException` once the stub is closed; the operator's shorter value ended a quiet stall through put in 0.22 to 0.73 s as a retriable failure under both tolerances with an empty DLQ. The release case found no live thread in a socket write under a `com.clickhouse.` frame (the stub's own threads aside) within the 1.34 s the case took (the insert itself ended at about 1.2 s, so within about 0.15 s of the failure), while the stub still held the connection. The fix adds `awaitInsertResponseV1` (bounded `get` from the same `insertBoundMs` gate as the V2 deadline; the one remaining unbounded `future.get()` sits in its gated branch) and the three sites call it; the piped stream, `stream.close()`, the client block, the log lines and the statistics call are unchanged. The fix commit holds exactly `ClickHouseWriter.java`, the V1 pin class and `fork-anchors.txt`; `ClickHouseHelperClient.java` is untouched in it. The anchor counts measured with `grep -cF` before the rows were written: the old try line 0 (3 before), `awaitInsertResponseV1(` 4, `chc.insertBoundMs(` 2, `V1_INSERT_TIMEOUT_FORMAT` 2. The per-file formatting check on a worktree at the pre-commit HEAD: the pin class was identical after `spotlessApply`; `ClickHouseWriter.java` differs only in import ordering, which the unchanged HEAD copy shows as well (the text from the class declaration on was compared and is equal), so the lines this change added are not reformatted (`preexisting`).
 
 Recorded 2026-11-05T10:43:00Z.
+
+Verdict: pass
+
+### E-09: V1 pipe-write stall on the fixed tree, bite and gate: three mutations, testUnit, scope, anchors, tail gate
+
+Backs: TMO-03, ROADMAP Phase 46 criterion 2 for client V1 (the checks are shown able to fail; the body write is measured on the fixed tree) and the phase gate (cache-busted `testUnit`, anchors invariant, the unedited tail gate), plan-check B2a.
+
+```sh
+git worktree add --detach /tmp/gsd46/probe-v1pipe-fixed 462611cb61d545fd6dfc76872b5d6156aa92d0a5   # scratch heap edit, probe copied in, never committed
+PROBE_TREE=fixed PROBE_SIZES=256 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-v1pipe-fixed -PjavaVersion=21 --console=plain testUnit --rerun --tests '*ProbeV1PipeMeasurementTest*' > /tmp/gsd46/exec/probe-v1pipe-fixed.log 2>&1
+git worktree remove --force /tmp/gsd46/probe-v1pipe-fixed && git worktree prune
+git worktree add --detach /tmp/gsd46/mut 462611cb   # once per mutation V1a..V1c, python3 -I replacement asserting the old text occurs once, then removed (/tmp/gsd46/scripts/run-v1-mutations.sh)
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/mut --console=plain testUnit --rerun --tests '*InsertV1WaitBoundPinUnitTest*' > /tmp/gsd46/exec/mut-v1<x>.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-mut-v1<x>
+git worktree add --detach /tmp/gsd46/probe-detector 462611cb   # throwaway release-detector probe, JDK 21 and the default toolchain, never committed
+git log --all --format=%H -- '*ProbeV1PipeMeasurementTest.java' '*ProbeV1DetectorMeasurementTest.java'
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/testunit-v1.log 2>&1
+rm -rf /tmp/gsd46/exec/xml-03-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-03-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-03-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/exec/xml-03-testunit
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+grep -rn 'async_insert' src/main | wc -l
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 462611cb61d545fd6dfc76872b5d6156aa92d0a5 > /tmp/gsd46/exec/tail-gate-03.log 2>&1
+```
+
+```text
+v1_256mib_fixed_elapsed_ms: 1530
+v1_256mib_fixed_outcome: org.apache.kafka.connect.errors.RetriableException
+v1_256mib_fixed_blocked_in: ended-before-3s
+v1_pipe_write_stall_fixed_elapsed_ms: not applicable
+v1_pipe_write_stall_fixed_outcome: not applicable
+v1_bound_ends_pipe_write_stall: not applicable
+v1a_target: in awaitInsertResponseV1, `future.get(bound, TimeUnit.MILLISECONDS)` replaced by `future.get(Long.MAX_VALUE, TimeUnit.MILLISECONDS)`
+v1a_failed_count: 18
+v1a_failed: boundedV1InsertThroughPutIsRetriableWithNoDlqRecord x10; progressStreamingV1InsertEndsWithinTheBoundAsRetriable x1; quietV1InsertEndsWithinTheBoundAsRetriable x3; timedOutV1InsertLeavesNoClientThreadBlockedInASocketWrite x1; writeStalledV1InsertEndsWithinTheBoundAsRetriable x3
+v1a_expected_met: yes
+v1b_target: in ClickHouseHelperClient.insertBoundMs, `return operatorSetSocketTimeout || timeoutMs <= 0 ? 0L : timeoutMs;` replaced by `return timeoutMs <= 0 ? 0L : timeoutMs;`
+v1b_failed_count: 1
+v1b_failed: operatorSocketTimeoutLeavesTheV1WaitToTheOperator x1
+v1b_expected_met: yes
+v1c_target: in awaitInsertResponseV1, `throw new RetriableException(String.format(V1_INSERT_TIMEOUT_FORMAT` replaced by `throw new RuntimeException(String.format(V1_INSERT_TIMEOUT_FORMAT`
+v1c_failed_count: 18
+v1c_failed: boundedV1InsertThroughPutIsRetriableWithNoDlqRecord x10; progressStreamingV1InsertEndsWithinTheBoundAsRetriable x1; quietV1InsertEndsWithinTheBoundAsRetriable x3; timedOutV1InsertLeavesNoClientThreadBlockedInASocketWrite x1; writeStalledV1InsertEndsWithinTheBoundAsRetriable x3
+v1c_expected_met: yes
+release_detector_blocked_writers_during_stall: 1 (ClickHouseWorker-1), on JDK 21 and on the default toolchain
+worktrees_removed: yes
+probe_committed: no
+testunit_exit: 0
+testunit_tests: 2152
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 102
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+async_insert_main_lines: 2
+anchors_mirror: rows=212 bad=0
+tail_gate_head: 462611cb61d545fd6dfc76872b5d6156aa92d0a5
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=65 anchor_rows=212 marker_commits=83 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 3 min 45 s
+```
+
+```probev1pipe
+PROBEV1PIPE tree=fixed size_mib=256 blocked_in=ended-before-3s elapsed_ms=1530 outcome=org.apache.kafka.connect.errors.RetriableException message_prefix=ClickHouse client V1 insert response not received within cli
+```
+
+Pipe-write stall on the fixed tree (plan-check B2a). E-07 saw no pipe-write stall at 16, 64 or 256 MiB, so the stall-size run does not apply and `v1_bound_ends_pipe_write_stall` reads `not applicable`: there is no measured stall inside the V1 body write for the bound to end or fail to end, and no code was added for one. The 256 MiB run on the fixed tree against `notReadingBody()` (insert timeout 1000) ended before the 3 s sample with a `RetriableException` carrying the V1 message, 1530 ms after the call started: about half a second to write 256 MiB into the pipe on the SinkTask thread, then the 1000 ms bound on the response wait. A first run of the same probe printed `elapsed_ms=3007`; that figure included the probe's own 3 s sampling sleep (the thread had already ended), so the probe was changed to read the thread's own end time and re-run; the line above is the re-run. The residual that remains is the one the code reading gives: a body larger than the pipe, with a consumer that stops draining, would block the SinkTask thread in the pipe write until the stream's write timeout (the socket timeout, 30000 ms by default) raises "Write timed out", which the connector already classifies as retriable; it was not reached at any size up to 256 MiB and is recorded here as not measured, not as bounded.
+
+Mutation readings. V1a (the wait never times out): the 18 bounded and release cases are red by the preemptive guard (10000 ms for the write-stall and quiet shapes, 5000 ms for progress), and the three operator cases stay green, so the guard cases bite on the bounded wait. V1b (operator gate ignored): only `operatorSocketTimeoutLeavesTheV1WaitToTheOperator` is red (the connector bound fires inside the operator's longer `socket_timeout`), and the shorter-operator put cases stay green because the library's own read timeout still ends them first, so the V1 operator ownership lives in `insertBoundMs` alone. V1c (the timeout is not converted): 18 red, the 10 put-path cases (under `none` the put throws a non-retriable exception, under `all` nothing retriable surfaces) and the 8 direct and release cases that look for a `RetriableException` in the chain. The release pin's detector was checked against a live stall in a throwaway probe: with the operator's `socket_timeout=60000` (no connector bound) and a 64 MiB write stall, the probe found exactly one client thread blocked in a socket write at 3 s (`ClickHouseWorker-1`), on JDK 21 and on the default toolchain, so the release case is not vacuous on the gate JVM.
+
+The cache-busted `testUnit` ran 2152 tests (2086 baseline + 6 raw-stub premise cases + 39 V2 cases + 21 V1 cases) with 0 failures, 0 errors and 2 skipped across 102 files, re-checked against the copied XML `xml-03-testunit` (the V1 class 21 of 21, the V2 write-stall class 19 of 19). The unedited tail gate over `M..462611cb` printed `result=PASS` with `anchor_rows=212`. `src/main` differs from the base only in the writer and the helper client; no new `src/main` file exists; the `async_insert` lines in `src/main` still count 2; no probe was committed.
+
+Recorded 2026-11-05T10:50:00Z.
 
 Verdict: pass
