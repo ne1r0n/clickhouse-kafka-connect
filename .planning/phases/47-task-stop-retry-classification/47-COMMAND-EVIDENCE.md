@@ -17,7 +17,7 @@
 | E-02 | LIF-01 | 47-01 | pass |
 | E-03 | LIF-01 | 47-01 | pass |
 | E-04 | LIF-01, LIF-02 | 47-01 | pass |
-| E-05 | RTY-01 | 47-02 | pending (plan 47-02) |
+| E-05 | RTY-01 | 47-02 | pass |
 | E-06 | RTY-01 | 47-02 | pending (plan 47-02) |
 | E-07 | RTY-01 | 47-02 | pending (plan 47-02) |
 | E-08 | RTY-02 | 47-03 | pending (plan 47-03) |
@@ -245,5 +245,100 @@ fork_delta_commit: e1b03148940c85683c9b0376aa07b1b38d58eab6
 The probe at the fix commit shows that when both the strategy's and the proxy task's `stop()` throw, the proxy side's exception is the one thrown and the strategy's is dropped with 0 suppressed (Java discards the `try` exception when the `finally` throws); the pin does not assert which exception surfaces, only that both stops ran and a `RuntimeException` reached the caller, so a later move to the `keepFirst` idiom needs no assertion edit. The same probe confirmed the single-throw case at the fix commit: strategy stop 1, writer stop 1, state close 1, MBean unregistered, the strategy's own exception reaching the caller. Backlog candidates for the SUMMARY, both unchanged in this phase (D-1): a `finally` in `close(partitions)`, which has the same no-`finally` shape, and the in-repo `keepFirst` idiom in `ClickHouseSinkTask.stop()`, which would attach the strategy's exception as suppressed. Nothing of the probe worktree is committed.
 
 Recorded 2026-11-05T20:25:01Z.
+
+Verdict: pass
+
+### E-05: RTY-01 limit pin: 108 rows green, expected added rows, budget-of-5 mutation, testUnit gate
+
+Backs: RTY-01, ROADMAP Phase 47 criterion 3 (record branch: today's unbounded redelivery of every retriable writer-failure shape is pinned through `ProxySinkTask.put` under both `errors.tolerance` values, and the pin is shown to fail against a retry budget), U-1.
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*RetriableRedeliveryLimitPinUnitTest*' > /tmp/gsd47/exec/green-rty01.log 2>&1
+rm -rf /tmp/gsd47/exec/xml-rty01-green && cp -R build/test-results/testUnit /tmp/gsd47/exec/xml-rty01-green
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/xml-rty01-green /tmp/gsd47/exec/status-rty01-green.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py count /tmp/gsd47/exec/status-rty01-green.tsv .RetriableRedeliveryLimitPinUnitTest PASS --name-contains firstPutOutcomeThroughProxySinkTaskPut   # and retriableShapeIsRedeliveredWithoutBound
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py select .planning/phases/47-task-stop-retry-classification/47-rty01-expected-added.tsv PASS /tmp/gsd47/exec/status-rty01-green.tsv .RetriableRedeliveryLimitPinUnitTest
+shasum -a 256 .planning/phases/47-task-stop-retry-classification/47-rty01-expected-added.tsv
+git worktree add --detach /tmp/gsd47/fmt HEAD   # per-file Spotless on the pin, cmp, worktree removed
+git add src/test/java/com/clickhouse/kafka/connect/sink/RetriableRedeliveryLimitPinUnitTest.java && git commit -F /tmp/gsd47/exec/msg-pin.txt
+git worktree add --detach /tmp/gsd47/wt-mut 097243fd9b24a4ebf27ff548b3ed0ae450f00c3a
+python3 -I -c '<in the worktree ProxySinkTask.java: add field mutationConsecutiveFailures; before "boolean errorTolerance = ..." throw RuntimeException when ++mutationConsecutiveFailures > 5; each old text asserted to occur once>'
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd47/wt-mut --console=plain testUnit --rerun --tests '*RetriableRedeliveryLimitPinUnitTest*' > /tmp/gsd47/exec/mut-rty01.log 2>&1
+cp -R /tmp/gsd47/wt-mut/build/test-results/testUnit /tmp/gsd47/exec/xml-rty01-mut
+git worktree remove --force /tmp/gsd47/wt-mut && git worktree prune
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/xml-rty01-mut /tmp/gsd47/exec/status-rty01-mut.tsv
+git diff --quiet 427f30b4c4dffd56841f5e5eafe13a55ac4caca8 -- src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd47/exec/rty01-gate-testunit.log 2>&1
+rm -rf /tmp/gsd47/exec/xml-rty01-gate-testunit && cp -R build/test-results/testUnit /tmp/gsd47/exec/xml-rty01-gate-testunit
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/xml-rty01-gate-testunit /tmp/gsd47/exec/status-rty01-gate-testunit.tsv
+cat .planning/phases/47-task-stop-retry-classification/47-lif01-expected-added.tsv .planning/phases/47-task-stop-retry-classification/47-rty01-expected-added.tsv > /tmp/gsd47/exec/expected-phase.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py delta /tmp/gsd47/exec/status-base-testunit.tsv /tmp/gsd47/exec/status-rty01-gate-testunit.tsv /tmp/gsd47/exec/expected-phase.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit /tmp/gsd47/exec/xml-rty01-gate-testunit --class .WrappedDataExceptionClassificationPinUnitTest   # and the seven other pin classes
+git diff --name-only 796c75fa3a0a8a7bb8d740bcffd3b2a3858b9cbe HEAD -- src/main
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+```
+
+```text
+pin_docker_host: unix:///nonexistent.sock
+pin_tests: 108
+pin_failures: 0
+pin_errors: 0
+matrix_rows: 44
+redelivery_rows: 64
+redeliveries: 500
+pin_class_seconds: 22.037
+expected_added_rows: 108
+expected_added_sha256: c4f61823ac961e86ac891cae73559baf975c27fd5508e8492cde4f28e2796c94
+fmt_rl: identical
+pin_commit: 097243fd9b24a4ebf27ff548b3ed0ae450f00c3a
+mutation_tests: 108
+mutation_failures: 64
+mutation_matrix_pass: 44
+mutation_messages_at_redelivery_6: 64
+mutation_main_tree_untouched: yes
+mutation_worktree_removed: yes
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2295
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+status_delta_testunit: delta: removed=0 added=114 expected=114 match=yes
+classification_pins_equal_base: yes
+main_diff_since_fix: none
+```
+
+The pin is a characterization pin, so it is not red first; the mutation run is its evidence that it can fail. The mutation added a consecutive-failure counter of 5 to `ProxySinkTask.put` in the removed worktree `/tmp/gsd47/wt-mut` (two lines, never in the main tree): exactly the 64 redelivery rows failed, each with `redelivery 6 ==> Unexpected exception type thrown, expected: RetriableException`, and the 44 first-put rows stayed green. The gate run is E-01's 2181 tests plus the 6 LIF-01 rows plus the 108 RTY-01 rows (2295), with 2 skips as at the base; the eight classification and stop pin classes keep E-01's counts. The only `src/main` change since the phase base is `ClickHouseSinkTask.java` (LIF-01), and none since the fix commit. The pin class took 22.037 s (research measured under 0.3 s per shape and tolerance combination for 6 combinations; this pin runs 64 redelivery rows of 500 calls each, and the cause of the longer total was not investigated). No JVM crash occurred and `-PjavaVersion=21` was not used.
+
+First-put outcomes of the 22 shapes (measured through `ProxySinkTask.put`, identical to the plan's table):
+
+| # | Shape | `none` | `all` | In the redelivery rows |
+|---|---|---|---|---|
+| S01 | `PLAIN_DATA_EXCEPTION` | FAILS_TASK | DLQ | no |
+| S02 | `DATA_EXCEPTION_OVER_RETRIABLE_SERVER_CODE` | RETRIABLE | RETRIABLE | yes |
+| S03 | `DATA_EXCEPTION_OVER_SOCKET_TIMEOUT` | RETRIABLE | RETRIABLE | yes |
+| S04 | `DATA_EXCEPTION_OVER_UNKNOWN_HOST` | RETRIABLE | RETRIABLE | yes |
+| S05 | `DATA_EXCEPTION_OVER_RETRIABLE` | RETRIABLE | RETRIABLE | yes |
+| S06 | `DATA_EXCEPTION_OVER_NON_RETRIABLE_SERVER_CODE` | FAILS_TASK | DLQ | no |
+| S07 | `DATA_EXCEPTION_OVER_ADDITIONAL_RETRIABLE_CODE` | RETRIABLE | RETRIABLE | yes |
+| S08 | `DATA_EXCEPTION_OVER_SOCKET_EXCEPTION_RETRY_ON` | RETRIABLE | RETRIABLE | yes |
+| S09 | `DATA_EXCEPTION_OVER_SOCKET_EXCEPTION_RETRY_OFF` | FAILS_TASK | DLQ | no |
+| S10 | `DATA_EXCEPTION_OVER_READ_TIMED_OUT` | RETRIABLE | RETRIABLE | yes |
+| S11 | `DATA_EXCEPTION_OVER_PLAIN_IO` | FAILS_TASK | DLQ | no |
+| S12 | `DATA_EXCEPTION_OVER_V1_TIMEOUT_EXCEEDED` | RETRIABLE | RETRIABLE | yes |
+| S13 | `RETRIABLE_OVER_RUNTIME_EXCEPTION` | RETRIABLE | RETRIABLE | yes |
+| S14 | `RETRIABLE_OVER_TIMEOUT_EXCEPTION` | RETRIABLE | RETRIABLE | yes |
+| S15 | `RUNTIME_EXCEPTION_OVER_SOCKET_TIMEOUT_CONTROL` | RETRIABLE | RETRIABLE | yes |
+| S16 | `RUNTIME_EXCEPTION_OVER_ILLEGAL_STATE_CONTROL` | FAILS_TASK | DLQ | no |
+| S17 | `DATA_EXCEPTION_OVER_RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE` | RETRIABLE | RETRIABLE | yes |
+| S18 | `CONVERSION_DATA_EXCEPTION_CONTROL` | ESCAPES_RAW | ESCAPES_RAW | no |
+| S19 | `BARE_RETRIABLE` | RETRIABLE | RETRIABLE | yes |
+| S20 | `RETRIABLE_OVER_SOCKET_TIMEOUT` | RETRIABLE | RETRIABLE | yes |
+| S21 | `RETRIABLE_OVER_NON_RETRIABLE_SERVER_CODE` | RETRIABLE | RETRIABLE | yes |
+| S22 | `BARE_RETRIABLE_SERVER_CODE` | RETRIABLE | RETRIABLE | yes |
+
+Recorded 2026-11-05T20:31:17Z.
 
 Verdict: pass
