@@ -18,7 +18,7 @@
 | E-03 | LIF-01 | 47-01 | pass |
 | E-04 | LIF-01, LIF-02 | 47-01 | pass |
 | E-05 | RTY-01 | 47-02 | pass |
-| E-06 | RTY-01 | 47-02 | pending (plan 47-02) |
+| E-06 | RTY-01 | 47-02 | pass |
 | E-07 | RTY-01 | 47-02 | pending (plan 47-02) |
 | E-08 | RTY-02 | 47-03 | pending (plan 47-03) |
 | E-09 | LIF-02 | 47-03 | pending (plan 47-03) |
@@ -340,5 +340,79 @@ First-put outcomes of the 22 shapes (measured through `ProxySinkTask.put`, ident
 | S22 | `BARE_RETRIABLE_SERVER_CODE` | RETRIABLE | RETRIABLE | yes |
 
 Recorded 2026-11-05T20:31:17Z.
+
+Verdict: pass
+
+### E-06: Kafka Connect redelivery of a RetriableException from put, measured on a worker and read in the sources
+
+Backs: RTY-01, ROADMAP Phase 47 criterion 3 (what Kafka Connect does with a `RetriableException` from `put`, measured on a real worker of the Kafka 3.9 line and read in the `WorkerSinkTask` sources of 3.9.1, 4.1.1 and 4.4.0), U-1.
+
+```sh
+D=$(ls -d /opt/homebrew/Cellar/docker/*/bin/docker | tail -1)
+"$D" network create gsd47-net
+"$D" run -d --name gsd47-kafka --network gsd47-net -e KAFKA_NODE_ID=1 -e KAFKA_PROCESS_ROLES=broker,controller -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://gsd47-kafka:9092 -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@gsd47-kafka:9093 -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER -e KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT -e CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 -e KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0 confluentinc/cp-kafka:7.9.10
+"$D" exec gsd47-kafka kafka-topics --bootstrap-server gsd47-kafka:9092 --create --topic probe1 --partitions 1 --replication-factor 1   # probe2, probe3; one record each through kafka-console-producer
+"$D" create --name gsd47-build --entrypoint sleep confluentinc/cp-kafka-connect-base:7.9.7 600   # docker cp the source in, javac -cp "/usr/share/java/kafka/*", jar, docker cp the jar out, remove the container
+"$D" create --name gsd47-connect --network gsd47-net --entrypoint connect-standalone confluentinc/cp-kafka-connect-base:7.9.7 /conf/worker.properties /conf/c1.properties /conf/c2.properties /conf/c3.properties
+"$D" cp /tmp/gsd47/exec/live/conf gsd47-connect:/conf && "$D" cp /tmp/gsd47/exec/live/plugins gsd47-connect:/plugins && "$D" start gsd47-connect   # wait until c1 and c3 printed attempt=3 (126 s)
+"$D" exec gsd47-connect curl -s http://localhost:8083/connectors/<name>/status   # c1, c2, c3
+"$D" logs gsd47-connect > /tmp/gsd47/exec/live/connect.log 2>&1
+"$D" exec gsd47-kafka kafka-get-offsets --bootstrap-server gsd47-kafka:9092 --topic dlq1   # and dlq2
+"$D" rm -f gsd47-connect
+"$D" create --name gsd47-connect2 --network gsd47-net --entrypoint connect-standalone confluentinc/cp-kafka-connect-base:7.9.7 /conf/worker-flush7000.properties /conf/c3.properties   # run twice, see the process note
+"$D" logs gsd47-connect2 > /tmp/gsd47/exec/live/connect-flush7000.log 2>&1
+"$D" rm -f gsd47-connect2 gsd47-kafka && "$D" network rm gsd47-net
+python3 -I -c '<brace-match the body of private void deliverMessages() in WorkerSinkTask.java of /tmp/gsd47/x39, /tmp/gsd47/x411 and /tmp/gsd47/x44, compare, search it for task.put(, retryWithToleranceOperator, catch (RetriableException e) and pauseAll()>'
+grep -rn 'context.timeout(' src/main/java | wc -l
+```
+
+```text
+probe_source: research copy, connector name added
+connect_image: confluentinc/cp-kafka-connect-base:7.9.7
+connect_image_digest: confluentinc/cp-kafka-connect-base@sha256:93b9afd3e7f8003381401464e4e4fa3dbe5e3766bcbc99de12afd41dc2904055
+kafka_image: confluentinc/cp-kafka:7.9.10
+kafka_image_digest: confluentinc/cp-kafka@sha256:07c3d60362e67c296f7f34b690b1240e5ecdcde4a84f5e73cab320fb4041f58c
+connect_runtime_version: 7.9.7-ccs
+c1_put_instants_ms: 506,60042,120055
+c1_attempts: 3
+c1_gap_2_3_ms: 60013
+c1_task_state: RUNNING
+c1_error_lines: 3
+dlq1_end_offsets_sum: 0
+c3_put_instants_ms: 449,60012,120013
+c3_attempts: 3
+c3_gap_2_3_ms: 60001
+c3_task_state: RUNNING
+c1_c3_attempt3_delta_ms: 42
+c2_attempts: 1
+c2_task_state: FAILED
+c2_trace_unrecoverable: yes
+dlq2_end_offsets_sum: 0
+flush7000_put_instants_ms: 19856,21065,28069,35073,42079
+flush7000_attempts: 5
+flush7000_gaps_from_attempt_2_ms: 7004,7004,7006
+observe_window_s: 47
+sources_location: /tmp/gsd47/x39, /tmp/gsd47/x411, /tmp/gsd47/x44 (connect-runtime-3.9.1, 4.1.1 and 4.4.0 sources jars from the research, in /tmp/gsd47/src39, src411 and src44)
+deliver_messages_identical: yes
+put_outside_retry_operator: yes
+retriable_catch_pauses_all: yes
+errors_retry_timeout_default: 0
+connector_calls_context_timeout: no
+containers_left: none
+networks_left: none
+```
+
+Connector names are `c1-retriable-tolerance-all-retrytimeout5000` (c1), `c2-data-tolerance-all` (c2) and `c3-retriable-defaults` (c3); each had one task and one record. Instants are milliseconds since the task object was created, read from the `PROBE put` lines of the saved logs. `c1_error_lines` counts the worker-log lines naming c1's task and `RetriableException from SinkTask` (3, equal to its attempts; c3 had 3 as well). The `deliverMessages` body is 2215 characters in each of the three source versions and byte-identical; it calls `task.put(` with no `retryWithToleranceOperator` in the body and handles `RetriableException` by pausing all partitions.
+
+| Connector | Config under test | `put` call instants (ms) | Task state | DLQ end offsets | Outcome |
+|---|---|---|---|---|---|
+| c1 | always `RetriableException`; `errors.retry.timeout=5000`, `errors.tolerance=all`, DLQ topic `dlq1` | 506, 60042, 120055 | RUNNING | 0 | redelivered about every 60 s, one ERROR line per redelivery |
+| c3 | always `RetriableException`; Connect defaults | 449, 60012, 120013 | RUNNING | n/a | same instants within 42 ms at the third attempt |
+| c3 on a worker with `offset.flush.interval.ms=7000` | defaults | 19856, 21065, 28069, 35073, 42079 | not read | n/a | gaps from attempt 2: 7004, 7004, 7006 ms |
+| c2 | always `DataException`; `errors.tolerance=all`, DLQ topic `dlq2` | 461 | FAILED | 0 | one call, `Task threw an uncaught and unrecoverable exception`, `ConnectException: Exiting WorkerSinkTask due to unrecoverable exception.` |
+
+Process notes. The first run of the flush-7000 worker (`/tmp/gsd47/exec/live/connect-flush7000-run1.log`) reached only 4 attempts inside the plan's 60 s window: its first `put` came at 40639 ms because the consumer group of c3 still held the member of the force-removed first worker, so the group rebalance waited for that member's session to expire (the gaps of that run from attempt 2, 7006 and 7008 ms, agree with the recorded run). The same worker was run again with the same files and the observation capped at 150 s instead of 60 s; the second run is the one recorded above (its first `put` came at 19856 ms for the same reason). The first `put` instants are therefore not a cadence fact; the gaps are. In the default-cadence worker the first call came at about 0.5 s instead of the 3.6 s of the research run; the gaps (60013 and 60001 ms) match the research run's (60001 and 60008 ms between its second and third calls). The research's c1 and c3 third calls were at 120010 and 120051 ms; here at 120055 and 120013 ms.
+
+Recorded 2026-11-05T21:09:27Z.
 
 Verdict: pass
