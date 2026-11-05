@@ -19,7 +19,7 @@
 | E-04 | TMO-03, TMO-02 | 46-02 | pass |
 | E-05 | TMO-03, TMO-02 | 46-02 | pass |
 | E-06 | TMO-03, TMO-02 | 46-02 | pass |
-| E-07 | TMO-03 | 46-03 | pending (plan 46-03) |
+| E-07 | TMO-03 | 46-03 | pass |
 | E-08 | TMO-03 | 46-03 | pending (plan 46-03) |
 | E-09 | TMO-03 | 46-03 | pending (plan 46-03) |
 | E-10 | TMO-02 | 46-04 | pending (plan 46-04) |
@@ -349,5 +349,60 @@ Watchdog queue probe (a throwaway test in a detached worktree, never committed: 
 The cache-busted `testUnit` ran 2131 tests (2086 baseline + 6 raw-stub premise cases + 39 new) with 0 failures, 0 errors and 2 skipped across 101 files, re-checked against the copied XML `xml-02-testunit`. The unedited tail gate over `M..2776ae08` printed `result=PASS` with `anchor_rows=208`. `src/main` differs from the base only in the writer and the helper client; no new `src/main` file exists; the `async_insert` lines in `src/main` still count 2.
 
 Recorded 2026-11-05T10:25:00Z.
+
+Verdict: pass
+
+### E-07: V1 pipe measured and V1 pins red on the unchanged production tree
+
+Backs: TMO-03, ROADMAP Phase 46 criterion 2 for the client V1 insert sites (a red-first pin on the unchanged tree) and plan-check B2a (the V1 body write is measured before any claim that the bound covers it).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-v1pipe -PjavaVersion=21 --console=plain testUnit --rerun --tests '*ProbeV1PipeMeasurementTest*' > /tmp/gsd46/exec/probe-v1pipe-base.log 2>&1
+git worktree remove --force /tmp/gsd46/probe-v1pipe && git worktree prune
+git worktree add --detach /tmp/gsd46/red 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 9bd0944ebd066852ef059e7b2bca2a6ff2a54137 -- src/main
+cp src/test/java/com/clickhouse/kafka/connect/sink/InsertBoundPinFixtures.java src/test/java/com/clickhouse/kafka/connect/sink/InsertV1WaitBoundPinUnitTest.java /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertV1WaitBoundPinUnitTest*' > /tmp/gsd46/exec/red-v1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/red/build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/red/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/red && git worktree prune
+```
+
+```text
+v1_pipe_impl: com.clickhouse.data.stream.NonBlockingPipedOutputStream (deprecated class), chosen by ClickHouseDataStreamFactory.createPipedOutputStream when use_blocking_queue is false (the default) and response buffering is not PERFORMANCE (default RESOURCE_EFFICIENT); BlockingPipedOutputStream is used only when use_blocking_queue is true; read from the clickhouse-data 0.11.0 sources
+v1_pipe_capacity_source: max_queued_buffers (default 512) buffers of write_buffer_size bytes (the connector sets 8192 in getMutationRequest), with a linear dynamic capacity policy up to the maximum (buffer_queue_variation default 100); read from the clickhouse-data and clickhouse-client 0.11.0 sources
+v1_pipe_capacity_bytes: 4194304
+v1_pipe_write_timeout_source: a write that finds the queue full spins on offer and throws IOException "Write timed out after <ms> ms" once the wait reaches the stream's timeout, which the factory sets to config.getReadTimeout(), that is socket_timeout, default 30000 ms (an operator socket_timeout changes it); read from the clickhouse-data 0.11.0 sources
+v1_pipe_16mib_blocked_in: future-get
+v1_pipe_64mib_blocked_in: future-get
+v1_pipe_256mib_blocked_in: future-get
+v1_pipe_256mib_elapsed_ms: >60000
+v1_pipe_256mib_outcome: still-running
+v1_pipe_write_stall_seen: no
+v1_pipe_write_stall_size_mib: none
+v1_pin_body_mib: 64
+v1_pipe_probe_jvm: -PjavaVersion=21, testUnit maxHeapSize 3g in the scratch worktree only
+v1_red_tree: 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+v1_red_main_identical_to_base: yes
+v1_red_exit: 1
+v1_red_tests: 21
+v1_red_failed_count: 18
+v1_red_failed_methods: boundedV1InsertThroughPutIsRetriableWithNoDlqRecord; progressStreamingV1InsertEndsWithinTheBoundAsRetriable; quietV1InsertEndsWithinTheBoundAsRetriable; timedOutV1InsertLeavesNoClientThreadBlockedInASocketWrite; writeStalledV1InsertEndsWithinTheBoundAsRetriable
+v1_red_green_methods: operatorShorterSocketTimeoutEndsAV1QuietStallThroughPut; operatorSocketTimeoutLeavesTheV1WaitToTheOperator
+v1_red_by_guard: yes
+v1_red_guard_split: 15 cases failed at the 10000 ms guard (direct write stall x3, direct quiet stall x3, put x8 of the write-stall and quiet shapes, release x1) and 3 at the 5000 ms guard (direct progress x1, put progress x2)
+v1_red_operator_long_case_seconds: 3.047
+worktrees_removed: yes
+```
+
+```probev1pipe
+PROBEV1PIPE tree=base size_mib=16 blocked_in=future-get elapsed_ms=>60000 outcome=still-running message_prefix=
+PROBEV1PIPE tree=base size_mib=64 blocked_in=future-get elapsed_ms=>60000 outcome=still-running message_prefix=
+PROBEV1PIPE tree=base size_mib=256 blocked_in=future-get elapsed_ms=>60000 outcome=still-running message_prefix=
+```
+
+The three `PROBEV1PIPE` lines are the unchanged tree (R0, `src/main` identical to the base) with the real V1 client against `notReadingBody()`, JSON route, insert timeout 1000 (which the unchanged tree ignores on V1): at 16, 64 and 256 MiB the SinkTask thread was in a `CompletableFuture` wait at the 3 s sample, never in the pipe write, and at 60 s the call had still not ended, so the library's 30 s default does not end a V1 write stall at any of the three sizes. By the code the pipe holds at most 512 buffers of 8192 bytes (4 MiB) and a blocked write ends with "Write timed out" after the socket timeout, but no size up to 256 MiB reached that state, so the worker thread evidently drains the pipe as fast as the connector fills it; where those bytes go was not determined here and is not needed by the pin. Consequence: no pipe-write stall was seen up to 256 MiB, the V1 pin body is the 64 MiB the plan names (the 64 MiB body reached the future wait), and plan-check B2a's branch for a stall inside the body write is "not applicable" unless Task 3 sees otherwise on the fixed tree. The 21 V1 cases at R0: the 18 bounded and release cases were red by the `assertTimeoutPreemptively` guard (message `a client V1 insert must end within the bound ==> execution timed out after 10000 ms`, or 5000 ms for the progress shape), and the three operator cases (the longer value left the write stall running for the 3 s observation, 3.047 s; the shorter value ended a quiet stall through put under both tolerances) were green. The probe was a throwaway test in a detached worktree and was never committed.
+
+Recorded 2026-11-05T10:40:00Z.
 
 Verdict: pass
