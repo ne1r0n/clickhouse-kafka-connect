@@ -20,7 +20,7 @@
 | E-05 | RTY-01 | 47-02 | pass |
 | E-06 | RTY-01 | 47-02 | pass |
 | E-07 | RTY-01 | 47-02 | pass |
-| E-08 | RTY-02 | 47-03 | pending (plan 47-03) |
+| E-08 | RTY-02 | 47-03 | pass |
 | E-09 | LIF-02 | 47-03 | pending (plan 47-03) |
 | E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pending (plan 47-04) |
 | E-11 | LIF-02, RTY-02 | 47-04 | pending (plan 47-04) |
@@ -439,5 +439,45 @@ fork_delta_commit: e1f3947454f15ae51e245e6522ff27c7399e50fe
 The commit changes exactly one line of `docs/FORK-DELTA.md` (1 insertion, 1 deletion, file line count unchanged). The numbers written into the item are E-06's: runtime `7.9.7-ccs`; c1 calls at 506, 60042 and 120055 ms and c3 calls at 449, 60012 and 120013 ms; flush-7000 gaps 7004, 7004 and 7006 ms; E-05's counts: 22 shapes, 16 retriable shapes, 500 redeliveries, 64 redelivery cases red and 44 first-put cases green under the budget of 5. `(FUT-05)` remains on exactly one line of FORK-DELTA (item 8, closed in plan 47-03). `exactlyOnce=true` is stated as not pinned and the Phase 46 interaction as derived from item 14.
 
 Recorded 2026-11-05T21:10:50Z.
+
+Verdict: pass
+
+### E-08: FUT-05 closed by decision: the record, its reason, FORK-DELTA items 8 and 24, WARN and config unchanged
+
+Backs: RTY-02, ROADMAP Phase 47 criterion 4 (FUT-05 closed with a recorded decision and its reason, the WARN kept, no validator, FORK-DELTA no longer lists it as open), U-1, U-2.
+
+```sh
+git diff --quiet 427f30b4c4dffd56841f5e5eafe13a55ac4caca8 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java src/main/java/com/clickhouse/kafka/connect/util/Utils.java src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+test "$(git show 427f30b4c4dffd56841f5e5eafe13a55ac4caca8:src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java | sed -n '22,28p')" = "$(sed -n '22,28p' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java)"   # and lines 136,143
+git diff --quiet 427f30b4c4dffd56841f5e5eafe13a55ac4caca8 HEAD -- src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnLiveTest.java src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesPinUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/AdditionalRetriableErrorCodesTest.java
+python3 -I -c '<apply the three old/new pairs of fork_delta_fut05 from 47-doc-edits.json to docs/FORK-DELTA.md, each old text asserted to occur once>'
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd47/exec/msg-fd-fut05.txt
+python3 -I -c '<replay the three pairs on the commit parent and compare with the commit>'
+grep -c -e 'FUT-05 stays open' -e 'is not closed by this' -e '(FUT-05)' docs/FORK-DELTA.md
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+```
+
+```text
+config_unchanged_since_base: yes
+warn_text_unchanged: yes
+warn_pins_unchanged: yes
+warn_tests_green: yes
+decision: FUT-05 closed: no retry budget, no setting that removes a code from the built-in set, no validator; the start-up WARN and its two pins kept
+decided_by: user
+decided_on: 2026-11-05
+decision_source: 47-CONTEXT.md U-1 and U-2, answered via AskUserQuestion
+reason: transient is the connector's judgment and ClickHouse has no such classification; a rejecting check breaks running connectors at their next configuration write (ConfigDef validator) or next task start (constructor check)
+validator_added: no
+budget_added: no
+removal_setting_added: no
+fork_delta_fut05: exact
+fork_delta_open_fut05_lines: 0
+fork_delta_commit: 6ff00ea641e31d8f6df119524797b064c86cb665
+anchors_mirror: rows=218 bad=0
+```
+
+The user decided on 2026-11-05 (47-CONTEXT.md U-2): "NO validator. Keep the start-up WARN and its two pins unchanged; close FUT-05 with the reason; FORK-DELTA items 8, 17 and 24 stop listing it as open." What stays as it was at the phase base: the WARN text (`UNVETTED_RETRIABLE_CODES_WARNING` and its method `warnOnUnvettedRetriableCodes`, lines 22-28 and 136-143 of `ClickHouseSinkTask.java`), `UnvettedRetriableCodesWarnUnitTest`, `UnvettedRetriableCodesWarnLiveTest`, `AdditionalRetriableErrorCodesPinUnitTest`, `AdditionalRetriableErrorCodesTest`, and the setting's description in `ClickHouseSinkConfig` (the file is byte-identical to the phase base, as are `Utils` and `ProxySinkTask`). `warn_tests_green` rests on E-05's testUnit gate (2295 tests, 0 failures), in which the E-01 `warn_tests` count of 21 for `UnvettedRetriableCodesWarnUnitTest` is unchanged. The commit changes exactly two lines of `docs/FORK-DELTA.md` (items 8 and 24, 2 insertions and 2 deletions); the Connector-source WARN row that cites Known cost 24 is not edited, and no line of the file carries the open FUT-05 parenthesis, the stays-open wording or the not-closed sentence. No source or test file changed in this task.
+
+Recorded 2026-11-05T21:13:30Z.
 
 Verdict: pass
