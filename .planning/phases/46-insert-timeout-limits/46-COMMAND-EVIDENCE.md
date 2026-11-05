@@ -24,7 +24,7 @@
 | E-09 | TMO-03 | 46-03 | pass |
 | E-10 | TMO-02 | 46-04 | pass |
 | E-11 | TMO-03 | 46-04 | pass |
-| E-12 | TMO-02, TMO-03 | 46-04 | pending (plan 46-04) |
+| E-12 | TMO-02, TMO-03 | 46-04 | pass |
 | E-13 | TMO-01 | 46-05 | pending (plan 46-05) |
 | E-14 | TMO-01, TMO-02, TMO-03 | 46-05 | pending (plan 46-05) |
 
@@ -675,5 +675,51 @@ PROBENI client=V1 request=keeper_read elapsed_ms=30034 still_running_at_cap=no o
 Read from the code: a table-refresh thread blocked on client V2 keeps `isUpdateMappingRunning` set, so every later `updateMapping` returns `false` and callers fall to a direct `describeTable`, and a start-path request that never returns leaves `SinkTask.start` blocked. Measured: against a server that accepts every request and never answers, every client V2 request except the Keeper read was still blocked at the 20 s cap (the V2 ping at 20005 ms with a 2000 ms timeout, so its timeout does not fire), while the Keeper read, which always goes through a client V1 read, ended at 30034 ms on the V2 helper client and 30034 ms on the V1 helper client, and every other client V1 request except ping ended between 30034 and 30045 ms; the client V1 ping ended at 2082 ms. The probe built both helper clients with the retry count at 1; the connector's default is 3, and `pingV1` and `queryV1` loop that many times (read from the code, not measured with 3), so the V1 ping and the V1 Keeper write take longer than these figures with the default. The V1 describe, version and table-list calls swallowed their failure and returned null or an empty list, and the ALTER and the Keeper write threw a `RuntimeException`.
 
 Recorded 2026-11-05T11:07:00Z.
+
+Verdict: pass
+
+### E-12: FORK-DELTA records the phase
+
+Backs: TMO-02, TMO-03 (the recorded cases are written into FORK-DELTA with the measured number, conditions and the decision behind them), U-1, U-4, U-5, U-6, plan-check B2 (no claim wider than its measurement) and the ROADMAP note that the rollout item states the bound's consequence.
+
+```sh
+python3 -I <row-count script: Connector source and Test harness rows at HEAD minus at B0>
+python3 -I <item 14 script: U-6 wording count, citations, measured numbers, removed clauses>
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/testunit-docs.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-p4-fd.txt
+git diff --name-only d4977444c774b1ba2c5a2a5e96fa64b854d2fbac^ d4977444c774b1ba2c5a2a5e96fa64b854d2fbac
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- CHANGELOG.md VERSION build.gradle.kts gradle .github
+```
+
+```text
+fork_delta_commit: d4977444c774b1ba2c5a2a5e96fa64b854d2fbac
+fork_delta_commit_files: docs/FORK-DELTA.md
+connector_rows_delta: 1
+harness_rows_delta: 0
+item14_not_bounded_by_decision: 4
+item14_cites: yes
+item14_numbers_from_evidence: yes
+item14_numbers_checked: E-10 8299, 3050, 3034, 2500, 8380; E-11 2082; E-09 pipe-write number skipped because v1_bound_ends_pipe_write_stall is not applicable
+item14_stale_clauses: 0
+v1_bound_ends_pipe_write_stall: not applicable
+item14_v1_pipe_wording: not reached up to 256 MiB, the bound is not claimed to end a stall inside the pipe write, and no claim of bounded or of impossible to bound is made for it
+item14_help_text_sentence: carried over verbatim, checked against the text at B0
+changelog_version_build_workflows_unchanged: yes
+docs_changed_since_base: docs/FORK-DELTA.md
+src_main_changed_in_this_plan: no
+testunit_exit: 0
+testunit_tests: 2152
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 102
+```
+
+The Connector-source table gained one row, placed after the per-insert `socket_timeout` row (the V2 write-phase deadline and the V1 bounded wait, with messages, operator gate, unchanged-tree behaviour from E-04 and E-07 and the pins), and the Test-harness table kept its row count (the `StubClickHouseServer` row was extended in place with the raw-socket mode, the shared fixture and the A1 margin of E-03). Known costs item 14 was rewritten from the recorded evidence: the bounded cases with their pins and numbers; the client V1 pipe write as measured, which means not reached up to 256 MiB (the 256 MiB fixed-tree time, 1530 ms, is the response-wait bound); three cases "not bounded by decision" (the client V2 progress insert after its body is sent, with the progress-while-sending shape stated as measured: stub pin, live 64 MiB body that left the client in 2305 ms and so never reached the shape, wire; the non-insert requests with E-11's numbers; the V2 ping timeout, 20005 ms against 2000 ms); the false statement about the ping's timeout corrected; and the rollout consequence (a bound fails an insert that legitimately runs longer, and a timed-out insert is not rolled back, with 2500 then 4000 rows on MergeTree). The help-text sentence of item 14 is unchanged (plan 46-05 rewrites it with the text). The cache-busted `testUnit` ran 2152 tests, the E-09 count, with 0 failures, 0 errors and 2 skipped across 102 files.
+
+Recorded 2026-11-05T11:11:00Z.
 
 Verdict: pass
