@@ -15,7 +15,7 @@
 |-------|-------------|------|---------|
 | E-01 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-01 | pass |
 | E-02 | LIF-01 | 47-01 | pass |
-| E-03 | LIF-01 | 47-01 | pending (plan 47-01) |
+| E-03 | LIF-01 | 47-01 | pass |
 | E-04 | LIF-01, LIF-02 | 47-01 | pending (plan 47-01) |
 | E-05 | RTY-01 | 47-02 | pending (plan 47-02) |
 | E-06 | RTY-01 | 47-02 | pending (plan 47-02) |
@@ -153,5 +153,49 @@ expected_added_sha256: a3a2307945127282f8b6c3050888f4bfa1a384140e053439998312312
 Both failures are `AssertionFailedError` on the writer stop count (the strategy threw first and the proxy stop was never reached); the other four cases (the no-strategy case and the three shipped strategies) passed. The per-file Spotless check of the pin ran before this record, so the frozen hash is the final one. `47-lif01-expected-added.tsv` holds the 6 PASS rows of the pin and is committed while `ClickHouseSinkTask.java` still equals B0 and before the fix commit.
 
 Recorded 2026-11-05T20:22:14Z.
+
+Verdict: pass
+
+### E-03: LIF-01 fix commit: try/finally, pin green, scope, anchors
+
+Backs: LIF-01, ROADMAP Phase 47 criterion 1 (`ClickHouseSinkTask.stop()` reaches the proxy stop even when the strategy's `stop()` throws; the fix is its own commit), D-1, D-3.
+
+```sh
+git diff --numstat -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClickHouseSinkTaskStopUnitTest*' > /tmp/gsd47/exec/green-lif01.log 2>&1
+rm -rf /tmp/gsd47/exec/xml-lif01-green && cp -R build/test-results/testUnit /tmp/gsd47/exec/xml-lif01-green
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit /tmp/gsd47/exec/xml-lif01-green --class .ClickHouseSinkTaskStopUnitTest tests=6 failures=0 errors=0
+shasum -a 256 src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskStopUnitTest.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ProxySinkTaskStopUnitTest*' --tests '*UnvettedRetriableCodesWarnUnitTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd47/exec/neighbours-lif01.log 2>&1
+python3 -I -c '<stop() token-list check against B0>'
+grep -cF -e '} finally {' -e 'deliveryStrategy.stop();' -e 'this.proxySinkTask.stop();' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java   # once per pattern
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+git worktree add --detach /tmp/gsd47/fmt HEAD   # per-file Spotless on ClickHouseSinkTask.java and the pin, cmp, worktree removed
+git add src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskStopUnitTest.java .planning/scripts/fork-anchors.txt
+git commit -F /tmp/gsd47/exec/msg-fix.txt
+```
+
+```text
+fix_commit: 796c75fa3a0a8a7bb8d740bcffd3b2a3858b9cbe
+green_tests: 6
+green_failures: 0
+green_errors: 0
+test_sha256_unchanged: yes
+neighbours_failed: 0
+stop_body_check: try/finally only
+csc_numstat: 8 5
+lif01_finally_count: 1
+lif01_strategy_stop_count: 1
+lif01_proxy_stop_count: 1
+anchors_mirror: rows=218 bad=0
+fmt_csc: identical
+fmt_st: identical
+```
+
+The neighbour run (`ProxySinkTaskStopUnitTest`, `UnvettedRetriableCodesWarnUnitTest`, `SourcePlanningIdGuardUnitTest`) ran 43 tests with 0 failures; the first two call `stop()` on real tasks. The fix commit holds exactly `ClickHouseSinkTask.java` (8 insertions, 5 deletions, nothing outside `stop()`), the pin (byte-identical to the red run) and `fork-anchors.txt` (3 added lines: one comment and two LIF-01 rows).
+
+Recorded 2026-11-05T20:23:36Z.
 
 Verdict: pass
