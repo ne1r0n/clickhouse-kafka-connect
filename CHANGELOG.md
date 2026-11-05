@@ -3,9 +3,10 @@
 ## Bug Fixes
 
 * `ClickHouseSinkTask.stop()` now stops the proxy task (the writer, the task MBean and the state provider) even when
-  the delivery strategy's `stop()` throws, and when only the strategy throws, its exception is the one that reaches
-  Kafka Connect. With each of the three shipped delivery strategies (direct, at-least-once buffered and exactly-once
-  buffered), `stop()` returns normally and stops the proxy task, as before. This closes the task-level `stop()`
+  the delivery strategy's `stop()` throws, and when only the strategy throws, its exception is the one `stop()`
+  throws (Kafka Connect only logs a throw from `stop()` as a WARN and does not fail the task, read in its sources).
+  With each of the three shipped delivery strategies (direct, at-least-once buffered and exactly-once buffered),
+  `stop()` returns normally and stops the proxy task, as before. This closes the task-level `stop()`
   residual of the `1.7.0_gg7` Known Issues and corrects the `1.7.0_gg7` Bug Fixes sentence "The task's `stop()` stops
   the writer, the MBean and the state provider even when one of them throws": in `1.7.0_gg7` that held for
   `ProxySinkTask.stop()`, and not for `ClickHouseSinkTask.stop()` when the delivery strategy's `stop()` threw.
@@ -15,10 +16,13 @@
 * The other residuals of the `1.7.0_gg7` closing stay open: a Keeper state-provider constructor that fails on client
   V1, a helper-client constructor that fails after it built its client V2, and a second `start()` on one writer. The
   writer's `stop()` still waits at most five seconds for the table refresh and then closes its client, so a refresh
-  that is still running can end with an error on a closed client.
-* When both the delivery strategy's `stop()` and the proxy task's stop throw, both run and an exception reaches Kafka
-  Connect. A one-off probe, not a pinned test, saw the proxy task's exception arrive and the strategy's exception
-  dropped, not attached as suppressed.
+  that is still running can end with an error on a closed client. `close(partitions)` has the same shape `stop()` had:
+  it runs the proxy task's partition removal before the delivery strategy's `close` with no `finally`, so a throw from
+  the first skips the second.
+* When both the delivery strategy's `stop()` and the proxy task's stop throw, both run and an exception reaches the
+  caller of `stop()`; Kafka Connect only logs it as a WARN and does not fail the task. A one-off probe, not a pinned
+  test, saw the proxy task's exception arrive and the strategy's exception dropped: not attached as suppressed and not
+  logged by `stop()`.
 
 # 1.7.0_gg7, 2026-11-02
 
