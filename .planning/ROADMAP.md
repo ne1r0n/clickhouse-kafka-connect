@@ -316,7 +316,23 @@ Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anc
   3. *[Docker-free]* Each broad allow-list glob row (UF-37-3) is narrowed, or justified in the ledger, and the allow-list dry run reads `0 unallowed, 0 stale rows` (P37-03).
   4. *[record]* The published `docs/ROLLOUT-v1.7.0_gg6.md` names no planning identifier: IN-03 is replaced by a public reference (DOC-01). Every evidence path that FORK-DELTA cites resolves on the phase tip, under `.planning/milestones/` where it moved. The test path carries its package, and item 20 names its ledger by a path that survives the next archive (DOC-02).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+- [ ] 48-01-PLAN.md — evidence opened, baseline on the untouched base (cache-busted testUnit with Docker unreachable, full suite on `latest` × V2, anchors 218, tail gate, XML snapshots and status dumps; the gg6 and gg7 allow-lists identical to their tags, the compare script md5, the gg6 note's three tag hunks), and the two check scripts written to a plan-time specification, calibrated on the base and frozen: `48-path-check.py` (FORK-DELTA reads 99 candidates, 2 unresolved, 6 by design) and `48-id-scan.py` (3 identifiers in the gg6 note, 0 in its tag copy) (DOC-01, DOC-02, P37-01, P37-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 48-02-PLAN.md — six additive Docker-free test commits, each shown red by a throwaway mutation: the null binding of the unreadable enum describe on both clients (U-5, 4 cases, `DescribeUnreadableEnumMockServerTest` unchanged), the two-literal-segment rule over every shipped allow-list (U-9, 9 cases, 49 wildcard rows, no script edit), the MBean-unregister failure in `ProxySinkTaskStopUnitTest` (40 IN-03, 2), the MBean precondition in `ClickHouseSinkTaskStopUnitTest` (47 IN-01, 1), blank and repeated entries in `UnvettedRetriableCodesWarnUnitTest` (42 IN-03, 7), the plain `DataException` control (42 IN-04, 2); extended files lose no line; testUnit +25 with an exact delta and the committed `48-expected-added.tsv` (P37-01, P37-02, P37-03, P37-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 48-03-PLAN.md — 28 IN-01 (U-4), the phase's only production change: the three `ESCAPED_NEWLINE` lines leave `DeclaredNullability` (red as 8 compile errors first), the constant moves into `DeclaredNullabilityFixtures` with the 8 references repointed, one commit (`src/main` 0/3, no Javadoc reflow, anchors 218), testUnit with an empty delta; then the tail gate on an explicit SHA and one `--rerun` full suite on `latest` × V2 with the 18 named skips and the two live readers green (P37-01)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 48-04-PLAN.md — documents from the plan-time `48-doc-edits.json`, one commit per document key, facts read first: the gg6 note's row D7 identifier and the FUT-05 clauses of row C2 and the notice (DOC-01, U-6, U-7), the gg1 note (43 IN-02, U-6), FORK-DELTA's 25 and 35 evidence paths under `.planning/milestones/`, the removed `KeyToValueTest` path kept beside its package path (U-10), item 8, item 20 naming `48-DISPOSITION-LEDGER.md` with `git ls-files` (U-11), row 94 (43 IN-01) and the double-ERROR sentence (U-8); resolver `unresolved=0`, gg6 scan 0 hits, allow-lists identical to their tags (DOC-01, DOC-02, P37-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 48-05-PLAN.md — dry runs per D-1 (the published gg6/gg7 pair PASS with 0 unallowed and 0 stale; the phase tip against gg7 with a 12-row exact draft PASS), `48-DISPOSITION-LEDGER.md` (57 rows: 10 fixed with evidence pointers, 47 closed with reasons and triggers, measured costs for 26 IN-02 and 27 WR-01, no "owner: user", checked by the plan-time `48-ledger-check.py`), the phase gate (testUnit with Docker unreachable and the full suite on `latest` × V2 at the base plus 25, scope, anchors 218, tail gate on an explicit SHA, nothing pushed) and the Phase 49 hand-off (P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02)
 
 **Research flag**: Settle these before planning:
 - What "the null assertion" of P37-01 and "the 28 IN-05(b) items" of P37-02 are, read from the Phase 28 review and `milestones/v1.7.0_gg7-followup-phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md`. That ledger's 28-IN-05(b) row is the `DescribeUnreadableEnumMockServerTest` null assertion.
