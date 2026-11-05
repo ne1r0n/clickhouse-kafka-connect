@@ -25,6 +25,7 @@
 | E-10 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-04 | pass |
 | E-11 | LIF-02, RTY-02 | 47-04 | pass |
 | E-12 | LIF-02 | 47-05 | pass |
+| E-13 | RTY-01 | 47-05 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base
 
@@ -708,5 +709,68 @@ main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouse
 WR-01: the `ClickHouseWriter` patch-table row (line 39) now says the other two of the five Known cost 13 residuals belong to the Keeper state provider and to the task's `close(partitions)`, which is what item 13 lists; no mention of the task's `stop()` as an open residual is left in `docs/FORK-DELTA.md`. IN-03a: item 13 now says two of the six `ClickHouseSinkTaskStopUnitTest` cases (the ones with a throwing strategy) were red on the unchanged tree and all six are green after (E-02: `red_tests: 6`, `red_failures: 2`, `red_pass: 4`). WR-02: the CHANGELOG Bug Fixes bullet says the strategy's exception is the one `stop()` throws and that Kafka Connect only logs a throw from `stop()` as a WARN and does not fail the task (read in the sources, 47-RESEARCH.md; not measured); the both-throw Known Issues bullet says both stops run, an exception reaches the caller of `stop()`, and the strategy's exception is dropped, not attached as suppressed and not logged by `stop()` (E-04: `both_throw_thrown: IllegalArgumentException:proxy side failure`, `both_throw_suppressed: 0`; the code of `stop()` has no catch). IN-03b: the gg8 Known Issues first bullet now carries the `close(partitions)` residual that item 13 records (read from the code, `ClickHouseSinkTask.close`, not fixed). Deviations from the plan-time text of `47-doc-edits.json`: the `changelog_gg8` value and the `fork_delta_item13` pair are no longer the committed text (the CHANGELOG now starts with a text that differs from `changelog_gg8`, and item 13 no longer contains the pair's `new` string); the gg7 section below the gg8 section is byte-identical to the phase base. One edit goes slightly past the review's wording and is recorded as a consistency correction: item 13 carried the same "reaches Kafka Connect" claim as the CHANGELOG, so it received the same WARN qualification and the not-logged remark. `src/main` is unchanged by this task (the only difference from the phase base is still `ClickHouseSinkTask.java`).
 
 Recorded 2026-11-05T21:44:49Z.
+
+Verdict: pass
+
+### E-13: Gap closure 47-05, WR-04: RTY-01 pin cut to 50 redeliveries per row, renamed, mutation re-run
+
+Backs: RTY-01, 47-REVIEW.md WR-04 (cost and name of `RetriableRedeliveryLimitPinUnitTest`), U-1.
+
+```sh
+python3 -I /tmp/gsd47/exec/g05/edit_test.py   # REDELIVERIES 500 to 50, method rename, Javadoc and comment, each old text asserted to occur once
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*RetriableRedeliveryLimitPinUnitTest*' > /tmp/gsd47/exec/g05/green-rty01.log 2>&1
+rm -rf /tmp/gsd47/exec/g05/xml-rty01-green && cp -R build/test-results/testUnit /tmp/gsd47/exec/g05/xml-rty01-green
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/g05/xml-rty01-green /tmp/gsd47/exec/g05/status-rty01-green.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py count /tmp/gsd47/exec/g05/status-rty01-green.tsv .RetriableRedeliveryLimitPinUnitTest PASS --name-contains firstPutOutcomeThroughProxySinkTaskPut   # and retriableShapeIsStillRedeliveredAfterManyAttempts
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py select .planning/phases/47-task-stop-retry-classification/47-rty01-expected-added-gap.tsv PASS /tmp/gsd47/exec/g05/status-rty01-green.tsv .RetriableRedeliveryLimitPinUnitTest
+git worktree add --detach /tmp/gsd47/fmt HEAD   # per-file Spotless on the pin, cmp, worktree removed
+git add src/test/java/com/clickhouse/kafka/connect/sink/RetriableRedeliveryLimitPinUnitTest.java .planning/phases/47-task-stop-retry-classification/47-rty01-expected-added-gap.tsv && git commit -F /tmp/gsd47/exec/g05/msg4.txt
+git worktree add --detach /tmp/gsd47/wt-mut 0c063acf0068fd284ef21adfbadd5f3223d7bed2
+python3 -I -c '<in the worktree ProxySinkTask.java: add field mutationConsecutiveFailures; before "boolean errorTolerance = ..." throw RuntimeException when ++mutationConsecutiveFailures > 5; each old text asserted to occur once>'
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd47/wt-mut --console=plain testUnit --rerun --tests '*RetriableRedeliveryLimitPinUnitTest*' > /tmp/gsd47/exec/g05/mut-rty01.log 2>&1
+cp -R /tmp/gsd47/wt-mut/build/test-results/testUnit /tmp/gsd47/exec/g05/xml-rty01-mut
+git worktree remove --force /tmp/gsd47/wt-mut && git worktree prune
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/g05/xml-rty01-mut /tmp/gsd47/exec/g05/status-rty01-mut.tsv
+git diff --quiet 427f30b4c4dffd56841f5e5eafe13a55ac4caca8 -- src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+```
+
+```text
+pin_docker_host: unix:///nonexistent.sock
+pin_tests: 108
+pin_failures: 0
+pin_errors: 0
+matrix_rows: 44
+redelivery_rows: 64
+redeliveries: 50
+pin_class_seconds: 2.909
+pin_xml_bytes: 3870005
+pin_xml_lines: 19291
+before_pin_class_seconds: 22.037
+before_pin_xml_bytes: 36151467
+before_pin_xml_lines: 179491
+first_put_rows_equal_before: yes
+expected_added_rows: 108
+expected_added_file: 47-rty01-expected-added-gap.tsv
+expected_added_sha256: 4da0c7ee5c7e33d6362fd73ac6cc613db9bf7fe71abbaa4b51fa124968e535a7
+fmt_rl: identical
+without_bound_in_test: 0
+pin_commit: 0c063acf0068fd284ef21adfbadd5f3223d7bed2
+mutation_budget: 5
+mutation_tests: 108
+mutation_failures: 64
+mutation_matrix_pass: 44
+mutation_messages_at_redelivery_6: 64
+mutation_failures_all_redelivery_rows: yes
+mutation_main_tree_untouched: yes
+mutation_worktree_removed: yes
+anchors_mirror: rows=218 bad=0
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java
+```
+
+The redelivery count per row is 50 instead of 500; a budget of 5 still fails at redelivery 6, as before. The class time went from 22.037 s (E-05) to 2.909 s and its XML report from 36,151,467 bytes (179,491 lines, the figures of the review run) to 3,870,005 bytes (19,291 lines), about a tenth, as expected from the 10-fold smaller loop (the log lines scale with the call count). The loggers were not silenced: the cost is gone with the count, and a level change in the test would be global to the test JVM's loggers, where other tests read log output through `LogCapture`, so it was left alone as unnecessary. The method is now `retriableShapeIsStillRedeliveredAfterManyAttempts`, the Javadoc says a finite count shows no budget below it and not that none exists above it, and the test file no longer contains the words "without bound". The testcase names of the 64 redelivery rows changed with the method name, so the 108 expected rows for the gate are written anew in `47-rty01-expected-added-gap.tsv` (the 44 first-put rows are line for line those of `47-rty01-expected-added.tsv`, which stays committed and unedited and is no longer used by the gate). The mutation was re-run on the pin commit in the removed worktree `/tmp/gsd47/wt-mut` (a consecutive-failure counter of 5 in `ProxySinkTask.put`, two lines, never in the main tree): exactly the 64 redelivery rows failed, each with `redelivery 6 ==> Unexpected exception type thrown, expected: <RetriableException> but was: <RuntimeException>`, and the 44 first-put rows stayed green, as in E-05. The full-suite and anchors totals are in the gate entry after the last edit. No JVM crash occurred and `-PjavaVersion=21` was not used.
+
+Recorded 2026-11-05T21:46:57Z.
 
 Verdict: pass
