@@ -16,7 +16,7 @@
 | E-01 | LIF-01, LIF-02, RTY-01, RTY-02 | 47-01 | pass |
 | E-02 | LIF-01 | 47-01 | pass |
 | E-03 | LIF-01 | 47-01 | pass |
-| E-04 | LIF-01, LIF-02 | 47-01 | pending (plan 47-01) |
+| E-04 | LIF-01, LIF-02 | 47-01 | pass |
 | E-05 | RTY-01 | 47-02 | pending (plan 47-02) |
 | E-06 | RTY-01 | 47-02 | pending (plan 47-02) |
 | E-07 | RTY-01 | 47-02 | pending (plan 47-02) |
@@ -197,5 +197,53 @@ fmt_st: identical
 The neighbour run (`ProxySinkTaskStopUnitTest`, `UnvettedRetriableCodesWarnUnitTest`, `SourcePlanningIdGuardUnitTest`) ran 43 tests with 0 failures; the first two call `stop()` on real tasks. The fix commit holds exactly `ClickHouseSinkTask.java` (8 insertions, 5 deletions, nothing outside `stop()`), the pin (byte-identical to the red run) and `fork-anchors.txt` (3 added lines: one comment and two LIF-01 rows).
 
 Recorded 2026-11-05T20:23:36Z.
+
+Verdict: pass
+
+### E-04: LIF-01 gate on the fix tree, both-throw probe, FORK-DELTA item 13
+
+Backs: LIF-01, LIF-02, ROADMAP Phase 47 criterion 1 (the fix passes its own gate with exactly the planned added rows), D-1, D-2, D-3.
+
+```sh
+git diff --quiet 796c75fa3a0a8a7bb8d740bcffd3b2a3858b9cbe -- src
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd47/exec/lif01-gate-testunit.log 2>&1
+rm -rf /tmp/gsd47/exec/xml-lif01-gate-testunit && cp -R build/test-results/testUnit /tmp/gsd47/exec/xml-lif01-gate-testunit
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py dump /tmp/gsd47/exec/xml-lif01-gate-testunit /tmp/gsd47/exec/status-lif01-gate-testunit.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-testcase-status.py delta /tmp/gsd47/exec/status-base-testunit.tsv /tmp/gsd47/exec/status-lif01-gate-testunit.tsv .planning/phases/47-task-stop-retry-classification/47-lif01-expected-added.tsv
+python3 -I .planning/phases/47-task-stop-retry-classification/47-evidence-check.py junit /tmp/gsd47/exec/xml-lif01-gate-testunit --class .WrappedDataExceptionClassificationPinUnitTest   # and the seven other pin classes
+git worktree add --detach /tmp/gsd47/wt-probe 796c75fa3a0a8a7bb8d740bcffd3b2a3858b9cbe
+cp /tmp/gsd47/probes/Lif01ProbeUnitTest.java /tmp/gsd47/wt-probe/src/test/java/com/clickhouse/kafka/connect/sink/
+rm -rf /tmp/gsd47/wt-probe/build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd47/wt-probe --console=plain testUnit --rerun --tests '*Lif01ProbeUnitTest*' > /tmp/gsd47/exec/probe-lif01.log 2>&1
+cp -R /tmp/gsd47/wt-probe/build/test-results/testUnit /tmp/gsd47/exec/xml-lif01-probe
+git worktree remove --force /tmp/gsd47/wt-probe && git worktree prune
+python3 -I -c '<apply the single old/new pair of fork_delta_item13 from 47-doc-edits.json to docs/FORK-DELTA.md, old text asserted to occur once>'
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd47/exec/msg-fd.txt
+```
+
+```text
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2187
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+status_delta_testunit: delta: removed=0 added=6 expected=6 match=yes
+classification_pins_equal_base: yes
+gate_tree_equals_fix_commit: yes
+probe_source: research copy
+probe_tests: 2
+probe_failures: 0
+both_throw_thrown: IllegalArgumentException:proxy side failure
+both_throw_suppressed: 0
+probe_worktree_removed: yes
+fork_delta_item13: exact
+fork_delta_commit: e1b03148940c85683c9b0376aa07b1b38d58eab6
+```
+
+The probe at the fix commit shows that when both the strategy's and the proxy task's `stop()` throw, the proxy side's exception is the one thrown and the strategy's is dropped with 0 suppressed (Java discards the `try` exception when the `finally` throws); the pin does not assert which exception surfaces, only that both stops ran and a `RuntimeException` reached the caller, so a later move to the `keepFirst` idiom needs no assertion edit. The same probe confirmed the single-throw case at the fix commit: strategy stop 1, writer stop 1, state close 1, MBean unregistered, the strategy's own exception reaching the caller. Backlog candidates for the SUMMARY, both unchanged in this phase (D-1): a `finally` in `close(partitions)`, which has the same no-`finally` shape, and the in-repo `keepFirst` idiom in `ClickHouseSinkTask.stop()`, which would attach the strategy's exception as suppressed. Nothing of the probe worktree is committed.
+
+Recorded 2026-11-05T20:25:01Z.
 
 Verdict: pass
