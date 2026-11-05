@@ -25,7 +25,7 @@
 | E-10 | TMO-02 | 46-04 | pass |
 | E-11 | TMO-03 | 46-04 | pass |
 | E-12 | TMO-02, TMO-03 | 46-04 | pass |
-| E-13 | TMO-01 | 46-05 | pending (plan 46-05) |
+| E-13 | TMO-01 | 46-05 | pass |
 | E-14 | TMO-01, TMO-02, TMO-03 | 46-05 | pending (plan 46-05) |
 
 ### E-01: Pre-flight and baseline on the untouched base
@@ -721,5 +721,62 @@ testunit_files: 102
 The Connector-source table gained one row, placed after the per-insert `socket_timeout` row (the V2 write-phase deadline and the V1 bounded wait, with messages, operator gate, unchanged-tree behaviour from E-04 and E-07 and the pins), and the Test-harness table kept its row count (the `StubClickHouseServer` row was extended in place with the raw-socket mode, the shared fixture and the A1 margin of E-03). Known costs item 14 was rewritten from the recorded evidence: the bounded cases with their pins and numbers; the client V1 pipe write as measured, which means not reached up to 256 MiB (the 256 MiB fixed-tree time, 1530 ms, is the response-wait bound); three cases "not bounded by decision" (the client V2 progress insert after its body is sent, with the progress-while-sending shape stated as measured: stub pin, live 64 MiB body that left the client in 2305 ms and so never reached the shape, wire; the non-insert requests with E-11's numbers; the V2 ping timeout, 20005 ms against 2000 ms); the false statement about the ping's timeout corrected; and the rollout consequence (a bound fails an insert that legitimately runs longer, and a timed-out insert is not rolled back, with 2500 then 4000 rows on MergeTree). The help-text sentence of item 14 is unchanged (plan 46-05 rewrites it with the text). The cache-busted `testUnit` ran 2152 tests, the E-09 count, with 0 failures, 0 errors and 2 skipped across 102 files.
 
 Recorded 2026-11-05T11:11:00Z.
+
+Verdict: pass
+
+### E-13: Help text red on the unchanged text, written from the measured list, pinned, anchors, FORK-DELTA
+
+Backs: TMO-01 (ROADMAP Phase 46 criterion 4: the help text is written after criteria 1-3 settled, says what the setting bounds and what it does not, is pinned Docker-free against the measured list, and the `ClickHouseSinkConfig` diff is that text and nothing else), plan-check B2 (no phrase claims more than its measurement).
+
+```sh
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' > /tmp/gsd46/exec/red-help.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' > /tmp/gsd46/exec/green-help.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*AdditionalRetriableErrorCodesPinUnitTest*' --tests '*NewUpstreamConfigDefaultsUnitTest*' --tests '*ClickHouseSinkConfigTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd46/exec/neighbours-help.log 2>&1
+python3 -I <config diff script: every changed line a string literal inside the define call of CLICKHOUSE_CLIENT_INSERT_TIMEOUT_MS at B0>
+grep -c 'configDef.define(' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+grep -rn 'async_insert' src/main | wc -l
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <ClickHouseSinkConfig.java and the pin> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin> && git worktree remove --force /tmp/gsd46/fmt
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 214
+git add <ClickHouseSinkConfig.java, the pin, fork-anchors.txt> && git commit -F /tmp/gsd46/exec/msg-p5-help.txt
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-p5-fd.txt
+```
+
+```text
+phrases_supported: yes
+v1_variant: not applicable
+required_phrase_count: 12
+help_red_csc_identical_to_base: yes
+help_red_tests: 18 (12 required phrases, 4 kept phrases, 1 retired claim, 1 attribute pin)
+help_red_failed_count: 13
+help_red_failed: H1, H2, H13, H3, H4, H5, H6, H7, H8, H9, H10, H11 and the retired-claim case
+help_red_green: the four kept-phrase cases and onlyTheDocumentationOfTheKeyChanged
+help_green_failed_count: 0
+help_pin_tests: 18
+help_neighbours_run: AdditionalRetriableErrorCodesPinUnitTest, NewUpstreamConfigDefaultsUnitTest, ClickHouseSinkConfigTest, SourcePlanningIdGuardUnitTest (49 tests across four files)
+help_neighbours_failed_count: 0
+csc_diff_text_only: yes
+csc_define_count_unchanged: yes
+csc_define_count: 48
+async_insert_main_lines: 2
+anchors_mirror: rows=214 bad=0
+fmt_csc: preexisting
+fmt_hp: identical
+help_commit: 63aade668a711d863aaa346f4d3d87c3cb7aeea3
+help_commit_files: 3
+fork_delta_help_sentence: yes
+help_docs_commit: 1aefb2bea36266a5c156354b8619e992fdbdbef9
+help_docs_commit_files: docs/FORK-DELTA.md
+```
+
+How the list was settled. E-09 `v1_bound_ends_pipe_write_stall` reads `not applicable`, so the client V1 clause is the `not applicable` variant of the plan ("the whole wait for the insert response, including a stalled body write (measured with batches up to 256 MiB), a quiet server and a server that keeps sending progress headers"), there is no pipe-write residual sentence, and the pin carries 12 required phrases. Each phrase was read against the facts it stands on and each is supported: H1 by the unchanged gg7 pin `InsertStallBoundPinUnitTest` (green in E-01); H2 by E-05 (write stall at 1.010 to 1.082 s, slow upload cut at 1.023 s); H13 by E-05 `progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound` (1.013 s), where E-10 recorded that the live 64 MiB body left the client in 2305 ms inside the 3000 ms bound, so the shape rests on that stub pin and not on a live run; H3 by E-07 (the SinkTask thread was in the response wait at 16, 64 and 256 MiB, never in the pipe write), E-08 (write stall ended at 1.137 to 1.218 s against 1000 ms, quiet stall at 0.313 to 0.325 s against 300 ms) and E-10 `v1_progress_ms_fixed` 3034; H4 to H5 by E-05 and E-10 (`v2_progress_escape_ms_fixed` 8299 against a 3000 ms bound, only with `async_insert=0`); H6 to H8 by E-11 (V2 requests still blocked at the 20 s cap, the V2 Keeper read at 30034 ms, V1 requests at 30034 to 30045 ms, V1 ping at 2082 ms with the `timeoutSeconds`-derived timeout); H9 and H10 by the operator cases of E-05 and E-08 and the gg7 operator pins; H11 by E-10 (a V1 timeout into MergeTree left 2500 rows at once and 4000 after 15 s). No phrase was contradicted and none was adjusted against a measurement.
+
+Scopes the text carries, which a reader of this entry should keep. The V1 clause says a stalled body write is covered "as measured with batches up to 256 MiB": a stall inside the client's pipe write was not reached up to 256 MiB (E-07, E-09), so the text claims the response-wait bound for the measured sizes and no bound for a pipe-write stall; the unmeasured residual is recorded in FORK-DELTA item 14. H8 gives the client library's 30 s inactivity limit as the end of the V1 non-insert requests; E-11 measured it with a retry count of 1 and the connector's default is 3, which `pingV1` and `queryV1` loop over (read from the code, not measured), so 30 s is the per-attempt figure; FORK-DELTA item 14 now says so, the help text keeps the planned wording because the plan's verify and the 12-phrase list fix it. "The timeout setting" in H8 is the connector's `timeoutSeconds` (E-11's ping timeout), not this setting. Both are reported in the plan summary for the reviewer.
+
+The config diff is 23 added and 7 removed lines, all string literals inside the define call; `What it does not bound` counts 1 on one source line and the retired claim counts 0 in `ClickHouseSinkConfig.java`. The per-file formatting check on a worktree at the text commit's parent: the pin was identical after `spotlessApply`; `ClickHouseSinkConfig.java` differs only in import ordering, which also differs on the unchanged copy, and the define call region was identical, so the lines this change wrote are not reformatted (`preexisting`). The docs commit holds only `docs/FORK-DELTA.md`; the item 14 sentence no longer contains `is left as it is because` and names `InsertTimeoutHelpTextPinUnitTest` and E-13.
+
+Recorded 2026-11-05T11:22:55Z.
 
 Verdict: pass
