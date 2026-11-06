@@ -26,7 +26,7 @@
 | E-11 | P37-01 | 48-03 | pass |
 | E-12 | DOC-01, P37-04 | 48-04 | pass |
 | E-13 | DOC-02, P37-04 | 48-04 | pass |
-| E-14 | P37-03 | 48-05 | pending (plan 48-05) |
+| E-14 | P37-03 | 48-05 | fail |
 | E-15 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pending (plan 48-05) |
 | E-16 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
 | E-17 | P37-03, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
@@ -1023,3 +1023,71 @@ Notes. All eight read checks held before the first edit, and every `old` string 
 Recorded 2026-11-06T09:20:05Z.
 
 Verdict: pass
+
+### E-14: Dry runs per D-1: the published pair with the gg7 list, and the Phase 48 tip with a 12-row exact draft
+
+Backs: P37-03 (UF-37-3, D-1, U-12: the allow-list dry run reads 0 unallowed and 0 stale rows in its two forms), ROADMAP Phase 48 criterion 3.
+
+```sh
+git rev-parse HEAD
+rm -rf /tmp/gsd48/dry && mkdir -p /tmp/gsd48/dry/gg6 /tmp/gsd48/dry/gg7 /tmp/gsd48/dry/tip
+git archive v1.7.0_gg6 | tar -x -C /tmp/gsd48/dry/gg6
+git archive v1.7.0_gg7 | tar -x -C /tmp/gsd48/dry/gg7
+git archive f198c812dc99cf4c33340a98102b8b83df3999d0 | tar -x -C /tmp/gsd48/dry/tip
+/bin/bash -c 'cd /tmp/gsd48/dry/<n> && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -PjavaVersion=21 --console=plain createConfluentArchive'   # n = gg6, gg7, tip, in turn
+shasum -a 256 /tmp/gsd48/dry/gg6/build/confluent/clickhouse-kafka-connect-v1.7.0_gg6.zip /tmp/gsd48/dry/gg7/build/confluent/clickhouse-kafka-connect-v1.7.0_gg7.zip /tmp/gsd48/dry/tip/build/confluent/clickhouse-kafka-connect-v1.7.0_gg7.zip
+python3 -I .github/scripts/compare_confluent_archives.py <gg6 zip> <gg7 zip> .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt   # published pair
+python3 -I .github/scripts/compare_confluent_archives.py <gg7 zip> <tip zip> /tmp/gsd48/exec/dry-comment-only.txt                                 # tip, comment-only list
+python3 -I .github/scripts/compare_confluent_archives.py <gg7 zip> <tip zip> /tmp/gsd48/exec/dry-draft-gg8.txt                                    # tip, 12-row draft
+python3 -I /tmp/gsd48/exec/<probe>   # 14-row probe list from the comment-only run's UNALLOWED lines, run the same way
+javap -p -c and javap -p -l on DeclaredNullability.class, DeclaredNullability$1.class, DeclaredNullability$Assignment.class of the gg7 and the tip connector jar
+git status --porcelain .planning/scripts
+git show v1.7.0_gg6:.planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt | cmp -s - .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt   # and the gg7 list against v1.7.0_gg7
+```
+
+```text
+dry_tip_head: f198c812dc99cf4c33340a98102b8b83df3999d0
+dry_builds_exit: 0 0 0
+gg6_zip_sha256: 97a5881294f69ffb9957407b6addda8c152aa857082c0f56d8809f88989c4abf
+gg7_zip_sha256: 5ab9da9e3e258db03db39aada56f604bad35711bd5573cbf5798081960827f1b
+tip_zip_sha256: b778327a8e8136527dc97d7bf5f544d5bd39aea2dea870416f5adf82e7618a7f
+published_exit: 0
+published_result: RESULT: PASS
+published_unallowed: 0
+published_stale: 0
+published_totals: totals files-a 7513 files-b 7512 only-a 1 only-b 0 changed 119 same 7393
+tip_comment_only_exit: 1
+tip_comment_only_unallowed: 14
+tip_comment_only_stale: 0
+tip_comment_only_totals: totals files-a 7512 files-b 7515 only-a 0 only-b 3 changed 11 same 7501
+tip_unallowed_paths_match: no
+tip_extra_paths: com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class; com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class
+tip_extra_paths_kind: CHANGED
+draft_rows: 12
+draft_wildcard_rows: 0
+draft_exit: 1
+draft_result: RESULT: FAIL
+draft_unallowed: 2
+draft_stale: 0
+draft_totals: totals files-a 7512 files-b 7515 only-a 0 only-b 3 changed 11 same 7501
+draft_in_tmp_only: yes
+lists_identical_to_tags: yes
+javap_dn_bytecode_identical: no
+javap_dn1_bytecode_identical: yes
+javap_dn1_line_table_identical: no
+javap_dnassignment_bytecode_identical: yes
+javap_dnassignment_line_table_identical: no
+probe_draft_rows: 14
+probe_draft_wildcard_rows: 0
+probe_exit: 0
+probe_result: RESULT: PASS
+probe_unallowed: 0
+probe_stale: 0
+probe_totals: totals files-a 7512 files-b 7515 only-a 0 only-b 3 changed 11 same 7501
+```
+
+Notes. The published pair reads exactly as the plan expects (exit 0, `RESULT: PASS`, 0 `UNALLOWED`, 0 `STALE-ROW`, totals 7513/7512/1/0/119/7393). The tip against the gg7 archive does not: the comment-only list reads 14 `UNALLOWED` lines, not the planned 12, and the 12-row draft of the plan reads `RESULT: FAIL` with 2 `UNALLOWED`, so the plan's expectation that the Phase 48 tip changes exactly one more archive class than the research measured (`DeclaredNullability.class`) failed. The two extra paths are `DeclaredNullability$1.class` (the synthetic switch-map class) and `DeclaredNullability$Assignment.class`, both `CHANGED`. Their bytecode is identical to the gg7 archive's (`javap -p -c` equal); only the `LineNumberTable` differs, because the 28 IN-01 move deleted three lines above the code of `DeclaredNullability.java` and every class compiled from that file records the shifted line numbers. `DeclaredNullability.class` itself differs in bytecode (the removed public field) and in its line table. The three `ONLY-B` classes are the planned ones (`ClickHouseWriter$3`, `$InsertBody`, `$InsertWriteDeadline`); the other eleven are `CHANGED`. The probe list (14 exact rows, the 12 of the plan plus the two inner classes of `DeclaredNullability`, 0 wildcard rows, kept under `/tmp/gsd48/exec`, not a planned run) reads `RESULT: PASS`, 0 `UNALLOWED`, 0 `STALE-ROW`, exit 0, so the corrected hand-off for the gg8 allow-list is 14 exact rows. The tip against the gg7 list fails by design until Phase 49 writes the gg8 list and was not run. `.planning/scripts` holds the 5 lists, unchanged, and the gg6 and gg7 lists equal their tags; no draft or probe list was written under the repository. Nothing in the repository changed except this evidence file. Per the plan, a result other than the table's is a finding: the plan stops here for a decision on the 12 versus 14 rows (the plan text, the E-14 expectations, the T1 verify, the E-17 hand-off row and the SUMMARY would then name 14 rows, totals `changed 11 same 7501`).
+
+Recorded 2026-11-06T09:37:20Z.
+
+Verdict: fail
