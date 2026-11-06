@@ -29,11 +29,11 @@
 | E-12 | RLS-04 | 49-04 | pass |
 | E-13 | RLS-04 | 49-04 | pass |
 | E-14 | RLS-04, RLS-05 | 49-05 | pass |
-| E-15 | RLS-02, RLS-05 | 49-05 | pending (plan 49-05) |
-| E-16 | RLS-05 | 49-05 | pending (plan 49-05) |
-| E-17 | RLS-05 | 49-05 | pending (plan 49-05) |
-| E-18 | RLS-05 | 49-05 | pending (plan 49-05) |
-| E-19 | RLS-06 | 49-05 | pending (plan 49-05) |
+| E-15 | RLS-02, RLS-05 | 49-05 | pending (user-gated) |
+| E-16 | RLS-05 | 49-05 | pending (user-gated) |
+| E-17 | RLS-05 | 49-05 | pending (user-gated) |
+| E-18 | RLS-05 | 49-05 | pending (user-gated) |
+| E-19 | RLS-06 | 49-05 | pending (user-gated) |
 | E-20 | RLS-01 to RLS-06 | 49-05 | pending (plan 49-05) |
 
 ### E-01: Pre-flight, the tree-neutral merge of the gg7 release merge, the retag of pre-v1.7.0_gg8 and the tail gate on the merge
@@ -987,3 +987,158 @@ The dry-run merge D of the tip onto `94834763` was built twice by the frozen scr
 
 2026-11-06T17:16:14Z
 Verdict: pass
+
+### E-15: Handoff U1 and U2 (scratch push and release dry run) is a user-gated handoff
+
+Backs: RLS-05 (the scratch push U1 and the release dry run U2, each on its own word: G3 and G3b).
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict .planning/phases/49-release-publication/49-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+python3 -I -c '<the handoff structure check of the plan: sections, the user-reported resume wording, the origin value, no forbidden push option, no release tag push, no mutating gh verb>' 9483476322e0d331e81c5b92ac266a18f0f01450
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets .planning/phases/49-release-publication/49-COMMAND-EVIDENCE.md
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*' 'scratch/*'
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+```
+
+```text
+handoff_file: .planning/phases/49-release-publication/49-USER-DISPATCH-1-SCRATCH-DRYRUN.md
+handoff_hygiene: clean
+pre_checks_listed: 10
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 9483476322e0d331e81c5b92ac266a18f0f01450
+user_report: not yet received
+```
+
+This record stays pending: the step and its word are the user's, and no executor runs them. The handoff file lists 10 numbered pre-checks with expected values, the exact command, the expected result, the fields to report, the abort and contingency rules, a clean-up and the resume path for the orchestrator. Nothing was pushed, merged, tagged, dispatched or deleted; origin `custom_build` still reads `9483476322e0d331e81c5b92ac266a18f0f01450`. It is never edited; the user's report, when it comes, is a new entry from E-21 on.
+
+2026-11-06T17:21:05Z
+Verdict: pending (user-gated: the step and its word are the user's)
+
+### E-16: Handoff U3 (push of M' to custom_build) is a user-gated handoff
+
+Backs: RLS-05 (the push of the merge commit M', word G4).
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict .planning/phases/49-release-publication/49-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+python3 -I -c '<the handoff structure check of the plan: sections, the user-reported resume wording, the origin value, no forbidden push option, no release tag push, no mutating gh verb>' 9483476322e0d331e81c5b92ac266a18f0f01450
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets .planning/phases/49-release-publication/49-COMMAND-EVIDENCE.md
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*' 'scratch/*'
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+```
+
+```text
+handoff_file: .planning/phases/49-release-publication/49-USER-DISPATCH-2-CUSTOM-BUILD-PUSH.md
+handoff_hygiene: clean
+pre_checks_listed: 8
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 9483476322e0d331e81c5b92ac266a18f0f01450
+user_report: not yet received
+```
+
+This record stays pending: the step and its word are the user's, and no executor runs them. The handoff file lists 8 numbered pre-checks with expected values, the exact command, the expected result, the fields to report, the abort and contingency rules, a clean-up and the resume path for the orchestrator. Nothing was pushed, merged, tagged, dispatched or deleted; origin `custom_build` still reads `9483476322e0d331e81c5b92ac266a18f0f01450`. It is never edited; the user's report, when it comes, is a new entry from E-21 on.
+
+2026-11-06T17:21:05Z
+Verdict: pending (user-gated: the step and its word are the user's)
+
+### E-17: Handoff U4 (the publish dispatch) is a user-gated handoff
+
+Backs: RLS-05 (the publish run, word G5).
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict .planning/phases/49-release-publication/49-USER-DISPATCH-3-PUBLISH.md
+python3 -I -c '<the handoff structure check of the plan: sections, the user-reported resume wording, the origin value, no forbidden push option, no release tag push, no mutating gh verb>' 9483476322e0d331e81c5b92ac266a18f0f01450
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets .planning/phases/49-release-publication/49-COMMAND-EVIDENCE.md
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*' 'scratch/*'
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+```
+
+```text
+handoff_file: .planning/phases/49-release-publication/49-USER-DISPATCH-3-PUBLISH.md
+handoff_hygiene: clean
+pre_checks_listed: 4
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 9483476322e0d331e81c5b92ac266a18f0f01450
+user_report: not yet received
+```
+
+This record stays pending: the step and its word are the user's, and no executor runs them. The handoff file lists 4 numbered pre-checks with expected values, the exact command, the expected result, the fields to report, the abort and contingency rules, a clean-up and the resume path for the orchestrator. Nothing was pushed, merged, tagged, dispatched or deleted; origin `custom_build` still reads `9483476322e0d331e81c5b92ac266a18f0f01450`. It is never edited; the user's report, when it comes, is a new entry from E-21 on.
+
+2026-11-06T17:21:05Z
+Verdict: pending (user-gated: the step and its word are the user's)
+
+### E-18: Handoff U5a and U5b (rollback tag, scratch branch deletion) is a user-gated handoff
+
+Backs: RLS-05 (the rollback tag G6a and the deletion of the throwaway branch G6b, two words).
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict .planning/phases/49-release-publication/49-USER-DISPATCH-4-PRETAG-CLEANUP.md
+python3 -I -c '<the handoff structure check of the plan: sections, the user-reported resume wording, the origin value, no forbidden push option, no release tag push, no mutating gh verb>' 9483476322e0d331e81c5b92ac266a18f0f01450
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets .planning/phases/49-release-publication/49-COMMAND-EVIDENCE.md
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*' 'scratch/*'
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+```
+
+```text
+handoff_file: .planning/phases/49-release-publication/49-USER-DISPATCH-4-PRETAG-CLEANUP.md
+handoff_hygiene: clean
+pre_checks_listed: 6
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 9483476322e0d331e81c5b92ac266a18f0f01450
+user_report: not yet received
+```
+
+This record stays pending: the step and its word are the user's, and no executor runs them. The handoff file lists 6 numbered pre-checks with expected values, the exact command, the expected result, the fields to report, the abort and contingency rules, a clean-up and the resume path for the orchestrator. Nothing was pushed, merged, tagged, dispatched or deleted; origin `custom_build` still reads `9483476322e0d331e81c5b92ac266a18f0f01450`. It is never edited; the user's report, when it comes, is a new entry from E-21 on.
+
+2026-11-06T17:21:05Z
+Verdict: pending (user-gated: the step and its word are the user's)
+
+### E-19: Handoff U6 (deletion of the two client 0.11.0 scratch branches, RLS-06) is a user-gated handoff
+
+Backs: RLS-06 (the deletion of both scratch branches after a separate confirmation, word G7).
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict .planning/phases/49-release-publication/49-USER-DISPATCH-5-SCRATCH-BRANCHES.md
+python3 -I -c '<the handoff structure check of the plan: sections, the user-reported resume wording, the origin value, no forbidden push option, no release tag push, no mutating gh verb>' 9483476322e0d331e81c5b92ac266a18f0f01450
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets .planning/phases/49-release-publication/49-COMMAND-EVIDENCE.md
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*' 'scratch/*'
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+```
+
+```text
+handoff_file: .planning/phases/49-release-publication/49-USER-DISPATCH-5-SCRATCH-BRANCHES.md
+handoff_hygiene: clean
+pre_checks_listed: 4
+expected_values_given: yes
+abort_rules: yes
+resume_path: yes
+dangerous_commands: none
+nothing_pushed: yes
+origin_custom_build_now: 9483476322e0d331e81c5b92ac266a18f0f01450
+user_report: not yet received
+```
+
+This record stays pending: the step and its word are the user's, and no executor runs them. The handoff file lists 4 numbered pre-checks with expected values, the exact command, the expected result, the fields to report, the abort and contingency rules, a clean-up and the resume path for the orchestrator. Nothing was pushed, merged, tagged, dispatched or deleted; origin `custom_build` still reads `9483476322e0d331e81c5b92ac266a18f0f01450`. It is never edited; the user's report, when it comes, is a new entry from E-21 on.
+
+2026-11-06T17:21:05Z
+Verdict: pending (user-gated: the step and its word are the user's)
