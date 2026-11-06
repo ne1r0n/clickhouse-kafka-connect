@@ -360,7 +360,25 @@ Phase gate: cache-busted `testUnit`, the anchors invariant, and a full suite on 
   4. *[live]* On the release tip, two full `--rerun` suites on one pinned `latest` build with client V2 are equal and green, with `SELECT version()` recorded. `testUnit` passes with Docker unreachable, and the anchors gate passes (RLS-04).
   5. *[operator, CI]* The user gives an explicit approval, to the orchestrator and in their own words. After it, `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip. The published SHA has exactly one `tests.yaml` run, and it is green before the publish run creates the tag `v1.7.0_gg8` and the GitHub release (RLS-05). After a separate confirmation in the user's own words, `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` are deleted from `origin`, and `git ls-remote origin` lists neither (RLS-06).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+- [ ] 49-01-PLAN.md — pre-flight on the untouched tree (origin `custom_build` `94834763`, left count 1 before and 0 after, upstream and scratch tips read), then the tree-neutral merge of `94834763` as the first change (U-2), the local retag of `pre-v1.7.0_gg8` to `94834763` (U-1), the baseline pipe picking `v1.7.0_gg7` and the tail gate on the merge; `bump_version.py gg` in one commit with its anchors row and the generated constant after `clean`; the `1.7.0_gg8` CHANGELOG section completed under the `Unreleased` heading (#838, #640, both clients' timeout limits, the retry outcome and the retry-budget decision, the two ERROR lines, the removed constant); a measured base (testUnit with Docker unreachable, expected 2325; one full suite on `latest` × V2, 2928 derived and measured here) and the final FORK-DELTA pass (after-gg8 raw numbers, tag-pair commands, the 143/115 test-tree recount, one measured totals sentence, gg8 paragraphs) (RLS-01, RLS-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 49-02-PLAN.md — `docs/ROLLOUT-v1.7.0_gg8.md` with 22 labelled rows (U1-U4 upstream tail, T1-T10 timeout limits, S1-S4 stop, retry outcome and retry-budget decision, P1 removed constant, D1-D3 identity, archive, rollback), three label forms, no planning identifier, the closes-from-gg7 table; the frozen `49-rehearse.sh` runs the note's rollback block unchanged on a dry-run merge onto `94834763`; the archives rebuilt and compared once (17 differences derived, measured here) (RLS-02, RLS-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 49-03-PLAN.md — ORCHESTRATOR-ONLY: fresh `gsd-code-reviewer` rounds spawned by the orchestrator over the gg8 note, the CHANGELOG section, FORK-DELTA and the Phase 48 edits of the gg6 and gg1 notes, each round's agentId attested, fixes re-proved (fix-only executor dispatch allowed, no executor approval), at most three rounds and a fourth only on the user's direct word (G1), every finding dispositioned, documents frozen (RLS-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 49-04-PLAN.md — the gg8 allow-list generated last from the final tree against a `v1.7.0_gg7` rebuild (exact rows, compare `exit 0, 0 unallowed, 0 stale rows`, three mutations, shipped-list guards); gates on one head, one job at a time: the tail gate once on the explicit SHA (`anchor_rows=218`), testUnit with Docker unreachable, two equal `--rerun` full suites on one pinned `latest` × V2 with `SELECT version()` (RLS-02, RLS-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 49-05-PLAN.md — dry-run merge of the final tip onto `94834763` with the real merge message and the rollback rehearsed on it, upstream recheck 3, the approval bundle (one word per origin step per U-4, ten questions, valid for one gated head), five handoffs (U1 and U2, U3, U4, U5a and U5b, U6), the orchestrator runbook (DATE step of U-3, `M'` build and its rollback rehearsal, contingencies C-1 to C-9), the local close record; stops at ready for the user's direct approval. RLS-05 and RLS-06 are completed only by the orchestrator-inline, user-gated tail that follows, not by this plan (RLS-04, RLS-05, RLS-06)
+
+**Tail** *(orchestrator-inline, not a plan; each origin step only on the user's own word for it)*: the DATE commit, G3 "go" → U1 scratch push, G3b → U2 dry run, G4 "publish" → build `M'` and U3 push, G5 → U4 publish run, G6a → U5a pre-tag push, G6b → U5b `sync/v1.7.0` deletion, and after a separate RLS-06 confirmation G7 → U6 deletion of both `scratch/clt-07-*` branches; evidence from E-21 (completes RLS-05, RLS-06)
 
 **Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (Phase 29 D-05). A defect found here goes back to its phase as a gap. Otherwise it is deferred with a reason, an owner and a re-open trigger in the milestone close record. The recipe is the gg7 one:
 1. Check `origin/custom_build...<scratch branch>` for divergence before gating. A left count above 0 means `origin` moved (the user merges Dependabot PRs there directly).
