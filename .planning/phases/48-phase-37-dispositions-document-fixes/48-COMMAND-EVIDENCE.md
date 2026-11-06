@@ -20,7 +20,7 @@
 | E-05 | P37-04 | 48-02 | pass |
 | E-06 | P37-04 | 48-02 | pass |
 | E-07 | P37-04 | 48-02 | pass |
-| E-08 | P37-04 | 48-02 | pending (plan 48-02) |
+| E-08 | P37-04 | 48-02 | pass |
 | E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pending (plan 48-02) |
 | E-10 | P37-01 | 48-03 | pending (plan 48-03) |
 | E-11 | P37-01 | 48-03 | pending (plan 48-03) |
@@ -680,5 +680,45 @@ uw_mut_worktree_removed: yes
 Notes. The class had 21 cases at the base (E-01 `uw_tests`); it now has 28, all green with Docker unreachable, and the commit adds 26 lines and deletes none. Seven rows were added: `" "`, `","` and `"216,,159"` log no WARN, and `"159,,60"`, `"60,60"`, `"60,"` and `"159,60,"` each log exactly one WARN naming `[60]`. The mutation turns the empty-entry skip of `ClickHouseSinkConfig.parseErrorCodes` into `code.isEmpty() && false` in the worktree only: an empty entry between two commas then reaches `Integer.parseInt`, the setting is refused before the connection step, and exactly the `216,,159` row and the `159,,60` row fail (a blank value, a lone comma and a trailing comma never reach the loop body with an empty entry, so those rows stay green). Part (a) of the 42 IN-03 row, the port race of `closedPort()`, is not changed and is closed in the ledger.
 
 Recorded 2026-11-06T08:42:13Z.
+
+Verdict: pass
+
+### E-08: Plain DataException control (42 IN-04)
+
+Backs: P37-04 (42 IN-04: no row of the pass-through matrix depended on the `DataException` branch of `Utils.handleException`), ROADMAP Phase 48 criterion 2, U-13.
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*RetriableExceptionPassThroughUnitTest*' > /tmp/gsd48/exec/rp-green.log 2>&1
+rm -rf /tmp/gsd48/exec/xml-rp-green && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-rp-green
+git diff --numstat -- src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java
+/tmp/gsd48/exec/fmt.sh rp src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java
+git add src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java
+git commit -F /tmp/gsd48/exec/msg-rp.txt
+git worktree add --detach /tmp/gsd48/wt-rp 3182791f3ab7496eb33dc1228f6f7e93a0637eba
+python3 -I /tmp/gsd48/exec/mutate.py /tmp/gsd48/wt-rp/src/main/java/com/clickhouse/kafka/connect/util/Utils.java 'if (e instanceof DataException && !errorsTolerance) {' 'if (e instanceof DataException && !errorsTolerance && false) {'
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd48/wt-rp --console=plain testUnit --rerun --tests '*RetriableExceptionPassThroughUnitTest*' > /tmp/gsd48/exec/rp-mut.log 2>&1
+cp -R /tmp/gsd48/wt-rp/build/test-results/testUnit /tmp/gsd48/exec/xml-rp-mut
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-rp-mut /tmp/gsd48/exec/status-rp-mut.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py count /tmp/gsd48/exec/status-rp-mut.tsv .RetriableExceptionPassThroughUnitTest FAIL --name-contains plainDataExceptionControlOutcome
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py count /tmp/gsd48/exec/status-rp-mut.tsv .RetriableExceptionPassThroughUnitTest FAIL --name-contains 'errors.tolerance=none expected=DATA_EXCEPTION'
+git worktree remove --force /tmp/gsd48/wt-rp && git worktree prune
+```
+
+```text
+rp_green_tests: 40
+rp_green_failures: 0
+rp_lines_deleted: 0
+fmt_rp: identical
+rp_commit: 3182791f3ab7496eb33dc1228f6f7e93a0637eba
+rp_mut_tests: 40
+rp_mut_failures: 1
+rp_mut_fail_none_row: count=1 (name contains errors.tolerance=none expected=DATA_EXCEPTION)
+rp_mut_worktree_removed: yes
+```
+
+Notes. The class had 38 cases at the base (E-01 `rp_tests`); it now has 40, all green with Docker unreachable, and the commit adds 34 lines and deletes none. The two new rows pass `new DataException(...)`, a `DataException` with no retriable cause, through `Utils.handleException`: under `errors.tolerance=none` the same instance is rethrown (`assertSame`), under `all` nothing is thrown (`assertNull`). `directMatrix` never selects `Outcome.DATA_EXCEPTION`, which is why the branch had no row that depended on it. The mutation adds `&& false` to the `DataException` branch of `Utils.handleException` in the worktree only: the `none` row then sees the generic `RuntimeException` wrap and fails, the `all` row and every existing row stay green (39 of 40), which is exactly the gap the control closes.
+
+Recorded 2026-11-06T08:43:02Z.
 
 Verdict: pass
