@@ -26,7 +26,7 @@
 | E-09 | RLS-03 | 49-03 | pass |
 | E-10 | RLS-03 | 49-03 | pass |
 | E-11 | RLS-02 | 49-04 | pass |
-| E-12 | RLS-04 | 49-04 | pending (plan 49-04) |
+| E-12 | RLS-04 | 49-04 | pass |
 | E-13 | RLS-04 | 49-04 | pending (plan 49-04) |
 | E-14 | RLS-04, RLS-05 | 49-05 | pending (plan 49-05) |
 | E-15 | RLS-02, RLS-05 | 49-05 | pending (plan 49-05) |
@@ -668,4 +668,119 @@ The compare of the two clean rebuilds (the tag exported with its own wrapper, th
 The three mutations turned the compare red on their own: a row that names nothing is reported `STALE-ROW`, a deleted row turns its difference `UNALLOWED`, and a row that starts with a wildcard is refused by the loader. The list commit holds one file, and no archive input, CHANGELOG or doc path changed between the frozen documents and it. Both archive builds and the guard run ran one at a time, with no tail gate alive. Nothing was pushed.
 
 2026-11-06T16:40:53Z
+Verdict: pass
+
+### E-12: Docker-free gates on one head: origin and upstream re-read, the tail gate, testUnit with Docker unreachable, the anchors mirror, scope and numbers
+
+Backs: RLS-04 (the Docker-free half: the tail-form anchors gate on an explicit SHA, testUnit with the daemon unreachable, the anchors mirror, the scope and number facts), D-8, D-10, G-3, G-5, G-6, PL-10.
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git rev-list --left-right --count origin/custom_build...HEAD
+git rev-list origin/custom_build --not HEAD
+git ls-remote --heads origin
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+git log -1 --format=%H -- . ':(exclude).planning'
+git log -1 --format=%H -- .planning/scripts
+git rev-list --count HEAD --not --remotes=origin
+gh api 'repos/ne1r0n/clickhouse-kafka-connect/pulls?state=open&per_page=50' --jq '[.[] | "\(.number) \(.head.sha[0:8])"] | sort | join("; ")'
+git ls-remote upstream refs/heads/main
+git ls-remote --tags --refs upstream 'v*'
+curl -s https://api.github.com/repos/ClickHouse/clickhouse-kafka-connect/pulls/<n>   # n = 861, 855, 854, 788
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 <gated head>
+DOCKER_HOST=unix:///nonexistent.sock docker info
+./gradlew --stop
+sysctl vm.swapusage
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py junit|failed <snapshot of build/test-results/testUnit>
+python3 -I .planning/phases/49-release-publication/49-testcase-status.py dump|delta <dumps>
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+git diff --name-only <L0> <gated head> -- . ':(exclude).planning'
+git diff --shortstat v1.7.0 <gated head> -- src build.gradle.kts gradle .github   # and -- src/main
+python3 -I .planning/phases/49-release-publication/49-doc-check.py numbers docs/FORK-DELTA.md 'after gg8: `v1.7.0` to `v1.7.0_gg8`' --wider <wider> --narrow <narrow>
+python3 -I .planning/phases/49-release-publication/49-path-check.py <gated head> docs/FORK-DELTA.md
+python3 -I .planning/phases/49-release-publication/49-note-check.py all docs/ROLLOUT-v1.7.0_gg8.md --allow <gg7 merge sha> <gg7 asset digest>
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py [--strict] <files>
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets <files>
+```
+
+```text
+gated_head: d9b10b9bf670b8236119c725e3639c53ad3e570b
+utc_start: 2026-11-06T16:41:24Z
+dirty_paths_at_gate: M .planning/config.json; M .planning/state.json
+origin_custom_build_at_gate: 9483476322e0d331e81c5b92ac266a18f0f01450
+left_count_at_gate: 0
+origin_sync_ref: none
+origin_gg8_tags: none
+local_release_tag: none
+last_non_planning_commit: 315f5de1c85fb61bd2a1e887d2be085bc62571ce
+last_scripts_commit: dcf13360892b496e589129bbf5bd3bf63b181c0d
+unpublished_at_gate: 288
+origin_open_prs_at_gate: none
+upstream_main_gate: 83808df9a0993cf49b2ceaa4633c782e550c0180
+upstream_newest_tag_gate: v1.7.0
+upstream_tag_past_v170_gate: no
+upstream_pr_861_gate: open False b62e0ae4
+upstream_pr_855_gate: open False ddabf28b
+upstream_pr_854_gate: open False 69d1efc5
+upstream_pr_788_gate: closed False bb4b4140
+upstream_changed_since_e01: no
+tail_gate_end: d9b10b9bf670b8236119c725e3639c53ad3e570b
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=270 anchor_rows=218 marker_commits=288 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+docker_unreachable_proof: exit=1
+swap_before_testunit: total = 33792.00M  used = 32510.31M  free = 1281.69M  (encrypted)
+testunit_exit: 0
+testunit_tests: 2325
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_expected_tests: 2325
+testunit_count_matches: yes
+testunit_delta_vs_e04: delta: removed=0 added=0 expected=0 match=yes
+testunit_jvm_crash: none
+failed_ok: yes
+bump_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.BumpVersionScriptUnitTest: tests=52 failures=0 errors=0 skipped=0 files=1
+baseline_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+relguard_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.ReleaseWorkflowGuardUnitTest: tests=38 failures=0 errors=0 skipped=0 files=1
+compare_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.CompareConfluentArchivesScriptUnitTest: tests=58 failures=0 errors=0 skipped=0 files=1
+wildcard_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.AllowListWildcardRuleUnitTest: tests=14 failures=0 errors=0 skipped=0 files=1
+mbean_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.MBeanNameUnitTest: tests=11 failures=0 errors=0 skipped=0 files=1
+stop_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.ClickHouseSinkTaskStopUnitTest: tests=7 failures=0 errors=0 skipped=0 files=1
+redelivery_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.RetriableRedeliveryLimitPinUnitTest: tests=108 failures=0 errors=0 skipped=0 files=1
+v1wait_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.InsertV1WaitBoundPinUnitTest: tests=21 failures=0 errors=0 skipped=0 files=1
+writestall_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.InsertWriteStallBoundPinUnitTest: tests=20 failures=0 errors=0 skipped=0 files=1
+helptext_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.InsertTimeoutHelpTextPinUnitTest: tests=27 failures=0 errors=0 skipped=0 files=1
+literal_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.FieldDescriptorLiteralFieldsUnitTest: tests=31 failures=0 errors=0 skipped=0 files=1
+recordctx_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.WriterRecordContextUnitTest: tests=59 failures=0 errors=0 skipped=0 files=1
+planning_guard_xml: OK junit /tmp/gsd49/exec/xml-gate-testunit class *.SourcePlanningIdGuardUnitTest: tests=18 failures=0 errors=0 skipped=0 files=1
+anchors_mirror: rows=218 bad=0
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg8.md
+scope_planning_scripts: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt; .planning/scripts/fork-anchors.txt
+no_java_change: yes
+forkdelta_numbers_equal: yes
+forkdelta_paths_line: paths: candidates=100 resolved=72 abbreviated=20 abbreviated_unique=20 placeholders=2 by_design=6 unresolved=0
+note_archive_numbers_match: yes
+note_check_all: ok
+integration_test: not re-run (PL-11): it needs a Connect stack; the user may overrule at the bundle
+review_reword_commit: 89f3e5cebcbdc4a1a45446cafd2059eea3edb0a5
+gated_head_note: the Docker-free results (tail gate, testUnit, scope, numbers) are for the gated head; the one later commit changes only a file under .planning/phases, so they stay valid
+hygiene_scan_all: clean
+secrets_scan: clean
+nothing_pushed: yes
+worktrees_clean: yes
+docker_free_decision: go
+gate_failures: none
+utc_end: 2026-11-06T17:00:35Z
+```
+
+The tail gate ran once, alone, in the foreground on the explicit gated head, with no Gradle or Docker job alive (it took about 15 minutes with swap near 94 %). Its counts (`anchor_commits=270`, `marker_commits=288`) follow the 288 commits of the unpublished range; `anchor_rows=218` and `result=PASS` held. testUnit ran with the daemon proven unreachable and read the E-04 total with the same two skips, and its per-testcase dump equals the E-04 dump. The origin facts and the upstream values are unchanged from E-01.
+
+The first default-mode hygiene scan over the files this phase added read 10 hits, all of one plain word in the reviewers' sentences of the review record, none of them an environment name. That was a false positive of the helper's fifth default pattern, known from the earlier release phase. No fail entry was written for it: the orchestrator reworded those ten lines in commit `89f3e5ce` (the word replaced by a neutral one; one file under `.planning/phases`, no path outside `.planning`, no `.planning/scripts` path), the agents and rounds checks of the review still pass, and the scan was run again over the same file set and read clean. That commit sits after the gated head `d9b10b9b`; the verify of this entry shows that the tree outside `.planning` and `.planning/scripts` are equal between the two, so the tail gate result and the testUnit result remain valid for the head that is pushed. `git diff` of the later commit holds the ten reworded lines and nothing else.
+
+One pre-existing line of FORK-DELTA carries the bare word the pattern flags; the scan covers the added lines of that document only, as the plan says. Nothing was pushed.
+
+2026-11-06T17:00:35Z
 Verdict: pass
