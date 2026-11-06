@@ -39,15 +39,15 @@ Requirements for this milestone. Each maps to a roadmap phase.
 
 ### Phase 37 Dispositions (P37)
 
-- [ ] **P37-01**: The four `src/main` advisory rows (26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01) and the one null assertion are each fixed in their own commit with a test, or closed with a written reason.
-- [ ] **P37-02**: The 28 IN-05(b) items each have a fix or a named disposition in the ledger, and none stays "owner: user".
-- [ ] **P37-03**: The broad allow-list glob rows (UF-37-3) are narrowed or justified, and the allow-list dry run reads `0 unallowed, 0 stale rows`.
-- [ ] **P37-04**: The review Infos each have a disposition.
+- [x] **P37-01**: The four `src/main` advisory rows (26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01) and the one null assertion are each fixed in their own commit with a test, or closed with a written reason.
+- [x] **P37-02**: The 28 IN-05(b) items each have a fix or a named disposition in the ledger, and none stays "owner: user".
+- [x] **P37-03**: The broad allow-list glob rows (UF-37-3) are narrowed or justified, and the allow-list dry run reads `0 unallowed, 0 stale rows`.
+- [x] **P37-04**: The review Infos each have a disposition.
 
 ### Documents (DOC)
 
-- [ ] **DOC-01**: IN-03 is fixed: the planning identifier in the published gg6 rollout note is replaced with a public reference.
-- [ ] **DOC-02**: FORK-DELTA evidence paths point at their `.planning/milestones/` locations and the test path missing its package is corrected. Item 20 names its ledger by a path that survives archiving.
+- [x] **DOC-01**: IN-03 is fixed: the planning identifier in the published gg6 rollout note is replaced with a public reference.
+- [x] **DOC-02**: FORK-DELTA evidence paths point at their `.planning/milestones/` locations and the test path missing its package is corrected. Item 20 names its ledger by a path that survives archiving.
 
 ### Release (RLS)
 
@@ -91,12 +91,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TMO-03 | Phase 46 | Complete |
 | RTY-01 | Phase 47 | Complete |
 | RTY-02 | Phase 47 | Complete |
-| P37-01 | Phase 48 | Pending |
-| P37-02 | Phase 48 | Pending |
-| P37-03 | Phase 48 | Pending |
-| P37-04 | Phase 48 | Pending |
-| DOC-01 | Phase 48 | Pending |
-| DOC-02 | Phase 48 | Pending |
+| P37-01 | Phase 48 | Complete |
+| P37-02 | Phase 48 | Complete |
+| P37-03 | Phase 48 | Complete |
+| P37-04 | Phase 48 | Complete |
+| DOC-01 | Phase 48 | Complete |
+| DOC-02 | Phase 48 | Complete |
 | RLS-01 | Phase 49 | Pending |
 | RLS-02 | Phase 49 | Pending |
 | RLS-03 | Phase 49 | Pending |
