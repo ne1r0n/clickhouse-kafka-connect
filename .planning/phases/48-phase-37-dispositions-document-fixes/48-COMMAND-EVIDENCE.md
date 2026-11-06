@@ -22,7 +22,7 @@
 | E-07 | P37-04 | 48-02 | pass |
 | E-08 | P37-04 | 48-02 | pass |
 | E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pass |
-| E-10 | P37-01 | 48-03 | pending (plan 48-03) |
+| E-10 | P37-01 | 48-03 | pass |
 | E-11 | P37-01 | 48-03 | pending (plan 48-03) |
 | E-12 | DOC-01, P37-04 | 48-04 | pending (plan 48-04) |
 | E-13 | DOC-02, P37-04 | 48-04 | pending (plan 48-04) |
@@ -767,5 +767,78 @@ javacore_files: none
 Notes. The cache-busted testUnit (2320 tests, 107 XML files against 105 at the base: the two new classes) is E-01's 2295 plus 25, with 0 failures, 0 errors and the same 2 skips, and the default toolchain ran it with no JVM crash, so no `-PjavaVersion=21` run was needed in plan 48-02. `48-expected-added.tsv` holds the 25 rows in dump order, grouped 4 (`DescribeUnreadableEnumNullBindingUnitTest`), 9 (`AllowListWildcardRuleUnitTest`), 2 (`ProxySinkTaskStopUnitTest`), 1 (`ClickHouseSinkTaskStopUnitTest`), 7 (`UnvettedRetriableCodesWarnUnitTest`) and 2 (`RetriableExceptionPassThroughUnitTest`), all PASS; plans 48-03 and 48-05 use it as the expected set of their deltas. `touched_counts_after` is `yes`: `ProxySinkTaskStopUnitTest` 6, `ClickHouseSinkTaskStopUnitTest` 7, `UnvettedRetriableCodesWarnUnitTest` 28 and `RetriableExceptionPassThroughUnitTest` 40 (E-01 plus 2, 1, 7, 2), and `DescribeUnreadableEnumMockServerTest` 2, `CompareConfluentArchivesScriptUnitTest` 58, `DeclaredNullabilityTest` 69 and `SourcePlanningIdGuardUnitTest` 18 at E-01's counts, all green. `scope_since_base` is `yes`: since the base the `src` diff is exactly the two new classes and the four extended files (additions 12, 75, 34 and 26 lines, deletions 0 each), and `src/main`, `.github` and `.planning/scripts` are unchanged.
 
 Recorded 2026-11-06T08:44:28Z.
+
+Verdict: pass
+
+### E-10: 28 IN-01: ESCAPED_NEWLINE moved to the test fixtures, compile red first, own commit and testUnit gate (U-4)
+
+Backs: P37-01 (28 IN-01), ROADMAP Phase 48 criterion 1 (fixed in its own commit with its red state recorded first, no assertion value changed), U-4, D-3 (the production diff is the three deleted lines and nothing else).
+
+```sh
+python3 -I -c '<delete the Javadoc line, the constant line and the blank line after it from DeclaredNullability.java; asserts the constant occurs once, the line before is the one-line Javadoc, the line after is blank>'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileTestJava > /tmp/gsd48/exec/move-red.log 2>&1
+grep -E '^[0-9]+ errors?$' /tmp/gsd48/exec/move-red.log
+grep -E '^/.*\.java:[0-9]+: error:' /tmp/gsd48/exec/move-red.log | sed -E 's#.*/([A-Za-z]+\.java):.*#\1#' | sort | uniq -c
+git diff --numstat -- src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java
+python3 -I -c '<repoint the 8 references, add the DeclaredNullabilityFixtures import to the two live tests, add the constant and the one-sentence Javadoc to DeclaredNullabilityFixtures>'
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain compileTestJava > /tmp/gsd48/exec/move-green-compile.log 2>&1
+grep -c 'public static final String ESCAPED_NEWLINE = "\\\\n";' src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java
+grep -rho 'DeclaredNullability.ESCAPED_NEWLINE' src | wc -l
+grep -rho 'DeclaredNullabilityFixtures.ESCAPED_NEWLINE' src/test | wc -l
+grep -c ESCAPED_NEWLINE src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*DeclaredNullability*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd48/exec/move-neighbours.log 2>&1
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd48/exec/move-testunit.log 2>&1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd48/exec/xml-move-testunit && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-move-testunit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-move-testunit /tmp/gsd48/exec/status-move-testunit.tsv
+: > /tmp/gsd48/exec/empty.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py delta /tmp/gsd48/exec/status-w2-testunit.tsv /tmp/gsd48/exec/status-move-testunit.tsv /tmp/gsd48/exec/empty.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+git diff --name-only -- src/main
+/tmp/gsd48/exec/fmt.sh <dn|dnf|dnt|ntm|sat> <file>   # per-file spotlessApply in a throwaway worktree, cmp
+git add <the five files>
+git commit -F /tmp/gsd48/exec/msg-move.txt
+```
+
+```text
+red_compile_exit: 1
+red_compile_errors: 8
+red_error_files: DeclaredNullabilityTest.java=6 NullableTupleMatrixLiveTest.java=1 SimpleAggregateTupleRoundTripLiveTest.java=1
+red_main_numstat: 0 3
+fixtures_constant_lines: 1
+old_refs_left: 0
+new_refs: 8
+main_constant_count: 0
+ntm_dn_import_kept: yes
+sat_dn_import_kept: yes
+green_compile_exit: 0
+neighbours_failed: 0
+dn_green_tests: 69
+planning_guard_green_tests: 18
+move_testunit_docker_host: unix:///nonexistent.sock
+move_testunit_exit: 0
+move_testunit_tests: 2320
+move_testunit_failures: 0
+move_testunit_errors: 0
+move_testunit_skipped: 2
+status_delta_move: delta: removed=0 added=0 expected=0 match=yes
+normalised_equal: yes
+anchors_mirror: rows=218 bad=0
+main_diff_files: src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java
+fmt_dn: identical
+fmt_dnf: identical
+fmt_dnt: identical
+fmt_ntm: identical
+fmt_sat: identical
+jvm_crash: no
+move_commit: c4ec0cbf25462cd3e8d67d567559a9f8ad85c45a
+```
+
+Notes. The red was taken with only the three production lines deleted and no test edited: `compileTestJava` exited 1 with `8 errors` (javac's own count; Gradle repeats the first error in its failure summary, which is not a ninth error), 6 in `DeclaredNullabilityTest` (lines 212 twice, 214, 330, 374, 1017), 1 in `NullableTupleMatrixLiveTest` (762) and 1 in `SimpleAggregateTupleRoundTripLiveTest` (117), exactly the plan's expectation. The move then added the constant (`"\\n"` in source, the characters backslash and n) once to `DeclaredNullabilityFixtures` with its one-line Javadoc, replaced the class Javadoc sentence that forbade a copy with one sentence saying `{@link #ESCAPED_NEWLINE}` lives there because production code no longer reads it, and repointed the 8 references. Both live tests keep their `DeclaredNullability` import because the class is still used elsewhere in each file (`normalise`, `LogCapture.attach`), and gain the `DeclaredNullabilityFixtures` import in sorted place. `normalised_equal` is `yes`: against `HEAD` before the commit, each of the three repointed test files equals its parent once `DeclaredNullability.ESCAPED_NEWLINE` is read as `DeclaredNullabilityFixtures.ESCAPED_NEWLINE` and import lines are set aside, and the production file loses exactly the three lines (numstat `0 3`, the class Javadoc paragraph untouched). The filtered run (`*DeclaredNullability*` and `*SourcePlanningIdGuardUnitTest*`, Docker unreachable) read 89 tests, 0 failures: `DeclaredNullabilityTest` 69 and `SourcePlanningIdGuardUnitTest` 18, E-01's counts. The cache-busted testUnit read 2320 tests (E-09's count), 0 failures, 0 errors, 2 skips, 107 XML files, and its per-testcase delta against E-09 removed and added nothing. No JVM crash and no core dump; the default toolchain ran every build. The constant sits at the top of `DeclaredNullabilityFixtures` with no blank line added after it, because the plan's own normalisation rule for that file sets aside only comment lines and the constant line, so an added blank line would read as a changed non-comment line; the first local attempt added one, failed that check, and was redone before anything was pushed or recorded elsewhere (the gate runs below are from the redone tree). The gate was taken on the working tree before the commit; the commit holds exactly those five files (`move_commit`), and the anchor row `declaredType.replace(ESCAPED_NEWLINE, SPACE)  0  COLS-13` is a zero row that stays true, so the mirror still reads 218 rows.
+
+Recorded 2026-11-06T08:48:52Z.
 
 Verdict: pass
