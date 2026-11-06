@@ -1,4 +1,4 @@
-# 1.7.0_gg8, Unreleased
+# 1.7.0_gg8, 2026-11-06
 
 This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `83808df9` (upstream has no tag past
 `v1.7.0`; `1.7.0_gg6` and `1.7.0_gg7` were built on the tail up to `9bed6f79`). It lists the fork's own changes since
