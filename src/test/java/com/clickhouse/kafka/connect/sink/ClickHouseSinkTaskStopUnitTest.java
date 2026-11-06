@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.clickhouse.kafka.connect.sink.db.InMemoryDBWriter;
 import com.clickhouse.kafka.connect.sink.dlq.ErrorReporter;
@@ -48,6 +49,7 @@ class ClickHouseSinkTaskStopUnitTest {
     private static final String BOTH_FAIL_CONNECTOR = "task-stop-both-fail";
     private static final String NO_STRATEGY_CONNECTOR = "task-stop-no-strategy";
     private static final String SHIPPED_CONNECTOR = "task-stop-shipped";
+    private static final String MBEAN_PRECONDITION_CONNECTOR = "task-stop-mbean-precondition";
     private static final String TOPIC = "task-stop-topic";
     private static final String SHIPPED_STRATEGY_NAME = "{displayName}[{index}] strategy={0}";
 
@@ -61,6 +63,7 @@ class ClickHouseSinkTaskStopUnitTest {
     private static final String WRITER_STOPPED_ONCE = "the writer must have been stopped once";
     private static final String CLOSE_COUNT = "close count of the state provider";
     private static final String MBEAN_GONE = "the task MBean must be unregistered after stop";
+    private static final String MBEAN_REGISTERED_BEFORE_STOP = "the task MBean must be registered before stop";
     private static final String STRATEGY_STOPPED_ONCE = "the delivery strategy must have been stopped once";
     private static final String STRATEGY_STOPS_FIRST = "the strategy must stop before the writer";
     private static final String STRATEGY_FAILURE_REACHES_CALLER = "the strategy's own failure must reach the caller";
@@ -238,6 +241,15 @@ class ClickHouseSinkTaskStopUnitTest {
     @Test
     void stopWithoutADeliveryStrategyStillStopsTheProxyTask() {
         try (Harness harness = new Harness(NO_STRATEGY_CONNECTOR)) {
+            assertDoesNotThrow(harness.task::stop);
+            harness.assertProxyStoppedOnce();
+        }
+    }
+
+    @Test
+    void theTaskMBeanIsRegisteredBeforeStopAndGoneAfter() {
+        try (Harness harness = new Harness(MBEAN_PRECONDITION_CONNECTOR)) {
+            assertTrue(harness.mBeanRegistered(), MBEAN_REGISTERED_BEFORE_STOP);
             assertDoesNotThrow(harness.task::stop);
             harness.assertProxyStoppedOnce();
         }
