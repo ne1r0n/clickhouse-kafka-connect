@@ -27,7 +27,7 @@
 | E-10 | RLS-03 | 49-03 | pass |
 | E-11 | RLS-02 | 49-04 | pass |
 | E-12 | RLS-04 | 49-04 | pass |
-| E-13 | RLS-04 | 49-04 | pending (plan 49-04) |
+| E-13 | RLS-04 | 49-04 | pass |
 | E-14 | RLS-04, RLS-05 | 49-05 | pending (plan 49-05) |
 | E-15 | RLS-02, RLS-05 | 49-05 | pending (plan 49-05) |
 | E-16 | RLS-05 | 49-05 | pending (plan 49-05) |
@@ -783,4 +783,85 @@ The first default-mode hygiene scan over the files this phase added read 10 hits
 One pre-existing line of FORK-DELTA carries the bare word the pattern flags; the scan covers the added lines of that document only, as the plan says. Nothing was pushed.
 
 2026-11-06T17:00:35Z
+Verdict: pass
+
+### E-13: Two full suites on one pinned ClickHouse latest with client V2, equal per testcase, and the go decision
+
+Backs: RLS-04 (the live half: two full --rerun suites on one pinned ClickHouse latest image with client V2, equal per testcase and equal to the E-04 total, with the server version recorded), G-4, G-5, PL-10.
+
+```sh
+git diff --quiet <gated head> HEAD -- . ':(exclude).planning'
+./gradlew --stop
+sysctl vm.swapusage
+colima list
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun   # run 1
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py junit|skips|failed <snapshot of build/test-results/test>
+python3 -I .planning/phases/49-release-publication/49-testcase-status.py dump <snapshot> <dump>
+./gradlew --stop
+docker image inspect ... ; docker run ... 'SELECT version()'   # after run 1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun   # run 2
+docker image inspect ... ; docker run ... 'SELECT version()'   # after run 2
+python3 -I .planning/phases/49-release-publication/49-testcase-status.py delta <dump 1> <dump 2> <empty expectation>
+```
+
+```text
+utc_start: 2026-11-06T17:01:00Z
+gate_head_same: yes
+swap_before: total = 33792.00M  used = 32894.88M  free = 897.12M  (encrypted)
+colima_vz: Running
+digest_before_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_before_run1: 26.10.3.7
+digest_same_as_e04: yes
+suite1_exit: 0
+suite1_tests: 2928
+suite1_failures: 0
+suite1_errors: 0
+suite1_skipped: 18
+suite1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite1_failed_ok: yes
+suite1_duration: 3m 18s
+suite1_java: default toolchain (Gradle 9.8.2, launcher JVM 21.0.12.1), -PjavaVersion=21 not needed
+suite1_jvm_crash: none
+suite1_processing_xml: OK junit /tmp/gsd49/exec/xml-gate-suite1 class *.ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+suite1_slash_xml: OK junit /tmp/gsd49/exec/xml-gate-suite1 class *.SlashColumnRoundTripTest: tests=4 failures=0 errors=0 skipped=0 files=1
+digest_after_run1: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run1: 26.10.3.7
+suite2_exit: 0
+suite2_tests: 2928
+suite2_failures: 0
+suite2_errors: 0
+suite2_skipped: 18
+suite2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite2_failed_ok: yes
+suite2_duration: 3m 15s
+suite2_java: default toolchain (Gradle 9.8.2, launcher JVM 21.0.12.1), -PjavaVersion=21 not needed
+suite2_jvm_crash: none
+suite2_processing_xml: OK junit /tmp/gsd49/exec/xml-gate-suite2 class *.ProcessingTest: tests=14 failures=0 errors=0 skipped=0 files=1
+suite2_slash_xml: OK junit /tmp/gsd49/exec/xml-gate-suite2 class *.SlashColumnRoundTripTest: tests=4 failures=0 errors=0 skipped=0 files=1
+digest_after_run2: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_run2: 26.10.3.7
+suites_java: default toolchain (Gradle 9.8.2, launcher JVM 21.0.12.1)
+suites_same_jvm: yes
+suite_expected_tests: 2928
+suite_count_matches: yes
+suite_tests_equal: yes
+suites_equal_per_testcase: delta: removed=0 added=0 expected=0 match=yes
+docker_only_delta: 603
+pinned_image_same: yes
+crash_files_left: none
+gate_decision: go
+gate_failures: none
+gate_note: The CI side (the scratch dry run, the single tests.yaml run on the merged SHA, the publish run) is the user's and not part of this gate, and integrationTest was not re-run (PL-11).
+utc_end: 2026-11-06T17:08:04Z
+```
+
+Both full suites ran with `--rerun` on ClickHouse `latest` with client V2, one after the other, with no Gradle, Docker or tail gate job beside them, on the same tree and the same pinned image: the image digest and `SELECT version()` read the same value before run 1, after run 1 and after run 2, and equal the values of E-04. No image was pulled and the VM was not stopped. Each suite read 2928 tests (the E-04 total) with 18 skips, 0 failures and 0 errors, took about 3 minutes 15 seconds on the default toolchain, left no crash file, and the two per-testcase status dumps are equal. The difference to the Docker-free run (603) is the number of cases that need the ClickHouse container.
+
+The tree under test is the gated head of E-12 with the one later `.planning/phases` commit of E-12; no path outside `.planning` or under `.planning/scripts` differs. The CI side (the scratch dry run, the single `tests.yaml` run on the merged SHA, the publish run) belongs to the user and is not part of this gate; `integrationTest` was not re-run (PL-11), and the user may overrule that at the bundle. Nothing was pushed.
+
+2026-11-06T17:08:33Z
 Verdict: pass
