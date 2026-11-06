@@ -16,7 +16,7 @@
 | E-01 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-01 | pass |
 | E-02 | DOC-01, DOC-02 | 48-01 | pass |
 | E-03 | P37-01, P37-02 | 48-02 | pass |
-| E-04 | P37-03 | 48-02 | pending (plan 48-02) |
+| E-04 | P37-03 | 48-02 | pass |
 | E-05 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-06 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-07 | P37-04 | 48-02 | pending (plan 48-02) |
@@ -508,5 +508,52 @@ nb_mut_worktree_removed: yes
 Notes. The green run filter `*DescribeUnreadableEnum*` selects the new class (4 cases) and the unchanged `DescribeUnreadableEnumMockServerTest` (2 cases), 6 tests all green with Docker unreachable. The mutation makes the stub answer the malformed row for the enum table too; the describe still returns null (the existing assertion holds), the ERROR event carries a throwable but not the enum refusal text, so exactly the two `unreadableEnumTableIsNullBecauseTheEnumScanRefusedIt` rows (client V1 and V2) fail and the two `aNonEnumDescribeFailureIsAlsoNullButNamesNoEnumCause` rows stay green. The mutation lives only in the worktree; the main tree was not changed.
 
 Recorded 2026-11-06T08:36:30Z.
+
+Verdict: pass
+
+### E-04: Two-literal-segment rule over every shipped allow-list (UF-37-3, U-9)
+
+Backs: P37-03 (UF-37-3: the wildcard rule pinned over every shipped list and the next one, per U-9 with no edit of the release path), ROADMAP Phase 48 criterion 3.
+
+```sh
+python3 -I -c '<count over .planning/scripts/confluent-archive-allowlist-*.txt: rows that are neither blank nor start with #, glob = text before the first TAB stripped, wildcard = any of * ? [>'
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*AllowListWildcardRuleUnitTest*' > /tmp/gsd48/exec/aw-green.log 2>&1
+rm -rf /tmp/gsd48/exec/xml-aw-green && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-aw-green
+git diff --quiet c77d1a147ae4acd37100b73db08f1851047bc055 -- .github/scripts/compare_confluent_archives.py .planning/scripts
+md5 -q .github/scripts/compare_confluent_archives.py
+/tmp/gsd48/exec/fmt.sh aw src/test/java/com/clickhouse/kafka/connect/ci/AllowListWildcardRuleUnitTest.java
+git add src/test/java/com/clickhouse/kafka/connect/ci/AllowListWildcardRuleUnitTest.java
+git commit -F /tmp/gsd48/exec/msg-aw.txt
+git worktree add --detach /tmp/gsd48/wt-aw 07e6566279e7b7d6a7c960d304a3eda037a22aa3
+printf 'com/*\tmutation: a broad row\n' >> /tmp/gsd48/wt-aw/.planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd48/wt-aw --console=plain testUnit --rerun --tests '*AllowListWildcardRuleUnitTest*' > /tmp/gsd48/exec/aw-mut.log 2>&1
+cp -R /tmp/gsd48/wt-aw/build/test-results/testUnit /tmp/gsd48/exec/xml-aw-mut
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed /tmp/gsd48/exec/xml-aw-mut --expect 'AllowListWildcardRuleUnitTest#everyShippedWildcardRowFollowsTwoLiteralSegments'
+git worktree remove --force /tmp/gsd48/wt-aw && git worktree prune
+git status --porcelain .planning/scripts
+```
+
+```text
+shipped_lists: 5
+shipped_wildcard_rows: 49
+shipped_min_literal_segments: 2
+aw_green_tests: 9
+aw_green_failures: 0
+aw_green_errors: 0
+release_path_unchanged: yes
+fmt_aw: identical
+aw_commit: 07e6566279e7b7d6a7c960d304a3eda037a22aa3
+aw_mut_tests: 9
+aw_mut_failures: 1
+aw_mut_failed: AllowListWildcardRuleUnitTest#everyShippedWildcardRowFollowsTwoLiteralSegments
+aw_mut_message_names_row: yes
+aw_mut_worktree_removed: yes
+main_tree_lists_untouched: yes
+```
+
+Notes. The independent count (a stdlib script with the test's row and wildcard rule, run before the test was written) reads 5 lists, 49 wildcard rows and a minimum of 2 literal path segments (the row `META-INF/versions/*/com/fasterxml/jackson/core/internal/shaded/fdp/*` of the `-25` and `-gg4` lists); the test, run on the unchanged lists, is 9 of 9 green. The mutation appends `com/*<TAB>mutation: a broad row` to the worktree copy of the gg7 list only; exactly the shipped-list case fails and its message reads `wildcard rows with fewer than two literal path segments before the first wildcard: [confluent-archive-allowlist-v1.7.0_gg7.txt:29: com/*]`. The compare script md5 is `a637e0cc8fb33a33e7673ac682fa63c8`, equal to E-01 `compare_script_md5`; the script and every list are unedited since the base.
+
+Recorded 2026-11-06T08:37:43Z.
 
 Verdict: pass
