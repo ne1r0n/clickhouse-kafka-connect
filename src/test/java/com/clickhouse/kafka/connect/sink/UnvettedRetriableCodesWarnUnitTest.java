@@ -86,6 +86,18 @@ class UnvettedRetriableCodesWarnUnitTest {
                 Arguments.of("2147483647", "[2147483647]"));
     }
 
+    static Stream<String> blankOrEmptyEntrySettings() {
+        return Stream.of(" ", ",", "216,,159");
+    }
+
+    static Stream<Arguments> emptyOrRepeatedEntrySettings() {
+        return Stream.of(
+                Arguments.of("159,,60", "[60]"),
+                Arguments.of("60,60", "[60]"),
+                Arguments.of("60,", "[60]"),
+                Arguments.of("159,60,", "[60]"));
+    }
+
     @Test
     void unsetSettingLogsNoWarnAtStartup() {
         assertEquals(0, startAndCaptureWarns(props(null)).size(), WARN_COUNT);
@@ -100,6 +112,20 @@ class UnvettedRetriableCodesWarnUnitTest {
     @ParameterizedTest(name = NAME)
     @MethodSource("unvettedSettings")
     void unvettedCodesLogOneWarnNamingThemAtStartup(String setting, String expectedList) {
+        List<LogCapture.CapturedEvent> warns = startAndCaptureWarns(props(setting));
+        assertEquals(1, warns.size(), WARN_COUNT);
+        assertEquals(String.format(EXPECTED_WARN_FORMAT, expectedList), warns.get(0).message(), WARN_TEXT);
+    }
+
+    @ParameterizedTest(name = NAME)
+    @MethodSource("blankOrEmptyEntrySettings")
+    void blankOrEmptyEntrySettingsLogNoWarnAtStartup(String setting) {
+        assertEquals(0, startAndCaptureWarns(props(setting)).size(), WARN_COUNT);
+    }
+
+    @ParameterizedTest(name = NAME)
+    @MethodSource("emptyOrRepeatedEntrySettings")
+    void emptyOrRepeatedEntriesNameEachUnvettedCodeOnceAtStartup(String setting, String expectedList) {
         List<LogCapture.CapturedEvent> warns = startAndCaptureWarns(props(setting));
         assertEquals(1, warns.size(), WARN_COUNT);
         assertEquals(String.format(EXPECTED_WARN_FORMAT, expectedList), warns.get(0).message(), WARN_TEXT);
