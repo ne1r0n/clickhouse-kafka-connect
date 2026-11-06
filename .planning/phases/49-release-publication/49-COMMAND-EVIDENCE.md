@@ -25,7 +25,7 @@
 | E-08 | RLS-03 | 49-03 | pass |
 | E-09 | RLS-03 | 49-03 | pass |
 | E-10 | RLS-03 | 49-03 | pass |
-| E-11 | RLS-02 | 49-04 | pending (plan 49-04) |
+| E-11 | RLS-02 | 49-04 | pass |
 | E-12 | RLS-04 | 49-04 | pending (plan 49-04) |
 | E-13 | RLS-04 | 49-04 | pending (plan 49-04) |
 | E-14 | RLS-04, RLS-05 | 49-05 | pending (plan 49-05) |
@@ -591,3 +591,81 @@ disposition_commit: c96816f42d265fe970b89fa2950b1331a082fca7
 Verdict: pass
 
 Notes. The rollback command block of the note still hashes to the E-05 value (2f30bd7d...7991), so no new rehearsal was needed. The documents are frozen from this commit on; the Freeze rule binds the allow-list, gates and approval bundle of plans 49-04 and 49-05, with the one exception of the one-line date commit of U-3. Nothing was pushed.
+
+### E-11: The gg8 archive allow-list is generated last from the final tree and the local compare dry run passes in both polarities
+
+Backs: RLS-02 (the allow-list generated from the final tree, the dry run `0 unallowed, 0 stale rows`, every wildcard row, none here, after two literal segments), D-1, D-2, G-1, G-2, PL-10.
+
+```sh
+mkdir <new dir>/final-base-src <new dir>/final-tip-src <new dir>/final-arch
+git archive v1.7.0_gg7 | tar -x -C <new dir>/final-base-src
+git archive HEAD | tar -x -C <new dir>/final-tip-src
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive   # in each export with its own wrapper, one after the other
+python3 -I .github/scripts/compare_confluent_archives.py <dir>/base.zip <dir>/tip.zip <dir>/empty.txt   # empty.txt: a comment-only allow-list
+python3 -I .planning/phases/49-release-publication/49-allowlist-check.py rows|cover <list>
+python3 -I .github/scripts/compare_confluent_archives.py <dir>/base.zip <dir>/tip.zip .planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt
+python3 -I .github/scripts/compare_confluent_archives.py <dir>/base.zip <dir>/tip.zip <mutated list>   # three mutated copies: a stale row, a deleted row, a leading-wildcard row
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*CompareConfluentArchivesScriptUnitTest' --tests '*ReleaseWorkflowGuardUnitTest' --tests '*AllowListWildcardRuleUnitTest'
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py failed|junit build/test-results/testUnit
+git add .planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt
+git commit -F <msg file>
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict <list>
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets <list>
+```
+
+```text
+tip_head: b1fc06443f5b0f3e9607b7e5a32af59a29c87d5e
+docs_frozen_tip: c96816f42d265fe970b89fa2950b1331a082fca7
+archive_inputs_unchanged_since_freeze: yes
+baseline_tag: v1.7.0_gg7
+workflow_allowlist_path_matches: yes
+final_base_verify_line: verifyConfluentArchive: 7932 inner entries, no nested jar, no Kafka API class
+final_tip_verify_line: verifyConfluentArchive: 7935 inner entries, no nested jar, no Kafka API class
+final_base_entries: 7932
+final_tip_entries: 7935
+entries_equal_e05: yes
+final_tip_bytes: 13572233
+final_java: default toolchain (Gradle 9.8.2, launcher JVM 21.0.12.1), -PjavaVersion=21 not needed, no JVM crash
+empty_compare_exit: 1
+empty_compare_totals: totals files-a 7512 files-b 7515 only-a 0 only-b 3 changed 14 same 7498
+empty_compare_unallowed: 17
+empty_compare_paths: META-INF/MANIFEST.MF; com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.class; com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.class; com/clickhouse/kafka/connect/sink/Version.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$1.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$2.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$3.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$InsertBody.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$InsertWriteDeadline.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class; com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient$ClickHouseClientBuilder.class; com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class; com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class; com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class; com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class; com/clickhouse/kafka/connect/util/Utils.class; com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class
+empty_compare_matches_e05: yes
+empty_compare_version_changes: none
+empty_compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+unexpected_differences: none
+list_rows: OK rows=17
+list_rows_count: 17
+list_cover: OK differences=17 covered=17 uncovered=0 overlapping=0 stale_rows=0
+wildcard_rows: 0
+two_segment_rule: ok
+header_line1_ok: yes
+list_compare_exit: 0
+list_compare_result: RESULT: PASS
+compare_summary: exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg7, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt
+list_compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+list_compare_nested_jars: 0
+list_compare_kafka_classes: 0
+mutation_stale: exit=1 STALE-ROW zz/nothing/*
+mutation_deleted: exit=1 UNALLOWED CHANGED com/clickhouse/kafka/connect/sink/Version.class
+mutation_wildcard: exit=2 ERROR: <mutated list>:28: a glob must start with a literal path prefix; one that starts with a wildcard (* ? [) is not anchored to a path and is refused
+projection_equal: yes
+guards_exit: 0
+guards_failed: OK failed: 0 failing testcases, 0 expected
+compare_xml: OK junit build/test-results/testUnit class *.CompareConfluentArchivesScriptUnitTest: tests=58 failures=0 errors=0 skipped=0 files=1
+relguard_xml: OK junit build/test-results/testUnit class *.ReleaseWorkflowGuardUnitTest: tests=38 failures=0 errors=0 skipped=0 files=1
+wildcard_xml: OK junit build/test-results/testUnit class *.AllowListWildcardRuleUnitTest: tests=14 failures=0 errors=0 skipped=0 files=1
+allowlist_commit: dcf13360892b496e589129bbf5bd3bf63b181c0d
+allowlist_commit_files: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt
+generated_last: yes
+hygiene_scan: clean
+secrets_scan: clean
+```
+
+The compare of the two clean rebuilds (the tag exported with its own wrapper, the tip exported at the commit before the list) reproduced the measured set of the earlier entry: 17 UNALLOWED entries (14 changed, 3 only in the tip archive; the manifest and the release identity classes among them), totals `files-a 7512 files-b 7515 only-a 0 only-b 3 changed 14 same 7498`, 7932 and 7935 inner entries, 13564144 and 13572233 bytes, no version-table change. Every difference is explained by the owner it was derived for: the six changed `src/main` files of the release, the three new inner classes of the writer, the inner classes of changed classes, and the release identity (`Version`, `SinkTaskStatistics`, the manifest). No difference was left without an owner and no row was written to make a compare pass. The 17 rows are exact paths; the glob set equals the 14 connector paths of the earlier gate measurement plus the three identity paths (the research projection). The three shipped-list guard classes ran with Docker unreachable and load every shipped list, the new one included.
+
+The three mutations turned the compare red on their own: a row that names nothing is reported `STALE-ROW`, a deleted row turns its difference `UNALLOWED`, and a row that starts with a wildcard is refused by the loader. The list commit holds one file, and no archive input, CHANGELOG or doc path changed between the frozen documents and it. Both archive builds and the guard run ran one at a time, with no tail gate alive. Nothing was pushed.
+
+2026-11-06T16:40:53Z
+Verdict: pass
