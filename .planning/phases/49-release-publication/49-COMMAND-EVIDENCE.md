@@ -21,7 +21,7 @@
 | E-04 | RLS-01, RLS-04 | 49-01 | pass |
 | E-05 | RLS-02, RLS-03 | 49-02 | pass |
 | E-06 | RLS-03 | 49-02 | pass |
-| E-07 | RLS-03 | 49-02 | pending (plan 49-02) |
+| E-07 | RLS-03 | 49-02 | pass |
 | E-08 | RLS-03 | 49-03 | pending (plan 49-03) |
 | E-09 | RLS-03 | 49-03 | pending (plan 49-03) |
 | E-10 | RLS-03 | 49-03 | pending (plan 49-03) |
@@ -462,4 +462,54 @@ Every duration of a T row occurs in item 14 of FORK-DELTA as written there, and 
 Two findings for the review plan, recorded and not fixed here. First, row U1: the `DESCRIBE` reader is byte-identical to `v1.7.0_gg7`, so upstream's slash fix changed no behaviour of this fork; the four live cases pass on an export of `v1.7.0_gg7` (the test file copied in, the test-scope `connect-json` dependency added). The CHANGELOG bug-fix bullet says a slash name "now round-trips", which reads as a change an operator will see; the note says the reader is unchanged and the tests are new. Second, the CHANGELOG names the two upstream items as #838 and #640, while the FORK-DELTA rows name upstream's pull requests #839 and #857; a read-only look at upstream shows #838 is the issue behind #839 and #857 is a pull request on record context, and the note names the pull requests 839 and 857. FORK-DELTA item 13 describes `ClickHouseSinkTaskStopUnitTest` as six cases, two of them red on the unchanged tree, and the snapshot holds seven; the note states no count for it.
 
 2026-11-06T13:33:37Z
+Verdict: pass
+
+### E-07: Note sections C and D, the closes table and the known limits; the full checker, seven mutations, links, resolver and scan
+
+Backs: RLS-03 (the finished note: 22 rows, the gg7 statements it closes, the known limits, the checker shown to fail on seven kinds of defect), D-4, D-9, PL-2, PL-3, PL-4.
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-note-check.py all docs/ROLLOUT-v1.7.0_gg8.md --allow <gg7 merge sha> <gg7 asset digest>
+python3 -I .planning/phases/49-release-publication/49-id-scan.py <note_commit_3> docs/ROLLOUT-v1.7.0_gg8.md
+python3 -I .planning/phases/49-release-publication/49-path-check.py <note_commit_3> docs/ROLLOUT-v1.7.0_gg8.md
+python3 -I .planning/phases/49-release-publication/49-doc-check.py links docs/ROLLOUT-v1.7.0_gg8.md CHANGELOG.md docs/FORK-DELTA.md
+python3 -I .planning/phases/49-release-publication/49-note-check.py rollback docs/ROLLOUT-v1.7.0_gg8.md --print | shasum -a 256
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg8.md
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets docs/ROLLOUT-v1.7.0_gg8.md
+python3 -I <scratch>/mutate.py   # seven single mutations on scratch copies: S3 row deleted, T4 scope widened, one label replaced, an identifier appended to S4, T14 renamed in the closes table, the read-tree tag changed, a 64-hex string appended to D2
+git diff --name-only 816d3b554045c5e1368b5e5090d8674695596cb4 HEAD -- . ':(exclude).planning'
+```
+
+```text
+nc_rows: OK rows=22 measured=15 code=15 derived=1
+nc_labels: OK labels: 3 of 3 defined
+nc_forbidden: OK forbidden: 0 lines
+nc_closes: OK closes: the section names 7 of 7 gg7 statements
+nc_rollback: OK rollback: the block is the four expected lines
+nc_claims: OK claims: 0 hex strings outside the allowed set
+nc_all_exit: 0
+id_scan_note: ids: hits=0
+path_check_note: paths: candidates=3 resolved=3 abbreviated=0 abbreviated_unique=0 placeholders=0 by_design=0 unresolved=0
+links_all: OK links: 35 relative targets checked, 0 broken
+block_unchanged_since_rehearsal: yes
+rehearse_md5_unchanged: yes
+hygiene_note: clean
+secrets_note: clean
+section_order: ## Before you upgrade; ## A. The upstream tail; ## B. Insert timeout limits; ## C. Task stop and the retry outcome; ## D. A removed public constant; ## E. Release identity, archive and roll; ## What this release closes from the gg7; ## Known limits carried into this releas
+mut_row_deleted: exit=1 FAIL rows: S3 occurs 0 times
+mut_client_scope: exit=1 FAIL rows: line 63: T4 has an Applies-when cell without 'client V1' or 'client V2'
+mut_label: exit=1 FAIL rows: line 49: U3 has the label 'assumed', which is not one of the three
+mut_identifier: exit=1 FORBIDDEN line 87
+mut_closes: exit=1 FAIL closes: the section does not name T14
+mut_rollback: exit=1 FAIL rollback: the rollback block is ['git switch -c rollback-v1.7.0_gg8', 'git read-tree -u --reset pre-v1.7.0_gg7', 'git commit -m "Roll back v1.7.0_gg8"', 'git diff --quiet HEAD pre-v1.7.0_gg8 && echo ok'], not the four expected lines
+mut_hex: exit=1 CLAIM line 104: 0000000000000000000000000000000000000000000000000000000000000000
+note_commit_3: 1ee7017b83b7b589e63d801a717837b8e71ea9d3
+non_planning_paths_since_l0: CHANGELOG.md VERSION docs/FORK-DELTA.md docs/ROLLOUT-v1.7.0_gg8.md
+```
+
+The finished note has 22 effect rows (15 carry the label measured, 15 read from the code and 1 derived, counted by label form, so a mixed row counts for each form it uses), the sections in the order of the plan, and the closes table names the seven gg7 statements the checker requires plus the gg7 statements the plan lists; the table also holds two rows the plan did not list, row R6 of the gg7 note (its decision is now taken) and the gg7 CHANGELOG Bug Fixes sentence on `stop()`, which the gg8 CHANGELOG already corrects. Each of the seven mutations turned the checker red on its own subcommand.
+
+Rows whose source was weaker than the research's label or wording: U1 (the reader is unchanged since the previous release, so the row states a pinned behaviour and no change; measured on an export of the previous tag), U2 (the writer's exception is rethrown with a Jackson link rebuilt value-free, not rethrown unchanged, as the CHANGELOG says), S1 and S2 carry no case count (the snapshot holds seven cases of `ClickHouseSinkTaskStopUnitTest` where FORK-DELTA says six), S3 labels the Connect worker measurement for the Kafka 3.9 line only, and P1 names the fixture class in the test tree, not a test-fixtures source set. The rollback list adds row P1, which the plan's list left out and which the jar does reverse.
+
+2026-11-06T13:36:25Z
 Verdict: pass
