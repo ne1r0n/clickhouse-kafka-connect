@@ -29,7 +29,7 @@
 | E-14 | P37-03 | 48-05 | fail |
 | E-15 | P37-03 | 48-05 | pass |
 | E-16 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pass |
-| E-17 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
+| E-17 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pass |
 | E-18 | P37-03, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
 
 ### E-01: Pre-flight and baseline on the untouched base, release path recorded frozen
@@ -1182,5 +1182,100 @@ ledger_lookup: .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPO
 Notes. The ledger commit holds only the ledger file. Its 57 rows are 27 rows for the 26 Phase 37 lineage IDs (28 IN-05(b) split into items i and ii), 18 rows for the 17 Phase 39 to 44 IDs (42 IN-03 split into parts a and b) and 12 rows for the 12 Phase 45 to 47 IDs; 10 are `fixed` and 47 `closed`. The 14 commit pointers are the 10 fixed rows (28-IN-01 `c4ec0cbf`, 28-IN-05(b)(i) `4de705a6`, UF-37-3 `07e65662`, 40-IN-03 `69b75cb3`, 42-IN-03(b) `64ef7568`, 42-IN-04 `3182791f`, 43-IN-01 `cc2ca206`, 43-IN-02 `eadacf83`, 44-IN-03 `5453a69c`, 47-IN-01 `ae31c4a9`) and 4 closed rows whose reasons rest on a commit (27-IN-01 `f13d8378`, 43-WR-03 `e979004e`, 45-IN-04 and 46-WR-05 `cc2ca206`). Each of the 10 fixed pointers equals its evidence key and touches its file; 45-IN-04 and 46-WR-05 equal `fd_reviews_commit` of E-13; the two earlier pointers are ancestors of HEAD. Before writing the closed reasons that cite a line, a count or a file, each was re-read on the tree: `shouldSkipDescribeRow` lines 508, 509 and 516 with no caller under `src/main` and its anchor row (3, HLP-02), the parity assertion at `DescribeTableBuilderUnitTest` line 399, `Column.convertEnumValues` line 630, the gg4 note line 199 and CHANGELOG line 284, 12 enum files in the raw-name matrix, `Enum8` at `RawNameMatrix.java` line 97 and in `ENUM_LOOKUP_MISS_TEXT`, the release and pre-release workflow regular expression at line 65 against the script grammar, `UNSAFE_CHARS` and `load_inner`, the `pipefail` comment at line 108, the compare step's non-zero exit, no `distributionSha256Sum`, the `kafka` catalog version unchanged since the gg7 tag, no file added under `src/main` since the gg7 tag, `nested jars in b: 0` and `kafka classes in b: 0` in the E-15 compare report, and the retry-outcome body of `JacksonOverIoValueFreeUnitTest.keepsTheRetryOutcome`. One research detail was not copied because it did not read the same on the tree: no row of `fork-anchors.txt` names `JsonAsStringKeyResidualLiveTest`, so the 27-IN-02 reason cites only the four FORK-DELTA lines that name it; the count of `Shape` rows was not re-counted and is not cited. The hand-off section of the ledger is a numbered list and not a table, because `48-ledger-check.py` reads every line that starts with `| ` as a six-cell ledger row. `git ls-files '*48-DISPOSITION-LEDGER.md'` prints exactly the ledger, so FORK-DELTA item 20's lookup resolves.
 
 Recorded 2026-11-06T09:48:43Z.
+
+Verdict: pass
+
+### E-17: Phase gate: testUnit with Docker unreachable, full suite on latest x V2, deltas, scope, documents, ledger, anchors, tail gate, nothing pushed
+
+Backs: P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02, ROADMAP Phase 48 phase gate ("cache-busted `testUnit`, the anchors invariant, and a full suite on `latest` x V2 if `src/main` changed") and criteria 1 to 4 on the phase tip.
+
+```sh
+git rev-parse HEAD
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/tags/pre-v1.7.0_gg8 --jq length
+git ls-remote origin refs/heads/sync/v1.7.0
+git ls-remote upstream main
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd48/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd48/exec/xml-gate-testunit && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-gate-testunit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-gate-testunit /tmp/gsd48/exec/status-gate-testunit.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py delta /tmp/gsd48/exec/status-base-testunit.tsv /tmp/gsd48/exec/status-gate-testunit.tsv .planning/phases/48-phase-37-dispositions-document-fixes/48-expected-added.tsv
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd48/exec/gate-suite.log 2>&1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd48/exec/xml-gate-suite && cp -R build/test-results/test /tmp/gsd48/exec/xml-gate-suite
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-gate-suite /tmp/gsd48/exec/status-gate-suite.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py delta /tmp/gsd48/exec/status-base-suite.tsv /tmp/gsd48/exec/status-gate-suite.tsv .planning/phases/48-phase-37-dispositions-document-fixes/48-expected-added.tsv --by-class
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+git diff --name-only c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- src/main
+git diff --numstat c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- src/main
+git diff --name-only --diff-filter=A c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- src
+git diff --quiet c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- <the eleven high-risk and neighbouring production files>
+git diff --name-only c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- src/test src/testFixtures src/integrationTest
+git diff --numstat c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- <the four extended test files>
+git diff --quiet c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- build.gradle.kts settings.gradle.kts gradle .github VERSION CHANGELOG.md .planning/scripts
+git diff --name-only c77d1a147ae4acd37100b73db08f1851047bc055 <gate_head> -- docs
+git rev-list --merges c77d1a147ae4acd37100b73db08f1851047bc055..<gate_head>
+md5 -q <the four plan-time helpers and the two frozen scripts>
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py <gate_head> docs/FORK-DELTA.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py <gate_head> docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-ledger-check.py check .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPOSITION-LEDGER.md
+git ls-files '*48-DISPOSITION-LEDGER.md'
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 <gate_head> > /tmp/gsd48/exec/gate-tail.log 2>&1
+```
+
+```text
+gate_head: 97b60d3a59c10c72870761ac342d8278701fdbc5
+origin_pre_tag_at_gate: absent
+origin_sync_branch_at_gate: absent
+upstream_main_at_gate: 83808df9a0993cf49b2ceaa4633c782e550c0180
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2320
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+status_delta_testunit: delta: removed=0 added=25 expected=25 match=yes
+suite_exit: 0
+suite_tests: 2923
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+status_delta_suite_by_class: delta: removed=0 added=25 expected=25 match=yes
+suite_version: 26.10.3.7
+suite_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_java: default toolchain
+suite_crash: no
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java
+main_numstat: 0 3
+main_files_added: none
+untouched_main_files: yes
+test_files_changed: src/test/java/com/clickhouse/kafka/connect/ci/AllowListWildcardRuleUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskStopUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/SimpleAggregateTupleRoundTripLiveTest.java src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumNullBindingUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java
+test_files_added: src/test/java/com/clickhouse/kafka/connect/ci/AllowListWildcardRuleUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumNullBindingUnitTest.java
+extended_tests_lines_deleted: 0 0 0 0
+build_ci_unchanged: yes
+docs_changed: docs/FORK-DELTA.md docs/ROLLOUT-v1.7.0_gg1.md docs/ROLLOUT-v1.7.0_gg6.md
+scripts_dir_unchanged: yes
+helpers_unchanged: yes
+merges_since_base: none
+fd_paths_line: paths: candidates=98 resolved=70 abbreviated=20 abbreviated_unique=20 placeholders=2 by_design=6 unresolved=0
+gg6_ids_line: ids: hits=0
+ledger_check_line: check: rows=57 required=57 problems=0
+ledger_lookup: .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPOSITION-LEDGER.md
+lists_identical_to_tags: yes
+anchors_mirror: rows=218 bad=0
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=164 anchor_rows=218 marker_commits=182 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+```
+
+Notes. The cache-busted testUnit with Docker unreachable read 2320 tests (E-01's 2295 plus the 25 rows of `48-expected-added.tsv`), 107 XML files, 0 failures, 0 errors and the same 2 skips, and its per-testcase delta against the E-01 dump removes nothing and adds exactly the 25 expected rows. The one full suite on `latest` x V2 read 2923 tests (E-01's 2898 plus 25), 156 XML files, 0 failures, 0 errors and the 18 named skips, exit 0, in 3 min 11 s; its delta against the E-01 dump by class removes nothing and adds exactly the 25 expected rows. `latest` did not drift: the server version `26.10.3.7` and the digest equal E-01's and E-11's. The three Gradle or Testcontainers jobs of the gate (testUnit, suite) and the tail gate ran strictly one after another, and no `Ryuk` line appears in the suite log. No JVM crash and no core dump; the default toolchain ran both runs, and `-PjavaVersion=21` was used only to build the dry-run archives of E-14 and E-15. `src/main` differs from the base only by the three deleted lines of `DeclaredNullability.java` (the 28 IN-01 move) and no file was added there, so `Processing.java`, `KeeperStateProvider.java` and the other high-risk and neighbouring production classes are unchanged and the `BEFORE`/`AFTER` flag sequence is unchanged; `ProcessingTest` ran green in both runs. The test tree gained the two new classes and changed eight more files (the four extended classes with no deleted line, and the four repointed files of the 28 IN-01 move). The phase tip holds no merge, no change of build files, `.github`, `VERSION`, `CHANGELOG.md` or `.planning/scripts`, and the five lists are unchanged (the gg6 and gg7 lists equal their tags). The plan-time helpers and the two frozen scripts still carry the recorded md5 values. The origin sync branch is still absent, `pre-v1.7.0_gg8` is absent on origin, upstream `main` is still `83808df9`, and nothing was pushed in this phase. The tail gate ran once on the explicit SHA of `gate_head`, over `12e2cf17..97b60d3a`.
+
+Recorded 2026-11-06T10:04:36Z.
 
 Verdict: pass
