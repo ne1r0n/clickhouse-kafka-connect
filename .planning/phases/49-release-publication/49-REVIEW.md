@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 19
+  warning: 21
   info: 11
-  total: 30
+  total: 32
 status: issues_found
-rounds: 4
+rounds: 5
 ---
 
 # Phase 49: Code Review Report
@@ -253,6 +253,26 @@ All 26 earlier findings were re-checked and the round-3 fixes (WR-14 to WR-17, I
 
 round: 4 findings: 4
 
+## Round 5
+
+reviewer_agent_id: a2456cb7a52ff4907
+
+The five files were read first as they now stand, then the round-4 fixes (`git diff 17fa56e9 HEAD -- docs CHANGELOG.md` touches only `CHANGELOG.md` and `docs/ROLLOUT-v1.7.0_gg8.md`; FORK-DELTA, the gg6 note and the gg1 note are unchanged since round 4), then rounds 1 to 4. The four round-4 fixes were checked word by word and are correct as applied. IN-10 (row U2 and the `CHANGELOG` bullet): `sameKindStandIn` replaces a `RetriableException`, a `DataException` and a `ConnectException` by a new one of that class, a client V1 `ClickHouseException` and a client V2 `ServerException` keep their error code, and every other link becomes an `IOException` (if it was one) or a `RuntimeException`; `withheldJacksonChain` keeps the top's `IOException` or `RuntimeException` category, drops every Jackson link above the root, turns a Jackson root into a plain `IOException` (with the client-timeout prefix kept) and leaves the bottom run of non-Jackson `IOException`s as the same objects; `Utils.handleException` reads the root cause (server error code first), any `RetriableException` in the chain, and the timeout prefix of an `IOException` root, all of which the rebuild keeps. WR-19 (row T9): the help text of `clickhouseClientInsertTimeoutMs` says "On client V2, an insert whose batch has been sent and whose server keeps sending progress headers runs to its natural end" with no `async` scope, and `async=true` occurs once in it, in the `socket_timeout` sentence; `awaitInsertResponse` cuts an `async=true` insert at the bound. IN-11: the write-phase deadline exists on client V2 only, so both sentences are now scoped correctly. WR-18: `git diff v1.7.0_gg7 fb5fa4cb -- src/main` touches neither `writeRecordsJson` nor the serializing statements of `MetadataFreeJsonWriter` (not in the diffstat), so the probe tree's JSON route is that of `v1.7.0_gg7`; the probe's `sentinel_in_message`, `sentinel_in_stack` and `sentinel_in_dlq_headers` are `yes` for seven shapes and `sentinel_in_logs` is `no` for all eight, which is what the bullet says. Two new findings remain, one of them in the sentence that WR-18's fix produced.
+
+### WR-20: The rollback bullet says the `v1.7.0_gg7` Known Issues record the JSON-route residual as not measured; the `1.7.0_gg7` section has no such bullet
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:146` (Rolling back brings back, second bullet: "not run on `v1.7.0_gg7`, whose Known Issues record the residual as not measured")
+**Issue:** The clause was written from round 4's own Fix text, which said "the `1.7.0_gg7` Known Issues record the same residual as not measured". It is not true of the `v1.7.0_gg7` release's Known Issues. The `# 1.7.0_gg7, 2026-11-02` section of `git show v1.7.0_gg7:CHANGELOG.md` (lines 1 to 77) has five Known Issues bullets (closing residuals, bounded-insert limits, many-to-one rename, retry budget, retriable `DataException`) and none about a Jackson failure on the `insertFormat=json` route. The sentence "On the `insertFormat=json` route a Jackson failure can still occur. Whether its text carries a `Map` key into the task status, the dead letter queue or the logs was not measured." is at line 288 of that file, inside the `# 1.7.0_gg4` section (lines 223 to 345), and is repeated in the `1.7.0_gg5` and `1.7.0_gg6` sections (`was not measured` at line 108 of the gg5 file and line 212 of the gg6 file). The `v1.7.0_gg7` rollout note and the gg7 FORK-DELTA do not state it either. So the bullet names as its source the Known Issues of the release being rolled back to, and an operator who opens that release's Known Issues finds nothing; the statement is true only of three earlier releases' sections that the gg7 changelog still carries as history. The factual core of the bullet (not run on `v1.7.0_gg7`, same statements in the code) is right; the attribution is the defect, in the one sentence that tells the operator what a rollback gives back.
+**Fix:** Replace "whose Known Issues record the residual as not measured" with "the `1.7.0_gg4` to `1.7.0_gg6` sections of its changelog record the residual as not measured", or drop the clause and end the parenthesis at "not run on `v1.7.0_gg7`".
+
+### WR-21: Row T9 describes the shipped help text as the statement of the limits, but its exactly-once clause says ClickHouse "drops duplicates" with no condition, against row T8
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:68` (row T9) against `src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java:843` and `docs/ROLLOUT-v1.7.0_gg8.md:67` (row T8)
+**Issue:** After the WR-19 fix row T9 says where the help text is stronger than row T6 (no `async=false` scope), and nowhere else. The same help text says, in its first paragraph, "in exactly-once mode the retry reuses insert_deduplication_token and ClickHouse drops duplicates", unconditionally. Row T8 states the same fact at a different level of confidence: "with `exactlyOnce=true` the retry reuses the deduplication token, and whether the server drops the repeat depends on the table", and its How-it-is-known cell says the outcome "depends on the engine and on `async_insert`, so no general rule is stated"; the gg7 note's row T8 says server deduplication "was not measured". The clause is carried unchanged from `v1.7.0_gg7` (`git show v1.7.0_gg7:src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java` lines 846 to 847) and `InsertTimeoutHelpTextPinUnitTest` keeps only the phrase `insert_deduplication_token`, so it ships in the text that row T9 says "closes row T14" and that the Connect configuration documentation prints. An operator who reads the help text and row T8 gets two answers to whether an exactly-once retry of a timed-out insert is safe, and the note says which limit of row T6 the help text leaves unscoped but not this one. This is the same kind of gap as WR-19, on the fact that decides whether a timed-out insert can duplicate rows.
+**Fix:** Add one sentence to row T9: "Its clause that in exactly-once mode the retry reuses `insert_deduplication_token` and ClickHouse drops duplicates is carried from `v1.7.0_gg7` and states the drop without the condition of row T8: the token is reused (read from the code), and whether the server drops the repeat depends on the table." Changing the help text instead would be a source change.
+
+round: 5 findings: 2
+
 ## Mandated confirmations (RLS-03)
 
 (a) Every one of the 22 rows (U1 to U4, T1 to T10, S1 to S4, P1, D1 to D3 = 22 rows) was read against its source and label. Not clean: U1's Tuple-element half is not covered by the cited tests (WR-09), T5 labels the `async=true` exception as measured though no test runs it (WR-06), and S3's closing consequence has no label (WR-07). The qualifiers on T6 (stub only for the cut during the send), S1 (Connect's handling read, not measured), S3 (Kafka 3.9 line only), D2 and D3 are honest. FAILED, see WR-06, WR-07, WR-09.
@@ -364,6 +384,34 @@ Round 4 verdicts (fresh reviewer; the earlier verdicts stand unless this part ch
 (l) The Phase 48 edits of the gg6 and gg1 notes are correct as published text: the tripwire test is in `v1.7.0_gg7` and not in `v1.7.0_gg6`; gg6 row C2 points to items 17 and 24, which say what the row says; the gg1 item 6 label "measured on the `v1.7.0_gg6` tree" is accurate. Passes.
 
 (m) Cross-document agreement on the change set (six `src/main` files, 428 and 72), the version (`v1.7.0_gg8`, `VERSION`, the `CHANGELOG` heading `Unreleased`), the rollback target (`pre-v1.7.0_gg8` on `94834763`), the progress-header scope and what the exception, cause chain and log contain holds, with `client V1` and `client V2` scoping, `socket_timeout` handling and the `exactlyOnce=false` duplicate consistent. FAILED on two points: the rollback bullet against FORK-DELTA on the measured JSON-route text (WR-18), and the note's T6 scope against the shipped help text that row T9 describes (WR-19).
+
+Round 5 verdicts (fresh reviewer; the verdicts above stand unless this part changes them).
+
+(a) 22 rows: U1 to U4, T1 to T10, S1 to S4, P1, D1 to D3 (22 rows) read again against source and label. The round-4 edits (U2's list of kinds, T9's new sentence) are accurate. FAILED only through WR-21: row T9 labels the help text `read from the code (pinned by a test)` and lists where it is stronger than row T6, but not where its exactly-once clause ("ClickHouse drops duplicates") is stronger than row T8. No row is stronger than its evidence otherwise; qualifiers (`stub only`, `Kafka 3.9 line only`, `one probe, not pinned`) are honest.
+
+(b) Commands, numbers and versions: `git diff --shortstat v1.7.0_gg7 HEAD -- src/main` is 6 files, 428 insertions, 72 deletions; `VERSION` reads `v1.7.0_gg8`; `git rev-parse pre-v1.7.0_gg8 v1.7.0_gg7` gives `9483476322e0d331e81c5b92ac266a18f0f01450` twice (`94834763`); `git diff --quiet v1.7.0_gg7 HEAD -- .../ClickHouseFieldDescriptor.java` exits 0; the closes table's quoted gg7 statements are substrings of the gg7 note and changelog (one quotation carries an ellipsis by design); the T-row durations, case counts and archive figures were not changed by the round-4 fixes and still match FORK-DELTA item 14 and the evidence. Passes; the one wrong source attribution is WR-20.
+
+(c) Applies-when against the code path: T2 and T10 client V2 (the write-phase deadline, `insertWriteDeadline`, exists on client V2 only), T3 client V1 (`awaitInsertResponseV1`), T5 both clients with the `async=true` wait on client V2 (`awaitInsertResponse` is not gated by `insertBoundMs`), T6 client V2 with `async=false`, `client_version` default `V1` and any other value selecting client V2 (`ClickHouseWriter.java:107`), the two sentences changed for IN-11 now say `client V2`. `socket_timeout` handling and `exactlyOnce=false` scoping unchanged. Passes.
+
+(d) Rollback: the order of steps, the target `pre-v1.7.0_gg8` on `94834763` (tag `v1.7.0_gg7`), the gg7 asset facts and the rehearsal statement are unchanged since round 4; the only edit to the rollback section since round 4 is the second reversal bullet (WR-18 fix), which is right in its facts and wrong only in the attribution of WR-20; the third bullet's `client V2` scoping is right. Passes except WR-20.
+
+(e) No fact about the `v1.7.0_gg8` `release object` and no promise of one: the note says only that the tag does not exist before publication and that the rollback tag is pushed when the release is published. Passes.
+
+(f) No advice that empties or destroys data; the one destructive command, `git read-tree -u --reset`, is gated by the clean-status step and runs on a new branch; the exactly-once KeeperMap state is untouched. Passes.
+
+(g) ERROR line texts: `Record serialization failed: topic [..] partition [..] offset [..] column ..: exception <class>` matches `RECORD_CONTEXT_FAILURE_LOG_FORMAT` (line 626); `Error writing value of ...` matches `WRITE_VALUE_FAILURE_LOG_FORMAT` (line 623); neither carries a value, a message or a throwable. Passes.
+
+(h) The closes table names F5, R8, T1 and T12, T6, T11, the ping clause of T13, T15, Before-you-upgrade 2, What-to-do 3, T14, R6, the last statement of section F, three known-limits bullets and five gg7 changelog statements; the gg8 note carries no planning identifier (only 8-hex commit abbreviations, branch and tag names and its own row ids). Passes.
+
+(i) FORK-DELTA is unchanged since round 4 and still agrees with the note and the `CHANGELOG`: the VERSION row, the current-version parenthetical, the tag-pair commands, the test-tree recount, the after-gg8 rows, the totals sentence, the gg8 intro, pointer and next-syncer paragraphs, and items 13, 14, 17, 20 and 24 (`item 24` records the closed follow-up). Its row on `doWriteColValue` lists the same kinds as row U2 now does, and its row on the JSON route matches the rollback bullet. Passes.
+
+(j) Released `CHANGELOG` sections: the file from the `# 1.7.0_gg7, 2026-11-02` heading down equals `git show v1.7.0_gg7:CHANGELOG.md` (`cmp` reports only that the tag copy ends 6 bytes earlier, the missing trailing newline of the copy and of the awk extract); the three Phase 47 bullets are unchanged by the round-4 edit (the only hunk is the IN-10 sentence of the Bug Fixes bullet); the heading reads `Unreleased` by U-3. Passes.
+
+(k) No host, connector or planning identifier in the note or the `CHANGELOG` section; the references to FORK-DELTA items are document pointers. Passes.
+
+(l) The Phase 48 edits of the gg6 and gg1 notes are unchanged since round 4 and correct as published text. Passes.
+
+(m) Cross-document agreement on the change set (six `src/main` files, 428 and 72), the version (`v1.7.0_gg8`, `VERSION`, `CHANGELOG` heading `Unreleased`), the rollback target (`pre-v1.7.0_gg8` on `94834763`), the client scope (`client V1` and `client V2`), the exception contents (the IN-10 wording in row U2, the `CHANGELOG` bullet and FORK-DELTA agree), the `Record serialization failed` and `ESCAPED_NEWLINE` statements, the label strengths and the rollback consequences. FAILED on one point: the help text's exactly-once clause against row T8 (WR-21); the attribution in WR-20 is a single-document error.
 
 ---
 
