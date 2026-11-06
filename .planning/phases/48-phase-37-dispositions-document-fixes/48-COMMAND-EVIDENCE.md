@@ -19,7 +19,7 @@
 | E-04 | P37-03 | 48-02 | pass |
 | E-05 | P37-04 | 48-02 | pass |
 | E-06 | P37-04 | 48-02 | pass |
-| E-07 | P37-04 | 48-02 | pending (plan 48-02) |
+| E-07 | P37-04 | 48-02 | pass |
 | E-08 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pending (plan 48-02) |
 | E-10 | P37-01 | 48-03 | pending (plan 48-03) |
@@ -640,5 +640,45 @@ cs_mut_worktrees_removed: yes
 Notes. The class had 6 test methods (E-01 `cs_tests`, the shipped-strategy method counting 3 rows) and now has 7, all green with Docker unreachable; the commit adds 12 lines and deletes none. m1 replaces the state provider close in `ProxySinkTask.stop()` and turns all 7 cases red, every failure message containing `close count of the state provider`; m2 replaces the statistics unregister and turns all 7 red, every message containing `the task MBean must be unregistered after stop`; neither assertion had been seen red before. m3 removes the MBean registration in `SinkTaskStatistics.registerMBean()`: the six existing cases pass with no MBean ever registered, because their "gone after stop" assertion is satisfied vacuously, and only the new `theTaskMBeanIsRegisteredBeforeStopAndGoneAfter` case fails, with the message `the task MBean must be registered before stop`.
 
 Recorded 2026-11-06T08:40:57Z.
+
+Verdict: pass
+
+### E-07: Blank, empty and repeated entries of additionalRetriableErrorCodes (42 IN-03 part b)
+
+Backs: P37-04 (42 IN-03 part b: the start-up WARN for `additionalRetriableErrorCodes` had no row for blank, empty or repeated entries), ROADMAP Phase 48 criterion 2, U-13.
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*UnvettedRetriableCodesWarnUnitTest*' > /tmp/gsd48/exec/uw-green.log 2>&1
+rm -rf /tmp/gsd48/exec/xml-uw-green && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-uw-green
+git diff --numstat -- src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java
+/tmp/gsd48/exec/fmt.sh uw src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java
+git add src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java
+git commit -F /tmp/gsd48/exec/msg-uw.txt
+git worktree add --detach /tmp/gsd48/wt-uw 64ef75686f459e067226f9d48004109034c91d88
+python3 -I /tmp/gsd48/exec/mutate.py /tmp/gsd48/wt-uw/src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java 'if (code.isEmpty()) {' 'if (code.isEmpty() && false) {'
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd48/wt-uw --console=plain testUnit --rerun --tests '*UnvettedRetriableCodesWarnUnitTest*' > /tmp/gsd48/exec/uw-mut.log 2>&1
+cp -R /tmp/gsd48/wt-uw/build/test-results/testUnit /tmp/gsd48/exec/xml-uw-mut
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-uw-mut /tmp/gsd48/exec/status-uw-mut.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py count /tmp/gsd48/exec/status-uw-mut.tsv .UnvettedRetriableCodesWarnUnitTest FAIL --name-contains '216,,159'   # and '159,,60'
+git worktree remove --force /tmp/gsd48/wt-uw && git worktree prune
+```
+
+```text
+uw_green_tests: 28
+uw_green_failures: 0
+uw_lines_deleted: 0
+fmt_uw: identical
+uw_commit: 64ef75686f459e067226f9d48004109034c91d88
+uw_mut_tests: 28
+uw_mut_failures: 2
+uw_mut_fail_inner_empty_vetted: count=1
+uw_mut_fail_inner_empty_unvetted: count=1
+uw_mut_worktree_removed: yes
+```
+
+Notes. The class had 21 cases at the base (E-01 `uw_tests`); it now has 28, all green with Docker unreachable, and the commit adds 26 lines and deletes none. Seven rows were added: `" "`, `","` and `"216,,159"` log no WARN, and `"159,,60"`, `"60,60"`, `"60,"` and `"159,60,"` each log exactly one WARN naming `[60]`. The mutation turns the empty-entry skip of `ClickHouseSinkConfig.parseErrorCodes` into `code.isEmpty() && false` in the worktree only: an empty entry between two commas then reaches `Integer.parseInt`, the setting is refused before the connection step, and exactly the `216,,159` row and the `159,,60` row fail (a blank value, a lone comma and a trailing comma never reach the loop body with an empty entry, so those rows stay green). Part (a) of the 42 IN-03 row, the port race of `closedPort()`, is not changed and is closed in the ledger.
+
+Recorded 2026-11-06T08:42:13Z.
 
 Verdict: pass
