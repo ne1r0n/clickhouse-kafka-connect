@@ -23,8 +23,8 @@
 | E-06 | RLS-03 | 49-02 | pass |
 | E-07 | RLS-03 | 49-02 | pass |
 | E-08 | RLS-03 | 49-03 | pass |
-| E-09 | RLS-03 | 49-03 | pending (plan 49-03) |
-| E-10 | RLS-03 | 49-03 | pending (plan 49-03) |
+| E-09 | RLS-03 | 49-03 | pass |
+| E-10 | RLS-03 | 49-03 | pass |
 | E-11 | RLS-02 | 49-04 | pending (plan 49-04) |
 | E-12 | RLS-04 | 49-04 | pending (plan 49-04) |
 | E-13 | RLS-04 | 49-04 | pending (plan 49-04) |
@@ -538,3 +538,29 @@ Verdict: pass
 
 Notes. Round 1 found 15 findings (0 critical, 9 warnings, 6 info). The verdict records that the process ran, not that the documents are clean. Nothing was pushed.
 
+### E-09: Review rounds and fixes until the user accepted the last round
+
+Backs: RLS-03 (every finding fixed, each fix reviewed by a later fresh round except the last two), D-6, G1.
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-review-check.py rounds .planning/phases/49-release-publication/49-REVIEW.md .planning/phases/49-release-publication/49-REVIEW-DISPOSITION.md --max-rounds 5
+python3 -I .planning/phases/49-release-publication/49-review-check.py agents .planning/phases/49-release-publication/49-REVIEW.md --expect-ids aa6175e0dcb6fb58e,a09cc0035374691f7,a33561b94d0bde104,a32c2a44ee49eac0e,a2456cb7a52ff4907
+```
+
+```text
+rounds: 5
+max_rounds: 5
+reviewer_agent: round 2 agentId=a09cc0035374691f7; round 3 agentId=a33561b94d0bde104; round 4 agentId=a32c2a44ee49eac0e; round 5 agentId=a2456cb7a52ff4907
+agents_check: OK agents: rounds=5 distinct=5 ids=aa6175e0dcb6fb58e,a09cc0035374691f7,a33561b94d0bde104,a32c2a44ee49eac0e,a2456cb7a52ff4907
+round_findings: 1:15; 2:6; 3:5; 4:4; 5:2
+fix_commits: 4d3d8c32; 07a83cc7; 1a2623ba; 63f6293e; 36c90fa7; bee9ce65; a009d050; d9d311aa; 9c718a48; 5eebb803; 003eb385; 868be463; 492937c4; 61a7e563; a5cb80cb; 887846b3; f5c2278a; f1c22f72; 65a8278a; dfd18498; f97dff40; 4676de01; 95a0d209; ff52fe11; d85c6de1; 9b713883; 0cd63ea9; f39e870d; 24ed029d; 2c6db32d; 5e61ed65; 74b97062; 315f5de1
+fix_reproof_method: every proposed fix text was checked by the fixing executor or the orchestrator against ClickHouseWriter, ClickHouseSinkConfig, git and the gg7 tag before it was applied; the executors corrected IN-05, IN-06, WR-10, WR-11, WR-12, WR-13, WR-16, WR-18, WR-19, IN-09 and IN-10; no fix touched the rollback command block (hash unchanged, see E-10)
+last_round_clean: no
+round3_decision: Authorise round 4 (user, AskUserQuestion, 2026-11-06); Authorise round 5 (user, 2026-11-06); round 5 left with two findings fixed unreviewed: Accept as recorded (user, 2026-11-06); authorised_rounds: 5
+own_checks_after_last_fix: ok
+rounds_check: OK rounds: [(1, 15), (2, 6), (3, 5), (4, 4), (5, 2)] last_clean=False decision=True max_rounds=5
+```
+
+Verdict: pass
+
+Notes. Rounds 1 to 5 found 15, 6, 5, 4 and 2 findings. The user was asked after rounds 3, 4 and 5 and answered directly to the orchestrator; the last answer accepted the two round-5 fixes (WR-20, WR-21, one commit) without a sixth round, so those two fixes are the only unreviewed change. The owning checks after the last fix: note checker `rows=22`, id scans `hits=0`, links 35 checked 0 broken, strict hygiene clean on the note and CHANGELOG, path resolver leaves only the gg8 allow-list unresolved in FORK-DELTA, FORK-DELTA numbers check OK against fresh shortstats (364 47983 1260; 43 3578 333), totals sentence holds 2325 and 2928, CHANGELOG heading `Unreleased` and its released sections equal to `v1.7.0_gg7`'s. Nothing was pushed.
