@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 13
-  info: 8
-  total: 21
+  warning: 17
+  info: 9
+  total: 26
 status: issues_found
-rounds: 2
+rounds: 3
 ---
 
 # Phase 49: Code Review Report
@@ -179,6 +179,46 @@ All 15 round-1 fixes were checked one by one against `src/main`, git and the gg7
 
 round: 2 findings: 6
 
+## Round 3
+
+reviewer_agent_id: a33561b94d0bde104
+
+All 21 earlier findings were re-checked against `src/main`, `git show v1.7.0_gg7:...` and the files as they stand. The round-2 fixes are correct as applied: the step 4 and section A sentences now say that the retry classification is unchanged and that the text is unchanged except for a Jackson-holding chain; the offset-only denial matches `WRITE_VALUE_CONVERSION_FAILURE_FORMAT` and `WRITE_TYPE_MISMATCH_FAILURE_FORMAT`; the TRACE list names `writeJsonRow` and `writeRecordsString`; row T3 splits its label; the closes table now names gg7 row T6; the reversal lists carry T4; the released CHANGELOG sections equal `git show v1.7.0_gg7:CHANGELOG.md` (71626 bytes, script compare); no planning identifier is in the note or the CHANGELOG section. The ERROR line formats (`RECORD_CONTEXT_FAILURE_LOG_FORMAT`, `WRITE_VALUE_FAILURE_LOG_FORMAT`), the catch nesting that orders the two T10 lines, the `RetriableException` pass-through of `writeColumnWithRecordContext`, the `insertBoundMs` gate and the `awaitInsertResponse` and `awaitInsertResponseV1` waits were re-read and match. The new findings are one scope error that survived two rounds (T6 and its three echoes), one privacy claim in the CHANGELOG that is stronger than the note's own qualified sentence, one imprecise description of the Jackson rebuild that the last orchestrator follow-up produced, and one unlabelled-claims point on row U2.
+
+### WR-14: Row T6 and its echoes say a client V2 insert that streams progress headers after the send is not bounded, which is false for `async=true` and omits the gg7 conditions
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:65` (row T6, Effect and Applies when), `:75` (What to do, step 3), `:185` (known limits, second bullet); `CHANGELOG.md:82-84` (Known Issues, the bounded-insert bullet)
+**Issue:** Row T6 has Applies when `client V2` and states that the insert "is not bounded, by decision". Row T5 of the same note says that the response wait of a client V2 insert with `async=true` "still ends at `clickhouseClientInsertTimeoutMs`", and the code agrees: `insertWithWriteDeadline` calls `awaitInsertResponse`, which does `future.get(timeoutMs)` on the insert future with no gate and no reset on progress headers (`ClickHouseWriter.java:1981-1991`, `:2063-2072`). For `async=true` that future completes when the response arrives, so a progress-streaming insert is cut at the bound whether or not `socket_timeout` is named. The escape of T6 exists only where `awaitInsertResponse` receives an already completed future, which is `async=false`, the default, and it was measured only with `async_insert=0`. The gg7 row T6 that this row narrows says so in its Applies when ("client V2, async=false, server `async_insert=0`") and also says that the connector adds `send_progress_in_http_headers=1` as a default and that a value in `clickhouseSettings` replaces it, so that "without that setting the same insert is bounded" (3007 ms in the gg7 changelog, `CHANGELOG.md:165`). Row T6 keeps `async_insert=0` in its Effect only, drops `async=false` and the progress-header setting, and has `client V2` as the whole Applies when. FORK-DELTA item 14, case (a), carries `send_progress_in_http_headers=1` and `async_insert=0` as the conditions of the measured run. The effect is that a reader with a client V2 connector that sets `async=true`, or that replaces `send_progress_in_http_headers` in `clickhouseSettings`, is told that nothing bounds its progress-streaming inserts. The step 3 sentence, the second known-limits bullet and the CHANGELOG bullet repeat the unscoped statement.
+**Fix:** Row T6, Applies when: `client V2, async=false (the default)`. Effect: add "With `async=true` the same insert is cut at `clickhouseClientInsertTimeoutMs` (read from the code: `awaitInsertResponse`, row T5). The escape needs the progress headers that the connector requests by default with `send_progress_in_http_headers=1`; a value for that key in `clickhouseSettings` replaces it, and gg7 measured the same insert without it failing at 3007 ms." Label: add "the `async=true` cut and the setting: read from the code". In step 3, the known-limits bullet and the CHANGELOG bullet write "a client V2 insert with `async=false` whose body has been sent while the server streams progress headers".
+
+### WR-15: The CHANGELOG states the value-free claim without the scope that row U2 gives it, and it is wider than the tests for a server-side parse failure
+
+**File:** `CHANGELOG.md:44-47` (Bug Fixes, the #640 bullet); `docs/ROLLOUT-v1.7.0_gg8.md:48` (row U2) for the contrast
+**Issue:** The CHANGELOG says "No record value reaches the message, the cause chain, a stack trace, the dead letter queue headers or a log at DEBUG or above, on the RowBinary route and on the JSON route". Row U2 says the same only "in the cases the tests drive", and labels it `measured` for those cases. Round 1 (WR-05) found the missing level and the fix added "at DEBUG or above" and the TRACE remark, but the CHANGELOG sentence still has no scope at all, and it is the document operators read first and a privacy claim. The claim is also wider than what the code and the tests cover: it is about failures that the writer's own serialization raises, and a rejection by the server is another path that neither the rebuild nor the record-context line touches. A server that cannot parse an inserted row normally answers with a `ClickHouseException` whose message quotes text near the failure (ClickHouse behaviour; no test of this repository measures it, so this part is stated as a risk, not as a measurement). `Utils.handleException` rethrows it as the cause of `RuntimeException("Number of records: ...")`, `doInsertRawBinary` logs `LOGGER.error("Error inserting records", e)` with the throwable on the RowBinary route (`ClickHouseWriter.java:1413`, `:1430`), and on both routes the cause chain is what Connect puts in the task status and in the dead letter queue stack trace header. A reader who takes the bullet at its word about the JSON route and the dead letter queue headers is told more than the tests show.
+**Fix:** In the CHANGELOG bullet: "In the cases the tests drive (a failure raised by the writer's own serialization, not a rejection by the server, whose message can quote the rejected row), no record value reaches ...". Keep the TRACE remark. Row U2 may carry the same parenthesis so that both documents say one thing.
+
+### WR-16: The rebuild is described as "a substitute exception in place of the Jackson one", which misdescribes what the code does to the other links
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:48` (row U2), `:36` and `:52` (step 4 and section A, "rebuilt with a value-free text"); `CHANGELOG.md:43-45`
+**Issue:** The last orchestrator follow-up replaced "so its class ... do not change" by "so such a chain carries a substitute exception in place of the Jackson one". `withheldJacksonChain` (`ClickHouseWriter.java:734-780`) does more and something different: the top is always a new exception carrying the value-free top text; a Jackson root becomes an `IOException` stand-in; every Jackson link above the root is dropped, so the chain can be shorter, and when a non-Jackson `IOException` run sits at the bottom the Jackson link is dropped with no substitute at all; and every non-Jackson link above a Jackson link is replaced by a stand-in of the same kind with its message replaced by `<class> (message withheld: may contain record data)`, which is `IOException` or `RuntimeException` for a class outside the list in `sameKindStandIn`. FORK-DELTA's row on `doWriteColValue` states all of this ("every Jackson link above the root is dropped ... every other link above becomes a stand-in of the same kind with a withheld text"). The note and the CHANGELOG say only that the Jackson link is replaced, so an operator reading a cause chain cannot tell that the messages of its non-Jackson links above the Jackson one are gone too, nor that a link may be missing. The retry-classification statement stays true (the links that classification reads keep their kind and code, which `JacksonOverIoValueFreeUnitTest` pins), and the sentence about the top text is right; the cause-chain half is incomplete.
+**Fix:** Row U2 and the CHANGELOG: "a Jackson link in its cause chain is rebuilt without any record value: the top carries a value-free text, Jackson links are replaced or dropped, and each other link above a Jackson link keeps its kind and its error code but carries a withheld message; links below stay as they were (`FORK-DELTA.md`, the row on `doWriteColValue`)". Step 4 and section A may keep their sentence, which already points to row U2.
+
+### WR-17: Row U2's label cell labels two of its claims and leaves the line, the rethrow, the retry classification, the rebuild and the `RetriableException` pass-through unlabelled
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:48` (row U2, Label)
+**Issue:** The note's rule is that a row of mixed strength says which label each claim has. U2's label cell reads "no value in the cases the tests drive: measured; the TRACE lines still print values: read from the code". The Effect also claims that one ERROR line with a stated format is logged, that the writer's own exception is rethrown, that its retry classification does not change, that a Jackson chain is rebuilt, and that a `RetriableException` passes without the line. Round 1 and round 2 fixed the same shape in rows T5, S3, U1 and T3. These claims are measured by the named tests (`WriterRecordContextUnitTest` asserts the line text, the rethrow and the `RetriableException` pass-through, and calls `Utils.handleException` on the thrown exception; `JacksonOverIoValueFreeUnitTest` pins the rebuild and its classification), so the fix is a label, not a retraction. The unlabelled claims otherwise read as `derived` or as default.
+**Fix:** Label cell: "the line, the rethrow, the retry classification, the rebuild and the `RetriableException` pass-through: measured; no value in the cases the tests drive: measured; the TRACE lines still print values: read from the code".
+
+### IN-09: The rollback list says the value-free rebuild is gone but not what that brings back
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:141` (rolling back brings back, rows U2 and U3)
+**Issue:** The bullet says that "the value-free rebuild of a Jackson chain" is gone after a rollback. The sibling bullets give the operator consequence (no connector bound again, the old help text, the old ERROR lines). This one does not, and its consequence concerns data: on `v1.7.0_gg7` a pass-through chain that holds a Jackson link, and a Jackson failure on the JSON route, reach the task status, the dead letter queue headers and the stack trace with their messages, which can quote record keys and values. The `1.7.0_gg7` CHANGELOG states this as an accepted residual (its lines on a Jackson exception whose chain also holds a non-Jackson `IOException`, and on the `insertFormat=json` route), so the fact is not new; it is missing at the one place where the operator decides to go back.
+**Fix:** Add to the bullet: ", so on `v1.7.0_gg7` a Jackson failure can again carry a record key or value in the task status, the dead letter queue headers and the logged cause chain (the `1.7.0_gg7` Known Issues state this residual)".
+
+---
+
+round: 3 findings: 5
+
 ## Mandated confirmations (RLS-03)
 
 (a) Every one of the 22 rows (U1 to U4, T1 to T10, S1 to S4, P1, D1 to D3 = 22 rows) was read against its source and label. Not clean: U1's Tuple-element half is not covered by the cited tests (WR-09), T5 labels the `async=true` exception as measured though no test runs it (WR-06), and S3's closing consequence has no label (WR-07). The qualifiers on T6 (stub only for the cut during the send), S1 (Connect's handling read, not measured), S3 (Kafka 3.9 line only), D2 and D3 are honest. FAILED, see WR-06, WR-07, WR-09.
@@ -234,6 +274,34 @@ Round 2 verdicts (fresh reviewer; the round-1 verdicts above stand unless this p
 (l) The Phase 48 edits of the gg6 and gg1 notes are unchanged since round 1 and correct (the tripwire test first appears at `v1.7.0_gg7`). Passes.
 
 (m) Cross-document agreement on the change set, the version, the rollback target and the client scope holds: six `src/main` files, 428 and 72, `v1.7.0_gg8`, `pre-v1.7.0_gg8` on `94834763`, every client V1 and client V2 claim scoped. The `CHANGELOG` bullet on #640 is accurate about the Jackson rebuild, which the note's step 4 and section A advice contradict (WR-10). Passes on the four named items.
+
+Round 3 verdicts (fresh reviewer; the earlier verdicts stand unless this part changes them).
+
+(a) Every one of the 22 rows (U1 to U4, T1 to T10, S1 to S4, P1, D1 to D3 = 22 rows) was read once more against its source and label. FAILED: row T6 has an Applies when of `client V2` that is wider than its evidence and contradicts row T5 for `async=true` (WR-14), and row U2 leaves five of its claims unlabelled (WR-17). Rows T3, U1, T5 and S3 now carry honest per-claim labels; T6's `measured (stub only)` qualifier, S1's and S3's qualifiers and D3's label are honest.
+
+(b) Commands, numbers and versions. Passes: the T-row figures (8299, 8380, 3050, 8141, 3034, 1.137 to 1.218 s, 0.313 to 0.325 s, 1.51 s, 1.010 to 1.082 s, 30034 to 30045 ms, 20005 ms, 2082 ms, 2500 and 4000 rows) are in FORK-DELTA item 14; 3007 ms is in the gg7 CHANGELOG section; `git diff --shortstat v1.7.0_gg7 HEAD -- src/main` is 6 files, 428 insertions and 72 deletions with the per-file split in the FORK-DELTA gg7-to-gg8 paragraph; the archive figures stand as in rounds 1 and 2; tags `pre-v1.7.0_gg8` and `v1.7.0_gg7` both resolve to `94834763`.
+
+(c) Applies when against the code path. FAILED for row T6 (WR-14): the escape after the send needs `async=false` and the connector's default `send_progress_in_http_headers=1`; with `async=true` `awaitInsertResponse` cuts at the bound. The `insertBoundMs` gate and the `socket_timeout` scoping of T2, T3 and T5 hold on client V2 and client V1 as written; T10's cut exists only where the deadline is armed, which T2 scopes.
+
+(d) Rollback. Order, target `pre-v1.7.0_gg8` on `94834763` (tag `v1.7.0_gg7`), the gg7 asset facts and the rehearsal statement are unchanged by the round-2 fixes and correct; T4 is now in both reversal lists. Passes; IN-09 asks for the data consequence of the Jackson rebuild's removal to be stated.
+
+(e) No fact about the `v1.7.0_gg8` `release object` and no promise of one in the note or in FORK-DELTA ("not yet published when this was written"; the tag does not exist locally). Passes.
+
+(f) No advice that empties or destroys data; the one destructive command, `git read-tree -u --reset`, is gated and acts on a new branch; no TRUNCATE or state-table advice, and the exactly-once KeeperMap state is untouched. Passes.
+
+(g) ERROR line texts match `RECORD_CONTEXT_FAILURE_LOG_FORMAT` and the prefix of `WRITE_VALUE_FAILURE_LOG_FORMAT`; `Record serialization failed` is not logged for a `RetriableException`; the two-line order of T10 matches the catch nesting. Passes. What the exception, its cause chain and the logs contain was re-read against `withheldJacksonChain`, `sameKindStandIn`, `passesThroughUnchanged` and `doWriteColValue`: the step 4 and section A sentences are now true, the U3 column statement is true, and the remaining defects are the incomplete rebuild description (WR-16) and the unscoped CHANGELOG privacy claim (WR-15).
+
+(h) The closes table names F5, R8, T1 and T12, T6, T11, the ping clause of T13, T15, Before-you-upgrade 2, What-to-do 3, T14, R6, the last statement of section F, the first, second and fourth known-limits bullets and four gg7 CHANGELOG statements; the note carries no planning identifier (scan for phase numbers, review ids, requirement and evidence ids, `.planning`). Passes.
+
+(i) FORK-DELTA is unchanged since round 2 and consistent with the note and the CHANGELOG on the VERSION row, the current-version parenthetical, the tag-pair commands, the test-tree recount, the after-gg8 rows, the gg7-to-gg8 paragraph, the totals sentence, the gg8 intro, pointer and next-syncer paragraphs, and items 13, 14, 17, 20 and `item 24`; the one difference is that FORK-DELTA item 14, case (a), keeps the conditions that row T6 dropped (WR-14), and the `ESCAPED_NEWLINE` removal agrees. Passes apart from that difference.
+
+(j) Released CHANGELOG sections equal `git show v1.7.0_gg7:CHANGELOG.md` byte for byte (script compare, 71626 bytes); the three Phase 47 bullets are unchanged by the round-2 fixes (`git diff ab0dc881 HEAD -- CHANGELOG.md` is one line of the #640 bullet); the heading reads `Unreleased` by U-3. Passes.
+
+(k) No host, connector or planning identifier in the note or the `CHANGELOG` section; `FORK-DELTA` item pointers are document pointers. Passes.
+
+(l) The Phase 48 edits of the gg6 and gg1 notes are unchanged and correct as published text: the tripwire is in `v1.7.0_gg7` and not in `v1.7.0_gg6`; gg6 row C2 points to items 17 and 24 and says what they say; the gg1 notice and item 6 label the `0.11.0` ZSTD decode as measured on the `v1.7.0_gg6` tree. Passes.
+
+(m) Cross-document agreement on the change set (six `src/main` files, 428 and 72), the version (`v1.7.0_gg8`, `VERSION`, the `CHANGELOG` heading `Unreleased`), the rollback target (`pre-v1.7.0_gg8` on `94834763`, FORK-DELTA and note) holds. FAILED on two points: the client scope of the progress-header limit differs between row T5 and row T6 and between the note and FORK-DELTA item 14 (WR-14), and the `CHANGELOG` states the value-free claim without the scope that row U2 and the note give it (WR-15).
 
 ---
 
