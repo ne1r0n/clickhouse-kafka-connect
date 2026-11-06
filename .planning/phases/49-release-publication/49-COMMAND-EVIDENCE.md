@@ -20,7 +20,7 @@
 | E-03 | RLS-01 | 49-01 | pass |
 | E-04 | RLS-01, RLS-04 | 49-01 | pass |
 | E-05 | RLS-02, RLS-03 | 49-02 | pass |
-| E-06 | RLS-03 | 49-02 | pending (plan 49-02) |
+| E-06 | RLS-03 | 49-02 | pass |
 | E-07 | RLS-03 | 49-02 | pending (plan 49-02) |
 | E-08 | RLS-03 | 49-03 | pending (plan 49-03) |
 | E-09 | RLS-03 | 49-03 | pending (plan 49-03) |
@@ -421,4 +421,45 @@ The `v1.7.0_gg7` release asset has the size and digest the research read, the do
 The rehearsal ran on a dry-run merge of the first note commit onto `94834763` in both modes; both printed `rehearsal: PASS`, the extracted block hashes to the same value in both and still hashes to it after the second note commit, and `gradlew.bat` did not show in the status after the block. The dry-run commit is unreferenced and its worktree and the rollback branch are gone.
 
 2026-11-06T13:28:52Z
+Verdict: pass
+
+### E-06: Note sections A and B: the upstream tail and the timeout limits, numbers traced to FORK-DELTA item 14 and the E-04 snapshots
+
+Backs: RLS-03 (rows U1 to U4 and T1 to T10 with labels, client scope, durations from item 14 and case counts from the E-04 snapshots), D-4, PL-2, PL-3, PL-4.
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-note-check.py rows docs/ROLLOUT-v1.7.0_gg8.md --only U T
+python3 -I .planning/phases/49-release-publication/49-note-check.py rows docs/ROLLOUT-v1.7.0_gg8.md --only D
+python3 -I <scratch>/durations.py docs/ROLLOUT-v1.7.0_gg8.md docs/FORK-DELTA.md   # every duration of a T row occurs in item 14
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py junit <scratch>/xml-base-testunit --class .<Class> tests=<n>   # and xml-base-suite for a live class
+git diff --quiet v1.7.0_gg7 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --tests '*SlashColumnRoundTripTest'   # on the scratch export of v1.7.0_gg7 with the test copied in and the connect-json test dependency added
+git diff v1.7.0_gg7 HEAD -- gradle build.gradle.kts
+python3 -I .planning/phases/49-release-publication/49-note-check.py forbidden|rollback docs/ROLLOUT-v1.7.0_gg8.md
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg8.md
+```
+
+```text
+snapshots_recreated: no
+nc_rows_ut: OK rows=14 measured=9 code=8 derived=1
+nc_rows_d_still: OK rows=3 measured=3 code=2 derived=0
+t_durations_in_item14: yes
+t_durations_checked: 28 durations in 10 rows, 24 distinct
+case_counts: SlashColumnRoundTripTest=4; FieldDescriptorLiteralFieldsUnitTest=31; WriterRecordContextUnitTest=59; WriterRecordContextDlqUnitTest=4; JacksonOverIoValueFreeUnitTest=109; JsonRouteValueFreeUnitTest=42; JsonRouteValueFreeDlqUnitTest=4; InsertWriteStallBoundPinUnitTest=20; InsertV1WaitBoundPinUnitTest=21; InsertSocketTimeoutOptionUnitTest=23; InsertBoundGateUnitTest=20; InsertTimeoutHelpTextPinUnitTest=27
+case_counts_match_snapshots: yes
+u1_reader_unchanged_since_gg7: yes
+slash_cases_on_gg7_export: OK junit /tmp/gsd49/w/arch-base-src/build/test-results/test class *.SlashColumnRoundTripTest: tests=4 failures=0 errors=0 skipped=0 files=1
+catalog_diff_since_gg7: 1 added catalog line (connect-json); 1 added testImplementation line
+nc_forbidden: OK forbidden: 0 lines
+nc_rollback: OK rollback: the block is the four expected lines
+hygiene_note: clean
+secrets_note: clean
+note_commit_2: 48835d5414a4ac0943084ed405b6c9bc253bc535
+```
+
+Every duration of a T row occurs in item 14 of FORK-DELTA as written there, and every case count a row states equals the count in the JUnit snapshots of the base run (E-04); the research's counts differed for two classes (`InsertTimeoutHelpTextPinUnitTest` 27 against the research's 18, `ClickHouseSinkTaskStopUnitTest` 7 against 6), and the measured values are used. Statements of the research that the snapshots cannot back (for example how many cases of `FieldDescriptorLiteralFieldsUnitTest` turn red against upstream's decode-all reader) are not written.
+
+Two findings for the review plan, recorded and not fixed here. First, row U1: the `DESCRIBE` reader is byte-identical to `v1.7.0_gg7`, so upstream's slash fix changed no behaviour of this fork; the four live cases pass on an export of `v1.7.0_gg7` (the test file copied in, the test-scope `connect-json` dependency added). The CHANGELOG bug-fix bullet says a slash name "now round-trips", which reads as a change an operator will see; the note says the reader is unchanged and the tests are new. Second, the CHANGELOG names the two upstream items as #838 and #640, while the FORK-DELTA rows name upstream's pull requests #839 and #857; a read-only look at upstream shows #838 is the issue behind #839 and #857 is a pull request on record context, and the note names the pull requests 839 and 857. FORK-DELTA item 13 describes `ClickHouseSinkTaskStopUnitTest` as six cases, two of them red on the unchanged tree, and the snapshot holds seven; the note states no count for it.
+
+2026-11-06T13:33:37Z
 Verdict: pass
