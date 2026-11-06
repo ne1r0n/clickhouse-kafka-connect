@@ -80,8 +80,8 @@ earlier release, start with the `1.7.0_gg7` note's pointers.
   read it; code compiled against it needs its own copy.
 * What the bounded insert still does not bound is a recorded limit, by decision: requests that are not inserts (`ping`, the
   version query, the table list, `DESCRIBE`, `ALTER` and the Keeper state requests), the client V2 `ping(timeout)`, and a
-  client V2 insert whose body has been sent while the server keeps streaming progress headers (measured as escaping the
-  bound).
+  client V2 insert with `async=false` (the default) whose body has been sent while the server keeps streaming progress
+  headers (measured as escaping the bound; with `async=true` the same insert is cut at the bound).
 * A `RetriableException` out of `put` is redelivered without bound under both `errors.tolerance` values: Kafka Connect
   pauses the task's partitions and redelivers the same batch with no count and no deadline. This is a recorded limit, by
   decision, with no retry budget (FORK-DELTA item 17). It replaces the `1.7.0_gg7` Known Issues bullets on the retry
