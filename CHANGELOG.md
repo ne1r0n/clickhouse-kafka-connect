@@ -41,9 +41,10 @@ earlier release, start with the `1.7.0_gg7` note's pointers.
 * From upstream's tail (upstream issue #640, fixed upstream by pull request #857), with the fork's value-free policy: when
   a record fails to serialize on the RowBinary route, the writer logs one ERROR line `Record serialization failed: ...`
   that names the topic, the partition, the offset, the column and the exception class, and rethrows the exception the writer itself produced (a Jackson link in its cause
-  chain is rebuilt without any record value, so such a chain carries a substitute exception in place of the Jackson one); its retry classification does not change. No record value
-  reaches the message, the cause chain, a stack trace, the dead letter queue headers or a log at DEBUG or above, on the
-  RowBinary route and on the JSON route; the writer's TRACE lines still print record values. A `RetriableException`
+  chain is rebuilt without any record value, so such a chain carries a substitute exception in place of the Jackson one); its retry classification does not change. In the cases the
+  tests drive (failures raised by the writer's own serialization; a rejection by the server is not covered, because no test of this repository checks what its message contains),
+  no record value reaches the message, the cause chain, a stack trace, the dead letter queue headers or a log at DEBUG or
+  above, on the RowBinary route and on the JSON route; the writer's TRACE lines still print record values. A `RetriableException`
   passes without that line. This differs from upstream, which puts the
   coordinates into the exception message and logs the cause chain with the throwable.
 
