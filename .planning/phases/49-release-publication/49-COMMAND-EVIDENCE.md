@@ -16,7 +16,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | RLS-01 | 49-01 | pass |
-| E-02 | RLS-01 | 49-01 | pending (plan 49-01) |
+| E-02 | RLS-01 | 49-01 | pass |
 | E-03 | RLS-01 | 49-01 | pending (plan 49-01) |
 | E-04 | RLS-01, RLS-04 | 49-01 | pending (plan 49-01) |
 | E-05 | RLS-02, RLS-03 | 49-02 | pending (plan 49-02) |
@@ -134,4 +134,60 @@ tail_gate_merge_exit: 0
 The planning HEAD read `1 222` (plan-time); it read `1 223` here because the plan commit for this phase sits one commit later. The one left commit is the published gg7 merge. `origin_heads` shows the origin `main` as `bec167d8` (the fork's own `main`, unrelated to upstream `main`). Swap was 97 % used when the pre-flight ran. The tail gate ran alone, with no Gradle or Docker job alive, and its counts (`anchor_commits=206`, `marker_commits=224`) are at or above the plan-time probe's 204 and 222, with `anchor_rows=218` and `result=PASS`. The merge is the first change of the plan; the local tag `pre-v1.7.0_gg8` moved from `baa404cd` to `94834763` only after it; neither was pushed.
 
 2026-11-06T13:07:02Z
+Verdict: pass
+
+### E-02: Tracer: VERSION bumped through the script with its anchors row; the generated constant, the baseline tag, the anchors mirror and the guards agree
+
+Backs: RLS-01 (VERSION set by `bump_version.py`, the `VERSION` anchors row in the same commit, the generated version agrees after a clean build, the baseline selection picks `v1.7.0_gg7`).
+
+```sh
+python3 -I .github/scripts/bump_version.py gg --version-file <scratch>/VERSION --anchors-file <scratch>/fork-anchors.txt
+git diff --no-index --numstat <scratch>/VERSION.orig <scratch>/VERSION
+git diff --no-index --numstat <scratch>/fork-anchors.orig <scratch>/fork-anchors.txt
+python3 -I .github/scripts/bump_version.py gg
+git diff --name-only
+git diff --numstat -- VERSION .planning/scripts/fork-anchors.txt
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+./gradlew --stop
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain clean generateVersionFile
+grep -n ARTIFACT_VERSION build/generated/sources/version/java/main/com/clickhouse/kafka/connect/sink/Version.java
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*BumpVersionScriptUnitTest' --tests '*BaselineTagScriptUnitTest' --tests '*MBeanNameUnitTest' --tests '*ClientEndpointAndOptionsPinUnitTest'
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py junit build/test-results/testUnit --class .BumpVersionScriptUnitTest   # and the other three classes
+git add VERSION .planning/scripts/fork-anchors.txt
+git commit -F <msg file>
+git tag --merged HEAD --list 'v*' | python3 -I .github/scripts/baseline_tag.py "$(tr -d '[:space:]' < VERSION)"
+```
+
+```text
+scratch_bump_stdout: v1.7.0_gg8
+scratch_bump_numstat: 1/1; 1/1
+bump_stdout: v1.7.0_gg8
+bump_version_file: v1.7.0_gg8
+bump_changed_files: .planning/scripts/fork-anchors.txt; VERSION
+bump_numstat: 1/1; 1/1
+version_rows_in_anchors: 1
+anchors_mirror_after: rows=218 bad=0
+version_clean_exit: 0
+generated_version_line: public static final String ARTIFACT_VERSION = "v1.7.0_gg8";
+bump_guard_exit: 0
+bump_guard_failed: OK failed: 0 failing testcases, 0 expected
+bump_xml: OK junit build/test-results/testUnit class *.BumpVersionScriptUnitTest: tests=52 failures=0 errors=0 skipped=0 files=1
+baseline_xml: OK junit build/test-results/testUnit class *.BaselineTagScriptUnitTest: tests=19 failures=0 errors=0 skipped=0 files=1
+mbean_xml: OK junit build/test-results/testUnit class *.MBeanNameUnitTest: tests=11 failures=0 errors=0 skipped=0 files=1
+endpoint_xml: OK junit build/test-results/testUnit class *.ClientEndpointAndOptionsPinUnitTest: tests=5 failures=0 errors=0 skipped=0 files=1
+bump_commit: b6666fe748629ea597a7534fba0d9a2e6ef54cee
+bump_commit_files: .planning/scripts/fork-anchors.txt; VERSION
+baseline_after_bump: v1.7.0_gg7
+allowlist_gg8_present: no
+note_gg8_present: no
+release_tag_absent: yes
+src_unchanged: yes
+hygiene_scan: clean
+```
+
+The four guard classes ran with Docker unreachable. The first run of the generated-constant check used the clean build the plan names, because `generateVersionFile` keeps a stale file otherwise. The Gradle runs used the default toolchain (Gradle 9.8.2).
+
+2026-11-06T13:09:30Z
 Verdict: pass
