@@ -22,7 +22,7 @@
 | E-05 | RLS-02, RLS-03 | 49-02 | pass |
 | E-06 | RLS-03 | 49-02 | pass |
 | E-07 | RLS-03 | 49-02 | pass |
-| E-08 | RLS-03 | 49-03 | pending (plan 49-03) |
+| E-08 | RLS-03 | 49-03 | pass |
 | E-09 | RLS-03 | 49-03 | pending (plan 49-03) |
 | E-10 | RLS-03 | 49-03 | pending (plan 49-03) |
 | E-11 | RLS-02 | 49-04 | pending (plan 49-04) |
@@ -513,3 +513,28 @@ Rows whose source was weaker than the research's label or wording: U1 (the reade
 
 2026-11-06T13:36:25Z
 Verdict: pass
+
+### E-08: Review round 1 of the release documents by a fresh gsd-code-reviewer
+
+Backs: RLS-03 (an independent fresh-context review of the release documents before the allow-list, the gates and any approval), D-6, D-7.
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-review-check.py round .planning/phases/49-release-publication/49-REVIEW.md --diff-base 9483476322e0d331e81c5b92ac266a18f0f01450 --files docs/ROLLOUT-v1.7.0_gg8.md CHANGELOG.md docs/FORK-DELTA.md docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md --tokens '22 rows' 'pre-v1.7.0_gg8' '94834763' 'client V1' 'client V2' 'socket_timeout' 'exactlyOnce=false' 'release object' 'FORK-DELTA' 'CHANGELOG' 'Unreleased' 'Record serialization failed' 'ESCAPED_NEWLINE' 'item 24'
+python3 -I .planning/phases/49-release-publication/49-review-check.py agents .planning/phases/49-release-publication/49-REVIEW.md --expect-ids aa6175e0dcb6fb58e
+```
+
+```text
+reviewer_agent: round 1 agentId=aa6175e0dcb6fb58e (gsd-code-reviewer spawned by the orchestrator with the Agent tool, fresh context)
+agents_check: OK agents: rounds=1 distinct=1 ids=aa6175e0dcb6fb58e
+brief_files: docs/ROLLOUT-v1.7.0_gg8.md; CHANGELOG.md; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg6.md; docs/ROLLOUT-v1.7.0_gg1.md
+brief_path: /tmp/gsd49/review/brief-r1.md
+round1_findings: 15
+review_commit: bfdaa242329b32d673c9c6bd770caef1d1e26da8
+schema_check: OK round: findings=15 rounds=1
+own_checks_before: ok
+```
+
+Verdict: pass
+
+Notes. Round 1 found 15 findings (0 critical, 9 warnings, 6 info). The verdict records that the process ran, not that the documents are clean. Nothing was pushed.
+
