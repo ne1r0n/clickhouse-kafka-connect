@@ -5,8 +5,9 @@ This is the fork release built on upstream `1.7.0` plus upstream's untagged tail
 `v1.7.0_gg7`: a bound on a client V2 body-write stall and on the client V1 insert wait, the `stop()` fix, a rewritten help
 text for `clickhouseClientInsertTimeoutMs`, and the recorded outcome of two questions that `1.7.0_gg7` left open (the
 redelivery of a `RetriableException` and the retry budget for `additionalRetriableErrorCodes`). Two items of upstream's
-tail are new here: field names that contain `/` in a `DESCRIBE` response, and the record context of a serialization
-failure. Upstream's `additionalRetriableErrorCodes` item from the same tail already shipped in `1.7.0_gg6` and is not
+tail are new here: the record context of a serialization failure, which changes behaviour, and field names that contain
+`/` in a `DESCRIBE` response, which this release only pins with tests and which changes nothing for a `1.7.0_gg7`
+deployment. Upstream's `additionalRetriableErrorCodes` item from the same tail already shipped in `1.7.0_gg6` and is not
 listed again. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on top of upstream, and read
 [docs/ROLLOUT-v1.7.0_gg8.md](docs/ROLLOUT-v1.7.0_gg8.md) before upgrading from `v1.7.0_gg7`. If you are coming from an
 earlier release, start with the `1.7.0_gg7` note's pointers.
@@ -37,10 +38,6 @@ earlier release, start with the `1.7.0_gg7` note's pointers.
   residual of the `1.7.0_gg7` Known Issues and corrects the `1.7.0_gg7` Bug Fixes sentence "The task's `stop()` stops
   the writer, the MBean and the state provider even when one of them throws": in `1.7.0_gg7` that held for
   `ProxySinkTask.stop()`, and not for `ClickHouseSinkTask.stop()` when the delivery strategy's `stop()` threw.
-* From upstream's tail (#838): a field name that contains `/` now round-trips through the `DESCRIBE` reader on client V1
-  and client V2, so a table whose column or Tuple element name holds a slash is discovered under its raw name. The fork's
-  `fromJsonRow` differs from upstream's: it decodes only the `name` of a `DESCRIBE` row and keeps every other string (the
-  type text, the comment, the default expression) as the server's literal JSON text.
 * From upstream's tail (#640), with the fork's value-free policy: when a record fails to serialize on the RowBinary
   route, the writer logs one ERROR line `Record serialization failed: ...` that names the topic, the partition, the offset,
   the column and the exception class, and rethrows the exception the writer itself produced (a Jackson link in its cause
@@ -54,6 +51,12 @@ earlier release, start with the `1.7.0_gg7` note's pointers.
 * The help text of `clickhouseClientInsertTimeoutMs` now says what the setting bounds and what it does not, and that an
   insert that legitimately runs longer than a limit it names fails and may still be committed. This closes the `1.7.0_gg7`
   Known Issue that the help text still described a hard limit.
+* From upstream's tail (upstream issue #838, fixed upstream by pull request #839): a field name that contains `/` in a
+  `DESCRIBE` response round-trips on client V1 and client V2. This is not a change of behaviour for `1.7.0_gg7`: the
+  fork's `fromJsonRow` already decoded only the `name` of a `DESCRIBE` row and kept every other string (the type text, the
+  comment, the default expression) as the server's literal JSON text, and the `DESCRIBE` reader code is unchanged since
+  `1.7.0_gg7`. This release adds upstream's regression tests (`SlashColumnRoundTripTest`) and the fork's
+  `FieldDescriptorLiteralFieldsUnitTest`, which pin the behaviour.
 
 ## Known Issues
 
