@@ -30,7 +30,7 @@
 | E-15 | P37-03 | 48-05 | pass |
 | E-16 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pass |
 | E-17 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pass |
-| E-18 | P37-03, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
+| E-18 | P37-03, DOC-01, DOC-02 | 48-05 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base, release path recorded frozen
 
@@ -1277,5 +1277,50 @@ tail_gate_exit: 0
 Notes. The cache-busted testUnit with Docker unreachable read 2320 tests (E-01's 2295 plus the 25 rows of `48-expected-added.tsv`), 107 XML files, 0 failures, 0 errors and the same 2 skips, and its per-testcase delta against the E-01 dump removes nothing and adds exactly the 25 expected rows. The one full suite on `latest` x V2 read 2923 tests (E-01's 2898 plus 25), 156 XML files, 0 failures, 0 errors and the 18 named skips, exit 0, in 3 min 11 s; its delta against the E-01 dump by class removes nothing and adds exactly the 25 expected rows. `latest` did not drift: the server version `26.10.3.7` and the digest equal E-01's and E-11's. The three Gradle or Testcontainers jobs of the gate (testUnit, suite) and the tail gate ran strictly one after another, and no `Ryuk` line appears in the suite log. No JVM crash and no core dump; the default toolchain ran both runs, and `-PjavaVersion=21` was used only to build the dry-run archives of E-14 and E-15. `src/main` differs from the base only by the three deleted lines of `DeclaredNullability.java` (the 28 IN-01 move) and no file was added there, so `Processing.java`, `KeeperStateProvider.java` and the other high-risk and neighbouring production classes are unchanged and the `BEFORE`/`AFTER` flag sequence is unchanged; `ProcessingTest` ran green in both runs. The test tree gained the two new classes and changed eight more files (the four extended classes with no deleted line, and the four repointed files of the 28 IN-01 move). The phase tip holds no merge, no change of build files, `.github`, `VERSION`, `CHANGELOG.md` or `.planning/scripts`, and the five lists are unchanged (the gg6 and gg7 lists equal their tags). The plan-time helpers and the two frozen scripts still carry the recorded md5 values. The origin sync branch is still absent, `pre-v1.7.0_gg8` is absent on origin, upstream `main` is still `83808df9`, and nothing was pushed in this phase. The tail gate ran once on the explicit SHA of `gate_head`, over `12e2cf17..97b60d3a`.
 
 Recorded 2026-11-06T10:04:36Z.
+
+Verdict: pass
+
+### E-18: Phase 49 hand-off inventory, recorded and not acted on
+
+Backs: P37-03, DOC-01, DOC-02 (what Phase 49, the milestone close and the orchestrator inherit from Phase 48), ROADMAP Phase 49 success criteria 1 to 3.
+
+```sh
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py get <E> E-15 draft_rows
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py get <E> E-13 phase_evidence_paths_left
+git diff --quiet c77d1a147ae4acd37100b73db08f1851047bc055 HEAD -- CHANGELOG.md
+python3 -I <the "## The raw numbers" section of docs/FORK-DELTA.md at c77d1a14 against the working tree>
+grep -c ESCAPED_NEWLINE src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java
+grep -n 'Phase 4[5-7]\|12-row\|12 exact' .planning/ROADMAP.md .planning/phases/47-task-stop-retry-classification/47-COMMAND-EVIDENCE.md   # where the figure 12 stands
+```
+
+```text
+reviewer_brief_docs: docs/ROLLOUT-v1.7.0_gg6.md docs/ROLLOUT-v1.7.0_gg1.md docs/FORK-DELTA.md CHANGELOG.md
+gg8_draft_rows: 14
+gg8_inner_class_rows: DeclaredNullability$1.class DeclaredNullability$Assignment.class
+gg8_first_measurement_rows: 12
+earlier_handoff_figure: the ROADMAP line of plan 48-05 and E-14 say 12; the Phase 47 E-11 table carries no row count
+phase_evidence_paths_for_close: 12
+changelog_unchanged_in_phase: yes
+raw_numbers_unchanged: yes
+public_constant_removed: DeclaredNullability.ESCAPED_NEWLINE
+handoff_items: 10
+```
+
+| # | Item | Owner | Where | What to do |
+|---|------|-------|-------|------------|
+| 1 | The gg8 allow-list has 14 exact rows, not 12 | Phase 49 (RLS-02) | `.planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt`, E-15 | Generate it last from the final tree. The 14 exact class paths are the 12 of the first measurement (E-14) plus `com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class` and `com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class` (bytecode equal to the gg7 archive's, only the line number table differs). Totals against the gg7 archive: `files-a 7512 files-b 7515 only-a 0 only-b 3 changed 11 same 7501`. The first line names `.github/scripts/compare_confluent_archives.py`; no wildcard row is needed; `AllowListWildcardRuleUnitTest` gates any wildcard row. A later change to `src/main` can change the count again, so regenerate rather than copy. |
+| 2 | Earlier counts of 12 are stale | orchestrator | the ROADMAP line of plan 48-05 and E-14 | The roadmap wording says a 12-row draft; correct it to 14. E-14 stays as the superseded first measurement (index cell `fail`) and is never edited; the Phase 47 hand-off E-11 carries no row count. |
+| 3 | Reviewer brief covers four documents | Phase 49 (RLS-03) | `docs/ROLLOUT-v1.7.0_gg6.md`, `docs/ROLLOUT-v1.7.0_gg1.md`, `docs/FORK-DELTA.md`, `CHANGELOG.md` | Review the gg6 note (row D7, row C2, notice: U-6, U-7), the gg1 note (item 6 measured on the `v1.7.0_gg6` tree: U-6), FORK-DELTA (evidence paths, item 8, item 20, row 94, item 14: DOC-02) and CHANGELOG as published. |
+| 4 | gg8 CHANGELOG Known Issues | Phase 49 (RLS-01) | `CHANGELOG.md` | Add a line for the two ERROR lines of a deadline cut (FORK-DELTA item 14; 45 IN-04, 46 WR-05); it may name the removed public constant `DeclaredNullability.ESCAPED_NEWLINE`. CHANGELOG is unchanged in this phase. |
+| 5 | gg8 rollout note | Phase 49 (RLS-03) | `docs/ROLLOUT-v1.7.0_gg8.md` | Carry the same double-ERROR line for operators. |
+| 6 | Raw numbers refreshed once | Phase 49 (RLS-01) | `docs/FORK-DELTA.md`, section "The raw numbers" | Refresh with the gate totals of E-17 (testUnit 2320, suite 2923, 18 skips, anchors 218); the section equals its base in this phase. |
+| 7 | Evidence paths move at the milestone close | milestone close (D-2) | `docs/FORK-DELTA.md`, 12 tokens under `.planning/phases/45..47` | Repoint them to `.planning/milestones/` and re-run `48-path-check.py` (expect `unresolved=0`). |
+| 8 | Item 20 lookup | milestone close | `docs/FORK-DELTA.md` item 20 | Re-run `git ls-files '*48-DISPOSITION-LEDGER.md'` after the archive; it must print exactly one path. |
+| 9 | REQUIREMENTS and planning records | orchestrator | `.planning/REQUIREMENTS.md` | Set the checkboxes and traceability rows of P37-01, P37-02, P37-03, P37-04, DOC-01 and DOC-02 complete; this plan did not touch REQUIREMENTS.md, STATE.md or ROADMAP.md beyond the plan-completion steps. |
+| 10 | Backlog candidates | fork maintainer | `48-DISPOSITION-LEDGER.md` | Closed and re-opened only by their triggers: the `DeclaredNullability` class Javadoc reflow (D-3), the removal of `shouldSkipDescribeRow` (U-1), the enum label text (U-2). |
+
+Notes. This entry only records. Nothing in the list was acted on in this plan: no allow-list file, no CHANGELOG line, no rollout note and no REQUIREMENTS edit. The count in item 1 is the most important correction for Phase 49: a gg8 list built from the 12 paths of the first plan would read two `UNALLOWED` lines for the inner classes of `DeclaredNullability`. The index of this evidence file reads E-01 to E-18 in order with E-14 as the one `fail` row (the superseded first measurement) and every other row `pass`.
+
+Recorded 2026-11-06T10:05:11Z.
 
 Verdict: pass
