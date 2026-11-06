@@ -25,7 +25,7 @@
 | E-10 | P37-01 | 48-03 | pass |
 | E-11 | P37-01 | 48-03 | pass |
 | E-12 | DOC-01, P37-04 | 48-04 | pass |
-| E-13 | DOC-02, P37-04 | 48-04 | pending (plan 48-04) |
+| E-13 | DOC-02, P37-04 | 48-04 | pass |
 | E-14 | P37-03 | 48-05 | pending (plan 48-05) |
 | E-15 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pending (plan 48-05) |
 | E-16 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
@@ -957,5 +957,69 @@ gg1_paths_line: paths: candidates=1 resolved=1 abbreviated=0 abbreviated_unique=
 Notes. All six read checks held before the first edit, and every `old` string of keys `rollout_gg6` and `rollout_gg1` occurred exactly once in the working-tree file. The tripwire test exists in the `v1.7.0_gg7` tag and not in the `v1.7.0_gg6` tag, so `since v1.7.0_gg7` is true; item 17 of FORK-DELTA carries `(recorded limit, by decision)` and item 24 carries `FUT-05 is closed by decision`, which is what the two replacement sentences in row C2 and the notice rest on; row D13 of the gg6 note is labelled `measured` and names `Client011BehaviourPinLiveTest`, the source of the gg1 item 6 measurement. Both commits were applied by a script that asserts each `old` occurs once and replaces it with the JSON `new` text unchanged, and each was replayed against its parent afterwards. The gg6 note still differs from its `v1.7.0_gg6` tag copy in exactly the three hunks, and row C2's instruction and the notice's rule are each present once. The gg1 identifier count stays 26 (its behaviour-ledger references predate this phase and are not part of DOC-01). The gg6 note and the gg1 note go into Phase 49's independent review.
 
 Recorded 2026-11-06T09:18:58Z.
+
+Verdict: pass
+
+### E-13: FORK-DELTA: evidence paths, KeyToValueTest row, item 8, item 20, row 94 and the double-ERROR sentence (DOC-02, 43 IN-01, 45 IN-04, 46 WR-05)
+
+Backs: DOC-02 (every FORK-DELTA evidence path resolves on the tip), U-10 (the removed `KeyToValueTest` path stays named beside the surviving package path), U-11 (item 20 names its ledger by file and by a `git ls-files` lookup), D-2, U-8 and the Infos 43 IN-01, 45 IN-04, 46 WR-05, P37-04, ROADMAP Phase 48 criterion 4.
+
+```sh
+git ls-files --error-unmatch .planning/milestones/v1.7.0_gg4-hardening-phases/25-dependency-absorption-upstream-mini-sync/25-COMMAND-EVIDENCE.md .planning/milestones/v1.7.0_gg6-maintenance-phases/35-buffered-offset-commit-under-topic-renaming-smts/35-COMMAND-EVIDENCE.md .planning/milestones/v1.7.0_gg6-maintenance-REQUIREMENTS.md
+git ls-files --error-unmatch src/test/java/com/clickhouse/kafka/connect/transforms/KeyToValueTest.java
+git ls-files src/test/java/transforms/KeyToValueTest.java | wc -l
+grep -c '^- \*\*FUT-0' .planning/milestones/v1.7.0_gg6-maintenance-REQUIREMENTS.md
+sed -n 100,125p src/test/java/com/clickhouse/kafka/connect/ci/ReleaseWorkflowGuardUnitTest.java
+grep -cF 'Error writing value of {} to the column' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+grep -cF 'Record serialization failed: topic [{}] partition [{}] offset [{}] column' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+sed -n 2253,2258p src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+git show --name-status --pretty=format: c4ec0cbf25462cd3e8d67d567559a9f8ad85c45a
+git show --name-status --pretty=format: 4de705a6e0132bb884796cd58635fe40be724464
+python3 -I /tmp/gsd48/exec/applykey.py .planning/phases/48-phase-37-dispositions-document-fixes/48-doc-edits.json fork_delta_doc02 docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd48/exec/msg-fd1.txt
+python3 -I /tmp/gsd48/exec/applykey.py .planning/phases/48-phase-37-dispositions-document-fixes/48-doc-edits.json fork_delta_reviews docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd48/exec/msg-fd2.txt
+git diff --numstat <commit>^ <commit>
+python3 -I <replay of each key against the commit's parent, old exactly once, byte equality>
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py HEAD docs/FORK-DELTA.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py HEAD docs/FORK-DELTA.md --list | grep -c '^BY-DESIGN '
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py HEAD <CHANGELOG.md | docs/ROLLOUT-v1.7.0_gg6.md | docs/ROLLOUT-v1.7.0_gg1.md | docs/ROLLOUT-v1.7.0_gg7.md>
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py HEAD docs/ROLLOUT-v1.7.0_gg6.md
+grep -cF "git ls-files '*48-DISPOSITION-LEDGER.md'" docs/FORK-DELTA.md
+python3 -I <the "## The raw numbers" section of docs/FORK-DELTA.md at B0 against the working tree>
+git show v1.7.0_gg6:.planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt | cmp -s - .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt   # and the gg7 list against v1.7.0_gg7
+git diff --quiet c77d1a147ae4acd37100b73db08f1851047bc055 HEAD -- .planning/scripts
+grep -oE '\.planning/phases/4[5-7]-' docs/FORK-DELTA.md | wc -l
+```
+
+```text
+milestone_targets_tracked: yes
+keytovalue_package_tracked: yes
+keytovalue_removed_path_absent: yes
+gg6_requirements_defines_fut: 5
+chain_order: yes
+double_error_formats: yes
+deadline_throw_read: yes
+item20_facts: yes
+fd_doc02_commit: 8f187c9d4acbe891b2338b92273536a9b07e7a81
+fd_doc02_edit: exact
+fd_doc02_numstat: 5 5
+fd_reviews_commit: cc2ca206f79b3347af74027d5d4b490bd02cb860
+fd_reviews_edit: exact
+fd_reviews_numstat: 2 2
+fd_paths_line: paths: candidates=98 resolved=70 abbreviated=20 abbreviated_unique=20 placeholders=2 by_design=6 unresolved=0
+fd_by_design_listed: 6
+other_docs_paths_unchanged: yes
+gg6_ids_line: ids: hits=0
+ledger_lookup_named: 1
+raw_numbers_unchanged: yes
+lists_identical_to_tags: yes
+scripts_dir_unchanged: yes
+phase_evidence_paths_left: 12
+```
+
+Notes. All eight read checks held before the first edit, and every `old` string of keys `fork_delta_doc02` and `fork_delta_reviews` occurred exactly once in the working-tree file. The `CHAIN` list of `ReleaseWorkflowGuardUnitTest` holds `COMPARE_STEP`, `TESTS_GATE_STEP`, `TAG_GATE_STEP` and `PUBLISH_STEP` in that order (with `UPLOAD_STEP` between the first two), the two RowBinary log formats occur once each in `ClickHouseWriter`, and `throwIfFired` throws a `RetriableException` once the deadline fired. For item 20, the 28 IN-01 move commit `c4ec0cbf` touches `DeclaredNullability.java` and the null-binding commit `4de705a6` adds `DescribeUnreadableEnumNullBindingUnitTest.java`. The resolver read FORK-DELTA at the base as 99/69/20/20/2/6/2 (E-02) and now reads 98/70/20/20/2/6/0 with exit 0: the 25 and 35 evidence paths resolve under `.planning/milestones/`, and the removed `src/test/java/transforms/KeyToValueTest.java` stays named (one by-design line of the six) beside the surviving package path. The 12 `.planning/phases/45..47` path tokens resolve now and move at the milestone close (D-2). The commits were applied by a script that asserts each `old` occurs once and substitutes the JSON `new` text unchanged, and each was replayed against its parent afterwards. FORK-DELTA goes into Phase 49's independent review, and the `.planning/phases/45..47` paths are handed to the milestone close.
+
+Recorded 2026-11-06T09:20:05Z.
 
 Verdict: pass
