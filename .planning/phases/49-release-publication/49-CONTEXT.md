@@ -15,6 +15,13 @@ Requirements: RLS-01 (VERSION via `bump_version.py`, CHANGELOG, FORK-DELTA, anch
 <decisions>
 ## Implementation Decisions
 
+### User decisions (answered 2026-11-06 via AskUserQuestion; the selected options are the user's explicit words)
+
+- **U-1 (rollback tag):** retag local `pre-v1.7.0_gg8` from `baa404cd` to `94834763` before the gates, so it equals gg7's meaning; the tail gate re-runs on the final head and the retag is recorded in the evidence. Local only, never pushed by this step.
+- **U-2 (origin merge):** make one local tree-neutral merge of `origin/custom_build` (`94834763`) into `sync/v1.7.0` as the first change of Plan 1 (the allow-list baseline otherwise resolves to gg6, about 120 UNALLOWED). Keep the scratch-branch dry run on origin; its push is asked separately at the approval bundle.
+- **U-3 (date):** set the CHANGELOG heading date to the UTC merge date in a one-line commit once the push day is known, before the first push; the reviewer is told about that one-line change.
+- **U-4 (origin writes):** the orchestrator runs each origin write only after the user's direct word for that exact step, one step per word (as gg7).
+
 ### Defaults taken by Claude
 
 - **D-1 (order):** docs and counts first, the allow-list generated last from the final tree (a later `src/main` or build change would change the row count; regenerate, never copy), then the two full suites and the review rounds, then the gate. Docker-free work is separated from live work.
@@ -25,6 +32,7 @@ Requirements: RLS-01 (VERSION via `bump_version.py`, CHANGELOG, FORK-DELTA, anch
 - **D-6 (independent review):** before the push gate the orchestrator spawns a fresh `gsd-code-reviewer` on `docs/ROLLOUT-v1.7.0_gg8.md`, `CHANGELOG.md`, `docs/FORK-DELTA.md` and the gg6 and gg1 notes edited in Phase 48; rounds repeat until one finds nothing, at most three. A fourth round needs the user. Every finding's disposition is recorded.
 - **D-7 (gates):** the gates run orchestrator-inline. Nothing is pushed, merged, published or deleted by an executor. Plans stop at each gate and the orchestrator asks the user, in their own words, one gate at a time.
 - **D-8 (before the gate):** recheck upstream (tags past `v1.7.0`, open PRs #861, #855, #854, #788) and `origin/custom_build...sync/v1.7.0` divergence (the user merges Dependabot PRs on origin directly).
+- **D-10 (research recommendations taken as defaults):** FORK-DELTA gets one measured sentence of gate totals at the end of "The raw numbers" plus the refreshed shortstat table; the RLS-04 anchors gate is the tail form once on the explicit final SHA plus the mirror `--rows 218`; the 128/143 test-tree figure is recounted (115) and corrected; only two upstream-tail CHANGELOG items are new (#838, #640; `additionalRetriableErrorCodes` already shipped in gg6); the allow-list is measured, not copied (projected 17 exact rows); ROADMAP step 1 left-count wording (1, not 0) is corrected in the close record.
 - **D-9 (Phase 48 hand-offs):** the E-18 inventory of Phase 48 applies: gg8 CHANGELOG Known Issues and rollout carry the item-14 wording, raw numbers use 2325, and the 12 `.planning/phases/45..47` evidence paths in FORK-DELTA move at the milestone close.
 
 ### Claude's Discretion
