@@ -13,6 +13,7 @@ import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseFieldDescriptor;
 import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
@@ -114,7 +115,7 @@ public class SimpleAggregateTupleRoundTripLiveTest extends ClickHouseBase {
                         row.isSubcolumn());
                 if (SUM_COLUMN.equals(row.getName()) || ARRAY_COLUMN.equals(row.getName())) {
                     assertTrue(
-                            row.getType().contains(DeclaredNullability.ESCAPED_NEWLINE),
+                            row.getType().contains(DeclaredNullabilityFixtures.ESCAPED_NEWLINE),
                             "premise: the non-nullable Tuple root reaches the pass in the multi-line form");
                 }
             }
