@@ -40,7 +40,7 @@ Work through these steps before you roll the new archive out. Each names the sec
 
 ## A. The upstream tail
 
-Upstream has no tag past `v1.7.0`. `v1.7.0_gg8` takes upstream's untagged tail up to `83808df9`, where `v1.7.0_gg6` and `v1.7.0_gg7` took it up to `9bed6f79`. Two items of the tail are new here: upstream's pull request 839, a slash in a column name in a `DESCRIBE` response, and its pull request 857, the record context of a serialization failure. The third item of that tail, `additionalRetriableErrorCodes`, shipped in `v1.7.0_gg6` and is not listed again. The rows say what each item does in this fork, which differs from upstream in both.
+Upstream has no tag past `v1.7.0`. `v1.7.0_gg8` takes upstream's untagged tail up to `83808df9`, where `v1.7.0_gg6` and `v1.7.0_gg7` took it up to `9bed6f79`. Two items of the tail are new here: upstream issue #838, fixed by pull request #839, a slash in a column name in a `DESCRIBE` response, and upstream issue #640, fixed by pull request #857, the record context of a serialization failure. The third item of that tail, `additionalRetriableErrorCodes`, shipped in `v1.7.0_gg6` and is not listed again. The rows say what each item does in this fork, which differs from upstream in both.
 
 | ID | Effect | Label | Applies when | How it is known |
 |----|--------|-------|--------------|-----------------|

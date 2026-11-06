@@ -38,9 +38,9 @@ earlier release, start with the `1.7.0_gg7` note's pointers.
   residual of the `1.7.0_gg7` Known Issues and corrects the `1.7.0_gg7` Bug Fixes sentence "The task's `stop()` stops
   the writer, the MBean and the state provider even when one of them throws": in `1.7.0_gg7` that held for
   `ProxySinkTask.stop()`, and not for `ClickHouseSinkTask.stop()` when the delivery strategy's `stop()` threw.
-* From upstream's tail (#640), with the fork's value-free policy: when a record fails to serialize on the RowBinary
-  route, the writer logs one ERROR line `Record serialization failed: ...` that names the topic, the partition, the offset,
-  the column and the exception class, and rethrows the exception the writer itself produced (a Jackson link in its cause
+* From upstream's tail (upstream issue #640, fixed upstream by pull request #857), with the fork's value-free policy: when
+  a record fails to serialize on the RowBinary route, the writer logs one ERROR line `Record serialization failed: ...`
+  that names the topic, the partition, the offset, the column and the exception class, and rethrows the exception the writer itself produced (a Jackson link in its cause
   chain is rebuilt without any record value), so its class and its retry classification do not change. No record value
   reaches the message, the cause chain, a stack trace, the dead letter queue headers or a log, on the RowBinary route and
   on the JSON route, and a `RetriableException` passes without that line. This differs from upstream, which puts the
