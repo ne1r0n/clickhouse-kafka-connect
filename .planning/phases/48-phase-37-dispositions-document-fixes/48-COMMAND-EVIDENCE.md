@@ -28,7 +28,7 @@
 | E-13 | DOC-02, P37-04 | 48-04 | pass |
 | E-14 | P37-03 | 48-05 | fail |
 | E-15 | P37-03 | 48-05 | pass |
-| E-16 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pending (plan 48-05) |
+| E-16 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pass |
 | E-17 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
 | E-18 | P37-03, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
 
@@ -1144,5 +1144,43 @@ lists_identical_to_tags: yes
 Notes. E-14 is the superseded miss: its comment-only run read 14 `UNALLOWED` lines where the plan expected 12, and its 12-row draft read `RESULT: FAIL` with 2 `UNALLOWED`. The two paths beyond the planned 12 are `com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class` and `com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class`; E-14 shows by `javap -p -c` that their bytecode equals the gg7 archive's and by `javap -p -l` that only the line number table differs, because the 28 IN-01 move deleted three lines above their code. This entry reran the dry runs with the plan amended to 14 exact rows (the plan's commits `50ff0c23` and `62aa7231`): the three archives were rebuilt from the tip at `dry_tip_head`, whose `src`, build files and `.github` equal the E-14 tip's (`src_unchanged_since_e14`), and the three zips have the same SHA-256 values as the E-14 builds. The published pair reads as planned. The comment-only run reads the same 14 `UNALLOWED` lines as E-14 (the output files of the two runs are byte-equal): the 12 paths of the first plan, of which `ClickHouseWriter$3`, `$InsertBody` and `$InsertWriteDeadline` are `ONLY-B` and the other nine `CHANGED`, plus the two inner classes, `CHANGED`. The draft of 14 exact rows, each with a reason and none with `*`, `?` or `[`, kept only under `/tmp/gsd48/exec`, reads exit 0, `RESULT: PASS`, 0 `UNALLOWED`, 0 `STALE-ROW`, so the gg8 allow-list that Phase 49 generates needs those 14 exact rows and no wildcard. The tip against the gg7 list fails by design until Phase 49 writes the gg8 list and was not run. `.planning/scripts` holds the 5 lists, unchanged, and the gg6 and gg7 lists equal their tags; no draft was written under the repository.
 
 Recorded 2026-11-06T09:43:23Z.
+
+Verdict: pass
+
+### E-16: Disposition ledger: 57 rows, 10 fixed, 47 closed, no owner-user row
+
+Backs: P37-01 (the four `src/main` rows and the null assertion carry their commits or measured costs), P37-02 (28 IN-05(b) items), P37-03 (UF-37-3), P37-04 (every review Info has a commit pointer or a named disposition, none "owner: user" alone), ROADMAP Phase 48 criteria 1 to 3 and the ledger half of criterion 4 (item 20's lookup).
+
+```sh
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-ledger-check.py check .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPOSITION-LEDGER.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-ledger-check.py counts .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPOSITION-LEDGER.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-ledger-check.py pointers .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPOSITION-LEDGER.md   # 14 lines
+git cat-file -e <sha>^{commit}; git diff-tree --no-commit-id --name-only -r <sha>; git merge-base --is-ancestor <B0> <sha>   # per pointer line; existing pointers: --is-ancestor <sha> HEAD
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py get <E> <entry> <key>   # each fixed pointer against its evidence key
+python3 -I -c '<count of distinct U-1..U-11 in the ledger>'
+grep -qF UF-37-5 (and UF-37-6, UF-37-7, UF-37-8, UF-36-4) the ledger
+grep -F '| 26-IN-02 |' the ledger | grep -cF '15 compile errors'; grep -F '| 27-WR-01 |' the ledger | grep -cF '5 Docker-free tests'
+git add .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPOSITION-LEDGER.md
+git commit -F /tmp/gsd48/exec/msg-ledger.txt
+git ls-files '*48-DISPOSITION-LEDGER.md'
+```
+
+```text
+ledger_check_line: check: rows=57 required=57 problems=0
+ledger_counts: rows=57 fixed=10 closed=47 pointers=14
+pointers_resolve: yes
+pointers_touch_paths: yes
+phase48_pointers_after_base: yes
+fixed_pointers_match_evidence: yes
+decision_ids_named: 11
+not_review_rows_listed: yes
+measured_costs_carried: yes
+ledger_commit: 5ae549b915892b6d3c48b0b0bc1c650aed1d1697
+ledger_lookup: .planning/phases/48-phase-37-dispositions-document-fixes/48-DISPOSITION-LEDGER.md
+```
+
+Notes. The ledger commit holds only the ledger file. Its 57 rows are 27 rows for the 26 Phase 37 lineage IDs (28 IN-05(b) split into items i and ii), 18 rows for the 17 Phase 39 to 44 IDs (42 IN-03 split into parts a and b) and 12 rows for the 12 Phase 45 to 47 IDs; 10 are `fixed` and 47 `closed`. The 14 commit pointers are the 10 fixed rows (28-IN-01 `c4ec0cbf`, 28-IN-05(b)(i) `4de705a6`, UF-37-3 `07e65662`, 40-IN-03 `69b75cb3`, 42-IN-03(b) `64ef7568`, 42-IN-04 `3182791f`, 43-IN-01 `cc2ca206`, 43-IN-02 `eadacf83`, 44-IN-03 `5453a69c`, 47-IN-01 `ae31c4a9`) and 4 closed rows whose reasons rest on a commit (27-IN-01 `f13d8378`, 43-WR-03 `e979004e`, 45-IN-04 and 46-WR-05 `cc2ca206`). Each of the 10 fixed pointers equals its evidence key and touches its file; 45-IN-04 and 46-WR-05 equal `fd_reviews_commit` of E-13; the two earlier pointers are ancestors of HEAD. Before writing the closed reasons that cite a line, a count or a file, each was re-read on the tree: `shouldSkipDescribeRow` lines 508, 509 and 516 with no caller under `src/main` and its anchor row (3, HLP-02), the parity assertion at `DescribeTableBuilderUnitTest` line 399, `Column.convertEnumValues` line 630, the gg4 note line 199 and CHANGELOG line 284, 12 enum files in the raw-name matrix, `Enum8` at `RawNameMatrix.java` line 97 and in `ENUM_LOOKUP_MISS_TEXT`, the release and pre-release workflow regular expression at line 65 against the script grammar, `UNSAFE_CHARS` and `load_inner`, the `pipefail` comment at line 108, the compare step's non-zero exit, no `distributionSha256Sum`, the `kafka` catalog version unchanged since the gg7 tag, no file added under `src/main` since the gg7 tag, `nested jars in b: 0` and `kafka classes in b: 0` in the E-15 compare report, and the retry-outcome body of `JacksonOverIoValueFreeUnitTest.keepsTheRetryOutcome`. One research detail was not copied because it did not read the same on the tree: no row of `fork-anchors.txt` names `JsonAsStringKeyResidualLiveTest`, so the 27-IN-02 reason cites only the four FORK-DELTA lines that name it; the count of `Shape` rows was not re-counted and is not cited. The hand-off section of the ledger is a numbered list and not a table, because `48-ledger-check.py` reads every line that starts with `| ` as a six-cell ledger row. `git ls-files '*48-DISPOSITION-LEDGER.md'` prints exactly the ledger, so FORK-DELTA item 20's lookup resolves.
+
+Recorded 2026-11-06T09:48:43Z.
 
 Verdict: pass
