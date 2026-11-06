@@ -14,7 +14,7 @@
 | Entry | Requirement | Plan | Verdict |
 |-------|-------------|------|---------|
 | E-01 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-01 | pass |
-| E-02 | DOC-01, DOC-02 | 48-01 | pending (plan 48-01) |
+| E-02 | DOC-01, DOC-02 | 48-01 | pass |
 | E-03 | P37-01, P37-02 | 48-02 | pending (plan 48-02) |
 | E-04 | P37-03 | 48-02 | pending (plan 48-02) |
 | E-05 | P37-04 | 48-02 | pending (plan 48-02) |
@@ -416,5 +416,52 @@ da89cdb12a407f366a651cf9b9a894cf TEST-transforms.HeadersToValueTest.xml
 ```
 
 Recorded 2026-11-06T08:30:35Z.
+
+Verdict: pass
+
+### E-02: Document check scripts calibrated on the untouched base
+
+Backs: DOC-01, DOC-02, ROADMAP Phase 48 criterion 4 (the published documents name no planning identifier and no moved path; a resolver and a scan that read the current defects on the base and read clean after the edits).
+
+```sh
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py c77d1a147ae4acd37100b73db08f1851047bc055 docs/FORK-DELTA.md   # exit 1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py c77d1a147ae4acd37100b73db08f1851047bc055 docs/FORK-DELTA.md --list | grep -c '^BY-DESIGN '
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py c77d1a147ae4acd37100b73db08f1851047bc055 CHANGELOG.md   # and the gg6, gg1 and gg7 notes under docs/
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py c77d1a147ae4acd37100b73db08f1851047bc055 docs/ROLLOUT-v1.7.0_gg6.md   # exit 1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py v1.7.0_gg6 docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py v1.7.0_gg7 docs/ROLLOUT-v1.7.0_gg6.md   # exit 1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py c77d1a147ae4acd37100b73db08f1851047bc055 docs/ROLLOUT-v1.7.0_gg1.md   # exit 1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py c77d1a147ae4acd37100b73db08f1851047bc055 docs/ROLLOUT-v1.7.0_gg7.md   # exit 1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py c77d1a147ae4acd37100b73db08f1851047bc055 CHANGELOG.md
+md5 -q .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py
+git add .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py
+git commit -F /tmp/gsd48/exec/msg-t2a.txt
+```
+
+```text
+path_check_md5: 641402547d365dc5b663d6c88d6e1604
+id_scan_md5: 0922b7a9ab304cb8a77f181798827ed6
+scripts_stdlib_only: yes
+scripts_write_nothing: yes
+fd_paths_line: paths: candidates=99 resolved=69 abbreviated=20 abbreviated_unique=20 placeholders=2 by_design=6 unresolved=2
+fd_unresolved: .planning/phases/25-dependency-absorption-upstream-mini-sync/25-COMMAND-EVIDENCE.md; .planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-COMMAND-EVIDENCE.md
+fd_by_design_listed: 6
+changelog_paths_line: paths: candidates=12 resolved=11 abbreviated=0 abbreviated_unique=0 placeholders=0 by_design=1 unresolved=0
+gg6_paths_line: paths: candidates=6 resolved=6 abbreviated=0 abbreviated_unique=0 placeholders=0 by_design=0 unresolved=0
+gg1_paths_line: paths: candidates=1 resolved=1 abbreviated=0 abbreviated_unique=0 placeholders=0 by_design=0 unresolved=0
+gg7_paths_line: paths: candidates=5 resolved=4 abbreviated=0 abbreviated_unique=0 placeholders=0 by_design=1 unresolved=0
+gg6_ids_line: ids: hits=3
+gg6_ids_hits: 3 FUT-05; 114 FUT-05; 148 Phase 39
+gg6_tag_ids_line: ids: hits=0
+gg6_in_gg7_tag_ids_line: ids: hits=3
+gg1_ids_line: ids: hits=26
+gg7_ids_line: ids: hits=1
+changelog_ids_line: ids: hits=0
+scripts_commit: 1f1fa429fc0975b2ea6f840483b52db3f98e27ae
+```
+
+Calibration attempts: one. Both scripts matched every row of the plan's calibration table on the first run, so neither was changed after its first write (the two by-design lists and the token rule are those of the specification). The two unresolved tokens are the moved evidence paths of the 25 and 35 archives at FORK-DELTA lines 37 and 32; the six `BY-DESIGN` lines are `.github/workflows/test-head.yaml`, `.planning/scripts/compare-confluent-archives.py`, `build/raw-name-matrix`, `gradle/actions/setup-gradle`, `gradle/verification-metadata.xml` and `src/test/java/transforms/KeyToValueTest.java`. The gg1 scan prints 26 `ID` lines and the gg7 scan prints `ID 130 FUT-05`. The `/tmp/gsd48/scripts/resolve.py` research resolver was present and was read as the reference for the token rule; the scripts here use `git ls-tree` instead of a `git archive` copy, as the specification says. The probe directory `/tmp/gsd48/probes` holds only `Probe48EnumCauseUnitTest.java`; it is not read by this plan.
+
+Recorded 2026-11-06T08:32:22Z.
 
 Verdict: pass
