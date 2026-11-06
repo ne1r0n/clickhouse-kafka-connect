@@ -34,7 +34,7 @@
 | E-17 | RLS-05 | 49-05 | pending (user-gated) |
 | E-18 | RLS-05 | 49-05 | pending (user-gated) |
 | E-19 | RLS-06 | 49-05 | pending (user-gated) |
-| E-20 | RLS-01 to RLS-06 | 49-05 | pending (plan 49-05) |
+| E-20 | RLS-01 to RLS-06 | 49-05 | pass |
 
 ### E-01: Pre-flight, the tree-neutral merge of the gg7 release merge, the retag of pre-v1.7.0_gg8 and the tail gate on the merge
 
@@ -1142,3 +1142,59 @@ This record stays pending: the step and its word are the user's, and no executor
 
 2026-11-06T17:21:05Z
 Verdict: pending (user-gated: the step and its word are the user's)
+
+### E-20: The phase closes locally and stops: RLS-01 to RLS-04 satisfied, RLS-05 and RLS-06 pending the user's direct words, nothing pushed
+
+Backs: RLS-04 (rehearsal), RLS-05 and RLS-06 (recorded as pending and human-gated), D-9, D-10, PL-1.
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict <the close record and the evidence file>
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py <every file this phase added, helpers excluded>
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets .planning/phases/49-release-publication/49-COMMAND-EVIDENCE.md
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+git ls-remote origin refs/heads/custom_build
+git ls-remote --heads origin 'sync/*' 'scratch/*'
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+git tag -l 'v1.7.0_gg8'
+git rev-parse 'pre-v1.7.0_gg8^{commit}'
+git show-ref refs/gsd/release-m-v1.7.0_gg8
+git worktree list
+git diff --quiet <gated head> HEAD -- . ':(exclude).planning'   # and -- .planning/scripts
+git diff --name-only <L0> HEAD -- .planning/scripts
+git commit -F <msg file>   # the close record
+```
+
+```text
+local_complete: yes
+requirements_status: RLS-01=satisfied; RLS-02=satisfied; RLS-03=satisfied; RLS-04=satisfied; RLS-05=pending; RLS-06=pending
+pending_user_steps: G3; G3b; G4; G5; G6a; G6b; G7
+deferred_must_haves_listed: 10
+wording_changes_listed: 9
+carried_items_listed: 20
+origin_custom_build_final: 9483476322e0d331e81c5b92ac266a18f0f01450
+nothing_pushed: yes
+no_gg8_tag_anywhere: yes
+pre_tag_local_only: yes
+scratch_branches_present: yes
+scope_outside_planning: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg8.md
+scope_planning_scripts: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt; .planning/scripts/fork-anchors.txt
+no_protected_change: yes
+tip_equals_gate_outside_planning: yes
+changelog_heading_final: # 1.7.0_gg8, Unreleased
+index_rows: E-01..E-20 present; E-15..E-19 pending
+hygiene_scan_all: clean
+secrets_scan: clean
+worktrees_clean: yes
+keep_alive_ref_absent: yes
+final_head: e16b90a14219aef51692e38d731392341c91bd90
+ready_for_approval: yes
+close_commit: e16b90a14219aef51692e38d731392341c91bd90
+approval_bundle: .planning/phases/49-release-publication/49-APPROVAL-BUNDLE.md
+bundle_questions: 11
+gated_head: d9b10b9bf670b8236119c725e3639c53ad3e570b
+```
+
+The verdict `pass` is for the local gate only. RLS-05 and RLS-06 are pending and completed only by the orchestrator-inline tail after the user's direct words, recorded from E-21 on; E-15 to E-19 stay pending (user-gated) and are never edited. The close record lists ten deferred must-haves, nine wording changes for the orchestrator (the five of the plan, and four more: the RLS-06 wording of REQUIREMENTS.md, the meaning of `pre-v1.7.0_gg8`, the twelve evidence-path occurrences in FORK-DELTA that move at the milestone close, and the superseded date sentence of the context notes) and twenty carried items. The release dry run U2 and the deletion of the throwaway branch U5b each have their own word and question in the bundle (G3b, question (4); G6b, question (11)), so the bundle holds eleven questions. Origin `custom_build` still reads `9483476322e0d331e81c5b92ac266a18f0f01450`, no `sync/v1.7.0` head and no `v1.7.0_gg8` tag exists, both scratch branches are on origin at their recorded tips, the keep-alive ref of `M'` does not exist, one worktree remains and nothing was pushed, merged, tagged, dispatched or deleted.
+
+2026-11-06T17:24:20Z
+Verdict: pass
