@@ -24,7 +24,7 @@
 | E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pass |
 | E-10 | P37-01 | 48-03 | pass |
 | E-11 | P37-01 | 48-03 | pass |
-| E-12 | DOC-01, P37-04 | 48-04 | pending (plan 48-04) |
+| E-12 | DOC-01, P37-04 | 48-04 | pass |
 | E-13 | DOC-02, P37-04 | 48-04 | pending (plan 48-04) |
 | E-14 | P37-03 | 48-05 | pending (plan 48-05) |
 | E-15 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pending (plan 48-05) |
@@ -905,5 +905,57 @@ suite_crash: no
 Notes. Attempt 2 read 2923 tests (E-01's 2898 plus the 25 rows of `48-expected-added.tsv`), 0 failures, 0 errors, the 18 named skips (`named=7 state_mismatch_cases=11 unexpected=0`), 156 XML files, exit 0, in 3 min 23 s. The by-class delta against the E-01 dump removes nothing and adds exactly the 25 expected rows. The two live readers of the moved constant ran and passed at E-01's counts (`NullableTupleMatrixLiveTest` 33, `SimpleAggregateTupleRoundTripLiveTest` 2), as did `DeclaredNullabilityTest` (69). `latest` did not drift: the server version and digest equal E-01's. The tail gate ran over `12e2cf17..e0c0c9d8` on the explicit SHA (the E-10 evidence commit, with `src` identical to the move commit), exit 0, `anchor_rows=218`, `anchor_exempt=0`, `result=PASS`. No JVM crash, no core dump and no `-PjavaVersion=21` run.
 
 Recorded 2026-11-06T09:06:16Z.
+
+Verdict: pass
+
+### E-12: The published notes: gg6 row D7, row C2 and the notice; gg1 notice and item 6 (DOC-01, 44 IN-03, 43 IN-02)
+
+Backs: DOC-01 (the published gg6 note names no planning identifier), U-6 and U-7 (44 IN-03: row D7 says `since v1.7.0_gg7`, row C2 and the notice point to FORK-DELTA's decided limits), U-6 (43 IN-02: the gg1 note says which tree item 6 was measured on), P37-04, ROADMAP Phase 48 criterion 4.
+
+```sh
+git show v1.7.0_gg7:src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java | grep -c customKeysAreForwardedWithDoubledEncodingClientVersionTripwire
+git show v1.7.0_gg6:src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java | grep -c customKeysAreForwardedWithDoubledEncodingClientVersionTripwire   # file counted 0 if missing
+grep -c customKeysAreForwardedWithDoubledEncodingClientVersionTripwire src/test/java/com/clickhouse/kafka/connect/sink/db/helper/ClientEndpointAndOptionsPinUnitTest.java
+grep '^\*\*17\. ' docs/FORK-DELTA.md | grep -cF '(recorded limit, by decision)'
+grep '^\*\*24\. ' docs/FORK-DELTA.md | grep -cF 'FUT-05 is closed by decision'
+grep '^| D13 |' docs/ROLLOUT-v1.7.0_gg6.md | grep -c Client011BehaviourPinLiveTest
+python3 -I /tmp/gsd48/exec/applykey.py .planning/phases/48-phase-37-dispositions-document-fixes/48-doc-edits.json rollout_gg6 docs/ROLLOUT-v1.7.0_gg6.md
+git add docs/ROLLOUT-v1.7.0_gg6.md && git commit -F /tmp/gsd48/exec/msg-g6.txt
+python3 -I /tmp/gsd48/exec/applykey.py .planning/phases/48-phase-37-dispositions-document-fixes/48-doc-edits.json rollout_gg1 docs/ROLLOUT-v1.7.0_gg1.md
+git add docs/ROLLOUT-v1.7.0_gg1.md && git commit -F /tmp/gsd48/exec/msg-g1.txt
+git diff --numstat <commit>^ <commit>
+python3 -I <replay of each key against the commit's parent, old exactly once, byte equality>
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py <gg6_commit> docs/ROLLOUT-v1.7.0_gg6.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-id-scan.py <gg1_commit> docs/ROLLOUT-v1.7.0_gg1.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py <commit> <note>
+diff <(git show v1.7.0_gg6:docs/ROLLOUT-v1.7.0_gg6.md) <(git show <gg6_commit>:docs/ROLLOUT-v1.7.0_gg6.md) | grep -E '^[0-9]' | paste -sd ' ' -
+grep -cF 'so only transient codes belong in the list' docs/ROLLOUT-v1.7.0_gg6.md
+grep -cF 'No instruction, label or measured value changed.' docs/ROLLOUT-v1.7.0_gg6.md
+```
+
+```text
+tripwire_in_gg7_tag: 1
+tripwire_in_gg6_tag: 0
+tripwire_on_tip: 1
+fork_delta_item17_by_decision: yes
+fork_delta_item24_fut05_closed: yes
+gg6_d13_measured: yes
+gg6_commit: 5453a69c2aa276ef6a4dd6bc3e4389407bb9e9c4
+gg6_edit: exact
+gg6_numstat: 3 3
+gg6_ids_line: ids: hits=0
+gg6_tag_hunks: 2a3,4 112c114 146c148
+gg6_instruction_kept: yes
+gg6_paths_line: paths: candidates=6 resolved=6 abbreviated=0 abbreviated_unique=0 placeholders=0 by_design=0 unresolved=0
+gg1_commit: eadacf83dbc07a908eb3976bf5cf3decd4c79a95
+gg1_edit: exact
+gg1_numstat: 2 2
+gg1_ids_line: ids: hits=26
+gg1_paths_line: paths: candidates=1 resolved=1 abbreviated=0 abbreviated_unique=0 placeholders=0 by_design=0 unresolved=0
+```
+
+Notes. All six read checks held before the first edit, and every `old` string of keys `rollout_gg6` and `rollout_gg1` occurred exactly once in the working-tree file. The tripwire test exists in the `v1.7.0_gg7` tag and not in the `v1.7.0_gg6` tag, so `since v1.7.0_gg7` is true; item 17 of FORK-DELTA carries `(recorded limit, by decision)` and item 24 carries `FUT-05 is closed by decision`, which is what the two replacement sentences in row C2 and the notice rest on; row D13 of the gg6 note is labelled `measured` and names `Client011BehaviourPinLiveTest`, the source of the gg1 item 6 measurement. Both commits were applied by a script that asserts each `old` occurs once and replaces it with the JSON `new` text unchanged, and each was replayed against its parent afterwards. The gg6 note still differs from its `v1.7.0_gg6` tag copy in exactly the three hunks, and row C2's instruction and the notice's rule are each present once. The gg1 identifier count stays 26 (its behaviour-ledger references predate this phase and are not part of DOC-01). The gg6 note and the gg1 note go into Phase 49's independent review.
+
+Recorded 2026-11-06T09:18:58Z.
 
 Verdict: pass
