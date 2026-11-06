@@ -26,6 +26,18 @@ A label may carry one parenthetical qualifier that narrows it, for example `meas
 - `any connector with a dead letter queue`, `any connector that sets additionalRetriableErrorCodes` and `anyone compiling against the connector jar`: the row concerns exactly that configuration or that reader.
 - `this release`: the row describes the release as a whole. `CI only`: the row concerns the build and test workflows, not the archive. `as named in the row`: the row names its cases itself.
 
+## Before you upgrade
+
+Work through these steps before you roll the new archive out. Each names the section it comes from.
+
+1. On every connector, compare the longest insert time you see against `clickhouseClientInsertTimeoutMs` (default four minutes), and decide whether to raise it or to name `socket_timeout` in `jdbcConnectionProperties` (section B). A client V2 batch is now cut if its body is still being sent at the bound, serialization included.
+2. A connector that runs client V1, which is every connector without `client_version`, now has a connector-side insert bound: an insert still waiting for its response at the bound, including one whose server keeps streaming progress headers, fails and is redelivered (section B). At the default a quiet client V1 insert still ends at the library's own 30 s limit.
+3. With `exactlyOnce=false`, a duplicate is possible after an insert that timed out and that the server committed anyway, in a table that does not deduplicate the repeat (section B).
+4. A parser or an alert that reads the topic, the partition, the offset or the column out of an exception message needs the ERROR line `Record serialization failed` instead (section A); the same ERROR lines also appear on a deadline cut, and neither means the record is bad (section B).
+5. A failure that carries a `RetriableException` is redelivered without bound under both `errors.tolerance` values; there is no retry budget and no setting to add one (section C).
+6. Anything compiled against `DeclaredNullability.ESCAPED_NEWLINE` needs its own copy of the constant (section D).
+7. Update dashboard, alert and exporter matchers that spell out `version=v1.7.0_gg7` or `clickhouse-kafka-connect/v1.7.0_gg7` (section E).
+
 ## A. The upstream tail
 
 Upstream has no tag past `v1.7.0`. `v1.7.0_gg8` takes upstream's untagged tail up to `83808df9`, where `v1.7.0_gg6` and `v1.7.0_gg7` took it up to `9bed6f79`. Two items of the tail are new here: upstream's pull request 839, a slash in a column name in a `DESCRIBE` response, and its pull request 857, the record context of a serialization failure. The third item of that tail, `additionalRetriableErrorCodes`, shipped in `v1.7.0_gg6` and is not listed again. The rows say what each item does in this fork, which differs from upstream in both.
@@ -62,6 +74,27 @@ What to do:
 2. With `exactlyOnce=false`, expect a possible duplicate after an insert that timed out and that the server committed anyway, unless the table deduplicates the repeat. With `exactlyOnce=true` the retry reuses its deduplication token (row T8).
 3. Do not read the bound as a cap on the total insert time, or as covering a client V2 insert whose body has been sent while the server streams progress headers, or a request that is not an insert (rows T6 and T7).
 4. If an alert matches the two ERROR lines of row T10, expect them on a deadline cut too; they do not mean the record is bad.
+
+## C. Task stop and the retry outcome
+
+This section holds the task's `stop()`, the outcome of a retriable failure, and the decision on a retry budget. A row that says `as named in the row` lists its own cases.
+
+| ID | Effect | Label | Applies when | How it is known |
+|----|--------|-------|--------------|-----------------|
+| S1 | `ClickHouseSinkTask.stop()` runs the proxy stop (the writer, the task MBean and the state provider) in a `finally` after the delivery strategy's `stop()`. A strategy whose `stop()` throws no longer skips them, and its exception is the one `stop()` throws. With each of the three shipped delivery strategies `stop()` returns normally and reaches the proxy stop. Kafka Connect only logs a throw from `stop()` as a WARN and does not fail the task. | stop order and the three shipped strategies: measured; Connect's handling of a throw from `stop()`: read from the code | either client | `ClickHouseSinkTaskStopUnitTest`, which needs no ClickHouse server and drives both a throwing strategy and the three shipped ones. The handling of a throw was read in the `WorkerSinkTask` sources of Kafka 4.x and was not measured. `FORK-DELTA.md`, item 13. |
+| S2 | Corrects row F5 of the `v1.7.0_gg7` note and the residuals bullet of its known limits: the task-level `stop()` residual is closed (row S1). The others remain: a Keeper state provider constructor that fails on client V1, a helper-client constructor that fails after it built its client V2 instance, a second `start()` on one writer, and the five-second wait of the writer's `stop()`. Two limits are new to the record. When both the delivery strategy's `stop()` and the proxy stop throw, the proxy's exception is thrown and the strategy's is dropped, neither attached as suppressed nor logged by `stop()`. And `close(partitions)` runs the proxy task's partition removal before the delivery strategy's `close` with no `finally`, so a throw from the first skips the second. | remaining residuals and `close(partitions)`: read from the code; both-throw: measured (one probe, not pinned) | as named in the row | `FORK-DELTA.md`, item 13, which names each residual and the code site. The both-throw outcome was seen once by a probe; the pin of row S1 asserts only that both stops ran and that an exception surfaced. |
+| S3 | A `RetriableException` out of `put` is redelivered without bound under both `errors.tolerance` values, a limit by decision. Kafka Connect pauses the task's partitions and redelivers the same batch with no count and no deadline, and `errors.retry.timeout`, `errors.tolerance` and the dead letter queue do not apply to it. This widens row R8 of the `v1.7.0_gg7` note, which stated the missing retry budget for the codes of `additionalRetriableErrorCodes` only, and records it as a decision. An insert that `clickhouseClientInsertTimeoutMs` cuts is such a failure, so a permanently stalled insert is attempted again at every redelivery, and with `exactlyOnce=false` each attempt can commit rows. | connector side, 50 consecutive redeliveries of each of 16 retriable failure shapes: measured; a Connect worker of the Kafka 3.9 line, three calls over 120 s: measured (Kafka 3.9 line only); no bound on the redelivery: read from the code | either client | `RetriableRedeliveryLimitPinUnitTest` (108 cases on this tree, no ClickHouse server) pins the connector side; a retry budget of 5 failures added to `ProxySinkTask.put` turned its 64 redelivery cases red. On a worker of the Kafka 3.9 line a task that always threw it was called at 506, 60042 and 120055 ms with `errors.retry.timeout=5000`, `errors.tolerance=all` and a dead letter queue topic; the topic stayed empty and the task stayed `RUNNING`. That nothing bounds the redelivery is read from the `deliverMessages` body in the sources of Kafka 3.9.1, 4.1.1 and 4.4.0. The pin runs with `exactlyOnce=false`; with `exactlyOnce=true` the redelivery is not pinned. `FORK-DELTA.md`, item 17. |
+| S4 | The retry-budget question for `additionalRetriableErrorCodes` is closed by decision: the connector adds no validator of the listed codes, no retry budget and no setting that removes a code from the built-in set. The start-up WARN of the `v1.7.0_gg7` note, its text and its pins remain. This replaces the last statement of section F of the `v1.7.0_gg7` note, which kept the follow-up open. | read from the code | any connector that sets additionalRetriableErrorCodes | `ClickHouseSinkConfig` defines the setting with its format check (positive integers) and nothing validates, rejects or budgets the codes; `Utils.handleException` redelivers a listed code as before. `FORK-DELTA.md`, items 8 and 24, which give the reason: whether a code is transient is the connector's judgment, and a rejecting check would break a running connector that lists such a code. |
+
+What to do: if you rely on the dead letter queue to take a batch out of the way, expect a failure that carries a `RetriableException` to be redelivered instead, with no budget, under both tolerance values, and look at the cause of a batch that keeps failing (row S3). List in `additionalRetriableErrorCodes` only codes that are transient (row S4). Nothing to configure for the `stop()` fix (row S1).
+
+## D. A removed public constant
+
+| ID | Effect | Label | Applies when | How it is known |
+|----|--------|-------|--------------|-----------------|
+| P1 | The public constant `DeclaredNullability.ESCAPED_NEWLINE` is removed from the connector jar. Nothing in the connector read it; code compiled against it needs its own copy. | read from the code | anyone compiling against the connector jar | `git grep ESCAPED_NEWLINE -- src/main` finds nothing; the constant now lives in the tests' own fixture class `DeclaredNullabilityFixtures`. `git diff v1.7.0_gg7 HEAD` of `DeclaredNullability.java` shows the three removed lines (the Javadoc and the declaration). `FORK-DELTA.md`, item 20. |
+
+Two further changes of this release are test-only and have no operator effect, so they get no row: the null binding of an unreadable enum in a `DESCRIBE` type is tied to its scan by a test, and the allow-list wildcard rule now counts real path segments.
 
 ## E. Release identity, archive and rollback
 
@@ -116,3 +149,32 @@ The row of this section that states the rollback:
 | ID | Effect | Label | Applies when | How it is known |
 |----|--------|-------|--------------|-----------------|
 | D3 | Rollback: tag `pre-v1.7.0_gg8` names `94834763`, the published `custom_build` tip before this release, which is also tag `v1.7.0_gg7`. Redeploy the `v1.7.0_gg7` release asset, not a local rebuild. Rolling back reverses rows U1 to U3, T2, T3, T5 and T9, S1, P1 and D1. | rollback block on a dry-run merge: measured; what reverts: read from the code | this release | The block of step 2, extracted from this note and run unchanged on a dry-run merge of commit `b4615700` of `sync/v1.7.0` onto `94834763` (an earlier commit than the release tip; the block has not changed since), printed `ok`, left `VERSION` at `v1.7.0_gg7`, left no copy of this note and a tree equal to the tag, and a revert restored the merged tree. What reverts follows from `git diff v1.7.0_gg7 v1.7.0_gg8 -- src/main` and from the rows named. |
+
+## What this release closes from the gg7 note
+
+The `v1.7.0_gg7` note is not edited, and its other statements remain. The rows of this note supersede the statements named in the first column; each row of the last column points at the rows that do.
+
+| gg7 note statement | In this release | Rows |
+|--------------------|-----------------|------|
+| Row F5 of section A: the task-level `stop()` has no `try`/`finally` around the delivery strategy's `stop()`, listed with four other residuals. | The task-level residual is closed. The four others remain, the writer's five-second wait included. | S1, S2 |
+| Row R8 of section F: there is no retry budget for a redelivered batch, and no setting removes a code from the built-in set. | Still true, and now a recorded limit by decision: a `RetriableException` out of `put` is redelivered without bound under both `errors.tolerance` values. | S3, S4 |
+| Rows T1 and T12 of section B: client V1 inserts have no connector timeout, and the three client V1 insert methods wait with `future.get()`. | Closed on client V1: each insert method waits through a bounded wait. At the default a quiet insert still ends at the client V1 library's own 30 s limit. | T3, T4 |
+| Row T14 of section B: the help text of `clickhouseClientInsertTimeoutMs` still describes a single insert response. | Closed: the help text says what the setting bounds on each client and what it does not. | T9 |
+| Row R6 of section E: the two retriable `DataException` behaviours are pinned and a decision on changing them is still open. | The decision is taken: they are recorded as a limit, with no retry budget. | S3 |
+| The last statement of section F, which kept the follow-up for a retry budget or a removal setting open. | Closed by decision: no validator, no budget and no removal setting. The start-up WARN remains. | S4 |
+| Known limits, first bullet: the residuals of the closing of helper clients, the task-level `stop()` among them. | The task-level `stop()` is closed; the others remain, and two limits are new. | S1, S2 |
+| Known limits, second bullet: the bounded insert has limits, among them that client V1 inserts are not bounded and that the help text describes a single insert response. | Client V1 inserts are bounded and the help text is rewritten; a client V2 body-write stall is bounded; the other limits remain and are now recorded by decision. | T2, T3, T6, T7, T9 |
+| Known limits, fourth bullet: a code in `additionalRetriableErrorCodes` is redelivered with no retry budget, and no setting removes a code from the built-in set. | A recorded limit by decision. | S3, S4 |
+| The `1.7.0_gg7` CHANGELOG statement that no timeout is added to client V1 inserts. | Superseded by the `1.7.0_gg8` section: the client V1 wait is bounded. | T3, T4 |
+| The `1.7.0_gg7` CHANGELOG Known Issues bullets on the retry budget and on the two retriable writer `DataException` shapes. | Replaced by the `1.7.0_gg8` Known Issues: the decision is taken and recorded. | S3, S4 |
+| The `1.7.0_gg7` CHANGELOG Bug Fixes sentence that the task's `stop()` stops the writer, the MBean and the state provider even when one of them throws. | True of `ProxySinkTask.stop()` in `v1.7.0_gg7`; `ClickHouseSinkTask.stop()` now does the same when the delivery strategy's `stop()` throws. | S1 |
+
+## Known limits carried into this release
+
+These limits exist in this release; none is fixed here. Each bullet points at its rows.
+
+- The closing of helper clients has residuals: a Keeper state provider constructor that fails on client V1, a helper-client constructor that fails after it built its client V2 instance, a second `start()` on one writer, and a five-second wait that can end with a table refresh still running on a closed client. Two stop limits are new: when both the delivery strategy's `stop()` and the proxy stop throw, the strategy's exception is dropped, and a throw from the partition removal that `close(partitions)` runs first skips the delivery strategy's `close` (row S2).
+- The bounded insert has limits: a client V2 insert whose body has been sent while the server streams progress headers is not bounded (measured), a request that is not an insert is not bounded, and a timed-out insert is not rolled back (rows T6, T7 and T8).
+- A many-to-one rename and a partition-changing SMT are not supported for exactly-once, the in-memory state machine or `reportInsertedOffsets`; this is carried unchanged from row R3 of the `v1.7.0_gg7` note, together with its limits under other topic-changing SMTs, and this release does not change it.
+- A `RetriableException` out of `put` is redelivered without bound under both `errors.tolerance` values, and a code in `additionalRetriableErrorCodes` is redelivered the same way; both are limits by decision (rows S3 and S4).
+- Carried from the `v1.7.0_gg6` note as information, as the `v1.7.0_gg7` note carried it: that note does not state what a first chunk with exactly the stored range does after the upgrade (the `SAME` state of `Processing.doLogic`), and its section B lists configurations it does not characterise. `Processing.doLogic` is unchanged since `v1.7.0_gg7`, and this note adds no statement about either.
