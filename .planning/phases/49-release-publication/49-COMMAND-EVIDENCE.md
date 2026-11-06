@@ -19,7 +19,7 @@
 | E-02 | RLS-01 | 49-01 | pass |
 | E-03 | RLS-01 | 49-01 | pass |
 | E-04 | RLS-01, RLS-04 | 49-01 | pass |
-| E-05 | RLS-02, RLS-03 | 49-02 | pending (plan 49-02) |
+| E-05 | RLS-02, RLS-03 | 49-02 | pass |
 | E-06 | RLS-03 | 49-02 | pending (plan 49-02) |
 | E-07 | RLS-03 | 49-02 | pending (plan 49-02) |
 | E-08 | RLS-03 | 49-03 | pending (plan 49-03) |
@@ -317,4 +317,108 @@ Every planning value held: testUnit 2325 tests with 2 skipped (the Phase 48 figu
 The test-tree recount (143 files, 115 byte-identical, 28 differing) changed the nature of the sentence, not only its figures. The 15 files that FORK-DELTA listed as fork adaptation are still 13 named files plus `LocalProviderTest`, which is now the only file that differs in import order alone (the other file of the earlier pair, `ClickHouseSinkJdbcPropertiesTest`, was changed after `v1.7.0_gg1` by upstream's tail). Of the 14 further files, 8 are byte-identical to upstream's tail `83808df9` (upstream changed them after `v1.7.0`, the fork took the change with its tail merges), and 6 were changed by upstream's tail, by the fork or by both. The row therefore says the other 28 "differ", not that all of them are fork adaptation, and it names the reason of each of the 14 from the log of the file; the category counts sum to 28. One earlier line of the raw-numbers paragraph held a phase number inside a parenthetical ("a Phase 28 review-fix test"); because the plan's own check rejects any phase number on a changed line and that line had to change for the gg8 sentence, the parenthetical now reads "a review-fix test" and nothing else of that line moved.
 
 2026-11-06T13:19:30Z
+Verdict: pass
+
+### E-05: Note tracer: the rehearsal script, the archives and source facts measured, preamble and section E, the rollback block rehearsed on a dry-run merge
+
+Backs: RLS-02 (first measurement of the allow-list's difference set), RLS-03 (the rollback block of the note rehearsed unchanged), D-4, PL-7, PL-10.
+
+```sh
+git archive v1.7.0_gg7 | tar -x -C <new dir>/arch-base-src
+git archive HEAD | tar -x -C <new dir>/arch-tip-src
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain createConfluentArchive   # in each export, one after the other
+python3 -I .github/scripts/compare_confluent_archives.py <dir>/base.zip <dir>/tip.zip <dir>/empty.txt   # empty.txt: a comment-only allow-list
+python3 -I <scratch>/e05-cmp.py <compare output>   # counts UNALLOWED lines, splits them by owner, compares with the projection
+gh api repos/ne1r0n/clickhouse-kafka-connect/releases/433237218 --jq '.assets[] | "\(.name)|\(.size)|\(.digest)|\(.uploader.login)"'
+curl -sL -o <new dir>/asset.zip <release download URL of the v1.7.0_gg7 asset>
+shasum -a 256 <new dir>/asset.zip
+python3 -I .github/scripts/compare_confluent_archives.py <dir>/base.zip <new dir>/asset.zip <dir>/empty.txt
+git diff --shortstat v1.7.0_gg7 HEAD -- src/main
+bash .planning/phases/49-release-publication/49-rehearse.sh merge <note_commit_1> <new dir>/rh-d0 > rh-d0.txt
+MODE=plain bash .planning/phases/49-release-publication/49-rehearse.sh merge <note_commit_1> <new dir>/rh-d0-plain > rh-d0-plain.txt
+python3 -I .planning/phases/49-release-publication/49-note-check.py rows|labels|forbidden|rollback|claims docs/ROLLOUT-v1.7.0_gg8.md
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict docs/ROLLOUT-v1.7.0_gg8.md
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets docs/ROLLOUT-v1.7.0_gg8.md
+```
+
+```text
+rehearse_commit: dc91ab0c2b9ae2a1e8fdc022fb073704d1df8257
+rehearse_md5: 67f30f31a1353a607aaed8d8f09767a7
+rehearse_usage_selftest: 2 of 2 usage errors as expected
+base_verify_line: verifyConfluentArchive: 7932 inner entries, no nested jar, no Kafka API class
+tip_verify_line: verifyConfluentArchive: 7935 inner entries, no nested jar, no Kafka API class
+base_entries: 7932
+tip_entries: 7935
+base_bytes: 13564144
+tip_bytes: 13572233
+archive_java: default toolchain (Gradle 9.8.2, launcher JVM 21.0.12.1), -PjavaVersion=21 not needed, no JVM crash
+compare_exit: 1
+compare_totals: totals files-a 7512 files-b 7515 only-a 0 only-b 3 changed 14 same 7498
+compare_unallowed: 17
+compare_unallowed_paths: META-INF/MANIFEST.MF; com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.class; com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.class; com/clickhouse/kafka/connect/sink/Version.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$1.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$2.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$3.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$InsertBody.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$InsertWriteDeadline.class; com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class; com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient$ClickHouseClientBuilder.class; com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class; com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class; com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class; com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class; com/clickhouse/kafka/connect/util/Utils.class; com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class
+compare_owner_split: connector classes 16; manifest 1; anything else 0
+compare_version_changes: none
+compare_manifest: MANIFEST.MF: differs only in Implementation-Version
+compare_matches_projection: yes
+gg7_asset_name: clickhouse-kafka-connect-v1.7.0_gg7.zip
+gg7_asset_bytes: 13564238
+gg7_asset_digest: sha256:3dbdcf03e5825073b7b0535718c9998a5e5754c0ae05a17502bbf4c6d69472af
+gg7_asset_uploader: github-actions[bot]
+gg7_asset_download_digest_equal: yes
+gg7_asset_vs_rebuild_totals: totals files-a 7512 files-b 7512 only-a 0 only-b 0 changed 6 same 7506
+gg7_asset_vs_rebuild_unallowed: 6
+client_version_default: V1
+insert_timeout_default: TimeUnit.MINUTES.toMillis(4), 240000 ms
+insert_timeout_min: ConfigDef.Range.atLeast(100)
+version_constant_users: ClickHouseHelperClient; SinkTaskStatistics
+src_main_shortstat_since_gg7: 6 files changed, 428 insertions(+), 72 deletions(-)
+escaped_newline_in_main: 0
+note_commit_1: b46157003f4aed427b3ba9dc613765df17708320
+d0_mode: attr
+d0_start_commit: 7168cf95f4d1ed93990bf09a1516807be5c9cde6
+d0_merge_exit: 0
+d0_d_commit: 7168cf95f4d1ed93990bf09a1516807be5c9cde6
+d0_d_parents: 9483476322e0d331e81c5b92ac266a18f0f01450 b46157003f4aed427b3ba9dc613765df17708320
+d0_d_tree_equal: yes
+d0_d_subject: Dry-run merge of b46157003f4aed427b3ba9dc613765df17708320 onto v1.7.0_gg7
+d0_d_version: v1.7.0_gg8
+d0_d_no_gsd_ws_arg: yes
+d0_d_allowlist_present: no
+d0_d_baseline_tag: v1.7.0_gg7
+d0_d_status_before_block: clean
+d0_block_extract: ok
+d0_block_sha256: 2f30bd7d6b0109b22caaba63ff968a02f3f3eedfc11ec8ec4b46474012f67991
+d0_rollback_exit: 0
+d0_rollback_output: ok
+d0_rollback_commit: 5aa7f8ceacda14644f47b48d2e842bef6f3fb4e1
+d0_rollback_status_after: clean
+d0_gradlew_bat_trap: no
+d0_rollback_version: v1.7.0_gg7
+d0_rollback_note_absent: yes
+d0_rollback_tree_equals_tag: yes
+d0_revert_exit: 0
+d0_revert_restores_tree: yes
+d0_rehearsal_cleaned: yes
+d0_result: rehearsal: PASS
+d0_plain_result: rehearsal: PASS
+note_commit_1b: 06df048b7ac209ed89fbe005a2e311f4aacf30d6
+block_unchanged_since_rehearsal: yes
+nc_rows_d: OK rows=3 measured=3 code=2 derived=0
+nc_labels: OK labels: 3 of 3 defined
+nc_forbidden: OK forbidden: 0 lines
+nc_rollback: OK rollback: the block is the four expected lines
+nc_claims: OK claims: 0 hex strings outside the allowed set
+hygiene_note: clean
+secrets_note: clean
+worktrees_clean: yes
+rollback_branch_absent: yes
+```
+
+The compare of the two local rebuilds listed 17 UNALLOWED entries, the derived expectation of the research: the 14 exact paths of the earlier measurement, `Version.class`, `SinkTaskStatistics.class` and `META-INF/MANIFEST.MF`. The measured set equals the projection path for path (`compare_matches_projection: yes`), the totals equal the derived `files-a 7512 files-b 7515 only-a 0 only-b 3 changed 14 same 7498`, the version table lists 18 libraries and changes none, and no entry outside the connector classes and the manifest differs. These are the values the allow-list plan must regenerate.
+
+The `v1.7.0_gg7` release asset has the size and digest the research read, the downloaded copy's SHA-256 equals the API digest, and the compare of the asset with the local rebuild of the tag lists six connector class files as different (`gg7_asset_vs_rebuild_totals`; the asset is 94 bytes larger than the rebuild), so the note tells operators to download the asset rather than rebuild it. Both archive builds ran on the default toolchain with no crash.
+
+The rehearsal ran on a dry-run merge of the first note commit onto `94834763` in both modes; both printed `rehearsal: PASS`, the extracted block hashes to the same value in both and still hashes to it after the second note commit, and `gradlew.bat` did not show in the status after the block. The dry-run commit is unreferenced and its worktree and the rollback branch are gone.
+
+2026-11-06T13:28:52Z
 Verdict: pass
