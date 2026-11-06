@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Every wildcard row of every shipped confluent-archive allow-list names at least two literal path
  * segments before its first wildcard, so that a row such as {@code com/*} or {@code META-INF/*}
  * cannot silence a whole namespace of archive differences.
+ *
+ * <p>A literal segment is a non-empty name between two slashes, and the {@code outer/} prefix that
+ * {@code compare_confluent_archives.py} puts on every path of the outer zip is not counted, so {@code
+ * outer/com/*} is as broad as {@code com/*} and an empty segment as in {@code a//*} adds nothing.
  *
  * <p>This is a test and not a rule of {@code compare_confluent_archives.py}: the script refuses only
  * a glob that starts with a wildcard, and a stricter loader would change what the published release
@@ -32,6 +37,8 @@ class AllowListWildcardRuleUnitTest {
     private static final String TAB = "\t";
     private static final String WILDCARDS = "*?[";
     private static final char SEPARATOR = '/';
+    private static final String SEGMENT_SPLIT = "/";
+    private static final String OUTER_PREFIX = "outer/";
     private static final int MIN_LITERAL_SEGMENTS = 2;
     private static final int MIN_SHIPPED_LISTS = 5;
     private static final String NAME = "{displayName}[{index}] glob={0}";
@@ -58,7 +65,18 @@ class AllowListWildcardRuleUnitTest {
         if (first < 0) {
             return true;
         }
-        return glob.substring(0, first).chars().filter(c -> c == SEPARATOR).count() >= MIN_LITERAL_SEGMENTS;
+        String literal = glob.substring(0, first);
+        if (literal.startsWith(OUTER_PREFIX)) {
+            literal = literal.substring(OUTER_PREFIX.length());
+        }
+        int lastSeparator = literal.lastIndexOf(SEPARATOR);
+        if (lastSeparator < 0) {
+            return false;
+        }
+        return Arrays.stream(literal.substring(0, lastSeparator).split(SEGMENT_SPLIT, -1))
+                        .filter(segment -> !segment.isEmpty())
+                        .count()
+                >= MIN_LITERAL_SEGMENTS;
     }
 
     private static List<Path> shippedLists() throws IOException {
@@ -96,13 +114,23 @@ class AllowListWildcardRuleUnitTest {
     }
 
     @ParameterizedTest(name = NAME)
-    @ValueSource(strings = {"com/*", "outer/*", "META-INF/*", "c*", "com/clickhouse*"})
+    @ValueSource(
+            strings = {
+                "com/*", "outer/*", "META-INF/*", "c*", "com/clickhouse*", "outer/com/*", "outer/META-INF/*", "a//*"
+            })
     void aWildcardAfterFewerThanTwoLiteralSegmentsIsRefused(String glob) {
         assertFalse(followsTwoLiteralSegments(glob), REFUSED);
     }
 
     @ParameterizedTest(name = NAME)
-    @ValueSource(strings = {"com/google/gson/*", "META-INF/versions/*/x/*", "a/A.class"})
+    @ValueSource(
+            strings = {
+                "com/google/gson/*",
+                "META-INF/versions/*/x/*",
+                "a/A.class",
+                "outer/com/google/gson/*",
+                "outer/com/google/*"
+            })
     void aRowWithTwoLiteralSegmentsOrNoWildcardIsAccepted(String glob) {
         assertTrue(followsTwoLiteralSegments(glob), ACCEPTED);
     }
