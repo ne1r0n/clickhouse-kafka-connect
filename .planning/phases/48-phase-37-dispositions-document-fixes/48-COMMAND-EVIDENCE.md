@@ -21,7 +21,7 @@
 | E-06 | P37-04 | 48-02 | pass |
 | E-07 | P37-04 | 48-02 | pass |
 | E-08 | P37-04 | 48-02 | pass |
-| E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pending (plan 48-02) |
+| E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pass |
 | E-10 | P37-01 | 48-03 | pending (plan 48-03) |
 | E-11 | P37-01 | 48-03 | pending (plan 48-03) |
 | E-12 | DOC-01, P37-04 | 48-04 | pending (plan 48-04) |
@@ -720,5 +720,52 @@ rp_mut_worktree_removed: yes
 Notes. The class had 38 cases at the base (E-01 `rp_tests`); it now has 40, all green with Docker unreachable, and the commit adds 34 lines and deletes none. The two new rows pass `new DataException(...)`, a `DataException` with no retriable cause, through `Utils.handleException`: under `errors.tolerance=none` the same instance is rethrown (`assertSame`), under `all` nothing is thrown (`assertNull`). `directMatrix` never selects `Outcome.DATA_EXCEPTION`, which is why the branch had no row that depended on it. The mutation adds `&& false` to the `DataException` branch of `Utils.handleException` in the worktree only: the `none` row then sees the generic `RuntimeException` wrap and fails, the `all` row and every existing row stay green (39 of 40), which is exactly the gap the control closes.
 
 Recorded 2026-11-06T08:43:02Z.
+
+Verdict: pass
+
+### E-09: Wave gate: testUnit with Docker unreachable at the base count plus 25, exact delta
+
+Backs: P37-01, P37-02, P37-03, P37-04 (the six pins add exactly 25 testcases and remove none), ROADMAP Phase 48 criteria 1 to 3 (no existing assertion changed, no `src/main`, `.github` or `.planning/scripts` change).
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd48/exec/w2-testunit.log 2>&1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd48/exec/xml-w2-testunit && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-w2-testunit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-w2-testunit /tmp/gsd48/exec/status-w2-testunit.tsv
+python3 -I -c '<filter of status-w2-testunit.tsv to the six new classes and methods, written to 48-expected-added.tsv in dump order>'
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py delta /tmp/gsd48/exec/status-base-testunit.tsv /tmp/gsd48/exec/status-w2-testunit.tsv .planning/phases/48-phase-37-dispositions-document-fixes/48-expected-added.tsv
+shasum -a 256 .planning/phases/48-phase-37-dispositions-document-fixes/48-expected-added.tsv
+git add .planning/phases/48-phase-37-dispositions-document-fixes/48-expected-added.tsv
+git commit -F /tmp/gsd48/exec/msg-xa.txt
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit /tmp/gsd48/exec/xml-w2-testunit --class .ProxySinkTaskStopUnitTest   # and the seven other touched and neighbour classes
+git diff --name-only c77d1a147ae4acd37100b73db08f1851047bc055 HEAD -- src
+git diff --numstat c77d1a147ae4acd37100b73db08f1851047bc055 HEAD -- <the four extended test files>
+git diff --quiet c77d1a147ae4acd37100b73db08f1851047bc055 HEAD -- src/main .github .planning/scripts
+```
+
+```text
+w2_testunit_docker_host: unix:///nonexistent.sock
+w2_testunit_exit: 0
+w2_testunit_tests: 2320
+w2_testunit_failures: 0
+w2_testunit_errors: 0
+w2_testunit_skipped: 2
+expected_added_rows: 25
+expected_added_groups: 4 9 2 1 7 2
+expected_added_all_pass: yes
+expected_added_sha256: 89c2dd51e59fb741a114322035a4ff5a976ee791e764782ad86c28c766208126
+expected_added_commit: ee4f9d6e
+status_delta_w2: delta: removed=0 added=25 expected=25 match=yes
+touched_counts_after: yes
+scope_since_base: yes
+jvm_crash: no
+javacore_files: none
+```
+
+Notes. The cache-busted testUnit (2320 tests, 107 XML files against 105 at the base: the two new classes) is E-01's 2295 plus 25, with 0 failures, 0 errors and the same 2 skips, and the default toolchain ran it with no JVM crash, so no `-PjavaVersion=21` run was needed in plan 48-02. `48-expected-added.tsv` holds the 25 rows in dump order, grouped 4 (`DescribeUnreadableEnumNullBindingUnitTest`), 9 (`AllowListWildcardRuleUnitTest`), 2 (`ProxySinkTaskStopUnitTest`), 1 (`ClickHouseSinkTaskStopUnitTest`), 7 (`UnvettedRetriableCodesWarnUnitTest`) and 2 (`RetriableExceptionPassThroughUnitTest`), all PASS; plans 48-03 and 48-05 use it as the expected set of their deltas. `touched_counts_after` is `yes`: `ProxySinkTaskStopUnitTest` 6, `ClickHouseSinkTaskStopUnitTest` 7, `UnvettedRetriableCodesWarnUnitTest` 28 and `RetriableExceptionPassThroughUnitTest` 40 (E-01 plus 2, 1, 7, 2), and `DescribeUnreadableEnumMockServerTest` 2, `CompareConfluentArchivesScriptUnitTest` 58, `DeclaredNullabilityTest` 69 and `SourcePlanningIdGuardUnitTest` 18 at E-01's counts, all green. `scope_since_base` is `yes`: since the base the `src` diff is exactly the two new classes and the four extended files (additions 12, 75, 34 and 26 lines, deletions 0 each), and `src/main`, `.github` and `.planning/scripts` are unchanged.
+
+Recorded 2026-11-06T08:44:28Z.
 
 Verdict: pass
