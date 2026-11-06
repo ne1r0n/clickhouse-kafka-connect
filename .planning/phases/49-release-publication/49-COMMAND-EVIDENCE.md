@@ -35,6 +35,8 @@
 | E-18 | RLS-05 | 49-05 | pending (user-gated) |
 | E-19 | RLS-06 | 49-05 | pending (user-gated) |
 | E-20 | RLS-01 to RLS-06 | 49-05 | pass |
+| E-21 | RLS-05 | 49-05 | pass |
+| E-22 | RLS-01, RLS-05 | 49-05 | pass |
 
 ### E-01: Pre-flight, the tree-neutral merge of the gg7 release merge, the retag of pre-v1.7.0_gg8 and the tail gate on the merge
 
@@ -1198,3 +1200,49 @@ The verdict `pass` is for the local gate only. RLS-05 and RLS-06 are pending and
 
 2026-11-06T17:24:20Z
 Verdict: pass
+
+### E-21: The user's answers to the approval bundle
+
+Backs: RLS-05 (the user's own approvals, given directly to the orchestrator through its AskUserQuestion on 2026-11-06 and received by the orchestrator; no agent relayed them).
+
+```text
+q1_who_runs_origin_writes: "Orchestrator, one step per word (Recommended)"
+q2_push_day: "Today, 2026-11-06 (Recommended)" (UTC date read at the recheck: 2026-11-06T18:52:27Z)
+q3_g3_go_for_u1: "Go for U1 only (Recommended)" (authorises only the push of the tip to the throwaway branch sync/v1.7.0)
+q4_dry_run_u2_wanted: "Yes, I want it (Recommended)" (the dispatch word G3b is still to come, after U1's tests.yaml run is green)
+q5_jvm_record: "Enough (Recommended)"
+q6_review_end_state: "Stay with it (Recommended)"
+q7_integration_test: "Do not re-run (Recommended)"
+q8_pull_requests: asked in the text of Q2: merge no pull request on origin before M' lands; origin_open_prs none at the recheck
+q9_upstream: unchanged at the recheck (newest tag v1.7.0, main 83808df9a0993cf49b2ceaa4633c782e550c0180, PRs 861 b62e0ae4, 855 ddabf28b, 854 69d1efc5 open, 788 bb4b4140 closed); no addition from the user
+q10_scratch_branches: information only; U6 waits for the separate RLS-06 confirmation
+q11_delete_sync_branch: not yet asked; asked again after the publish is read back (G6b)
+recheck_origin_custom_build: 9483476322e0d331e81c5b92ac266a18f0f01450
+recheck_left_right_count: 0 299
+recheck_sync_heads_on_origin: none
+recheck_gg8_tags_on_origin: none
+recheck_scratch_tips: de8c685b80d40b0a6e19338271e07b08ede84f3b, 939e899298c2f12dec2cfe1e69b1a6b53b4f511e
+unpublished_commits_before_date_commit: 299
+```
+
+Verdict: pass
+
+Notes. Only G3 (U1) is given. G3b, G4, G5, G6a, G6b and G7 are each still to be asked as their own word.
+
+### E-22: The date commit
+
+Backs: RLS-01, U-3 (the CHANGELOG heading carries the UTC merge date, one line, committed alone before the first push).
+
+```text
+date_commit: ee04572ba0bfff6f6792e8f699ed7fb2159b52da
+heading_before: # 1.7.0_gg8, Unreleased
+heading_after: # 1.7.0_gg8, 2026-11-06
+numstat: 1	1	CHANGELOG.md
+rest_of_file_identical: yes
+id_scan: ids: hits=0
+same_as_gated_outside_planning_and_changelog: yes
+scripts_same_as_gated: yes
+```
+
+Verdict: pass
+
