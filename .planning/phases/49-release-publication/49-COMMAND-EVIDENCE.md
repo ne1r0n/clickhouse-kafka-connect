@@ -28,7 +28,7 @@
 | E-11 | RLS-02 | 49-04 | pass |
 | E-12 | RLS-04 | 49-04 | pass |
 | E-13 | RLS-04 | 49-04 | pass |
-| E-14 | RLS-04, RLS-05 | 49-05 | pending (plan 49-05) |
+| E-14 | RLS-04, RLS-05 | 49-05 | pass |
 | E-15 | RLS-02, RLS-05 | 49-05 | pending (plan 49-05) |
 | E-16 | RLS-05 | 49-05 | pending (plan 49-05) |
 | E-17 | RLS-05 | 49-05 | pending (plan 49-05) |
@@ -864,4 +864,126 @@ Both full suites ran with `--rerun` on ClickHouse `latest` with client V2, one a
 The tree under test is the gated head of E-12 with the one later `.planning/phases` commit of E-12; no path outside `.planning` or under `.planning/scripts` differs. The CI side (the scratch dry run, the single `tests.yaml` run on the merged SHA, the publish run) belongs to the user and is not part of this gate; `integrationTest` was not re-run (PL-11), and the user may overrule that at the bundle. Nothing was pushed.
 
 2026-11-06T17:08:33Z
+Verdict: pass
+
+### E-14: Publication rehearsal without a push: upstream recheck 3, the merge message, a dry-run merge with the frozen script, the rollback on it, the date check, the approval bundle
+
+Backs: RLS-04 (the rehearsal on the final tip), RLS-05 (the publication path faced without a push, the approval bundle with one word per origin step), D-7, D-8, U-2, U-3, U-4, PL-1, PL-7.
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/custom_build
+git rev-list --left-right --count origin/custom_build...HEAD
+git rev-list --count HEAD --not --remotes=origin
+git ls-remote --heads origin
+git ls-remote --tags origin 'v1.7.0_gg8*' 'pre-v1.7.0_gg8*'
+git diff --shortstat 9483476322e0d331e81c5b92ac266a18f0f01450 HEAD -- . ':(exclude).planning'   # and -- .planning
+git diff --name-only 9483476322e0d331e81c5b92ac266a18f0f01450 HEAD -- . ':(exclude).planning'
+git diff --quiet <gated head> HEAD -- . ':(exclude).planning'   # and -- .planning/scripts
+git ls-remote upstream refs/heads/main
+git ls-remote --tags --refs upstream 'v*'
+curl -s https://api.github.com/repos/ClickHouse/clickhouse-kafka-connect/pulls/<n>   # n = 861, 855, 854, 788
+bash .planning/phases/49-release-publication/49-rehearse.sh merge <tip> <new dir> <absolute path of the merge message>
+MODE=plain bash .planning/phases/49-release-publication/49-rehearse.sh merge <tip> <new dir> <absolute path of the merge message>
+python3 -I .planning/phases/49-release-publication/49-note-check.py rollback docs/ROLLOUT-v1.7.0_gg8.md --print | shasum -a 256
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict <merge message> <bundle> <evidence>
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py secrets <evidence>
+git commit -F <msg file>   # the merge message and the approval bundle
+```
+
+```text
+tip_head: 3699a9cd617cdb01950bff86603e60eb8ae75725
+origin_custom_build: 9483476322e0d331e81c5b92ac266a18f0f01450
+left_count: 0
+left_right_at_tip: 0 292
+unpublished_commits: 292
+pre_tag_local: yes
+origin_sync_ref: none
+origin_gg8_tags: none
+local_release_tag: none
+origin_open_prs: none
+scratch_tips_now: 939e8992 refs/heads/scratch/clt-07-prebump-0.9.6; de8c685b refs/heads/scratch/clt-07-client-0.11.0
+scratch_tips_unchanged: yes
+scratch_tips_ancestors: yes
+non_planning_vs_gg7: 42 files changed, 5948 insertions(+), 130 deletions(-)
+planning_vs_gg7: 253 files changed, 28568 insertions(+), 311 deletions(-)
+changed_files_vs_gg7: CHANGELOG.md; VERSION; build.gradle.kts; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg1.md; docs/ROLLOUT-v1.7.0_gg6.md; docs/ROLLOUT-v1.7.0_gg8.md; gradle/libs.versions.toml; src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java; src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java; src/main/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.java; src/main/java/com/clickhouse/kafka/connect/util/Utils.java; src/test/java/com/clickhouse/kafka/connect/ci/AllowListWildcardRuleUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskStopUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertBoundPinFixtures.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertTimeoutHelpTextPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertV1WaitBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/JsonRouteValueFreeDlqUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/NullableTupleMatrixLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/RetriableExceptionPassThroughUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/RetriableRedeliveryLimitPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/SimpleAggregateTupleRoundTripLiveTest.java; src/test/java/com/clickhouse/kafka/connect/sink/UnvettedRetriableCodesWarnUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/WriterRecordContextDlqUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriterRecordContextTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/FieldDescriptorEscapeTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/JacksonOverIoValueFreeUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/JsonRouteValueFreeUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/SlashColumnRoundTripTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/WriterRecordContextUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/WriterValueFreeFailureUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumNullBindingUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/FieldDescriptorLiteralFieldsUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/InsertBoundGateUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java; src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityTest.java
+gated_sha: 315f5de1c85fb61bd2a1e887d2be085bc62571ce
+gated_head: d9b10b9bf670b8236119c725e3639c53ad3e570b
+tip_equals_gate_outside_planning: yes
+frozen_docs_equal_gate: yes
+local_custom_build_ref: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+upstream_main_end: 83808df9a0993cf49b2ceaa4633c782e550c0180
+upstream_newest_tag_end: v1.7.0
+upstream_tag_past_v170_end: no
+upstream_pr_861_end: open False b62e0ae4
+upstream_pr_855_end: open False ddabf28b
+upstream_pr_854_end: open False 69d1efc5
+upstream_pr_788_end: closed False bb4b4140
+upstream_changed_since_e12: no
+merge_subject: Merge sync/v1.7.0: release v1.7.0_gg8
+merge_trailer_last: yes
+d_mode: attr
+d_start_commit: 3cecccb283b12d7f50552e7c67f5c6db8a93b6b3
+d_merge_exit: 0
+d_commit: 3cecccb283b12d7f50552e7c67f5c6db8a93b6b3
+d_parents: 9483476322e0d331e81c5b92ac266a18f0f01450 3699a9cd617cdb01950bff86603e60eb8ae75725
+d_tree_equal: yes
+d_subject: Merge sync/v1.7.0: release v1.7.0_gg8
+d_version: v1.7.0_gg8
+d_no_gsd_ws_arg: yes
+d_allowlist_present: yes
+d_baseline_tag: v1.7.0_gg7
+d_status_before_block: clean
+d_block_extract: ok
+d_block_sha256: 2f30bd7d6b0109b22caaba63ff968a02f3f3eedfc11ec8ec4b46474012f67991
+d_rollback_exit: 0
+d_rollback_output: ok
+d_rollback_commit: ad799d07aad78185efd60b7c5e680cc786a4b86c
+d_rollback_status_after: clean
+d_gradlew_bat_trap: no
+d_rollback_version: v1.7.0_gg7
+d_rollback_note_absent: yes
+d_rollback_tree_equals_tag: yes
+d_revert_exit: 0
+d_revert_restores_tree: yes
+d_rehearsal_cleaned: yes
+d_plain_parents: 9483476322e0d331e81c5b92ac266a18f0f01450 3699a9cd617cdb01950bff86603e60eb8ae75725
+d_plain_tree_equal: yes
+d_plain_subject: Merge sync/v1.7.0: release v1.7.0_gg8
+d_plain_baseline_tag: v1.7.0_gg7
+d_plain_gradlew_bat_trap: no
+d_plain_block_sha256: 2f30bd7d6b0109b22caaba63ff968a02f3f3eedfc11ec8ec4b46474012f67991
+d_plain_rollback_output: ok
+d_plain_revert_restores_tree: yes
+d_plain_rehearsal_cleaned: yes
+d_result: rehearsal: PASS
+d_plain_result: rehearsal: PASS
+rehearse_md5_now: 67f30f31a1353a607aaed8d8f09767a7
+d_block_equals_note: yes
+d_operator_doc_check: none
+local_custom_build_ref_unmoved: yes
+local_custom_build_ref_after: 3a3a15a9ae064ffe09c696b8bb87bce23419d463
+worktrees_clean: yes
+rollback_branch_absent: yes
+select_version: 26.10.3.7
+image_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+image_same_as_e13: yes
+changelog_heading: # 1.7.0_gg8, Unreleased
+utc_today: 2026-11-06
+date_step_pending: yes
+bundle_items: yes
+bundle_gates: yes
+message_check: yes
+hygiene_scan: clean
+secrets_scan: clean
+bundle_commit: 5154655d74104a0c529ace84d1ebb65de05821a3
+nothing_pushed: yes
+```
+
+The dry-run merge D of the tip onto `94834763` was built twice by the frozen script (git attributes off, then plain), each in a new throwaway detached worktree that the script removed; D is an unreferenced commit and was never pushed, the local `custom_build` ref did not move, one worktree remains and the rollback branch is absent. D has the two expected parents, the tip's tree, the agreed subject, the allow-list and `VERSION` `v1.7.0_gg8`; the baseline selection on D names `v1.7.0_gg7`. The rollback block of the note, extracted by the checker and run unchanged, printed `ok`, restored the tree of `pre-v1.7.0_gg8` and a revert restored D's tree; its hash equals the block of the earlier rehearsal. Upstream and the two scratch tips are unchanged since the earlier recheck. The CHANGELOG heading still reads `Unreleased`; the one-line date commit of U-3 is the orchestrator's step DATE on the push day you name (answer (2) of the bundle). Two additions to the plan's bundle, asked for by the orchestrator, are not in the plan's ten questions: the release dry run U2 has its own word (G3b, question (4)) and the deletion of `refs/heads/sync/v1.7.0` on origin has its own word (G6b, question (11)); the bundle holds eleven questions, `(1)` to `(10)` once each as the check requires. Nothing was pushed.
+
+2026-11-06T17:16:14Z
 Verdict: pass
