@@ -31,6 +31,7 @@
 | E-16 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pass |
 | E-17 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pass |
 | E-18 | P37-03, DOC-01, DOC-02 | 48-05 | pass |
+| E-19 | P37-03, DOC-02, P37-04 | 48-05 | pass |
 
 ### E-01: Pre-flight and baseline on the untouched base, release path recorded frozen
 
@@ -1322,5 +1323,90 @@ handoff_items: 10
 Notes. This entry only records. Nothing in the list was acted on in this plan: no allow-list file, no CHANGELOG line, no rollout note and no REQUIREMENTS edit. The count in item 1 is the most important correction for Phase 49: a gg8 list built from the 12 paths of the first plan would read two `UNALLOWED` lines for the inner classes of `DeclaredNullability`. The index of this evidence file reads E-01 to E-18 in order with E-14 as the one `fail` row (the superseded first measurement) and every other row `pass`.
 
 Recorded 2026-11-06T10:05:11Z.
+
+Verdict: pass
+
+### E-19: Review gap closure: the allow-list wildcard rule counts real segments (48 WR-01), FORK-DELTA item 14 wording (48 WR-02), the DeclaredNullabilityFixtures comment (48 IN-01)
+
+Backs: P37-03 (WR-01: the two-literal-segment rule is as strict as its javadoc and E-04 claim), DOC-02 (WR-02: item 14 states the two deadline-cut ERROR lines by where the cut lands), P37-04 (IN-01: the fixtures comment). This entry adds to E-17 and does not edit E-01 to E-18; the E-17 counts it changes are listed in the facts below. IN-02 (a test would be weakened or removed) and IN-03 (milestone-close hand-off, E-18 items 7 and 8) are not fixed.
+
+```sh
+git rev-parse HEAD
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*AllowListWildcardRuleUnitTest*' > /tmp/gsd48/exec/aw2-red.log 2>&1   # five cases added, old rule
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*AllowListWildcardRuleUnitTest*' > /tmp/gsd48/exec/aw2-green.log 2>&1   # strengthened rule
+python3 -I -c '<stdlib re-count of the strengthened rule over .planning/scripts/confluent-archive-allowlist-*.txt>'
+/tmp/gsd48/exec/fmt.sh aw2 src/test/java/com/clickhouse/kafka/connect/ci/AllowListWildcardRuleUnitTest.java
+/tmp/gsd48/exec/fmt.sh dnf2 src/test/java/com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullabilityFixtures.java
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-path-check.py HEAD docs/FORK-DELTA.md
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 218
+git diff --word-diff=porcelain 72928578 7ae4284c -- docs/FORK-DELTA.md
+diff <(git show 7ae4284c:<fixtures file> | grep -v '<comment lines>') <(grep -v '<comment lines>' <fixtures file>)
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd48/exec/gate2-testunit.log 2>&1
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-gate2-testunit /tmp/gsd48/exec/status-gate2-testunit.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py delta /tmp/gsd48/exec/status-base-testunit.tsv /tmp/gsd48/exec/status-gate2-testunit.tsv .planning/phases/48-phase-37-dispositions-document-fixes/48-expected-added.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py delta /tmp/gsd48/exec/status-base-testunit.tsv /tmp/gsd48/exec/status-gate2-testunit.tsv /tmp/gsd48/exec/expected-added-e19.tsv
+git diff --quiet 3859525d <gate_head> -- .planning/scripts .github build.gradle.kts settings.gradle.kts gradle VERSION CHANGELOG.md src/main
+md5 -q <the four plan-time helpers, the two frozen scripts and 48-expected-added.tsv>
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 <gate_head> > /tmp/gsd48/exec/gate2-tail.log 2>&1
+```
+
+```text
+gate_head: a968e4867f374f09177faadd80f1462b9a146233
+wr01_commit: 72928578
+wr02_commit: 7ae4284c
+in01_commit: a968e486
+wr01_cases_added: 5
+wr01_new_refused_cases: outer/com/* outer/META-INF/* a//*
+wr01_new_accepted_cases: outer/com/google/gson/* outer/com/google/*
+wr01_class_cases_before: 9
+wr01_class_cases_after: 14
+wr01_red_tests: 14
+wr01_red_failures: 3
+wr01_red_failed: aWildcardAfterFewerThanTwoLiteralSegmentsIsRefused[6] glob=outer/com/*; [7] glob=outer/META-INF/*; [8] glob=a//*
+wr01_red_accepted_cases_pass_on_old_rule: yes
+wr01_green_tests: 14
+wr01_green_failures: 0
+wr01_green_errors: 0
+shipped_lists: 5
+shipped_wildcard_rows: 49
+shipped_rows_under_outer: 0
+shipped_offenders_strengthened_rule: 0
+fmt_aw2: identical
+fmt_dnf2: identical
+fd_paths_line: paths: candidates=98 resolved=70 abbreviated=20 abbreviated_unique=20 placeholders=2 by_design=6 unresolved=0
+anchors_mirror: rows=218 bad=0
+fd_item14_new_identifiers: none
+fd_item14_claim_lines: ClickHouseWriter.java:623-626 (log formats), 1092-1094 (generic catch of doWriteColValue), 1279-1309 (flag bytes written outside doWriteColValue), 1318 (value write), 1573-1574 (record-context catch)
+in01_non_comment_lines_changed: 0
+in01_blank_lines_added: 0
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2325
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+status_delta_frozen_expected: delta: removed=0 added=30 expected=25 match=no
+status_delta_unexpected: the five WR-01 cases above, each PASS, and nothing else
+status_delta_extended_expected: delta: removed=0 added=30 expected=30 match=yes
+src_main_ci_build_unchanged_since_e17: yes
+helpers_unchanged: yes
+expected_added_tsv_md5: f5c3087d35ccdf155851d17c41a96375
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=171 anchor_rows=218 marker_commits=189 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+e17_testunit_tests_superseded_by: 2325
+e17_added_rows_superseded_by: 30
+suite_tests_derived_not_measured: 2928
+suite_rerun: no
+```
+
+Notes. WR-01: the review found that `followsTwoLiteralSegments` counted slashes, so `outer/com/*` (the script prefixes every outer-zip path with `outer/`) and `a//*` (empty segments) passed although they are as broad as the refused `com/*`. The rule now strips a leading `outer/`, takes the text before the first wildcard up to its last slash and counts its non-empty segments (at least 2). The five cases were added first and run against the old rule: 14 tests, 3 failures, exactly the three new refused cases; the two new accepted cases pass on the old and the new rule. With the strengthened rule the class is 14 of 14 green, and an independent stdlib re-count over the five shipped lists reads 49 wildcard rows, none under `outer/`, no offender; the lists and `compare_confluent_archives.py` are not touched. The frozen `48-expected-added.tsv` lists 9 cases for this class and stays as it is; the 5 added cases are the only difference, so the testUnit delta against the frozen file reads `added=30 expected=25 match=no` with the 5 unexpected rows named, and `match=yes` against a copy of that file extended by the 5 rows (kept in /tmp/gsd48/exec). Counts that later work inherits and that supersede E-17 (E-17 is not edited): the Docker-free testUnit is 2325 tests with 2 skips (E-17: 2320); the added rows against the E-01 baseline are 30 (E-17: 25); the full suite on `latest` x V2 was not re-run, and the five cases need no Docker, so its expected total is 2928 (E-17: 2923, 18 named skips) and is not a measurement. The raw numbers of FORK-DELTA, which Phase 49 refreshes once, should take 2325 for testUnit; the E-18 item 6 figure of 2320 is stale by 5. WR-02: item 14 now says the `Record serialization failed: ...` ERROR line is logged for the record and column being written and the `Error writing value of ...` line before it only when the cut lands inside the value write, because a cut in the null or default flag bytes of `doWriteCol` (written outside `doWriteColValue`) reaches only `writeColumnWithRecordContext`; the remark that neither line means the record is bad stays. The word diff of the commit adds no phase or evidence identifier, and the resolver and the anchors mirror read as before. Nested Map, Array and Tuple values are recursive calls of `doWriteColValue`, each with its own catch, so the first line can repeat for one cut; this was read from the code and is not stated in item 14. The E-18 hand-off items 4 and 5 (the gg8 CHANGELOG and rollout wording for "the two ERROR lines") should follow the new wording. IN-01: only comment lines of `DeclaredNullabilityFixtures` changed (the class comment now names the constant as the test-side name and the three tests whose premise assertions tie it to the server and `fromJsonRow`); the non-comment lines are identical and no blank line was added, so the normalisation of plan 48-03 still holds. The testUnit and the tail gate ran one after the other, never concurrently; the tail gate ran on the explicit SHA of `gate_head`, over `12e2cf17..a968e486`, and anchor_commits and marker_commits are 7 above E-17's because 7 commits followed its gate head. Nothing was pushed.
+
+Recorded 2026-11-06T10:37:50Z.
 
 Verdict: pass
