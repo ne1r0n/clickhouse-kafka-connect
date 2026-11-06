@@ -17,7 +17,7 @@
 |-------|-------------|------|---------|
 | E-01 | RLS-01 | 49-01 | pass |
 | E-02 | RLS-01 | 49-01 | pass |
-| E-03 | RLS-01 | 49-01 | pending (plan 49-01) |
+| E-03 | RLS-01 | 49-01 | pass |
 | E-04 | RLS-01, RLS-04 | 49-01 | pending (plan 49-01) |
 | E-05 | RLS-02, RLS-03 | 49-02 | pending (plan 49-02) |
 | E-06 | RLS-03 | 49-02 | pending (plan 49-02) |
@@ -190,4 +190,40 @@ hygiene_scan: clean
 The four guard classes ran with Docker unreachable. The first run of the generated-constant check used the clean build the plan names, because `generateVersionFile` keeps a stale file otherwise. The Gradle runs used the default toolchain (Gradle 9.8.2).
 
 2026-11-06T13:09:30Z
+Verdict: pass
+
+### E-03: The 1.7.0_gg8 CHANGELOG section completed under the Unreleased heading, released sections untouched
+
+Backs: RLS-01 (the CHANGELOG section of the release), D-3 (content), D-9 (the two-ERROR-line wording of FORK-DELTA item 14 as reworded at its last edit), U-3 and PL-5 (the heading date is set later, in one line).
+
+```sh
+git show v1.7.0_gg7:CHANGELOG.md > <scratch>/changelog-gg7.md
+git show HEAD:CHANGELOG.md > <scratch>/changelog-old.md
+python3 -I (tail check: the file ends with a newline followed by the gg7 tag copy; the old section lines occur in order)
+python3 -I (section check: headings, no identifier, line width, required tokens)
+git diff -U0 HEAD -- CHANGELOG.md   # added lines, written to a file
+python3 -I .planning/phases/49-release-publication/49-hygiene-check.py --strict <added lines file>
+python3 -I .planning/phases/49-release-publication/49-doc-check.py links CHANGELOG.md
+git add CHANGELOG.md
+git commit -F <msg file>
+python3 -I .planning/phases/49-release-publication/49-id-scan.py d2240a706587134fb24d050fa613002a9d093fe2 CHANGELOG.md
+```
+
+```text
+changelog_heading: # 1.7.0_gg8, Unreleased
+changelog_tail_identical: yes
+phase47_bullets_kept: yes
+changelog_section_check: OK changelog-section
+id_scan: ids: hits=0
+links_ok: yes
+hygiene_scan_added_lines: clean
+secrets_scan: clean
+changelog_commit: d2240a706587134fb24d050fa613002a9d093fe2
+changelog_commit_files: CHANGELOG.md
+added_lines: 75
+```
+
+The section holds the five headings in order. The three bullets written earlier (one under Bug Fixes, two under Known Issues) are unchanged line for line. The only broken link of the file is the coming gg8 operator note, which plan 49-02 creates. A client V2 only effect and a client V1 only effect are each stated for their client. The fork's value-free wording for the record context says that a Jackson link in a cause chain is rebuilt without a record value, because the code rebuilds it, and not that every exception is rethrown untouched. The Known Issues bullet for the two ERROR lines is worded after FORK-DELTA item 14.
+
+2026-11-06T13:11:09Z
 Verdict: pass
