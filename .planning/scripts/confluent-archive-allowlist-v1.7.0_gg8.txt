@@ -1,0 +1,27 @@
+# Allow-list for .github/scripts/compare_confluent_archives.py (RLS-02), plan 49-04.
+# Archive A is v1.7.0_gg7 rebuilt from the tag v1.7.0_gg7; archive B is the archive built at the v1.7.0_gg8 tip.
+# Format: glob<TAB>reason. A star matches across slashes (fnmatch). Paths of the outer zip carry the prefix "outer/".
+# Every row must match at least one difference (an unused row fails as STALE-ROW), and no row is a catch-all.
+# No glob starts with "*", "?" or "[": the loader refuses such a row, because it is not anchored to a path prefix.
+# No third-party library changed between the two archives (the version table lists the same 18 versions), so no row is a wildcard.
+# A com/clickhouse/kafka/connect/ row is an exact path whose source file changed between v1.7.0_gg7 and the tip, or the release identity.
+# An inner class of a changed connector class is listed because its class file differs (the six changed src/main files and the release identity inlined from Version.ARTIFACT_VERSION account for all seventeen).
+# The list was derived from the differences of the two archives rebuilt on the final tree and is valid for exactly one tree:
+# any later change of src, build.gradle.kts, gradle or README.md moves the archive and turns a row into STALE-ROW or a difference into UNALLOWED.
+META-INF/MANIFEST.MF	release identity v1.7.0_gg7 -> v1.7.0_gg8 (Implementation-Version)
+com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.class	source changed: the clickhouseClientInsertTimeoutMs help text names the phases the limit bounds
+com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.class	source changed: stop() closes the delivery strategy and the proxy task in try/finally
+com/clickhouse/kafka/connect/sink/Version.class	release identity v1.7.0_gg7 -> v1.7.0_gg8 (inlined compile-time constant Version.ARTIFACT_VERSION, generated class)
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.class	source changed: bounded inserts (client V2 inactivity and send limits, client V1 response wait) and value-free record context
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$1.class	inner class of ClickHouseWriter, class file differs with its source change
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$2.class	inner class of ClickHouseWriter, class file differs with its source change
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$3.class	inner class of ClickHouseWriter, new in this release (only in archive B)
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$InsertBody.class	inner class of ClickHouseWriter, new in this release (only in archive B)
+com/clickhouse/kafka/connect/sink/db/ClickHouseWriter$InsertWriteDeadline.class	inner class of ClickHouseWriter, new in this release (only in archive B)
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.class	source changed: insertBoundMs(), the wall-clock insert bound that yields to an operator-set socket_timeout
+com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient$ClickHouseClientBuilder.class	inner class of ClickHouseHelperClient, class file differs with its source change
+com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability.class	source changed: the public constant ESCAPED_NEWLINE is removed
+com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class	inner class of DeclaredNullability, class file differs with its source change
+com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class	inner class of DeclaredNullability, class file differs with its source change
+com/clickhouse/kafka/connect/util/Utils.class	source changed: the read and write timeout message constants are public
+com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.class	release identity v1.7.0_gg7 -> v1.7.0_gg8 (inlined compile-time constant Version.ARTIFACT_VERSION, MBean version segment)
