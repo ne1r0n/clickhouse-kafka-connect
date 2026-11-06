@@ -15,7 +15,7 @@
 |-------|-------------|------|---------|
 | E-01 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-01 | pass |
 | E-02 | DOC-01, DOC-02 | 48-01 | pass |
-| E-03 | P37-01, P37-02 | 48-02 | pending (plan 48-02) |
+| E-03 | P37-01, P37-02 | 48-02 | pass |
 | E-04 | P37-03 | 48-02 | pending (plan 48-02) |
 | E-05 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-06 | P37-04 | 48-02 | pending (plan 48-02) |
@@ -463,5 +463,50 @@ scripts_commit: 1f1fa429fc0975b2ea6f840483b52db3f98e27ae
 Calibration attempts: one. Both scripts matched every row of the plan's calibration table on the first run, so neither was changed after its first write (the two by-design lists and the token rule are those of the specification). The two unresolved tokens are the moved evidence paths of the 25 and 35 archives at FORK-DELTA lines 37 and 32; the six `BY-DESIGN` lines are `.github/workflows/test-head.yaml`, `.planning/scripts/compare-confluent-archives.py`, `build/raw-name-matrix`, `gradle/actions/setup-gradle`, `gradle/verification-metadata.xml` and `src/test/java/transforms/KeyToValueTest.java`. The gg1 scan prints 26 `ID` lines and the gg7 scan prints `ID 130 FUT-05`. The `/tmp/gsd48/scripts/resolve.py` research resolver was present and was read as the reference for the token rule; the scripts here use `git ls-tree` instead of a `git archive` copy, as the specification says. The probe directory `/tmp/gsd48/probes` holds only `Probe48EnumCauseUnitTest.java`; it is not read by this plan.
 
 Recorded 2026-11-06T08:32:22Z.
+
+Verdict: pass
+
+### E-03: Null binding of the unreadable enum describe (28 IN-05(b) item i, U-5)
+
+Backs: P37-01 (the null assertion, fixed additively per U-5), P37-02 (28 IN-05(b) item i), ROADMAP Phase 48 criterion 1 (no existing assertion changed, seen red via a non-enum failure).
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*DescribeUnreadableEnum*' > /tmp/gsd48/exec/nb-green.log 2>&1
+rm -rf /tmp/gsd48/exec/xml-nb-green && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-nb-green
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit /tmp/gsd48/exec/xml-nb-green --class .DescribeUnreadableEnumNullBindingUnitTest   # and .DescribeUnreadableEnumMockServerTest
+git diff --quiet c77d1a147ae4acd37100b73db08f1851047bc055 -- src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumMockServerTest.java
+grep -cF '? UNREADABLE_ENUM_ROW :' src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumNullBindingUnitTest.java
+/tmp/gsd48/exec/fmt.sh nb src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumNullBindingUnitTest.java   # throwaway worktree /tmp/gsd48/fmt, spotlessApply, cmp
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/DescribeUnreadableEnumNullBindingUnitTest.java
+git commit -F /tmp/gsd48/exec/msg-nb.txt
+git worktree add --detach /tmp/gsd48/wt-nb 4de705a6e0132bb884796cd58635fe40be724464
+python3 -I /tmp/gsd48/exec/mutate.py /tmp/gsd48/wt-nb/<NB> '? UNREADABLE_ENUM_ROW :' '? MALFORMED_ROW :'
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd48/wt-nb --console=plain testUnit --rerun --tests '*DescribeUnreadableEnumNullBindingUnitTest*' > /tmp/gsd48/exec/nb-mut.log 2>&1
+cp -R /tmp/gsd48/wt-nb/build/test-results/testUnit /tmp/gsd48/exec/xml-nb-mut
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed /tmp/gsd48/exec/xml-nb-mut --expect 'DescribeUnreadableEnumNullBindingUnitTest#unreadableEnumTableIsNullBecauseTheEnumScanRefusedIt'
+git worktree remove --force /tmp/gsd48/wt-nb && git worktree prune
+```
+
+```text
+nb_green_tests: 4
+nb_green_failures: 0
+nb_green_errors: 0
+mk_green_tests: 2
+mk_green_failures: 0
+mk_identical_to_base: yes
+nb_mutation_anchor_count: 1
+fmt_nb: identical
+nb_commit: 4de705a6e0132bb884796cd58635fe40be724464
+nb_mut_tests: 4
+nb_mut_failures: 2
+nb_mut_errors: 0
+nb_mut_failed: DescribeUnreadableEnumNullBindingUnitTest#unreadableEnumTableIsNullBecauseTheEnumScanRefusedIt
+nb_mut_worktree_removed: yes
+```
+
+Notes. The green run filter `*DescribeUnreadableEnum*` selects the new class (4 cases) and the unchanged `DescribeUnreadableEnumMockServerTest` (2 cases), 6 tests all green with Docker unreachable. The mutation makes the stub answer the malformed row for the enum table too; the describe still returns null (the existing assertion holds), the ERROR event carries a throwable but not the enum refusal text, so exactly the two `unreadableEnumTableIsNullBecauseTheEnumScanRefusedIt` rows (client V1 and V2) fail and the two `aNonEnumDescribeFailureIsAlsoNullButNamesNoEnumCause` rows stay green. The mutation lives only in the worktree; the main tree was not changed.
+
+Recorded 2026-11-06T08:36:30Z.
 
 Verdict: pass
