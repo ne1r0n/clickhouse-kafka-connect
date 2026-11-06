@@ -12,11 +12,11 @@ files_reviewed_list:
   - docs/ROLLOUT-v1.7.0_gg1.md
 findings:
   critical: 0
-  warning: 9
-  info: 6
-  total: 15
+  warning: 13
+  info: 8
+  total: 21
 status: issues_found
-rounds: 1
+rounds: 2
 ---
 
 # Phase 49: Code Review Report
@@ -133,6 +133,52 @@ The table's own heading promises "the statements named in the first column" and 
 
 round: 1 findings: 15
 
+## Round 2
+
+reviewer_agent_id: a09cc0035374691f7
+
+All 15 round-1 fixes were checked one by one against `src/main`, git and the gg7 tag. Thirteen are correct as applied: the CHANGELOG slash bullet now says the behaviour did not change for `1.7.0_gg7`; `e83a0bbb` is the merge of pull request #839 and is part of the tail `83808df9`; `ClickHouseSinkTaskStopUnitTest` has 7 cases (4 plain, 3 from the enum source); the seven refactor files, the added `classCastFailureTextIsPinnedExactly` and the 14 + 8 + 6 partition re-derive by script (143, 115, 28, 8 tail-identical, 20 others); the gg7 statements quoted in the new closes rows match `git show v1.7.0_gg7:docs/ROLLOUT-v1.7.0_gg7.md` and `git show v1.7.0_gg7:CHANGELOG.md` word for word (T11, the T13 clause, the T15 sentence, Before-you-upgrade 2, What-to-do 3, the two Known Issues bullets); the 16 shapes of item 17 regroup as 9 + 1 + 2 + 3 + 1 and match the 16 retriable `Shape` values of `RetriableRedeliveryLimitPinUnitTest`. Two fixes introduced new wrong or too strong claims: the WR-05 fix (an incomplete list of TRACE lines, WR-12) and the IN-05 fix (two claims about what the exception carries, WR-10 and WR-11). Round 1 also missed one label (WR-13). Two wording findings follow.
+
+### WR-10: "The exception text itself is unchanged since `v1.7.0_gg7`" is false for a chain that holds a Jackson link
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:36` (Before you upgrade, step 4) and `docs/ROLLOUT-v1.7.0_gg8.md:52` (section A, What to do)
+**Issue:** The sentence was added by the IN-05 fix. In `v1.7.0_gg7`, `doWriteColValue` rethrew a pass-through chain as it was (`git show v1.7.0_gg7:src/main/.../ClickHouseWriter.java`, the `passesThroughUnchanged` branch, `throw e`), and `writeRecordsJson` had no serialization catch (the constant `JSON_ROW_FAILURE_FORMAT` was defined and not used). Since then `throwRebuiltJacksonChain` (`ClickHouseWriter.java:782`, called at 1096 and 1687) replaces every Jackson link, and the top text, with a value-free stand-in whenever the chain holds one, on the RowBinary route and on the JSON route. So the message and the cause chain of such an exception differ from `v1.7.0_gg7`. Row U2 of the same note says "a Jackson link in its cause chain is rebuilt without any record value", the rollback list says "the value-free rebuild of a Jackson chain" is gone after a rollback, and FORK-DELTA's rows on `doWriteColValue` and on the JSON route and the CHANGELOG bullet say the same. The unqualified sentence contradicts them. Only the class and the retry classification are unchanged.
+**Fix:** In both places replace "The exception text itself is unchanged since `v1.7.0_gg7`." by "The exception's class and its retry classification are unchanged since `v1.7.0_gg7`, and so is its text, except that a cause chain that holds a Jackson link is now rebuilt with a value-free text (row U2)."
+
+### WR-11: "this fork does not put the record's offset or the column in the exception" is wrong for the column
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:36`, `:49` (row U3) and `:52`
+**Issue:** After the IN-05 fix, step 4 and the section A advice say the record's offset or the column is not in the exception, and row U3 says "the record's own offset and the column are in the ERROR line of row U2 only". The writer's own `DataException` for a value that could not be written carries the column in its message: ``Failed to write column `<name>`: Kafka value of type ... could not be written as ClickHouse type ...`` (`WRITE_VALUE_CONVERSION_FAILURE_FORMAT` and `WRITE_TYPE_MISMATCH_FAILURE_FORMAT`, `ClickHouseWriter.java:630-633`, built by `buildValueConversionFailureMessage`; both formats exist at `v1.7.0_gg7`). FORK-DELTA's `doWriteColValue` row says "the column, type and class are in `exception.stacktrace`" (D-15). So a reader who follows the note stops looking in the exception for the column, which is there for those shapes. Only the record's own offset is in no exception (the `Processing` wrap carries the batch's topic, partition and offset range). A label of `read from the code` makes the wrong claim a stronger one.
+**Fix:** Step 4 and section A: "this fork does not put the record's own offset in the exception: read it from that ERROR line, which also names the column for every failure shape". Row U3: "the record's own offset is in the ERROR line of row U2 only; the column is also in the message of the writer's `DataException` for a value that could not be written, as in `v1.7.0_gg7`".
+
+### WR-12: The list of TRACE lines in row U2 leaves out the two that print a whole record
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:48` (row U2, How it is known)
+**Issue:** The WR-05 fix says "The TRACE lines are the `LOGGER.trace` calls of `ClickHouseWriter` that write a date, a fixed string, a primitive and the column value." `ClickHouseWriter.java` has more TRACE lines that print record data: `writeJsonRow` (line 1708, `"topic {} partition {} offset {} payload {}"` with the whole serialized row) and `writeRecordsString` (line 1856, `"data: %s"` with the whole String value), and the date lines 555 to 564 print the parsed epoch value. The row claims to cover the JSON route ("on the RowBinary route and on the JSON route") and the String route is one of the three insert routes, so the very lines that expose a record on the JSON route are missing from a list given as the list. The label is `read from the code`, so the omission makes the label stronger than the reading.
+**Fix:** "The TRACE lines are the `LOGGER.trace` calls of `ClickHouseWriter` that write a date, a fixed string, a primitive, the column value, the serialized JSON row (`writeJsonRow`) or the String value (`writeRecordsString`)." Or drop the enumeration and keep "the writer's TRACE lines still print record values".
+
+### WR-13: Row T3 is labelled `measured` as a whole but its default-value claims are derived
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:62` (row T3); the same claim without a label in the CHANGELOG (Important Changes, second bullet), Before you upgrade step 2 and the closes table
+**Issue:** T3 says "At the default of 240000 ms a quiet client V1 insert still ends at the library's own 30 s limit, and a value above 30000 ms does not extend it". `InsertV1WaitBoundPinUnitTest` has no case at the default or above 30000 ms: its quiet case uses 300 ms. The 30 s figure is the gg7 measurement on the unchanged tree (gg7 row T12, 30140 ms), and FORK-DELTA item 14 words it as an inference ("so at the default value of 240000 ms ..."). The step from that run to the default of this release, and the clause about a value above 30000 ms, are derived. The note's own rule says that a row of mixed strength labels each claim, and round 1 fixed T5, S3 and U1 for the same reason.
+**Fix:** Label cell: "bound ends a write stall, a quiet stall and a progress insert: measured; the 30 s end at the default and no extension above 30000 ms: derived (measured on the unchanged tree, with a connector bound above the library limit)".
+
+### IN-07: gg7 row T6 is narrowed by row T6 of this note and is not named in the closes table
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:157-177`
+**Issue:** gg7 row T6 states, without a phase, that an insert during which the server streams progress headers "escapes the bound: it is not ended at `clickhouseClientInsertTimeoutMs` and runs to its natural end". Row T6 of this note says that while the body is still being sent the deadline applies even when progress arrives. The gg7 CHANGELOG bullet with the same statement is covered in the table, the gg7 note row is not (it is reached only through the "What to do" step 3 row, which lists gg8 T6 among the rows).
+**Fix:** Add a row: "Row T6 of section B: an insert during which the server streams progress headers escapes the bound." / "Narrowed: while the body is still being sent the deadline applies (stub-server evidence); the escape after the send stays, measured." / T2, T6.
+
+### IN-08: The reversal lists omit row T4
+
+**File:** `docs/ROLLOUT-v1.7.0_gg8.md:142` and `:151` (row D3)
+**Issue:** After the IN-03 fix both lists name T2, T3, T5, T9 and T10. Row T4 states that client V1 inserts now have a connector bound and supersedes gg7 rows T1 and T12; it reverses with row T3, and the first bullet already says the client V1 wait has no bound again.
+**Fix:** Add T4 to both lists ("rows T2, T3, T4, T5, T9 and T10").
+
+---
+
+round: 2 findings: 6
+
 ## Mandated confirmations (RLS-03)
 
 (a) Every one of the 22 rows (U1 to U4, T1 to T10, S1 to S4, P1, D1 to D3 = 22 rows) was read against its source and label. Not clean: U1's Tuple-element half is not covered by the cited tests (WR-09), T5 labels the `async=true` exception as measured though no test runs it (WR-06), and S3's closing consequence has no label (WR-07). The qualifiers on T6 (stub only for the cut during the send), S1 (Connect's handling read, not measured), S3 (Kafka 3.9 line only), D2 and D3 are honest. FAILED, see WR-06, WR-07, WR-09.
@@ -160,6 +206,34 @@ round: 1 findings: 15
 (l) The Phase 48 edits of the gg6 and gg1 notes are correct as published text. gg6 row D7: the tripwire `customKeysAreForwardedWithDoubledEncodingClientVersionTripwire` is present in the `v1.7.0_gg7` tag and absent from `v1.7.0_gg6`, so "since `v1.7.0_gg7`" is right. gg6 row C2 and its intro: items 17 and 24 say what the row now says (no budget, no removal setting, by decision). gg1 item 6 and its notice: the ZSTD decode on client `0.11.0` was measured by the gg6 tests (`NetworkCompressionPinLiveTest`, `Client011BehaviourPinLiveTest`, gg6 row D13), so "measured on the `v1.7.0_gg6` tree" is accurate. Passes.
 
 (m) Cross-document agreement. Version (`v1.7.0_gg8`, `VERSION` file, CHANGELOG heading `Unreleased`), the rollback target (`pre-v1.7.0_gg8` on `94834763`, FORK-DELTA and note), the change set (six `src/main` files, 428 insertions and 72 deletions in the note and FORK-DELTA), and the client scope (every V1 claim says `client V1`, every V2 claim says `client V2`) agree. Disagreements: the upstream item numbers (WR-02), the CHANGELOG framing of the slash item against the note (WR-01), and the closes table against FORK-DELTA item 14 on the ping (WR-08).
+
+Round 2 verdicts (fresh reviewer; the round-1 verdicts above stand unless this part changes them).
+
+(a) 22 rows: U1 to U4, T1 to T10, S1 to S4, P1, D1 to D3 (22 rows) read again against source and label. The WR-06, WR-07 and WR-09 splits are honest (T5: both gates and `socket_timeout=0` measured, the `async=true` wait read from `awaitInsertResponse`, which `insertBoundMs` does not gate; S3: the cut-insert consequence derived; U1: root column measured, Tuple element read from the code, `SlashColumnRoundTripTest` creates `id`, `a/b`, `a__b` and `café/温度` only, `sl` exists in `RawNameMatrix`). FAILED: T3 labels derived default-value claims as measured (WR-13); U2's TRACE list is incomplete (WR-12); U3 and step 4 deny the column in the exception (WR-11).
+
+(b) Commands, numbers and versions: `git diff --shortstat` for `v1.7.0 HEAD` gives 364/47983/1260 and 43/3578/333, for `v1.7.0_gg7 HEAD` 36/5602/97 and 6/428/72 (per file 32/7, 8/5, 376/55, 10/0, 0/3, 2/2); the test-tree recount re-derived by script (143, 115, 28, 8 tail-identical, 20 others = 14 + 6); `ClickHouseSinkTaskStopUnitTest` 7; `git diff --quiet v1.7.0_gg7 HEAD -- ClickHouseFieldDescriptor.java` exits 0; `ClickHouseHelperClient` changed only by `insertBoundMs`; `gradle` and `build.gradle.kts` one added line each; the T-row figures appear in FORK-DELTA item 14. Passes.
+
+(c) Applies-when against the code path: client V1 for T3 (`awaitInsertResponseV1`, three call sites), client V2 for T2 and T10, both clients for T5 with the `async=true` exception on client V2 only, `exactlyOnce=false` and `exactlyOnce=true` scoping on T8 and S3 unchanged. Passes.
+
+(d) Rollback: order, the target `pre-v1.7.0_gg8` on `94834763` (tag `v1.7.0_gg7`), the gg7 asset facts and the rehearsal statement unchanged by the round-1 fixes. Passes; IN-08 is a wording point on which rows reverse.
+
+(e) No fact about the `v1.7.0_gg8` `release object` and no promise of one in the note. FORK-DELTA now says "will be created" and "not yet published when this was written", which is the process, not a fact about an existing object (IN-01 fix correct). Passes.
+
+(f) No advice empties or destroys data; the one destructive command is gated as in round 1. Passes.
+
+(g) The ERROR line texts match `RECORD_CONTEXT_FAILURE_LOG_FORMAT` (line 626) and `WRITE_VALUE_FAILURE_LOG_FORMAT` (line 623) up to placeholder names; `Record serialization failed` is logged in `writeColumnWithRecordContext` and not for a `RetriableException`. Passes.
+
+(h) The closes table now names F5, R8, T1 and T12, T14, R6, T11, the ping clause of T13, T15, Before-you-upgrade 2, What-to-do 3, the last statement of section F, the first, second and fourth known-limits bullets and four gg7 CHANGELOG statements; the new quotations are verbatim. No planning identifier in the note. Passes, with one residual (IN-07, gg7 T6).
+
+(i) FORK-DELTA: the VERSION row (`v1.7.0_gg8`), the current-version parenthetical, the tag-pair commands, the test-tree row, the after-gg8 rows, the gg7-to-gg8 paragraph, the intro, the pointer and the next-syncer paragraph agree with the note and the `CHANGELOG`; items 13, 14, 17, 20 and 24 agree (`ESCAPED_NEWLINE` removed, three removed lines; `item 24` records the closed follow-up). The `DeclaredNullability` diff shows three removed lines. Passes.
+
+(j) Released `CHANGELOG` sections equal `git show v1.7.0_gg7:CHANGELOG.md` byte for byte (script compare, 71626 bytes); the heading reads `Unreleased` by U-3; the three Phase 47 bullets are unchanged by the fixes. Passes.
+
+(k) No host, connector or planning identifier in the note or the `CHANGELOG` section; `FORK-DELTA item 14`, `17` and `24` are document pointers. Passes.
+
+(l) The Phase 48 edits of the gg6 and gg1 notes are unchanged since round 1 and correct (the tripwire test first appears at `v1.7.0_gg7`). Passes.
+
+(m) Cross-document agreement on the change set, the version, the rollback target and the client scope holds: six `src/main` files, 428 and 72, `v1.7.0_gg8`, `pre-v1.7.0_gg8` on `94834763`, every client V1 and client V2 claim scoped. The `CHANGELOG` bullet on #640 is accurate about the Jackson rebuild, which the note's step 4 and section A advice contradict (WR-10). Passes on the four named items.
 
 ---
 
