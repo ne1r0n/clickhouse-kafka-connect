@@ -27,9 +27,10 @@
 | E-12 | DOC-01, P37-04 | 48-04 | pass |
 | E-13 | DOC-02, P37-04 | 48-04 | pass |
 | E-14 | P37-03 | 48-05 | fail |
-| E-15 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pending (plan 48-05) |
-| E-16 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
-| E-17 | P37-03, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
+| E-15 | P37-03 | 48-05 | pending (plan 48-05) |
+| E-16 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pending (plan 48-05) |
+| E-17 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
+| E-18 | P37-03, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
 
 ### E-01: Pre-flight and baseline on the untouched base, release path recorded frozen
 
