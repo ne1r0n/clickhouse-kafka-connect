@@ -23,7 +23,7 @@
 | E-08 | P37-04 | 48-02 | pass |
 | E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pass |
 | E-10 | P37-01 | 48-03 | pass |
-| E-11 | P37-01 | 48-03 | pending (plan 48-03) |
+| E-11 | P37-01 | 48-03 | pass |
 | E-12 | DOC-01, P37-04 | 48-04 | pending (plan 48-04) |
 | E-13 | DOC-02, P37-04 | 48-04 | pending (plan 48-04) |
 | E-14 | P37-03 | 48-05 | pending (plan 48-05) |
@@ -840,5 +840,70 @@ move_commit: c4ec0cbf25462cd3e8d67d567559a9f8ad85c45a
 Notes. The red was taken with only the three production lines deleted and no test edited: `compileTestJava` exited 1 with `8 errors` (javac's own count; Gradle repeats the first error in its failure summary, which is not a ninth error), 6 in `DeclaredNullabilityTest` (lines 212 twice, 214, 330, 374, 1017), 1 in `NullableTupleMatrixLiveTest` (762) and 1 in `SimpleAggregateTupleRoundTripLiveTest` (117), exactly the plan's expectation. The move then added the constant (`"\\n"` in source, the characters backslash and n) once to `DeclaredNullabilityFixtures` with its one-line Javadoc, replaced the class Javadoc sentence that forbade a copy with one sentence saying `{@link #ESCAPED_NEWLINE}` lives there because production code no longer reads it, and repointed the 8 references. Both live tests keep their `DeclaredNullability` import because the class is still used elsewhere in each file (`normalise`, `LogCapture.attach`), and gain the `DeclaredNullabilityFixtures` import in sorted place. `normalised_equal` is `yes`: against `HEAD` before the commit, each of the three repointed test files equals its parent once `DeclaredNullability.ESCAPED_NEWLINE` is read as `DeclaredNullabilityFixtures.ESCAPED_NEWLINE` and import lines are set aside, and the production file loses exactly the three lines (numstat `0 3`, the class Javadoc paragraph untouched). The filtered run (`*DeclaredNullability*` and `*SourcePlanningIdGuardUnitTest*`, Docker unreachable) read 89 tests, 0 failures: `DeclaredNullabilityTest` 69 and `SourcePlanningIdGuardUnitTest` 18, E-01's counts. The cache-busted testUnit read 2320 tests (E-09's count), 0 failures, 0 errors, 2 skips, 107 XML files, and its per-testcase delta against E-09 removed and added nothing. No JVM crash and no core dump; the default toolchain ran every build. The constant sits at the top of `DeclaredNullabilityFixtures` with no blank line added after it, because the plan's own normalisation rule for that file sets aside only comment lines and the constant line, so an added blank line would read as a changed non-comment line; the first local attempt added one, failed that check, and was redone before anything was pushed or recorded elsewhere (the gate runs below are from the redone tree). The gate was taken on the working tree before the commit; the commit holds exactly those five files (`move_commit`), and the anchor row `declaredType.replace(ESCAPED_NEWLINE, SPACE)  0  COLS-13` is a zero row that stays true, so the mirror still reads 218 rows.
 
 Recorded 2026-11-06T08:48:52Z.
+
+Verdict: pass
+
+### E-11: Tail gate and one full suite on latest x V2 after the 28 IN-01 move
+
+Backs: P37-01 (28 IN-01), ROADMAP Phase 48 criterion 1 and the phase gate ("a full suite on `latest` x V2 if `src/main` changed"), U-4 (one full suite after the move), D-3, the anchors invariant.
+
+An earlier attempt at this suite failed and is recorded here on purpose. It overlapped the tail gate, which was running in the background at the same time, and it ended with 2846 tests, 8 failures and 0 errors: eight `#initializationError` testcases (`ClickHouseSinkTaskSchemalessTest`, `ClickHouseWriterTest`, `Client011BehaviourPinLiveTest`, `EmptyCdcSkipRouteLiveTest`, `NetworkCompressionPinLiveTest`, `NullableTupleMatrixLiveTest`, `RowBinaryClientParityLiveTest`, `WideIntegerTypeGateLiveTest`), each `IllegalStateException: Could not connect to Ryuk at localhost:36898` thrown from `ClickHouseBase.setup` before any test body ran. No assertion failed in that attempt. Its log is `/tmp/gsd48/exec/suite-move.log` (not overwritten) and its XML is kept at `/tmp/gsd48/exec/xml-move-suite-attempt1`. The cause is the likely, not proven, Ryuk start-up contention with the concurrent tail gate; the baseline suite log of E-01 has no such line. The numbers below are from the second run, taken alone after the tail gate had finished, with Docker and colima `vz` checked healthy and no Testcontainers or Ryuk container left over. That the first attempt was red is not hidden by the second.
+
+```sh
+git rev-parse HEAD
+git diff --quiet c4ec0cbf25462cd3e8d67d567559a9f8ad85c45a e0c0c9d8baef011c6dedde43270a380523ced7bf -- src
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 e0c0c9d8baef011c6dedde43270a380523ced7bf > /tmp/gsd48/exec/tail-gate-move.log 2>&1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd48/exec/suite-move.log 2>&1   # attempt 1, overlapped the tail gate, exit 1, 8 initializationError (Ryuk)
+docker ps -a; colima list; ps aux | grep -E 'Gradle Test Executor|verify-merge'   # health and quiet check before attempt 2
+cp -R build/test-results/test /tmp/gsd48/exec/xml-move-suite-attempt1
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd48/exec/suite-move-rerun.log 2>&1   # attempt 2, alone
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd48/exec/xml-move-suite && cp -R build/test-results/test /tmp/gsd48/exec/xml-move-suite
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py dump /tmp/gsd48/exec/xml-move-suite /tmp/gsd48/exec/status-move-suite.tsv
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-testcase-status.py delta /tmp/gsd48/exec/status-base-suite.tsv /tmp/gsd48/exec/status-move-suite.tsv .planning/phases/48-phase-37-dispositions-document-fixes/48-expected-added.tsv --by-class
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py junit /tmp/gsd48/exec/xml-move-suite --class .NullableTupleMatrixLiveTest   # and .SimpleAggregateTupleRoundTripLiveTest, .DeclaredNullabilityTest
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+move_gate_head: e0c0c9d8baef011c6dedde43270a380523ced7bf
+src_unchanged_since_move: yes
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=149 anchor_rows=218 marker_commits=167 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+attempt1_log: /tmp/gsd48/exec/suite-move.log
+attempt1_overlapped_tail_gate: yes
+attempt1_exit: 1
+attempt1_tests: 2846
+attempt1_failures: 8
+attempt1_errors: 0
+attempt1_failing_testcases: 8 x initializationError (Could not connect to Ryuk at localhost:36898)
+attempt1_assertion_failures: 0
+attempt2_log: /tmp/gsd48/exec/suite-move-rerun.log
+attempt2_ran_alone: yes
+suite_exit: 0
+suite_tests: 2923
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+status_delta_suite_by_class: delta: removed=0 added=25 expected=25 match=yes
+ntm_suite_tests: 33
+sat_suite_tests: 2
+dn_suite_tests: 69
+suite_version: 26.10.3.7
+suite_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_version_equals_base: yes
+suite_java: default toolchain
+suite_crash: no
+```
+
+Notes. Attempt 2 read 2923 tests (E-01's 2898 plus the 25 rows of `48-expected-added.tsv`), 0 failures, 0 errors, the 18 named skips (`named=7 state_mismatch_cases=11 unexpected=0`), 156 XML files, exit 0, in 3 min 23 s. The by-class delta against the E-01 dump removes nothing and adds exactly the 25 expected rows. The two live readers of the moved constant ran and passed at E-01's counts (`NullableTupleMatrixLiveTest` 33, `SimpleAggregateTupleRoundTripLiveTest` 2), as did `DeclaredNullabilityTest` (69). `latest` did not drift: the server version and digest equal E-01's. The tail gate ran over `12e2cf17..e0c0c9d8` on the explicit SHA (the E-10 evidence commit, with `src` identical to the move commit), exit 0, `anchor_rows=218`, `anchor_exempt=0`, `result=PASS`. No JVM crash, no core dump and no `-PjavaVersion=21` run.
+
+Recorded 2026-11-06T09:06:16Z.
 
 Verdict: pass
