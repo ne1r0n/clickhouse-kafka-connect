@@ -20,6 +20,11 @@ Each carried `src/main` advisory row, the null assertion, the 28 IN-05(b) items,
 - **U-6 / U-7:** APPROVED editing the published gg6 rollout note (row D7 planning identifier replaced by a public reference; FUT-05 clauses in row C2 and the correction notice replaced by a reference to FORK-DELTA item 17) and the gg1 note (43 IN-02). All of these go into Phase 49's independent review.
 - **U-3, U-8..U-11 (accept all recommendations):** close 27 IN-01 as superseded by Phase 45 (pointers f13d8378, 0c8be1da, 876a9bd1); close the other `src/main` Infos with reasons plus ONE documentation sentence for the double-ERROR-line family (45 IN-04, 46 WR-05); add an additive allow-list unit test over every shipped list (NO edit to `.github/scripts/compare_confluent_archives.py`); keep the removed `KeyToValueTest` path in FORK-DELTA row 134 and name the surviving package path; name the new ledger by file plus `git ls-files '*48-DISPOSITION-LEDGER.md'` in item 20.
 
+### Further user decisions (answered 2026-11-06 after the plan check)
+
+- **U-12:** criterion 3 is read as D-1: two dry-run entries (published gg6-vs-gg7 pair 0/0; uncommitted 12-row gg8 draft against the tip 0/0).
+- **U-13:** APPROVED the four extra test-only pins (40 IN-03, 42 IN-03 part b, 42 IN-04, 47 IN-01), each its own commit, new test methods only, zero deleted lines.
+
 ### Defaults taken by Claude
 
 - **D-1:** the criterion-3 dry run is recorded as two evidence entries: the published gg6 vs gg7 pair with the gg7 list (0 unallowed, 0 stale), and the gg8 draft against the tip (11 exact rows, no wildcards); the tip vs gg7 list fails by design until Phase 49 writes the gg8 list.
