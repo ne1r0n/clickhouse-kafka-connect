@@ -18,7 +18,7 @@
 | E-01 | RLS-01 | 49-01 | pass |
 | E-02 | RLS-01 | 49-01 | pass |
 | E-03 | RLS-01 | 49-01 | pass |
-| E-04 | RLS-01, RLS-04 | 49-01 | pending (plan 49-01) |
+| E-04 | RLS-01, RLS-04 | 49-01 | pass |
 | E-05 | RLS-02, RLS-03 | 49-02 | pending (plan 49-02) |
 | E-06 | RLS-03 | 49-02 | pending (plan 49-02) |
 | E-07 | RLS-03 | 49-02 | pending (plan 49-02) |
@@ -226,4 +226,95 @@ added_lines: 75
 The section holds the five headings in order. The three bullets written earlier (one under Bug Fixes, two under Known Issues) are unchanged line for line. The only broken link of the file is the coming gg8 operator note, which plan 49-02 creates. A client V2 only effect and a client V1 only effect are each stated for their client. The fork's value-free wording for the record context says that a Jackson link in a cause chain is rebuilt without a record value, because the code rebuilds it, and not that every exception is rethrown untouched. The Known Issues bullet for the two ERROR lines is worded after FORK-DELTA item 14.
 
 2026-11-06T13:11:09Z
+Verdict: pass
+
+### E-04: The measured base on the bumped tree and docs/FORK-DELTA.md final for gg8
+
+Backs: RLS-01 (the final FORK-DELTA pass with its raw numbers refreshed once), RLS-04 (the measured base for the totals: testUnit with Docker unreachable and one full suite on ClickHouse `latest` with client V2), D-5, D-9, D-10.
+
+```sh
+./gradlew --stop
+DOCKER_HOST=unix:///nonexistent.sock docker info
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py failed build/test-results/testUnit
+cp -R build/test-results/testUnit <scratch>/xml-base-testunit
+python3 -I .planning/phases/49-release-publication/49-testcase-status.py dump <scratch>/xml-base-testunit <scratch>/status-base-testunit.tsv
+./gradlew --stop
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/49-release-publication/49-evidence-check.py failed build/test-results/test
+cp -R build/test-results/test <scratch>/xml-base-suite
+python3 -I .planning/phases/49-release-publication/49-testcase-status.py dump <scratch>/xml-base-suite <scratch>/status-base-suite.tsv
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+git diff --shortstat v1.7.0 HEAD -- src build.gradle.kts gradle .github   # and the other scopes of the facts below
+python3 -I <scratch>/recount.py recount HEAD   # and v1.7.0_gg7; then: tree
+python3 -I .planning/phases/49-release-publication/49-doc-check.py numbers docs/FORK-DELTA.md 'after gg8: `v1.7.0` to `v1.7.0_gg8`' --wider "364 47983 1260" --narrow "43 3578 333"
+python3 -I .planning/phases/49-release-publication/49-path-check.py 7fed6067f1fe97880d7bc88d00efac4aab00b034 docs/FORK-DELTA.md
+python3 -I .planning/phases/49-release-publication/49-doc-check.py links docs/FORK-DELTA.md
+git add docs/FORK-DELTA.md
+git commit -F <msg file>
+```
+
+```text
+testunit_head: a0438464d0270760ab3bc55b50dedd03547b5e36
+docker_unreachable_proof: exit=1
+testunit_exit: 0
+testunit_tests: 2325
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_count_matches_e19: yes
+testunit_failed_ok: yes
+testunit_jvm_crash: none
+digest_before_suite: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_before_suite: 26.10.3.7
+suite_exit: 0
+suite_tests: 2928
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_failed_ok: yes
+suite_matches_derived: yes
+suite_java: default toolchain
+suite_jvm_crash: none
+digest_after_suite: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+select_version_after_suite: 26.10.3.7
+wider_now: 364 47983 1260
+narrow_now: 43 3578 333
+wider_since_gg7: 36 5602 97
+narrow_since_gg7: 6 428 72
+by_dir_since_gg7: src/test=28 5172 25; src/integrationTest=0 0 0; src/testFixtures=0 0 0; .github=0 0 0; gradle=1 1 0; build.gradle.kts=1 1 0
+src_main_files_since_gg7: ClickHouseHelperClient.java; ClickHouseSinkConfig.java; ClickHouseSinkTask.java; ClickHouseWriter.java; DeclaredNullability.java; Utils.java
+recount_now: 30 14 19 10
+recount_gg7: 30 14 19 10
+test_tree_recount: 143 115
+test_tree_differing: AvroDecimalLogicalTest; AvroNullableUnionVariantTest; ClickHouseBase; ClickHouseCloudTest; ClickHouseHelperClientTest; ClickHouseSinkConnectorIntegrationTest; ClickHouseSinkJdbcPropertiesTest; ClickHouseSinkTaskBufferTest; ClickHouseSinkTaskMappingTest; ClickHouseSinkTaskSchemalessProxyTest; ClickHouseSinkTaskSchemalessTest; ClickHouseSinkTaskStringTest; ClickHouseSinkTaskTest; ClickHouseSinkTaskWithSchemaProxyTest; ClickHouseSinkTaskWithSchemaTest; ClickHouseTestHelpers; ClickHouseWriterColumnContextTest; ClickHouseWriterTest; ColumnTest; ConfluentPlatform; CreateTableStatement; ExactlyOnceTest; FailureTest; LocalProviderTest; ProcessingTest; ProtobufIngestTest; TableTest; UtilsTest
+test_tree_categories: 2; 5; 2; 2; 1; 1; 1; 8; 6
+numbers_check: OK numbers: label 'after gg8: `v1.7.0` to `v1.7.0_gg8`'
+gg7_commands_left: 0
+totals_sentence: yes
+added_lines_ids: none
+path_check_unresolved: .planning/scripts/confluent-archive-allowlist-v1.7.0_gg8.txt; docs/ROLLOUT-v1.7.0_gg8.md
+links_ok: yes
+hygiene_scan_added_lines: clean
+secrets_scan: clean
+anchors_mirror: rows=218 bad=0
+items_checked: items 13, 14, 17, 20 and 24 read against the CHANGELOG section; no contradiction, no FORK-DELTA item edited
+forkdelta_commit: 7fed6067f1fe97880d7bc88d00efac4aab00b034
+forkdelta_commit_files: docs/FORK-DELTA.md
+```
+
+Every planning value held: testUnit 2325 tests with 2 skipped (the Phase 48 figure, unchanged by the bump), the suite 2928 tests with the 18 named skips (the derived total, first measured here), the six `src/main` files since gg7, and the figures of the recounts. The testUnit run took 38 s and the suite 3 min 25 s on the default toolchain, with no JVM crash and no crash file in the repository root. The two runs and the ClickHouse image lookups ran one at a time, never beside the tail gate. The server version and the image digest are the same before and after the suite.
+
+The test-tree recount (143 files, 115 byte-identical, 28 differing) changed the nature of the sentence, not only its figures. The 15 files that FORK-DELTA listed as fork adaptation are still 13 named files plus `LocalProviderTest`, which is now the only file that differs in import order alone (the other file of the earlier pair, `ClickHouseSinkJdbcPropertiesTest`, was changed after `v1.7.0_gg1` by upstream's tail). Of the 14 further files, 8 are byte-identical to upstream's tail `83808df9` (upstream changed them after `v1.7.0`, the fork took the change with its tail merges), and 6 were changed by upstream's tail, by the fork or by both. The row therefore says the other 28 "differ", not that all of them are fork adaptation, and it names the reason of each of the 14 from the log of the file; the category counts sum to 28. One earlier line of the raw-numbers paragraph held a phase number inside a parenthetical ("a Phase 28 review-fix test"); because the plan's own check rejects any phase number on a changed line and that line had to change for the gg8 sentence, the parenthetical now reads "a review-fix test" and nothing else of that line moved.
+
+2026-11-06T13:19:30Z
 Verdict: pass
