@@ -43,8 +43,9 @@ earlier release, start with the `1.7.0_gg7` note's pointers.
   that names the topic, the partition, the offset, the column and the exception class, and rethrows the exception the writer itself produced (a cause chain that holds a Jackson link is rebuilt without any record value: the top carries a value-free text and keeps
   its `IOException` or `RuntimeException` category, every Jackson link above the root is dropped and a Jackson root becomes
   a plain `IOException`, so the chain can be shorter, a run of non-Jackson `IOException`s at the bottom of the chain stays
-  as it was, and every other link is replaced by one of the same kind, with the same error code for a ClickHouse server
-  error and otherwise an `IOException` or `RuntimeException`, that carries a withheld message); its retry classification
+  as it was, and every other link is replaced by one of the same kind with a withheld message: a `RetriableException`, a
+  `DataException` or a `ConnectException` stays one, a ClickHouse server error keeps its error code, and any other link
+  becomes an `IOException` or a `RuntimeException`); its retry classification
   does not change. In the cases the
   tests drive (failures raised by the writer's own serialization; a rejection by the server is not covered, because no test of this repository checks what its message contains),
   no record value reaches the message, the cause chain, a stack trace, the dead letter queue headers or a log at DEBUG or
