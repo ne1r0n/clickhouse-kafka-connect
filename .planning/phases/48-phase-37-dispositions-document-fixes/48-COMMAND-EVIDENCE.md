@@ -18,7 +18,7 @@
 | E-03 | P37-01, P37-02 | 48-02 | pass |
 | E-04 | P37-03 | 48-02 | pass |
 | E-05 | P37-04 | 48-02 | pass |
-| E-06 | P37-04 | 48-02 | pending (plan 48-02) |
+| E-06 | P37-04 | 48-02 | pass |
 | E-07 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-08 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-09 | P37-01, P37-02, P37-03, P37-04 | 48-02 | pending (plan 48-02) |
@@ -593,5 +593,52 @@ ps_mut_worktree_removed: yes
 Notes. The class had 4 cases at the base (E-01 `ps_tests`); it now has 6, all green with Docker unreachable, and the commit adds 75 lines and deletes none. The mutation narrows the unregister catch of `ProxySinkTask.stop()` from `RuntimeException | Error` to `Error` in the worktree only: an unregister failure then leaves `stop()` before the state provider close, so the two new cases fail (provider close count 0; and, in the second case, the provider close failure is not suppressed on the thrown exception) and the four existing cases stay green. The new cases swap a `SinkTaskStatistics` subclass into the task's `statistics` field before `start()`; it unregisters through `super` before it throws, so no MBean stays registered.
 
 Recorded 2026-11-06T08:39:28Z.
+
+Verdict: pass
+
+### E-06: MBean precondition and the CLOSE_COUNT and MBEAN_GONE assertions seen red (47 IN-01)
+
+Backs: P37-04 (47 IN-01: `assertProxyStoppedOnce` assertions that no run had ever seen red, and a task MBean that could be absent before stop), ROADMAP Phase 48 criterion 2, U-13.
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ClickHouseSinkTaskStopUnitTest*' > /tmp/gsd48/exec/cs-green.log 2>&1
+rm -rf /tmp/gsd48/exec/xml-cs-green && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-cs-green
+git diff --numstat -- src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskStopUnitTest.java
+/tmp/gsd48/exec/fmt.sh cs src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskStopUnitTest.java
+git add src/test/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTaskStopUnitTest.java
+git commit -F /tmp/gsd48/exec/msg-cs.txt
+# m1, m2, m3: each in its own worktree at ae31c4a9 (wt-cs1, wt-cs2, wt-cs3), filter '*ClickHouseSinkTaskStopUnitTest*', snapshots cs-mut1..3
+python3 -I /tmp/gsd48/exec/mutate.py <wt-cs1>/src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java '            stateProvider.close();' '            stateProvider.getClass();'
+python3 -I /tmp/gsd48/exec/mutate.py <wt-cs2>/src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java '            statistics.unregisterMBean();' '            statistics.getClass();'
+python3 -I /tmp/gsd48/exec/mutate.py <wt-cs3>/src/main/java/com/clickhouse/kafka/connect/util/jmx/SinkTaskStatistics.java 'MBeanServerUtils.registerMBean(this, name);' 'name.getClass();'
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd48/wt-csN --console=plain testUnit --rerun --tests '*ClickHouseSinkTaskStopUnitTest*' > /tmp/gsd48/exec/cs-mutN.log 2>&1
+cp -R /tmp/gsd48/wt-csN/build/test-results/testUnit /tmp/gsd48/exec/xml-cs-mutN
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed /tmp/gsd48/exec/xml-cs-mut3 --expect 'ClickHouseSinkTaskStopUnitTest#theTaskMBeanIsRegisteredBeforeStopAndGoneAfter'
+git worktree remove --force /tmp/gsd48/wt-csN && git worktree prune
+```
+
+```text
+cs_green_tests: 7
+cs_green_failures: 0
+cs_lines_deleted: 0
+fmt_cs: identical
+cs_commit: ae31c4a9a3bb9d9d88d192d405778efec13d0170
+cs_mut1_tests: 7
+cs_mut1_failures: 7
+cs_mut1_message_hits: 7
+cs_mut2_tests: 7
+cs_mut2_failures: 7
+cs_mut2_message_hits: 7
+cs_mut3_tests: 7
+cs_mut3_failures: 1
+cs_mut3_message_hits: 1
+cs_mut3_failed: ClickHouseSinkTaskStopUnitTest#theTaskMBeanIsRegisteredBeforeStopAndGoneAfter
+cs_mut_worktrees_removed: yes
+```
+
+Notes. The class had 6 test methods (E-01 `cs_tests`, the shipped-strategy method counting 3 rows) and now has 7, all green with Docker unreachable; the commit adds 12 lines and deletes none. m1 replaces the state provider close in `ProxySinkTask.stop()` and turns all 7 cases red, every failure message containing `close count of the state provider`; m2 replaces the statistics unregister and turns all 7 red, every message containing `the task MBean must be unregistered after stop`; neither assertion had been seen red before. m3 removes the MBean registration in `SinkTaskStatistics.registerMBean()`: the six existing cases pass with no MBean ever registered, because their "gone after stop" assertion is satisfied vacuously, and only the new `theTaskMBeanIsRegisteredBeforeStopAndGoneAfter` case fails, with the message `the task MBean must be registered before stop`.
+
+Recorded 2026-11-06T08:40:57Z.
 
 Verdict: pass
