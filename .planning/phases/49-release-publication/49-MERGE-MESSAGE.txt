@@ -1,0 +1,45 @@
+Merge sync/v1.7.0: release v1.7.0_gg8
+
+VERSION v1.7.0_gg8. The connector source changes: six src/main files
+differ from v1.7.0_gg7. Read docs/ROLLOUT-v1.7.0_gg8.md, the operator
+note, before upgrading a connector from v1.7.0_gg7. CHANGELOG.md carries
+the 1.7.0_gg8 section and docs/FORK-DELTA.md is refreshed.
+
+Shipped changes:
+- From upstream's untagged tail (upstream issue 640): a record that fails
+  to serialize logs one ERROR line naming the topic, partition, offset,
+  column and exception class, and no record value reaches the exception
+  message, the cause chain or a log at DEBUG or above (upstream puts the
+  coordinates into the exception message instead).
+- From the same tail (upstream issue 838): a field name that contains a
+  slash in a DESCRIBE response round-trips on both clients. This release
+  only adds tests for it; nothing changes against v1.7.0_gg7.
+- On client V2, an insert whose request body stops being read now ends
+  with a retriable error at clickhouseClientInsertTimeoutMs (four minutes
+  by default); on client V1 the wait for an insert response is bounded
+  the same way. A timed-out insert is not rolled back: with
+  exactlyOnce=false the redelivered batch can be inserted twice. A
+  socket_timeout named in jdbcConnectionProperties overrides the
+  per-insert value.
+- ClickHouseSinkTask.stop() stops the proxy task even when the delivery
+  strategy's stop() throws.
+- A RetriableException out of put is redelivered without bound: a limit
+  by decision, with no retry budget. The retry-budget question for
+  additionalRetriableErrorCodes is closed by decision (no validator).
+- The public constant DeclaredNullability.ESCAPED_NEWLINE is removed from
+  the connector jar; code compiled against it needs its own copy.
+- The JMX MBean version= segment and the client name carry v1.7.0_gg8.
+
+This merge also publishes the .planning/ history since 94834763,
+including the tree-neutral merge of 94834763 into sync/v1.7.0.
+
+The tag v1.7.0_gg8 and the GitHub release are created by the release
+workflow run that follows the green tests.yaml run on this commit; only
+the rollback tag pre-v1.7.0_gg8 is pushed by hand.
+
+Rollback: restore the tree of tag pre-v1.7.0_gg8 (commit 94834763) with
+git read-tree -u --reset plus one commit, as the Rollback section of
+docs/ROLLOUT-v1.7.0_gg8.md describes, and redeploy the v1.7.0_gg7
+release asset.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
