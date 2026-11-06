@@ -138,8 +138,8 @@ Rehearsed on a dry-run merge of commit `b4615700` of the release branch `sync/v1
 Rolling back brings back:
 
 - the `v1.7.0_gg7` MBean `version=` segment and client name, once the `v1.7.0_gg7` archive is deployed (row D1);
-- rows U1 to U3 reversed: the `Record serialization failed` ERROR line and the value-free rebuild of a Jackson chain are gone, and the `DESCRIBE` reader is the one of `v1.7.0_gg7` (section A);
-- rows T2, T3, T5 and T9 reversed: a client V2 body-write stall and the client V1 insert wait have no connector bound again, and the help text of `clickhouseClientInsertTimeoutMs` is the old one (section B);
+- rows U2 and U3 reversed: the `Record serialization failed` ERROR line and the value-free rebuild of a Jackson chain are gone (section A); row U1 changes nothing, because the `DESCRIBE` reader is the same in both;
+- rows T2, T3, T5, T9 and T10 reversed: a client V2 body-write stall and the client V1 insert wait have no connector bound again, the help text of `clickhouseClientInsertTimeoutMs` is the old one, and the ERROR lines of a deadline cut (row T10) do not occur, because their causes are gone (section B);
 - row S1 reversed: a delivery strategy whose `stop()` throws skips the proxy stop again (section C);
 - row P1 reversed: the public constant `DeclaredNullability.ESCAPED_NEWLINE` is back in the jar (section D);
 - on the branch, the `v1.7.0_gg8` documents are gone, this note included.
@@ -148,7 +148,7 @@ The row of this section that states the rollback:
 
 | ID | Effect | Label | Applies when | How it is known |
 |----|--------|-------|--------------|-----------------|
-| D3 | Rollback: tag `pre-v1.7.0_gg8` names `94834763`, the published `custom_build` tip before this release, which is also tag `v1.7.0_gg7`. Redeploy the `v1.7.0_gg7` release asset, not a local rebuild. Rolling back reverses rows U1 to U3, T2, T3, T5 and T9, S1, P1 and D1. | rollback block on a dry-run merge: measured; what reverts: read from the code | this release | The block of step 2, extracted from this note and run unchanged on a dry-run merge of commit `b4615700` of `sync/v1.7.0` onto `94834763` (an earlier commit than the release tip; the block has not changed since), printed `ok`, left `VERSION` at `v1.7.0_gg7`, left no copy of this note and a tree equal to the tag, and a revert restored the merged tree. What reverts follows from `git diff v1.7.0_gg7 v1.7.0_gg8 -- src/main` and from the rows named. |
+| D3 | Rollback: tag `pre-v1.7.0_gg8` names `94834763`, the published `custom_build` tip before this release, which is also tag `v1.7.0_gg7`. Redeploy the `v1.7.0_gg7` release asset, not a local rebuild. Rolling back reverses rows U2, U3, T2, T3, T5, T9, T10, S1, P1 and D1; row U1 changes nothing. | rollback block on a dry-run merge: measured; what reverts: read from the code | this release | The block of step 2, extracted from this note and run unchanged on a dry-run merge of commit `b4615700` of `sync/v1.7.0` onto `94834763` (an earlier commit than the release tip; the block has not changed since), printed `ok`, left `VERSION` at `v1.7.0_gg7`, left no copy of this note and a tree equal to the tag, and a revert restored the merged tree. What reverts follows from `git diff v1.7.0_gg7 v1.7.0_gg8 -- src/main` and from the rows named. |
 
 ## What this release closes from the gg7 note
 
