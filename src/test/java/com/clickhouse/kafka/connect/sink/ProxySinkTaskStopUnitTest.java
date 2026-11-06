@@ -41,6 +41,11 @@ class ProxySinkTaskStopUnitTest {
     private static final String MBEAN_GONE = "the task MBean must be unregistered after stop";
     private static final String WRITER_STOPPED_FIRST = "the writer must have stopped before the state provider closed";
     private static final ErrorReporter NO_ERROR_REPORTER = null;
+    private static final String STATISTICS_FIELD = "statistics";
+    private static final String UNREGISTER_FAILURE = "scripted MBean unregister failure";
+    private static final String UNREGISTER_FAILURE_CONNECTOR = "proxy-stop-unregister-failure";
+    private static final String UNREGISTER_AND_CLOSE_FAIL_CONNECTOR = "proxy-stop-unregister-and-close-fail";
+    private static final String MBEAN_REGISTERED_BEFORE_STOP = "the task MBean must be registered before stop";
 
     private static final class StopFailingDBWriter extends InMemoryDBWriter {
 
@@ -60,6 +65,23 @@ class ProxySinkTaskStopUnitTest {
         @Override
         public void stop() {
             stopCalls++;
+        }
+    }
+
+    /** Unregisters through {@code super} first, so the MBean is gone, and then fails like a broken JMX server. */
+    private static final class UnregisterFailingStatistics extends SinkTaskStatistics {
+
+        private IllegalStateException lastThrown;
+
+        UnregisterFailingStatistics(String connectorName, int taskId) {
+            super(connectorName, taskId);
+        }
+
+        @Override
+        public void unregisterMBean() {
+            super.unregisterMBean();
+            lastThrown = new IllegalStateException(UNREGISTER_FAILURE);
+            throw lastThrown;
         }
     }
 
@@ -100,6 +122,15 @@ class ProxySinkTaskStopUnitTest {
         field.setAccessible(true);
         field.set(task, provider);
         return task;
+    }
+
+    private static UnregisterFailingStatistics unregisterFailingStatisticsFor(String connectorName, ProxySinkTask task)
+            throws ReflectiveOperationException {
+        UnregisterFailingStatistics failing = new UnregisterFailingStatistics(connectorName, task.getId());
+        Field field = ProxySinkTask.class.getDeclaredField(STATISTICS_FIELD);
+        field.setAccessible(true);
+        field.set(task, failing);
+        return failing;
     }
 
     private static SinkTaskStatistics statisticsOf(String connectorName, ProxySinkTask task) {
@@ -184,6 +215,50 @@ class ProxySinkTaskStopUnitTest {
             assertSame(writer.lastThrown, thrown);
             assertTrue(Arrays.asList(thrown.getSuppressed()).contains(closeFailure), FAILURE_SUPPRESSED);
             assertEquals(1, provider.closeCalls, CLOSE_COUNT);
+            assertFalse(isRegistered(statistics), MBEAN_GONE);
+        } finally {
+            statistics.unregisterMBean();
+        }
+    }
+
+    @Test
+    void mBeanUnregisterFailureStillClosesTheStateProviderAndReachesTheCaller() throws Exception {
+        RecordingDBWriter writer = new RecordingDBWriter();
+        CountingStateProvider provider = new CountingStateProvider();
+        ProxySinkTask task = taskWith(UNREGISTER_FAILURE_CONNECTOR, writer, provider);
+        UnregisterFailingStatistics failing = unregisterFailingStatisticsFor(UNREGISTER_FAILURE_CONNECTOR, task);
+        SinkTaskStatistics statistics = statisticsOf(UNREGISTER_FAILURE_CONNECTOR, task);
+        try {
+            task.start();
+            assertTrue(isRegistered(statistics), MBEAN_REGISTERED_BEFORE_STOP);
+            IllegalStateException thrown = assertThrows(IllegalStateException.class, task::stop);
+            assertSame(failing.lastThrown, thrown);
+            assertEquals(1, writer.stopCalls, WRITER_STOPPED_ONCE);
+            assertEquals(1, provider.closeCalls, CLOSE_COUNT);
+            assertFalse(isRegistered(statistics), MBEAN_GONE);
+        } finally {
+            statistics.unregisterMBean();
+        }
+    }
+
+    @Test
+    void mBeanUnregisterFailureStaysTheThrownExceptionWhenTheStateProviderCloseAlsoFails() throws Exception {
+        RecordingDBWriter writer = new RecordingDBWriter();
+        CountingStateProvider provider = new CountingStateProvider();
+        IllegalStateException closeFailure = new IllegalStateException(PROVIDER_CLOSE_FAILURE);
+        provider.failOnClose(closeFailure);
+        ProxySinkTask task = taskWith(UNREGISTER_AND_CLOSE_FAIL_CONNECTOR, writer, provider);
+        UnregisterFailingStatistics failing =
+                unregisterFailingStatisticsFor(UNREGISTER_AND_CLOSE_FAIL_CONNECTOR, task);
+        SinkTaskStatistics statistics = statisticsOf(UNREGISTER_AND_CLOSE_FAIL_CONNECTOR, task);
+        try {
+            task.start();
+            assertTrue(isRegistered(statistics), MBEAN_REGISTERED_BEFORE_STOP);
+            IllegalStateException thrown = assertThrows(IllegalStateException.class, task::stop);
+            assertSame(failing.lastThrown, thrown);
+            assertTrue(Arrays.asList(thrown.getSuppressed()).contains(closeFailure), FAILURE_SUPPRESSED);
+            assertEquals(1, provider.closeCalls, CLOSE_COUNT);
+            assertEquals(1, writer.stopCalls, WRITER_STOPPED_ONCE);
             assertFalse(isRegistered(statistics), MBEAN_GONE);
         } finally {
             statistics.unregisterMBean();
