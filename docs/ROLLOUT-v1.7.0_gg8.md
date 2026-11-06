@@ -92,7 +92,7 @@ What to do: if you rely on the dead letter queue to take a batch out of the way,
 
 | ID | Effect | Label | Applies when | How it is known |
 |----|--------|-------|--------------|-----------------|
-| P1 | The public constant `DeclaredNullability.ESCAPED_NEWLINE` is removed from the connector jar. Nothing in the connector read it; code compiled against it needs its own copy. | read from the code | anyone compiling against the connector jar | `git grep ESCAPED_NEWLINE -- src/main` finds nothing; the constant now lives in the tests' own fixture class `DeclaredNullabilityFixtures`. `git diff v1.7.0_gg7 HEAD` of `DeclaredNullability.java` shows the three removed lines (the Javadoc and the declaration). `FORK-DELTA.md`, item 20. |
+| P1 | The public constant `DeclaredNullability.ESCAPED_NEWLINE` is removed from the connector jar. Nothing in the connector read it; code compiled against it needs its own copy. | read from the code | anyone compiling against the connector jar | `git grep ESCAPED_NEWLINE -- src/main` finds nothing; the constant now lives in the tests' own fixture class `DeclaredNullabilityFixtures`. `git diff v1.7.0_gg7 HEAD` of `DeclaredNullability.java` shows the three removed lines (the Javadoc, the declaration and a blank line). `FORK-DELTA.md`, item 20. |
 
 Two further changes of this release are test-only and have no operator effect, so they get no row: the null binding of an unreadable enum in a `DESCRIBE` type is tied to its scan by a test, and the allow-list wildcard rule now counts real path segments.
 
