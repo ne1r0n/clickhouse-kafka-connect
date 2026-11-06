@@ -31,6 +31,7 @@ import com.clickhouse.kafka.connect.sink.db.helper.ClickHouseHelperClient;
 import com.clickhouse.kafka.connect.sink.db.mapping.Column;
 import com.clickhouse.kafka.connect.sink.db.mapping.ColumnNullabilityPaths;
 import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullability;
+import com.clickhouse.kafka.connect.sink.db.mapping.DeclaredNullabilityFixtures;
 import com.clickhouse.kafka.connect.sink.db.mapping.Table;
 import com.clickhouse.kafka.connect.sink.db.mapping.Type;
 import com.clickhouse.kafka.connect.sink.helper.ClickHouseTestHelpers;
@@ -759,7 +760,7 @@ public class NullableTupleMatrixLiveTest extends ClickHouseBase {
             assertEquals(expected, parsed, "parsed declared nullability must equal the DDL's");
             for (String multiLine : List.of("p1", "p2")) {
                 assertTrue(
-                        rawTypes.get(multiLine).contains(DeclaredNullability.ESCAPED_NEWLINE),
+                        rawTypes.get(multiLine).contains(DeclaredNullabilityFixtures.ESCAPED_NEWLINE),
                         "the non-nullable " + multiLine + " must reach the parser as the escaped multi-line form");
             }
         } finally {

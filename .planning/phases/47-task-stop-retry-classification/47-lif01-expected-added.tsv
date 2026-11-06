@@ -1,0 +1,6 @@
+com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskStopUnitTest	bothStopsRunWhenTheStrategyAndTheProxyTaskThrow()	PASS
+com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskStopUnitTest	stopReachesTheProxyTaskAfterEachShippedStrategy(Shipped)[1] strategy=DIRECT	PASS
+com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskStopUnitTest	stopReachesTheProxyTaskAfterEachShippedStrategy(Shipped)[2] strategy=AT_LEAST_ONCE_BUFFERED	PASS
+com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskStopUnitTest	stopReachesTheProxyTaskAfterEachShippedStrategy(Shipped)[3] strategy=EXACTLY_ONCE_BUFFERED	PASS
+com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskStopUnitTest	stopWithoutADeliveryStrategyStillStopsTheProxyTask()	PASS
+com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskStopUnitTest	strategyStopFailureStillStopsTheProxyTask()	PASS

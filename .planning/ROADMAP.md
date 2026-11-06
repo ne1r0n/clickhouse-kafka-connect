@@ -10,7 +10,8 @@
 - ✅ **v1.7.0_gg4-hardening Dependency Absorption, Discovery Defects & Review Debt** — Phases 25-29 (shipped 2026-10-23)
 - ✅ **v1.7.0_gg5-ci CI & Release Workflow Modernization** — Phases 30-32 (shipped 2026-10-27)
 - ✅ **v1.7.0_gg6-maintenance Maintenance: Dependency, Upstream Tail, Client 0.11.0 & Release** — Phases 33-38 (shipped 2026-11-01)
-- 🚧 **v1.7.0_gg7 Follow-up Debt, Dependency Sweep & Document Cleanup** — Phases 39-44 (in progress)
+- ✅ **v1.7.0_gg7-followup Follow-up Debt, Dependency Sweep & Document Cleanup** — Phases 39-44 (shipped 2026-11-03)
+- 🚧 **v1.7.0_gg8 Gap Closure, Upstream Tail & Release** — Phases 45-49 (in progress)
 
 ## Phases
 
@@ -138,229 +139,256 @@ Phase artifacts: `milestones/v1.7.0_gg6-maintenance-phases/`
 
 </details>
 
-### 🚧 v1.7.0_gg7 Follow-up Debt, Dependency Sweep & Document Cleanup (In Progress)
+<details>
+<summary>✅ v1.7.0_gg7-followup Follow-up Debt, Dependency Sweep & Document Cleanup (Phases 39-44) — SHIPPED 2026-11-03</summary>
 
-**Milestone Goal:** Close every follow-up carried out of `v1.7.0_gg6-maintenance`: F-1 and F-2 in production code, F-3 in the harness, the missing pins, the OI-35 items, FUT-05 and the Phase 37 dispositions. Absorb Dependabot PRs #21 and #22, correct the stale published documents, and publish `v1.7.0_gg7` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA. (`PROJECT.md` calls this milestone `v1.7.0_gg7-maintenance`; `STATE.md` and the tooling key it as `v1.7.0_gg7`.)
+- [x] Phase 39: Dependabot Absorption & Behaviour Pins (4/4 plans) — completed 2026-11-01
+- [x] Phase 40: Helper Client Closing (3/3 plans) — completed 2026-11-02
+- [x] Phase 41: Bounded Insert Timeout (3/3 plans) — completed 2026-11-02
+- [x] Phase 42: Isolated High-Risk Edits (4/4 plans) — completed 2026-11-02
+- [x] Phase 43: Document Fixes & Phase 37 Dispositions (3/3 plans) — completed 2026-11-02
+- [x] Phase 44: Release & Publication (5/5 plans) — completed 2026-11-04
+
+Full phase details: [`milestones/v1.7.0_gg7-followup-ROADMAP.md`](milestones/v1.7.0_gg7-followup-ROADMAP.md)
+Requirements as shipped: [`milestones/v1.7.0_gg7-followup-REQUIREMENTS.md`](milestones/v1.7.0_gg7-followup-REQUIREMENTS.md)
+Milestone audit: [`milestones/v1.7.0_gg7-followup-MILESTONE-AUDIT.md`](milestones/v1.7.0_gg7-followup-MILESTONE-AUDIT.md)
+Phase artifacts: `milestones/v1.7.0_gg7-followup-phases/`
+
+</details>
+
+### 🚧 v1.7.0_gg8 Gap Closure, Upstream Tail & Release (In Progress)
+
+**Milestone Goal:** Close every known gap left by `v1.7.0_gg7-followup`, take upstream's new tail (`main` `9bed6f79` → `83808df9`) while keeping the fork's value-free error policy, and publish `v1.7.0_gg8` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA. (`PROJECT.md` calls this milestone `v1.7.0_gg8-closeout`; `STATE.md` and the tooling key it as `v1.7.0_gg8`.)
 
 **Criteria tags:** *[live]* needs Docker and ClickHouse `latest` × client V2. *[Docker-free]* runs under `testUnit` or as a build or static check with Docker unreachable. *[record]* is a committed evidence file or document whose content is checked. *[operator]* is a user action or decision, confirmed in the user's own words. *[CI]* is read from GitHub Actions.
 
-- [x] **Phase 39: Dependabot Absorption & Behaviour Pins** - gson 2.15.0 and `setup-gradle` 6.4.1 land first, one commit and one gate each. Then Docker-free pins fix today's wrapped-`DataException` classification and today's `custom_*` forwarding on client 0.11.0, and the integration harness counts only its own connector (F-3). No `src/main` change (completed 2026-11-01)
-- [x] **Phase 40: Helper Client Closing** - F-1: a stopping task closes every helper client it created (the writer's `chc`, the V1 per-batch client, the exactly-once Keeper client), pinned by a Mockito-free counting seam seen red first. The Keeper half is its own commit behind its own gate (completed 2026-11-02)
-- [x] **Phase 41: Bounded Insert Timeout** - F-2: a red stall pin comes first. Then a stalled `async=false` insert fails after `clickhouseClientInsertTimeoutMs` as a retriable error, through a per-insert `socket_timeout`; an operator's `socket_timeout` still wins, and the cases that stay unbounded are written down (completed 2026-11-02)
-- [x] **Phase 42: Isolated High-Risk Edits** - OI-35-1 (`originalTopic()` at `Processing.doLogic` line 137), the `Utils.handleException` `RetriableException` pass-through and the FUT-05 start-up WARN land one commit and one gate each, tests first. The state key does not move, and OI-35-2/3 are recorded as limits (completed 2026-11-02)
-- [x] **Phase 43: Document Fixes & Phase 37 Dispositions** - The gg1 half of WR-08, FORK-DELTA's future-tense lines and FUT-05 by ID are fixed, and every Phase 37 row has a disposition with an owner. A row that touches `src/main` is fixed only on the user's approval (completed 2026-11-02)
-- [ ] **Phase 44: Release & Publication** - `v1.7.0_gg7` is published with CHANGELOG, FORK-DELTA, the gg7 allow-list compare and an independently reviewed rollout note. Two green suites, the `--no-ff` merge only on the user's direct approval, one green `tests.yaml` on the published SHA, and the publish run creates the tag
+- [x] **Phase 45: Upstream Tail Merge & Dependency Check** - Upstream `83808df9` lands as one mechanical merge behind `pre-v1.7.0_gg8`. #857 is re-expressed value-free, so the gg3 message and classification pins pass unchanged. Slash column names (#839) round-trip, `fromJsonRow` is reconciled with the gg4 raw-identifier handling, and upstream's three bumps are taken. A manual dependency and CVE check of the merged catalog follows, and only the bumps the user approves land, one commit each (completed 2026-11-05)
+- [x] **Phase 46: Insert Timeout Limits** - Each case that `clickhouseClientInsertTimeoutMs` leaves unbounded today is bounded behind a pin seen red first, or recorded with a measured number: an insert streaming progress headers, a write-side stall, client V1 `future.get()` inserts and non-insert requests. The help text is then rewritten to say what the setting bounds, pinned Docker-free (completed 2026-11-05)
+- [x] **Phase 47: Task Stop & Retry Classification** - `ClickHouseSinkTask.stop()` reaches every cleanup step when a delivery strategy throws, pinned red-first, and the CHANGELOG bullets match the code. A retriable `DataException` gets a retry budget or a pinned, documented limit under both `errors.tolerance` values, and FUT-05 closes with a recorded decision (completed 2026-11-06)
+- [x] **Phase 48: Phase 37 Dispositions & Document Fixes** - The four `src/main` advisory rows, the null assertion, the 28 IN-05(b) items, the broad allow-list glob rows and the review Infos each end fixed (tests first, one commit each) or closed with a written reason, and none is left as "owner: user". IN-03 leaves the published gg6 note, and FORK-DELTA's evidence paths survive archiving (completed 2026-11-06)
+- [ ] **Phase 49: Release & Publication** - `v1.7.0_gg8` is published with CHANGELOG, FORK-DELTA, the gg8 allow-list compare and an independently reviewed rollout note. Two equal green suites, the `--no-ff` merge only on the user's explicit approval, one green `tests.yaml` on the published SHA, the publish run creates the tag, and the two `scratch/clt-07-*` branches leave `origin` after a separate confirmation
 
 ## Phase Details
 
-### Phase 39: Dependabot Absorption & Behaviour Pins
+### Phase 45: Upstream Tail Merge & Dependency Check
 
-**Goal**: The code phases start from a tree that already holds both open Dependabot updates, each in its own commit behind its own gate, so a later red is attributable to one change. The same tree pins the behaviour that later phases could disturb without noticing: how a wrapped `DataException` is classified through `ProxySinkTask.put`, and how client 0.11.0 forwards a `custom_*` key. The integration harness stops counting connectors that are not its own (F-3). `src/main` does not change.
+**Goal**: The code-gap phases start from a tree that already holds upstream's tail, so a later red points at the fork's own change and not at the merge. The tail is merged in the fork's sync shape: scratch branch, rollback tag, one mechanical commit, a per-path checklist, the invariant script and two full runs. Upstream #857's record context is kept only where it carries no record value. An operator still sees the column, the types and the exception class, never the value, and the retry classification does not move. Slash column names (#839) round-trip, and `fromJsonRow` agrees with the fork's raw-identifier names. The dependencies that ship have been checked for open CVEs on the merged catalog, and every bump is the user's decision.
 
-**Depends on**: Nothing in this milestone. Phase 38 published `v1.7.0_gg6` (`72e8ccff`). Dependabot PRs #21 (`setup-gradle` 6.4.0 → 6.4.1) and #22 (gson 2.14.0 → 2.15.0) are open on `origin`. Measured 2026-11-01: `origin/custom_build...sync/v1.7.0` counts 1 and 13, and the 1 is the gg6 merge `72e8ccff` itself.
+**Depends on**: Nothing in this milestone. Phase 44 published `v1.7.0_gg7` (`94834763`). Measured 2026-11-04:
+- local `upstream/HEAD` is `83808df9`, there is no local tag past `v1.7.0`, and upstream's `VERSION` at `83808df9` reads `v1.7.1`;
+- a `git merge-tree` dry run of `83808df9` into `sync/v1.7.0` (`2efb2213`) conflicts in six paths: `.github/workflows/tests.yaml`, `CHANGELOG.md`, `VERSION`, `gradle/libs.versions.toml`, `ClickHouseFieldDescriptor.java` and `ClickHouseHelperClient.java`;
+- the same dry run auto-merges `ClickHouseWriter.java` (#857) and `build.gradle.kts` with no conflict marker.
 
-**Requirements**: DEP-01, DEP-02, PIN-02, PIN-03, PIN-04
+**Requirements**: UPS-01, UPS-02, UPS-03, UPS-04, UPS-05, DEP-01, DEP-02
 
 **Success Criteria** (what must be TRUE):
 
-  1. *[Docker-free, live]* gson 2.15.0 is on `runtimeClasspath` (by `dependencyInsight`) from its own commit, which also updates the gson row of `docs/FORK-DELTA.md`. On that commit `testUnit` and the full suite on `latest` × V2 each pass twice, the second run with `--rerun`, with the 18 named skips (DEP-01).
-  2. *[Docker-free]* `tests.yaml`, `nightly-integration-tests.yaml`, `release.yaml` and `pre-release.yaml` each pin `gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1`, the commit and not the tag object `7296c772…`. `release.yaml` and `pre-release.yaml` keep their existing mutual diff unchanged (the bump touches only the setup-gradle pin line in each), `integrationTests.yaml` is untouched, and the four pin-guard classes pass under `testUnit --rerun`. The FORK-DELTA rows change in the same commit (DEP-02).
-  3. *[Docker-free]* With Docker unreachable, tests drive `ProxySinkTask.put` under `errors.tolerance=none` and `errors.tolerance=all`. They assert today's outcome for each wrapped-`DataException` shape the research named: the `RuntimeException(queryId, DataException)` wrapper, a retriable server code in the chain, and a `SocketTimeoutException` root. For each shape and each tolerance value, the test asserts whether `put` throws a `RetriableException`, fails the task or routes the record to the DLQ. The tests pass on the unchanged code (PIN-02).
-  4. *[Docker-free]* A test shows how client 0.11.0 forwards a `custom_*` key from `jdbcConnectionProperties` (the doubled encoding), with no Docker. Its name and failure message call it a client-version tripwire, to be re-read when the client changes (PIN-03).
-  5. *[live, record]* One recorded `integrationTest` run shows the harness counting only the connector it started (F-3). The fix touches only `src/integrationTest` (PIN-04).
+  1. *[record]* Immediately before the merge, `git ls-remote upstream main`, upstream's tag list and `git merge-tree` were re-run, and their output is recorded. `pre-v1.7.0_gg8` tags the pre-merge tip, and the work happens on a scratch branch. The merge is one mechanical commit with no authored lines. A generated per-path checklist (`.planning/MERGE-CHECKLIST-v1.7.0-tail-3.md`) lists every conflicted path and every auto-merged hunk in a fork-touched file, each with its resolution (UPS-01).
+  2. *[Docker-free, record]* Before #857's code is re-expressed, a recorded measurement shows what its record context and message carry for each writer failure shape. After the repair commit, no error message, DLQ header or log line of a serialization failure carries a record value. The gg3 column/type/class-only pins and the 216-case `WriterFailureClassificationUnitTest` pass unchanged, and every difference from upstream's text is named in FORK-DELTA (UPS-02). Amended by the user's plan-check answers in `45-CONTEXT.md`: the record-loop log line carries topic, partition, offset, column and exception class name; every value-carrying Jackson chain is rebuilt value-free with the links retry classification reads kept, on the RowBinary and the JSON insert routes; the WriterValueFreeFailureUnitTest assertions that pinned the old pass-through and three assertions of upstream's `ClickHouseWriterRecordContextTest` are edited by name; FORK-DELTA lists each.
+  3. *[live]* A column whose name contains a slash (#839) round-trips on ClickHouse `latest` × client V2 through DESCRIBE and insert, with typed read-back, under the fork's raw-identifier matching. `fromJsonRow` is reconciled with the Phase 28 handling: the gg4 NAME-01..NAME-07 pins pass unchanged, and each behaviour that differs from upstream's `fromJsonRow` is pinned by a test and named in FORK-DELTA (UPS-03, UPS-04).
+  4. *[Docker-free, live]* slf4j-simple 2.0.20, spotless 8.10.4 and commons-lang3 3.21.0 resolve on their classpaths (by `dependencyInsight`). `verify-merge-invariants.sh` reads `PASS` on the phase tip with `PRE_TAG=pre-v1.7.0_gg8` and the full upstream SHA, and the anchor count changes in the same commit as the rows it counts. Two full `--rerun` suites on that tip are green on `latest` × V2 (UPS-05).
+  5. *[record, operator]* A manual dependency and CVE check of the merged catalog is recorded. It lists every runtime and test dependency with its latest version and any open advisory, and it names each dependency with an open CVE. Each proposed bump carries the user's decision in their own words. Each approved bump is its own commit, with `testUnit` green with Docker unreachable and the full suite green on `latest` × V2. If none is approved, the record says so and nothing moves (DEP-01, DEP-02).
 
-**Plans**: 4/4 plans complete
+**Plans**: 6/6 plans complete
 
 Plans:
-- [x] 39-01-PLAN.md — execution-start re-read of origin and PRs #21/#22 (absorption mode), then gson 2.15.0 as its own merge with its FORK-DELTA row, gated by the cumulative invariant gate started right after the merge and by testUnit and the full suite twice each (DEP-01)
-- [x] 39-02-PLAN.md — `setup-gradle` 6.4.1 as its own merge pinned by the peeled commit in four workflows, guard classes, testUnit and the cumulative invariant gate (DEP-02)
-- [x] 39-03-PLAN.md — Docker-free pins: the wrapped-`DataException` matrix through `ProxySinkTask.put` under both tolerances, and the `custom_*` client-version tripwire, both formatter-clean under a scoped Spotless check (PIN-02, PIN-03)
-- [x] 39-04-PLAN.md — F-3 harness fix in `src/integrationTest` with a leftover-connector pin seen red against a scratch cross-connector count, scoped Spotless on the touched files, one recorded `integrationTest` class run, and the phase gate (PIN-04)
+- [x] 45-01-PLAN.md — pre-flight re-read and baseline suites on the untouched tip, rollback tag `pre-v1.7.0_gg8`, one mechanical merge of `83808df9` (six conflicts and the dead `describeTableV1` reader on the fork side), the tail-3 checklist and the unedited tail gate, then the bare-merge break inventory (UPS-01)
+- [x] 45-02-PLAN.md — the U-2 upstream-test edits (RecordContextTest compile fix, FieldDescriptorEscapeTest literal JSON) with testUnit green and a full suite red on WRT-10 alone, then the #857 measurement of 15 failure shapes in a worktree probe (UPS-02, UPS-04)
+- [x] 45-03-PLAN.md — every value-carrying Jackson chain on the RowBinary route rebuilt value-free with the links retry classification reads kept (plan-check answers), then U-1 Option A: the writer keeps its own exception and logs topic, partition, offset, column and exception class; Docker-free pins seen red first, five anchor rows, six mutations, live WRT-10, the matrix unchanged (UPS-02)
+- [x] 45-04-PLAN.md — the JSON insert route measured by a worktree probe, then a failure-path-only guard in `writeRecordsJson` through the shared rebuild (bytes sent unchanged), Docker-free pins seen red first, two anchor rows, three mutations, a live JSON run (UPS-02)
+- [x] 45-05-PLAN.md — the `fromJsonRow` literal-fields pin biting against upstream's decode-all, the live slash-column and NAME run on `latest` × V2, the UPS-05 `dependencyInsight` facts with three anchor rows, and the FORK-DELTA rows naming every difference (UPS-03, UPS-04, UPS-05, UPS-02)
+- [x] 45-06-PLAN.md — the DEP-01 record (shipped set first, then test classpaths, plugins, actions, images), the DEP-02 disposition under U-4, and the phase gate: testUnit with Docker unreachable, two `--rerun` suites, the tail gate on explicit SHAs, nothing pushed (DEP-01, DEP-02, UPS-05, UPS-01)
 
-**Research flag**: Standard. Confirm at plan time:
-- whether PRs #21 and #22 are still open and unmerged on `origin`. If the user merged either there, absorb it by merging `origin/custom_build` instead of the PR head, and re-run the anchors gate. The left count of `origin/custom_build...sync/v1.7.0` is then above 1;
-- which FORK-DELTA rows the two bumps change (the research names rows 72, 76 and 79);
-- how the F-3 fix tells the harness's own connector apart, and the cost of the one `integrationTest` run (about 33 minutes in the gg5 nightly).
+**Research flag**: Standard. The fork has a rehearsed recipe: Phase 34 and the earlier tails, the invariant script and the checklist. Settle these at plan time:
+- whether upstream has tagged a release past `v1.7.0`. Upstream's `VERSION` already reads `v1.7.1`. A tag at or past the merge target makes this a tagged sync (FUT-01), so stop, and the user decides the scope;
+- whether `upstream/main` has moved past `83808df9`. If it has, re-measure the conflict set before planning;
+- what #857's `serializationFailure` puts in the text. It formats `cause.getMessage()` into the `DataException` message and logs it at ERROR with the cause. It also wraps every exception that is not a `RetriableException`, including the IO chains, the `ConnectException` and the exact `RuntimeException` that the gg3 policy passes through. Taken as it is, it changes the value-free text and the retry classification at once. Whether the fork keeps the topic, partition and offset coordinates (metadata, not record values) is the user's call at plan time;
+- how upstream's new tests (`ClickHouseWriterRecordContextTest`, `SlashColumnRoundTripTest`, `FieldDescriptorEscapeTest`) are kept: green as they are, or as a named fork difference decided by the user;
+- `build.gradle.kts` gains `connect-json` (version ref `kafka`) on the test classpath. Check it against the Connect API pin and the Confluent test stack;
+- the scope of the DEP-01 check (runtime, test fixtures, Gradle plugins, workflow actions) and where the advisories are read from, since the repository's Dependabot alerts are disabled.
 
 **Note**:
-- These two bumps are the user's requirements. No other dependency moves in this milestone without asking (AGENTS.md).
-- New tests use no Mockito, `mockStatic` or `mockConstruction`, because of the OpenJ9 crash. Use subclass seams and `StubClickHouseServer`.
-- GHSA-chpw-2mqm-95cc does not apply here, so do not claim that 6.4.1 closes a vulnerability.
-- `setup-gradle` 6.4.1 first runs on GitHub at the first push. A push needs the user's direct approval (see User-Owned Gates). So the planner either asks for a scratch push in this phase, or leaves the first run to the Phase 44 rehearsal push.
+- #857 auto-merges into `ClickHouseWriter.java` with no conflict marker (the 2026-11-04 dry run). Only the gg3 pins and the classification matrix catch it, so those gates matter more than conflict markers.
+- The merge takes the fork side of `VERSION`, `CHANGELOG.md` and `tests.yaml`; upstream renames its cloud secrets in a step of its own workflow. The pin guard and the workflow guard classes pass on the phase tip.
+- No fork-authored bump rides inside the sync commit. DEP-02 bumps land after the merge and its repair commits.
+- AGENTS.md: no dependency moves without the user's approval. New tests use no Mockito inline mocks (OpenJ9).
+- This phase pushes nothing.
 
-Phase gate: cache-busted `testUnit` with Docker unreachable, a full suite on `latest` × V2 with `SELECT version()` recorded, the anchors invariant, and an empty `src/main` diff.
+Phase gate: cache-busted `testUnit` with Docker unreachable, two `--rerun` full suites on `latest` × V2 with `SELECT version()` recorded, and the invariant script once on an explicit SHA.
 
-### Phase 40: Helper Client Closing
+### Phase 46: Insert Timeout Limits
 
-**Goal**: A task that stops releases every ClickHouse helper client it created, so connector restarts and rebalances stop leaking HTTP connection pools (F-1). There are three sites:
-- the writer's long-lived `chc`;
-- the throwaway client that the V1 path builds for each batch in `getMutationRequest`;
-- the client that `KeeperStateProvider` creates in exactly-once mode.
+**Goal**: An operator can trust what `clickhouseClientInsertTimeoutMs` says. The gg7 fix bounded a stalled client V2 `async=false` insert and left four cases open: an insert that keeps streaming progress headers, a write-side stall (the server stops reading the request body), the client V1 `future.get()` inserts and the non-insert requests. Each of them is now either bounded, failing within the bound as a retriable error, or written down as a limit with a measured number that shows why it cannot be bounded. The help text then names exactly what the setting bounds.
 
-A failed `start()` and a second `stop()` are both safe. The writer half and the Keeper half land as separate commits, each behind its own gate, so the exactly-once half can be reverted alone. The Keeper half leaves the state read and write paths byte-identical.
+**Depends on**: Phase 45. The tail rewrites the describe path in `ClickHouseHelperClient` and adds #857's wrapper to `ClickHouseWriter`, and the timeout work starts from that tree.
 
-**Depends on**: Phase 39 (dependencies settled, classification pins in place)
-
-**Requirements**: CLS-01, CLS-02, CLS-03, CLS-04
+**Requirements**: TMO-01, TMO-02, TMO-03
 
 **Success Criteria** (what must be TRUE):
 
-  1. *[Docker-free]* A Mockito-free counting seam (`CountingHelperClient` plus a `createHelperClient` factory) counts opens and closes at all three sites on V1 and V2, including a failed `start()` and a double `stop()`. Each case was run red on the unchanged tree, and the result was recorded before any fix (CLS-04).
-  2. *[Docker-free, live]* The writer half is one commit (CLS-01, CLS-02):
-     - `ClickHouseWriter.stop()` closes `chc` once, after the table-sync executor has stopped.
-     - A second `stop()`, and a `stop()` with `chc` null after a failed `start()`, neither throw nor close twice.
-     - Every failure path of `start()` closes the client it opened.
-     - The V1 `getMutationRequest` path closes its throwaway client on every batch, and the returned node still serves the insert.
-     - The field keeps the name `chc`.
-     `testUnit` and a full suite pass on this commit before the Keeper half starts.
-  3. *[Docker-free, live]* The Keeper half is its own later commit. `StateProvider` has a default no-op `close()`. `KeeperStateProvider.close()` closes a client it created and leaves an injected one open. `ProxySinkTask.stop()` stops the writer, unregisters the MBean and closes the state provider in `try/finally`, so a throw in one step still runs the others. The diff of `getStateRecord` and `setStateRecord` is empty. `testUnit` and a full suite, including the exactly-once tests, pass on this commit (CLS-03).
-  4. *[record, Docker-free]* The FORK-DELTA rows and `fork-anchors.txt` rows land in the same commits as the code they describe, and the anchors gate passes.
+  1. *[live, record]* An insert that streams progress headers is either bounded or recorded. Bounded means it ends after `clickhouseClientInsertTimeoutMs` with a retriable error, behind a pin seen red on the unchanged tree. Recorded means its escape is re-measured against a real ClickHouse `latest` server and written into FORK-DELTA as a limit with the measured number (TMO-02).
+  2. *[Docker-free, record]* A write-side stall, the client V1 `future.get()` insert sites and the non-insert requests are each either bounded, with a pin that was run red on the unchanged tree and passes after the fix, or recorded in FORK-DELTA with a measurement that shows why they cannot be bounded (TMO-03).
+  3. *[Docker-free]* Through `ProxySinkTask.put`, each case bounded in this phase surfaces as retriable under `errors.tolerance=none` and `errors.tolerance=all`: the task is not failed and no DLQ record is written. An operator's `socket_timeout` in `jdbcConnectionProperties` still wins. No config key is added, because a new key is a feature and out of scope, and `async_insert` is not touched (TMO-02, TMO-03).
+  4. *[Docker-free]* The `clickhouseClientInsertTimeoutMs` help text is written after criteria 1–3 settle. It says what the setting bounds and what it does not, and a Docker-free test pins the text against the measured list. The `ClickHouseSinkConfig` diff is that text and nothing else (TMO-01).
 
-**Plans**: 3/3 plans complete
+**Plans**: 5/5 plans complete, plus gap closure 46-06
 
 Plans:
-- [x] 40-01-PLAN.md — red baseline before any fix: the counting seam (`CountingHelperClient` plus the writer's `createHelperClient` factory and the Keeper factory constructor), the 22 writer cases and the 7 Keeper and `ProxySinkTask.stop` cases run red on V1 and V2 for the right reason, both red trees saved as committed patches, src restored (CLS-04)
-- [x] 40-02-PLAN.md — writer half as one commit: stop-close tracer, then the `start()` wrapper and the per-batch try-with-resources, FORK-DELTA writer, harness and Known cost 13 rows and four anchor rows in the same commit, then gate A (testUnit and the full suite) with the Keeper half absent (CLS-01, CLS-02, CLS-04)
-- [x] 40-03-PLAN.md — Keeper half as its own later commit: `KeeperStateProvider.close()` closing only its own client, `ProxySinkTask.stop()` in nested try/finally, state paths byte-identical, rows in the same commit, gate B with the exactly-once classes, then the phase gate with the invariant script once on an explicit SHA (CLS-03, CLS-04)
+**Wave 1**
+- [x] 46-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit, full suite on `latest` × V2, anchors, tail gate, XML snapshots), `StubClickHouseServer` raw-socket responders (`notReadingBody`, `readingBodySlowly`, `progressHeaders`, `progressWhileReadingBodySlowly`) with Docker-free premise tests, A1 measured on Linux (TMO-03, TMO-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 46-02-PLAN.md — client V2 write-phase deadline as a private nested class of `ClickHouseWriter` (armed before `client.insert`, disarmed after the body is sent, `cancelTransportRequest`, `RetriableException` naming the setting), `insertBoundMs` operator gate (U-3), 19 pins red first at R0, four mutations, watchdog queue probe, eight anchor rows (TMO-03, TMO-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 46-03-PLAN.md — the client V1 in-JVM pipe measured (capacity, pipe-write stall on both trees), V1 `future.get(timeout)` at the three insert sites (U-2), retriable under both tolerances, operator gate both ways, release pin, 21 pins red first at R0, three mutations, four anchor rows (TMO-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 46-04-PLAN.md — live re-measure on `latest` with numeric range checks (V2 progress escape, default `async_insert`, 64 MiB body behind a slow view, raw-wire progress-while-sending, V1 before/after, rows left by timed-out inserts), non-insert and V2 ping inventory, FORK-DELTA row and Known cost 14 in U-6 wording, scoped to the measurements, with the rollout consequence (TMO-02, TMO-03)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 46-05-PLAN.md — `clickhouseClientInsertTimeoutMs` help text from the measured list (V1 clause chosen by E-09, progress clause qualified) with a Docker-free pin (seen red first, config diff text only, two anchor rows), FORK-DELTA help sentence, phase gate: testUnit with Docker unreachable, two `--rerun` suites re-checked against XML snapshots, tail gate with anchor_rows=214 (TMO-01, TMO-02, TMO-03)
 
 **Research flag**: Settle these before planning:
-- whether `Client.close()` on client 0.11.0 is idempotent (the research did not probe it). The null guard and the double-`stop()` pin hold either way;
-- whether any existing test uses the writer after `stop()`;
-- which three tests reflect on the `chc` field. Keep the name;
-- what Connect does after a `start()` that throws, which is unverified. Close inside the writer's own failure paths, and do not rely on Connect calling `stop()`.
+- Which mechanism reaches each case on client 0.11.0. The gg7 decision used a per-insert `socket_timeout` and rejected a client-level timeout that bounds every request. A mechanism that bounds requests beyond the case being fixed stops for the user.
+- How to make the server stream progress headers. Phase 41 E-06 recorded the escape as inferred with the outcome unmeasured, because a connector body insert streamed no progress header on 26.10.3.7. Find a server setting or query shape that streams them before choosing between bounding and recording.
+- The three V1 `future.get()` sites in `ClickHouseWriter`, and what a bound does to a V1 insert that legitimately runs longer (the same rollout consequence as F-2).
+- Which non-insert requests exist (DESCRIBE, ping, mutation requests, the Keeper state reads and writes), and which of them run on the put path.
 
-**Note**: Keep the diffs additive (`try/finally`, null guards). Upstream PRs #861, #855 and #857 touch the same files; re-read them before planning. `ClickHouseHelperClient` builds a V2 client even for `clientVersion=V1`, so the V1 cases also close a V2 client.
-
-Phase gate: the per-half gates above, then the anchors invariant.
-
-### Phase 41: Bounded Insert Timeout
-
-**Goal**: With `async=false`, an insert into a server that stops answering fails after `clickhouseClientInsertTimeoutMs` as a retriable error, instead of blocking the task forever (F-2). An operator who sets `socket_timeout` in `jdbcConnectionProperties` keeps that value. A red pin proves the hang before the fix, and the cases that stay unbounded are written down. There is no new config key, and `async_insert` is not touched.
-
-**Depends on**: Phase 40 (the same `ClickHouseWriter` and helper-client seam)
-
-**Requirements**: PIN-01, TMO-01, TMO-02, TMO-03
-
-**Success Criteria** (what must be TRUE):
-
-  1. *[Docker-free]* `StubClickHouseServer` has a stall responder. A pin wrapped in `assertTimeoutPreemptively` drives a V2 insert with `async=false` against it. On the unfixed tree the pin was run and failed instead of hanging, and the run is recorded (PIN-01).
-  2. *[Docker-free]* After the fix, a per-insert `socket_timeout` taken from `clickhouseClientInsertTimeoutMs` at the V2 insert sites makes the same pin pass: the insert ends within the bound with a retriable error. A second test puts `socket_timeout` in `jdbcConnectionProperties` and shows that the operator's value is used. `ClickHouseSinkConfig` is unchanged, and so is the `async_insert` (CFG-02) anchor (TMO-01).
-  3. *[Docker-free]* Through `ProxySinkTask.put`, the stalled insert is pinned under `errors.tolerance=none` and `errors.tolerance=all`. Under both it surfaces as retriable: the task is not failed and no DLQ record is written. If either outcome is not retriable on the fixed tree, the phase stops for the user, because classification changes belong to RSK-02 (TMO-02).
-  4. *[record]* FORK-DELTA records two limits: a write-side stall (the peer stops reading the request body) is not bounded, and the three V1 `future.get()` sites stay unbounded. The F-2 rollout item is recorded with its evidence for Phase 44. It states the retriable failure after the timeout, the duplicate risk with `exactlyOnce=false` and the `socket_timeout` override (TMO-03).
-
-**Plans**: 3/3 plans complete
-
-Plans:
-- [x] 41-01-PLAN.md — start baseline measured on the unchanged tree (cache-busted testUnit and the full suite on latest x V2), the stall responder in `StubClickHouseServer` and the 15-case stall pin run red before any fix (the writer-level pin and the `ProxySinkTask.put` pin under both tolerances fail by `assertTimeoutPreemptively`, the two operator guards pass), red tree saved as a committed patch, src restored (PIN-01)
-- [x] 41-02-PLAN.md — pin/seam commit (stub, pins, harness row) kept separate from the fix commit, the two forming one revert unit: a per-insert `socket_timeout` from `clickhouseClientInsertTimeoutMs` at the three V2 insert sites through `ClickHouseHelperClient.setInsertSocketTimeoutV2`, left unset when `jdbcConnectionProperties` names `socket_timeout` (null/blank guarded); JSON-site tracer, all 26 new cases green, a progress-header probe against a real server, FORK-DELTA row, Known cost 14 led by the client V2 scope with the limits, and four anchor rows in the fix commit, then a recorded mutation proving the operator guards discriminate (PIN-01, TMO-01, TMO-02, TMO-03)
-- [x] 41-03-PLAN.md — gate on the fix commit (testUnit and the full suite at the measured baseline plus 26), the F-2 rollout item led by the client V2 scope with labelled evidence recorded for Phase 44, then the merge-invariant script once on an explicit SHA (TMO-01, TMO-02, TMO-03)
-
-**Research flag**: Settle these before planning:
-- Verify on client 0.11.0 that a per-insert `socket_timeout` (through `InsertSettings`) reaches the socket on the insert path, and list every V2 insert site. If it does not reach the socket, stop for the user: the client-level alternative bounds every request, and the user did not choose it.
-- The behaviour change: with the default `clickhouseClientInsertTimeoutMs`, an `async=false` insert that legitimately runs longer starts failing and retrying. TMO-01 takes the existing setting as the bound, and the rollout item states the change.
-- Trace how an operator's `socket_timeout` reaches the client today, so the override test runs the real path.
-
-**Note**: Never use `async=true` or `async_insert` as the fix: each timed-out batch would leak a thread and a connection. No Mockito.
+**Note**: Never use `async=true` or `async_insert` as a fix: each timed-out batch would leak a thread and a connection. No Mockito; extend `StubClickHouseServer` with the responders the pins need. A bound added here fails an insert that legitimately runs longer than the bound, and the rollout item states it.
 
 Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anchors invariant.
 
-### Phase 42: Isolated High-Risk Edits
+### Phase 47: Task Stop & Retry Classification
 
-**Goal**: Three small edits in high-risk files land one commit each, tests first and each behind its own gate, so any one can be reverted alone (the user's decision of 2026-11-01):
-- Exactly-once processing reads the original topic where OI-35-1 found the transformed one, and the state key does not move.
-- `Utils.handleException` keeps an exception that is already a `RetriableException` retriable, and the set of classification rows it changes is written down in advance.
-- A connector that lists a non-transient code in `additionalRetriableErrorCodes` gets a WARN at start-up.
+**Goal**: A stopping task reaches every cleanup step even when one delivery strategy throws, and the published CHANGELOG stops claiming more than the code does. An operator knows what happens to a retriable `DataException`: either Connect stops redelivering it after a bounded budget, or the endless redelivery is pinned and documented as a limit. FUT-05 ends with a recorded decision instead of staying open.
 
-The OI-35 cases that the edit does not fix are written down as limits.
+**Depends on**: Phase 46. RTY-01's changed-row list is written against the final classification pins, including the timeout cases that Phase 46 bounds, and #857's wrapper from Phase 45 is part of the classification it measures.
 
-**Depends on**: Phase 41. The PIN-02 and TMO-02 classification pins are the baseline that RSK-02's row list is measured against.
-
-**Requirements**: RSK-01, RSK-02, RSK-03, RSK-04
+**Requirements**: LIF-01, LIF-02, RTY-01, RTY-02
 
 **Success Criteria** (what must be TRUE):
 
-  1. *[Docker-free, record]* In the RSK-01 commit, `Processing.doLogic` line 137 reads `originalTopic()`. The `KeeperStateProvider` diff is empty, and the state key and the KeeperMap row format are unchanged. All 14 `ProcessingTest` cases are unchanged and pass. The remaining `onPartitionRemoved` keying mismatch is recorded in FORK-DELTA (RSK-01).
-  2. *[Docker-free, record]* Before the RSK-02 change, the expected changed rows are written down: rows of the 184-case `WriterFailureClassificationUnitTest` matrix, and of the PIN-02 and TMO-02 pins. After the change, the actual diff of outcomes equals that list exactly, and a `RetriableException` passed to `handleException` comes out retriable (RSK-02).
-  3. *[Docker-free]* In the RSK-03 commit, a task started with a non-transient code in `additionalRetriableErrorCodes` logs one WARN that names the code and carries no record data, and a transient code logs none. Start-up still succeeds. Nothing validates the codes or budgets retries, the `ClickHouseSinkConfig` diff is empty, and the existing `additionalRetriableErrorCodes` pins are unchanged (RSK-03).
-  4. *[record]* FORK-DELTA states OI-35-2 and OI-35-3 as limits: exactly-once under a topic-renaming SMT needs an injective rename and a partition-preserving SMT. The state key does not change (RSK-04). Each of the three code commits touches only its production file, its tests and its record rows. Each is followed by cache-busted `testUnit` and a full suite.
+  1. *[Docker-free]* `ClickHouseSinkTask.stop()` stops every delivery strategy and still reaches the later cleanup when one strategy's `stop()` throws (`try`/`finally`). The pin uses no Mockito and runs with Docker unreachable. It was run red on the unchanged tree, and the result was recorded before the fix (LIF-01).
+  2. *[record]* The CHANGELOG `stop()` Bug Fixes bullet and its Known Issues bullet describe the behaviour the code now has, and neither claims more than the LIF-01 pin proves (LIF-02).
+  3. *[Docker-free, record]* Through `ProxySinkTask.put` under `errors.tolerance=none` and `errors.tolerance=all`, each retriable `DataException` shape takes one of two outcomes; at least the shapes that PIN-02 and RSK-02 pinned are covered. Either it stops after a bounded retry budget, with the expected changed rows of the classification matrix committed before the change and the actual delta equal to that list, or it keeps today's unbounded redelivery, pinned by a test and documented as a limit in FORK-DELTA (RTY-01).
+  4. *[record, operator]* FUT-05 is closed. The start-up WARN for unvetted `additionalRetriableErrorCodes` stays, a validator lands only if the user approves it in their own words, and the decision is recorded with its reason. FORK-DELTA no longer lists FUT-05 as open (RTY-02).
 
-**Plans**: 4/4 plans complete
+**Plans**: 4/4 plans complete, plus gap closure 47-05
 
 Plans:
-- [x] 42-01-PLAN.md — measured start baseline with per-testcase status dumps, then RSK-01 as one commit: a 6-case Docker-free pin class (direct preCommit and close under a rename, two `limit...` characterization pins, a state-key and BEFORE/AFTER trace guard, a no-SMT guard) seen red, the one-line `originalTopic()` edit at `Processing.doLogic` line 137, the FORK-DELTA row, Known cost 16 rewritten with the OI-35-2/OI-35-3 limits, two anchor rows; gated by cache-busted testUnit and the full suite with a status delta of exactly the added rows (RSK-01, RSK-04)
-- [x] 42-02-PLAN.md — RSK-02 as one commit: the expected changed-row list (none of the 216-execution matrix, PIN-02 or TMO-02; 38 added rows) committed before the change, a 38-case pass-through pin class seen red, the chain-form `RetriableException` pass-through in `Utils.handleException`, the FORK-DELTA row, one Known cost 17 sentence, two anchor rows; gated, with the actual status delta equal to the list (RSK-02)
-- [x] 42-03-PLAN.md — RSK-03 as one commit: a 21-case Docker-free start-up class and one live class seen red, the start-up WARN for `additionalRetriableErrorCodes` outside `Utils.DEFAULT_RETRIABLE_ERROR_CODES` plus 216 in `ClickHouseSinkTask.start`, `ClickHouseSinkConfig` byte-identical, the FORK-DELTA row, Known cost 24, two anchor rows; gated with a status delta of exactly the added rows (RSK-03)
-- [x] 42-04-PLAN.md — phase gate: each code commit reverted alone in a throwaway worktree (clean, exactly inverse, green testUnit), then the merge-invariant script once on an explicit SHA (anchor_rows=190) and the phase facts (three src/main files, no existing test modified, origin unchanged) (RSK-01, RSK-02, RSK-03, RSK-04)
+**Wave 1**
+- [x] 47-01-PLAN.md — evidence opened, baseline on the untouched base (testUnit with Docker unreachable, full suite on `latest` × V2, anchors 216, tail gate, XML snapshots, per-testcase status dumps), `ClickHouseSinkTaskStopUnitTest` (6 cases, reflection seam, no Mockito) red on the unchanged tree with exactly 2 named failures and recorded before the fix with its expected-added rows, the `try`/`finally` in `ClickHouseSinkTask.stop()` (D-1) as its own commit with two anchor rows (216 to 218), its own testUnit gate (+6, delta exact), the both-throw probe, FORK-DELTA item 13 with the `close(partitions)` residual (LIF-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 47-02-PLAN.md — `RetriableRedeliveryLimitPinUnitTest` (108 cases: 22 shapes × both `errors.tolerance` values at the first put, 16 retriable shapes × 2 entries × 2 values over 500 redeliveries), a budget-of-5 mutation turning exactly the 64 redelivery rows red, testUnit gate (+114 over the base, no removed row), the live Connect worker measurement (cadence, `errors.retry.timeout` and `errors.tolerance` without effect, DLQ empty, task RUNNING, `DataException` fails the task) and the source read, FORK-DELTA item 17 rewritten from the measured facts (U-1) (RTY-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 47-03-PLAN.md — FUT-05 closed by the user's decision with its reason in FORK-DELTA items 8 and 24 (U-2: no validator, no budget, no removal setting; the WARN, its pins and `ClickHouseSinkConfig` untouched), and a new `# 1.7.0_gg8, Unreleased` CHANGELOG section with the corrected `stop()` bullets, the published gg7 section byte-identical (U-3) (RTY-02, LIF-02)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 47-04-PLAN.md — phase gate: cache-busted testUnit with Docker unreachable and one `--rerun` full suite on `latest` × V2 re-checked against XML snapshots (18 named skips, +114 cases, no removed row), scope (the only `src/main` change is the `stop()` body; `Processing`, `KeeperStateProvider`, `ProxySinkTask`, `Utils`, `ClickHouseSinkConfig` untouched), tail gate once on an explicit SHA with `anchor_rows=218`, nothing pushed; the Phase 49 hand-off inventory recorded read-only (LIF-01, LIF-02, RTY-01, RTY-02)
+
+**Gap closure** *(after the code review)*
+- [x] 47-05 (no PLAN.md; brief and SUMMARY only) — review fixes WR-01..WR-05 and IN-03: FORK-DELTA writer row, gg8 CHANGELOG both-throw wording, item 17 qualified, redelivery pin cut to 50 per row with the budget-of-5 mutation re-run (no production change)
 
 **Research flag**: Settle these before planning:
-- RSK-01: trace where the line 137 value flows before editing. If it reaches the state key, a KeeperMap row or table routing in a way that changes stored state, stop for the user. A state-key change is out of scope.
-- RSK-02: write the expected row list from the matrix before the code change. A mismatch is a stop, not an expectation update.
-- RSK-03: settle what counts as a transient code (where the list comes from, and where the WARN fires) without adding a config key.
+- What a retry budget can be built on without a new config key: what Connect does with a `RetriableException` thrown from `put`, whether the connector's existing retry settings reach it, and whether a budget needs state that survives a rebalance. If every option needs a new key or new persisted state, record the limit instead.
+- If the user approves a FUT-05 validator: where it lives (`ClickHouseSinkConfig` is a high-risk file), and what it does to a connector whose configuration lists a non-transient code today. A start-up failure would be an upgrade-breaking item for the rollout note.
+- Where the CHANGELOG correction lives: the published `1.7.0_gg7` section, the new `1.7.0_gg8` section, or both.
 
-**Note**: These are the user-approved high-risk edits (`Processing.java`, `Utils.java` and the start-up path). Any diff beyond RSK-01's one line, RSK-02's pass-through or RSK-03's WARN stops for a user decision. Preserve the `BEFORE`/`AFTER` flag sequence (AGENTS.md).
+**Note**: `ClickHouseSinkTask`, `ProxySinkTask` and `Utils` are on the hot path, and `Utils.handleException` decides classification. Any diff beyond LIF-01's `try`/`finally`, RTY-01's budget or pin and RTY-02's approved validator stops for a user decision. Each code change is its own commit and revert unit, behind its own gate. Preserve the `BEFORE`/`AFTER` flag sequence (AGENTS.md).
 
-Phase gate: the per-commit gates above, then the anchors invariant.
+Phase gate: cache-busted `testUnit`, a full suite on `latest` × V2, and the anchors invariant.
 
-### Phase 43: Document Fixes & Phase 37 Dispositions
+### Phase 48: Phase 37 Dispositions & Document Fixes
 
-**Goal**: The published documents stop carrying the errors found at the gg6 close, and every row that Phase 37 left open has a decision and an owner, so the release phase starts with no undecided debt. A row that would change `src/main` changes only on the user's approval. Without approval, the row is deferred with an owner and a re-open trigger.
+**Goal**: The release phase starts with no carried review row left to the user by default. Each `src/main` advisory row from Phases 26–28, the null assertion, the 28 IN-05(b) items, the broad allow-list glob rows and the review Infos ends in one of two ways: fixed, tests first and one commit each, or closed with a written reason. The published documents stop pointing at planning identifiers and at paths that moved when gg7 was archived.
 
-**Depends on**: Phase 42 (documents and dispositions are written against the final code)
+**Depends on**: Phase 47. Dispositions and documents are written against the final code, and 26 IN-02 and 27 IN-01 sit in `ClickHouseHelperClient` and `ClickHouseWriter`, which the tail changed in Phase 45.
 
-**Requirements**: DOC-01, DOC-02
-
-**Success Criteria** (what must be TRUE):
-
-  1. *[record]* `docs/ROLLOUT-v1.7.0_gg1.md` carries the gg1 half of WR-08. Item 6 no longer says "measured" for the `zstd-jni` native and the executable temp folder, and no longer says client V1 "of any line" where two lines were observed. FORK-DELTA lines 6, 139 and 286 (as numbered at the gg6 close, so locate them by content) describe the gg6 publish run in the past tense. FUT-05 is named by ID where the rollout note carries it (DOC-01).
-  2. *[record]* A ledger has one row for each Phase 37 item: the `increment-version.yml` header comment, advisory rows 26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01 and 28 IN-05(b), the broad allow-list glob rows (UF-37-3) and each open review Info. Each row is either fixed, with a commit pointer, or deferred with an owner and a re-open trigger (DOC-02).
-  3. *[operator]* Each row that would change `src/main` shows the user's approval, in their own words, before its fix. The fix lands tests first, in its own commit. A row without approval is deferred.
-  4. *[Docker-free]* The `increment-version.yml` header comment names the guard class that actually guards the file, and the pin guard passes. No existing assertion is deleted or weakened. Phase gate: cache-busted `testUnit`, the anchors invariant, and a full suite on `latest` × V2 if `src/main` changed.
-
-**Plans**: 3/3 plans complete
-
-Plans:
-- [x] 43-01-PLAN.md — measured start baseline (cache-busted testUnit, anchors rows=190, origin, Spotless), then the four "fixed" Phase 37 rows, one commit and one cache-busted gate each: the increment-version.yml header comment (tracer, six workflow guard classes), the approved CHAIN tag-gate step of 37 IN-04 and the zero-jar hint of 37 IN-06 (each tests first, red recorded), the gg4 and gg5 allow-list headers of 37 IN-05 (the 25 and gg6 lists untouched, the gg6 list stays equal to its tag copy); full testUnit delta of exactly the two new testcases (DOC-02)
-- [x] 43-02-PLAN.md — publication facts re-read from the GitHub REST API, then the gg1 half of WR-08 in item 6, FUT-05 in gg6 row C2 with a correction notice (the user's "gg6 note C2 + gg7 handoff"), and FORK-DELTA's gg6 paragraphs (lines 6, 139, 286 at the gg6 close, located by content) in the past tense with tag-based reproduction commands and the closed facts of items 12, 22, 23 (DOC-01)
-- [x] 43-03-PLAN.md — the disposition ledger (17 findings, 18 rows) with a phase-local checker (fixed rows resolved to their commits, the four src/main rows and 28 IN-05(b) deferred in the user's words, 37 IN-05(b) deferring the 25 and gg6 lists, 30-IN-04 re-owned, the 12 carried rows one line each checked against the Phase 37 ledger, the Phase 44 handoff "FUT-05 stays open"), FORK-DELTA items 19-21, then the phase gate: testUnit delta, anchors with no anchored line moved, no assertion weakened, full suite and invariant script not required because src/main is unchanged (DOC-02, DOC-01)
-
-**Research flag**: Settle which file names FUT-05 by ID. One option is rows C2 and C3 of the published `docs/ROLLOUT-v1.7.0_gg6.md`, a published-note edit like gg4's corrections to the gg1 and gg2 notes. The other is the gg7 note, in which case RLS-03's review checks it there. The row sources are `milestones/v1.7.0_gg6-maintenance-phases/37-ci-hardening-advisory-debt/` (`37-ADVISORY-LEDGER.md`, `37-REVIEW*.md`) and `38-release-publication/38-03-SUMMARY.md` (WR-08).
-
-**Note**: This is the last phase that may edit `.github/`, tests, or `src/main` (with approval). The published notes edited here go into Phase 44's independent review.
-
-### Phase 44: Release & Publication
-
-**Goal**: `v1.7.0_gg7` is published on `custom_build`. Operators get an independently reviewed rollout note that states what F-1, F-2 and the four RSK items change for them, with each claim labelled by its evidence. The gg7 allow-list compare passes on the final tree, and the suite is green twice. The published SHA has one green `tests.yaml` run before the user's publish run creates the tag. Every push, the merge and the publish run happen only on the user's direct word.
-
-**Depends on**: Phases 39–43 (it documents and publishes their outcome)
-
-**Requirements**: RLS-01, RLS-02, RLS-03, RLS-04
+**Requirements**: P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02
 
 **Success Criteria** (what must be TRUE):
 
-  1. *[Docker-free]* `VERSION` reads `v1.7.0_gg7`, set by `bump_version.py`, and the generated version agrees after `clean`. `CHANGELOG.md` has a `1.7.0_gg7` section, and `docs/FORK-DELTA.md` is final, with its raw numbers refreshed once. Every `fork-anchors.txt` row changes in the same commit as the count it changes (RLS-01).
-  2. *[Docker-free]* `confluent-archive-allowlist-v1.7.0_gg7.txt` was generated last, from the final tree, with exact-path or literal-prefix rows and the gson rows. A dry run of the compare reads `0 unallowed, 0 stale rows` (RLS-02).
-  3. *[record]* `docs/ROLLOUT-v1.7.0_gg7.md` covers F-1, F-2 and RSK-01..04, each claim labelled `measured`, `read from the code` or `derived`. For F-2 it states the retriable failure after the timeout, the duplicate risk with `exactlyOnce=false`, the `socket_timeout` override and the unbounded cases. Before the push gate, a fresh `gsd-code-reviewer` spawned by the orchestrator reviewed the note together with `CHANGELOG.md`, `docs/FORK-DELTA.md` and the published notes edited in Phase 43. Rounds repeated until one found nothing (at most three unless the user authorises more), and every finding's disposition is recorded (RLS-03).
-  4. *[live]* On the release tip, two full `--rerun` suites pass on one pinned `latest` build with client V2, with `SELECT version()` and the named skips recorded. `testUnit` passes with Docker unreachable, and the anchors gate passes (RLS-04).
-  5. *[operator, CI]* The user gives a direct approval, to the orchestrator and in their own words. After it, `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip. The published SHA has exactly one `tests.yaml` run, and it is green before the user launches `release.yaml`. That publish run creates the tag `v1.7.0_gg7` and the GitHub release (RLS-04).
+  1. *[Docker-free, record]* The four `src/main` advisory rows and the null assertion are each fixed in their own commit with a test seen red first, or closed with a written reason in a new disposition ledger. The rows are 26 IN-02 (`shouldSkipDescribeRow`), 27 WR-01 (`Column.convertEnumValues`), 27 IN-01 (`passesThroughUnchanged`) and 28 IN-01 (`ESCAPED_NEWLINE`). A fix that changes an existing assertion or an operator-visible text lands only after the user's approval in their own words (P37-01).
+  2. *[record]* In that ledger, each 28 IN-05(b) item and each review Info has a fix with a commit pointer, or a named disposition with its reason. No row's disposition is "owner: user" alone (P37-02, P37-04).
+  3. *[Docker-free]* Each broad allow-list glob row (UF-37-3) is narrowed, or justified in the ledger, and the allow-list dry run reads `0 unallowed, 0 stale rows` (P37-03).
+  4. *[record]* The published `docs/ROLLOUT-v1.7.0_gg6.md` names no planning identifier: IN-03 is replaced by a public reference (DOC-01). Every evidence path that FORK-DELTA cites resolves on the phase tip, under `.planning/milestones/` where it moved. The test path carries its package, and item 20 names its ledger by a path that survives the next archive (DOC-02).
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
-- [x] 44-01-PLAN.md — pre-flight and the first upstream recheck, helper copies, VERSION bumped by bump_version.py in one commit with its anchors row (generated constant after clean, baseline v1.7.0_gg6, rows=190, local pre-v1.7.0_gg7), the 1.7.0_gg7 CHANGELOG section, and the final FORK-DELTA pass (false Processing.java claim and stale recounts fixed, tag-pair commands, raw numbers refreshed once) (RLS-01)
-- [x] 44-02-PLAN.md — docs/ROLLOUT-v1.7.0_gg7.md with 33 labelled rows (F-1, F-2 with its 13 claims in order and the progress-header claim as derived (mechanism, not measured), RSK-01..04 with the verbatim WARN and "FUT-05 stays open."), its checker, the archives re-measured and the rollback block rehearsed on a dry-run merge (RLS-03)
-- [x] 44-03-PLAN.md — ORCHESTRATOR-INLINE: fresh gsd-code-reviewer rounds on the note, CHANGELOG, FORK-DELTA and the Phase 43-edited gg6 and gg1 notes (diff base 72e8ccff, `### ID: title` headings, at most three rounds unless the user authorises more), dispositions, documents frozen (RLS-03)
-- [x] 44-04-PLAN.md — the gg7 allow-list generated last from the final tree (gson rows, exact connector rows, local compare dry run `exit 0, 0 unallowed, 0 stale rows`), then the gates on one head: testUnit with Docker unreachable, two full --rerun suites on one pinned latest with client V2, the anchors mirror and the invariant script once on an explicit SHA (RLS-02, RLS-04)
-- [x] 44-05-PLAN.md — rehearsal on the final tip, the second upstream recheck, merge message, approval bundle (gates G0..G5, eight questions), four user handoffs and the orchestrator runbook, local close record; STOPS at ready for the user's direct approval (the push, merge and publish tail is orchestrator-inline on the user's word) (RLS-04)
+**Wave 1**
+- [x] 48-01-PLAN.md — evidence opened, baseline on the untouched base (cache-busted testUnit with Docker unreachable, full suite on `latest` × V2, anchors 218, tail gate, XML snapshots and status dumps; the gg6 and gg7 allow-lists identical to their tags, the compare script md5, the gg6 note's three tag hunks), and the two check scripts written to a plan-time specification, calibrated on the base and frozen: `48-path-check.py` (FORK-DELTA reads 99 candidates, 2 unresolved, 6 by design) and `48-id-scan.py` (3 identifiers in the gg6 note, 0 in its tag copy) (DOC-01, DOC-02, P37-01, P37-03)
 
-**Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (Phase 29 D-05). A defect found here goes back to its phase as a gap. Otherwise it is deferred with a reason, an owner and a re-open trigger in the milestone close record. The recipe is the gg6 one:
-1. Check `origin/custom_build...sync/v1.7.0` for divergence before gating. A left count of 1 is the gg6 merge; more means `origin` moved.
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 48-02-PLAN.md — six additive Docker-free test commits, each shown red by a throwaway mutation: the null binding of the unreadable enum describe on both clients (U-5, 4 cases, `DescribeUnreadableEnumMockServerTest` unchanged), the two-literal-segment rule over every shipped allow-list (U-9, 9 cases, 49 wildcard rows, no script edit), the MBean-unregister failure in `ProxySinkTaskStopUnitTest` (40 IN-03, 2), the MBean precondition in `ClickHouseSinkTaskStopUnitTest` (47 IN-01, 1), blank and repeated entries in `UnvettedRetriableCodesWarnUnitTest` (42 IN-03, 7), the plain `DataException` control (42 IN-04, 2); extended files lose no line; testUnit +25 with an exact delta and the committed `48-expected-added.tsv` (P37-01, P37-02, P37-03, P37-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 48-03-PLAN.md — 28 IN-01 (U-4), the phase's only production change: the three `ESCAPED_NEWLINE` lines leave `DeclaredNullability` (red as 8 compile errors first), the constant moves into `DeclaredNullabilityFixtures` with the 8 references repointed, one commit (`src/main` 0/3, no Javadoc reflow, anchors 218), testUnit with an empty delta; then the tail gate on an explicit SHA and one `--rerun` full suite on `latest` × V2 with the 18 named skips and the two live readers green (P37-01)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 48-04-PLAN.md — documents from the plan-time `48-doc-edits.json`, one commit per document key, facts read first: the gg6 note's row D7 identifier and the FUT-05 clauses of row C2 and the notice (DOC-01, U-6, U-7), the gg1 note (43 IN-02, U-6), FORK-DELTA's 25 and 35 evidence paths under `.planning/milestones/`, the removed `KeyToValueTest` path kept beside its package path (U-10), item 8, item 20 naming `48-DISPOSITION-LEDGER.md` with `git ls-files` (U-11), row 94 (43 IN-01) and the double-ERROR sentence (U-8); resolver `unresolved=0`, gg6 scan 0 hits, allow-lists identical to their tags (DOC-01, DOC-02, P37-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 48-05-PLAN.md — dry runs per D-1 (the published gg6/gg7 pair PASS with 0 unallowed and 0 stale; the phase tip against gg7 with a 14-row exact draft PASS; 12 rows was the plan estimate, E-14 records the miss and E-15 the re-measure), `48-DISPOSITION-LEDGER.md` (57 rows: 10 fixed with evidence pointers, 47 closed with reasons and triggers, measured costs for 26 IN-02 and 27 WR-01, no "owner: user", checked by the plan-time `48-ledger-check.py`), the phase gate (testUnit with Docker unreachable and the full suite on `latest` × V2 at the base plus 25, scope, anchors 218, tail gate on an explicit SHA, nothing pushed) and the Phase 49 hand-off (P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02)
+
+**Research flag**: Settle these before planning:
+- What "the null assertion" of P37-01 and "the 28 IN-05(b) items" of P37-02 are, read from the Phase 28 review and `milestones/v1.7.0_gg7-followup-phases/43-document-fixes-phase-37-dispositions/43-DISPOSITION-LEDGER.md`. That ledger's 28-IN-05(b) row is the `DescribeUnreadableEnumMockServerTest` null assertion.
+- Which review Infos P37-04 covers: the 37-REVIEW and 37-REVIEW-UF Infos carried in the Phase 43 ledger, and any Info that the 39–44 reviews left open.
+- Which allow-lists UF-37-3 may change. The gg6 and gg7 lists belong to published tags and stay identical to their tag copies. A rule in `.github/scripts/compare_confluent_archives.py` changes the release path, and this is the last phase that may edit it.
+- The cost of each row recorded at the Phase 43 deferral: removing 26 IN-02 retargets 17 test sites and an anchor row, and 27 WR-01's reviewed fix changes two existing assertions and an operator-visible text.
+
+**Note**: This is the last phase that may edit `.github/`, tests, `build.gradle.kts` or `src/main`. The gg6 note edited here and the FORK-DELTA changes go into Phase 49's independent review. No existing assertion is weakened.
+
+Phase gate: cache-busted `testUnit`, the anchors invariant, and a full suite on `latest` × V2 if `src/main` changed.
+
+### Phase 49: Release & Publication
+
+**Goal**: `v1.7.0_gg8` is published on `custom_build`. Operators get an independently reviewed rollout note that states what changes for them: the upstream tail, the `stop()` fix, the timeout limits, the retry outcome and the FUT-05 decision, each claim labelled by its evidence. The gg8 allow-list compare passes on the final tree, and the suite is green twice. The published SHA has one green `tests.yaml` run before the publish run creates the tag. The two client-0.11.0 scratch branches leave `origin`. Every push, the merge, the publish run and the branch deletion happen only on the user's direct word.
+
+**Depends on**: Phases 45–48 (it documents and publishes their outcome)
+
+**Requirements**: RLS-01, RLS-02, RLS-03, RLS-04, RLS-05, RLS-06
+
+**Success Criteria** (what must be TRUE):
+
+  1. *[Docker-free]* `VERSION` reads `v1.7.0_gg8`, set by `bump_version.py`, and the generated version agrees after `clean`. `CHANGELOG.md` has a `1.7.0_gg8` section, and `docs/FORK-DELTA.md` is final, with its raw numbers refreshed once. Every `fork-anchors.txt` row changes in the same commit as the count it changes (RLS-01).
+  2. *[Docker-free]* `confluent-archive-allowlist-v1.7.0_gg8.txt` is generated last, from the final tree. Every wildcard row follows at least two literal path segments, and a dry run of the compare reads `0 unallowed, 0 stale rows` (RLS-02).
+  3. *[record]* `docs/ROLLOUT-v1.7.0_gg8.md` labels every effect `measured`, `read from the code` or `derived`. Before the push gate, a fresh `gsd-code-reviewer` spawned by the orchestrator reviews it together with `CHANGELOG.md`, `docs/FORK-DELTA.md` and the gg6 note edited in Phase 48. Rounds repeat until one finds nothing (at most three unless the user authorises more), and every finding's disposition is recorded (RLS-03).
+  4. *[live]* On the release tip, two full `--rerun` suites on one pinned `latest` build with client V2 are equal and green, with `SELECT version()` recorded. `testUnit` passes with Docker unreachable, and the anchors gate passes (RLS-04).
+  5. *[operator, CI]* The user gives an explicit approval, to the orchestrator and in their own words. After it, `custom_build` is a non-force `--no-ff` merge whose tree equals the rehearsed tip. The published SHA has exactly one `tests.yaml` run, and it is green before the publish run creates the tag `v1.7.0_gg8` and the GitHub release (RLS-05). After a separate confirmation in the user's own words, `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` are deleted from `origin`, and `git ls-remote origin` lists neither (RLS-06).
+
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+- [ ] 49-01-PLAN.md — pre-flight on the untouched tree (origin `custom_build` `94834763`, left count 1 before and 0 after, upstream and scratch tips read), then the tree-neutral merge of `94834763` as the first change (U-2), the local retag of `pre-v1.7.0_gg8` to `94834763` (U-1), the baseline pipe picking `v1.7.0_gg7` and the tail gate on the merge; `bump_version.py gg` in one commit with its anchors row and the generated constant after `clean`; the `1.7.0_gg8` CHANGELOG section completed under the `Unreleased` heading (#838, #640, both clients' timeout limits, the retry outcome and the retry-budget decision, the two ERROR lines, the removed constant); a measured base (testUnit with Docker unreachable, expected 2325; one full suite on `latest` × V2, 2928 derived and measured here) and the final FORK-DELTA pass (after-gg8 raw numbers, tag-pair commands, the 143/115 test-tree recount, one measured totals sentence, gg8 paragraphs) (RLS-01, RLS-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 49-02-PLAN.md — `docs/ROLLOUT-v1.7.0_gg8.md` with 22 labelled rows (U1-U4 upstream tail, T1-T10 timeout limits, S1-S4 stop, retry outcome and retry-budget decision, P1 removed constant, D1-D3 identity, archive, rollback), three label forms, no planning identifier, the closes-from-gg7 table; the frozen `49-rehearse.sh` runs the note's rollback block unchanged on a dry-run merge onto `94834763`; the archives rebuilt and compared once (17 differences derived, measured here) (RLS-02, RLS-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 49-03-PLAN.md — ORCHESTRATOR-ONLY: fresh `gsd-code-reviewer` rounds spawned by the orchestrator over the gg8 note, the CHANGELOG section, FORK-DELTA and the Phase 48 edits of the gg6 and gg1 notes, each round's agentId attested, fixes re-proved (fix-only executor dispatch allowed, no executor approval), at most three rounds and a fourth only on the user's direct word (G1), every finding dispositioned, documents frozen (RLS-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 49-04-PLAN.md — the gg8 allow-list generated last from the final tree against a `v1.7.0_gg7` rebuild (exact rows, compare `exit 0, 0 unallowed, 0 stale rows`, three mutations, shipped-list guards); gates on one head, one job at a time: the tail gate once on the explicit SHA (`anchor_rows=218`), testUnit with Docker unreachable, two equal `--rerun` full suites on one pinned `latest` × V2 with `SELECT version()` (RLS-02, RLS-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 49-05-PLAN.md — dry-run merge of the final tip onto `94834763` with the real merge message and the rollback rehearsed on it, upstream recheck 3, the approval bundle (one word per origin step per U-4, ten questions, valid for one gated head), five handoffs (U1 and U2, U3, U4, U5a and U5b, U6), the orchestrator runbook (DATE step of U-3, `M'` build and its rollback rehearsal, contingencies C-1 to C-9), the local close record; stops at ready for the user's direct approval. RLS-05 and RLS-06 are completed only by the orchestrator-inline, user-gated tail that follows, not by this plan (RLS-04, RLS-05, RLS-06)
+
+**Tail** *(orchestrator-inline, not a plan; each origin step only on the user's own word for it)*: the DATE commit, G3 "go" → U1 scratch push, G3b → U2 dry run, G4 "publish" → build `M'` and U3 push, G5 → U4 publish run, G6a → U5a pre-tag push, G6b → U5b `sync/v1.7.0` deletion, and after a separate RLS-06 confirmation G7 → U6 deletion of both `scratch/clt-07-*` branches; evidence from E-21 (completes RLS-05, RLS-06)
+
+**Note**: This phase edits no `src/`, test, `build.gradle.kts`, `gradle/` or `.github/` file (Phase 29 D-05). A defect found here goes back to its phase as a gap. Otherwise it is deferred with a reason, an owner and a re-open trigger in the milestone close record. The recipe is the gg7 one:
+1. Check `origin/custom_build...<scratch branch>` for divergence before gating. A left count above 0 means `origin` moved (the user merges Dependabot PRs there directly).
 2. Push the scratch branch once, at a SHA that no other pushed branch holds, and wait for green.
 3. Merge with `--no-ff` from a throwaway worktree, so the merged tree equals the rehearsed tip.
 4. Push `custom_build` only, and wait for its single run.
-5. The user launches the publish run (`release.yaml`, `dry_run` not ticked). Push `pre-v1.7.0_gg7` by name after it.
-6. Delete the scratch branch.
+5. The publish run (`release.yaml`, `dry_run` not ticked) is launched on the user's word. Push `pre-v1.7.0_gg8` by name after it.
+6. Delete the scratch branch. Delete `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` only after the separate RLS-06 confirmation, by name, in one push.
 
-Before the gate, recheck upstream: tags past `v1.7.0`, and PRs #861, #855 and #857. The CHANGELOG heading carries the merge date in UTC. The approval gates run orchestrator-inline, because executors refuse relayed approvals and `custom_build` is the protected base branch.
+Before the gate, recheck upstream: tags past `v1.7.0`, and the open PRs #861, #855, #854 and #788. The CHANGELOG heading carries the merge date in UTC. The approval gates run orchestrator-inline, because executors refuse relayed approvals and `custom_build` is the protected base branch.
 
 ## User-Owned Gates
 
@@ -368,52 +396,60 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 
 | Gate | Phase | Why it is the user's |
 |------|-------|----------------------|
-| A push of any branch | 39 (optional scratch push), 44 | Every push runs `tests.yaml` once and publishes the local `.planning` tail one way |
-| A `src/main` change outside a phase's declared scope | 40–43 | The fork runs in production |
-| A `src/main` disposition row | 43 | DOC-02 |
-| A change to the exactly-once state key or KeeperMap rows | 42 | Out of scope: it would orphan stored rows. The phase stops |
-| An F-2 mechanism other than a per-insert `socket_timeout` | 41 | The user chose the per-insert mechanism |
+| A push of any branch | any (planned only in 49) | Every push runs `tests.yaml` once and publishes the local `.planning` tail one way |
+| An upstream tag past `v1.7.0` at merge time | 45 | It makes this a tagged sync (FUT-01), and the user decides the scope |
+| How #857's record context is kept, and any change to an assertion of an upstream test that arrives with the merge | 45 | UPS-02: the fork's value-free policy wins over upstream |
+| Each dependency bump | 45 | DEP-01, AGENTS.md |
+| A timeout mechanism that bounds requests beyond the case being fixed (for example a client-level `socket_timeout`) | 46 | The gg7 decision chose a per-insert bound |
+| A change to `KeeperStateProvider`, the exactly-once state key or KeeperMap rows | 46, 47 | Exactly-once consistency; a state-key change would orphan stored rows |
+| A `src/main` change outside a phase's declared scope | 45–48 | The fork runs in production |
+| The FUT-05 validator | 47 | RTY-02 |
+| A Phase 37 fix that changes an existing assertion or an operator-visible text | 48 | P37-01 |
 | Changing or removing an existing assertion | any | Tests are only added, never weakened |
-| A fourth review round on the release documents | 44 | RLS-03 |
-| The `--no-ff` merge into `custom_build` and its push | 44 | RLS-04 |
-| The publish run (`release.yaml`, `dry_run` not ticked) | 44 | The user launches it |
-| Dependabot PRs on `origin`, `scratch/clt-07-*`, `NIGHTLY_ENABLED` | — | They stay with the user, and agents do not touch them |
+| A fourth review round on the release documents | 49 | RLS-03 |
+| The `--no-ff` merge into `custom_build` and its push | 49 | RLS-05 |
+| The publish run (`release.yaml`, `dry_run` not ticked) | 49 | RLS-05 |
+| Deleting `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` from `origin` | 49 | RLS-06: a separate confirmation before that push |
+| `NIGHTLY_ENABLED`, Dependabot settings | — | They stay with the user, and agents do not touch them |
 
 ## Structure Notes
 
-**Why six phases under `coarse` granularity.** The 23 requirements fall into six delivery boundaries, and each is proven differently:
-- the dependencies and baseline pins, by one gate per bump and by Docker-free pins that pass on unchanged code;
-- F-1, by counting pins seen red, with two gated halves;
-- F-2, by a stall pin seen red and then green;
-- the high-risk edits, by one commit and one gate each, with a row list written in advance;
-- the documents and dispositions, by a ledger and the user's approvals;
+**Why five phases under `coarse` granularity.** The 26 requirements fall into five delivery boundaries, and each is proven differently:
+- the upstream tail and the dependency check, by the sync recipe (one mechanical merge, the invariant script, two full runs) and a recorded check with the user's decisions;
+- the timeout limits, by stall pins seen red, or by numbers measured against a real server;
+- the task boundary (`stop()` and retry classification), by Docker-free pins through `ClickHouseSinkTask` and `ProxySinkTask`, with a changed-row list written in advance;
+- the dispositions and documents, by a ledger and the user's approvals;
 - the release, by the publication recipe.
 
-**How this differs from the research's eight-phase shape:**
-- **The Dependabot and pins phases are merged (39).** Neither changes `src/main`, and together they form the baseline that the fixes are measured against. The bumps still land first, each behind its own gate.
-- **PIN-01 sits in the F-2 phase (41), as its first commit.** A red stall pin committed two phases before its fix would turn every gate in between red.
-- **The F-1 writer and Keeper halves share one phase (40),** because CLS-04 pins all three sites. The user's decision that the Keeper half is its own commit and gate is success criterion 3 of that phase.
-- **The documents phase stays separate from the release (43).** DOC-02 edits `.github/increment-version.yml` and may edit `src/main`, and the release phase can edit neither.
+**Folded rather than standalone:**
+- **DEP sits in the sync phase (45).** It is a check plus the bumps the user approves, too thin for a phase of its own. Run after the merge, it reads the catalog that ships: upstream's tail already brings slf4j-simple, spotless and commons-lang3, and adds `connect-json` to the test classpath. gg4's Phase 25 combined the same two kinds of work.
+- **LIF shares a phase with RTY (47).** LIF-01 is one `try`/`finally` and LIF-02 one CHANGELOG pair. Both live at the task boundary in `ClickHouseSinkTask`, next to RTY-02's start-up WARN.
+- **DOC shares a phase with the Phase 37 rows (48),** as in gg7's Phase 43. The new disposition ledger is what DOC-02's rule (a ledger path that survives archiving) applies to, and the gg6 note goes into the same Phase 49 review.
 
-**Order kept:** dependencies first; pins before fixes; F-1 before F-2, because they share the file and the seam; the high-risk edits after F-2, so RSK-02's row list is measured against the final classification pins; documents after code; release last.
+**Order:**
+- The sync comes first, on a scratch branch behind `pre-v1.7.0_gg8`. The tail edits `ClickHouseWriter`, `ClickHouseHelperClient` and `ClickHouseFieldDescriptor`, which Phases 46 and 48 edit too, so every later red points at the fork's own change.
+- The timeout limits (46) come before the retry classification (47), so RTY-01's changed-row list is measured against the final set of retriable outcomes. This is the gg7 order of F-2 before RSK-02.
+- Within each code phase, the pins land red-first before the code they pin.
+- The dispositions and documents (48) come after the code they describe. The release (49) is last and edits only documents.
 
-**Execution model.** Phases run one after another on one working tree (`sync/v1.7.0`). Phases 40, 41 and 42 change `src/main`. Phase 43 changes it only with the user's approval, and Phases 39 and 44 do not change it.
+**Execution model.** Phases run one after another on one working tree, the scratch branch created in Phase 45. Phases 45, 46 and 47 change `src/main`. Phase 48 changes it only for the rows fixed under P37-01, and Phase 49 does not change it.
 
 **Files shared across phases:**
 
 | File | Phases | Rule |
 |------|--------|------|
-| `gradle/libs.versions.toml` | 39 (gson) | One bump per commit |
-| `.github/workflows/*` | 39 (`setup-gradle` SHA), 43 (`increment-version.yml` header comment) | Each edit passes the pin guard; Phase 44 edits none |
-| `ClickHouseWriter`, the helper-client seam | 40, 41 | F-1 lands before F-2 |
-| `StateProvider`, `KeeperStateProvider`, `ProxySinkTask` | 40 (Keeper half) | `getStateRecord` and `setStateRecord` stay byte-identical |
-| `StubClickHouseServer` | 41 | The stall responder lands with the red pin |
-| `Processing.java`, `Utils.java` | 42 | One commit each; a state-key change stops |
-| `src/integrationTest` | 39 (F-3) | One recorded `integrationTest` run |
-| `.planning/scripts/fork-anchors.txt` | 39–44 | Anchor rows change in the same commit as the code |
-| `docs/FORK-DELTA.md` | 39 (gson and `setup-gradle` rows), 40, 41 (limits), 42 (OI-35 rows), 43 (lines 6, 139, 286), 44 (final) | Raw numbers are refreshed once, in Phase 44 |
-| `docs/ROLLOUT-v1.7.0_gg1.md`, `docs/ROLLOUT-v1.7.0_gg6.md` | 43 | Reviewed independently in Phase 44 |
-| `CHANGELOG.md`, `VERSION`, `docs/ROLLOUT-v1.7.0_gg7.md`, the gg7 allow-list | 44 | The allow-list is generated last, from the final tree |
+| `ClickHouseWriter` | 45 (#857), 46 (V1 `future.get()` and insert sites), 48 (27 IN-01) | The tail lands first; the gg3 classification matrix passes unchanged after each phase |
+| `ClickHouseHelperClient`, `ClickHouseFieldDescriptor` | 45 (#839, `fromJsonRow`), 46 (non-insert requests), 48 (26 IN-02) | NAME-01..NAME-07 and the describe pins stay green |
+| `ClickHouseSinkConfig` | 46 (help text), 47 (FUT-05 validator, only if approved) | High-risk file: the diff is the text, or the approved validator, and nothing else |
+| `ClickHouseSinkTask`, `ProxySinkTask`, `Utils` | 47 | One commit and one gate per change |
+| `StubClickHouseServer` | 46 | The responders land with the pins that need them |
+| `gradle/libs.versions.toml`, `build.gradle.kts` | 45 | Upstream's bumps come with the merge; each approved bump is its own commit |
+| `.github/workflows/tests.yaml`, `.github/scripts/compare_confluent_archives.py` | 45 (the merge takes the fork side of `tests.yaml`), 48 (UF-37-3, Infos) | Each edit passes the pin guard; Phase 49 edits none |
+| `.planning/scripts/fork-anchors.txt` | 45–49 | Anchor rows change in the same commit as the code |
+| `docs/FORK-DELTA.md` | 45 (tail rows), 46 (limits), 47 (RTY-01, FUT-05), 48 (evidence paths, item 20), 49 (final) | Raw numbers are refreshed once, in Phase 49 |
+| `CHANGELOG.md` | 45 (the merge takes the fork side), 47 (`stop()` bullets), 49 (`1.7.0_gg8` section) | Each bullet states only what a pin proves |
+| `docs/ROLLOUT-v1.7.0_gg6.md` | 48 (IN-03) | Reviewed independently in Phase 49 |
+| `VERSION`, `docs/ROLLOUT-v1.7.0_gg8.md`, the gg8 allow-list | 49 | The allow-list is generated last, from the final tree |
 
 ## Sync Mechanics (applies to every upstream sync)
 
@@ -469,16 +505,15 @@ Each gate below is a blocking-human checkpoint. `mode: yolo`, `auto_advance: tru
 
 ## Progress
 
-**Execution Order:** Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44.
+**Execution Order:** Phases execute in numeric order: 45 → 46 → 47 → 48 → 49.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 39. Dependabot Absorption & Behaviour Pins | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-01 |
-| 40. Helper Client Closing | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 41. Bounded Insert Timeout | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 42. Isolated High-Risk Edits | v1.7.0_gg7 | 4/4 | Complete    | 2026-11-02 |
-| 43. Document Fixes & Phase 37 Dispositions | v1.7.0_gg7 | 3/3 | Complete    | 2026-11-02 |
-| 44. Release & Publication | v1.7.0_gg7 | 5/5 | In Progress | - |
+| 45. Upstream Tail Merge & Dependency Check | v1.7.0_gg8 | 6/6 | Complete    | 2026-11-05 |
+| 46. Insert Timeout Limits | v1.7.0_gg8 | 6/5 | Complete    | 2026-11-05 |
+| 47. Task Stop & Retry Classification | v1.7.0_gg8 | 5/4 | Complete    | 2026-11-06 |
+| 48. Phase 37 Dispositions & Document Fixes | v1.7.0_gg8 | 5/5 | Complete    | 2026-11-06 |
+| 49. Release & Publication | v1.7.0_gg8 | 0/TBD | Not started | - |
 
 ---
-*Roadmap reorganized at the `v1.7.0_gg6-maintenance` close: 2026-11-01. Milestone `v1.7.0_gg7` phases 39-44 added: 2026-11-01.*
+*Roadmap reorganized at the `v1.7.0_gg7-followup` close: 2026-11-04. Milestone `v1.7.0_gg8` phases 45-49 added: 2026-11-04.*

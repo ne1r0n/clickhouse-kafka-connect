@@ -1,5 +1,44 @@
 # Milestones
 
+## v1.7.0_gg7-followup Follow-up Debt, Dependency Sweep & Document Cleanup (Shipped: 2026-11-03)
+
+**Phases completed:** 6 phases (39–44), 22 plans, 59 tasks
+
+**Delivered:** `v1.7.0_gg7` is published on `custom_build`. It carries the two Dependabot updates that were open (gson 2.15.0 and `setup-gradle` 6.4.1, the latter pinned by commit in all four fork workflows), the closing of the writer's and the Keeper provider's helper client (F-1), a bounded client V2 `async=false` insert (F-2: the insert ends after `clickhouseClientInsertTimeoutMs` as a retriable `SocketTimeoutException`, with the limits recorded), three isolated high-risk edits (`originalTopic()` in `Processing.doLogic`, a `RetriableException` cause-chain pass-through in `Utils.handleException`, and a start-up WARN for unvetted `additionalRetriableErrorCodes`), the document fixes and dispositions for Phase 37, and an independently reviewed rollout note with every claim labelled by its evidence.
+
+**Stats:**
+
+- **Git range:** `14be67ce` (2026-11-01) → merge `94834763` on `custom_build`, 284 commits since `72e8ccff` (the gg6 release).
+- **Timeline:** 2026-11-01 → 2026-11-03 (3 days). Closed 2026-11-04.
+- **Files changed:** 351 since `72e8ccff` (+35,069 / −1,574), mostly `.planning/`. 40 files are outside `.planning/` (+3,169 / −146); 8 files are in `src/main` (+194 / −22).
+- **Suite:** `testUnit` runs 1,826 tests with Docker unreachable. Two full runs on one pinned ClickHouse `latest` (26.10.3.7) × client V2 ran 2,425 tests each, 0 failures, on JDK 21. After the T6 re-open, `ClickHouseSinkConnectorIntegrationTest` was re-run alone (55 passed).
+- **Requirements:** 23/23 complete. The milestone audit is `tech_debt`: requirements 23/23, phases 6/6, integration 15 wired / 5 partial / 0 broken, flows 4/6 complete (documentation and label gaps only).
+- **Published:** `v1.7.0_gg7` is the `--no-ff` merge `94834763` (parents `72e8ccff` and the scratch tip `fc570937`) on `custom_build`, with one green `tests.yaml` run (`41704437509`). The tag and the GitHub release (id 433237218, author `github-actions[bot]`, one asset of 13,564,238 bytes, sha256 `3dbdcf03…`) were created by the publish run `41721771615`; `pre-v1.7.0_gg7` (rollback → `72e8ccff`) was pushed afterwards, and the scratch branch was deleted.
+
+**Closeout type:** `override_closeout`
+
+**Known verification overrides:** 0 newly acknowledged, 0 carried forward. The open-artifact audit was clear. Decisions the user took that count as overrides: JDK 21 as the record of the two full suites; the review loop ended after round 5 with the last fixes (IN-13, IN-14, WR-07, WR-08, IN-15 to IN-17) not read by a fresh reviewer ("Accept without round 6"); the CHANGELOG heading date `2026-11-02` kept although the merge and publish ran on 2026-11-03; only one integration class re-run; the publish dispatch (U4) run by the orchestrator on the user's explicit "dispatch the publish run", which overrides the runbook rule that U4 stays the user's.
+
+**Known gaps:** none against requirements. Carried as tech debt (see `v1.7.0_gg7-MILESTONE-AUDIT.md`):
+
+- **Published wording:** the CHANGELOG Bug Fixes bullet says the task's `stop()` stops everything "even when one of them throws", while `ClickHouseSinkTask.stop()` calls the delivery strategy's `stop()` outside `try`/`finally` (the Known Issues bullet discloses it). The help text of `clickhouseClientInsertTimeoutMs` still says "maximum time" (needs the user's approval to edit `src/main`). IN-03 (a planning identifier in the published gg6 note) is deferred.
+- **Behaviour limits, published knowingly open:** an insert streaming progress headers escapes the bound (measured); a write-side stall, client V1 inserts and non-insert requests stay unbounded; retriable `DataException` cases have no retry budget; FUT-05 stays open; many-to-one rename and partition-changing SMTs are unsupported for exactly-once.
+- **Phase 37 rows needing the user's approval:** four `src/main` rows and one null assertion; the 28 IN-05(b) items.
+- **Documents:** FORK-DELTA cites evidence paths that now live under `.planning/milestones/` and one test path without its package; item 20 names the Phase 43 ledger by a path that moves at the archive.
+- **Repository state:** the scratch branches `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` are still on `origin` (the user's call); upstream pull requests #861, #855 and #857 stay open; upstream's newest tag is still `v1.7.0`.
+- **Authorization note:** the user ran no publication step themselves: the orchestrator ran U1 to U5 on the user's direct words ("publish", "push m", "dispatch the publish run", "run U5").
+
+**Key accomplishments:**
+
+1. gson 2.15.0 and `setup-gradle` 6.4.1 were absorbed as their own `--no-ff` merges, each with its FORK-DELTA row and a cumulative merge-invariant gate; the harness fix makes Datagen counts per connector.
+2. The writer now closes its helper client on stop and on every failed start, and the Keeper provider closes only the client it built, pinned by 29 red-first cases on a Mockito-free counting seam.
+3. A stalled client V2 `async=false` insert now ends after `clickhouseClientInsertTimeoutMs` as a retriable timeout with no DLQ record, in one revert unit with its 15-case pin; the progress-header escape was measured against a real server and recorded as a limit.
+4. Three isolated edits (`originalTopic()`, the `RetriableException` pass-through, the FUT-05 start-up WARN) each revert alone, with 6, 38 and 21 Docker-free pins and the invariant script at `PASS` with 190 anchor rows.
+5. The Phase 37 leftovers each have a fixed commit or an owned deferral in an 18-row ledger, and the gg1 and gg6 notes and FORK-DELTA were corrected against facts re-read from the GitHub API.
+6. The release held: an independently reviewed note of 33 labelled rows, the 18-row allow-list proven in both polarities, two equal green suites, a green dry run from a scratch branch, one green `tests.yaml` on the merge, and a publish run that created the tag and release under the workflow token.
+
+---
+
 ## v1.7.0_gg6-maintenance Maintenance: Dependency, Upstream Tail, Client 0.11.0 & Release (Shipped: 2026-11-01)
 
 **Phases completed:** 6 phases (33–38), 23 plans, 57 tasks

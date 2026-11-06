@@ -42,6 +42,14 @@
 | E-26 | RLS-04 | 44-04 | pass |
 | E-27 | RLS-04 | 44-05 | pass |
 | E-28 | RLS-04 | 44-05 | pass |
+| E-29 | RLS-04 | 44-05 | pass |
+| E-30 | RLS-04 | 44-05 | pass |
+| E-31 | RLS-04 | 44-05 | pass |
+| E-32 | RLS-04 | 44-05 | pass |
+| E-33 | RLS-04 | 44-05 | pass |
+| E-34 | RLS-04 | 44-05 | pass |
+| E-35 | RLS-04 | 44-05 | pass |
+| E-36 | RLS-04 | 44-05 | pass |
 
 ### E-01: Pre-flight: origin, pull requests and upstream re-read, helpers checked, premise confirmed on the untouched tree
 
@@ -1712,3 +1720,193 @@ The go covers U1 and U2 only. The merge message sits under `.planning`, so the F
 2026-11-03T13:30:00Z
 
 Verdict: pass
+
+### E-29: U1 scratch push and its tests.yaml run, user-reported (user-authorised, run by the orchestrator)
+
+Backs: RLS-04 (the dry-run half; the push of the scratch branch).
+
+```text
+user_instruction: the user's own message "делай сам по документу то что нужно" (do it yourself per the document), after the E-28 go for U1 and U2 and the earlier answer "You run them (Recommended)"
+pre_checks_1_to_9: all as expected (custom_build 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236; left count 0, right count 283; commit; same-as-gated; scripts-same-as-gated; no origin ref holds the SHA; no sync/v1.7.0 on origin; no v1.7.0_gg7 tag; heading date 2026-11-02 against UTC 2026-11-03, accepted as a deviation in E-28)
+pushed_sha: fc5709374adcf87a1537e88ded8fb2968be331c3
+push: git push origin "${SHA}":refs/heads/sync/v1.7.0, output "[new branch] fc5709374adcf87a1537e88ded8fb2968be331c3 -> sync/v1.7.0"
+tests_yaml_run_id: 41687285579
+tests_yaml_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/41687285579
+tests_yaml_head_sha: fc5709374adcf87a1537e88ded8fb2968be331c3
+tests_yaml_runs_for_sha: 1
+tests_yaml_conclusion: success
+```
+
+Origin `custom_build` was not touched. The pushed head holds `.planning` commits after the gated head only.
+
+2026-11-03T17:50:00Z
+
+Verdict: pass
+
+### E-30: U2 release dry run, user-reported (user-authorised, run by the orchestrator)
+
+Backs: RLS-04 (the dry-run half only; RLS-04 stays pending until the publication entries exist).
+
+```text
+dispatch: gh workflow run release.yaml --ref sync/v1.7.0 -f dry_run=true
+run_id: 41688323407
+run_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/41688323407
+run_name: Release sync/v1.7.0 (dry run)
+event: workflow_dispatch
+headBranch: sync/v1.7.0
+headSha: fc5709374adcf87a1537e88ded8fb2968be331c3
+conclusion: success
+steps: every step success except "Publish release", skipped; draft created, checked, shown to have no tag, deleted
+select_baseline_notice: v1.7.0_gg7 is compared with v1.7.0_gg6 under .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+compare_notice: exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg6, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+artifact: archive-compare-report present (the RESULT line was not read; the compare step's notice above is the verdict)
+check_archive_notice: clickhouse-kafka-connect-v1.7.0_gg7.zip 13564238 bytes sha256=3dbdcf03e5825073b7b0535718c9998a5e5754c0ae05a17502bbf4c6d69472af
+tests_yaml_check_notice: successful tests.yaml runs on fc5709374adcf87a1537e88ded8fb2968be331c3: 1
+cleanup_notices: no draft and no tag dry-run-41688323407-1 remain; tag v1.7.0_gg7 is absent
+releases_listed: v1.7.0_gg6, v1.7.0_gg5 only
+v1_7_0_gg7_tag_on_origin: none
+```
+
+A green dry run is not a pass for the whole publication; the publish run (U4) is the first to exercise the Publish release step for this release.
+
+2026-11-03T17:55:00Z
+
+Verdict: pass
+
+### E-31: The user's own publish message and the merge commit M, built after it
+
+Backs: RLS-04 (O2 pre-checks and O3: the merge commit M, built locally and detached, nothing pushed).
+
+```text
+publish_message: "publish" (the user's own message to the orchestrator, 2026-11-03, a second time after the reply that U1 and U2 were green; received directly, not relayed)
+o2_a_custom_build: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 (unmoved)
+o2_b_date: heading 2026-11-02, UTC 2026-11-03; kept as a recorded deviation by the user's answer in E-28 (no edit)
+o2_c_upstream: newest tag v1.7.0 (no tag past v1.7.0)
+o2_d: X0 is an ancestor of sync/v1.7.0 (equals the pushed head); same-as-gated and scripts-same-as-gated both printed; the merge message unchanged since 43f6c9da7c2d4c9f8cf5d4fac44c112594fd9c7c
+X0: fc5709374adcf87a1537e88ded8fb2968be331c3 (origin sync/v1.7.0 reads the same)
+M: 9483476322e0d331e81c5b92ac266a18f0f01450
+m_parents: 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236 fc5709374adcf87a1537e88ded8fb2968be331c3
+m_tree_equals_x0: yes
+m_subject: Merge sync/v1.7.0: release v1.7.0_gg7
+m_gsd_ws_arg_present: no
+m_version: v1.7.0_gg7
+m_author: the repository's configured identity
+ref_keeping_m: refs/gsd/release-m-v1.7.0_gg7 (local only)
+rollback_block_on_m: exit 0, output ok, status before and after empty, VERSION v1.7.0_gg6, note absent
+rollback_cleanup: throwaway worktrees removed, branch rollback-v1.7.0_gg7 deleted, one worktree left
+local_custom_build_ref: 3a3a15a9ae064ffe09c696b8bb87bce23419d463 (unmoved)
+pushed: nothing
+```
+
+M exists only in this local repository. The next step is U3, the user's push of M to `custom_build`.
+
+2026-11-03T18:20:00Z
+
+Verdict: pass
+
+### E-32: U3 push of M to custom_build and its single tests.yaml run, user-reported (user-authorised, run by the orchestrator)
+
+Backs: RLS-04 (the push of M to the default branch).
+
+```text
+user_instruction: "push m" (the user's own message to the orchestrator, 2026-11-03)
+pre_checks_1_to_7: all as expected (custom_build 72e8ccff; two parents 72e8ccff and fc570937; tree-equal; same-as-gated; scripts-same-as-gated; no origin ref holds M; left count 0; heading 2026-11-02 against UTC 2026-11-03, accepted in E-28)
+push: git push origin "${M}":refs/heads/custom_build, output "72e8ccff..94834763  9483476322e0d331e81c5b92ac266a18f0f01450 -> custom_build" (fast-forward, no force)
+origin_custom_build_after: 9483476322e0d331e81c5b92ac266a18f0f01450
+runs_for_M: exactly one, tests.yaml, event push, run id 41704437509, conclusion success
+runs_for_M_120s_after_completion: still one; no release.yaml run
+tag_v1_7_0_gg7_on_origin: none
+```
+
+2026-11-03T18:50:00Z
+
+Verdict: pass
+
+### E-33: U4 publish dispatch, user-reported (dispatched by the orchestrator on the user's explicit override)
+
+Backs: RLS-04 (the publish dispatch).
+
+```text
+user_instruction: "dispatch the publish run" (the user's own message, 2026-11-03), given after the orchestrator said U4 stays the user's by the runbook and offered to dispatch only on that explicit wording; recorded as an override of the runbook rule that U4 is always the user's
+pre_checks_1_to_4: custom_build 9483476322e0d331e81c5b92ac266a18f0f01450 (M); one green tests.yaml run on M (E-32); no v1.7.0_gg7 tag on origin or locally; no release.yaml run in progress
+dispatch: gh workflow run release.yaml -R ne1r0n/clickhouse-kafka-connect --ref custom_build (no dry_run input)
+run_id: 41721771615
+run_url: https://github.com/ne1r0n/clickhouse-kafka-connect/actions/runs/41721771615
+run_name: Release custom_build (publish)
+event: workflow_dispatch
+headBranch: custom_build
+headSha: 9483476322e0d331e81c5b92ac266a18f0f01450
+conclusion: success
+publish_release_step: success
+draft_steps: skipped (four)
+release_url: https://github.com/ne1r0n/clickhouse-kafka-connect/releases/tag/v1.7.0_gg7
+```
+
+2026-11-03T19:40:00Z
+
+Verdict: pass
+
+### E-34: The publish run read back: release, tag, asset, uploader and steps
+
+Backs: RLS-04 (read-only reads of the publish run).
+
+```text
+steps: every step success except the four draft steps, skipped
+compare_notice: exit 0, 0 unallowed, 0 stale rows, baseline v1.7.0_gg6, allow-list .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+select_baseline_notice: v1.7.0_gg7 is compared with v1.7.0_gg6 under .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt
+artifact: archive-compare-report present (its last line was not read)
+tests_yaml_check_notice: successful tests.yaml runs on 9483476322e0d331e81c5b92ac266a18f0f01450: 1
+tag_absent_notice: tag v1.7.0_gg7 is absent (before publishing)
+tag_ref: refs/tags/v1.7.0_gg7, object type commit, sha 9483476322e0d331e81c5b92ac266a18f0f01450
+release_id: 433237218
+release_author: github-actions[bot]
+release_draft: false
+release_prerelease: false
+assets: exactly one, clickhouse-kafka-connect-v1.7.0_gg7.zip, 13564238 bytes, digest sha256:3dbdcf03e5825073b7b0535718c9998a5e5754c0ae05a17502bbf4c6d69472af, uploader github-actions[bot]
+archive_digest_equals_dry_run: yes (the dry run E-30 and this run built the same bytes)
+custom_build_after: 9483476322e0d331e81c5b92ac266a18f0f01450
+other_releases: v1.7.0_gg6 (430511927), v1.7.0_gg5 (426690002), unchanged
+pull_requests: #21 and #22 read state closed, merged true, merged_at 2026-11-03T19:33:58Z, base custom_build; custom_build still reads M, so GitHub marked them merged once M brought their head commits (an inference, not a read of the cause)
+origin_heads: custom_build, main, sync/v1.7.0, scratch/clt-07-client-0.11.0, scratch/clt-07-prebump-0.9.6
+upstream_newest_tag: v1.7.0
+```
+
+2026-11-03T19:45:00Z
+
+Verdict: pass
+
+### E-35: U5 pre-tag push, scratch deletion and pull-request clean-up, user-reported (run by the orchestrator on the user's word)
+
+Backs: RLS-04 (the clean-up handoff).
+
+```text
+user_instruction: "run U5" (the user's own message to the orchestrator)
+pre_checks: custom_build 9483476322e0d331e81c5b92ac266a18f0f01450; pre-v1.7.0_gg7 resolves to 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236; pre-v1.7.0_gg7 absent on origin; v1.7.0_gg7 on origin at 9483476322e0d331e81c5b92ac266a18f0f01450 (made by the publish run)
+tag_push: git push origin refs/tags/pre-v1.7.0_gg7, output "[new tag] pre-v1.7.0_gg7 -> pre-v1.7.0_gg7"
+scratch_deletion: git push origin --delete refs/heads/sync/v1.7.0, output "[deleted] sync/v1.7.0"
+pull_requests: no action taken by the orchestrator; #21 and #22 read closed and merged
+local_side_effect: the git fetch of the pre-check brought the tag v1.7.0_gg7 into the local repository (the handoff allows a local copy)
+```
+
+2026-11-04T07:30:00Z
+
+Verdict: pass
+
+### E-36: Final reads after publication: refs, release, pull requests
+
+Backs: RLS-04 (final read-only reads).
+
+```text
+origin_tags: pre-v1.7.0_gg7 72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236; v1.7.0_gg7 9483476322e0d331e81c5b92ac266a18f0f01450
+origin_heads: custom_build (9483476322e0d331e81c5b92ac266a18f0f01450), main, scratch/clt-07-client-0.11.0, scratch/clt-07-prebump-0.9.6; sync/v1.7.0 is gone
+release: id 433237218, draft false, author github-actions[bot], one asset clickhouse-kafka-connect-v1.7.0_gg7.zip 13564238 bytes, uploader github-actions[bot]
+tag_ref_type: commit
+pull_requests: #21 closed merged true; #22 closed merged true (the assumption of the handoff held: both became merged once M landed)
+upstream: newest tag v1.7.0; main 83808df9a0993cf49b2ceaa4633c782e550c0180
+```
+
+2026-11-04T07:35:00Z
+
+Verdict: pass
+
+Note on the time stamps: the UTC stamps at the end of E-29 to E-36 were written by the orchestrator as approximate times, not read from a clock, and several are earlier than GitHub's own times (the verifier found E-33 stamped 19:40Z against a run created at 21:26:10Z). The run ids, SHAs, digests and results in those entries were read from GitHub and are exact; for times, the run and push times that GitHub reports are authoritative.

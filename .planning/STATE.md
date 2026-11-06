@@ -1,40 +1,40 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.7.0_gg7
-milestone_name: Follow-up Debt, Dependency Sweep & Document Cleanup
-current_phase: 44
+milestone: v1.7.0_gg8
+milestone_name: Gap Closure, Upstream Tail & Release
+current_phase: 49
 current_phase_name: Release & Publication
-status: verifying
-stopped_at: Completed 44-05-PLAN.md (READY-FOR-USER-APPROVAL)
-last_updated: "2026-11-02T23:50:43.696Z"
-last_activity: 2026-11-02
-last_activity_desc: Phase 44 execution started
-state_head: 185d29687394f9fc82c56539454ff9bf7f7139dd
+status: planning
+stopped_at: Phase 48 complete, ready to plan Phase 49
+last_updated: "2026-11-06T11:24:10.607Z"
+last_activity: 2026-11-06
+last_activity_desc: Phase 48 complete, transitioned to Phase 49
+state_head: c8283bda7405c85affbc5ca45ed16f02207ba6f7
 progress:
-  total_phases: 6
-  completed_phases: 5
-  total_plans: 22
-  completed_plans: 22
-  percent: 83
+  total_phases: 5
+  completed_phases: 4
+  total_plans: 20
+  completed_plans: 20
+  percent: 80
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-01 after starting milestone v1.7.0_gg7)
+See: .planning/PROJECT.md (updated 2026-11-04 after starting milestone v1.7.0_gg8)
 
 **Core value:** Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
-**Current focus:** Phase 44 — Release & Publication
+**Current focus:** Phase 46
 
 ## Current Position
 
-Phase: 44 (Release & Publication) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-11-02 — Phase 44 execution started
+Phase: 49 — Release & Publication
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-06 — Phase 48 complete, transitioned to Phase 49
 
-Progress: [████████░░] 83%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -80,6 +80,11 @@ Progress: [████████░░] 83%
 | 41 | 3 | - | - |
 | 42 | 4 | - | - |
 | 43 | 3 | - | - |
+| 44 | 5 | - | - |
+| 45 | 6 | - | - |
+| 46 | 6 | - | - |
+| 47 | 5 | - | - |
+| 48 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -364,7 +369,22 @@ Placement:
 - [Phase 44]: 44-02: the note carries no gradlew.bat sentence (git status empty after the rollback block, git 2.50.1); the forward path uses plain git switch and revert
 - [Phase 44]: 44-02: 44-note-check.py --only ignores rows of the other sections so the partial-note verify blocks pass on the finished note
 - [Phase 44]: Plan 44-05: the CHANGELOG heading date 2026-11-02 was not edited; the bundle (question 5) and the runbook (C-7) put keep versus date-fix to the user, recommending keep as the freeze date
-- [Phase 44]: Plan 44-05: the publication tail evidence numbers start at E-21 because E-20 is the plan 44-04 hygiene re-run; RLS-04 stays pending until E-21 to E-29 show the publication
+
+**`v1.7.0_gg8` roadmap (2026-11-04):** five phases under `coarse` granularity:
+1. the upstream tail `83808df9` and the dependency check (45);
+2. the insert timeout limits (46);
+3. the task `stop()` fix and retry classification (47);
+4. the Phase 37 dispositions and document fixes (48);
+5. the release (49).
+
+Placement:
+- The sync lands first, on a scratch branch behind `pre-v1.7.0_gg8`, because the tail edits `ClickHouseWriter`, `ClickHouseHelperClient` and `ClickHouseFieldDescriptor`, which Phases 46 and 48 edit too.
+- The dependency check (DEP) is folded into Phase 45 and runs after the merge, on the catalog that ships: upstream's tail already brings slf4j-simple, spotless and commons-lang3 and adds `connect-json` to the test classpath.
+- The timeout limits come before the retry classification, so RTY-01's changed-row list is measured against the final retriable outcomes (the gg7 order of F-2 before RSK-02).
+- LIF shares Phase 47 with RTY (both at the task boundary in `ClickHouseSinkTask`). DOC shares Phase 48 with the Phase 37 rows, the gg7 Phase 43 shape.
+- The release (49) edits only documents. The publish run and the deletion of the two `scratch/clt-07-*` branches are separate user gates.
+
+Measured at roadmap time (2026-11-04): a `git merge-tree` dry run of `83808df9` into `sync/v1.7.0` conflicts in six paths and auto-merges #857 into `ClickHouseWriter.java` with no marker. #857's `serializationFailure` formats `cause.getMessage()` into the `DataException` text and wraps every exception that is not a `RetriableException`, so the gg3 value-free pins and the 184-case classification matrix are the gate for UPS-02.
 
 ### Pending Todos
 
@@ -373,33 +393,13 @@ None.
 ### Blockers/Concerns
 
 - [Env]: This Claude Code shell sets `TESTCONTAINERS_HOST_OVERRIDE` to the literal string `"null"`, which breaks Testcontainers' Ryuk reaper. Run Gradle as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew ...`, as `config.json`'s `build_command`/`test_command` already do.
-- [Tooling]: The `gh` CLI is not installed locally (deliberately, D-11). CI runs are checked through the unauthenticated GitHub REST API (`actions/runs?head_sha=`, `/jobs`, `/artifacts`; 60 req/hr) or the web UI.
 - [GSD]: Worktree isolation quirk, dormant but recurring: a plain `gsd_run query dispatch-isolation` read re-persists the sentinel. Any deliberate degrade must be re-forced with `--force-isolation ` immediately before each dispatch.
-- [Publish] 2026-10-20: `v1.7.0_gg3` is on `origin/custom_build` at `3376a18f`, published by Phase 24's `--no-ff` merge of `sync/v1.7.0` (X = `8b1c318d`, rehearsed at X0 = `3ab55e1d`) onto `6473e24f`, with `tests.yaml` run 39472696952 green. Tags `v1.7.0_gg3` (`3376a18f`) and `pre-v1.7.0_gg3` (`6473e24f`) are on origin, and the scratch branch `sync/v1.7.0` was deleted from origin. The Dependabot freeze is over. Later `.planning/` commits on local `sync/v1.7.0` are a local tail and are not pushed.
-- [Publish] 2026-10-20: the corrected rollout note is on `origin/custom_build` at `6a2a87a5`, a `--no-ff` merge of `sync/v1.7.0` (S = `a403cc1d`) onto `3376a18f`, made after the user's direct `publish`, with `tests.yaml` run 39496482074 green (quick 261020-vcr). It fixes the 14 findings of 24-REVIEW rounds 3 to 5 in `docs/ROLLOUT-v1.7.0_gg3.md`, `CHANGELOG.md` and `docs/FORK-DELTA.md`. Tags `v1.7.0_gg3` (`3376a18f`) and `pre-v1.7.0_gg3` (`6473e24f`) did not move, and no tag was pushed.
-- [Publish] 2026-10-23: `v1.7.0_gg4` is on `origin/custom_build` at `21c51598`, published by Phase 29's `--no-ff` merge of `sync/v1.7.0` (X = `3d847009`, rehearsed at X0 = `ef19fbc8`) onto `69cd680b`, made after the user's direct `publish`, with `tests.yaml` run 40022281005 green (X0's rehearsal run: 40017036598). Tags `v1.7.0_gg4` (`21c51598`) and `pre-v1.7.0_gg4` (`69cd680b`) are on origin; `sync/v1.7.0` was deleted from origin. The Dependabot freeze is over; later `.planning` commits stay a local tail on `sync/v1.7.0`, unpushed.
-- [Publish]: `origin/custom_build` was `6473e24f` until the gg3 merge, then `3376a18f`, then `6a2a87a5` (the corrected-note merge), and is now `21c51598` (the gg4 merge). Dependabot PRs #4 (client 0.9.6 → 0.10.0), #6 (commons-lang3 3.21.0), #7 (ben-manes versions 0.66.0), #8 (Gradle wrapper 9.8.1) and #9 (Kafka `connect-api` 4.1.1 → 4.4.0) are open, using all 5 open-PR slots. #4 and #9 bump fork-only pins, and `dependabot.yml` has no `ignore` for them. Any merge on `origin/custom_build` diverges the next milestone's base, which then opens with a DEPS-01-shaped merge. Milestone tags such as `v1.7.0_gg2-hardening` stay local.
-- [CI]: The nightly `integrationTests.yaml` has been disabled by the user since 2026-10-16T09:38:23Z (Phase 21 OPS-01). The file stays upstream-identical. Phase 24 re-checks that no scheduled run followed.
 - [CI]: Two branches pushed at one SHA still cancel each other, so the one-branch-per-SHA rule holds.
-- [Dependabot]: the `dependencies` label exists since 2026-10-21 (Phase 25 OPS-04, user-created, API 200). PRs #4 (client 0.9.6 → 0.10.0) and #10 (protobuf-java 4.36.2) are still open and must stay unmerged on `origin/custom_build` until publication; E-25 (a post-label PR without the "labels could not be found" comment) is pending the next monthly run and is re-checked in Phase 29.
-- [Phase 25]: 25-REVIEW left three warnings open (WR-01 archive-step pin accepts `-x verifyConfluentArchive`/`--dry-run`/`|| true`/step `if:`; WR-02 `ConnectApiReferencesUnitTest` resolves inherited members on the test classpath and drops unresolved ones; WR-03 descriptor-only Kafka types unchecked) and four info items (stale `build/confluentArchive` dirs, `META-INF/versions/*` and `.zip`/`.war` nesting, brittle anchors, merge-carried hygiene incl. `pre-release.yaml` still pinning Gradle 7.4.2). Ledger: `25-REVIEW-DISPOSITION.md`. Trigger: the next edit of those guards (Phase 28 review debt).
-- [Phase 25]: the working tree keeps an unstaged CRLF diff on `gradlew.bat` after the Dependabot wrapper merge (committed blob equals origin's); plan verify strings must exclude it.
-- [Phase 26]: 26-REVIEW has 2 open info items after the `--fix` pass (commits `a58c66da..0a1c79f8`: 9 fixed, IN-02 and IN-06 skipped by decision) and the 2026-10-22 re-review (`4271be66`): IN-12 `DescribeTableBuilder.columnsByName` stays last-wins, reachable only by a declared JSON or Dynamic element named `size<digits>` at Array depth 2 or more, not reproduced; IN-13 the fork-owned `allColumnsMap.merge` in upstream `Table.registerValidColumn` has no `fork-anchors.txt` row, so an upstream sync could revert it unnoticed by the merge gate. Ledger `26-REVIEW-DISPOSITION.md`; `26-SECURITY.md` is `threats_open: 0`; `26-VERIFICATION.md` regenerated 2026-10-22 (passed, 5/5) after the fixes; `26-UAT.md` complete (24 passed, 0 issues).
 - [Env]: the full suite crashed the OpenJ9 (Semeru 17) test JVM five times on 2026-10-21/22 at the known `Mockito.spy` frame, with host swap at about 97%; `-PjavaVersion=21` (HotSpot) passes, and a plain re-run passed once swap pressure eased. Expect the crash whenever the host is swapping; it is not a test failure.
-- [Release] 2026-10-23: `VERSION` reads `v1.7.0_gg4` and the CHANGELOG has its `1.7.0_gg4` section; both are published at `21c51598`.
-- [Publish] 2026-10-26: `v1.7.0_gg5` is on `origin/custom_build` at `3a3a15a9`, published by Phase 32's `--no-ff` merge of X0 (`41e7d546`) onto `21c51598` after the user's direct `publish`, with `tests.yaml` run 40416215635 green on the merge and run 40414210750 green on X0; tags `v1.7.0_gg5` (`3a3a15a9`) and `pre-v1.7.0_gg5` (`21c51598`) are on origin, `sync/v1.7.0` was deleted from origin, and the nightly is on `custom_build` with `NIGHTLY_ENABLED` unset; its first manual run is next in plan 32-07. Later `.planning` commits are a local tail.
-- [Release] 2026-10-26: `VERSION` reads `v1.7.0_gg5` and the CHANGELOG has its `1.7.0_gg5` section; both are published at `3a3a15a9`.
-- [CI] 2026-10-27: the nightly's first manual run 40474535605 on `custom_build` (`3a3a15a9`) ended success (63 tests, 0 failures, 9 skipped, 33 min; NIT-03); its one scheduled run so far was skipped; `NIGHTLY_ENABLED` was set by the operator after the run (their report, E-82). An accidental `release.yaml` dispatch (run 40474419526) was cancelled by the user before publishing; no release or tag resulted.
-- [Roadmap] 2026-10-24: GitHub documents that `workflow_dispatch` triggers only for a workflow file on the default branch. Phase 30's dry runs can use the existing `release.yaml` and `pre-release.yaml` on the scratch branch, but the new Phase 31 nightly reaches `custom_build` only at publication. Phase 31 research confirms the behaviour and settles how the NIT-03 dispatch runs before any schedule can fire. If NIT-03 can only finish after publication, the user decides whether it moves to Phase 32.
-- [Roadmap] 2026-10-24: `TestsWorkflowPinGuardUnitTest` pins `dependabot.yml`'s `exclude-paths` list of the four upstream workflows (`UPSTREAM_WORKFLOWS`). Letting Dependabot keep the three newly pinned release-path files current changes that assertion, which needs the user's sign-off (Phase 30).
-- Phase 31-01: all 54 connector integration tests fail (Java 17 connector jar vs Java 11 Connect worker in cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0); Task 3 blocking-human decision (E-06) pending before 31-02
-- [Roadmap] 2026-10-26: NIT-03 moved to Phase 32 by the user's decision (D-02, 31-COMMAND-EVIDENCE.md E-16). Phase 31 delivered the measurement, the gated nightly, the NIT-02 byte guard and any skip list. The nightly reaches custom_build only with Phase 32's publication, and NIGHTLY_ENABLED stays unset until the dispatch run is recorded.
-- [Roadmap] 2026-10-28: Dependabot PRs #10 and #16–#20 are open on `origin`, and PR #4 is gone (superseded by #17). This replaces the PR lists in the older `[Publish]` and `[Dependabot]` lines above. Phase 33 absorbs #16, #18, #19 and #20 from their PR heads on the scratch branch, Phase 36 absorbs #17, and #10 is declined. Ask the user not to merge any of them on `origin` until publication, because a merge there diverges the scratch branch again.
-- [Roadmap] 2026-10-28: BUF-03 (Phase 35). `Processing.doLogic` keys exactly-once state by the transformed topic. A fix that changes the state key would orphan the KeeperMap state of existing exactly-once deployments, so it stops for a user decision before it lands. The operator's production connectors run `exactlyOnce=false`.
-- [Roadmap] 2026-10-28: Pushes. CLT-07's manual nightly dispatch (Phase 36) needs the scratch branch on `origin`, and so does any Phase 37 dry run of the archive-compare step. Each push publishes the local `.planning` tail one way and runs `tests.yaml` once, so it needs the user's direct approval and a SHA that no other pushed branch holds.
-- [Roadmap] 2026-11-01: Dependabot PRs #21 (`setup-gradle` 6.4.1) and #22 (gson 2.15.0) are open on `origin`, and Phase 39 absorbs both on the scratch branch. Ask the user not to merge them on `origin` until publication. If they do, Phase 39 absorbs `origin/custom_build` by merge instead. Measured 2026-11-01: `origin/custom_build...sync/v1.7.0` counts 1 and 13, and the 1 is the gg6 merge `72e8ccff`.
-- [Roadmap] 2026-11-01: `config.json` has `mode: yolo`, `auto_advance: true` and `skip_discuss: true`. None of them passes a user-owned gate (ROADMAP.md → User-Owned Gates): pushes, out-of-scope `src/main` changes, DOC-02 `src/main` rows, the `--no-ff` merge, the publish run and a fourth review round. Each stays a blocking-human checkpoint that the user answers directly.
-- [Roadmap] 2026-11-01: upstream PRs #861, #855 and #857 touch the files that Phases 40–42 edit. Re-read them before planning Phase 40 and again before the Phase 44 gate. An upstream tag past `v1.7.0` would make the next sync FUT-01, which stops for the user.
+
+- [Publish] 2026-11-03: `v1.7.0_gg7` is on `origin/custom_build` at `94834763` (a `--no-ff` merge of X0 `fc570937` onto `72e8ccff`, after the user's direct `publish`), with `tests.yaml` run 41704437509 green; the publish run 41721771615 created the tag and release 433237218 under the workflow token. `pre-v1.7.0_gg7` is on origin; `sync/v1.7.0` was deleted; Dependabot PRs #21 and #22 read merged. Older `[Publish]`, `[Roadmap]` and `[Dependabot]` lines were removed at the gg7 close; the history is in `MILESTONES.md`.
+- [Tooling]: `gh` is installed and signed in as of the gg7 publication; it was used for read-only reads and, on the user's direct words, the scratch push, the merge push, the dry-run and publish dispatches and the pre-tag push.
+- [Upstream] 2026-11-04: upstream's `VERSION` at `83808df9` reads `v1.7.1`, with no tag past `v1.7.0` seen locally. Recheck upstream's tags immediately before the Phase 45 merge. A tag at or past the merge target makes it a tagged sync (FUT-01), and the user decides the scope.
 
 ### Quick Tasks Completed
 
@@ -414,6 +414,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 |----------|------|--------|-------------|-----------|
 | deferred_items | 18/deferred-items.md: `ClickHouseWriterNullMessageUnitTest` inline-mocks `ClickHouseHelperClient` (intermittent OpenJ9 `retransformClasses` crash risk) | closed in Phase 22 (HARN-08, Mockito-free `CountingHelperClient`) | 2026-10-16 | v1.7.0_gg2-hardening |
 
+`v1.7.0_gg7-followup` closed after a `tech_debt` milestone audit with no gaps. The open-artifact audit was clear, so nothing was acknowledged. The close was an override closeout: the user accepted the review ending after round 5 without a fresh reviewer, the CHANGELOG heading date `2026-11-02`, JDK 21 for the suites, and one re-run integration class; the orchestrator ran the publication steps on the user's direct words. Carried debt is listed in `MILESTONES.md` and `v1.7.0_gg7-followup-MILESTONE-AUDIT.md`.
+
 `v1.7.0_gg4-hardening` closed after a `tech_debt` milestone audit with no gaps. The open-artifact audit was clear, so nothing was acknowledged. The close was an override closeout: `init.manager` read Phases 25–28 as stale and Phase 27 success criterion 2 was narrowed by the user. The 16 unfixed review findings are carried in `milestones/v1.7.0_gg4-hardening-phases/29-release-publication/29-MILESTONE-CLOSE-RECORD.md`.
 
 `v1.7.0_gg2-hardening` closed after a passed milestone audit. The open-artifact audit found one deferred item, and the user acknowledged it. The close was an override closeout, because the Phase 16–19 verification digests had gone stale after Phase 20 edited the files they covered (see `MILESTONES.md`). Its follow-ups are now scheduled as this milestone's 20 requirements (`REQUIREMENTS.md` → Traceability).
@@ -424,11 +426,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-02T23:50:41.961Z
-Stopped at: Completed 44-05-PLAN.md (READY-FOR-USER-APPROVAL)
+Last session: 2026-11-03T23:34:01.000Z
+Stopped at: Phase 48 complete, ready to plan Phase 49
 Resume file: None
 
 ## Operator Next Steps
 
-
-- Plan Phase 39 with `/gsd-plan-phase 39`. `skip_discuss` is on, so planning reads the phase's research flags in ROADMAP.md directly.
+- Plan Phase 45 with `/gsd-plan-phase 45` (`skip_discuss` is on). Before the merge, recheck upstream's tags (upstream's `VERSION` already reads `v1.7.1`).

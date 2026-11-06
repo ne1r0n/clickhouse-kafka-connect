@@ -1,0 +1,1172 @@
+# Phase 46: Command evidence
+
+- **Base commit:** `local_head` = `3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5` (HEAD when plan 46-01 started, branch `sync/v1.7.0`).
+- **Shell:** macOS zsh, multi-line logic under `/bin/bash` or `python3 -I`. Gradle is run as `env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain ...`; ClickHouse-backed runs prefix `CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2`.
+- **Docker:** colima profile `vz`.
+- **Date (UTC):** 2026-11-05.
+- **Entry format:** each entry has a `### E-NN: {title}` heading, a `Backs:` line, an `sh` fence with the commands as run, a `text` fence of `key: value` lines (keys match `[a-z0-9_]+`, one fact per line, no key twice) with free text allowed after the fence, a UTC timestamp line, and a final line `Verdict: pass`, `Verdict: fail`, `Verdict: pending ({reason})` or `Verdict: unmeasured ({reason})`.
+- **Rule:** a fail or pending verdict is fixed by re-measuring in a new run, never by editing the evidence.
+- **Helper:** `46-evidence-check.py` is the read-only gate helper written at plan time (byte-identical to the Phase 34-45 copies); it is never edited.
+- **No push happens in Phase 46.** Reads use `git ls-remote` and `gh api` only.
+
+## Index
+
+| Entry | Requirement | Plan | Verdict |
+|-------|-------------|------|---------|
+| E-01 | TMO-01, TMO-02, TMO-03 | 46-01 | pass |
+| E-02 | TMO-03 | 46-01 | pass |
+| E-03 | TMO-02, TMO-03 | 46-01 | pass |
+| E-04 | TMO-03, TMO-02 | 46-02 | pass |
+| E-05 | TMO-03, TMO-02 | 46-02 | pass |
+| E-06 | TMO-03, TMO-02 | 46-02 | pass |
+| E-07 | TMO-03 | 46-03 | pass |
+| E-08 | TMO-03 | 46-03 | pass |
+| E-09 | TMO-03 | 46-03 | pass |
+| E-10 | TMO-02 | 46-04 | pass |
+| E-11 | TMO-03 | 46-04 | pass |
+| E-12 | TMO-02, TMO-03 | 46-04 | pass |
+| E-13 | TMO-01 | 46-05 | pass |
+| E-14 | TMO-01, TMO-02, TMO-03 | 46-05 | pass |
+| E-15 | TMO-03 | 46-06 | pass |
+| E-16 | TMO-03 | 46-06 | pass |
+| E-17 | TMO-01 | 46-06 | pass |
+| E-18 | TMO-01, TMO-03 | 46-06 | pass |
+| E-19 | TMO-01, TMO-02, TMO-03 | 46-06 | pass |
+
+### E-01: Pre-flight and baseline on the untouched base
+
+Backs: TMO-01, TMO-02, TMO-03, ROADMAP Phase 46 phase gate (a green baseline on the untouched tip, so every later red is attributable to this phase).
+
+```sh
+git rev-parse HEAD
+git rev-parse --abbrev-ref HEAD
+git status --porcelain
+colima list
+md5 -q .planning/phases/46-insert-timeout-limits/46-evidence-check.py
+git ls-files --error-unmatch .planning/phases/46-insert-timeout-limits/46-evidence-check.py
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+grep -rn 'async_insert' src/main | wc -l
+bash .planning/scripts/verify-merge-invariants-selftest.sh > /tmp/gsd46/exec/selftest.log 2>&1
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 > /tmp/gsd46/exec/tail-gate-base.log 2>&1
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/testunit-base.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class InsertStallBoundPinUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class InsertSocketTimeoutOptionUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class RetriableExceptionPassThroughUnitTest
+rm -rf /tmp/gsd46/exec/xml-base-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-base-testunit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd46/exec/suite-base.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd46/exec/xml-base-suite && cp -R build/test-results/test /tmp/gsd46/exec/xml-base-suite
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+```
+
+```text
+local_head: 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5
+branch: sync/v1.7.0
+dirty_paths: M .planning/config.json; M .planning/state.json
+colima_vz: Running
+helper_md5: 7123d354f51d45e019837f43b3a30fbc
+helper_tracked: yes
+anchors_mirror: rows=200 bad=0
+async_insert_main_lines: 2
+selftest_last_line: selftest: no failures
+selftest_duration: about 63 min (its ST4 step runs the cumulative gate)
+base_tail_gate_line: invariants: provenance_paths=11 anchor_commits=51 anchor_rows=200 marker_commits=69 anchor_exempt=0 result=PASS
+base_tail_gate_exit: 0
+base_tail_gate_duration: 3 min 4 s
+baseline_testunit_exit: 0
+baseline_testunit_tests: 2086
+baseline_testunit_failures: 0
+baseline_testunit_errors: 0
+baseline_testunit_skipped: 2
+baseline_testunit_files: 98
+gg7_pins_green: InsertStallBoundPinUnitTest 15, InsertSocketTimeoutOptionUnitTest 23, RetriableExceptionPassThroughUnitTest 38, no failure
+baseline_suite_exit: 0
+baseline_suite_tests: 2689
+baseline_suite_failures: 0
+baseline_suite_errors: 0
+baseline_suite_skipped: 18
+baseline_suite_files: 147
+baseline_suite_duration: 172s
+baseline_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+baseline_java: default toolchain (semeru-17.0.9, OpenJ9)
+jvm_crash: yes, first full-suite run only
+baseline_suite_first_run_exit: 255
+baseline_suite_first_run_tests: 2587 tests in 137 files before Gradle Test Executor 7 died with exit value 255
+baseline_suite_first_run_cleanup: core.20261105.110341.98215.0001.dmp, javacore.20261105.110341.98215.0002.txt, Snap.20261105.110341.98215.0003.trc and jitdump.20261105.110341.98215.0004.dmp deleted by name
+baseline_suite_rerun: the re-run above, same command, exit 0, no crash file
+```
+
+The baseline totals later plans compute expected counts from are testUnit 2086 tests (Phase 45 E-19 recorded the same) and full suite 2689 tests (Phase 45 E-18's 2675 plus E-19's 14 test-only cases). The first full-suite attempt ended in the known intermittent OpenJ9 crash (exit 255, 2587 of 2689 tests finished, no failure among them); the single re-run is the recorded baseline. The self-test ran concurrently with the testUnit and full-suite baselines; it reads git objects only. Every file under `src` equalled B0 while the testUnit and full-suite baselines ran; the tail gate and the self-test read commit objects only.
+
+Recorded 2026-11-05T09:55:13Z.
+
+Verdict: pass
+
+### E-02: Raw-socket stub first slice: notReadingBody and the 64 MiB write-stall premise
+
+Backs: TMO-03, ROADMAP Phase 46 note (extend `StubClickHouseServer` with the responders the pins need): the com.sun `HttpServer` reads the whole body before a responder runs, so a client body write can never block against it; the raw mode reads the request head only.
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*StubClickHouseServerRawModeUnitTest*' --tests '*InsertStallBoundPinUnitTest*' --tests '*ClientErrorShapePinUnitTest*' --tests '*ClientEndpointAndOptionsPinUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' > /tmp/gsd46/exec/raw-slice.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class StubClickHouseServerRawModeUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit failures=0 errors=0
+git worktree add --detach /tmp/gsd46/fmt 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply > /tmp/gsd46/exec/fmt-slice.log 2>&1
+cmp /tmp/gsd46/fmt/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java
+cmp /tmp/gsd46/fmt/src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+git worktree remove --force /tmp/gsd46/fmt && git worktree prune
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+git commit -F /tmp/gsd46/exec/msg-slice.txt
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main | wc -l
+```
+
+```text
+raw_slice_exit: 0
+raw_slice_tests: 2
+raw_slice_total_tests: 54 across the six classes run, 0 failures, 0 errors, 0 skipped
+http_mode_users_failed: 0
+http_mode_users_run: InsertStallBoundPinUnitTest 15, ClientErrorShapePinUnitTest 7, ClientEndpointAndOptionsPinUnitTest 5, WriterHelperClientClosingUnitTest 23, ClientInsertWirePinUnitTest 2 (ClientErrorShapes is driven by ClientErrorShapePinUnitTest)
+premise_blocked_write_bytes: 67108864
+premise_observation_ms: 2000
+premise_body_bytes_read: 0
+premise_requests_recorded: 1
+premise_release_bound_ms: 5000
+premise_test_seconds: 2.005
+stub_receive_buffer_bytes: 4096
+fmt_stub_1: identical
+fmt_raw_test_1: identical
+raw_slice_commit: d1cbdff294b53aaccabff25d85f86718a1441643
+raw_slice_main_diff: 0
+```
+
+`notReadingBodyBlocksA64MebibyteBodyWrite` shows on the OS that runs testUnit (macOS, Darwin 25.5.0) that a plain socket client writing a 64 MiB chunked body against `notReadingBody()` is still blocked after 2 s, with 0 body bytes read and exactly 1 recorded request, and that the blocked writer ends with an `IOException` within 5 s of `close()`. The raw slice run was first made on the same file contents before the E-01 commit and repeated after it; the figures above are the repeat. The per-file formatting check ran on a worktree at B0; Spotless reformatted other, pre-existing files there but neither new file changed.
+
+Recorded 2026-11-05T09:57:00Z.
+
+Verdict: pass
+
+### E-03: Raw responders complete, existing stub users green, A1 measured on Linux and macOS
+
+Backs: TMO-02, TMO-03, 46-RESEARCH.md assumption A1 (Linux loopback buffers swallow no more than a fraction of the 64 MiB write-stall body) and Pitfalls 1 and 2 (a stub that streams progress headers, and a body that cannot fit in loopback buffers).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*StubClickHouseServerRawModeUnitTest*' --tests '*InsertStallBoundPinUnitTest*' --tests '*ClientErrorShapePinUnitTest*' --tests '*ClientEndpointAndOptionsPinUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' > /tmp/gsd46/exec/raw-full.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class StubClickHouseServerRawModeUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit failures=0 errors=0
+python3 -I /tmp/gsd46/exec/a1_probe.py
+colima ssh --profile vz -- python3 -I - < /tmp/gsd46/exec/a1_probe.py
+git add src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+git commit -F /tmp/gsd46/exec/msg-full.txt
+git rev-parse HEAD
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 9bd0944ebd066852ef059e7b2bca2a6ff2a54137 -- src/main | wc -l
+```
+
+```text
+raw_full_exit: 0
+raw_tests: 6
+raw_total_tests: 58 across the six classes run, 0 failures, 0 errors, 0 skipped
+http_mode_users_failed: 0
+a1_macos_absorbed_bytes: 662096
+a1_macos_kernel: Darwin 25.5.0
+a1_macos_rcvbuf_effective: 326568
+a1_linux_absorbed_bytes: 1245184
+a1_linux_kernel: 6.8.0-50-generic
+a1_linux_rcvbuf_effective: 8192
+a1_linux_tcp_rmem: 4096 131072 6291456
+a1_linux_tcp_wmem: 4096 16384 4194304
+a1_tool: colima-python3
+a1_runs: 4 runs on each OS (one plus three repeats), identical absorbed byte counts on every run
+a1_pin_body_bytes: 67108864
+a1_margin: 53.9
+harness_tip: 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+harness_main_diff: 0
+fmt_stub_2: identical
+fmt_raw_test_2: identical
+```
+
+Meaning of the A1 numbers for the 64 MiB body: with a 4096-byte receive buffer set before `listen` and a peer that reads only the request head, a writer pushed 662096 bytes (0.63 MiB) on macOS and 1245184 bytes (1.19 MiB) on the colima VM's Linux 6.8 kernel before its send timed out, so the 64 MiB pin body is 53.9 times the larger value and cannot be swallowed by loopback buffers on either OS. Measurement notes: the probe is a Python client and server (`/tmp/gsd46/exec/a1_probe.py`, scratch, never committed), not the Java stub; a send of 64 KiB pieces with a 2 s send timeout ends the run; on macOS the accepted socket reports a 326568-byte receive buffer, so the 4096 request is not honoured there and the Java premise test (`notReadingBodyBlocksA64MebibyteBodyWrite`, 2.016 s) is the macOS evidence; the Linux accepted socket reports 8192 (the kernel doubles 4096) and its send buffer autotuned to 2626560 bytes. The Java stub itself runs only on the machine that runs testUnit; the Linux figure shows that the same shape blocks long before 64 MiB on a Linux loopback. The per-file formatting check for the second commit reused the Spotless worktree run of the same file contents at B0.
+
+Recorded 2026-11-05T09:58:00Z.
+
+Verdict: pass
+
+### E-04: V2 pins red on the unchanged production tree
+
+Backs: TMO-03, TMO-02, ROADMAP Phase 46 criterion 2 (a red-first pin for the client V2 write-side stall) and criterion 3 (retriable under both tolerances, no DLQ record).
+
+```sh
+git worktree add --detach /tmp/gsd46/red 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 9bd0944ebd066852ef059e7b2bca2a6ff2a54137 -- src/main
+cp src/test/java/com/clickhouse/kafka/connect/sink/InsertBoundPinFixtures.java src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/red-v2.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/red/build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/red/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/red && git worktree prune
+```
+
+```text
+v2_red_tree: 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+v2_red_main_identical_to_base: yes
+v2_red_exit: 1
+v2_red_tests: 19
+v2_red_failed_count: 14
+v2_red_failed_methods: insertWatchdogIsADaemonThreadEndedByStop; progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound; slowV2UploadStillSendingAtTheBoundFailsAsRetriable; slowV2UploadThroughPutIsRetriableWithNoDlqRecord; writeStalledV2InsertEndsWithinTheBoundAsRetriable; writeStalledV2InsertThroughPutIsRetriableWithNoDlqRecord
+v2_red_green_methods: lateFireAfterASuccessfulV2InsertIsHarmless; operatorShorterSocketTimeoutEndsAV2QuietStallThroughPut; operatorSocketTimeoutLeavesAWriteStallToTheOperator; progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent
+v2_red_by_guard: yes
+v2_red_watchdog_by_assertion: yes
+v2_red_progress_case_seconds: 6.088
+v2_red_operator_long_case_seconds: 3.011
+worktree_removed: yes
+```
+
+The worktree's `src/main` is byte-identical to the base (`git diff --quiet` exit 0), so every red here is the unchanged production behaviour. The 13 guard cases (write stall x3 routes, write stall through put x6, slow upload x1, slow upload through put x2, progress while sending x1) each failed with `a client V2 insert must end within the bound ==> execution timed out after 10000 ms`, the `assertTimeoutPreemptively` guard: the insert was still blocked after 10 s with a 1000 ms insert timeout and a 64 MiB body. The watchdog case failed on `one armed insert creates exactly one watchdog thread ==> expected: <1> but was: <0>` (no watchdog exists). The five recorded or operator-owned cases were green: the progress-after-sent case ran 6.088 s past its 1500 ms bound (the recorded limit, body already sent), the operator's longer `socket_timeout` left the write stall running for the 3 s observation with no connector bound in the chain, the operator's shorter `socket_timeout` ended a quiet stall through put under both tolerances, and the late-fire pair of inserts passed.
+
+Recorded 2026-11-05T10:07:00Z.
+
+Verdict: pass
+
+### E-05: V2 write-phase deadline green in one commit, operator gate, anchors
+
+Backs: TMO-03, TMO-02 (U-1 recorded side), ROADMAP Phase 46 criteria 2 and 3 for the client V2 write-side stall, and U-3 (the operator's `socket_timeout` wins).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' > /tmp/gsd46/exec/green-v2.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertStallBoundPinUnitTest*' --tests '*InsertSocketTimeoutOptionUnitTest*' --tests '*RetriableExceptionPassThroughUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' --tests '*ClientEndpointAndOptionsPinUnitTest*' --tests '*ClientErrorShapePinUnitTest*' --tests '*WriterFailureClassificationUnitTest*' --tests '*SourcePlanningIdGuardUnitTest*' --tests '*StubClickHouseServerRawModeUnitTest*' > /tmp/gsd46/exec/neighbours-v2.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class InsertStallBoundPinUnitTest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 208
+grep -cF 'chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+git show 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5:src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java | grep -cF 'awaitInsertResponse('
+grep -cF 'awaitInsertResponse(' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <five files> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <five files>
+git add <six files> && git commit -F /tmp/gsd46/exec/msg-p2-fix.txt
+```
+
+```text
+v2_green_exit: 0
+v2_green_failed_count: 0
+v2_pin_tests: 19
+v2_gate_unit_tests: 20
+v2_new_tests: 39
+v2_write_stall_case_seconds_max: 1.082
+v2_slow_upload_case_seconds: 1.023
+v2_progress_while_sending_case_seconds: 1.013
+v2_progress_case_seconds: 6.085
+v2_operator_long_case_seconds: 3.026
+v2_neighbours_exit: 0
+v2_neighbours_tests: 353
+v2_neighbours_failed_count: 0
+gg7_pins_after: InsertStallBoundPinUnitTest 15, InsertSocketTimeoutOptionUnitTest 23, RetriableExceptionPassThroughUnitTest 38, no failure
+anchors_mirror: rows=208 bad=0
+insert_socket_timeout_sites: 3
+await_insert_response_count_before: 4
+await_insert_response_count_after: 2
+await_insert_response_body_unchanged: yes
+operator_set_socket_timeout_lines: 4
+fmt_writer: preexisting
+fmt_helper: preexisting
+fmt_fixtures: identical
+fmt_stall_pin: identical
+fmt_gate: identical
+v2_fix_commit: b53cd23c7114e9130ceeb4a552f2d87b1c50ca39
+v2_fix_commit_files: 6
+```
+
+The green runs passed on the first attempt after the code was written. Case times through the real writer and a raw loopback stub, wall clock from the call: the write stall (three routes, direct and through put) ended in 1.01 to 1.08 s against the 1000 ms bound (red on the unchanged tree: still blocked after 10 s); the slow upload cut at 1.023 s with body bytes already read; the progress-while-sending case 1.013 s; the progress-after-sent case ran 6.085 s against a 1500 ms bound (the recorded U-1 limit, body already sent, unchanged); the operator's longer `socket_timeout` left the write stall running for the whole 3 s observation. The fix commit holds exactly `ClickHouseWriter.java`, `ClickHouseHelperClient.java`, the fixtures, the V2 pin class, the gate unit class and `fork-anchors.txt`. The anchor counts measured with `grep -cF` before the rows were written: `insertWriteDeadline(client, queryId)` 3, `insertWithWriteDeadline(` 4, `deadline.disarm();` 4, `client::cancelTransportRequest` 1, `insertWatchdog.shutdownNow()` 1, `setRemoveOnCancelPolicy(true)` 1, `INSERT_BODY_DEADLINE_FORMAT` 2, `insertBoundMs(` declaration 1, and the operator row 3 to 4. The `awaitInsertResponse` method text from its Javadoc to its closing brace equals the base's (python extract of both versions). The per-file formatting check on a worktree at the pre-commit HEAD: the three test files were identical after `spotlessApply`; `ClickHouseWriter.java` and `ClickHouseHelperClient.java` differ only in import ordering, which also differs when the unchanged HEAD copies are formatted, so the lines this change added and edited are not reformatted (`preexisting`).
+
+Recorded 2026-11-05T10:11:00Z.
+
+Verdict: pass
+
+### E-06: V2 bite and gate: four mutations, watchdog queue probe, testUnit, scope, anchors, tail gate
+
+Backs: TMO-03, TMO-02, U-1 and U-3 (each check is shown able to fail), ROADMAP Phase 46 phase gate (cache-busted `testUnit`, anchors invariant, the unedited tail gate).
+
+```sh
+git worktree add --detach /tmp/gsd46/mut HEAD   # once per mutation D1..D4, python3 -I replacement asserting the old text occurs once, then removed
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/mut --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' > /tmp/gsd46/exec/mut-<n>.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/exec/xml-mut-<n>
+git worktree add --detach /tmp/gsd46/probe-queue HEAD && cp /tmp/gsd46/scripts/ProbeInsertWatchdogQueueMeasurementTest.java /tmp/gsd46/probe-queue/src/test/java/com/clickhouse/kafka/connect/sink/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-queue --console=plain testUnit --rerun --tests '*ProbeInsertWatchdogQueueMeasurementTest*' > /tmp/gsd46/exec/probe-queue.log 2>&1
+git worktree remove --force /tmp/gsd46/probe-queue && git worktree prune
+git log --all --format=%H -- '*ProbeInsertWatchdogQueueMeasurementTest.java'
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/testunit-v2.log 2>&1
+rm -rf /tmp/gsd46/exec/xml-02-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-02-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-02-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/exec/xml-02-testunit
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+grep -rn 'async_insert' src/main | wc -l
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 2776ae08c263d4b4a413c3b9101391c0d03c8e72 > /tmp/gsd46/exec/tail-gate-02.log 2>&1
+```
+
+```text
+d1_target: in InsertWriteDeadline.disarm(), the three body lines `ScheduledFuture<?> task = scheduled; if (task != null) { task.cancel(false); }` removed, leaving the method empty
+d1_failed: progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent
+d1_failed_count: 1
+d1_expected_met: yes
+d2_target: in InsertWriteDeadline.arm(), the statement `scheduled = watchdog.schedule(() -> { fired.set(true); try { canceller.accept(queryId); } catch (RuntimeException e) { LOGGER.warn(...); } }, boundMs, TimeUnit.MILLISECONDS);` removed
+d2_failed_count: 14
+d2_failed: insertWatchdogIsADaemonThreadEndedByStop x1; progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound x1; slowV2UploadStillSendingAtTheBoundFailsAsRetriable x1; slowV2UploadThroughPutIsRetriableWithNoDlqRecord x2; writeStalledV2InsertEndsWithinTheBoundAsRetriable x3; writeStalledV2InsertThroughPutIsRetriableWithNoDlqRecord x6
+d2_expected_met: yes
+d3_target: in ClickHouseHelperClient.insertBoundMs, `return operatorSetSocketTimeout || timeoutMs <= 0 ? 0L : timeoutMs;` replaced by `return timeoutMs <= 0 ? 0L : timeoutMs;`
+d3_failed_count: 9
+d3_failed: noConnectorBoundWhenTheOperatorNamedSocketTimeout x8; operatorSocketTimeoutLeavesAWriteStallToTheOperator x1
+d3_expected_met: yes
+d4_target: in insertWithWriteDeadline, the statement `deadline.throwIfFired(e);` removed
+d4_failed_count: 13
+d4_failed: progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound x1; slowV2UploadStillSendingAtTheBoundFailsAsRetriable x1; slowV2UploadThroughPutIsRetriableWithNoDlqRecord x2; writeStalledV2InsertEndsWithinTheBoundAsRetriable x3; writeStalledV2InsertThroughPutIsRetriableWithNoDlqRecord x6
+d4_expected_met: yes
+watchdog_queue_after_100_inserts: 0
+watchdog_pool_size: 1
+watchdog_terminated_after_stop: true
+probe_committed: no
+worktrees_removed: yes
+testunit_exit: 0
+testunit_tests: 2131
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 101
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+async_insert_main_lines: 2
+anchors_mirror: rows=208 bad=0
+tail_gate_head: 2776ae08c263d4b4a413c3b9101391c0d03c8e72
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=60 anchor_rows=208 marker_commits=78 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 3 min 22 s
+```
+
+Mutation readings. D1 (the deadline is never disarmed, so it covers the whole insert): the only red is the case that pins the recorded limit, `progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent`, which is cut at its 1500 ms bound; the disarm after the body closes is what keeps U-1's behaviour. D2 (never armed): the 13 guard cases (write stall x9 across direct and put, slow upload x3, progress while sending x1) are red by the preemptive guard, plus the watchdog case, because a thread is only started when the first task is scheduled. D3 (operator gate ignored): the eight gate-unit cases with an operator `socket_timeout` and the long-operator write-stall case are red, so the operator's `socket_timeout` keeps ownership of the transport limits only through `insertBoundMs`. D4 (fired deadline not converted): the 13 guard cases are red, including the six write-stall and two slow-upload put cases, because the cancelled request then surfaces as a non-retriable transport failure instead of a `RetriableException` (read from the XML: under `errors.tolerance=none` the put throws a `RuntimeException`, under `all` nothing is thrown because the batch goes to the DLQ).
+
+Watchdog queue probe (a throwaway test in a detached worktree, never committed: `git log --all` finds no commit touching it): after 100 successful small V2 inserts on one writer against the stub, with a 60000 ms insert timeout, the writer's `insertWatchdog` read by reflection had `queue_size=0` and `pool_size=1`; after `writer.stop()`, `awaitTermination(5 s)` returned true.
+
+The cache-busted `testUnit` ran 2131 tests (2086 baseline + 6 raw-stub premise cases + 39 new) with 0 failures, 0 errors and 2 skipped across 101 files, re-checked against the copied XML `xml-02-testunit`. The unedited tail gate over `M..2776ae08` printed `result=PASS` with `anchor_rows=208`. `src/main` differs from the base only in the writer and the helper client; no new `src/main` file exists; the `async_insert` lines in `src/main` still count 2.
+
+Recorded 2026-11-05T10:25:00Z.
+
+Verdict: pass
+
+### E-07: V1 pipe measured and V1 pins red on the unchanged production tree
+
+Backs: TMO-03, ROADMAP Phase 46 criterion 2 for the client V1 insert sites (a red-first pin on the unchanged tree) and plan-check B2a (the V1 body write is measured before any claim that the bound covers it).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-v1pipe -PjavaVersion=21 --console=plain testUnit --rerun --tests '*ProbeV1PipeMeasurementTest*' > /tmp/gsd46/exec/probe-v1pipe-base.log 2>&1
+git worktree remove --force /tmp/gsd46/probe-v1pipe && git worktree prune
+git worktree add --detach /tmp/gsd46/red 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 9bd0944ebd066852ef059e7b2bca2a6ff2a54137 -- src/main
+cp src/test/java/com/clickhouse/kafka/connect/sink/InsertBoundPinFixtures.java src/test/java/com/clickhouse/kafka/connect/sink/InsertV1WaitBoundPinUnitTest.java /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertV1WaitBoundPinUnitTest*' > /tmp/gsd46/exec/red-v1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/red/build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/red/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/red && git worktree prune
+```
+
+```text
+v1_pipe_impl: com.clickhouse.data.stream.NonBlockingPipedOutputStream (deprecated class), chosen by ClickHouseDataStreamFactory.createPipedOutputStream when use_blocking_queue is false (the default) and response buffering is not PERFORMANCE (default RESOURCE_EFFICIENT); BlockingPipedOutputStream is used only when use_blocking_queue is true; read from the clickhouse-data 0.11.0 sources
+v1_pipe_capacity_source: max_queued_buffers (default 512) buffers of write_buffer_size bytes (the connector sets 8192 in getMutationRequest), with a linear dynamic capacity policy up to the maximum (buffer_queue_variation default 100); read from the clickhouse-data and clickhouse-client 0.11.0 sources
+v1_pipe_capacity_bytes: 4194304
+v1_pipe_write_timeout_source: a write that finds the queue full spins on offer and throws IOException "Write timed out after <ms> ms" once the wait reaches the stream's timeout, which the factory sets to config.getReadTimeout(), that is socket_timeout, default 30000 ms (an operator socket_timeout changes it); read from the clickhouse-data 0.11.0 sources
+v1_pipe_16mib_blocked_in: future-get
+v1_pipe_64mib_blocked_in: future-get
+v1_pipe_256mib_blocked_in: future-get
+v1_pipe_256mib_elapsed_ms: >60000
+v1_pipe_256mib_outcome: still-running
+v1_pipe_write_stall_seen: no
+v1_pipe_write_stall_size_mib: none
+v1_pin_body_mib: 64
+v1_pipe_probe_jvm: -PjavaVersion=21, testUnit maxHeapSize 3g in the scratch worktree only
+v1_red_tree: 9bd0944ebd066852ef059e7b2bca2a6ff2a54137
+v1_red_main_identical_to_base: yes
+v1_red_exit: 1
+v1_red_tests: 21
+v1_red_failed_count: 18
+v1_red_failed_methods: boundedV1InsertThroughPutIsRetriableWithNoDlqRecord; progressStreamingV1InsertEndsWithinTheBoundAsRetriable; quietV1InsertEndsWithinTheBoundAsRetriable; timedOutV1InsertLeavesNoClientThreadBlockedInASocketWrite; writeStalledV1InsertEndsWithinTheBoundAsRetriable
+v1_red_green_methods: operatorShorterSocketTimeoutEndsAV1QuietStallThroughPut; operatorSocketTimeoutLeavesTheV1WaitToTheOperator
+v1_red_by_guard: yes
+v1_red_guard_split: 15 cases failed at the 10000 ms guard (direct write stall x3, direct quiet stall x3, put x8 of the write-stall and quiet shapes, release x1) and 3 at the 5000 ms guard (direct progress x1, put progress x2)
+v1_red_operator_long_case_seconds: 3.047
+worktrees_removed: yes
+```
+
+```probev1pipe
+PROBEV1PIPE tree=base size_mib=16 blocked_in=future-get elapsed_ms=>60000 outcome=still-running message_prefix=
+PROBEV1PIPE tree=base size_mib=64 blocked_in=future-get elapsed_ms=>60000 outcome=still-running message_prefix=
+PROBEV1PIPE tree=base size_mib=256 blocked_in=future-get elapsed_ms=>60000 outcome=still-running message_prefix=
+```
+
+The three `PROBEV1PIPE` lines are the unchanged tree (R0, `src/main` identical to the base) with the real V1 client against `notReadingBody()`, JSON route, insert timeout 1000 (which the unchanged tree ignores on V1): at 16, 64 and 256 MiB the SinkTask thread was in a `CompletableFuture` wait at the 3 s sample, never in the pipe write, and at 60 s the call had still not ended, so the library's 30 s default does not end a V1 write stall at any of the three sizes. By the code the pipe holds at most 512 buffers of 8192 bytes (4 MiB) and a blocked write ends with "Write timed out" after the socket timeout, but no size up to 256 MiB reached that state, so the worker thread evidently drains the pipe as fast as the connector fills it; where those bytes go was not determined here and is not needed by the pin. Consequence: no pipe-write stall was seen up to 256 MiB, the V1 pin body is the 64 MiB the plan names (the 64 MiB body reached the future wait), and plan-check B2a's branch for a stall inside the body write is "not applicable" unless Task 3 sees otherwise on the fixed tree. The 21 V1 cases at R0: the 18 bounded and release cases were red by the `assertTimeoutPreemptively` guard (message `a client V1 insert must end within the bound ==> execution timed out after 10000 ms`, or 5000 ms for the progress shape), and the three operator cases (the longer value left the write stall running for the 3 s observation, 3.047 s; the shorter value ended a quiet stall through put under both tolerances) were green. The probe was a throwaway test in a detached worktree and was never committed.
+
+Recorded 2026-11-05T10:40:00Z.
+
+Verdict: pass
+
+### E-08: V1 wait bound green in one commit, operator gate, release, anchors
+
+Backs: TMO-03, ROADMAP Phase 46 criteria 2 and 3 for the client V1 `future.get()` insert sites, and U-2 and U-3 (the V1 wait is bounded, the operator's `socket_timeout` wins).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertV1WaitBoundPinUnitTest*' > /tmp/gsd46/exec/green-v1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' --tests '*InsertStallBoundPinUnitTest*' --tests '*InsertSocketTimeoutOptionUnitTest*' --tests '*RetriableExceptionPassThroughUnitTest*' --tests '*WriterHelperClientClosingUnitTest*' --tests '*ClientInsertWirePinUnitTest*' --tests '*WriterFailureClassificationUnitTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd46/exec/neighbours-v1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+grep -cF 'try (ClickHouseResponse response = future.get())' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+grep -cF 'future.get()' src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 212
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <the writer and the pin class> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin class> && git worktree remove --force /tmp/gsd46/fmt
+git add src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java src/test/java/com/clickhouse/kafka/connect/sink/InsertV1WaitBoundPinUnitTest.java .planning/scripts/fork-anchors.txt && git commit -F /tmp/gsd46/exec/msg-p3-fix.txt
+```
+
+```text
+v1_green_exit: 0
+v1_green_failed_count: 0
+v1_pin_tests: 21
+v1_write_stall_case_seconds_max: 1.218
+v1_progress_case_seconds: 1.51
+v1_quiet_case_seconds_max: 0.325
+v1_operator_long_case_seconds: 3.024
+v1_release_case_seconds: 1.34
+v1_neighbours_exit: 0
+v1_neighbours_tests: 374
+v1_neighbours_failed_count: 0
+bare_v1_wait_lines: 0
+bare_future_get_count: 1
+anchors_mirror: rows=212 bad=0
+v1_site_calls: 3
+v1_message_format: ClickHouse client V1 insert response not received within clickhouseClientInsertTimeoutMs=%d ms (QueryId: [%s])
+fmt_writer_v1: preexisting
+fmt_p1: identical
+v1_fix_commit: 05b46d18779d0981cf77e234c74df87062829450
+v1_fix_commit_files: 3
+```
+
+The green run passed on the first attempt after the code was written. Case times, wall clock through the real writer and a raw loopback stub, against the unchanged tree where the same cases were red by the preemptive guard (E-07): the V1 write stall ended in 1.137 to 1.218 s against the 1000 ms bound on three routes, direct and through put under both tolerances; the quiet stall in 0.313 to 0.325 s against 300 ms (the unchanged tree waited for the library's 30 s limit and was cut by the 10 s guard); the progress-streaming insert in 1.51 s against 1500 ms (the unchanged tree ran to about 6 s and was cut by the 5 s guard); the operator's longer `socket_timeout` left the write stall running for the whole 3 s observation (3.024 s) and its chain holds no `RetriableException` once the stub is closed; the operator's shorter value ended a quiet stall through put in 0.22 to 0.73 s as a retriable failure under both tolerances with an empty DLQ. The release case found no live thread in a socket write under a `com.clickhouse.` frame (the stub's own threads aside) within the 1.34 s the case took (the insert itself ended at about 1.2 s, so within about 0.15 s of the failure), while the stub still held the connection. The fix adds `awaitInsertResponseV1` (bounded `get` from the same `insertBoundMs` gate as the V2 deadline; the one remaining unbounded `future.get()` sits in its gated branch) and the three sites call it; the piped stream, `stream.close()`, the client block, the log lines and the statistics call are unchanged. The fix commit holds exactly `ClickHouseWriter.java`, the V1 pin class and `fork-anchors.txt`; `ClickHouseHelperClient.java` is untouched in it. The anchor counts measured with `grep -cF` before the rows were written: the old try line 0 (3 before), `awaitInsertResponseV1(` 4, `chc.insertBoundMs(` 2, `V1_INSERT_TIMEOUT_FORMAT` 2. The per-file formatting check on a worktree at the pre-commit HEAD: the pin class was identical after `spotlessApply`; `ClickHouseWriter.java` differs only in import ordering, which the unchanged HEAD copy shows as well (the text from the class declaration on was compared and is equal), so the lines this change added are not reformatted (`preexisting`).
+
+Recorded 2026-11-05T10:43:00Z.
+
+Verdict: pass
+
+### E-09: V1 pipe-write stall on the fixed tree, bite and gate: three mutations, testUnit, scope, anchors, tail gate
+
+Backs: TMO-03, ROADMAP Phase 46 criterion 2 for client V1 (the checks are shown able to fail; the body write is measured on the fixed tree) and the phase gate (cache-busted `testUnit`, anchors invariant, the unedited tail gate), plan-check B2a.
+
+```sh
+git worktree add --detach /tmp/gsd46/probe-v1pipe-fixed 462611cb61d545fd6dfc76872b5d6156aa92d0a5   # scratch heap edit, probe copied in, never committed
+PROBE_TREE=fixed PROBE_SIZES=256 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-v1pipe-fixed -PjavaVersion=21 --console=plain testUnit --rerun --tests '*ProbeV1PipeMeasurementTest*' > /tmp/gsd46/exec/probe-v1pipe-fixed.log 2>&1
+git worktree remove --force /tmp/gsd46/probe-v1pipe-fixed && git worktree prune
+git worktree add --detach /tmp/gsd46/mut 462611cb   # once per mutation V1a..V1c, python3 -I replacement asserting the old text occurs once, then removed (/tmp/gsd46/scripts/run-v1-mutations.sh)
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/mut --console=plain testUnit --rerun --tests '*InsertV1WaitBoundPinUnitTest*' > /tmp/gsd46/exec/mut-v1<x>.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-mut-v1<x>
+git worktree add --detach /tmp/gsd46/probe-detector 462611cb   # throwaway release-detector probe, JDK 21 and the default toolchain, never committed
+git log --all --format=%H -- '*ProbeV1PipeMeasurementTest.java' '*ProbeV1DetectorMeasurementTest.java'
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/testunit-v1.log 2>&1
+rm -rf /tmp/gsd46/exec/xml-03-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-03-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-03-testunit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/exec/xml-03-testunit
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+grep -rn 'async_insert' src/main | wc -l
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 462611cb61d545fd6dfc76872b5d6156aa92d0a5 > /tmp/gsd46/exec/tail-gate-03.log 2>&1
+```
+
+```text
+v1_256mib_fixed_elapsed_ms: 1530
+v1_256mib_fixed_outcome: org.apache.kafka.connect.errors.RetriableException
+v1_256mib_fixed_blocked_in: ended-before-3s
+v1_pipe_write_stall_fixed_elapsed_ms: not applicable
+v1_pipe_write_stall_fixed_outcome: not applicable
+v1_bound_ends_pipe_write_stall: not applicable
+v1a_target: in awaitInsertResponseV1, `future.get(bound, TimeUnit.MILLISECONDS)` replaced by `future.get(Long.MAX_VALUE, TimeUnit.MILLISECONDS)`
+v1a_failed_count: 18
+v1a_failed: boundedV1InsertThroughPutIsRetriableWithNoDlqRecord x10; progressStreamingV1InsertEndsWithinTheBoundAsRetriable x1; quietV1InsertEndsWithinTheBoundAsRetriable x3; timedOutV1InsertLeavesNoClientThreadBlockedInASocketWrite x1; writeStalledV1InsertEndsWithinTheBoundAsRetriable x3
+v1a_expected_met: yes
+v1b_target: in ClickHouseHelperClient.insertBoundMs, `return operatorSetSocketTimeout || timeoutMs <= 0 ? 0L : timeoutMs;` replaced by `return timeoutMs <= 0 ? 0L : timeoutMs;`
+v1b_failed_count: 1
+v1b_failed: operatorSocketTimeoutLeavesTheV1WaitToTheOperator x1
+v1b_expected_met: yes
+v1c_target: in awaitInsertResponseV1, `throw new RetriableException(String.format(V1_INSERT_TIMEOUT_FORMAT` replaced by `throw new RuntimeException(String.format(V1_INSERT_TIMEOUT_FORMAT`
+v1c_failed_count: 18
+v1c_failed: boundedV1InsertThroughPutIsRetriableWithNoDlqRecord x10; progressStreamingV1InsertEndsWithinTheBoundAsRetriable x1; quietV1InsertEndsWithinTheBoundAsRetriable x3; timedOutV1InsertLeavesNoClientThreadBlockedInASocketWrite x1; writeStalledV1InsertEndsWithinTheBoundAsRetriable x3
+v1c_expected_met: yes
+release_detector_blocked_writers_during_stall: 1 (ClickHouseWorker-1), on JDK 21 and on the default toolchain
+worktrees_removed: yes
+probe_committed: no
+testunit_exit: 0
+testunit_tests: 2152
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 102
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+async_insert_main_lines: 2
+anchors_mirror: rows=212 bad=0
+tail_gate_head: 462611cb61d545fd6dfc76872b5d6156aa92d0a5
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=65 anchor_rows=212 marker_commits=83 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 3 min 45 s
+```
+
+```probev1pipe
+PROBEV1PIPE tree=fixed size_mib=256 blocked_in=ended-before-3s elapsed_ms=1530 outcome=org.apache.kafka.connect.errors.RetriableException message_prefix=ClickHouse client V1 insert response not received within cli
+```
+
+Pipe-write stall on the fixed tree (plan-check B2a). E-07 saw no pipe-write stall at 16, 64 or 256 MiB, so the stall-size run does not apply and `v1_bound_ends_pipe_write_stall` reads `not applicable`: there is no measured stall inside the V1 body write for the bound to end or fail to end, and no code was added for one. The 256 MiB run on the fixed tree against `notReadingBody()` (insert timeout 1000) ended before the 3 s sample with a `RetriableException` carrying the V1 message, 1530 ms after the call started: about half a second to write 256 MiB into the pipe on the SinkTask thread, then the 1000 ms bound on the response wait. A first run of the same probe printed `elapsed_ms=3007`; that figure included the probe's own 3 s sampling sleep (the thread had already ended), so the probe was changed to read the thread's own end time and re-run; the line above is the re-run. The residual that remains is the one the code reading gives: a body larger than the pipe, with a consumer that stops draining, would block the SinkTask thread in the pipe write until the stream's write timeout (the socket timeout, 30000 ms by default) raises "Write timed out", which the connector already classifies as retriable; it was not reached at any size up to 256 MiB and is recorded here as not measured, not as bounded.
+
+Mutation readings. V1a (the wait never times out): the 18 bounded and release cases are red by the preemptive guard (10000 ms for the write-stall and quiet shapes, 5000 ms for progress), and the three operator cases stay green, so the guard cases bite on the bounded wait. V1b (operator gate ignored): only `operatorSocketTimeoutLeavesTheV1WaitToTheOperator` is red (the connector bound fires inside the operator's longer `socket_timeout`), and the shorter-operator put cases stay green because the library's own read timeout still ends them first, so the V1 operator ownership lives in `insertBoundMs` alone. V1c (the timeout is not converted): 18 red, the 10 put-path cases (under `none` the put throws a non-retriable exception, under `all` nothing retriable surfaces) and the 8 direct and release cases that look for a `RetriableException` in the chain. The release pin's detector was checked against a live stall in a throwaway probe: with the operator's `socket_timeout=60000` (no connector bound) and a 64 MiB write stall, the probe found exactly one client thread blocked in a socket write at 3 s (`ClickHouseWorker-1`), on JDK 21 and on the default toolchain, so the release case is not vacuous on the gate JVM.
+
+The cache-busted `testUnit` ran 2152 tests (2086 baseline + 6 raw-stub premise cases + 39 V2 cases + 21 V1 cases) with 0 failures, 0 errors and 2 skipped across 102 files, re-checked against the copied XML `xml-03-testunit` (the V1 class 21 of 21, the V2 write-stall class 19 of 19). The unedited tail gate over `M..462611cb` printed `result=PASS` with `anchor_rows=212`. `src/main` differs from the base only in the writer and the helper client; no new `src/main` file exists; the `async_insert` lines in `src/main` still count 2; no probe was committed.
+
+Recorded 2026-11-05T10:50:00Z.
+
+Verdict: pass
+
+### E-10: Live TMO-02 re-measure, large body, wire, and timed-out insert rows on ClickHouse latest (base and fixed tree)
+
+Backs: TMO-02 (U-1: the progress-header insert is re-measured against a real server and recorded with its number), TMO-03 (the V1 bound against the real server), ROADMAP Phase 46 criterion 1, and plan-check B2b (the progress-while-sending shape is measured before any claim about it).
+
+```sh
+git worktree add --detach /tmp/gsd46/probe-base 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5
+git worktree add --detach /tmp/gsd46/probe-fixed cc3c9b55dfdcfc52ab779f6bcdf8578f436b7e7f
+# scratch only in both worktrees: maxHeapSize = "3g" added to the test task of build.gradle.kts; the probe file written with the Write tool
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-base --console=plain test --rerun --tests '*ProbeInsertTimeoutLiveMeasurementTest*' > /tmp/gsd46/exec/probe-live-base.log 2>&1
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-fixed --console=plain test --rerun --tests '*ProbeInsertTimeoutLiveMeasurementTest*' > /tmp/gsd46/exec/probe-live-fixed.log 2>&1
+grep -h '^PROBE46 case=\|^PROBE46WIRE ' <the two TEST-*.xml> > /tmp/gsd46/exec/probe-live-lines.txt
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+git worktree remove --force /tmp/gsd46/probe-base && git worktree remove --force /tmp/gsd46/probe-fixed && git worktree prune
+git log --all --format=%H -- '*ProbeInsertTimeoutLiveMeasurementTest.java'
+```
+
+```text
+clickhouse_version: 26.10.3.7
+clickhouse_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+probe_base_tree: 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5
+probe_fixed_tree: cc3c9b55dfdcfc52ab779f6bcdf8578f436b7e7f
+probe_exit_base: 0
+probe_exit_fixed: 0
+probe_transport: a Testcontainers port forward through colima profile vz to the container's mapped HTTP port
+probe_jvm: default toolchain, maxHeapSize 3g in the scratch worktrees only
+probe_row_count_instrument: ClickHouseTestHelpers.countRows, which issues OPTIMIZE TABLE before its SELECT count(), read right after the call returned and again once 15 s had passed since the call ended
+probe_retriable_instrument: yes when a RetriableException is in the cause chain, or when Utils.handleException, called with the connector's own tolerance=none, retry-on-socket and additional-code settings over a RuntimeException wrapper like Processing's, throws a RetriableException
+v2_progress_escape_ms_base: 8315
+v2_progress_escape_ms_fixed: 8299
+v2_progress_control_ms: 8059
+v2_default_async_insert_bounded_ms: 3050
+v2_default_async_insert_retriable: yes
+v2_default_async_insert_root: java.net.SocketTimeoutException
+v2_default_async_insert_rows_after_15s: 4000
+v1_progress_ms_base: 8141
+v1_progress_ms_fixed: 3034
+v1_progress_fixed_retriable: yes
+v1_memory_rows_at_timeout: 0
+v1_memory_rows_after_15s: 4000
+v1_mergetree_rows_base: 4000
+v1_mergetree_rows_at_timeout: 2500
+v1_mergetree_rows_after_15s: 4000
+v2_large_body_bytes: 65610890
+v2_large_body_ms_base: 8324
+v2_large_body_outcome_base: ok
+v2_large_body_ms_fixed: 8380
+v2_large_body_outcome_fixed: ok
+wire_body_bytes: 65610890
+wire_first_progress_ms: 64
+wire_body_sent_ms: 2305
+wire_total_ms: 8316
+deadline_leaves_progress_alone: yes
+v2_large_body_cut_by_deadline: no
+wire_progress_while_writing: yes
+worktrees_removed: yes
+probe_committed: no
+```
+
+```probe46
+PROBE46 case=l1 tree=base client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8315 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l2 tree=base client=V2 body_bytes=105780 insert_timeout_ms=600000 elapsed_ms=8072 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l3 tree=base client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3060 outcome=com.clickhouse.client.api.DataTransferException retriable_in_chain=yes root=java.net.SocketTimeoutException rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l4 tree=base client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8141 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l5 tree=base client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8088 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l6 tree=base client=V2 body_bytes=65610890 insert_timeout_ms=3000 elapsed_ms=8324 outcome=ok retriable_in_chain=no root=none rows_at_end=-1 rows_after_15s=-1
+PROBE46 case=l1 tree=fixed client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=8299 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l2 tree=fixed client=V2 body_bytes=105780 insert_timeout_ms=600000 elapsed_ms=8059 outcome=ok retriable_in_chain=no root=none rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l3 tree=fixed client=V2 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3050 outcome=com.clickhouse.client.api.DataTransferException retriable_in_chain=yes root=java.net.SocketTimeoutException rows_at_end=4000 rows_after_15s=4000
+PROBE46 case=l4 tree=fixed client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3034 outcome=org.apache.kafka.connect.errors.RetriableException retriable_in_chain=yes root=java.util.concurrent.TimeoutException rows_at_end=0 rows_after_15s=4000
+PROBE46 case=l5 tree=fixed client=V1 body_bytes=105780 insert_timeout_ms=3000 elapsed_ms=3026 outcome=org.apache.kafka.connect.errors.RetriableException retriable_in_chain=yes root=java.util.concurrent.TimeoutException rows_at_end=2500 rows_after_15s=4000
+PROBE46 case=l6 tree=fixed client=V2 body_bytes=65610890 insert_timeout_ms=3000 elapsed_ms=8380 outcome=ok retriable_in_chain=no root=none rows_at_end=-1 rows_after_15s=-1
+PROBE46WIRE body_bytes=65610890 first_progress_ms=64 body_sent_ms=2305 total_ms=8316 status=HTTP/1.1 200 OK
+```
+
+What the small-body progress escape needs: a slow materialized view behind a `Null` sink (`sleepEachRow(0.002)`), `async_insert=0` and the input split into 500-row blocks (the recipe's settings, `send_progress_in_http_headers=1`, `http_headers_progress_interval_ms=50`); with those the V2 insert ran 8315 ms on the base tree and 8299 ms on the fixed tree against a 3000 ms bound (the two differ by 0.2 %), and the control with a 600000 ms bound ran 8059 ms, so the write-phase deadline leaves a response that streams progress after the body is sent alone. The same insert under the server's default `async_insert=1` (the `function_sleep_max_microseconds_per_block` raise needed to get past the server's sleep limit) failed at 3060 ms on the base tree and 3050 ms on the fixed tree, a `DataTransferException` over a `SocketTimeoutException`, retriable by the connector's own classification. The 64 MiB body (4000 rows of 16 KiB behind the same slow view, `async_insert=0`) ended `ok` on both trees, at 8324 ms on the base tree and 8380 ms on the fixed tree, so the write-phase deadline did not cut it: the raw-wire probe of the same shape shows why, the server sent its first progress header 64 ms after the first byte (before the body had been fully sent, so `wire_progress_while_writing` is `yes`), but the client handed the whole 65610890-byte body to the socket in 2305 ms, inside the 3000 ms bound, over this transport, which means no body was still being sent at the bound and this live check never reached the progress-while-sending shape that `progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound` pins on a stub; the claim "the deadline cuts a progress-streaming body that is still being sent" therefore rests on the stub pin and not on a live measurement. What a timed-out insert left: the client V1 insert into a `Memory` table behind the slow view showed 0 rows when the timed-out call returned and 4000 rows 15 s later, the client V1 insert into a MergeTree table showed 2500 rows at once and 4000 rows 15 s later (the base-tree control landed all 4000 rows), and the timed-out default-`async_insert` V2 insert into a MergeTree table showed 4000 rows at once and 4000 rows 15 s later; in all three cases the server finished or kept the insert after the client gave up, so a timed-out insert is not rolled back, and the figures depend on the engine and on `async_insert` (the rows are read by a call that first runs `OPTIMIZE TABLE`, so "at once" is to within that call).
+
+Recorded 2026-11-05T11:05:00Z.
+
+Verdict: pass
+
+### E-11: Non-insert requests and ping against a server that never answers (client V2 and V1)
+
+Backs: TMO-03 (U-4: each non-insert request recorded with its measured number, no client-level timeout and no Keeper bound; U-5: the V2 `ping(timeout)` no-op recorded), ROADMAP Phase 46 criterion 2's recorded half.
+
+```sh
+git worktree add --detach /tmp/gsd46/probe-noninsert 6d4f5081   # HEAD; probe written with the Write tool, never committed
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/probe-noninsert --console=plain testUnit --rerun --tests '*ProbeNonInsertBoundsMeasurementTest*' > /tmp/gsd46/exec/probe-noninsert.log 2>&1
+grep -h '^PROBENI ' /tmp/gsd46/probe-noninsert/build/test-results/testUnit/TEST-*.xml > /tmp/gsd46/exec/probe-noninsert-lines.txt
+git worktree remove --force /tmp/gsd46/probe-noninsert && git worktree prune
+git log --all --format=%H -- '*ProbeNonInsertBoundsMeasurementTest.java'
+```
+
+```text
+probe_tree: 6d4f5081 (src identical to cc3c9b55)
+probe_runs: 2 (the first run capped the V2 helper's Keeper read at the 20 s V2 cap, a probe error: it recorded 20014 ms still running; the probe was changed to give the Keeper read the V1 cap on both helper clients, and the second run is the recorded one)
+probe_helper_retry: 1 (setRetry(1) on both helper clients, as the research probe had; the connector's default is 3)
+probe_stub: StubClickHouseServer.stalling(), HTTP mode, a request is held up to 60 s, every request on its own thread, the two helper clients closed at the end so every thread ends
+v2_block_cap_s: 20
+v1_cap_s: 45
+ping_timeout_ms: 2000
+v2_ping_elapsed_ms: 20005
+v2_version_elapsed_ms: 20004
+v2_show_tables_elapsed_ms: 20004
+v2_describe_elapsed_ms: 20004
+v2_alter_elapsed_ms: 20004
+v2_keeper_write_elapsed_ms: 20004
+v2_keeper_read_elapsed_ms: 30034
+v1_ping_elapsed_ms: 2082
+v1_version_elapsed_ms: 30036
+v1_show_tables_elapsed_ms: 30037
+v1_describe_elapsed_ms: 30045
+v1_alter_elapsed_ms: 30034
+v1_keeper_write_elapsed_ms: 30043
+v1_keeper_read_elapsed_ms: 30034
+v2_ping_noop_confirmed: yes
+v1_library_bound_ms: 30045
+v1_describe_outcome: returned null
+v1_version_outcome: returned null
+v1_show_tables_outcome: returned an ArrayList (empty, read from the code: the failure is swallowed and the list stays empty)
+v1_alter_outcome: java.lang.RuntimeException
+v1_keeper_write_outcome: java.lang.RuntimeException
+v1_keeper_read_outcome: com.clickhouse.client.ClickHouseException
+put_path_requests: show_tables; describe; alter; keeper_write; keeper_read
+worktree_removed: yes
+probe_committed: no
+```
+
+```probeni
+PROBENI client=V2 request=ping elapsed_ms=20005 still_running_at_cap=yes outcome=still-running put_path=no
+PROBENI client=V2 request=version elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=no
+PROBENI client=V2 request=show_tables elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=describe elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=alter elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=keeper_write elapsed_ms=20004 still_running_at_cap=yes outcome=still-running put_path=yes
+PROBENI client=V2 request=keeper_read elapsed_ms=30034 still_running_at_cap=no outcome=com.clickhouse.client.ClickHouseException put_path=yes
+PROBENI client=V1 request=ping elapsed_ms=2082 still_running_at_cap=no outcome=returned:Boolean put_path=no
+PROBENI client=V1 request=version elapsed_ms=30036 still_running_at_cap=no outcome=returned:null put_path=no
+PROBENI client=V1 request=show_tables elapsed_ms=30037 still_running_at_cap=no outcome=returned:ArrayList put_path=yes
+PROBENI client=V1 request=describe elapsed_ms=30045 still_running_at_cap=no outcome=returned:null put_path=yes
+PROBENI client=V1 request=alter elapsed_ms=30034 still_running_at_cap=no outcome=java.lang.RuntimeException put_path=yes
+PROBENI client=V1 request=keeper_write elapsed_ms=30043 still_running_at_cap=no outcome=java.lang.RuntimeException put_path=yes
+PROBENI client=V1 request=keeper_read elapsed_ms=30034 still_running_at_cap=no outcome=com.clickhouse.client.ClickHouseException put_path=yes
+```
+
+Read from the code: a table-refresh thread blocked on client V2 keeps `isUpdateMappingRunning` set, so every later `updateMapping` returns `false` and callers fall to a direct `describeTable`, and a start-path request that never returns leaves `SinkTask.start` blocked. Measured: against a server that accepts every request and never answers, every client V2 request except the Keeper read was still blocked at the 20 s cap (the V2 ping at 20005 ms with a 2000 ms timeout, so its timeout does not fire), while the Keeper read, which always goes through a client V1 read, ended at 30034 ms on the V2 helper client and 30034 ms on the V1 helper client, and every other client V1 request except ping ended between 30034 and 30045 ms; the client V1 ping ended at 2082 ms. The probe built both helper clients with the retry count at 1; the connector's default is 3, and `pingV1` and `queryV1` loop that many times (read from the code, not measured with 3), so the V1 ping and the V1 Keeper write take longer than these figures with the default. The V1 describe, version and table-list calls swallowed their failure and returned null or an empty list, and the ALTER and the Keeper write threw a `RuntimeException`.
+
+Recorded 2026-11-05T11:07:00Z.
+
+Verdict: pass
+
+### E-12: FORK-DELTA records the phase
+
+Backs: TMO-02, TMO-03 (the recorded cases are written into FORK-DELTA with the measured number, conditions and the decision behind them), U-1, U-4, U-5, U-6, plan-check B2 (no claim wider than its measurement) and the ROADMAP note that the rollout item states the bound's consequence.
+
+```sh
+python3 -I <row-count script: Connector source and Test harness rows at HEAD minus at B0>
+python3 -I <item 14 script: U-6 wording count, citations, measured numbers, removed clauses>
+rm -rf build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/testunit-docs.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-p4-fd.txt
+git diff --name-only d4977444c774b1ba2c5a2a5e96fa64b854d2fbac^ d4977444c774b1ba2c5a2a5e96fa64b854d2fbac
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- CHANGELOG.md VERSION build.gradle.kts gradle .github
+```
+
+```text
+fork_delta_commit: d4977444c774b1ba2c5a2a5e96fa64b854d2fbac
+fork_delta_commit_files: docs/FORK-DELTA.md
+connector_rows_delta: 1
+harness_rows_delta: 0
+item14_not_bounded_by_decision: 4
+item14_cites: yes
+item14_numbers_from_evidence: yes
+item14_numbers_checked: E-10 8299, 3050, 3034, 2500, 8380; E-11 2082; E-09 pipe-write number skipped because v1_bound_ends_pipe_write_stall is not applicable
+item14_stale_clauses: 0
+v1_bound_ends_pipe_write_stall: not applicable
+item14_v1_pipe_wording: not reached up to 256 MiB, the bound is not claimed to end a stall inside the pipe write, and no claim of bounded or of impossible to bound is made for it
+item14_help_text_sentence: carried over verbatim, checked against the text at B0
+changelog_version_build_workflows_unchanged: yes
+docs_changed_since_base: docs/FORK-DELTA.md
+src_main_changed_in_this_plan: no
+testunit_exit: 0
+testunit_tests: 2152
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 102
+```
+
+The Connector-source table gained one row, placed after the per-insert `socket_timeout` row (the V2 write-phase deadline and the V1 bounded wait, with messages, operator gate, unchanged-tree behaviour from E-04 and E-07 and the pins), and the Test-harness table kept its row count (the `StubClickHouseServer` row was extended in place with the raw-socket mode, the shared fixture and the A1 margin of E-03). Known costs item 14 was rewritten from the recorded evidence: the bounded cases with their pins and numbers; the client V1 pipe write as measured, which means not reached up to 256 MiB (the 256 MiB fixed-tree time, 1530 ms, is the response-wait bound); three cases "not bounded by decision" (the client V2 progress insert after its body is sent, with the progress-while-sending shape stated as measured: stub pin, live 64 MiB body that left the client in 2305 ms and so never reached the shape, wire; the non-insert requests with E-11's numbers; the V2 ping timeout, 20005 ms against 2000 ms); the false statement about the ping's timeout corrected; and the rollout consequence (a bound fails an insert that legitimately runs longer, and a timed-out insert is not rolled back, with 2500 then 4000 rows on MergeTree). The help-text sentence of item 14 is unchanged (plan 46-05 rewrites it with the text). The cache-busted `testUnit` ran 2152 tests, the E-09 count, with 0 failures, 0 errors and 2 skipped across 102 files.
+
+Recorded 2026-11-05T11:11:00Z.
+
+Verdict: pass
+
+### E-13: Help text red on the unchanged text, written from the measured list, pinned, anchors, FORK-DELTA
+
+Backs: TMO-01 (ROADMAP Phase 46 criterion 4: the help text is written after criteria 1-3 settled, says what the setting bounds and what it does not, is pinned Docker-free against the measured list, and the `ClickHouseSinkConfig` diff is that text and nothing else), plan-check B2 (no phrase claims more than its measurement).
+
+```sh
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' > /tmp/gsd46/exec/red-help.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' > /tmp/gsd46/exec/green-help.log 2>&1
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*AdditionalRetriableErrorCodesPinUnitTest*' --tests '*NewUpstreamConfigDefaultsUnitTest*' --tests '*ClickHouseSinkConfigTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd46/exec/neighbours-help.log 2>&1
+python3 -I <config diff script: every changed line a string literal inside the define call of CLICKHOUSE_CLIENT_INSERT_TIMEOUT_MS at B0>
+grep -c 'configDef.define(' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+grep -rn 'async_insert' src/main | wc -l
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <ClickHouseSinkConfig.java and the pin> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin> && git worktree remove --force /tmp/gsd46/fmt
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 214
+git add <ClickHouseSinkConfig.java, the pin, fork-anchors.txt> && git commit -F /tmp/gsd46/exec/msg-p5-help.txt
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-p5-fd.txt
+```
+
+```text
+phrases_supported: yes
+v1_variant: not applicable
+required_phrase_count: 12
+help_red_csc_identical_to_base: yes
+help_red_tests: 18 (12 required phrases, 4 kept phrases, 1 retired claim, 1 attribute pin)
+help_red_failed_count: 13
+help_red_failed: H1, H2, H13, H3, H4, H5, H6, H7, H8, H9, H10, H11 and the retired-claim case
+help_red_green: the four kept-phrase cases and onlyTheDocumentationOfTheKeyChanged
+help_green_failed_count: 0
+help_pin_tests: 18
+help_neighbours_run: AdditionalRetriableErrorCodesPinUnitTest, NewUpstreamConfigDefaultsUnitTest, ClickHouseSinkConfigTest, SourcePlanningIdGuardUnitTest (49 tests across four files)
+help_neighbours_failed_count: 0
+csc_diff_text_only: yes
+csc_define_count_unchanged: yes
+csc_define_count: 48
+async_insert_main_lines: 2
+anchors_mirror: rows=214 bad=0
+fmt_csc: preexisting
+fmt_hp: identical
+help_commit: 63aade668a711d863aaa346f4d3d87c3cb7aeea3
+help_commit_files: 3
+fork_delta_help_sentence: yes
+help_docs_commit: 1aefb2bea36266a5c156354b8619e992fdbdbef9
+help_docs_commit_files: docs/FORK-DELTA.md
+```
+
+How the list was settled. E-09 `v1_bound_ends_pipe_write_stall` reads `not applicable`, so the client V1 clause is the `not applicable` variant of the plan ("the whole wait for the insert response, including a stalled body write (measured with batches up to 256 MiB), a quiet server and a server that keeps sending progress headers"), there is no pipe-write residual sentence, and the pin carries 12 required phrases. Each phrase was read against the facts it stands on and each is supported: H1 by the unchanged gg7 pin `InsertStallBoundPinUnitTest` (green in E-01); H2 by E-05 (write stall at 1.010 to 1.082 s, slow upload cut at 1.023 s); H13 by E-05 `progressStreamedWhileTheBodyIsStillSentIsCutAtTheBound` (1.013 s), where E-10 recorded that the live 64 MiB body left the client in 2305 ms inside the 3000 ms bound, so the shape rests on that stub pin and not on a live run; H3 by E-07 (the SinkTask thread was in the response wait at 16, 64 and 256 MiB, never in the pipe write), E-08 (write stall ended at 1.137 to 1.218 s against 1000 ms, quiet stall at 0.313 to 0.325 s against 300 ms) and E-10 `v1_progress_ms_fixed` 3034; H4 to H5 by E-05 and E-10 (`v2_progress_escape_ms_fixed` 8299 against a 3000 ms bound, only with `async_insert=0`); H6 to H8 by E-11 (V2 requests still blocked at the 20 s cap, the V2 Keeper read at 30034 ms, V1 requests at 30034 to 30045 ms, V1 ping at 2082 ms with the `timeoutSeconds`-derived timeout); H9 and H10 by the operator cases of E-05 and E-08 and the gg7 operator pins; H11 by E-10 (a V1 timeout into MergeTree left 2500 rows at once and 4000 after 15 s). No phrase was contradicted and none was adjusted against a measurement.
+
+Scopes the text carries, which a reader of this entry should keep. The V1 clause says a stalled body write is covered "as measured with batches up to 256 MiB": a stall inside the client's pipe write was not reached up to 256 MiB (E-07, E-09), so the text claims the response-wait bound for the measured sizes and no bound for a pipe-write stall; the unmeasured residual is recorded in FORK-DELTA item 14. H8 gives the client library's 30 s inactivity limit as the end of the V1 non-insert requests; E-11 measured it with a retry count of 1 and the connector's default is 3, which `pingV1` and `queryV1` loop over (read from the code, not measured), so 30 s is the per-attempt figure; FORK-DELTA item 14 now says so, the help text keeps the planned wording because the plan's verify and the 12-phrase list fix it. "The timeout setting" in H8 is the connector's `timeoutSeconds` (E-11's ping timeout), not this setting. Both are reported in the plan summary for the reviewer.
+
+The config diff is 23 added and 7 removed lines, all string literals inside the define call; `What it does not bound` counts 1 on one source line and the retired claim counts 0 in `ClickHouseSinkConfig.java`. The per-file formatting check on a worktree at the text commit's parent: the pin was identical after `spotlessApply`; `ClickHouseSinkConfig.java` differs only in import ordering, which also differs on the unchanged copy, and the define call region was identical, so the lines this change wrote are not reformatted (`preexisting`). The docs commit holds only `docs/FORK-DELTA.md`; the item 14 sentence no longer contains `is left as it is because` and names `InsertTimeoutHelpTextPinUnitTest` and E-13.
+
+Recorded 2026-11-05T11:22:55Z.
+
+Verdict: pass
+
+### E-14: Phase gate: testUnit with Docker unreachable, two full runs on latest x V2, pins and scope, tail gate, nothing pushed
+
+Backs: TMO-01, TMO-02, TMO-03 (ROADMAP Phase 46 phase gate: cache-busted `testUnit`, a full suite on `latest` x V2 with `SELECT version()` recorded, the anchors invariant on an explicit SHA; closes criteria 1-3 on the phase tip).
+
+```sh
+git ls-remote upstream main
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/tags/pre-v1.7.0_gg8 --jq length
+gh api repos/ne1r0n/clickhouse-kafka-connect/git/matching-refs/heads/sync/v1.7.0 --jq '.[].object.sha'
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/gate-testunit.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd46/exec/xml-gate-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-gate-testunit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd46/exec/gate-suite-1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd46/exec/xml-gate-suite-1 && cp -R build/test-results/test /tmp/gsd46/exec/xml-gate-suite-1
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+# the same suite, snapshot and version/digest reads again as run 2 (gate-suite-2.log, xml-gate-suite-2)
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-gate-suite-1 --class <each of the eight phase and gg7 timeout classes>
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- <the three gg7 pin files>
+git diff --name-only 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+git diff --name-only --diff-filter=A 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- src/main
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- <Utils, Processing, ProxySinkTask, KeeperStateProvider>
+grep -rn 'async_insert' src/main | wc -l
+grep -cF 'clientBuilder.setSocketTimeout(' src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- build.gradle.kts gradle .github CHANGELOG.md VERSION
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh .planning/scripts/fork-anchor-exemptions.txt .planning/phases/46-insert-timeout-limits/46-evidence-check.py
+git rev-list --merges 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5..HEAD
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 3a399c38e0e19639b8939238cc667e96f183eabf > /tmp/gsd46/exec/gate-tail.log 2>&1
+```
+
+```text
+upstream_main_at_gate: 83808df9a0993cf49b2ceaa4633c782e550c0180 (unchanged since the Phase 45 pre-flight)
+origin_pre_tag_at_gate: absent
+origin_sync_branch_at_gate: absent
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2170
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 103
+suite_java: default toolchain (semeru-17.0.9, OpenJ9), no -PjavaVersion=21
+suite_run1_exit: 0
+suite_run1_tests: 2773
+suite_run1_failures: 0
+suite_run1_errors: 0
+suite_run1_skipped: 18
+suite_run1_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_run1_version: 26.10.3.7
+suite_run1_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_run1_crash: none
+suite_run1_duration: 4m 9s
+suite_run1_files: 152
+suite_run2_exit: 0
+suite_run2_tests: 2773
+suite_run2_failures: 0
+suite_run2_errors: 0
+suite_run2_skipped: 18
+suite_run2_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_run2_version: 26.10.3.7
+suite_run2_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_run2_crash: none
+suite_run2_duration: 4m 10s
+suite_runs_equal: yes
+new_fork_cases: 84 (6 raw-stub + 39 V2 + 21 V1 + 18 help-text pin)
+suite_delta_vs_baseline: 84
+gg7_pins_in_suite: InsertStallBoundPinUnitTest 15, InsertSocketTimeoutOptionUnitTest 23, RetriableExceptionPassThroughUnitTest 38
+phase_pins_in_suite: StubClickHouseServerRawModeUnitTest 6, InsertWriteStallBoundPinUnitTest 19, InsertBoundGateUnitTest 20, InsertV1WaitBoundPinUnitTest 21, InsertTimeoutHelpTextPinUnitTest 18, all green
+gg7_pins_unchanged_since_base: yes
+main_diff_since_base: src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+main_files_added: none
+untouched_main_files: yes
+async_insert_main_lines: 2
+client_level_socket_timeout_rows: 0
+build_files_unchanged: yes
+anchors_mirror: rows=214 bad=0
+gate_scripts_unchanged: yes
+merges_since_base: none
+gate_head: 3a399c38e0e19639b8939238cc667e96f183eabf
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=75 anchor_rows=214 marker_commits=93 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 7 min 20 s
+pushed: nothing; pre-v1.7.0_gg8 and sync/v1.7.0 are absent on origin
+```
+
+The three runs agree with the arithmetic the plan sets: the cache-busted `testUnit` ran 2170 tests (E-09's 2152 plus the 18 cases of `InsertTimeoutHelpTextPinUnitTest`) with 2 skipped, with `DOCKER_HOST` pointing at a socket that does not exist, so no Docker-backed class ran; each of the two `--rerun` full suites on ClickHouse 26.10.3.7 (the digest is the one recorded since E-01) ran 2773 tests with the 18 named skips and no failing testcase, which is E-01's 2689 plus the phase's 84 Docker-free cases (6 + 39 + 21 + 18). Every count above was re-read from the copied XML snapshots (`xml-gate-testunit`, `xml-gate-suite-1`, `xml-gate-suite-2`). The timeout pin classes of gg7 are byte-unchanged since the base and run with E-01's counts (15, 23, 38); the five classes this phase added run green in the full suite. No JVM crash happened in either run and no crash file was left in the repository root; `-PjavaVersion=21` was not needed. The tail gate is the unedited script over `M..3a399c38` and took 7 min 20 s (earlier plans recorded 3 to 4 min; the cause was not investigated). The tree was clean in tracked source, build and docs files at the gate head; the only modified tracked files were the planning state files the dispatch said not to stage.
+
+Recorded 2026-11-05T11:41:12Z.
+
+Verdict: pass
+
+### E-15: WR-01 client V2 contract, retry-stall premise and red on the unchanged production tree
+
+Backs: TMO-03 (gap-closure plan 46-06, review finding WR-01: the V2 write deadline is disarmed after the first attempt and was never re-armed when the client retries an insert; a red-first pin on the unchanged tree).
+
+```sh
+git rev-parse HEAD
+javap -cp client-v2-0.11.0.jar -p com.clickhouse.client.api.DataStreamWriter
+javap -cp client-v2-0.11.0.jar -p -c com.clickhouse.client.api.Client            # Client.insert retry loop
+javap -cp client-v2-0.11.0.jar -p -c com.clickhouse.client.api.internal.HttpAPIClientHelper   # shouldRetry
+javap -cp client-v2-0.11.0.jar -p -c com.clickhouse.client.api.ClientConfigProperties         # RETRY_ON_FAILURE, CLIENT_RETRY_ON_FAILURE
+grep -n -i 'retry' src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*StubClickHouseServerRawModeUnitTest*' > /tmp/gsd46/exec/g06-raw.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <the stub, its raw-mode test and the pin class> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the three files> && git worktree remove --force /tmp/gsd46/fmt
+git add <the stub and its raw-mode test> && git commit -F /tmp/gsd46/exec/msg-g06-stub.txt
+git worktree add --detach /tmp/gsd46/red 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947
+git diff --quiet 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947 -- src/main
+cp <pin class, first draft> /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/ && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/g06-red.log 2>&1
+git show 10fdbf41:src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java > /tmp/gsd46/red/src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/red --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/g06-red-final.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/red/build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/red/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/red && git worktree prune
+```
+
+```text
+plan_head_before: 62ab21c94b5bb7404d1406d16b9d2a39256f57b2
+branch: sync/v1.7.0
+client_v2_jar: client-v2-0.11.0.jar from the Gradle cache (the version the build resolves)
+datastreamwriter_on_retry: default method onRetry() throws IOException next to abstract onOutput(OutputStream)
+client_insert_retry_order: Client.insert catches the failure, asks shouldRetry and requestIsNotCancelled, selects the next node, calls DataStreamWriter.onRetry() while the attempt count is below the retry count, then runs onOutput again for the next attempt
+client_retry_default: 3 (ClientConfigProperties.RETRY_ON_FAILURE, option name retry)
+client_retry_default_faults: NoHttpResponse, ConnectTimeout, ConnectionRequestTimeout, ServerRetryable (CLIENT_RETRY_ON_FAILURE default list; SocketTimeout is not in it)
+connector_sets_v2_retry: no, ClickHouseHelperClient names retry only for its own V1 ping and query loops and sets no V2 retry option
+stub_commit: 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947
+stub_commit_files: 2
+raw_slice_exit: 0
+raw_slice_tests: 7
+raw_slice_failures: 0
+premise_first_post: the whole 8 MiB body is read, the connection closes, a client read returns -1 (no response)
+premise_first_post_body_bytes_read: 8388608
+premise_second_post: a 64 MiB body write is still blocked after 2 s with no further body byte read, and ends with an IOException once the stub closes
+fmt_stub_3: identical
+fmt_raw_test_3: identical
+fmt_stall_pin_3: identical
+red_tree: 9cedea94c5f650bb4cac5fb84bfdfe4fe905b947
+red_main_identical_to_base: yes
+red_draft_exit: 1
+red_draft_tests: 20
+red_draft_failed_count: 2
+red_draft_failed: clientInternalRetryOfAnInsertGetsAFreshWriteDeadline; secondInsertWithTheSameQueryIdSurvivesTheFirstInsertsElapsedBound
+red_draft_retry_case_seconds: 10.062
+red_draft_same_id_case: a draft replacement of the late-fire case was red on the unchanged tree for a test-design reason: the stub delayed the second response 900 ms and the per-insert socket_timeout equals the 300 ms bound, so the in-flight second insert ended at 301 ms with an inactivity timeout; the draft was dropped and never committed
+red_exit: 1
+red_tests: 20
+red_failed_count: 1
+red_failed: clientInternalRetryOfAnInsertGetsAFreshWriteDeadline
+red_by_guard: yes
+red_retry_case_seconds: 10.031
+red_renamed_case_green_seconds: 0.623
+worktree_removed: yes
+```
+
+The retry pin runs a real writer on client V2 with the default retry count against the new raw stub: 16 records of 1 MiB through the JSON route, a 1000 ms insert timeout, the first POST read through and closed with no response, every later request read by its head only. On the unchanged tree (`src/main` byte-identical to the review tip) the case failed by the 10 s preemptive guard, `a client V2 insert must end within the bound ==> execution timed out after 10000 ms`. A client that had not retried would have returned the closed-connection failure at once, so ending in the guard means the client sent a second attempt and its body write blocked with no connector bound; the second POST is also what the green run counts (E-16). The first red run used a draft of the test class that also carried a replacement for the late-fire case (see `red_draft_same_id_case`); that draft is not the final class, so the red was repeated with the final class (`red_exit` to `red_renamed_case_green_seconds`), where exactly the retry case is red and the renamed case is green.
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-16: WR-01 re-arm green, mutation checks, IN-03, anchors
+
+Backs: TMO-03 (review findings WR-01 and IN-03: the write deadline is re-armed on a client-internal retry, shown red on the unchanged tree in E-15 and green here, a mutation that drops the re-arm turns the pin red, and the late-fire case is renamed to what it pins).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' --tests '*InsertBoundGateUnitTest*' --tests '*StubClickHouseServerRawModeUnitTest*' > /tmp/gsd46/exec/g06-green.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests <the ten neighbour classes> > /tmp/gsd46/exec/g06-neighbours.log 2>&1
+git worktree add --detach /tmp/gsd46/mut HEAD   # twice (D5, D1): copy the writer and the pin, python3 -I replacement asserting the old text occurs once
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/mut --console=plain testUnit --rerun --tests '*InsertWriteStallBoundPinUnitTest*' > /tmp/gsd46/exec/g06-mut-<n>.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed /tmp/gsd46/mut/build/test-results/testUnit
+git worktree remove --force /tmp/gsd46/mut && git worktree prune
+for each anchor pattern: grep -cF -e <pattern> src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 216
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <the writer and the pin> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin> && diff <the writer, new and unchanged copies> && git worktree remove --force /tmp/gsd46/fmt
+git add <the writer, the pin class, fork-anchors.txt> && git commit -F /tmp/gsd46/exec/msg-g06-fix.txt
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-g06-fd1.txt
+```
+
+```text
+green_exit: 0
+green_tests: 47 (V2 write-stall pin class 20, gate unit class 20, raw stub class 7)
+green_failed_count: 0
+retry_case_seconds: 1.088
+retry_case_posts: 2 (asserted by the pin)
+renamed_case_seconds: 0.613
+neighbours_exit: 0
+neighbours_tests: 368
+neighbours_files: 10
+neighbours_failed_count: 0
+neighbours_classes: InsertStallBoundPinUnitTest, InsertSocketTimeoutOptionUnitTest, RetriableExceptionPassThroughUnitTest, WriterHelperClientClosingUnitTest, ClientInsertWirePinUnitTest, ClientEndpointAndOptionsPinUnitTest, ClientErrorShapePinUnitTest, WriterFailureClassificationUnitTest, SourcePlanningIdGuardUnitTest, InsertV1WaitBoundPinUnitTest
+d5_target: in the writer returned by deadlineAwareWriter, the body of onRetry() (the statement deadline.rearm();) removed
+d5_failed_count: 1
+d5_failed: clientInternalRetryOfAnInsertGetsAFreshWriteDeadline
+d5_by_guard: yes (10000 ms)
+d5_expected_met: yes
+d1_target: in InsertWriteDeadline.disarm(), the three body lines that cancel the scheduled task removed
+d1_failed_count: 1
+d1_failed: progressStreamingV2InsertRunsPastTheBoundOnceTheBodyIsSent
+d1_renamed_case_green: yes
+in03_outcome: the case is renamed secondInsertAfterTheFirstInsertsBoundHasElapsedSucceeds and its Javadoc says what it does not pin; it was not strengthened because a fire against a finished request cannot be produced from outside the writer (disarm() cancels the task after every insert) and an in-flight second insert with the same query id cannot be held past the bound (the per-insert socket_timeout equals the bound and ends a quiet in-flight insert)
+anchors_disarm_before: 4
+anchors_disarm_after: 2
+anchors_rearm_after: 1
+anchors_deadline_aware_writer_after: 4
+anchors_insert_write_deadline_calls: 3
+anchors_insert_with_write_deadline_calls: 4
+anchors_rows_before: 214
+anchors_mirror: rows=216 bad=0
+fmt_writer_3: preexisting
+fmt_pin_4: identical
+fix_commit: 10fdbf411e6af14a368fa8c205e41fd678946dea
+fix_commit_files: 3
+fd_wr01_commit: c12c095a5418f2e909d5cf2e29d3f71e8461725d
+fd_wr01_commit_files: docs/FORK-DELTA.md
+```
+
+The fix replaces the three per-site lambdas with `deadlineAwareWriter(deadline, body)`, a `DataStreamWriter` whose `onOutput` runs the body, closes the stream and disarms, and whose `onRetry` calls `InsertWriteDeadline.rearm()` (disarm, then arm again, so each attempt gets the full bound and an attempt that failed before its body closed does not keep a stale task). The pin is green in 1.088 s: the first attempt is read through and closed, the second is cut at the bound. The anchor count moves are the ones written in `fork-anchors.txt`: `deadline.disarm();` 4 to 2 (the three site disarms became one in the shared writer, plus the one in the `finally` of `insertWithWriteDeadline`), `deadline.rearm();` 1 and `deadlineAwareWriter(` 4 (the declaration and three sites) added; `insertWriteDeadline(client, queryId)` stays 3 and `insertWithWriteDeadline(` stays 4. The per-file formatting check on a worktree at the pre-commit HEAD: the pin class was identical after `spotlessApply`; `ClickHouseWriter.java` differs only in import ordering, and the unchanged HEAD copy shows the same diff, so the lines this change wrote are not reformatted (`preexisting`). The FORK-DELTA commit narrows the Phase 41 sentence to "a read timeout is not retried by the client" and names the faults the client does retry (read from the decompiled client, E-15).
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-17: help text corrected (WR-02, WR-03, WR-04, IN-01, IN-04): red on the previous text, green after
+
+Backs: TMO-01 (review findings WR-02, WR-03, WR-04, IN-01 and IN-04: the help text of `clickhouseClientInsertTimeoutMs` no longer claims more than E-07 to E-11 measured, and the pin is changed with the wording).
+
+```sh
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' > /tmp/gsd46/exec/g06-help-red.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*InsertTimeoutHelpTextPinUnitTest*' --tests '*AdditionalRetriableErrorCodesPinUnitTest*' --tests '*NewUpstreamConfigDefaultsUnitTest*' --tests '*ClickHouseSinkConfigTest*' --tests '*SourcePlanningIdGuardUnitTest*' > /tmp/gsd46/exec/g06-help-green.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit --class InsertTimeoutHelpTextPinUnitTest
+python3 -I <config diff script: every changed line of ClickHouseSinkConfig.java is a string literal inside the define call>
+grep -cF 'What it does not bound' src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt --rows 216
+git worktree add --detach /tmp/gsd46/fmt HEAD && cp <ClickHouseSinkConfig.java and the pin> /tmp/gsd46/fmt/... && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd46/fmt --console=plain spotlessApply && cmp <the pin> && diff <the config> && git worktree remove --force /tmp/gsd46/fmt
+git add <ClickHouseSinkConfig.java and the pin> && git commit -F /tmp/gsd46/exec/msg-g06-help.txt
+```
+
+```text
+help_red_text: the pin class with the corrected phrases run against the previous help text (ClickHouseSinkConfig.java unchanged)
+help_red_exit: 1
+help_red_tests: 27
+help_red_failed_count: 13
+help_red_failed: H0, H3, H8, H9, H10, H14, H15, H16, H17 and the four retired-claim cases (Maximum time in milliseconds the connector gives one ClickHouse insert; including a stalled body write; and ping at the timeout setting; the connector adds no limit of its own on either client)
+help_red_green: H1, H2, H13, H4, H5, H6, H7, H11, the four kept phrases, the attribute pin and the original retired claim
+help_green_exit: 0
+help_green_failed_count: 0
+help_pin_tests: 27
+help_neighbours_tests: 76
+help_neighbours_files: 5
+help_neighbours_failed_count: 0
+csc_changed_lines: 37
+csc_changed_lines_all_string_literals: yes
+what_it_does_not_bound_lines: 1
+anchors_mirror: rows=216 bad=0
+fmt_csc_2: preexisting
+fmt_help_pin: identical
+help_commit: 19c36eaae4b0f8060e71172f70a608e0a7871516
+help_commit_files: 2
+wr02_v1_30s_limit: stated in the V1 clause and pinned (H17); source E-07 and E-08 (the unchanged tree waited for the library's 30 s limit)
+wr03_v1_scope: the V1 clause is the response wait and nothing else (H3), the 256 MiB measurement is stated as the measured reason (H15, E-07 and E-09), and the pipe write is named as not bounded (H16)
+wr04_attempt_and_setting: each attempt ends at the library's 30 s limit, up to retryCount attempts at some requests, ping uses timeoutSeconds (H8); retryCount attempts read from the code of pingV1 and queryV1, not measured with 3
+in01_lead: the lead sentence is a time limit for the phases listed below (H0)
+in04_async_true: socket_timeout removes the connector's insert limits except the response wait of a V2 async=true insert (H9); read from awaitInsertResponse, not measured
+```
+
+Edits kept every measured number and removed no claim that a measurement supports; the V2 clause gained "(again for each attempt when the client retries the insert)" (H14, E-16). The nine changed or new required phrases and the four retired phrases failed on the previous text (13 of 27), and each passes on the new one. The config diff is 37 changed lines, all string literals inside the define call of `CLICKHOUSE_CLIENT_INSERT_TIMEOUT_MS`; the type, default, validator, importance, display name and width are checked by the unchanged `onlyTheDocumentationOfTheKeyChanged` case. `ClickHouseSinkConfig.java` differs after `spotlessApply` only in import ordering, the same as the unchanged copy.
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-18: FORK-DELTA item 14 corrected (WR-02, WR-03, WR-04, IN-04, IN-07)
+
+Backs: TMO-01, TMO-03 (review findings IN-07, WR-02, WR-03, WR-04 and IN-04 for the FORK-DELTA wording: the E-NN placeholder, the V1 30 s limit, the help-text scope description, the `async=true` exception and the schema-refresh bound).
+
+```sh
+python3 -I <item 14 script: E-NN literal count, not-bounded-by-decision count, evidence ids cited, stale clauses>
+git add docs/FORK-DELTA.md && git commit -F /tmp/gsd46/exec/msg-g06-fd2.txt
+git diff --name-only 7ee5c02a21baa891ae25ac81ed7700b860363140^ 7ee5c02a21baa891ae25ac81ed7700b860363140
+```
+
+```text
+fd_item14_commit: 7ee5c02a21baa891ae25ac81ed7700b860363140
+fd_item14_commit_files: docs/FORK-DELTA.md
+e_nn_literals_in_fork_delta: 0
+item14_not_bounded_by_decision: 4
+item14_ids_cited: E-03, E-04, E-05, E-06, E-07, E-08, E-09, E-10, E-11, E-13, E-15, E-16, E-17
+item14_placeholder_replaced_by: E-04, E-05, E-07, E-08, E-09, E-10, E-11 and, for the retried attempt, E-15 and E-16
+item14_stale_clauses: 0 (the previous "and ping at the timeout setting" and "including a stalled body write" are gone from FORK-DELTA)
+item14_schema_refresh_clause: the retry doInsertRawBinary makes after a schema refresh starts a new insert with a fresh deadline on client V2 and a fresh response wait on client V1, so it also gets a full bound (read from the code, not measured)
+item14_v1_30s_clause: a quiet client V1 insert still ends at the library's 30 s limit, a value above 30000 ms does not extend it, naming socket_timeout changes the library's limit and removes the connector bound
+item14_async_true_clause: the response wait of a client V2 async=true insert still applies this key under an operator socket_timeout (read from awaitInsertResponse, not measured)
+item14_help_text_scopes: three scopes, each corrected: V1 response wait only with the pipe write named as not bounded, the 30 s quiet limit, the per-attempt 30 s figure with up to retryCount attempts and timeoutSeconds for the ping
+```
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass
+
+### E-19: Gap-closure gate: testUnit with Docker unreachable, full suite on latest x V2, scope, anchors, tail gate, nothing pushed
+
+Backs: TMO-01, TMO-02, TMO-03 (the phase gate repeated on the plan 46-06 tip: cache-busted `testUnit`, a full suite on `latest` x V2 with `SELECT version()` recorded, the anchors invariant on an explicit SHA, the unedited standing tail gate).
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun > /tmp/gsd46/exec/g06-gate-testunit.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/testUnit
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/testUnit
+rm -rf /tmp/gsd46/exec/xml-g06-testunit && cp -R build/test-results/testUnit /tmp/gsd46/exec/xml-g06-testunit
+rm -rf build/test-results/test
+CLICKHOUSE_VERSION=latest CLIENT_VERSION=V2 env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain test --rerun > /tmp/gsd46/exec/g06-suite-1.log 2>&1
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py skips build/test-results/test
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py failed build/test-results/test
+rm -rf /tmp/gsd46/exec/xml-g06-suite-1 && cp -R build/test-results/test /tmp/gsd46/exec/xml-g06-suite-1
+docker run --rm --entrypoint clickhouse clickhouse/clickhouse-server:latest local --query 'SELECT version()'
+docker image inspect --format '{{index .RepoDigests 0}}' clickhouse/clickhouse-server:latest
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py junit /tmp/gsd46/exec/xml-g06-suite-1 --class <each of the eight phase and gg7 timeout classes>
+git diff --name-only 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD
+git diff --name-only --diff-filter=A 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD -- src/main
+git diff --quiet 3d4ce2e864506a5b68c0c2e2ac4400a3e0d886f5 HEAD -- <the three gg7 pin files>
+git diff --quiet 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD -- build.gradle.kts gradle .github CHANGELOG.md VERSION
+git diff --quiet 62ab21c94b5bb7404d1406d16b9d2a39256f57b2 HEAD -- .planning/scripts/verify-merge-invariants.sh .planning/scripts/verify-merge-invariants-selftest.sh .planning/scripts/fork-anchor-exemptions.txt .planning/phases/46-insert-timeout-limits/46-evidence-check.py
+grep -rn 'async_insert' src/main | wc -l
+grep -cF 'clientBuilder.setSocketTimeout(' src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java
+git rev-list --merges 62ab21c94b5bb7404d1406d16b9d2a39256f57b2..HEAD
+python3 -I .planning/phases/46-insert-timeout-limits/46-evidence-check.py anchors .planning/scripts/fork-anchors.txt
+PRE_TAG=pre-v1.7.0_gg8 UPSTREAM_REF=83808df9a0993cf49b2ceaa4633c782e550c0180 CONFLICTED_PATHS_FILE=.planning/scripts/conflicted-paths-v1.7.0-tail-3.txt bash .planning/scripts/verify-merge-invariants.sh 12e2cf17cca9f5b17917dd9aceaa38b44f3f8b10 7ee5c02a21baa891ae25ac81ed7700b860363140 > /tmp/gsd46/exec/g06-gate-tail.log 2>&1
+```
+
+```text
+testunit_docker_host: unix:///nonexistent.sock
+testunit_exit: 0
+testunit_tests: 2181
+testunit_failures: 0
+testunit_errors: 0
+testunit_skipped: 2
+testunit_files: 103
+testunit_arithmetic: E-14's 2170 plus 1 raw-stub case, 1 retry pin and 9 help-text cases (27 less 18)
+suite_java: default toolchain (semeru-17.0.9, OpenJ9), no -PjavaVersion=21
+suite_exit: 0
+suite_tests: 2784
+suite_failures: 0
+suite_errors: 0
+suite_skipped: 18
+suite_skips: OK skips: named=7 state_mismatch_cases=11 unexpected=0
+suite_files: 152
+suite_version: 26.10.3.7
+suite_digest: clickhouse/clickhouse-server@sha256:739e099abd1157390960a59e4532d21781d8fde57e6e4151cb920ea02c30b1ce
+suite_crash: none
+suite_duration: 3m 14s
+suite_arithmetic: E-14's 2773 plus the same 11 cases
+phase_classes_in_suite: InsertWriteStallBoundPinUnitTest 20, InsertTimeoutHelpTextPinUnitTest 27, StubClickHouseServerRawModeUnitTest 7, InsertBoundGateUnitTest 20, InsertV1WaitBoundPinUnitTest 21, all green
+gg7_pins_in_suite: InsertStallBoundPinUnitTest 15, InsertSocketTimeoutOptionUnitTest 23, RetriableExceptionPassThroughUnitTest 38, no failure
+gg7_pins_unchanged_since_base: yes
+files_changed_since_review_tip: .planning/scripts/fork-anchors.txt; docs/FORK-DELTA.md; src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java; src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertTimeoutHelpTextPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/InsertWriteStallBoundPinUnitTest.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServer.java; src/test/java/com/clickhouse/kafka/connect/sink/db/helper/StubClickHouseServerRawModeUnitTest.java
+main_files_changed_since_review_tip: ClickHouseSinkConfig.java (help text only); ClickHouseWriter.java (deadlineAwareWriter and InsertWriteDeadline.rearm only)
+main_files_added: none
+build_files_unchanged: yes
+gate_scripts_unchanged: yes
+async_insert_main_lines: 2
+client_level_socket_timeout_rows: 0
+merges_since_review_tip: none
+anchors_mirror: rows=216 bad=0
+tail_gate_head: 7ee5c02a21baa891ae25ac81ed7700b860363140
+tail_gate_line: invariants: provenance_paths=11 anchor_commits=83 anchor_rows=216 marker_commits=101 anchor_exempt=0 result=PASS
+tail_gate_exit: 0
+tail_gate_duration: 5 min 27 s
+pushed: nothing; no push command was run in plan 46-06
+```
+
+The gate head is `7ee5c02a`, the last commit that changed a source, test or FORK-DELTA file; later commits of the plan only add this evidence file and the summary. The single full-suite run needed no re-run: no JVM crash happened and no crash file was left in the repository root. The OpenJ9 crash recovery and `-PjavaVersion=21` were not needed. The tracked files modified in the tree at the gate were only `.planning/config.json` and `.planning/state.json`, which the dispatch said not to stage.
+
+Recorded 2026-11-05T12:15:00Z.
+
+Verdict: pass

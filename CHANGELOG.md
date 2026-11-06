@@ -1,3 +1,114 @@
+# 1.7.0_gg8, 2026-11-06
+
+This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `83808df9` (upstream has no tag past
+`v1.7.0`; `1.7.0_gg6` and `1.7.0_gg7` were built on the tail up to `9bed6f79`). It lists the fork's own changes since
+`v1.7.0_gg7`: a bound on a client V2 body-write stall and on the client V1 insert wait, the `stop()` fix, a rewritten help
+text for `clickhouseClientInsertTimeoutMs`, and the recorded outcome of two questions that `1.7.0_gg7` left open (the
+redelivery of a `RetriableException` and the retry budget for `additionalRetriableErrorCodes`). Two items of upstream's
+tail are new here: the record context of a serialization failure, which changes behaviour, and field names that contain
+`/` in a `DESCRIBE` response, which this release only pins with tests and which changes nothing for a `1.7.0_gg7`
+deployment. Upstream's `additionalRetriableErrorCodes` item from the same tail already shipped in `1.7.0_gg6` and is not
+listed again. See [docs/FORK-DELTA.md](docs/FORK-DELTA.md) for everything the fork patches on top of upstream, and read
+[docs/ROLLOUT-v1.7.0_gg8.md](docs/ROLLOUT-v1.7.0_gg8.md) before upgrading from `v1.7.0_gg7`. If you are coming from an
+earlier release, start with the `1.7.0_gg7` note's pointers.
+
+## Important Changes
+
+* On client V2 only, an insert whose request body stops being read (a body-write stall) now ends with a retriable error at
+  `clickhouseClientInsertTimeoutMs` (default four minutes); in `1.7.0_gg7` only a read stall was bounded. The deadline is
+  armed before the insert and disarmed when the body stream closes, so the time to serialize and send the batch counts
+  against it, and it is armed again for each retry that the client makes internally. It is skipped when `socket_timeout`
+  is named in `jdbcConnectionProperties`.
+* On client V1, the wait for an insert response is now bounded by `clickhouseClientInsertTimeoutMs` with a retriable
+  error, and a `socket_timeout` named in `jdbcConnectionProperties` wins. This replaces the `1.7.0_gg7` statement that no
+  timeout is added to client V1 inserts. At the default of 240000 ms a quiet client V1 insert still ends at the client V1
+  library's own 30-second read limit, so the bound matters for write stalls, for inserts during which the server streams
+  progress headers, and for values below 30000 ms.
+* A timed-out insert is not rolled back: ClickHouse may still commit it, and with `exactlyOnce=false` the redelivered
+  batch can then be inserted a second time (FORK-DELTA item 14). An insert that legitimately runs longer than the bound
+  now fails; raise `clickhouseClientInsertTimeoutMs` or name `socket_timeout` for it.
+
+## Bug Fixes
+
+* `ClickHouseSinkTask.stop()` now stops the proxy task (the writer, the task MBean and the state provider) even when
+  the delivery strategy's `stop()` throws, and when only the strategy throws, its exception is the one `stop()`
+  throws (Kafka Connect only logs a throw from `stop()` as a WARN and does not fail the task, read in its sources).
+  With each of the three shipped delivery strategies (direct, at-least-once buffered and exactly-once buffered),
+  `stop()` returns normally and stops the proxy task, as before. This closes the task-level `stop()`
+  residual of the `1.7.0_gg7` Known Issues and corrects the `1.7.0_gg7` Bug Fixes sentence "The task's `stop()` stops
+  the writer, the MBean and the state provider even when one of them throws": in `1.7.0_gg7` that held for
+  `ProxySinkTask.stop()`, and not for `ClickHouseSinkTask.stop()` when the delivery strategy's `stop()` threw.
+* From upstream's tail (upstream issue #640, fixed upstream by pull request #857), with the fork's value-free policy: when
+  a record fails to serialize on the RowBinary route, the writer logs one ERROR line `Record serialization failed: ...`
+  that names the topic, the partition, the offset, the column and the exception class, and rethrows the exception the writer itself produced (a cause chain that holds a Jackson link is rebuilt without any record value: the top carries a value-free text and keeps
+  its `IOException` or `RuntimeException` category, every Jackson link above the root is dropped and a Jackson root becomes
+  a plain `IOException`, so the chain can be shorter, a run of non-Jackson `IOException`s at the bottom of the chain stays
+  as it was, and every other link is replaced by one of the same kind with a withheld message: a `RetriableException`, a
+  `DataException` or a `ConnectException` stays one, a ClickHouse server error keeps its error code, and any other link
+  becomes an `IOException` or a `RuntimeException`); its retry classification
+  does not change. In the cases the
+  tests drive (failures raised by the writer's own serialization; a rejection by the server is not covered, because no test of this repository checks what its message contains),
+  no record value reaches the message, the cause chain, a stack trace, the dead letter queue headers or a log at DEBUG or
+  above, on the RowBinary route and on the JSON route; the writer's TRACE lines still print record values. A `RetriableException`
+  passes without that line. This differs from upstream, which puts the
+  coordinates into the exception message and logs the cause chain with the throwable.
+
+## Improvements
+
+* The help text of `clickhouseClientInsertTimeoutMs` now says what the setting bounds and what it does not, and that an
+  insert that legitimately runs longer than a limit it names fails and may still be committed. This closes the `1.7.0_gg7`
+  Known Issue that the help text still described a hard limit.
+* From upstream's tail (upstream issue #838, fixed upstream by pull request #839): a field name that contains `/` in a
+  `DESCRIBE` response round-trips on client V1 and client V2. This is not a change of behaviour for `1.7.0_gg7`: the
+  fork's `fromJsonRow` already decoded only the `name` of a `DESCRIBE` row and kept every other string (the type text, the
+  comment, the default expression) as the server's literal JSON text, and the `DESCRIBE` reader code is unchanged since
+  `1.7.0_gg7`. This release adds upstream's regression tests (`SlashColumnRoundTripTest`) and the fork's
+  `FieldDescriptorLiteralFieldsUnitTest`, which pin the behaviour.
+
+## Known Issues
+
+* The other residuals of the `1.7.0_gg7` closing stay open: a Keeper state-provider constructor that fails on client
+  V1, a helper-client constructor that fails after it built its client V2, and a second `start()` on one writer. The
+  writer's `stop()` still waits at most five seconds for the table refresh and then closes its client, so a refresh
+  that is still running can end with an error on a closed client. `close(partitions)` has the same shape `stop()` had:
+  it runs the proxy task's partition removal before the delivery strategy's `close` with no `finally`, so a throw from
+  the first skips the second.
+* When both the delivery strategy's `stop()` and the proxy task's stop throw, both run and an exception reaches the
+  caller of `stop()`; Kafka Connect only logs it as a WARN and does not fail the task. A one-off probe, not a pinned
+  test, saw the proxy task's exception arrive and the strategy's exception dropped: not attached as suppressed and not
+  logged by `stop()`.
+* On client V2 on the RowBinary route, a body write that the write-phase deadline cuts first logs the ERROR line
+  `Record serialization failed: ...` for the record and the column being written at that moment and, when the cut lands
+  inside the value write, the ERROR line `Error writing value of ...` before it (a cut in the null or default flag bytes
+  that precede the value logs only the first line). On a deadline cut neither line means that record is bad, because the
+  failure the task then receives is the retriable timeout.
+* The public constant `DeclaredNullability.ESCAPED_NEWLINE` is removed from the connector jar. Nothing in the connector
+  read it; code compiled against it needs its own copy.
+* What the bounded insert still does not bound is a recorded limit, by decision: requests that are not inserts (`ping`, the
+  version query, the table list, `DESCRIBE`, `ALTER` and the Keeper state requests), the client V2 `ping(timeout)`, and a
+  client V2 insert with `async=false` (the default) whose body has been sent while the server keeps streaming progress
+  headers (measured as escaping the bound; with `async=true` the same insert is cut at the bound).
+* A `RetriableException` out of `put` is redelivered without bound under both `errors.tolerance` values: Kafka Connect
+  pauses the task's partitions and redelivers the same batch with no count and no deadline. This is a recorded limit, by
+  decision, with no retry budget (FORK-DELTA item 17). It replaces the `1.7.0_gg7` Known Issues bullets on the retry
+  budget and on the two retriable writer `DataException` shapes, whose open decision is now taken.
+* The retry-budget question for `additionalRetriableErrorCodes` is closed by decision: the connector adds no validator of
+  the listed codes, no retry budget and no setting that removes a code from the built-in set. The start-up WARN and its
+  text remain (FORK-DELTA item 24).
+
+## Build and CI
+
+* `connect-json` arrives with upstream's tail as a test dependency only and does not reach the archive. Upstream's
+  `slf4j-simple`, `spotless` and `commons-lang3` bumps in that tail were already in the `v1.7.0_gg7` catalog and arrive as
+  no-ops.
+* The release workflows compare the archive with the one rebuilt from `v1.7.0_gg7`, under an allow-list that is generated
+  for this release in the release process.
+* The JMX MBean `version=` segment and the client name sent on every request now read `v1.7.0_gg8` and
+  `clickhouse-kafka-connect/v1.7.0_gg8`. Update dashboard, alert and exporter matchers that spell out the `v1.7.0_gg7`
+  value; matchers that do not spell out the version are unaffected.
+* Two test-only changes: the allow-list wildcard rule now counts real path segments, and the removed
+  `ESCAPED_NEWLINE` constant lives on in the test fixtures.
+
 # 1.7.0_gg7, 2026-11-02
 
 This is the fork release built on upstream `1.7.0` plus upstream's untagged tail up to `9bed6f79` (the same base as

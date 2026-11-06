@@ -153,8 +153,8 @@ public class Utils {
         }
     }
 
-    private static final String CLICKHOUSE_CLIENT_ERROR_READ_TIMEOUT_MSG = "Read timed out after";
-    private static final String CLICKHOUSE_CLIENT_ERROR_WRITE_TIMEOUT_MSG = "Write timed out after";
+    public static final String CLICKHOUSE_CLIENT_ERROR_READ_TIMEOUT_MSG = "Read timed out after";
+    public static final String CLICKHOUSE_CLIENT_ERROR_WRITE_TIMEOUT_MSG = "Write timed out after";
 
     public static void sendTODlq(ErrorReporter errorReporter, Record record, Exception exception) {
         sendTODlq(errorReporter, record.getSinkRecord(), exception);

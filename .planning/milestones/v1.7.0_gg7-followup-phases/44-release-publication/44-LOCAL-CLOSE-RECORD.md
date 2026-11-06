@@ -1,5 +1,7 @@
 # Phase 44: local close record for the publication of v1.7.0_gg7
 
+> Superseded on 2026-11-04: the publication happened (E-28 to E-36), the phase verification passed (`44-VERIFICATION.md`) and RLS-01 to RLS-04 are Complete. The text below is the record as written before the publication; read `44-RELEASE-RECORD.md` for what happened.
+
 ## Status
 
 Local-complete. Plans 44-01 to 44-05 were executed and gated at the head named in E-12 and E-13, `b265f5a45a0752f314bb95315e3cdfbeaa2b78cd`, and the tip equals that head outside `.planning` and under `.planning/scripts` (E-14, E-19). The publication is pending and human-gated. Nothing was pushed, merged, tagged or dispatched: origin `custom_build` reads `72e8ccffe05ff6dffb14098d0b8c0f67aaa6a236`, no `sync/v1.7.0` head and no `v1.7.0_gg7` tag exists on origin, and the local tag `pre-v1.7.0_gg7` is on `72e8ccff` and not on origin. Ready for the user's direct approval: the orchestrator presents `44-APPROVAL-BUNDLE.md`.

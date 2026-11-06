@@ -1,0 +1,6 @@
+.github/workflows/tests.yaml
+CHANGELOG.md
+VERSION
+gradle/libs.versions.toml
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseFieldDescriptor.java
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java

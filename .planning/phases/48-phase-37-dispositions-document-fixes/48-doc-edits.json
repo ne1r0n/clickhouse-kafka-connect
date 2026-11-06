@@ -1,0 +1,59 @@
+{
+  "_note": "Plan-time machine copy of the exact Phase 48 document edits (plan 48-04). Read-only: never edited by an executor. Each key is a list of old/new pairs for one file and one commit; each old string occurs exactly once in its file before its edit, and the pairs of a key are applied in order. A later qualification after a review is a separate commit and leaves this file unchanged.",
+  "rollout_gg6": [
+    {
+      "old": "Row C2 now names FUT-05, the open follow-up for a budget on the redelivery of a listed code or a setting that removes a code from the built-in set, which [`FORK-DELTA.md`](FORK-DELTA.md) tracks under Known costs and open items.",
+      "new": "Row C2 now points to [`FORK-DELTA.md`](FORK-DELTA.md), which records the missing budget on the redelivery of a listed code and the missing setting that removes a code from the built-in set as limits kept by decision, under Known costs and open items."
+    },
+    {
+      "old": "That follow-up is FUT-05, open in [`FORK-DELTA.md`](FORK-DELTA.md) under Known costs and open items.",
+      "new": "[`FORK-DELTA.md`](FORK-DELTA.md) records both as limits kept by decision, under Known costs and open items (item 17 for the budget, item 24 for the built-in set)."
+    },
+    {
+      "old": "since Phase 39, `ClientEndpointAndOptionsPinUnitTest",
+      "new": "since `v1.7.0_gg7`, `ClientEndpointAndOptionsPinUnitTest"
+    }
+  ],
+  "rollout_gg1": [
+    {
+      "old": "which of its facts were measured on the release and which only in the maintainers' research",
+      "new": "which of its facts were measured on the `v1.7.0_gg6` tree and which only in the maintainers' research"
+    },
+    {
+      "old": "that combination decodes ZSTD (measured) and loads",
+      "new": "that combination decodes ZSTD (measured on the `v1.7.0_gg6` tree) and loads"
+    }
+  ],
+  "fork_delta_doc02": [
+    {
+      "old": "`.planning/phases/35-buffered-offset-commit-under-topic-renaming-smts/35-COMMAND-EVIDENCE.md`",
+      "new": "`.planning/milestones/v1.7.0_gg6-maintenance-phases/35-buffered-offset-commit-under-topic-renaming-smts/35-COMMAND-EVIDENCE.md`"
+    },
+    {
+      "old": "`.planning/phases/25-dependency-absorption-upstream-mini-sync/25-COMMAND-EVIDENCE.md`",
+      "new": "`.planning/milestones/v1.7.0_gg4-hardening-phases/25-dependency-absorption-upstream-mini-sync/25-COMMAND-EVIDENCE.md`"
+    },
+    {
+      "old": "and the fork's `src/test/java/transforms/KeyToValueTest.java` |",
+      "new": "and the fork's `src/test/java/transforms/KeyToValueTest.java` (removed; upstream's copy is `src/test/java/com/clickhouse/kafka/connect/transforms/KeyToValueTest.java`) |"
+    },
+    {
+      "old": "The Future Requirements list in `.planning/REQUIREMENTS.md` remains open",
+      "new": "The v2 requirements list in `.planning/milestones/v1.7.0_gg6-maintenance-REQUIREMENTS.md`, where these identifiers are defined, remains open"
+    },
+    {
+      "old": "**20. Phase 37 advisory rows that need the user's approval (published knowingly open).** Four findings in `src/main` (26 IN-02, 27 WR-01, 27 IN-01, 28 IN-01) and the null assertion of 28 IN-05 stay dispositioned, not fixed: the user deferred all five on 2026-11-02. Each has its row, owner and re-open trigger in `43-DISPOSITION-LEDGER.md`, which disposes of every row Phase 37 left open (the Phase 43 directory under `.planning/phases/` until the milestone is archived, then under `.planning/milestones/`). Owner: fork maintainer (the user). Re-open trigger: the user's approval to fix any of them, or the trigger of its row in that ledger.",
+      "new": "**20. The Phase 37 advisory rows and the open review rows end fixed or closed with a reason (closed).** Of the four findings in `src/main`, 28 IN-01 is fixed: the unused public `ESCAPED_NEWLINE` moved from `DeclaredNullability` into the test fixtures. 26 IN-02 (`shouldSkipDescribeRow`) and 27 WR-01 (the text of an unknown enum label) are closed with their measured cost as the reason, and 27 IN-01 is closed because the value-free rebuild of a passed-through Jackson chain in `ClickHouseWriter` covers the shape it named. The null assertion of 28 IN-05 is tied to the enum scan by `DescribeUnreadableEnumNullBindingUnitTest`. Each row, with its status, its commit or its reason and its re-open trigger, is in `48-DISPOSITION-LEDGER.md`, which supersedes `43-DISPOSITION-LEDGER.md`; `git ls-files '*48-DISPOSITION-LEDGER.md'` finds it wherever an archive moves it. Owner: fork maintainer. Re-open trigger: the trigger of a row in that ledger."
+    }
+  ],
+  "fork_delta_reviews": [
+    {
+      "old": "the compare chain in order before the tag gate and the publish step with no `if:` or `continue-on-error` on the compare",
+      "new": "the compare chain, the tests gate, the tag gate and the publish step in that order, with no `if:` or `continue-on-error` on the compare"
+    },
+    {
+      "old": " Residual: the write-stall pins rely on the 64 MiB body",
+      "new": " On the RowBinary route, a body write that the write-phase deadline cuts first logs two ERROR lines for the record and the column being written at that moment, `Error writing value of ...` and `Record serialization failed: topic [...] partition [...] offset [...] column ...`, the same two lines any failing RowBinary column logs; on a deadline cut they do not mean that record is bad, because the failure the task then receives is the retriable timeout described above (read from the code). Residual: the write-stall pins rely on the 64 MiB body"
+    }
+  ]
+}

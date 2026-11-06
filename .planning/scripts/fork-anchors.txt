@@ -38,7 +38,7 @@ src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvid
 src/main/java/com/clickhouse/kafka/connect/sink/state/provider/KeeperStateProvider.java	.setCompressionMethod(csc.isSetCompressionMethod())	1	CMP-01
 src/main/resources/META-INF/services/org.apache.kafka.connect.transforms.Transformation	com.clickhouse.kafka.connect.transforms	7	SUITE-02
 .github/workflows/tests.yaml	timeout-minutes: 45	1	CI-05
-VERSION	v1.7.0_gg7	1	BLD-07
+VERSION	v1.7.0_gg8	1	BLD-07
 build.gradle.kts	windows-1252	2	BLD-05
 gradle/libs.versions.toml	slf4j-reload4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }	1	BLD-08
 build.gradle.kts	implementation(libs.slf4j.reload4j)	1	BLD-08
@@ -218,8 +218,45 @@ src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java	stateProvider
 # Phase 41 (v1.7.0_gg7): client V2 inserts carry a per-insert socket_timeout from clickhouseClientInsertTimeoutMs unless the operator named socket_timeout (TMO-01); the 0 row pins that the client-level alternative stays out; rows land in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.setInsertSocketTimeoutV2(insertSettings, csc.getClickhouseClientInsertTimeoutMs());	3	TMO-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	settings.setNetworkTimeout(	1	TMO-01
-src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	operatorSetSocketTimeout	3	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	operatorSetSocketTimeout	4	TMO-01
 src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	clientBuilder.setSocketTimeout(	0	TMO-01
 # Phase 42 (v1.7.0_gg7): ClickHouseSinkTask.start logs one WARN naming the additionalRetriableErrorCodes entries outside the built-in retriable set and 216 (RSK-03); rows land in the commit that changes the code.
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	warnOnUnvettedRetriableCodes(	2	RSK-03
 src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	unvetted.removeAll(Utils.DEFAULT_RETRIABLE_ERROR_CODES);	1	RSK-03
+# Phase 45 (v1.7.0_gg8): every value-carrying Jackson chain the writer would pass through is rebuilt value-free, keeping the links and root facts retry classification reads (UPS-02, plan-check answer 1 and the iteration-2 answer); rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	withheldJacksonChain(	2	UPS-02
+# Phase 45 (v1.7.0_gg8): a serialization failure in the RowBinary record loop rethrows the writer's own exception and logs the record's coordinates, column and exception class value-free (UPS-02, U-1 as amended); the 0 rows pin that upstream's wrapping helper and its message text stay gone; rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	writeColumnWithRecordContext(	2	UPS-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	RECORD_CONTEXT_FAILURE_LOG_FORMAT	2	UPS-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	serializationFailure(	0	UPS-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	Failed to serialize record for	0	UPS-02
+# Phase 45 (v1.7.0_gg8): the JSON insert route rethrows a serialization failure through the shared value-free Jackson rebuild, failure path only (UPS-02, iteration-3 answer); rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	throwRebuiltJacksonChain(	3	UPS-02
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	JSON_ROW_FAILURE_FORMAT	2	UPS-02
+# Phase 45 (v1.7.0_gg8): upstream tail 83808df9 puts connect-json on the test classpath only (UPS-05); the 0 row pins that #839's unused describeTableV1 reader stays dropped (HLP-04); these rows follow M because a merge commit cannot carry this file
+build.gradle.kts	testImplementation(libs.kafka.connect.json)	1	UPS-05
+gradle/libs.versions.toml	kafka-connect-json = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }	1	UPS-05
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream()	0	HLP-04
+# Phase 46 (v1.7.0_gg8): client V2 inserts get a write-phase deadline that cancels the request by query id when the body is not sent within clickhouseClientInsertTimeoutMs, skipped when the operator named socket_timeout (TMO-03); rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWriteDeadline(client, queryId)	3	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWithWriteDeadline(	4	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadline.disarm();	2	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	client::cancelTransportRequest	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	insertWatchdog.shutdownNow()	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	setRemoveOnCancelPolicy(true)	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	INSERT_BODY_DEADLINE_FORMAT	2	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/helper/ClickHouseHelperClient.java	public long insertBoundMs(long timeoutMs)	1	TMO-03
+# Phase 46 (v1.7.0_gg8): client V1 inserts wait for the response with clickhouseClientInsertTimeoutMs as a bound, skipped when the operator named socket_timeout (TMO-03); the 0 row pins that the bare waits stay gone; rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	try (ClickHouseResponse response = future.get())	0	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	awaitInsertResponseV1(	4	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	chc.insertBoundMs(	2	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	V1_INSERT_TIMEOUT_FORMAT	2	TMO-03
+# Phase 46 (v1.7.0_gg8): the clickhouseClientInsertTimeoutMs help text names what the setting bounds and what it does not (TMO-01); the 0 row pins that the old response-wait claim stays gone; rows land in the commit that changes the text
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	What it does not bound	1	TMO-01
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkConfig.java	wait for a single ClickHouse insert response	0	TMO-01
+# Phase 46 plan 46-06 (WR-01): the three V2 insert methods share deadlineAwareWriter, whose onRetry re-arms the write deadline when the client retries an insert; deadline.disarm( ) 4 -> 2 (the three per-site disarms became one in the shared writer), rows added in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadline.rearm();	1	TMO-03
+src/main/java/com/clickhouse/kafka/connect/sink/db/ClickHouseWriter.java	deadlineAwareWriter(	4	TMO-03
+# Phase 47 (v1.7.0_gg8): ClickHouseSinkTask.stop() runs the proxy task's stop in a finally after the delivery strategy's stop() (LIF-01); rows land in the commit that changes the code
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	} finally {	1	LIF-01
+src/main/java/com/clickhouse/kafka/connect/sink/ClickHouseSinkTask.java	this.proxySinkTask.stop();	1	LIF-01

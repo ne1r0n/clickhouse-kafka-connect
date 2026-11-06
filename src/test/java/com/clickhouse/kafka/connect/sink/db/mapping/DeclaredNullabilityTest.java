@@ -209,9 +209,9 @@ class DeclaredNullabilityTest {
     @Test
     @DisplayName("COLS-10: the multi-line non-nullable Tuple form (backslash plus n) applies after normalisation without a fallback WARN")
     void multiLineTupleFormAppliesWithoutFallback() throws Exception {
-        String serverType = "Tuple(" + DeclaredNullability.ESCAPED_NEWLINE + "    a Int32," + DeclaredNullability.ESCAPED_NEWLINE + "    b Nullable(String))";
+        String serverType = "Tuple(" + DeclaredNullabilityFixtures.ESCAPED_NEWLINE + "    a Int32," + DeclaredNullabilityFixtures.ESCAPED_NEWLINE + "    b Nullable(String))";
         String rawType = ClickHouseFieldDescriptor.fromJsonRow(row("c", serverType)).getType();
-        assertTrue(rawType.contains(DeclaredNullability.ESCAPED_NEWLINE), "premise: discovery sees the escaped multi-line form");
+        assertTrue(rawType.contains(DeclaredNullabilityFixtures.ESCAPED_NEWLINE), "premise: discovery sees the escaped multi-line form");
         Column column = root(describe(row("c", serverType), row("c.a", "Int32"), row("c.b", "Nullable(String)")));
 
         try (LogCapture log = LogCapture.attach(DeclaredNullability.class)) {
@@ -327,7 +327,7 @@ class DeclaredNullabilityTest {
     @DisplayName("COLS-13 (D-10) edges: an empty type, an unterminated backtick and a non-ASCII letter next to a backslash-n in a name")
     void normaliseIsTotalAndKeepsNonAsciiNames() {
         assertEquals("", DeclaredNullability.normalise(""));
-        String unterminated = "Tuple(`a" + DeclaredNullability.ESCAPED_NEWLINE;
+        String unterminated = "Tuple(`a" + DeclaredNullabilityFixtures.ESCAPED_NEWLINE;
         assertEquals("Tuple(`a\n", DeclaredNullability.normalise(unterminated));
         // U+00E9 (é) is written as a Java escape so the string does not depend on the compiler's source encoding.
         assertEquals(
@@ -371,7 +371,7 @@ class DeclaredNullabilityTest {
         "Tuple(\\n    e Enum8('a' = 1, 'b' = 2),\\n    d String)"
     })
     void typesWithoutABackslashInsideQuotesNormaliseAsBefore(String type) {
-        assertEquals(type.replace(DeclaredNullability.ESCAPED_NEWLINE, " "), DeclaredNullability.normalise(type));
+        assertEquals(type.replace(DeclaredNullabilityFixtures.ESCAPED_NEWLINE, " "), DeclaredNullability.normalise(type));
     }
 
     @Test
@@ -1014,7 +1014,7 @@ class DeclaredNullabilityTest {
         assertEquals(before, nullabilityByPath(column));
         String plain = "Nullable(Tuple(a Int32, b String))";
         assertEquals(plain, DeclaredNullability.normalise(plain));
-        assertEquals("Tuple( a Int32, b String)", DeclaredNullability.normalise("Tuple(" + DeclaredNullability.ESCAPED_NEWLINE + "a Int32, b String)"));
+        assertEquals("Tuple( a Int32, b String)", DeclaredNullability.normalise("Tuple(" + DeclaredNullabilityFixtures.ESCAPED_NEWLINE + "a Int32, b String)"));
     }
 
     @Test

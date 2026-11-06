@@ -2,7 +2,7 @@
 
 ## What This Is
 
-The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg6`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
+The `custom_build` branch of `ne1r0n/clickhouse-kafka-connect` (version `v1.7.0_gg7`) is a fork of the official ClickHouse Kafka Connect sink, carrying custom SMTs, table filtering, `Dynamic` column support, a metadata-free JSON insert path, and JMX naming changes used in CDC (Debezium) pipelines into ClickHouse. The first milestone (`v1.2.9_gg4-tests`) audited the existing tests for everything the fork added on top of upstream, wrote the missing unit and integration tests, and fixed the bugs those tests uncovered — delivering a fully green suite, a coverage report, and CI running it on every push.
 
 The second milestone (`v1.6.0_gg1-sync`) cashed that in: 581 commits of upstream (`v1.2.9` → `v1.6.0`) merged into `custom_build` with the suite as the acceptance gate, every fork feature either re-applied onto upstream's rewritten code or consciously retired in favour of upstream, and the result published as `v1.6.0_gg1`. What the fork still patches, and what it gave up, is recorded in `docs/FORK-DELTA.md`.
 
@@ -18,11 +18,14 @@ The seventh milestone (`v1.7.0_gg5-ci`) brought the fork's workflows current wit
 
 The eighth milestone (`v1.7.0_gg6-maintenance`) absorbed every open Dependabot update including the ClickHouse client `0.11.0`, took upstream's untagged tail (`additionalRetriableErrorCodes`), fixed the offsets a buffered connector commits under a topic-renaming SMT, hardened CI (version bump script, archive compare in both release workflows) and published `v1.7.0_gg6` with an independently reviewed operator note. The publish run created the tag and the release for the first time.
 
+The ninth milestone (`v1.7.0_gg7-followup`) closed the follow-ups `v1.7.0_gg6` left open. gson 2.15.0 and `setup-gradle` 6.4.1 were absorbed, the writer and the Keeper provider now close the helper clients they create, a stalled client V2 `async=false` insert ends after `clickhouseClientInsertTimeoutMs` as a retriable timeout (an insert that streams progress headers still escapes the bound, measured and recorded), a buffered connector under a topic-renaming SMT reports offsets under the original topic on the Direct path, a `RetriableException` anywhere in the cause chain stays retriable, and a start-up WARN names `additionalRetriableErrorCodes` outside the vetted set. The result is published as `v1.7.0_gg7` with an independently reviewed operator note (`docs/ROLLOUT-v1.7.0_gg7.md`, 33 labelled rows).
+
 ## Core Value
 
 Every behavior the fork adds on top of upstream is pinned by an automated test that passes against ClickHouse `latest` with client V2, so the fork can be changed or rebased without silently breaking production pipelines.
 
-## Current Milestone: v1.7.0_gg7-maintenance Follow-up Debt, Dependency Sweep & Document Cleanup
+<details>
+<summary>Milestone scope as planned — <code>v1.7.0_gg7-followup</code> Follow-up Debt, Dependency Sweep &amp; Document Cleanup (shipped 2026-11-03)</summary>
 
 **Goal:** Close every follow-up carried out of `v1.7.0_gg6-maintenance`, absorb the open Dependabot PRs and publish `v1.7.0_gg7` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
 
@@ -35,7 +38,37 @@ Every behavior the fork adds on top of upstream is pinned by an automated test t
 
 **Out of scope:** new connector features, client upgrades beyond `0.11.0`, running the upgrade on production connectors. No upstream sync: upstream has no tag past `v1.7.0` and `upstream/main` has no commits the working branch lacks. The `scratch/clt-07-*` branches and `NIGHTLY_ENABLED` stay with the user.
 
+</details>
+
+## Current Milestone: v1.7.0_gg8-closeout Gap Closure, Upstream Tail & Release
+
+**Goal:** Close every known gap left by `v1.7.0_gg7-followup`, take upstream's new tail (`main` `9bed6f79` → `83808df9`) while keeping the fork's value-free error policy, and publish `v1.7.0_gg8` with the suite green on ClickHouse `latest` × client V2 and CI green on the published SHA.
+
+**Target features:**
+- **Code gaps (tests first):** `ClickHouseSinkTask.stop()` stops every delivery strategy even when one throws (`try`/`finally`); correct the `clickhouseClientInsertTimeoutMs` help text; the Phase 37 `src/main` rows and the null assertion; the 28 IN-05(b) items; FUT-05; retriable `DataException` cases with no retry budget; bound the behaviour limits where feasible (progress-header escape, write-side stalls, client V1 inserts, non-insert requests), and record a measurement for any that cannot be bounded.
+- **Documents:** CHANGELOG `stop()` wording; IN-03 (planning identifier in the published gg6 note); FORK-DELTA evidence paths now under `.planning/milestones/` and the test path missing its package; item 20's ledger path; broad allow-list glob rows (UF-37-3); review Infos.
+- **Upstream tail:** merge in the usual sync shape (scratch branch, rollback tag, `verify-merge-invariants.sh`, two full runs). Upstream #857 (record context in serialization errors) is merged **value-free** — where it conflicts with the gg3 column/type/class-only messages the fork's behaviour wins, after checking what #857 puts in the context. Also #839 (slash column names in DESCRIBE), the `fromJsonRow` fix (check against fork backlog 999.5), slf4j-simple 2.0.20, spotless 8.10.4, commons-lang3 3.21.0.
+- **Dependabot:** no open PRs on `origin` (checked 2026-11-04); repository alerts are disabled, so a manual dependency/CVE check replaces them.
+- **Release:** `VERSION=v1.7.0_gg8`, CHANGELOG, FORK-DELTA, rollout note with independent review, `--no-ff` merge after human approval, CI green on the published SHA; delete `scratch/clt-07-client-0.11.0` and `scratch/clt-07-prebump-0.9.6` from `origin` in the release phase with a final confirmation before the push.
+
+**Out of scope:** new connector features, running the upgrade on production connectors, open upstream PRs #861, #855, #854 and #788 (not merged upstream), many-to-one rename and partition-changing SMT limits for exactly-once (design limit). `NIGHTLY_ENABLED` and Dependabot settings stay with the user.
+
 ## Current State
+
+**Shipped:** `v1.7.0_gg7-followup` (published 2026-11-03, closed 2026-11-04). It covered 6 phases (39–44), 22 plans, 59 tasks and 23/23 requirements. The milestone audit is `tech_debt` with no gaps: requirements 23/23, phases 6/6, integration 15 wired / 5 partial / 0 broken (documentation and label gaps), flows 4/6. It closed as an `override_closeout`.
+
+`v1.7.0_gg7` is on `origin/custom_build` as the `--no-ff` merge `94834763` (parents `72e8ccff` and `fc570937`), with one green `tests.yaml` run (41704437509). The tag `v1.7.0_gg7` and the GitHub release (id 433237218, one asset of 13,564,238 bytes, sha256 `3dbdcf03…`) were created by the publish run `41721771615` under the workflow token. `pre-v1.7.0_gg7` (rollback → `72e8ccff`) is on `origin`; the scratch branch `sync/v1.7.0` was deleted. The milestone tag `v1.7.0_gg7-followup` is local only.
+
+The suite runs 2,425 tests on ClickHouse `latest` (26.10.3.7) × client V2 and passed twice on JDK 21, with 0 failures. `testUnit` runs 1,826 tests with Docker unreachable. The ClickHouse client is `0.11.0`.
+
+Code: 8 files changed in `src/main` (+194/−22); 40 files outside `.planning/` (+3,169/−146) since `v1.7.0_gg6`.
+
+**What operators will see** (each in `docs/ROLLOUT-v1.7.0_gg7.md`, 33 labelled rows): a stalled client V2 insert now ends after `clickhouseClientInsertTimeoutMs` as a retriable error with no DLQ record, an insert that keeps streaming progress headers escapes that bound, a stopping task closes its helper clients, and a start-up WARN names unvetted `additionalRetriableErrorCodes`.
+
+**Knowingly open in the published `v1.7.0_gg7`:** see the Known gaps list of the `v1.7.0_gg7-followup` entry in `MILESTONES.md` (the CHANGELOG `stop()` wording, the `clickhouseClientInsertTimeoutMs` help text, IN-03, the Phase 37 `src/main` rows, write-side stalls and client V1 inserts unbounded, FUT-05, scratch branches on `origin`).
+
+<details>
+<summary>Previous state — <code>v1.7.0_gg6-maintenance</code> (shipped 2026-11-01)</summary>
 
 **Shipped:** `v1.7.0_gg6-maintenance` (published 2026-11-01, closed the same day). It covered 6 phases (33–38), 23 plans, 57 tasks and 37/38 requirements (BUF-06, the real-environment rerun, is tracked outside this repository). The milestone audit is `tech_debt` with no gaps: requirements 37/38, phases 6/6, integration 5/5, flows 3/3. It closed as an `override_closeout`.
 
@@ -51,6 +84,8 @@ Code: 7 files changed in `src/main` since `v1.7.0_gg5`; the milestone changed 79
 - `additionalRetriableErrorCodes` is new; a listed code bypasses `errors.tolerance` and the DLQ and has no retry budget.
 
 **Knowingly open in the published `v1.7.0_gg6`:** see the Known gaps list of the `v1.7.0_gg6-maintenance` entry in `MILESTONES.md` (F-1..F-3, the `custom_` forwarding pin, the wrapped-`DataException` case, FUT-05, the gg1 half of WR-08, Phase 37 dispositions, scratch branches on `origin`, Dependabot PRs #21 and #22, `NIGHTLY_ENABLED` unset).
+
+</details>
 
 <details>
 <summary>Previous state — <code>v1.7.0_gg5-ci</code> (shipped 2026-10-27)</summary>
@@ -228,7 +263,7 @@ Test code grew from the upstream baseline to 15,179 LOC across `src/test` and `s
 
 ## Next Milestone Goals
 
-No milestone is active. Candidates: the Known gaps of `v1.7.0_gg6-maintenance` (code follow-ups F-1..F-3, the `custom_` pin, the wrapped-`DataException` case, FUT-05), the next *tagged* upstream sync and the upstream workflows still on `@v3`-era actions. Still Future Requirements: the next *tagged* upstream sync and the upstream workflows still on `@v3`-era actions.
+No milestone is active. Candidates: the Known gaps of `v1.7.0_gg7-followup` (the CHANGELOG `stop()` wording and the insert-timeout help text, which need the user's approval to edit `src/main` or a published note; the task-level `stop()` without `try`/`finally`; the Phase 37 `src/main` rows), the next *tagged* upstream sync (upstream's newest tag is still `v1.7.0`; its pull requests #861, #855 and #857 are open) and the upstream workflows still on `@v3`-era actions.
 
 <details>
 <summary>Milestone scope as planned — <code>v1.7.0_gg5-ci</code> CI &amp; Release Workflow Modernization (shipped 2026-10-27)</summary>
@@ -600,6 +635,12 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 - ✓ The ClickHouse client moves to `0.11.0` in one revertable commit after pins on 0.9.6; the RowBinary golden holds byte for byte; CLT-07 nightly green on the scratch tip (CLT-01..CLT-09) — Phase 36
 - ✓ `bump_version.py`, the archive compare wired into both release workflows and the 36-row advisory ledger (CIH and advisory requirements) — Phase 37
 - ✓ `v1.7.0_gg6` is published: VERSION, CHANGELOG, FORK-DELTA, a twelve-round reviewed rollout note, the gg6 allow-list, two full suites and a runner-proven dry run, `--no-ff` merge `72e8ccff`, tag and release created by the publish run (RLS-01..RLS-06) — Phase 38
+- ✓ gson 2.15.0 and `setup-gradle` 6.4.1 are absorbed as their own merges with their FORK-DELTA rows and gates; Docker-free pins fix the wrapped-`DataException` classification and the `custom_*` forwarding; the harness counts Datagen only on its own connector (DEP-01, DEP-02, PIN-02..PIN-04) — Phase 39
+- ✓ A stopping task closes the writer's `chc`, the V1 per-batch client and the Keeper provider's own client, pinned on a Mockito-free counting seam (CLS-01..CLS-04) — Phase 40
+- ✓ A stalled client V2 `async=false` insert ends after `clickhouseClientInsertTimeoutMs` as a retriable timeout; the limits are recorded (PIN-01, TMO-01..TMO-03) — Phase 41
+- ✓ `originalTopic()` on the Direct path, the `RetriableException` cause-chain pass-through and the FUT-05 start-up WARN, each its own revert unit (RSK-01..RSK-04) — Phase 42
+- ✓ The gg1 and gg6 notes and FORK-DELTA are corrected against the GitHub API; every Phase 37 row has a fixed commit or an owned deferral (DOC-01, DOC-02) — Phase 43
+- ✓ `v1.7.0_gg7` is published: VERSION, CHANGELOG, FORK-DELTA, a five-round reviewed rollout note, the gg7 allow-list, two full suites, a runner-proven dry run, `--no-ff` merge `94834763`, tag and release created by the publish run (RLS-01..RLS-04) — Phase 44
 
 ### Active
 
@@ -615,13 +656,22 @@ Local `main` is exactly upstream `v1.2.9` (`bec167d`). Upstream `v1.6.0` is `789
 
 **v1.7.0_gg4-hardening:** all 36 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg4-hardening-REQUIREMENTS.md`). The ten follow-ups carried in are closed except the review advisories listed in the close note below.
 
+**v1.7.0_gg7-followup:** all 23 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg7-followup-REQUIREMENTS.md`). The follow-ups carried in from `v1.7.0_gg6-maintenance` are closed, except the open items below:
+
+- [ ] The CHANGELOG Bug Fixes bullet says the task's `stop()` stops everything "even when one of them throws", but `ClickHouseSinkTask.stop()` calls the delivery strategy's `stop()` outside `try`/`finally` (the Known Issues bullet discloses it); the help text of `clickhouseClientInsertTimeoutMs` still says "maximum time" (`src/main`, needs the user's approval).
+- [ ] IN-03: a planning identifier in the published gg6 note (deferred; the published note is not edited without the user's authorization).
+- [ ] Phase 37 `src/main` advisory rows (four) and one null assertion, plus 28 IN-05(b) items (owner: the user; see the Phase 43 ledger under `milestones/v1.7.0_gg7-followup-phases/`).
+- [ ] FORK-DELTA cites evidence paths of Phases 25 and 35 that now live under `.planning/milestones/`, and one test path without its package; item 20's ledger path moved at this archive.
+- [ ] The review fixes after rounds 4 and 5 of the gg7 documents were not read by a fresh reviewer (the user accepted this); only one integration class was re-run on the release tip.
+- [ ] The two `scratch/clt-07-*` branches are still on `origin` (the user's call).
+
 **v1.7.0_gg6-maintenance:** 37 of 38 requirements shipped and moved to Validated (archive: `milestones/v1.7.0_gg6-maintenance-REQUIREMENTS.md`); BUF-06 stays outside this repository. Open items carried in:
 
-- [ ] F-1 the writer never closes its helper client; F-2 the insert timeout has no effect with `async=false`; F-3 (`milestones/v1.7.0_gg6-maintenance-phases/36-client-0-11-0-audit-bump/36-FOLLOWUPS.md`).
-- [ ] No Docker-free test pins the forwarding of a `custom_` key on client 0.11.0 (IN-04, wording fixed only).
-- [ ] `Processing.doLogic` wrapped-`DataException` case and FUT-05 (list only transient codes in `additionalRetriableErrorCodes`); OI-35-1..3.
-- [ ] The gg1 half of WR-08 (`docs/ROLLOUT-v1.7.0_gg1.md`); FORK-DELTA lines 6, 139 and 286 still use the future tense for the publish run.
-- [ ] Phase 37 dispositions (owner: user): the `increment-version.yml` header comment, the `src/main` advisory rows, broad allow-list glob rows.
+- ✓ ~~F-1 the writer never closes its helper client; F-2 the insert timeout has no effect with `async=false`; F-3 (`milestones/v1.7.0_gg6-maintenance-phases/36-client-0-11-0-audit-bump/36-FOLLOWUPS.md`).~~ (closed in `v1.7.0_gg7`, see the Phase 39–44 rows above)
+- ✓ ~~No Docker-free test pins the forwarding of a `custom_` key on client 0.11.0 (IN-04, wording fixed only).~~ (closed in `v1.7.0_gg7`, see the Phase 39–44 rows above)
+- ✓ ~~`Processing.doLogic` wrapped-`DataException` case and FUT-05 (list only transient codes in `additionalRetriableErrorCodes`); OI-35-1..3.~~ (closed in `v1.7.0_gg7`, see the Phase 39–44 rows above)
+- ✓ ~~The gg1 half of WR-08 (`docs/ROLLOUT-v1.7.0_gg1.md`); FORK-DELTA lines 6, 139 and 286 still use the future tense for the publish run.~~ (closed in `v1.7.0_gg7`, see the Phase 39–44 rows above)
+- ✓ ~~Phase 37 dispositions (owner: user): the `increment-version.yml` header comment, the `src/main` advisory rows, broad allow-list glob rows.~~ (closed in `v1.7.0_gg7`, see the Phase 39–44 rows above)
 
 **Publication & client follow-ups (emerged in Phase 11, not yet scheduled):**
 
@@ -984,6 +1034,10 @@ None is an unmet requirement and none touches connector code.
 | Phase 25: `connect-api` 4.4.0 is proven compile-time only by an offline bytecode check of the connector's 176 Kafka references against the `cp-kafka-connect-base:7.9.7` worker jars, pinned by `ConnectApiReferencesUnitTest`; wording states only what E-12 measured (the Kafka 3.9 worker still declares `onPartitionsRevoked`) | The production worker supplies the Connect API at runtime; an operator-facing claim needs a transcript behind it (D-14) | ✓ `REFERENCE worker classes-missing 0 members-missing 0`; 25-REVIEW WR-02/WR-03 note the unit test is a weaker pin than the bless run (open) |
 | Phase 38: the orchestrator ran the publication steps (push, `--no-ff` merge, publish dispatch, rollback tag) at the user's direct "делай" instead of handing them over | The user asked for it after the handoff files were presented; the gates (green dry run, one green `tests.yaml`, tag-absent check) were unchanged | ✓ Release published 2026-11-01, E-20..E-27 |
 | Phase 38: keep the CHANGELOG heading date `2026-10-31` although the merge was on 2026-11-01 UTC | User choice at the date gate; a date fix would have needed a new review and gates | ✓ Recorded deviation |
+| Phase 41: F-2 is a per-insert `socket_timeout`, skipped when the operator sets their own; the progress-header escape is measured and recorded, not fixed | The user chose the per-insert mechanism; a socket read-inactivity timeout resets on each progress header | ✓ Good (limit recorded in FORK-DELTA item 14 and rollout row T6) |
+| Phase 44: reopening the documents for the T6 measurement voided the approval bundle and forced a full re-gate | The Freeze rule: any non-`.planning` change after the frozen documents re-runs the review, the gates and the bundle | ✓ Good (about 2.5 hours; the claim is now measured) |
+| Phase 44: the orchestrator ran U1 to U5 on the user's direct words, including U4 (the publish dispatch) on an explicit override of the runbook rule | The user asked for it ("делай сам по документу", "dispatch the publish run") | ✓ Recorded deviation |
+| Phase 44: keep the CHANGELOG heading date `2026-11-02` although the merge and publish ran on 2026-11-03 | User choice at the date gate; a date fix would have needed a new review and gates | ✓ Recorded deviation |
 
 ## Evolution
 
@@ -1003,4 +1057,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-01 after starting milestone v1.7.0_gg7-maintenance*
+*Last updated: 2026-11-04 after starting milestone v1.7.0_gg8-closeout*

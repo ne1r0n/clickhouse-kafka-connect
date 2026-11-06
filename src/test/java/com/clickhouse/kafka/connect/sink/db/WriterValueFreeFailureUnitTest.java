@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -640,34 +641,54 @@ public class WriterValueFreeFailureUnitTest {
     }
 
     @Test
-    @DisplayName("WRT-17 pass-through: a Jackson exception over a SocketTimeoutException is rethrown as the same instance")
-    void jacksonOverSocketTimeoutPassesThrough() throws Exception {
-        IOException failure = new JsonMappingException(JACKSON_SCRIPTED_MESSAGE, new SocketTimeoutException("timed out"));
+    @DisplayName("WRT-17 value-free: a Jackson exception over a SocketTimeoutException becomes a value-free IOException over the same SocketTimeoutException")
+    void jacksonOverSocketTimeoutBecomesValueFreeIoOverTheSameCause() throws Exception {
+        IOException failure = new JsonMappingException(
+                JACKSON_SCRIPTED_MESSAGE + " " + SENTINEL, new SocketTimeoutException("timed out"));
 
         Captured captured = writeUuidThroughFailingStream(failure);
 
-        assertSame(failure, captured.thrown);
+        assertSame(IOException.class, captured.thrown.getClass());
+        assertEquals(
+                valueFreeMessage(UUID_COLUMN, STRING_KAFKA_TYPE, STRING_VALUE_CLASS, Type.UUID, JsonMappingException.class),
+                captured.thrown.getMessage());
+        assertSame(failure.getCause(), captured.thrown.getCause());
+        assertNoSentinelAnywhere(captured.thrown, captured, SENTINEL);
     }
 
     @Test
-    @DisplayName("WRT-17 accepted residual: a Jackson exception over a plain IOException is rethrown as the same instance")
-    void jacksonOverPlainIoExceptionPassesThroughAsAcceptedResidual() throws Exception {
-        // A non-Jackson IOException anywhere in the chain still counts. On the JSON-as-string route this
-        // chain comes only from a record value whose own getter throws it.
-        IOException failure = new JsonMappingException(JACKSON_SCRIPTED_MESSAGE, new IOException("stream closed by test"));
+    @DisplayName("WRT-17 value-free: a Jackson exception over a plain IOException becomes a value-free IOException over the same IOException")
+    void jacksonOverPlainIoExceptionBecomesValueFreeIoOverTheSameCause() throws Exception {
+        IOException failure = new JsonMappingException(
+                JACKSON_SCRIPTED_MESSAGE + " " + SENTINEL, new IOException("stream closed by test"));
 
         Captured captured = writeUuidThroughFailingStream(failure);
 
-        assertSame(failure, captured.thrown);
+        assertSame(IOException.class, captured.thrown.getClass());
+        assertEquals(
+                valueFreeMessage(UUID_COLUMN, STRING_KAFKA_TYPE, STRING_VALUE_CLASS, Type.UUID, JsonMappingException.class),
+                captured.thrown.getMessage());
+        assertSame(failure.getCause(), captured.thrown.getCause());
+        assertNoSentinelAnywhere(captured.thrown, captured, SENTINEL);
     }
 
     @Test
-    @DisplayName("WRT-17 accepted residual: a plain IOException over a Jackson exception is rethrown as the same instance")
-    void plainIoExceptionOverJacksonPassesThroughAsAcceptedResidual() throws Exception {
-        IOException failure = new IOException("stream closed by test", new JsonMappingException(JACKSON_SCRIPTED_MESSAGE));
+    @DisplayName("WRT-17 value-free: a plain IOException over a Jackson exception becomes a value-free IOException over a withheld IOException root")
+    void plainIoExceptionOverJacksonBecomesValueFreeIoOverAWithheldRoot() throws Exception {
+        IOException failure = new IOException(
+                "stream closed by test", new JsonMappingException(JACKSON_SCRIPTED_MESSAGE + " " + SENTINEL));
 
         Captured captured = writeUuidThroughFailingStream(failure);
 
-        assertSame(failure, captured.thrown);
+        assertSame(IOException.class, captured.thrown.getClass());
+        assertEquals(
+                valueFreeMessage(UUID_COLUMN, STRING_KAFKA_TYPE, STRING_VALUE_CLASS, Type.UUID, IOException.class),
+                captured.thrown.getMessage());
+        Throwable root = captured.thrown.getCause();
+        assertNotNull(root);
+        assertSame(IOException.class, root.getClass());
+        assertNull(root.getCause());
+        assertEquals(JsonMappingException.class.getName() + " (message withheld: may contain record data)", root.getMessage());
+        assertNoSentinelAnywhere(captured.thrown, captured, SENTINEL);
     }
 }

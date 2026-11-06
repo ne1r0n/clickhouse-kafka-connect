@@ -51,6 +51,8 @@ class RetriableExceptionPassThroughUnitTest {
 
     private static final String DIRECT_NAME = "{displayName}[{index}] shape={0} errors.tolerance={1} expected={2}";
     private static final String PUT_NAME = "{displayName}[{index}] shape={0} path={1} errors.tolerance={2}";
+    private static final String PLAIN_DATA_EXCEPTION_NAME = "{displayName}[{index}] errors.tolerance={0} expected={1}";
+    private static final String PLAIN_DATA_EXCEPTION_CONTEXT = "a plain DataException under errors.tolerance=";
 
     private static final String OUTCOME_MESSAGE = "outcome of ";
     private static final String SAME_INSTANCE_MESSAGE = "the input instance is rethrown for ";
@@ -127,6 +129,12 @@ class RetriableExceptionPassThroughUnitTest {
                 Arguments.of(Shape.WRAPPED_RETRIABLE_SERVER_CODE_CONTROL, all, Outcome.RETRIABLE_WRAPPED));
     }
 
+    static Stream<Arguments> plainDataExceptionControl() {
+        return Stream.of(
+                Arguments.of(ClickHouseSinkConfig.ERROR_TOLERANCE_NONE, Outcome.DATA_EXCEPTION),
+                Arguments.of(ClickHouseSinkConfig.ERROR_TOLERANCE_ALL, Outcome.RETURNS));
+    }
+
     private static Outcome classify(RuntimeException thrown, Exception input) {
         if (thrown instanceof RetriableException) {
             return thrown == input ? Outcome.RETRIABLE_SAME : Outcome.RETRIABLE_WRAPPED;
@@ -169,6 +177,32 @@ class RetriableExceptionPassThroughUnitTest {
                 assertSame(input, thrown.getCause(), WRAPPER_CAUSE_MESSAGE + context);
             }
             case RETURNS -> assertNull(thrown, NOTHING_THROWN_MESSAGE + context);
+        }
+    }
+
+    @ParameterizedTest(name = PLAIN_DATA_EXCEPTION_NAME)
+    @MethodSource("plainDataExceptionControl")
+    void plainDataExceptionControlOutcome(String tolerance, Outcome expected) {
+        List<SinkRecord> records = SchemalessTestData.createPrimitiveTypes(TOPIC, 0, RECORD_COUNT);
+        DataException input = new DataException(FAILURE_MESSAGE);
+        String context = PLAIN_DATA_EXCEPTION_CONTEXT + tolerance;
+
+        Outcome actual;
+        RuntimeException thrown = null;
+        try {
+            Utils.handleException(
+                    input, ClickHouseSinkConfig.ERROR_TOLERANCE_ALL.equals(tolerance), false, Set.of(), records);
+            actual = Outcome.RETURNS;
+        } catch (RuntimeException e) {
+            thrown = e;
+            actual = classify(e, input);
+        }
+
+        assertEquals(expected, actual, OUTCOME_MESSAGE + context);
+        if (expected == Outcome.DATA_EXCEPTION) {
+            assertSame(input, thrown, SAME_INSTANCE_MESSAGE + context);
+        } else {
+            assertNull(thrown, NOTHING_THROWN_MESSAGE + context);
         }
     }
 

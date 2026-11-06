@@ -3,11 +3,15 @@ package com.clickhouse.kafka.connect.sink.db.mapping;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Shared fixtures of the declared-nullability tests (Phase 23, D-16). It must never hold a copy of
- * {@code DeclaredNullability.ESCAPED_NEWLINE}; tests read the production constant.
+ * Shared fixtures of the declared-nullability tests (Phase 23, D-16). {@link #ESCAPED_NEWLINE} is the
+ * test-side name for the two characters {@code fromJsonRow} leaves for a server-escaped newline. Its premise
+ * assertions tie it to what the server and {@code fromJsonRow} produce: {@code NullableTupleMatrixLiveTest},
+ * {@code SimpleAggregateTupleRoundTripLiveTest} and {@code DeclaredNullabilityTest}.
  */
 public final class DeclaredNullabilityFixtures {
 
+    /** The two characters backslash and n that {@code fromJsonRow} leaves for a server-escaped newline. */
+    public static final String ESCAPED_NEWLINE = "\\n";
     /** A column name that no declared type, database or table of these tests contains. */
     public static final String ROOT_SENTINEL = "nullability_root";
 

@@ -182,11 +182,14 @@ public class ClickHouseSinkTask extends SinkTask {
         // buffered records for revoked partitions. Any remaining buffered records'
         // offsets were never committed via preCommit(), so Kafka redelivers them on
         // restart (at-least-once).
-        if (deliveryStrategy != null) {
-            deliveryStrategy.stop();
-        }
-        if (this.proxySinkTask != null) {
-            this.proxySinkTask.stop();
+        try {
+            if (deliveryStrategy != null) {
+                deliveryStrategy.stop();
+            }
+        } finally {
+            if (this.proxySinkTask != null) {
+                this.proxySinkTask.stop();
+            }
         }
     }
 
