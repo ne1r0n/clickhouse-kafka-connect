@@ -17,7 +17,7 @@
 | E-02 | DOC-01, DOC-02 | 48-01 | pass |
 | E-03 | P37-01, P37-02 | 48-02 | pass |
 | E-04 | P37-03 | 48-02 | pass |
-| E-05 | P37-04 | 48-02 | pending (plan 48-02) |
+| E-05 | P37-04 | 48-02 | pass |
 | E-06 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-07 | P37-04 | 48-02 | pending (plan 48-02) |
 | E-08 | P37-04 | 48-02 | pending (plan 48-02) |
@@ -555,5 +555,43 @@ main_tree_lists_untouched: yes
 Notes. The independent count (a stdlib script with the test's row and wildcard rule, run before the test was written) reads 5 lists, 49 wildcard rows and a minimum of 2 literal path segments (the row `META-INF/versions/*/com/fasterxml/jackson/core/internal/shaded/fdp/*` of the `-25` and `-gg4` lists); the test, run on the unchanged lists, is 9 of 9 green. The mutation appends `com/*<TAB>mutation: a broad row` to the worktree copy of the gg7 list only; exactly the shipped-list case fails and its message reads `wildcard rows with fewer than two literal path segments before the first wildcard: [confluent-archive-allowlist-v1.7.0_gg7.txt:29: com/*]`. The compare script md5 is `a637e0cc8fb33a33e7673ac682fa63c8`, equal to E-01 `compare_script_md5`; the script and every list are unedited since the base.
 
 Recorded 2026-11-06T08:37:43Z.
+
+Verdict: pass
+
+### E-05: MBean unregister failure in ProxySinkTask.stop (40 IN-03)
+
+Backs: P37-04 (40 IN-03: the branch of `ProxySinkTask.stop()` where the statistics unregister throws was never exercised), ROADMAP Phase 48 criterion 2, U-13.
+
+```sh
+rm -rf build/test-results/testUnit
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew --console=plain testUnit --rerun --tests '*ProxySinkTaskStopUnitTest*' > /tmp/gsd48/exec/ps-green.log 2>&1
+rm -rf /tmp/gsd48/exec/xml-ps-green && cp -R build/test-results/testUnit /tmp/gsd48/exec/xml-ps-green
+git diff --numstat -- src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java
+/tmp/gsd48/exec/fmt.sh ps src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java
+git add src/test/java/com/clickhouse/kafka/connect/sink/ProxySinkTaskStopUnitTest.java
+git commit -F /tmp/gsd48/exec/msg-ps.txt
+git worktree add --detach /tmp/gsd48/wt-ps 69b75cb31b41e34652ed8d94e414f657df6cb03b
+python3 -I /tmp/gsd48/exec/mutate.py /tmp/gsd48/wt-ps/src/main/java/com/clickhouse/kafka/connect/sink/ProxySinkTask.java $'            statistics.unregisterMBean();\n        } catch (RuntimeException | Error e) {' $'            statistics.unregisterMBean();\n        } catch (Error e) {'
+DOCKER_HOST=unix:///nonexistent.sock env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -p /tmp/gsd48/wt-ps --console=plain testUnit --rerun --tests '*ProxySinkTaskStopUnitTest*' > /tmp/gsd48/exec/ps-mut.log 2>&1
+cp -R /tmp/gsd48/wt-ps/build/test-results/testUnit /tmp/gsd48/exec/xml-ps-mut
+python3 -I .planning/phases/48-phase-37-dispositions-document-fixes/48-evidence-check.py failed /tmp/gsd48/exec/xml-ps-mut --expect 'ProxySinkTaskStopUnitTest#mBeanUnregisterFailureStillClosesTheStateProviderAndReachesTheCaller' 'ProxySinkTaskStopUnitTest#mBeanUnregisterFailureStaysTheThrownExceptionWhenTheStateProviderCloseAlsoFails'
+git worktree remove --force /tmp/gsd48/wt-ps && git worktree prune
+```
+
+```text
+ps_green_tests: 6
+ps_green_failures: 0
+ps_lines_deleted: 0
+fmt_ps: identical
+ps_commit: 69b75cb31b41e34652ed8d94e414f657df6cb03b
+ps_mut_tests: 6
+ps_mut_failures: 2
+ps_mut_failed: ProxySinkTaskStopUnitTest#mBeanUnregisterFailureStaysTheThrownExceptionWhenTheStateProviderCloseAlsoFails ProxySinkTaskStopUnitTest#mBeanUnregisterFailureStillClosesTheStateProviderAndReachesTheCaller
+ps_mut_worktree_removed: yes
+```
+
+Notes. The class had 4 cases at the base (E-01 `ps_tests`); it now has 6, all green with Docker unreachable, and the commit adds 75 lines and deletes none. The mutation narrows the unregister catch of `ProxySinkTask.stop()` from `RuntimeException | Error` to `Error` in the worktree only: an unregister failure then leaves `stop()` before the state provider close, so the two new cases fail (provider close count 0; and, in the second case, the provider close failure is not suppressed on the thrown exception) and the four existing cases stay green. The new cases swap a `SinkTaskStatistics` subclass into the task's `statistics` field before `start()`; it unregisters through `super` before it throws, so no MBean stays registered.
+
+Recorded 2026-11-06T08:39:28Z.
 
 Verdict: pass
