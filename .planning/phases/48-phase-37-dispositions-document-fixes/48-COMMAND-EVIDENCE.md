@@ -27,7 +27,7 @@
 | E-12 | DOC-01, P37-04 | 48-04 | pass |
 | E-13 | DOC-02, P37-04 | 48-04 | pass |
 | E-14 | P37-03 | 48-05 | fail |
-| E-15 | P37-03 | 48-05 | pending (plan 48-05) |
+| E-15 | P37-03 | 48-05 | pass |
 | E-16 | P37-01, P37-02, P37-03, P37-04 | 48-05 | pending (plan 48-05) |
 | E-17 | P37-01, P37-02, P37-03, P37-04, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
 | E-18 | P37-03, DOC-01, DOC-02 | 48-05 | pending (plan 48-05) |
@@ -1092,3 +1092,57 @@ Notes. The published pair reads exactly as the plan expects (exit 0, `RESULT: PA
 Recorded 2026-11-06T09:37:20Z.
 
 Verdict: fail
+
+### E-15: Dry runs per D-1 re-measured: the published pair with the gg7 list, and the Phase 48 tip with a 14-row exact draft (supersedes the miss of E-14)
+
+Backs: P37-03 (UF-37-3, D-1, U-12: the allow-list dry run reads 0 unallowed and 0 stale rows in its two forms), ROADMAP Phase 48 criterion 3. This entry supersedes E-14, the first measurement, which expected 12 exact rows, read 14 `UNALLOWED` and a failing 12-row draft, and stays committed and unedited with its fail verdict.
+
+```sh
+git rev-parse HEAD
+git diff --quiet f198c812dc99cf4c33340a98102b8b83df3999d0 <dry_tip_head> -- src build.gradle.kts settings.gradle.kts gradle .github
+rm -rf /tmp/gsd48/dry && mkdir -p /tmp/gsd48/dry/gg6 /tmp/gsd48/dry/gg7 /tmp/gsd48/dry/tip
+git archive v1.7.0_gg6 | tar -x -C /tmp/gsd48/dry/gg6
+git archive v1.7.0_gg7 | tar -x -C /tmp/gsd48/dry/gg7
+git archive <dry_tip_head> | tar -x -C /tmp/gsd48/dry/tip
+/bin/bash -c 'cd /tmp/gsd48/dry/<n> && env -u TESTCONTAINERS_HOST_OVERRIDE ./gradlew -PjavaVersion=21 --console=plain createConfluentArchive'   # n = gg6, gg7, tip, in turn
+shasum -a 256 <the three zips>
+python3 -I .github/scripts/compare_confluent_archives.py <gg6 zip> <gg7 zip> .planning/scripts/confluent-archive-allowlist-v1.7.0_gg7.txt   # published pair -> dry2-published.txt
+python3 -I .github/scripts/compare_confluent_archives.py <gg7 zip> <tip zip> /tmp/gsd48/exec/dry-comment-only.txt                                 # comment-only list -> dry2-tip-comment-only.txt
+python3 -I .github/scripts/compare_confluent_archives.py <gg7 zip> <tip zip> /tmp/gsd48/exec/dry-draft-gg8-14.txt                                 # 14-row draft -> dry2-draft.txt
+git status --porcelain .planning/scripts
+git show v1.7.0_gg6:.planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt | cmp -s - .planning/scripts/confluent-archive-allowlist-v1.7.0_gg6.txt   # and the gg7 list against v1.7.0_gg7
+```
+
+```text
+supersedes_entry: E-14
+dry_tip_head: 62aa723168700162e3d583a5fe9a63b5554dac94
+src_unchanged_since_e14: yes
+dry_builds_exit: 0 0 0
+gg6_zip_sha256: 97a5881294f69ffb9957407b6addda8c152aa857082c0f56d8809f88989c4abf
+gg7_zip_sha256: 5ab9da9e3e258db03db39aada56f604bad35711bd5573cbf5798081960827f1b
+tip_zip_sha256: b778327a8e8136527dc97d7bf5f544d5bd39aea2dea870416f5adf82e7618a7f
+published_exit: 0
+published_result: RESULT: PASS
+published_unallowed: 0
+published_stale: 0
+published_totals: totals files-a 7513 files-b 7512 only-a 1 only-b 0 changed 119 same 7393
+tip_comment_only_exit: 1
+tip_comment_only_unallowed: 14
+tip_comment_only_stale: 0
+tip_unallowed_paths_match: yes
+draft_rows: 14
+draft_wildcard_rows: 0
+draft_exit: 0
+draft_result: RESULT: PASS
+draft_unallowed: 0
+draft_stale: 0
+draft_totals: totals files-a 7512 files-b 7515 only-a 0 only-b 3 changed 11 same 7501
+draft_in_tmp_only: yes
+lists_identical_to_tags: yes
+```
+
+Notes. E-14 is the superseded miss: its comment-only run read 14 `UNALLOWED` lines where the plan expected 12, and its 12-row draft read `RESULT: FAIL` with 2 `UNALLOWED`. The two paths beyond the planned 12 are `com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$1.class` and `com/clickhouse/kafka/connect/sink/db/mapping/DeclaredNullability$Assignment.class`; E-14 shows by `javap -p -c` that their bytecode equals the gg7 archive's and by `javap -p -l` that only the line number table differs, because the 28 IN-01 move deleted three lines above their code. This entry reran the dry runs with the plan amended to 14 exact rows (the plan's commits `50ff0c23` and `62aa7231`): the three archives were rebuilt from the tip at `dry_tip_head`, whose `src`, build files and `.github` equal the E-14 tip's (`src_unchanged_since_e14`), and the three zips have the same SHA-256 values as the E-14 builds. The published pair reads as planned. The comment-only run reads the same 14 `UNALLOWED` lines as E-14 (the output files of the two runs are byte-equal): the 12 paths of the first plan, of which `ClickHouseWriter$3`, `$InsertBody` and `$InsertWriteDeadline` are `ONLY-B` and the other nine `CHANGED`, plus the two inner classes, `CHANGED`. The draft of 14 exact rows, each with a reason and none with `*`, `?` or `[`, kept only under `/tmp/gsd48/exec`, reads exit 0, `RESULT: PASS`, 0 `UNALLOWED`, 0 `STALE-ROW`, so the gg8 allow-list that Phase 49 generates needs those 14 exact rows and no wildcard. The tip against the gg7 list fails by design until Phase 49 writes the gg8 list and was not run. `.planning/scripts` holds the 5 lists, unchanged, and the gg6 and gg7 lists equal their tags; no draft was written under the repository.
+
+Recorded 2026-11-06T09:43:23Z.
+
+Verdict: pass
