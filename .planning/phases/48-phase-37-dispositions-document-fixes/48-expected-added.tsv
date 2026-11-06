@@ -1,0 +1,25 @@
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aRowWithTwoLiteralSegmentsOrNoWildcardIsAccepted(String)[1] glob=com/google/gson/*	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aRowWithTwoLiteralSegmentsOrNoWildcardIsAccepted(String)[2] glob=META-INF/versions/*/x/*	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aRowWithTwoLiteralSegmentsOrNoWildcardIsAccepted(String)[3] glob=a/A.class	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aWildcardAfterFewerThanTwoLiteralSegmentsIsRefused(String)[1] glob=com/*	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aWildcardAfterFewerThanTwoLiteralSegmentsIsRefused(String)[2] glob=outer/*	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aWildcardAfterFewerThanTwoLiteralSegmentsIsRefused(String)[3] glob=META-INF/*	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aWildcardAfterFewerThanTwoLiteralSegmentsIsRefused(String)[4] glob=c*	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	aWildcardAfterFewerThanTwoLiteralSegmentsIsRefused(String)[5] glob=com/clickhouse*	PASS
+com.clickhouse.kafka.connect.ci.AllowListWildcardRuleUnitTest	everyShippedWildcardRowFollowsTwoLiteralSegments()	PASS
+com.clickhouse.kafka.connect.sink.ClickHouseSinkTaskStopUnitTest	theTaskMBeanIsRegisteredBeforeStopAndGoneAfter()	PASS
+com.clickhouse.kafka.connect.sink.ProxySinkTaskStopUnitTest	mBeanUnregisterFailureStaysTheThrownExceptionWhenTheStateProviderCloseAlsoFails()	PASS
+com.clickhouse.kafka.connect.sink.ProxySinkTaskStopUnitTest	mBeanUnregisterFailureStillClosesTheStateProviderAndReachesTheCaller()	PASS
+com.clickhouse.kafka.connect.sink.RetriableExceptionPassThroughUnitTest	plainDataExceptionControlOutcome(String, Outcome)[1] errors.tolerance=none expected=DATA_EXCEPTION	PASS
+com.clickhouse.kafka.connect.sink.RetriableExceptionPassThroughUnitTest	plainDataExceptionControlOutcome(String, Outcome)[2] errors.tolerance=all expected=RETURNS	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	blankOrEmptyEntrySettingsLogNoWarnAtStartup(String)[1] additionalRetriableErrorCodes= 	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	blankOrEmptyEntrySettingsLogNoWarnAtStartup(String)[2] additionalRetriableErrorCodes=,	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	blankOrEmptyEntrySettingsLogNoWarnAtStartup(String)[3] additionalRetriableErrorCodes=216,,159	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	emptyOrRepeatedEntriesNameEachUnvettedCodeOnceAtStartup(String, String)[1] additionalRetriableErrorCodes=159,,60	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	emptyOrRepeatedEntriesNameEachUnvettedCodeOnceAtStartup(String, String)[2] additionalRetriableErrorCodes=60,60	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	emptyOrRepeatedEntriesNameEachUnvettedCodeOnceAtStartup(String, String)[3] additionalRetriableErrorCodes=60,	PASS
+com.clickhouse.kafka.connect.sink.UnvettedRetriableCodesWarnUnitTest	emptyOrRepeatedEntriesNameEachUnvettedCodeOnceAtStartup(String, String)[4] additionalRetriableErrorCodes=159,60,	PASS
+com.clickhouse.kafka.connect.sink.db.helper.DescribeUnreadableEnumNullBindingUnitTest	aNonEnumDescribeFailureIsAlsoNullButNamesNoEnumCause(boolean)[1] clientV2=false	PASS
+com.clickhouse.kafka.connect.sink.db.helper.DescribeUnreadableEnumNullBindingUnitTest	aNonEnumDescribeFailureIsAlsoNullButNamesNoEnumCause(boolean)[2] clientV2=true	PASS
+com.clickhouse.kafka.connect.sink.db.helper.DescribeUnreadableEnumNullBindingUnitTest	unreadableEnumTableIsNullBecauseTheEnumScanRefusedIt(boolean)[1] clientV2=false	PASS
+com.clickhouse.kafka.connect.sink.db.helper.DescribeUnreadableEnumNullBindingUnitTest	unreadableEnumTableIsNullBecauseTheEnumScanRefusedIt(boolean)[2] clientV2=true	PASS
