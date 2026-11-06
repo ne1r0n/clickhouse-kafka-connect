@@ -564,3 +564,30 @@ rounds_check: OK rounds: [(1, 15), (2, 6), (3, 5), (4, 4), (5, 2)] last_clean=Fa
 Verdict: pass
 
 Notes. Rounds 1 to 5 found 15, 6, 5, 4 and 2 findings. The user was asked after rounds 3, 4 and 5 and answered directly to the orchestrator; the last answer accepted the two round-5 fixes (WR-20, WR-21, one commit) without a sixth round, so those two fixes are the only unreviewed change. The owning checks after the last fix: note checker `rows=22`, id scans `hits=0`, links 35 checked 0 broken, strict hygiene clean on the note and CHANGELOG, path resolver leaves only the gg8 allow-list unresolved in FORK-DELTA, FORK-DELTA numbers check OK against fresh shortstats (364 47983 1260; 43 3578 333), totals sentence holds 2325 and 2928, CHANGELOG heading `Unreleased` and its released sections equal to `v1.7.0_gg7`'s. Nothing was pushed.
+
+### E-10: Every review finding is dispositioned and the release documents are frozen for the allow-list and the gates
+
+Backs: RLS-03 (no finding open; the documents frozen), D-6, the Freeze rule.
+
+```sh
+python3 -I .planning/phases/49-release-publication/49-review-check.py disposition .planning/phases/49-release-publication/49-REVIEW.md .planning/phases/49-release-publication/49-REVIEW-DISPOSITION.md --commits /tmp/gsd49/review/phase-commits.txt
+git diff --name-only 816d3b554045c5e1368b5e5090d8674695596cb4 c96816f4 -- . ':(exclude).planning'
+git diff --name-only 816d3b554045c5e1368b5e5090d8674695596cb4 c96816f4 -- .planning/scripts
+python3 -I .planning/phases/49-release-publication/49-note-check.py rollback docs/ROLLOUT-v1.7.0_gg8.md --print | shasum -a 256
+```
+
+```text
+docs_frozen_scope: CHANGELOG.md; VERSION; docs/FORK-DELTA.md; docs/ROLLOUT-v1.7.0_gg8.md
+scripts_scope: .planning/scripts/fork-anchors.txt
+review_text_in_note: none
+dispositions: fixed:32 rejected:0 deferred:0
+disposition_check: OK disposition: findings=32 rows=32
+block_unchanged_or_reproved: unchanged
+docs_frozen: yes
+pending_verdicts: none
+disposition_commit: c96816f42d265fe970b89fa2950b1331a082fca7
+```
+
+Verdict: pass
+
+Notes. The rollback command block of the note still hashes to the E-05 value (2f30bd7d...7991), so no new rehearsal was needed. The documents are frozen from this commit on; the Freeze rule binds the allow-list, gates and approval bundle of plans 49-04 and 49-05, with the one exception of the one-line date commit of U-3. Nothing was pushed.
